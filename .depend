@@ -1,0 +1,12 @@
+FOBJ=$(DEST)/const.o $(DEST)/hubbard_core.o $(DEST)/hubbard.o $(DEST)/kpoints.o $(DEST)/system.o $(DEST)/environment_report.o 
+
+hubbard.x: $(FOBJ)
+	$(MAKE) $(DEST)/environment_report.o FORCE=frc_rebuild 
+	$(FC) -o $@ $(FFLAGS) $(LDFLAGS) -I $(DEST) $(FOBJ) $(LIBS)
+
+$(DEST)/const.o : const.f90 $(FORCE) 
+$(DEST)/hubbard_core.o : hubbard_core.f90 $(DEST)/environment_report.o $(FORCE) 
+$(DEST)/hubbard.o : hubbard.f90 $(FORCE) 
+$(DEST)/kpoints.o : kpoints.f90 $(DEST)/system.o $(DEST)/const.o $(FORCE) 
+$(DEST)/system.o : system.f90 $(FORCE) 
+$(DEST)/environment_report.o : environment_report.F90 $(FORCE) 
