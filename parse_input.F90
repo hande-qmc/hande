@@ -1,5 +1,5 @@
 module parse_input
-!= Parse input options, set defaults and check input for validity.
+! Parse input options, set defaults and check input for validity.
 
 use parallel
 
