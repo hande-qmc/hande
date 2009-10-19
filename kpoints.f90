@@ -6,19 +6,26 @@ use system
 implicit none
 
 type kpoint
-    integer :: k(3)
+    integer, pointer :: k(:)
     real(dp) :: eigv
 end type kpoint
 
 contains
 
-    type(kpoint) function gen_kpoint(k)
+    subroutine init_kpoint(kp,k)
 
-        integer, intent(in)  :: k(ndim)
+        type(kpoint) :: kp
+        integer, intent(in), optional  :: k(ndim)
+        integer :: ierr
 
-        gen_kpoint = kpoint(k,calc_eigv(k))
+        allocate(kp%k(ndim),stat=ierr)
 
-    end function gen_kpoint
+        if (present(k)) then
+            kp%k = k
+            kp%eigv = calc_eigv(k)
+        end if
+
+    end subroutine init_kpoint
 
     real(dp) function calc_eigv(k)
 
