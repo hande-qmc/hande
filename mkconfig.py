@@ -27,7 +27,7 @@ class makefile_flags(dict):
                            CPPFLAGS='',
                            LD='',
                            LDFLAGS='',
-                           LIBS='-lfftw3',
+                           LIBS='',
                            MODULE_FLAG='',) # Flag compiler uses for setting the directory 
                                             # in which to place/search for .mod files.
                                             # Must be followed by $(DEST).  This is to 
@@ -115,7 +115,6 @@ pathf95=makefile_flags(
           FC='pathf95',
           FFLAGS='',
           LD='pathf95',
-          LIBS='-L /home/jss43/local/lib/pathscale/fftw-3.1.2/lib/ -lfftw3',
           MODULE_FLAG='-module $(DEST)'
       )
 
