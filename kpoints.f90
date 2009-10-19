@@ -7,7 +7,7 @@ implicit none
 
 type kpoint
     integer, pointer :: k(:)
-    real(dp) :: eigv
+    real(dp) :: kinetic
 end type kpoint
 
 contains
@@ -22,23 +22,23 @@ contains
 
         if (present(k)) then
             kp%k = k
-            kp%eigv = calc_eigv(k)
+            kp%kinetic = calc_kinetic(k)
         end if
 
     end subroutine init_kpoint
 
-    real(dp) function calc_eigv(k)
+    real(dp) function calc_kinetic(k)
 
         integer, intent(in) :: k(ndim)
         integer :: i
 
-        calc_eigv = 0.0_dp
+        calc_kinetic = 0.0_dp
         do i = 1,ndim
-            calc_eigv = calc_eigv + cos((2*pi*k(i))/Length(i))
+            calc_kinetic = calc_kinetic + cos((2*pi*k(i))/Length(i))
         end do
 
-        calc_eigv = -2*calc_eigv
+        calc_kinetic = -2*calc_kinetic
 
-    end function calc_eigv
+    end function calc_kinetic
 
 end module kpoints
