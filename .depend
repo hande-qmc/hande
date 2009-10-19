@@ -1,4 +1,4 @@
-FOBJ=$(DEST)/const.o $(DEST)/hubbard_core.o $(DEST)/hubbard.o $(DEST)/kpoints.o $(DEST)/system.o $(DEST)/environment_report.o 
+FOBJ=$(DEST)/const.o $(DEST)/hubbard_core.o $(DEST)/hubbard.o $(DEST)/kpoints.o $(DEST)/parallel.o $(DEST)/system.o $(DEST)/environment_report.o $(DEST)/input.o $(DEST)/parse_input.o 
 
 hubbard.x: $(FOBJ)
 	$(MAKE) $(DEST)/environment_report.o FORCE=frc_rebuild 
@@ -8,5 +8,8 @@ $(DEST)/const.o : const.f90 $(FORCE)
 $(DEST)/hubbard_core.o : hubbard_core.f90 $(DEST)/environment_report.o $(FORCE) 
 $(DEST)/hubbard.o : hubbard.f90 $(FORCE) 
 $(DEST)/kpoints.o : kpoints.f90 $(DEST)/system.o $(DEST)/const.o $(FORCE) 
+$(DEST)/parallel.o : parallel.f90 $(FORCE) 
 $(DEST)/system.o : system.f90 $(FORCE) 
 $(DEST)/environment_report.o : environment_report.F90 $(FORCE) 
+$(DEST)/input.o : input.F90 $(FORCE) 
+$(DEST)/parse_input.o : parse_input.F90 $(DEST)/input.o $(DEST)/parallel.o $(FORCE) 
