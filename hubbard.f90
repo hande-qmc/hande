@@ -16,6 +16,6 @@ contains
     ! From the cell parameters and the "tilt" used (if any) generate
     ! the list of wavevectors and hence the kinetic energy associated
     ! with each basis function (one per wavevector).
-    end subroutine init_basis_fns()
+    end subroutine init_basis_fns
 
 end module hubbard
