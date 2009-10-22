@@ -34,7 +34,7 @@ contains
 
         calc_kinetic = 0.0_dp
         do i = 1,ndim
-            calc_kinetic = calc_kinetic + cos((2*pi*k(i))/Length(i))
+            calc_kinetic = calc_kinetic + cos((2*pi*k(i))/box_length(i))
         end do
 
         calc_kinetic = -2*calc_kinetic
