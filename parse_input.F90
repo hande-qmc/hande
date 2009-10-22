@@ -1,7 +1,9 @@
 module parse_input
-! Parse input options, set defaults and check input for validity.
+! Parse input options and check input for validity.
 
 use parallel
+use errors
+use system
 
 implicit none
 
@@ -27,8 +29,8 @@ contains
         integer :: ios
         logical :: eof, t_exists
 
-
-        !call set_defaults()
+        integer :: ivec, i
+        double precision :: dbl ! For compatibility with input module.
 
         if (iargc().gt.0) then
             ! Input file specified on the command line.
@@ -54,7 +56,29 @@ contains
             if (eof) exit
             call readu(w)
             select case(w)
-
+            case('LATTICE')
+                ! Lattice block
+                call read_line(eof)
+                if (eof) call stop_all('read_input','Unexpected end of file reading lattice vectors.')
+                ! nitems gives the number of items in the line, and thus the number
+                ! of dimensions...
+                ndim = nitems
+                allocate(box_length(ndim))
+                allocate(lattice(ndim,ndim))
+                do ivec = 1,ndim
+                    if (nitems /= ndim) call stop_all('read_input','Do not understand lattice vector.')
+                    do i = 1,ndim
+                        call readi(lattice(i,ivec))
+                    end do
+                    if (ivec /= ndim) then
+                        call read_line(eof)
+                        if (eof) call stop_all('read_input','Unexpected end of file reading lattice vectors.')
+                    end if
+                    box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),dp))
+                end do
+                n_sites = nint(product(box_length))
+            case('NEL','ELECTRONS')
+                call readi(nel)
             case('END')
                 exit
             case default
@@ -67,8 +91,38 @@ contains
             stop
         end if
 
-        if (i_proc.eq.0) write (6,*) ! Formatting.
+        call check_input()
+
+        if (i_proc.eq.0) write (6,'(/,1X,13("-"),/)') 
 
     end subroutine read_input
+
+    subroutine check_input()
+        ! I don't pretend this is the most comprehensive of tests, but at least
+        ! make sure a few things are not completely insane.
+
+        use const
+
+        integer :: ivec, jvec
+
+        if (.not.(allocated(lattice))) call stop_all('check_input','Lattice vectors not provided')
+
+        if (ndim > 3) call stop_all('check_input','Limited to 1, 2 or 3 dimensions')
+
+        if (nel <= 0) call stop_all('check_input','Number of electrons must be positive.')
+
+        if (mod(nel,2) /= 0) call stop_all('check_input','Odd number of electrons => open shell.')
+
+        do ivec = 1,ndim
+            do jvec = ivec+1,ndim
+                if (dot_product(lattice(:,ivec),lattice(:,jvec)) /= 0) then
+                    call stop_all('check_input','Lattice vectors are not orthogonal.')
+                end if
+            end do
+        end do
+
+        if (nel > 2*n_sites) call stop_all('check_input','More than two electrons per site.')
+
+    end subroutine check_input
 
 end module parse_input
