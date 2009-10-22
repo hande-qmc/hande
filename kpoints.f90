@@ -6,7 +6,7 @@ use system
 implicit none
 
 type kpoint
-    integer, pointer :: k(:)
+    integer, pointer :: k(:) => NULL()
     real(dp) :: kinetic
 end type kpoint
 
@@ -18,7 +18,10 @@ contains
         integer, intent(in), optional  :: k(ndim)
         integer :: ierr
 
-        allocate(kp%k(ndim),stat=ierr)
+        if (.not.associated(kp%k)) then
+            allocate(kp%k(ndim),stat=ierr)
+            write (6,*) 'allocatating k component'
+        end if
 
         if (present(k)) then
             kp%k = k
