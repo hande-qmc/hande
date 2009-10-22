@@ -19,7 +19,7 @@ contains
     character(3), parameter :: error_str='999'
 
     write (6,'(/a7)') 'ERROR.'
-    write (6,'(a27,a)') 'hubbard stops in subroutine: ',adjustl(sub_name)
+    write (6,'(a30,a)') 'hubbard stops in subroutine: ',adjustl(sub_name)
     write (6,'(a9,18X,a)') 'Reason: ',adjustl(error_msg)
     write (6,'(a11)') 'EXITING...'
 
