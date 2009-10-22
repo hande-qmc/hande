@@ -29,7 +29,7 @@ contains
         integer :: ios
         logical :: eof, t_exists
 
-        integer :: ivec, i
+        integer :: ivec, i, ierr
         double precision :: dbl ! For compatibility with input module.
 
         if (iargc().gt.0) then
@@ -63,8 +63,8 @@ contains
                 ! nitems gives the number of items in the line, and thus the number
                 ! of dimensions...
                 ndim = nitems
-                allocate(box_length(ndim))
-                allocate(lattice(ndim,ndim))
+                allocate(box_length(ndim),stat=ierr)
+                allocate(lattice(ndim,ndim),stat=ierr)
                 do ivec = 1,ndim
                     if (nitems /= ndim) call stop_all('read_input','Do not understand lattice vector.')
                     do i = 1,ndim
