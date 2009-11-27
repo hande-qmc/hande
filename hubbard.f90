@@ -6,6 +6,7 @@ use kpoints
 implicit none
 
 type(kpoint), allocatable :: basis_fns(:)
+integer :: nbasis
 
 contains
 
@@ -22,35 +23,39 @@ contains
         use parallel, only: iproc, parent
 
         integer :: nmax(3), kp(3) ! Support a maximum of 3 dimensions.
-        integer :: i, j, k, nbasis, ierr
+        integer :: i, j, k, ibasis, ierr
         type(kpoint) :: test_basis_fn
         logical :: t
+
+        nbasis = 2*nsites
 
         ! [Does it show that I've been writing a lot of python recently?]
         nmax = 0
         forall (i=1:ndim) nmax(i) = maxval(abs(nint(box_length(i)**2/(2*lattice(:,i)))))
 
-        allocate(basis_fns(nsites), stat=ierr)
+        allocate(basis_fns(2*nsites), stat=ierr)
 
-        nbasis = 0
+        ibasis = 0
         ! The following can't be done as a forall due to compilers being crap...
         do k = -nmax(3), nmax(3)
             do j = -nmax(2), nmax(2)
                 do i = -nmax(1), nmax(1)
                     kp = (/ i, j, k /)
                     if (in_FBZ(kp(1:ndim))) then
-                        nbasis = nbasis + 1
-                        if (nbasis>nsites) then
+                        if (ibasis==nbasis) then
                             call stop_all('init_basis_fns','Too many basis functions found.')
                         else
-                            call init_kpoint(basis_fns(nbasis), kp(1:ndim))
+                            ibasis = ibasis + 1
+                            call init_kpoint(basis_fns(ibasis), kp(1:ndim), 1)
+                            ibasis = ibasis + 1
+                            call init_kpoint(basis_fns(ibasis), kp(1:ndim), -1)
                         end if
                     end if
                 end do
             end do
         end do
 
-        if (nbasis/=nsites) call stop_all('init_basis_fns','Not enough basis functions found.')
+        if (ibasis/=nbasis) call stop_all('init_basis_fns','Not enough basis functions found.')
 
         if (iproc==parent) then
             write (6,'(/,1X,a15,/,1X,15("-"),/)') 'Basis functions'
@@ -58,7 +63,7 @@ contains
             do i = 1,ndim
                 write (6,'(3X)', advance='no')
             end do
-            write (6,'(a7)') 'kinetic'
+            write (6,'(a,4X,a7)') 'ms','kinetic'
             do i = 1,nbasis
                 call write_kpoint(basis_fns(i))
             end do

@@ -7,15 +7,17 @@ implicit none
 
 type kpoint
     integer, pointer :: k(:) => NULL()
+    integer :: ms
     real(dp) :: kinetic
 end type kpoint
 
 contains
 
-    pure subroutine init_kpoint(kp,k)
+    pure subroutine init_kpoint(kp,k,ms)
 
         type(kpoint), intent(out) :: kp
         integer, intent(in), optional  :: k(ndim)
+        integer, intent(in), optional  :: ms
         integer :: ierr
 
         if (.not.associated(kp%k)) then
@@ -26,6 +28,8 @@ contains
             kp%k = k
             kp%kinetic = calc_kinetic(k)
         end if
+
+        if (present(ms)) kp%ms = ms
 
     end subroutine init_kpoint
 
@@ -54,6 +58,7 @@ contains
             write (6,'(",",i2)',advance='no') k%k(i)
         end do
         write (6,'(")")', advance='no')
+        write (6,'(5X,i2)', advance='no') k%ms
         write (6,'(4X,f12.8)') k%kinetic
 
     end subroutine write_kpoint
