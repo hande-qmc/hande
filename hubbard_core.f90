@@ -4,12 +4,20 @@ use report, only: environment_report
 use parse_input, only: read_input
 use hubbard, only: init_basis_fns
 
-write (6,'(/,a8,/)') 'Hubbard'
+call init_calc()
 
-call environment_report()
+contains
 
-call read_input()
+    subroutine init_calc()
 
-call init_basis_fns()
+        write (6,'(/,a8,/)') 'Hubbard'
+
+        call environment_report()
+
+        call read_input()
+
+        call init_basis_fns()
+
+    end subroutine init_calc
 
 end program hubbard_fciqmc
