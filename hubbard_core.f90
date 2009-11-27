@@ -1,12 +1,15 @@
-program hubbard
+program hubbard_fciqmc
 
-use report
-use parse_input
+use report, only: environment_report
+use parse_input, only: read_input
+use hubbard, only: init_basis_fns
 
 write (6,'(/,a8,/)') 'Hubbard'
 
 call environment_report()
 
-call read_input
+call read_input()
 
-end program hubbard
+call init_basis_fns()
+
+end program hubbard_fciqmc
