@@ -43,7 +43,7 @@ contains
 
         forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
 
-        kinetic = -2*sum(cos(2*pi*kc))
+        kinetic = -2*sum(cos(2*pi*kc))*hubt
 
     end function calc_kinetic
 

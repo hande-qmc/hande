@@ -21,6 +21,8 @@ real(dp), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
 integer :: nel = 0 ! # of electrons
 
+real(dp) :: hubu = 1, hubt = 1
+
 contains
 
     subroutine init_system()

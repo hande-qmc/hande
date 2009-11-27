@@ -76,6 +76,10 @@ contains
                 end do
             case('NEL','ELECTRONS')
                 call readi(nel)
+            case('T')
+                call readf(hubt)
+            case('U')
+                call readf(hubu)
             case('END')
                 exit
             case default
