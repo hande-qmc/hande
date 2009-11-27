@@ -130,7 +130,7 @@ contains
 #ifdef NAGF95
     call getcwd(dirname,errno=stat)
 #else
-    stat=getcwd(dirname)
+    stat = getcwd(dirname)
 #endif
 
     if (stat.eq.0) then
@@ -140,9 +140,9 @@ contains
 
 #ifdef NAGF95
     call gethostname(host)
-    stat=0
+    stat = 0
 #else
-    stat=hostnm(host)
+    stat = hostnm(host)
 #endif
 
     if (stat.eq.0) then

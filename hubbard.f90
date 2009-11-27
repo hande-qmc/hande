@@ -55,9 +55,9 @@ contains
             end do
         end do
 
-        if (ibasis/=nbasis) call stop_all('init_basis_fns','Not enough basis functions found.')
+        if (ibasis /= nbasis) call stop_all('init_basis_fns','Not enough basis functions found.')
 
-        if (iproc==parent) then
+        if (iproc == parent) then
             write (6,'(/,1X,a15,/,1X,15("-"),/)') 'Basis functions'
             write (6,'(1X,a7)', advance='no') 'k-point'
             do i = 1,ndim

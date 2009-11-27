@@ -29,8 +29,8 @@ contains
 
         integer :: ivec, ierr
 
-        allocate(box_length(ndim),stat=ierr)
-        allocate(rlattice(ndim,ndim),stat=ierr)
+        allocate(box_length(ndim), stat=ierr)
+        allocate(rlattice(ndim,ndim), stat=ierr)
 
         forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),dp))
         nsites = nint(product(box_length))
