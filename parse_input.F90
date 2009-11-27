@@ -1,7 +1,7 @@
 module parse_input
 ! Parse input options and check input for validity.
 
-use parallel
+use parallel, only: iproc, parent
 use errors
 use system
 
@@ -43,13 +43,13 @@ contains
             end if
             open(1,file=cInp,status='old',form='formatted',iostat=ios)
         else
-            if (i_proc.eq.0) write (6,'(a19)') 'Reading from STDIN'
+            if (iproc==parent) write (6,'(a19)') 'Reading from STDIN'
             ir=5
             ios=0
         end if
 
-        if (i_proc.eq.0) write (6,'(a14,/,1X,13("-"),/)') 'Input options'
-        call input_options(echo_lines=i_proc.eq.0,skip_blank_lines=.true.)
+        if (iproc==parent) write (6,'(a14,/,1X,13("-"),/)') 'Input options'
+        call input_options(echo_lines=iproc==parent,skip_blank_lines=.true.)
 
         do
             call read_line(eof)
@@ -63,7 +63,6 @@ contains
                 ! nitems gives the number of items in the line, and thus the number
                 ! of dimensions...
                 ndim = nitems
-                allocate(box_length(ndim),stat=ierr)
                 allocate(lattice(ndim,ndim),stat=ierr)
                 do ivec = 1,ndim
                     if (nitems /= ndim) call stop_all('read_input','Do not understand lattice vector.')
@@ -74,9 +73,7 @@ contains
                         call read_line(eof)
                         if (eof) call stop_all('read_input','Unexpected end of file reading lattice vectors.')
                     end if
-                    box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),dp))
                 end do
-                n_sites = nint(product(box_length))
             case('NEL','ELECTRONS')
                 call readi(nel)
             case('END')
@@ -87,13 +84,15 @@ contains
         end do
 
         if (ios.gt.0) then
-            if (i_proc.eq.0) write (6,*) 'Problem reading input.'
+            if (iproc==parent) write (6,*) 'Problem reading input.'
             stop
         end if
 
+        call init_system()
+
         call check_input()
 
-        if (i_proc.eq.0) write (6,'(/,1X,13("-"),/)') 
+        if (iproc==parent) write (6,'(/,1X,13("-"),/)') 
 
     end subroutine read_input
 
@@ -121,7 +120,7 @@ contains
             end do
         end do
 
-        if (nel > 2*n_sites) call stop_all('check_input','More than two electrons per site.')
+        if (nel > 2*nsites) call stop_all('check_input','More than two electrons per site.')
 
     end subroutine check_input
 
