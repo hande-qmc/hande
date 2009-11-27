@@ -12,15 +12,14 @@ end type kpoint
 
 contains
 
-    subroutine init_kpoint(kp,k)
+    pure subroutine init_kpoint(kp,k)
 
-        type(kpoint) :: kp
+        type(kpoint), intent(out) :: kp
         integer, intent(in), optional  :: k(ndim)
         integer :: ierr
 
         if (.not.associated(kp%k)) then
             allocate(kp%k(ndim),stat=ierr)
-            write (6,*) 'allocatating k component'
         end if
 
         if (present(k)) then
@@ -30,18 +29,33 @@ contains
 
     end subroutine init_kpoint
 
-    real(dp) function calc_kinetic(k)
+    pure function calc_kinetic(k) result(kinetic)
+
+        real(dp) :: kinetic
 
         integer, intent(in) :: k(ndim)
         integer :: i
+        real(dp) :: kc(ndim)
 
-        calc_kinetic = 0.0_dp
-        do i = 1,ndim
-            calc_kinetic = calc_kinetic + cos((2*pi*k(i))/box_length(i))
-        end do
+        forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
 
-        calc_kinetic = -2*calc_kinetic
+        kinetic = -2*sum(cos(2*pi*kc))
 
     end function calc_kinetic
+
+    subroutine write_kpoint(k)
+
+        type(kpoint), intent(in) :: k
+        integer :: i
+
+        write (6,'(1X,"(")', advance='no')
+        write (6,'(i2)',advance='no') k%k(1)
+        do i = 2,ndim
+            write (6,'(",",i2)',advance='no') k%k(i)
+        end do
+        write (6,'(")")', advance='no')
+        write (6,'(4X,f12.8)') k%kinetic
+
+    end subroutine write_kpoint
 
 end module kpoints
