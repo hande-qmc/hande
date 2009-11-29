@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := hubbard.x
+.DEFAULT_GOAL := bin/hubbard.x
 
 %:
 	cd .. && $(MAKE) $@
