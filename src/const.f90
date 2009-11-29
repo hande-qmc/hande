@@ -3,6 +3,10 @@ module const
 
 implicit none
 
+! i0 gives the equivalent of a byte type (8 bits)
+! Allows data range of -128 to 127.
+integer, parameter :: i0 = selected_int_kind(0)
+
 integer, parameter :: dp = kind(0.0d0)
 
 real(dp), parameter :: pi = 3.1415926535897931_dp
