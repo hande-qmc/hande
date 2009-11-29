@@ -34,7 +34,7 @@ class makefile_flags(dict):
                                             # accommodate the compilers which want a space
                                             # after the flag as well as those that don't!
                                             # e.g. for g95 MODULE_FLAG='-fmod=$(DEST)' 
-                                            # whilst for gfortran MODULE_FLAG='-M $(DEST)'.
+                                            # whilst for gfortran MODULE_FLAG='-J $(DEST)'.
         self.update(**kwargs)
 
 #======================================================================
@@ -72,7 +72,7 @@ gfortran=makefile_flags(
           FC='gfortran',
           FFLAGS='-O3 -fbounds-check',
           LD='gfortran',
-          MODULE_FLAG='-M $(DEST)',
+          MODULE_FLAG='-J $(DEST)',
       )
 
 gfortran_mpi=makefile_flags(**gfortran)
@@ -99,7 +99,7 @@ nag=makefile_flags(
 
 pgf90=makefile_flags(
           FC='pgf90',
-          FFLAGS='-O3 -Mbounds',
+          FFLAGS='-O3',
           LD='pgf90',
           MODULE_FLAG='-module $(DEST)'
       )
