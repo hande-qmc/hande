@@ -76,18 +76,3 @@ contains
     end function binom
 
 end module comb_m
-
-program test_comb
-
-    use comb_m
-
-    integer :: i
-    integer :: c(2)
-
-    write (6,*) binom(10,4)
-
-    do i = 1,6
-        write (6,*) comb(4,2,i)
-    end do
-
-end program test_comb
