@@ -1,5 +1,7 @@
 module hubbard
 
+! Momentum space formulation of the Hubbard model.
+
 use system
 use kpoints
 
