@@ -9,23 +9,35 @@ use const
 
 implicit none
 
-integer :: ndim ! 1, 2 or 3 dimensions.
-integer :: nsites ! Number of sites in crystal cell.
-integer, allocatable :: lattice(:,:)  ! ndim, ndim.  Gives lattice vectors of crystal cell. (:,i) is the i-th vector.
-real(dp), allocatable :: box_length(:) ! ndim.  Gives lengths of lattice vectors.
+! 1, 2 or 3 dimensions.
+integer :: ndim 
+
+! Number of sites in crystal cell.
+integer :: nsites 
+
+! Lattice vectors of crystal cell. (:,i) is the i-th vector.
+integer, allocatable :: lattice(:,:)  ! ndim, ndim.
+
+! Lengths of lattice vectors.
+real(dp), allocatable :: box_length(:) ! ndim.
 
 ! As we are working in an orthogonal space, the reciprocal lattice vectors are
 ! easily obtained:
 ! b_i = 2\pi/|a_i|^2 a_i
 real(dp), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
-integer :: nel = 0 ! # of electrons
+! # of electrons
+integer :: nel = 0 
 
+! Hubbard T and U parameters specifying the kinetic energy and Coulomb
+! interaction respectively.
 real(dp) :: hubu = 1, hubt = 1
 
 contains
 
     subroutine init_system()
+
+        ! Initialise system based upon input parameters.
 
         integer :: ivec, ierr
 
@@ -40,14 +52,23 @@ contains
 
     pure function in_FBZ(k)
 
+        ! Test if k is in the FBZ of the primitive unit cell.
+        ! In:
+        !    k: wavevector in units of the reciprocal lattice of the crystal
+        !       cell.
+
         logical :: in_FBZ
         integer, intent(in) :: k(ndim)
 
         integer :: i
         real :: kc(ndim)
 
+        ! Convert to cartesian units.
         forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
 
+        ! This test only works because the underlying lattice is orthogonal.
+        ! The asymmetry of the boundary conditions prevent the acceptance of
+        ! all wavevectors on the boundaries...
         in_FBZ = all(kc<=(0.50_dp+depsilon)).and.all(kc>(-0.50_dp))
 
     end function in_FBZ

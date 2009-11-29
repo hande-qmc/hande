@@ -12,12 +12,12 @@ contains
 
     subroutine init_basis_fns()
 
-        ! Produce the basis functions.  The number of basis functions is
+        ! Produce the basis functions.  The number of wavevectors is
         ! equal to the number of sites in the crystal cell (ie the number
         ! of k-points used to sample the FBZ of the primitive cell).
         ! From the cell parameters and the "tilt" used (if any) generate
         ! the list of wavevectors and hence the kinetic energy associated
-        ! with each basis function (one per wavevector).
+        ! with each basis function (two per wavevector to account for spin).
 
         use errors, only: stop_all
         use parallel, only: iproc, parent
@@ -29,8 +29,20 @@ contains
 
         nbasis = 2*nsites
 
+        ! Fold the crystal cell into the FBZ.
+        ! The k-points must be integer multiples of the reciprocal lattice
+        ! vectors of the crystal cell (so that the wavefunction is periodic in
+        ! the crystal cell) and fall within the first Brillouin zone of the
+        ! primitive unit cell (so that a unique set of k-points are chosen).
+        ! The volume of the FBZ is inversely proportional to the volume of the
+        ! cell, and so the number of sites in the crystal cell is equal to the
+        ! number of reciprocal crystal cells in the FBZ of the unit cell and 
+        ! hence this gives the required number of wavevectors.
+
+
+        ! Maximum limits...
         ! [Does it show that I've been writing a lot of python recently?]
-        nmax = 0
+        nmax = 0 ! Set nmax(i) to be 0 for unused higher dimensions.
         forall (i=1:ndim) nmax(i) = maxval(abs(nint(box_length(i)**2/(2*lattice(:,i)))))
 
         allocate(basis_fns(2*nsites), stat=ierr)
@@ -40,11 +52,15 @@ contains
         do k = -nmax(3), nmax(3)
             do j = -nmax(2), nmax(2)
                 do i = -nmax(1), nmax(1)
+                    ! kp is the Wavevector in terms of the reciprocal lattice vectors of
+                    ! the crystal cell.
                     kp = (/ i, j, k /)
                     if (in_FBZ(kp(1:ndim))) then
                         if (ibasis==nbasis) then
                             call stop_all('init_basis_fns','Too many basis functions found.')
                         else
+                            ! Have found an allowed wavevector.
+                            ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
                             call init_kpoint(basis_fns(ibasis), kp(1:ndim), 1)
                             ibasis = ibasis + 1

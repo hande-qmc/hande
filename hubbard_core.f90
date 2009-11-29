@@ -10,6 +10,11 @@ contains
 
     subroutine init_calc()
 
+        ! Initialise the calculation.
+        ! Print out information about the compiled executable, 
+        ! read input options and initialse the system and basis functions
+        ! to be used.
+
         write (6,'(/,a8,/)') 'Hubbard'
 
         call environment_report()
