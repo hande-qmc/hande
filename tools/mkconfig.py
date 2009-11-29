@@ -40,12 +40,12 @@ class makefile_flags(dict):
 #======================================================================
 # Local settings.
 
-program_name='hubbard.x'
+program_name='bin/hubbard.x'
 
 # Space separated list of files to be compiled in a format understood by bash to pass to
 # makedepf90.  Patterns are allowed, but all patterns must match at least one file, as 
 # otherwise makedepf90 complains, throws an error and exits.
-source_code_files='*.{f90,F90}'
+source_code_files='src/*.f90 lib/*.{f90,F90}'
 
 #======================================================================
 # Edit this section to add new configurations.
@@ -163,18 +163,12 @@ make_dest:=$(shell	test -e $(DEST) || mkdir -p $(DEST))
 LINK_LINE="\$$(MAKE) \$$(DEST)/environment_report.o FORCE=frc_rebuild ;\$$(FC) -o \$$@ \$$(FFLAGS) \$$(LDFLAGS) -I \$$(DEST) \$$(FOBJ) \$$(LIBS)" 
 
 .SUFFIXES:
-.SUFFIXES: .f90 .F90 .f .F .o
+.SUFFIXES: .f90 .F90
 
-$(DEST)/%%.o: %%.f
-\t$(FC) -c $(FFLAGS) $< -o $@
-
-$(DEST)/%%.o: %%.F
-\t$(FC) $(CPPDEFS) $(CPPFLAGS) -c $(FFLAGS) $< -o $@
-
-$(DEST)/%%.o: %%.f90
+$(DEST)/%%.o: */%%.f90
 \t$(FC) -c $(FFLAGS) $< -o $@ %(MODULE_FLAG)s
 
-$(DEST)/%%.o: %%.F90
+$(DEST)/%%.o: */%%.F90
 \t$(FC) $(CPPDEFS) $(CPPFLAGS) -c $(FFLAGS) $< -o $@ %(MODULE_FLAG)s
 
 include .depend
@@ -183,7 +177,7 @@ docs:
 \tcd documentation && $(MAKE) html pdf soft_links
 
 clean: 
-\t-rm -f {$(DEST)/,}{*.mod,*.o,*.x}
+\t-rm -f {$(DEST)/,bin/}{*.mod,*.o,*.x}
 
 # Build from scratch.
 new: clean %(PROGRAM)s
