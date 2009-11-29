@@ -3,6 +3,7 @@ program hubbard_fciqmc
 use report, only: environment_report
 use parse_input, only: read_input
 use hubbard, only: init_basis_fns
+use determinants, only: find_all_determinants
 
 call init_calc()
 
@@ -22,6 +23,8 @@ contains
         call read_input()
 
         call init_basis_fns()
+
+        call find_all_determinants()
 
     end subroutine init_calc
 
