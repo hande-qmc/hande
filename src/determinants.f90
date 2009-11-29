@@ -4,7 +4,7 @@ module determinants
 
 use const
 use system
-use hubbard
+use basis
 
 implicit none
 

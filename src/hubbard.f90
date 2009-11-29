@@ -2,13 +2,11 @@ module hubbard
 
 ! Momentum space formulation of the Hubbard model.
 
+use basis
 use system
 use kpoints
 
 implicit none
-
-type(kpoint), allocatable :: basis_fns(:)
-integer :: nbasis
 
 contains
 
