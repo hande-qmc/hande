@@ -13,11 +13,17 @@ type det
     integer(i0), pointer :: f(:)
     ! Ms: total spin of the determinant in units of electron spin (1/2).   
     integer(i0) :: Ms
-end type
+end type det
 
 type(det), allocatable :: dets(:)
 
+type excit
+    integer :: nexcit
+    integer :: from_orb(2), to_orb(2)
+end type excit
+
 integer :: basis_length
+integer :: ndets
 
 contains
 
@@ -28,7 +34,8 @@ contains
 
         use comb_m
 
-        integer :: ndets, i, c(nel), ierr
+        integer :: i, c(nel), ierr
+        type(excit) :: excitation
 
         ndets = binom(nbasis, nel)
 
@@ -147,5 +154,52 @@ contains
         end do
 
     end function det_spin
+
+    pure function get_excitation(f1,f2) result(excitation)
+
+        ! 
+
+        type(excit) :: excitation
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer :: i, j, iexcit1, iexcit2
+        logical :: test_f1, test_f2
+
+        excitation = excit(0,0,0)
+
+        if (any(f1(:)/=f2(:))) then
+            iexcit1 = 0
+            iexcit2 = 0
+
+            sc: do i = 1, basis_length
+                do j = 0, 7
+
+                    test_f1 = btest(f1(i),j)
+                    test_f2 = btest(f2(i),j)
+
+                    if (test_f1 .and. .not.test_f2) then
+                        ! occupied in f1 but not in f2
+                        iexcit1 = iexcit1 + 1
+                        if (iexcit1 == 3) then
+                            ! f2 is more than a double excitation of f1.
+                            exit sc
+                        end if
+                        excitation%from_orb(iexcit1) = 8*(i-1) + j + 1
+                    else if (.not.test_f1 .and. test_f2) then
+                        iexcit2 = iexcit2 + 1
+                        if (iexcit2 == 3) then
+                            ! f2 is more than a double excitation of f1.
+                            exit sc
+                        end if
+                        excitation%to_orb(iexcit2) = 8*(i-1) + j + 1
+                    end if
+
+                end do
+            end do sc
+
+            excitation%nexcit = iexcit1 ! iexcit1 and iexcit2 should be identical.
+
+        end if
+
+    end function get_excitation
 
 end module determinants
