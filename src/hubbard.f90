@@ -87,4 +87,51 @@ contains
 
     end subroutine init_basis_fns
 
+    pure function get_one_e_int(phi1, phi2) result(one_e_int)
+
+        real(dp) :: one_e_int
+        integer, intent(in) :: phi1, phi2
+
+        if (phi1 == phi2) then
+            one_e_int = basis_fns(phi1)%kinetic
+        else
+            one_e_int = 0.0_dp
+        end if
+
+    end function get_one_e_int
+
+    pure function get_two_e_int(phi1, phi2, phi3, phi4) result(two_e_int)
+
+        real(dp) :: two_e_int
+        integer, intent(in) :: phi1, phi2, phi3, phi4
+
+        ! <phi1 phi2 || phi3 phi4>
+        two_e_int = 0.0_dp
+
+        ! <phi1 phi2 | phi3 phi4>
+        if (momentum_conserved(phi1, phi2, phi3, phi4)) two_e_int = hubu/nsites
+
+        ! <phi1 phi2 | phi4 phi3>
+        if (momentum_conserved(phi1, phi2, phi4, phi3)) two_e_int = two_e_int - hubu/nsites
+
+    end function get_two_e_int
+
+    pure function momentum_conserved(i, j, k, l) result(conserved)
+
+        logical :: conserved
+        integer, intent(in) :: i, j, k, l
+        integer :: delta_k(ndim)
+        real(dp) :: delta_kc(ndim)
+
+        delta_k = basis_fns(i)%k + basis_fns(j)%k - basis_fns(k)%k - basis_fns(l)%k
+
+        if (all(delta_k == 0)) then
+            conserved = .true.
+        else
+            forall (i=1:ndim) delta_kc(i) = sum(delta_k*lattice(i,:))
+            conserved = all(mod(delta_kc, 1.0_dp) < depsilon)
+        end if
+
+    end function momentum_conserved
+
 end module hubbard
