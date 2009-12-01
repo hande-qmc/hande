@@ -19,13 +19,15 @@ contains
         ! the list of wavevectors and hence the kinetic energy associated
         ! with each basis function (two per wavevector to account for spin).
 
+        use m_mrgref, only: mrgref
         use errors, only: stop_all
         use parallel, only: iproc, parent
 
         integer :: nmax(3), kp(3) ! Support a maximum of 3 dimensions.
         integer :: i, j, k, ibasis, ierr
-        type(kpoint) :: test_basis_fn
-        logical :: t
+        type(kpoint), allocatable, target :: tmp_basis_fns(:)
+        type(kpoint), pointer :: basis_fn
+        integer, allocatable :: basis_fns_ranking(:)
 
         nbasis = 2*nsites
 
@@ -45,7 +47,9 @@ contains
         nmax = 0 ! Set nmax(i) to be 0 for unused higher dimensions.
         forall (i=1:ndim) nmax(i) = maxval(abs(nint(box_length(i)**2/(2*lattice(:,i)))))
 
-        allocate(basis_fns(2*nsites), stat=ierr)
+        allocate(basis_fns(nbasis), stat=ierr)
+        allocate(tmp_basis_fns(nbasis), stat=ierr)
+        allocate(basis_fns_ranking(nbasis), stat=ierr)
 
         ibasis = 0
         ! The following can't be done as a forall due to compilers being crap...
@@ -62,9 +66,9 @@ contains
                             ! Have found an allowed wavevector.
                             ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
-                            call init_kpoint(basis_fns(ibasis), kp(1:ndim), 1)
+                            call init_kpoint(tmp_basis_fns(ibasis), kp(1:ndim), 1)
                             ibasis = ibasis + 1
-                            call init_kpoint(basis_fns(ibasis), kp(1:ndim), -1)
+                            call init_kpoint(tmp_basis_fns(ibasis), kp(1:ndim), -1)
                         end if
                     end if
                 end do
@@ -73,14 +77,27 @@ contains
 
         if (ibasis /= nbasis) call stop_all('init_basis_fns','Not enough basis functions found.')
 
+        ! Sort by kinetic energy.
+        call mrgref(tmp_basis_fns(:)%kinetic, basis_fns_ranking)
+        write (6,*) basis_fns_ranking
+        do i = 1, nbasis
+            ! Can't set a kpoint equal to another kpoint as then the k pointers
+            ! can be assigned whereas we want to *copy* the values.
+            basis_fn => tmp_basis_fns(basis_fns_ranking(i))
+            call init_kpoint(basis_fns(i), basis_fn%k, basis_fn%ms)
+            deallocate(tmp_basis_fns(basis_fns_ranking(i))%k, stat=ierr)
+        end do
+        deallocate(tmp_basis_fns, stat=ierr)
+        deallocate(basis_fns_ranking, stat=ierr)
+
         if (iproc == parent) then
             write (6,'(/,1X,a15,/,1X,15("-"),/)') 'Basis functions'
             write (6,'(1X,a7)', advance='no') 'k-point'
-            do i = 1,ndim
+            do i = 1, ndim
                 write (6,'(3X)', advance='no')
             end do
             write (6,'(a,4X,a7)') 'ms','kinetic'
-            do i = 1,nbasis
+            do i = 1, nbasis
                 call write_kpoint(basis_fns(i))
             end do
         end if
