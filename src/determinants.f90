@@ -180,6 +180,8 @@ contains
 
         ! 
 
+        use bit_utils
+
         type(excit) :: excitation
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer :: i, j, iexcit1, iexcit2
@@ -187,38 +189,35 @@ contains
 
         excitation = excit(0,0,0)
 
-        if (any(f1(:)/=f2(:))) then
+        if (any(f1/=f2)) then
+
             iexcit1 = 0
             iexcit2 = 0
+            excitation%nexcit = sum(count_set_bits(ieor(f1,f2)))/2
 
-            sc: do i = 1, basis_length
-                do j = 0, 7
+            if (excitation%nexcit <= 2) then
 
-                    test_f1 = btest(f1(i),j)
-                    test_f2 = btest(f2(i),j)
+                sc: do i = 1, basis_length
+                    if (f1(i) == f2(i)) cycle sc
+                    do j = 0, 7
 
-                    if (test_f1 .and. .not.test_f2) then
-                        ! occupied in f1 but not in f2
-                        iexcit1 = iexcit1 + 1
-                        if (iexcit1 == 3) then
-                            ! f2 is more than a double excitation of f1.
-                            exit sc
+                        test_f1 = btest(f1(i),j)
+                        test_f2 = btest(f2(i),j)
+
+                        if (test_f1 .and. .not.test_f2) then
+                            ! occupied in f1 but not in f2
+                            iexcit1 = iexcit1 + 1
+                            excitation%from_orb(iexcit1) = basis_lookup(j,i)
+                        else if (.not.test_f1 .and. test_f2) then
+                            ! occupied in f1 but not in f2
+                            iexcit2 = iexcit2 + 1
+                            excitation%to_orb(iexcit2) = basis_lookup(j,i)
                         end if
-                        excitation%from_orb(iexcit1) = 8*(i-1) + j + 1
-                    else if (.not.test_f1 .and. test_f2) then
-                        iexcit2 = iexcit2 + 1
-                        if (iexcit2 == 3) then
-                            ! f2 is more than a double excitation of f1.
-                            exit sc
-                        end if
-                        excitation%to_orb(iexcit2) = 8*(i-1) + j + 1
-                    end if
 
-                end do
-            end do sc
+                    end do
+                end do sc
 
-            excitation%nexcit = iexcit1 ! iexcit1 and iexcit2 should be identical.
-
+            end if
         end if
 
     end function get_excitation
