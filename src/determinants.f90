@@ -25,17 +25,16 @@ end type excit
 integer :: basis_length
 integer :: ndets
 
+integer, allocatable :: bit_lookup(:,:) ! (2, nbasis)
+integer, allocatable :: basis_lookup(:,:) ! (8, basis_length)
+
 contains
 
-    subroutine find_all_determinants()
-    
-        ! Find all possible Slater determinants that can be formed from the
-        ! basis functions.
+    subroutine init_determinants()
 
-        use comb_m
+        use comb_m, only: binom
 
-        integer :: i, c(nel), ierr
-        type(excit) :: excitation
+        integer :: i, bit_pos, bit_element
 
         ndets = binom(nbasis, nel)
 
@@ -46,6 +45,31 @@ contains
         write (6,*) 'Number of basis functions: ', nbasis
         write (6,*) 'Number of determinants: ', ndets
         write (6,*) 'basis_length: ', basis_length
+
+        ! Lookup arrays.
+        allocate(bit_lookup(2,nbasis))
+        allocate(basis_lookup(0:7,basis_length))
+        basis_lookup = 0
+
+        do i = 1, nbasis
+            bit_pos = mod(i, 8) - 1
+            if (bit_pos == -1) bit_pos = 7
+            bit_element = (i+7)/8
+            bit_lookup(:,i) = (/ bit_pos, bit_element /)
+            basis_lookup(bit_pos, bit_element) = i
+        end do
+
+    end subroutine init_determinants
+
+    subroutine find_all_determinants()
+    
+        ! Find all possible Slater determinants that can be formed from the
+        ! basis functions.
+
+        use comb_m, only: comb
+
+        integer :: i, c(nel), ierr
+        type(excit) :: excitation
 
         allocate(dets(ndets), stat=ierr)
 
@@ -94,9 +118,8 @@ contains
         bit_list = 0
         do i = 1, nel
             orb = occ_list(i)
-            bit_pos = mod(orb, 8) - 1
-            if (bit_pos == -1) bit_pos = 7
-            bit_element = (orb+7)/8
+            bit_pos = bit_lookup(1,orb)
+            bit_element = bit_lookup(2,orb)
             bit_list(bit_element) = ibset(bit_list(bit_element), bit_pos)
         end do
         
@@ -112,20 +135,18 @@ contains
 
         integer :: occ_list(nel)
         integer(i0), intent(in) :: f(basis_length)
-        integer :: bit_element, i, bit_pos, iorb
+        integer :: i, j, iorb
 
-        bit_element = 1
         iorb = 1
-        occ_list = 0
-        do i = 1, nbasis
-            bit_pos = mod(i, 8) - 1
-            if (bit_pos == -1) bit_pos = 7
-            if (btest(f(bit_element), bit_pos)) then
-                occ_list(iorb) = i
-                iorb = iorb + 1
-            end if
-            if (bit_pos == 7) bit_element = bit_element + 1
-        end do
+        outer: do i = 1, basis_length
+            do j = 0, 7
+                if (btest(f(i), j)) then
+                    occ_list(iorb) = basis_lookup(j, i)
+                    if (iorb == nel) exit outer
+                    iorb = iorb + 1
+                end if
+            end do
+        end do outer
 
     end function decode_det
 
