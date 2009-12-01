@@ -43,6 +43,12 @@ contains
             end do
         end do
 
+        do i=1,ndets
+            do j=i, ndets
+                if (abs(hamil(i,j)) > depsilon) write (6,*) i,j,hamil(i,j)
+            end do
+        end do
+
     end subroutine generate_hamil
     
     pure function get_hmatel(root_det, excitation) result(hmatel)
@@ -64,7 +70,7 @@ contains
 
             ! Two electron operator
             do i = 1, nel
-                do j = 1, nel
+                do j = i+1, nel
                     hmatel = hmatel + get_two_e_int(root_det(i), root_det(j), root_det(i), root_det(j))
                 end do
             end do

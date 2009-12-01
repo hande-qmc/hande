@@ -126,10 +126,18 @@ contains
         two_e_int = 0.0_dp
 
         ! <phi1 phi2 | phi3 phi4>
-        if (momentum_conserved(phi1, phi2, phi3, phi4)) two_e_int = hubu/nsites
+        if (spin_symmetry(phi1, phi3) .and. spin_symmetry(phi2, phi4)) then
+            if (momentum_conserved(phi1, phi2, phi3, phi4)) then
+                two_e_int = hubu/nsites
+            end if
+        end if
 
         ! <phi1 phi2 | phi4 phi3>
-        if (momentum_conserved(phi1, phi2, phi4, phi3)) two_e_int = two_e_int - hubu/nsites
+        if (spin_symmetry(phi1, phi4) .and. spin_symmetry(phi2, phi3)) then
+            if (momentum_conserved(phi1, phi2, phi4, phi3)) then
+                two_e_int = two_e_int - hubu/nsites
+            end if
+        end if
 
     end function get_two_e_int
 
