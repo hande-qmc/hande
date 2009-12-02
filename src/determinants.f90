@@ -147,6 +147,32 @@ contains
 
     end function decode_det
 
+    subroutine write_det(f, iunit, new_line)
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in), optional :: iunit
+        logical, intent(in), optional :: new_line
+        integer :: occ_list(nel), io, i
+
+        if (present(iunit)) then
+            io = iunit
+        else
+            io = 6
+        end if
+
+        occ_list = decode_det(f)
+
+        write (io,'("(")', advance='no')
+        do i = 1, nel-1
+            write (io,'(i4,",")', advance='no') occ_list(i)
+        end do
+        write (io,'(i4,")")', advance='no') occ_list(i)
+        if (present(new_line)) then
+            if (new_line) write (io,'()')
+        end if
+
+    end subroutine write_det
+
     pure function det_spin(f) result(Ms)
 
         ! In:
