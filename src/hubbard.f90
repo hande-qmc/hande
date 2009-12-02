@@ -154,7 +154,7 @@ contains
             conserved = .true.
         else
             forall (i=1:ndim) delta_kc(i) = sum(delta_k*rlattice(i,:))
-            conserved = all(abs(mod(delta_kc, 1.0_dp)) < depsilon)
+            conserved = all(abs(delta_kc - nint(delta_kc)) < depsilon)
         end if
 
     end function momentum_conserved
