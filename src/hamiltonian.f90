@@ -56,6 +56,9 @@ contains
         integer :: info, ierr, lwork
         integer :: i
 
+        write (6,'(1X,a21,/,1X,21("-"))') 'Exact diagonalisation'
+        write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
+
         lwork = 3*ndets - 1
         allocate(work(lwork), stat=ierr)
         allocate(eigv(ndets), stat=ierr)
@@ -64,8 +67,9 @@ contains
 
         deallocate(work)
 
+        write (6,'(1X,a8,3X,a12)') 'State','Total energy'
         do i = 1, ndets
-            write (6,'(i5, f18.12)') i, eigv(i)
+            write (6,'(1X,i8,f18.12)') i, eigv(i)
         end do
 
     end subroutine exact_diagonalisation

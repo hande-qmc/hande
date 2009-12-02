@@ -79,7 +79,6 @@ contains
 
         ! Sort by kinetic energy.
         call mrgref(tmp_basis_fns(:)%kinetic, basis_fns_ranking)
-        write (6,*) basis_fns_ranking
         do i = 1, nbasis
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
@@ -91,7 +90,7 @@ contains
         deallocate(basis_fns_ranking, stat=ierr)
 
         if (iproc == parent) then
-            write (6,'(/,1X,a15,/,1X,15("-"),/)') 'Basis functions'
+            write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
             write (6,'(1X,a7)', advance='no') 'k-point'
             do i = 1, ndim
                 write (6,'(3X)', advance='no')
@@ -101,6 +100,7 @@ contains
                 call write_kpoint(basis_fns(i))
             end do
         end if
+        write (6,'()')
 
     end subroutine init_basis_fns
 
