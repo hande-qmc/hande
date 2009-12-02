@@ -20,6 +20,9 @@ type(det), allocatable :: dets(:)
 type excit
     integer :: nexcit
     integer :: from_orb(2), to_orb(2)
+    ! perm is true if a total odd number of permutations is required to align
+    ! the determinants.
+    logical :: perm
 end type excit
 
 integer :: basis_length
@@ -184,38 +187,54 @@ contains
 
         type(excit) :: excitation
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
-        integer :: i, j, iexcit1, iexcit2
+        integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift
         logical :: test_f1, test_f2
 
-        excitation = excit(0,0,0)
+        excitation = excit(0, 0, 0, .false.)
 
         if (any(f1/=f2)) then
 
             iexcit1 = 0
             iexcit2 = 0
+            iel1 = 0
+            iel2 = 0
+            perm = 0
             excitation%nexcit = sum(count_set_bits(ieor(f1,f2)))/2
+            shift = nel - excitation%nexcit 
 
             if (excitation%nexcit <= 2) then
 
-                sc: do i = 1, basis_length
-                    if (f1(i) == f2(i)) cycle sc
+                do i = 1, basis_length
+                    if (f1(i) == f2(i)) cycle
                     do j = 0, 7
 
                         test_f1 = btest(f1(i),j)
                         test_f2 = btest(f2(i),j)
 
-                        if (test_f1 .and. .not.test_f2) then
-                            ! occupied in f1 but not in f2
-                            iexcit1 = iexcit1 + 1
-                            excitation%from_orb(iexcit1) = basis_lookup(j,i)
-                        else if (.not.test_f1 .and. test_f2) then
-                            ! occupied in f1 but not in f2
-                            iexcit2 = iexcit2 + 1
-                            excitation%to_orb(iexcit2) = basis_lookup(j,i)
+                        if (test_f2) iel2 = iel2 + 1
+
+                        if (test_f1) then
+                            iel1 = iel1 + 1
+                            if (.not.test_f2) then
+                                ! occupied in f1 but not in f2
+                                iexcit1 = iexcit1 + 1
+                                excitation%from_orb(iexcit1) = basis_lookup(j,i)
+                                perm = perm + (shift - iel1 + iexcit1)
+                            end if
+                        else
+                            if (test_f2) then
+                                ! occupied in f1 but not in f2
+                                iexcit2 = iexcit2 + 1
+                                excitation%to_orb(iexcit2) = basis_lookup(j,i)
+                                perm = perm + (shift - iel2 + iexcit2)
+                            end if
                         end if
 
                     end do
-                end do sc
+                end do
+
+                ! It seems that this test is faster than btest(perm,0)!
+                excitation%perm = mod(perm,2) == 1
 
             end if
         end if

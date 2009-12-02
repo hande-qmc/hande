@@ -86,10 +86,14 @@ contains
                 hmatel = hmatel + get_two_e_int(root_det(i), excitation%from_orb(1), root_det(i), excitation%to_orb(1))
             end do
 
+            if (excitation%perm) hmatel = -hmatel
+
         case(2)
 
             ! Two electron operator
             hmatel = get_two_e_int(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
+
+            if (excitation%perm) hmatel = -hmatel
 
         end select
 
