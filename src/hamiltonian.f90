@@ -15,7 +15,6 @@ contains
 
         integer :: ierr, i, j
         type(excit) :: excitation
-        integer :: root_det(nel)
 
         allocate(hamil(ndets,ndets), stat=ierr)
 
@@ -24,8 +23,7 @@ contains
                 if (dets(i)%Ms == dets(j) % Ms) then
                     excitation = get_excitation(dets(i)%f, dets(j)%f)
                     if (excitation%nexcit <= 2) then
-                        root_det = decode_det(dets(i)%f)
-                        hamil(i,j) = get_hmatel(root_det, excitation)
+                        hamil(i,j) = get_hmatel(dets(i)%f, excitation)
                     else
                         hamil(i,j) = 0.0_dp
                     end if
@@ -72,17 +70,20 @@ contains
 
     end subroutine exact_diagonalisation
     
-    pure function get_hmatel(root_det, excitation) result(hmatel)
+    pure function get_hmatel(root_det_f, excitation) result(hmatel)
 
         real(dp) :: hmatel
         type(excit), intent(in) :: excitation
-        integer, intent(in) :: root_det(nel)
+        integer(i0), intent(in) :: root_det_f(basis_length)
+        integer :: root_det(nel)
         integer :: i, j
 
         hmatel = 0.0_dp
 
         select case(excitation%nexcit)
         case(0)
+
+            root_det = decode_det(root_det_f)
 
             ! One electron operator
             do i = 1, nel
@@ -97,6 +98,8 @@ contains
             end do
 
         case(1)
+
+            root_det = decode_det(root_det_f)
 
             ! One electron operator
             hmatel = hmatel + get_one_e_int(excitation%from_orb(1), excitation%to_orb(1)) 
