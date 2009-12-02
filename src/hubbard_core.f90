@@ -4,9 +4,11 @@ use report, only: environment_report
 use parse_input, only: read_input
 use hubbard, only: init_basis_fns
 use determinants, only: init_determinants, find_all_determinants
-use hamiltonian, only: generate_hamil
+use hamiltonian, only: generate_hamil, exact_diagonalisation
 
 call init_calc()
+
+call run_calc()
 
 contains
 
@@ -29,8 +31,14 @@ contains
 
         call find_all_determinants()
 
+    end subroutine init_calc
+
+    subroutine run_calc()
+
         call generate_hamil()
 
-    end subroutine init_calc
+        call exact_diagonalisation()
+
+    end subroutine run_calc
 
 end program hubbard_fciqmc

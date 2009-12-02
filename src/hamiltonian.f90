@@ -51,6 +51,26 @@ contains
         end do
 
     end subroutine generate_hamil
+
+    subroutine exact_diagonalisation()
+
+        real(dp), allocatable :: eigv(:), work(:)
+        integer :: info, ierr, lwork
+        integer :: i
+
+        lwork = 3*ndets - 1
+        allocate(work(lwork), stat=ierr)
+        allocate(eigv(ndets), stat=ierr)
+
+        call dsyev('V', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+
+        deallocate(work)
+
+        do i = 1, ndets
+            write (6,*) i, eigv(i)
+        end do
+
+    end subroutine exact_diagonalisation
     
     pure function get_hmatel(root_det, excitation) result(hmatel)
 
