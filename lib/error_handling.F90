@@ -67,7 +67,7 @@ contains
         character(*), intent(in), optional :: msg
 
         if (present(msg)) then
-            write (6,'(X,a)') adjustl(msg)
+            write (6,'(1X,a)') adjustl(msg)
             call flush(6)
         end if
 

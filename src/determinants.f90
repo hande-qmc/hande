@@ -72,7 +72,6 @@ contains
         use comb_m, only: comb
 
         integer :: i, c(nel), ierr
-        type(excit) :: excitation
 
         allocate(dets(ndets), stat=ierr)
 
