@@ -1,0 +1,28 @@
+Wednesday
+---------
+
+output
+comment
+test suite
+
+Thursday
+--------
+
+hamiltonian
+    lanczos (serial)
+    diagonalise/lanczos (parallel)
+
+Monday
+------
+
+symmetry testing of hamiltonian
+real space formulation (+refactor?)
+
+Tuesday
+-------
+
+memory logging
+timing
+deallocation
+document
+config/makefile/build

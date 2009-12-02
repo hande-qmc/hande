@@ -35,18 +35,18 @@ contains
 
         ! Fill in rest of Hamiltonian matrix.  In this case the Hamiltonian is
         ! symmetric (rather than just Hermitian).
-        do i=1,ndets
-            do j=1,i-1
-                hamil(i,j) = hamil(j,i)
-            end do
-        end do
-
-        do i=1,ndets
-            write (6,*) i,i,hamil(i,i)
-            do j=i+1, ndets
-                if (abs(hamil(i,j)) > depsilon) write (6,*) i,j,hamil(i,j)
-            end do
-        end do
+!        do i=1,ndets
+!            do j=1,i-1
+!                hamil(i,j) = hamil(j,i)
+!            end do
+!        end do
+!
+!        do i=1,ndets
+!            write (6,*) i,i,hamil(i,i)
+!            do j=i+1, ndets
+!                if (abs(hamil(i,j)) > depsilon) write (6,*) i,j,hamil(i,j)
+!            end do
+!        end do
 
     end subroutine generate_hamil
 
@@ -65,7 +65,7 @@ contains
         deallocate(work)
 
         do i = 1, ndets
-            write (6,*) i, eigv(i)
+            write (6,'(i5, f18.12)') i, eigv(i)
         end do
 
     end subroutine exact_diagonalisation
