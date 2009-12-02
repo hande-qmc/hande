@@ -25,11 +25,7 @@ type excit
     logical :: perm
 end type excit
 
-integer :: basis_length
 integer :: ndets
-
-integer, allocatable :: bit_lookup(:,:) ! (2, nbasis)
-integer, allocatable :: basis_lookup(:,:) ! (8, basis_length)
 
 contains
 

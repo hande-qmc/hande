@@ -8,6 +8,10 @@ implicit none
 
 type(kpoint), allocatable :: basis_fns(:)
 integer :: nbasis
+integer :: basis_length
+
+integer, allocatable :: bit_lookup(:,:) ! (2, nbasis)
+integer, allocatable :: basis_lookup(:,:) ! (8, basis_length)
 
 contains
 
