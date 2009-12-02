@@ -44,7 +44,8 @@ contains
         end do
 
         do i=1,ndets
-            do j=i, ndets
+            write (6,*) i,i,hamil(i,i)
+            do j=i+1, ndets
                 if (abs(hamil(i,j)) > depsilon) write (6,*) i,j,hamil(i,j)
             end do
         end do
