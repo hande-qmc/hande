@@ -117,7 +117,7 @@ contains
 
     end function get_one_e_int
 
-    pure function get_two_e_int(phi1, phi2, phi3, phi4) result(two_e_int)
+    elemental function get_two_e_int(phi1, phi2, phi3, phi4) result(two_e_int)
 
         real(dp) :: two_e_int
         integer, intent(in) :: phi1, phi2, phi3, phi4
@@ -141,7 +141,7 @@ contains
 
     end function get_two_e_int
 
-    pure function momentum_conserved(i, j, k, l) result(conserved)
+    elemental function momentum_conserved(i, j, k, l) result(conserved)
 
         logical :: conserved
         integer, intent(in) :: i, j, k, l
@@ -153,8 +153,8 @@ contains
         if (all(delta_k == 0)) then
             conserved = .true.
         else
-            forall (i=1:ndim) delta_kc(i) = sum(delta_k*lattice(i,:))
-            conserved = all(mod(delta_kc, 1.0_dp) < depsilon)
+            forall (i=1:ndim) delta_kc(i) = sum(delta_k*rlattice(i,:))
+            conserved = all(abs(mod(delta_kc, 1.0_dp)) < depsilon)
         end if
 
     end function momentum_conserved
