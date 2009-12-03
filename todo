@@ -1,14 +1,11 @@
-Wednesday
----------
-
-output
-   options for more output: determinant list, hamiltonian matrix...
-comment
-test suite
-option to obtain eigenvalues (default) or eigenvectors as well.
-
 Thursday
 --------
+
+extraction script
+test suite
+output
+   options for more output: determinant list, hamiltonian matrix...
+option to obtain eigenvalues (default) or eigenvectors as well.
 
 hamiltonian
     lanczos (serial)
