@@ -45,7 +45,7 @@ program_name='bin/hubbard.x'
 # Space separated list of files to be compiled in a format understood by bash to pass to
 # makedepf90.  Patterns are allowed, but all patterns must match at least one file, as 
 # otherwise makedepf90 complains, throws an error and exits.
-source_code_files='src/*.f90 lib/*.{f90,F90}'
+source_code_files='{lib,src}/*.{f90,F90}'
 
 #======================================================================
 # Edit this section to add new configurations.
