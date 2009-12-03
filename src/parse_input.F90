@@ -4,6 +4,7 @@ module parse_input
 use parallel, only: iproc, parent
 use errors
 use system
+use hamiltonian
 
 implicit none
 
@@ -82,6 +83,10 @@ contains
                 call readf(hubt)
             case('U')
                 call readf(hubu)
+            case('EIGENVALUES')
+                find_eigenvectors = .false.
+            case('EIGENVECTORS')
+                find_eigenvectors = .true.
             case('END')
                 exit
             case default

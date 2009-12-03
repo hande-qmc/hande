@@ -12,6 +12,10 @@ implicit none
 ! size is horrendous.
 real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)
 
+! If true, then the eigenvectors are found during exact diagonalisation as well
+! as the eigenvalues.  Doing this is substantially more expensive.
+logical :: find_eigenvectors = .false.
+
 contains
 
     subroutine generate_hamil()
@@ -74,7 +78,11 @@ contains
         allocate(work(lwork), stat=ierr)
         allocate(eigv(ndets), stat=ierr)
 
-        call dsyev('V', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+        if (find_eigenvectors) then
+            call dsyev('V', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+        else
+            call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+        end if
 
         deallocate(work)
 
