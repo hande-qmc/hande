@@ -1,7 +1,8 @@
 program hubbard_fciqmc
 
 use report, only: environment_report
-use parse_input, only: read_input
+use parse_input, only: read_input, check_input
+use system, only: init_system
 use hubbard, only: init_basis_fns
 use determinants, only: init_determinants, find_all_determinants
 use hamiltonian, only: generate_hamil, exact_diagonalisation
@@ -25,17 +26,21 @@ contains
 
         call read_input()
 
+        call init_system()
+
+        call check_input()
+
         call init_basis_fns()
 
         call init_determinants()
-
-        call find_all_determinants()
 
     end subroutine init_calc
 
     subroutine run_calc()
 
         ! Run the calculation based upon the input options.
+
+        call find_all_determinants()
 
         call generate_hamil()
 

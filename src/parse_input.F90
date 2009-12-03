@@ -94,12 +94,6 @@ contains
             stop
         end if
 
-        call init_system()
-
-        call check_input()
-
-        if (iproc == parent) write (6,'(/,1X,13("-"),/)') 
-
     end subroutine read_input
 
     subroutine check_input()
@@ -128,6 +122,8 @@ contains
         end do
 
         if (nel > 2*nsites) call stop_all('check_input', 'More than two electrons per site.')
+
+        if (iproc == parent) write (6,'(/,1X,13("-"),/)') 
 
     end subroutine check_input
 
