@@ -16,6 +16,10 @@ real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)
 ! as the eigenvalues.  Doing this is substantially more expensive.
 logical :: find_eigenvectors = .false.
 
+! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
+logical :: write_hamiltonian
+character(255) :: hamiltonian_file = 'HAMIL'
+
 contains
 
     subroutine generate_hamil()
@@ -23,7 +27,9 @@ contains
         ! Generate the Hamiltonian matrix.
         ! Only generate the upper diagonal for use with Lapack routines.
 
-        integer :: ierr, i, j
+        use utils, only: get_free_unit
+
+        integer :: ierr, i, j, iunit
         type(excit) :: excitation
 
         allocate(hamil(ndets,ndets), stat=ierr)
@@ -50,13 +56,18 @@ contains
 !                hamil(i,j) = hamil(j,i)
 !            end do
 !        end do
-!
-!        do i=1,ndets
-!            write (6,*) i,i,hamil(i,i)
-!            do j=i+1, ndets
-!                if (abs(hamil(i,j)) > depsilon) write (6,*) i,j,hamil(i,j)
-!            end do
-!        end do
+
+        if (write_hamiltonian) then
+            iunit = get_free_unit()
+            open(iunit, file=hamiltonian_file, status='unknown')
+            do i=1,ndets
+                write (iunit,*) i,i,hamil(i,i)
+                do j=i+1, ndets
+                    if (abs(hamil(i,j)) > depsilon) write (iunit,*) i,j,hamil(i,j)
+                end do
+            end do
+            close(iunit, status='keep')
+        end if
 
     end subroutine generate_hamil
 
@@ -91,6 +102,7 @@ contains
             do i = 1, ndets
                 write (6,'(1X,i8,f18.12)') i, eigv(i)
             end do
+            write (6,'(/,1X,a13,f18.12,/)') 'Ground state:', eigv(1)
         end if
 
     end subroutine exact_diagonalisation

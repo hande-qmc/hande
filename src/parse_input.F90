@@ -87,6 +87,12 @@ contains
                 find_eigenvectors = .false.
             case('EIGENVECTORS')
                 find_eigenvectors = .true.
+            case('HAMIL','HAMILTONIAN')
+                write_hamiltonian = .true.
+                if (item /= nitems) call reada(hamiltonian_file)
+            case('DET','DETERMINANTS')
+                write_determinants = .true.
+                if (item /= nitems) call reada(determinant_file)
             case('END')
                 exit
             case default

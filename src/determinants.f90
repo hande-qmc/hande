@@ -39,6 +39,10 @@ type excit
     logical :: perm
 end type excit
 
+! If true then the determinant list is written to determinant_file.
+logical :: write_determinants
+character(255) :: determinant_file = 'DETS'
+
 contains
 
     subroutine init_determinants()
@@ -84,15 +88,25 @@ contains
         ! basis functions.
 
         use comb_m, only: comb
+        use utils, only: get_free_unit
 
-        integer :: i, c(nel), ierr
+        integer :: i, c(nel), ierr, iunit
 
         allocate(dets(ndets), stat=ierr)
+        
+        if (write_determinants) then
+            iunit = get_free_unit()
+            open(iunit, file=determinant_file, status='unknown')
+        end if
 
         do i = 1, ndets
             c = comb(nbasis, nel, i)
             call init_det(c, dets(i))
+            write (iunit,'(1X,i8,4X)',advance='no') i
+            call write_det(dets(i)%f, iunit, new_line=.true.)
         end do
+
+        close(iunit, status='keep')
 
     end subroutine find_all_determinants
 
