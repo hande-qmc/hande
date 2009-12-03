@@ -1,3 +1,5 @@
 dest/
 bin/
 /Makefile
+test*.out*
+testcode*.err*
