@@ -105,9 +105,8 @@ contains
             do i = 1, nbasis
                 call write_kpoint(basis_fns(i))
             end do
+            write (6,'()')
         end if
-        write (6,*) iproc, parent
-        write (6,'()')
 
     end subroutine init_basis_fns
 

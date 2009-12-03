@@ -1,11 +1,5 @@
 program hubbard_fciqmc
 
-use report, only: environment_report
-use parse_input, only: read_input, check_input
-use system, only: init_system
-use hubbard, only: init_basis_fns
-use determinants, only: init_determinants, find_all_determinants
-use hamiltonian, only: generate_hamil, exact_diagonalisation
 
 call init_calc()
 
@@ -20,7 +14,14 @@ contains
         ! read input options and initialse the system and basis functions
         ! to be used.
 
-        write (6,'(/,a8,/)') 'Hubbard'
+        use report, only: environment_report
+        use parse_input, only: read_input, check_input
+        use system, only: init_system
+        use hubbard, only: init_basis_fns
+        use determinants, only: init_determinants
+        use parallel
+
+        if (parent == proc) write (6,'(/,a8,/)') 'Hubbard'
 
         call environment_report()
 
@@ -39,6 +40,9 @@ contains
     subroutine run_calc()
 
         ! Run the calculation based upon the input options.
+
+        use determinants, only: find_all_determinants
+        use hamiltonian, only: generate_hamil, exact_diagonalisation
 
         call find_all_determinants()
 

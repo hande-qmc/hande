@@ -4,6 +4,7 @@ use const
 use basis
 use determinants
 use hubbard
+use parallel
 
 implicit none
 
@@ -64,8 +65,10 @@ contains
         integer :: info, ierr, lwork
         integer :: i
 
-        write (6,'(1X,a21,/,1X,21("-"))') 'Exact diagonalisation'
-        write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
+        if (iproc == parent) then
+            write (6,'(1X,a21,/,1X,21("-"))') 'Exact diagonalisation'
+            write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
+        end if
 
         lwork = 3*ndets - 1
         allocate(work(lwork), stat=ierr)
@@ -75,10 +78,12 @@ contains
 
         deallocate(work)
 
-        write (6,'(1X,a8,3X,a12)') 'State','Total energy'
-        do i = 1, ndets
-            write (6,'(1X,i8,f18.12)') i, eigv(i)
-        end do
+        if (iproc == parent) then
+            write (6,'(1X,a8,3X,a12)') 'State','Total energy'
+            do i = 1, ndets
+                write (6,'(1X,i8,f18.12)') i, eigv(i)
+            end do
+        end if
 
     end subroutine exact_diagonalisation
     
