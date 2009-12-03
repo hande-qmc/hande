@@ -106,6 +106,44 @@ contains
         end if
 
     end subroutine exact_diagonalisation
+
+    subroutine lanczos_diagonalisation()
+
+       use trl_info
+       use trl_interface
+       
+       integer, parameter :: lohi = -1, ned = 5, maxlan = 40, mev = 10
+       real(dp) :: eval(mev)
+       real(dp), allocatable :: evec(:,:) ! (ndets, mev)
+       type(trl_info_t) :: info
+       integer :: i
+
+       call trl_init_info(info, ndets, maxlan, lohi, ned)
+       call trlan(hamil_vector, info, ndets, mev, eval, evec, ndets)
+       call trl_print_info(info, ndets*2)
+
+       contains
+
+           subroutine hamil_vector(nrow, ncol, xin, ldx, yout, ldy)
+
+               implicit None
+               integer, intent(in) :: nrow, ncol, ldx, ldy
+               real(dp), intent(in) :: xin(ldx,ncol)
+               real(dp), intent(out) :: yout(ldy,ncol)
+               ! local variables
+               integer :: i, j, ioff, joff
+
+               do j = 1, ncol
+                   ioff = (j-1)*ldx
+                   joff = (j-1)*ldy
+                   do i = 1, nrow
+                       yout(joff,i) = (i*i)*xin(ioff,i)
+                   end do
+               end do
+
+           end subroutine hamil_vector
+
+    end subroutine lanczos_diagonalisation
     
     pure function get_hmatel(root_det_f, excitation) result(hmatel)
 
