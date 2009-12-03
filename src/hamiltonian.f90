@@ -17,7 +17,7 @@ real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)
 logical :: find_eigenvectors = .false.
 
 ! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
-logical :: write_hamiltonian
+logical :: write_hamiltonian = .false.
 character(255) :: hamiltonian_file = 'HAMIL'
 
 contains

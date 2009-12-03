@@ -40,7 +40,7 @@ type excit
 end type excit
 
 ! If true then the determinant list is written to determinant_file.
-logical :: write_determinants
+logical :: write_determinants = .false.
 character(255) :: determinant_file = 'DETS'
 
 contains
@@ -102,8 +102,10 @@ contains
         do i = 1, ndets
             c = comb(nbasis, nel, i)
             call init_det(c, dets(i))
-            write (iunit,'(1X,i8,4X)',advance='no') i
-            call write_det(dets(i)%f, iunit, new_line=.true.)
+            if (write_determinants) then
+                write (iunit,'(1X,i8,4X)',advance='no') i
+                call write_det(dets(i)%f, iunit, new_line=.true.)
+            end if
         end do
 
         close(iunit, status='keep')
