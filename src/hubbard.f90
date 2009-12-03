@@ -103,7 +103,7 @@ contains
             end do
             write (6,'(a,4X,a7)') 'ms','kinetic'
             do i = 1, nbasis
-                call write_kpoint(basis_fns(i))
+                call write_kpoint(basis_fns(i), new_line=.true.)
             end do
             write (6,'()')
         end if

@@ -76,21 +76,39 @@ contains
 
     end function calc_kinetic
 
-    subroutine write_kpoint(k)
+    subroutine write_kpoint(k, iunit, new_line)
 
         ! Print out information stored in k.
+        ! In:
+        !    k: kpoint variable.
+        !    iunit (optional): io unit to which the output is written.
+        !        Default: 6 (stdout).
+        !    new_line (optional): if true, then a new line is written at
+        !        the end of the list of occupied orbitals.  Default: no
+        !        new line.
 
         type(kpoint), intent(in) :: k
-        integer :: i
+        integer, intent(in), optional :: iunit
+        logical, intent(in), optional :: new_line
+        integer :: i, io
 
-        write (6,'(1X,"(")', advance='no')
-        write (6,'(i2)',advance='no') k%k(1)
+        if (present(iunit)) then
+            io = iunit
+        else
+            io = 6
+        end if
+
+        write (io,'(1X,"(")', advance='no')
+        write (io,'(i2)',advance='no') k%k(1)
         do i = 2,ndim
-            write (6,'(",",i2)',advance='no') k%k(i)
+            write (io,'(",",i2)',advance='no') k%k(i)
         end do
-        write (6,'(")")', advance='no')
-        write (6,'(5X,i2)', advance='no') k%ms
-        write (6,'(4X,f12.8)') k%kinetic
+        write (io,'(")")', advance='no')
+        write (io,'(5X,i2)', advance='no') k%ms
+        write (io,'(4X,f12.8)', advance='no') k%kinetic
+        if (present(new_line)) then
+            if (new_line) write (io,'()')
+        end if
 
     end subroutine write_kpoint
 
