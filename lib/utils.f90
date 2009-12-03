@@ -21,7 +21,7 @@ contains
 
         do i = 10, max_unit
             inquire(unit=i, opened=t_open)
-            if (t_open) then
+            if (.not.t_open) then
                 free_unit = i
                 exit
             end if
