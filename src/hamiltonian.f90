@@ -7,11 +7,16 @@ use hubbard
 
 implicit none
 
-real(dp), allocatable :: hamil(:,:)
+! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
+! size is horrendous.
+real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)
 
 contains
 
     subroutine generate_hamil()
+
+        ! Generate the Hamiltonian matrix.
+        ! Only generate the upper diagonal for use with Lapack routines.
 
         integer :: ierr, i, j
         type(excit) :: excitation
@@ -34,7 +39,7 @@ contains
         end do
 
         ! Fill in rest of Hamiltonian matrix.  In this case the Hamiltonian is
-        ! symmetric (rather than just Hermitian).
+        ! symmetric (rather than "just" Hermitian).
 !        do i=1,ndets
 !            do j=1,i-1
 !                hamil(i,j) = hamil(j,i)
@@ -51,6 +56,9 @@ contains
     end subroutine generate_hamil
 
     subroutine exact_diagonalisation()
+    
+        ! Perform an exact diagonalisation of the Hamiltonian matrix.
+        ! Note that this destroys the Hamiltonian matrix stored in hamil.
 
         real(dp), allocatable :: eigv(:), work(:)
         integer :: info, ierr, lwork
@@ -75,6 +83,15 @@ contains
     end subroutine exact_diagonalisation
     
     pure function get_hmatel(root_det_f, excitation) result(hmatel)
+
+        ! In:
+        !    root_det_f(basis_length): bit string representation of the "root" Slater
+        !        determinant (i.e. the determinant the excitation is from).
+        !    excitation: excitation information linking another determinant to
+        !        the root determinant.
+        ! Returns:
+        !    Hamiltonian matrix element between the root determinant and the
+        !        excited determinant.
 
         real(dp) :: hmatel
         type(excit), intent(in) :: excitation

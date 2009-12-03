@@ -35,6 +35,8 @@ contains
 
     subroutine run_calc()
 
+        ! Run the calculation based upon the input options.
+
         call generate_hamil()
 
         call exact_diagonalisation()

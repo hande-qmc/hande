@@ -7,7 +7,7 @@ use system
 
 implicit none
 
-! The kpoint type is used to specify a spin orbital.
+! The kpoint type is used to specify a spin orbital in momentum space.
 type kpoint
     ! Wavevector in terms of the reciprocal lattice vectors of the crystal cell.
     integer, pointer :: k(:) => NULL()

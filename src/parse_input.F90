@@ -11,10 +11,10 @@ contains
 
     subroutine read_input()
 
-    ! Read input options from a file (if specified on the command line) or via
+        ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
 
-        ! nag doesn't automatically bring in command-line option handling.
+! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
         use f90_unix_env
 #endif
@@ -36,7 +36,7 @@ contains
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
-            ir=1
+            ir = 1
             call GetArg(1, cInp)
             inquire(file=cInp, exist=t_exists)
             if (.not.t_exists) then
@@ -46,8 +46,8 @@ contains
             open(1, file=cInp, status='old', form='formatted', iostat=ios)
         else
             if (iproc == parent) write (6,'(a19)') 'Reading from STDIN'
-            ir=5
-            ios=0
+            ir = 5
+            ios = 0
         end if
 
         if (iproc == parent) write (6,'(a14,/,1X,13("-"),/)') 'Input options'
@@ -101,8 +101,6 @@ contains
         if (iproc == parent) write (6,'(/,1X,13("-"),/)') 
 
     end subroutine read_input
-
-
 
     subroutine check_input()
 
