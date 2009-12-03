@@ -1,4 +1,4 @@
-FOBJ=$(DEST)/basis.o $(DEST)/bit_utils.o $(DEST)/const.o $(DEST)/determinants.o $(DEST)/hamiltonian.o $(DEST)/hubbard_core.o $(DEST)/hubbard.o $(DEST)/kpoints.o $(DEST)/parallel.o $(DEST)/system.o $(DEST)/parse_input.o $(DEST)/comb.o $(DEST)/mrgref.o $(DEST)/environment_report.o $(DEST)/error_handling.o $(DEST)/input.o 
+FOBJ=$(DEST)/basis.o $(DEST)/bit_utils.o $(DEST)/const.o $(DEST)/determinants.o $(DEST)/hamiltonian.o $(DEST)/hubbard_core.o $(DEST)/hubbard.o $(DEST)/kpoints.o $(DEST)/parallel.o $(DEST)/system.o $(DEST)/parse_input.o $(DEST)/comb.o $(DEST)/mrgref.o $(DEST)/environment_report.o $(DEST)/error_handling.o $(DEST)/input.o $(DEST)/utils.o
 
 bin/hubbard.x: $(FOBJ)
 	$(MAKE) $(DEST)/environment_report.o FORCE=frc_rebuild 
@@ -20,3 +20,4 @@ $(DEST)/mrgref.o : lib/mrgref.f90 $(FORCE)
 $(DEST)/environment_report.o : lib/environment_report.F90 $(FORCE) 
 $(DEST)/error_handling.o : lib/error_handling.F90 $(FORCE) 
 $(DEST)/input.o : lib/input.F90 $(FORCE) 
+$(DEST)/utils.o : lib/utils.F90 $(FORCE) 
