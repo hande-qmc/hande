@@ -23,7 +23,7 @@ contains
         use errors, only: stop_all
         use parallel, only: iproc, parent
 
-        integer :: nmax(3), kp(3) ! Support a maximum of 3 dimensions.
+        integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
         integer :: i, j, k, ibasis, ierr
         type(kpoint), allocatable, target :: tmp_basis_fns(:)
         type(kpoint), pointer :: basis_fn
@@ -45,14 +45,20 @@ contains
         ! Maximum limits...
         ! [Does it show that I've been writing a lot of python recently?]
         nmax = 0 ! Set nmax(i) to be 0 for unused higher dimensions.
-        forall (i=1:ndim) nmax(i) = maxval(abs(nint(box_length(i)**2/(2*lattice(:,i)))))
+        limits = 0
+        ! forall is a poor substitute for list comprehension. ;-)
+        forall (i=1:ndim)
+            forall (j=1:ndim, lattice(i,j) /= 0) 
+                limits(i,j) = abs(nint(box_length(i)**2/(2*lattice(i,j))))
+            end forall
+            nmax(i) = maxval(limits(:,i))
+        end forall
 
         allocate(basis_fns(nbasis), stat=ierr)
         allocate(tmp_basis_fns(nbasis), stat=ierr)
         allocate(basis_fns_ranking(nbasis), stat=ierr)
 
         ibasis = 0
-        ! The following can't be done as a forall due to compilers being crap...
         do k = -nmax(3), nmax(3)
             do j = -nmax(2), nmax(2)
                 do i = -nmax(1), nmax(1)
@@ -100,6 +106,7 @@ contains
                 call write_kpoint(basis_fns(i))
             end do
         end if
+        write (6,*) iproc, parent
         write (6,'()')
 
     end subroutine init_basis_fns
