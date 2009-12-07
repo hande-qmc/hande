@@ -118,13 +118,44 @@ contains
        type(trl_info_t) :: info
        integer :: i
 
+       ! Initialise trlan.
+       ! info: type(trl_info_t).  Used by trl to store calculation info.
+       ! ndets: number of rows of matrix on processor.
+       ! maxlan: maximum Lanczos basis size.
+       ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
+       !       the largest).
+       ! ned: number of eigenvalues to compute.
        call trl_init_info(info, ndets, maxlan, lohi, ned)
+
+       ! Call Lanczos diagonalizer.
+       ! hamil_vector: matrix-vector multiplication routine.
+       ! info: created in trl_init_info.
+       ! ndets: number of rows of matrix on processor.
+       ! mev: number of eigenpairs that can be stored in eval and evec.
+       ! eval: array to store eigenvalue
+       ! evec: array to store the eigenvectors
+       ! lde: the leading dimension of evec (in serial case: ndets).
        call trlan(hamil_vector, info, ndets, mev, eval, evec, ndets)
+
+       ! Get info...
        call trl_print_info(info, ndets*2)
 
        contains
 
            subroutine hamil_vector(nrow, ncol, xin, ldx, yout, ldy)
+
+               ! Matrix-vector multiplication procedure for use with trlan.
+               ! In:
+               !    nrow: the number of rows on this processor if the problem is distributed 
+               !        using MPI, otherwise the number of total rows in a Lanczos vector. 
+               !    ncol: the number of vectors (columns in xin and yout) to be multiplied. 
+               !    xin: the array to store the input vectors to be multiplied.
+               !    ldx: the leading dimension of the array xin when it is declared as 
+               !       two-dimensional array.
+               !    ldy: the leading dimension of the array yout when it is declared as 
+               !       two-dimensional array.
+               ! Out:
+               !    yout: the array to store results of the multiplication.
 
                implicit None
                integer, intent(in) :: nrow, ncol, ldx, ldy
@@ -133,6 +164,7 @@ contains
                ! local variables
                integer :: i, j, ioff, joff
 
+               ! use DSYMV
                do j = 1, ncol
                    ioff = (j-1)*ldx
                    joff = (j-1)*ldy
