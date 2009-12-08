@@ -102,7 +102,7 @@ contains
             do i = 1, ndets
                 write (6,'(1X,i8,f18.12)') i, eigv(i)
             end do
-            write (6,'(/,1X,a13,f18.12,/)') 'Ground state:', eigv(1)
+            write (6,'(/,1X,a19,f18.12,/)') 'Exact ground state:', eigv(1)
         end if
 
     end subroutine exact_diagonalisation
@@ -117,6 +117,11 @@ contains
        real(dp), allocatable :: evec(:,:) ! (ndets, mev)
        type(trl_info_t) :: info
        integer :: i, ierr
+
+       if (iproc == parent) then
+           write (6,'(1X,a23,/,1X,23("-"))') 'Lanczos diagonalisation'
+           write (6,'(/,1X,a37,/)') 'Performing lanczos diagonalisation...'
+       end if
 
        ! Initialise trlan.
        ! info: type(trl_info_t).  Used by trl to store calculation info.
@@ -140,12 +145,17 @@ contains
        call trlan(hamil_vector, info, ndets, mev, eval, evec, ndets)
 
        ! Get info...
-       call trl_print_info(info, ndets*2)
+       if (iproc == parent) then
+           write (6,'(1X,a8,3X,a12)') 'State','Total energy'
+           do i = 1, ned
+               write (6,'(1X,i8,f18.12)') i, eval(i)
+           end do
+           write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', eval(1)
 
-       write (6,*) 1, eval(1)
-       write (6,*) 2, eval(2)
-       write (6,*) 3, eval(3)
-       write (6,*) 4, eval(4)
+           write (6,'(1X,a27,/,1X,27("-"),/)') 'TRLan (Lanczos) information'
+           call trl_print_info(info, ndets*2)
+           write (6,'()')
+       end if
 
        contains
 
