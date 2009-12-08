@@ -1,0 +1,74 @@
+
+ Hubbard
+
+ ================================================================
+ Compiled on Dec 08 2009 at 17:39:09
+ VCS BASE repository version:
+     c354878a2f546199169ae65728ef86731121cc6d
+ Working directory: 
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/kspace_nontilted_2d_lanczos
+ Running on: tycpc19
+ ================================================================
+
+ Input options
+ -------------
+
+lattice
+2 0
+0 2
+electrons 2
+lanczos
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ k-point      ms    kinetic
+ ( 0, 0)     -1     -4.00000000
+ ( 0, 0)      1     -4.00000000
+ ( 1, 0)     -1      0.00000000
+ ( 1, 0)      1      0.00000000
+ ( 0, 1)     -1      0.00000000
+ ( 0, 1)      1      0.00000000
+ ( 1, 1)     -1      4.00000000
+ ( 1, 1)      1      4.00000000
+
+ Number of electrons:   2
+ Number of basis functions:   8
+ Size of determinant space:      28
+
+ Lanczos diagonalisation
+ -----------------------
+
+ Performing lanczos diagonalisation...
+
+    State   Total energy
+        1   -7.768564865582
+        2   -4.000000000000
+        3   -4.000000000000
+        4   -4.000000000000
+        5   -4.000000000000
+
+ Lanczos ground state:   -7.768564865582
+
+ TRLan (Lanczos) information
+ ---------------------------
+
+                                        2009/12/08 17:39:12.978 (-00:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          5 (computed),          5 (wanted)
+Times the operator is applied:         21 (MAX:             1000 ).
+Problem size:                          28 (PE:   0),          28 (Global)
+Convergence tolerance:          1.490E-08 (rel),       1.232E-07 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations        23
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.0000E-04 sec,  1.1760E+07 FLOP/S ( 1.1760E+03 FLOP)
+Re-Orthogonalization:   1.0000E-04 sec,  3.3036E+08 FLOP/S ( 3.3036E+04 FLOP)
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  2.0326E-01 FLOP/S ( 4.3650E+04 FLOP)
+
