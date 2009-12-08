@@ -109,6 +109,8 @@ contains
 
     subroutine lanczos_diagonalisation()
 
+        ! Perform a Lanczos diagonalisation of the Hamiltonian matrix.
+
         use trl_info
         use trl_interface
         
