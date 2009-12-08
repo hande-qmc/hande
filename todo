@@ -1,27 +1,9 @@
-Thursday
---------
-
-extraction script
-test suite
-output
-   options for more output: determinant list, hamiltonian matrix...
-option to obtain eigenvalues (default) or eigenvectors as well.
-
-hamiltonian
-    lanczos (serial)
-    diagonalise/lanczos (parallel)
-
-Monday
-------
-
-symmetry testing of hamiltonian
-real space formulation (+refactor?)
-
-Tuesday
--------
-
-memory logging
-timing
-deallocation
-document
-config/makefile/build
+0. deallocation
+1. lanczos input options
+2. exact diagonalisation/lanczos (parallel)
+3. real space formulation (+refactor?)
+4. option to obtain eigenvalues (default) or eigenvectors as well.
+5. timing
+6. memory logging
+7. config/makefile/build
+8. document
