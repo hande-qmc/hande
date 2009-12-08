@@ -311,7 +311,11 @@ contains
             perm = 0
 
             ! Excitation level...
-            excitation%nexcit = sum(count_set_bits(ieor(f1,f2)))/2
+#ifdef _PGI
+            excitation%nexcit = sum(count_set_bits(int(ieor(f1,f2),i0)))/2
+#else
+            excitation%nexcit = sum(count_set_bits(ieor(f1,f2),i0))/2
+#endif
 
             ! Finding the permutation to align the determinants is non-trivial.
             ! It turns out to be quite easy with bit operations.
