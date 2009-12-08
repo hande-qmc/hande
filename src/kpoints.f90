@@ -23,14 +23,14 @@ contains
 
         ! Initialise a variable of type kpoint.
         ! In:
-        !   k (optional): wavevector in units of the reciprocal lattice vectors
-        !                 of the crystal cell.
-        !   ms (optional): set spin of an electron occupying the basis function.
+        !    k (optional): wavevector in units of the reciprocal lattice vectors
+        !                  of the crystal cell.
+        !    ms (optional): set spin of an electron occupying the basis function.
         ! Out:
-        !   kp: initialsed kp.  The wavevector and kinetic energy components are
-        !       set if the k arguments is given and the ms component is set if
-        !       the ms argument is given.  If no optional arguments are
-        !       specified then a completely blank variable is returned.
+        !    kp: initialsed kp.  The wavevector and kinetic energy components are
+        !        set if the k arguments is given and the ms component is set if
+        !        the ms argument is given.  If no optional arguments are
+        !        specified then a completely blank variable is returned.
         !
         ! This should be called even if k and ms are not specified so that the
         ! k component can be correctly allocated.
@@ -56,10 +56,10 @@ contains
     pure function calc_kinetic(k) result(kinetic)
 
         ! In:
-        !   k: wavevector in terms of the reciprocal lattice vectors of the
-        !      crystal cell.
+        !    k: wavevector in terms of the reciprocal lattice vectors of the
+        !       crystal cell.
         ! Returns:
-        !   The kinetic energy associated with a given wavevector.
+        !    The kinetic energy associated with a given wavevector.
 
         real(dp) :: kinetic
 
@@ -116,10 +116,10 @@ contains
     pure function is_reciprocal_lattice_vector(k) result(t_rlv)
 
         ! In:
-        !   k: wavevector in terms of the reciprocal lattice vectors of the
-        !      crystal cell.
+        !    k: wavevector in terms of the reciprocal lattice vectors of the
+        !       crystal cell.
         ! Returns:
-        !   True if k is a reciprocal lattice vector of the *primitive* cell.
+        !    True if k is a reciprocal lattice vector of the *primitive* cell.
 
         logical :: t_rlv
         integer, intent(in) :: k(ndim)
