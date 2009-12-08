@@ -16,6 +16,8 @@ type det
     integer(i0), pointer :: f(:) ! (basis_length)
     ! Total spin of the determinant in units of electron spin (1/2).   
     integer(i0) :: Ms
+    ! Overall wavevector associated with the Slater determinant.
+    integer, pointer :: k(:) => NULL()
 end type det
 
 ! Number of possible determinants in the system.
@@ -127,9 +129,11 @@ contains
         integer :: ierr
 
         allocate(d%f(basis_length), stat=ierr)
+        allocate(d%k(ndim), stat=ierr)
 
         d%f = encode_det(occ_list)
         d%Ms = det_spin(d%f)
+        d%k = det_momentum(occ_list)
     
     end subroutine init_det
 
@@ -181,6 +185,24 @@ contains
         end do outer
 
     end function decode_det
+
+    pure function det_momentum(occ_list) result(k)
+
+        ! In:
+        !    occ_list(nel): integer list of occupied orbitals in the Slater determinant.
+        ! Returns:
+        !    k: the overall wavevector associated with the Slater determinant.
+
+        integer :: k(ndim)
+        integer, intent(in) :: occ_list(nel)
+        integer :: i
+
+        k = 0
+        do i = 1, nel
+            k = k + basis_fns(occ_list(i))%k
+        end do
+
+    end function det_momentum
 
     subroutine write_det(f, iunit, new_line)
 
