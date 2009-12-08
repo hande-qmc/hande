@@ -27,7 +27,7 @@ class makefile_flags(dict):
                            CPPFLAGS='',
                            LD='',
                            LDFLAGS='',
-                           LIBS='',
+                           LIBS='-ltrlan -llapack -lblas',
                            MODULE_FLAG='',) # Flag compiler uses for setting the directory 
                                             # in which to place/search for .mod files.
                                             # Must be followed by $(DEST).  This is to 
@@ -72,7 +72,7 @@ gfortran=makefile_flags(
           FC='gfortran',
           FFLAGS='-O3 -fbounds-check',
           LD='gfortran',
-          MODULE_FLAG='-J $(DEST)',
+          MODULE_FLAG='-M $(DEST)',
       )
 
 gfortran_mpi=makefile_flags(**gfortran)
