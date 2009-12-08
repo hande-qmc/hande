@@ -55,10 +55,11 @@ contains
 
     pure function calc_kinetic(k) result(kinetic)
 
-       ! Evaluate the kinetic energy associated with a given wavevector.
-       ! In:
-       !   k: wavevector in terms of the reciprocal lattice vectors of the
-       !      crystal cell.
+        ! In:
+        !   k: wavevector in terms of the reciprocal lattice vectors of the
+        !      crystal cell.
+        ! Returns:
+        !   The kinetic energy associated with a given wavevector.
 
         real(dp) :: kinetic
 
