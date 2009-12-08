@@ -314,7 +314,7 @@ contains
 #ifdef _PGI
             excitation%nexcit = sum(count_set_bits(int(ieor(f1,f2),i0)))/2
 #else
-            excitation%nexcit = sum(count_set_bits(ieor(f1,f2),i0))/2
+            excitation%nexcit = sum(count_set_bits(ieor(f1,f2)))/2
 #endif
 
             ! Finding the permutation to align the determinants is non-trivial.
