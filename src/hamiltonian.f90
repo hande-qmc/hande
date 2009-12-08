@@ -23,6 +23,8 @@ logical :: find_eigenvectors = .false.
 logical :: write_hamiltonian = .false.
 character(255) :: hamiltonian_file = 'HAMIL'
 
+private :: hamil_vector
+
 contains
 
     subroutine generate_hamil()
@@ -163,38 +165,36 @@ contains
             call trl_print_info(info, ndets*2)
             write (6,'()')
         end if
-       
-        contains
-       
-            subroutine hamil_vector(nrow, ncol, xin, ldx, yout, ldy)
-       
-                ! Matrix-vector multiplication procedure for use with trlan.
-                ! In:
-                !    nrow: the number of rows on this processor if the problem is distributed 
-                !        using MPI, otherwise the number of total rows in a Lanczos vector. 
-                !    ncol: the number of vectors (columns in xin and yout) to be multiplied. 
-                !    xin: the array to store the input vectors to be multiplied.
-                !    ldx: the leading dimension of the array xin when it is declared as 
-                !       two-dimensional array.
-                !    ldy: the leading dimension of the array yout when it is declared as 
-                !       two-dimensional array.
-                ! Out:
-                !    yout: the array to store results of the multiplication.
-       
-                implicit None
-                integer, intent(in) :: nrow, ncol, ldx, ldy
-                real(dp), intent(in) :: xin(ldx,ncol)
-                real(dp), intent(out) :: yout(ldy,ncol)
-                ! local variables
-                integer :: i
-       
-                do i = 1, ncol
-                    call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
-                end do
-       
-            end subroutine hamil_vector
 
     end subroutine lanczos_diagonalisation
+       
+    subroutine hamil_vector(nrow, ncol, xin, ldx, yout, ldy)
+ 
+        ! Matrix-vector multiplication procedure for use with trlan.
+        ! In:
+        !    nrow: the number of rows on this processor if the problem is distributed 
+        !        using MPI, otherwise the number of total rows in a Lanczos vector. 
+        !    ncol: the number of vectors (columns in xin and yout) to be multiplied. 
+        !    xin: the array to store the input vectors to be multiplied.
+        !    ldx: the leading dimension of the array xin when it is declared as 
+        !       two-dimensional array.
+        !    ldy: the leading dimension of the array yout when it is declared as 
+        !       two-dimensional array.
+        ! Out:
+        !    yout: the array to store results of the multiplication.
+ 
+        implicit None
+        integer, intent(in) :: nrow, ncol, ldx, ldy
+        real(dp), intent(in) :: xin(ldx,ncol)
+        real(dp), intent(out) :: yout(ldy,ncol)
+        ! local variables
+        integer :: i
+ 
+        do i = 1, ncol
+            call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
+        end do
+ 
+    end subroutine hamil_vector
     
     pure function get_hmatel(root_det_f, excitation) result(hmatel)
 
