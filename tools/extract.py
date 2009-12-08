@@ -34,6 +34,17 @@ padding (optional integer): amount of space to add to format string.
         else:
             return '%%-%is' % (len(str(self.name))+padding)
 
+# If using python <2.5, any doesn't exist. Define our own.
+try:
+    any([])
+except NameError:
+    def any(iterable):
+        '''any(iterable) -> bool\n\nReturn True if bool(x) is True for any x in the iterable.'''
+        for val in iterable:
+            if val:
+                return True
+        return False
+
 # data elements to find.
 data_elements = [
         DataElement('exact_ground_state','^ *Exact ground state:', -1),
@@ -58,15 +69,20 @@ filename: file to examine.
 
     padding = 3
 
-    # print header
-    for d in data_elements:
-        print d.fmt(padding) % d.name,
-    print
+    if any(d.value for d in data_elements): 
+        # Have data to output.
 
-    # print values
-    for d in data_elements:
-        print d.fmt(padding) % d.value,
-    print
+        # print header
+        for d in data_elements:
+            if d.value:
+                print d.fmt(padding) % d.name,
+        print
+
+        # print values
+        for d in data_elements:
+            if d.value:
+                print d.fmt(padding) % d.value,
+        print
 
     return None
 
