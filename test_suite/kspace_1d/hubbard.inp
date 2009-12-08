@@ -1,3 +1,5 @@
 lattice
 4
 electrons 4
+fci
+lanczos

@@ -1,9 +1,15 @@
-[kspace_1d_fci]
+[kspace_1d]
 
 [kspace_nontilted_2d_fci]
 
 [kspace_tilted_2d_fci]
 
+[kspace_nontilted_2d_lanczos]
+
 # Form job categories.
 [categories]
-kspace = kspace_1d_fci kspace_nontilted_2d_fci kspace_tilted_2d_fci
+
+kspace = kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci kspace_nontilted_2d_lanczos
+
+fci =  kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci
+lanczos = kspace_1d kspace_nontilted_2d_lanczos
