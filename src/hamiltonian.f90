@@ -112,20 +112,22 @@ contains
        use trl_info
        use trl_interface
        
-       integer, parameter :: lohi = -1, ned = 5, maxlan = 40, mev = 10
+       integer, parameter :: lohi = -1, ned = 5, maxlen = 40, mev = 10
        real(dp) :: eval(mev)
        real(dp), allocatable :: evec(:,:) ! (ndets, mev)
        type(trl_info_t) :: info
-       integer :: i
+       integer :: i, ierr
 
        ! Initialise trlan.
        ! info: type(trl_info_t).  Used by trl to store calculation info.
        ! ndets: number of rows of matrix on processor.
-       ! maxlan: maximum Lanczos basis size.
+       ! maxlen: maximum Lanczos basis size.
        ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
        !       the largest).
        ! ned: number of eigenvalues to compute.
-       call trl_init_info(info, ndets, maxlan, lohi, ned)
+       call trl_init_info(info, ndets, maxlen, lohi, ned)
+
+       allocate(evec(ndets,mev), stat=ierr)
 
        ! Call Lanczos diagonalizer.
        ! hamil_vector: matrix-vector multiplication routine.
@@ -139,6 +141,11 @@ contains
 
        ! Get info...
        call trl_print_info(info, ndets*2)
+
+       write (6,*) 1, eval(1)
+       write (6,*) 2, eval(2)
+       write (6,*) 3, eval(3)
+       write (6,*) 4, eval(4)
 
        contains
 
@@ -162,15 +169,10 @@ contains
                real(dp), intent(in) :: xin(ldx,ncol)
                real(dp), intent(out) :: yout(ldy,ncol)
                ! local variables
-               integer :: i, j, ioff, joff
+               integer :: i
 
-               ! use DSYMV
-               do j = 1, ncol
-                   ioff = (j-1)*ldx
-                   joff = (j-1)*ldy
-                   do i = 1, nrow
-                       yout(joff,i) = (i*i)*xin(ioff,i)
-                   end do
+               do i = 1, ncol
+                   call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
                end do
 
            end subroutine hamil_vector
