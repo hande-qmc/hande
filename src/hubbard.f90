@@ -110,6 +110,19 @@ contains
 
     end subroutine init_basis_fns
 
+    subroutine end_basis_fns()
+
+        ! Clean up basis functions.
+
+        integer :: ierr, i
+
+        do i = 1, nbasis
+            deallocate(basis_fns(i)%k, stat=ierr)
+        end do
+        deallocate(basis_fns, stat=ierr)
+
+    end subroutine end_basis_fns
+
     pure function get_one_e_int(phi1, phi2) result(one_e_int)
 
         ! In:

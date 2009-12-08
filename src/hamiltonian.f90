@@ -78,6 +78,16 @@ contains
 
     end subroutine generate_hamil
 
+    subroutine end_hamil()
+
+        ! Clean up hamiltonian module.
+
+        integer :: ierr
+
+        deallocate(hamil, stat=ierr)
+
+    end subroutine end_hamil
+
     subroutine exact_diagonalisation()
     
         ! Perform an exact diagonalisation of the Hamiltonian matrix.

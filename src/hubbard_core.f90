@@ -5,6 +5,8 @@ call init_calc()
 
 call run_calc()
 
+call end_calc()
+
 contains
 
     subroutine init_calc()
@@ -54,5 +56,21 @@ contains
         if (t_exact) call exact_diagonalisation()
 
     end subroutine run_calc
+
+    subroutine end_calc()
+
+        ! Clean up time!
+
+        use system, only: end_system
+        use hubbard, only: end_basis_fns
+        use determinants, only: end_determinants
+        use hamiltonian, only: end_hamil
+
+        call end_system()
+        call end_basis_fns()
+        call end_determinants()
+        call end_hamil()
+
+    end subroutine end_calc
 
 end program hubbard_fciqmc

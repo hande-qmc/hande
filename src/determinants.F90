@@ -55,7 +55,7 @@ contains
 
         use comb_m, only: binom
 
-        integer :: i, bit_pos, bit_element
+        integer :: i, bit_pos, bit_element, ierr
 
         ndets = binom(nbasis, nel)
 
@@ -70,8 +70,8 @@ contains
         end if
 
         ! Lookup arrays.
-        allocate(bit_lookup(2,nbasis))
-        allocate(basis_lookup(0:7,basis_length))
+        allocate(bit_lookup(2,nbasis), stat=ierr)
+        allocate(basis_lookup(0:7,basis_length), stat=ierr)
         basis_lookup = 0
 
         do i = 1, nbasis
@@ -83,6 +83,23 @@ contains
         end do
 
     end subroutine init_determinants
+
+    subroutine end_determinants()
+
+        ! Clean up after determinants.
+
+        integer :: ierr, i
+
+        do i = 1,ndets 
+            deallocate(dets(i)%f, stat=ierr)
+            deallocate(dets(i)%k, stat=ierr)
+        end do
+
+        deallocate(dets, stat=ierr)
+        deallocate(bit_lookup, stat=ierr)
+        deallocate(basis_lookup, stat=ierr)
+
+    end subroutine end_determinants
 
     subroutine find_all_determinants()
     

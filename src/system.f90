@@ -50,6 +50,18 @@ contains
 
     end subroutine init_system
 
+    subroutine end_system()
+
+        ! Clean up system allocations.
+
+        integer :: ierr
+
+        deallocate(box_length, stat=ierr)
+        deallocate(rlattice, stat=ierr)
+        deallocate(lattice, stat=ierr)
+
+    end subroutine end_system
+
     pure function in_FBZ(k)
 
         ! Test if k is in the FBZ of the primitive unit cell.
