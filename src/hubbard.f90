@@ -180,21 +180,12 @@ contains
         logical :: conserved
         integer, intent(in) :: i, j, k, l
         integer :: delta_k(ndim)
-        real(dp) :: delta_kc(ndim)
 
         ! k_i + k_j - k_k -k_l in units of the reciprocal lattice vectors of the
         ! crystal cell.
         delta_k = basis_fns(i)%k + basis_fns(j)%k - basis_fns(k)%k - basis_fns(l)%k
 
-        if (all(delta_k == 0)) then
-            ! Easy!
-            conserved = .true.
-        else
-            ! Test to see if delta_k is 0 up to a reciprocal lattice vector
-            ! of the primitive cell.
-            forall (i=1:ndim) delta_kc(i) = sum(delta_k*rlattice(i,:))
-            conserved = all(abs(delta_kc - nint(delta_kc)) < depsilon)
-        end if
+        conserved = is_reciprocal_lattice_vector(delta_k)
 
     end function momentum_conserved
 

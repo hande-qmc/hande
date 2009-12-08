@@ -113,4 +113,29 @@ contains
 
     end subroutine write_kpoint
 
+    pure function is_reciprocal_lattice_vector(k) result(t_rlv)
+
+        ! In:
+        !   k: wavevector in terms of the reciprocal lattice vectors of the
+        !      crystal cell.
+        ! Returns:
+        !   True if k is a reciprocal lattice vector of the *primitive* cell.
+
+        logical :: t_rlv
+        integer, intent(in) :: k(ndim)
+        real(dp) :: kc(ndim)
+        integer :: i
+
+        if (all(k == 0)) then
+            ! Easy!
+            t_rlv = .true.
+        else
+            ! Test to see if delta_k is 0 up to a reciprocal lattice vector
+            ! of the primitive cell.
+            forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
+            t_rlv = all(abs(kc - nint(kc)) < depsilon)
+        end if
+
+    end function is_reciprocal_lattice_vector
+
 end module kpoints
