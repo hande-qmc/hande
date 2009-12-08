@@ -42,15 +42,16 @@ contains
         ! Run the calculation based upon the input options.
 
         use determinants, only: find_all_determinants
-        use hamiltonian, only: generate_hamil, exact_diagonalisation, lanczos_diagonalisation
+        use hamiltonian, only: t_exact, t_lanczos, generate_hamil, exact_diagonalisation, lanczos_diagonalisation
 
         call find_all_determinants()
 
         call generate_hamil()
 
-        call lanczos_diagonalisation()
+        if (t_lanczos) call lanczos_diagonalisation()
 
-        call exact_diagonalisation()
+        ! Warning: this destroys the Hamiltonian matrix...
+        if (t_exact) call exact_diagonalisation()
 
     end subroutine run_calc
 

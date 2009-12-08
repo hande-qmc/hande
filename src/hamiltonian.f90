@@ -8,6 +8,9 @@ use parallel
 
 implicit none
 
+! Flags for doing exact and/or Lanczos diagonalisation.
+logical :: t_exact = .false., t_lanczos = .false.
+
 ! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
 ! size is horrendous.
 real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)

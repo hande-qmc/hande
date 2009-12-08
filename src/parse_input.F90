@@ -83,6 +83,10 @@ contains
                 call readf(hubt)
             case('U')
                 call readf(hubu)
+            case('EXACT','FCI')
+                t_exact = .true.
+            case('LANCZOS')
+                t_lanczos = .true.
             case('EIGENVALUES')
                 find_eigenvectors = .false.
             case('EIGENVECTORS')
