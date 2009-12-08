@@ -34,21 +34,23 @@ contains
 
         integer :: ierr, i, j, iunit
         type(excit) :: excitation
+        logical :: hamil_element_set
 
         allocate(hamil(ndets,ndets), stat=ierr)
 
         do i=1, ndets
             do j=i, ndets
+                hamil_element_set = .false.
                 if (dets(i)%Ms == dets(j) % Ms) then
                     excitation = get_excitation(dets(i)%f, dets(j)%f)
                     if (excitation%nexcit <= 2) then
-                        hamil(i,j) = get_hmatel(dets(i)%f, excitation)
-                    else
-                        hamil(i,j) = 0.0_dp
+                        if (is_reciprocal_lattice_vector(dets(i)%k-dets(j)%k)) then
+                            hamil(i,j) = get_hmatel(dets(i)%f, excitation)
+                            hamil_element_set = .true.
+                        end if
                     end if
-                else
-                    hamil(i,j) = 0.0_dp
                 end if
+                if (.not.hamil_element_set) hamil(i,j) = 0.0_dp
             end do
         end do
 
