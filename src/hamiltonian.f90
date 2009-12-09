@@ -23,6 +23,11 @@ logical :: find_eigenvectors = .false.
 logical :: write_hamiltonian = .false.
 character(255) :: hamiltonian_file = 'HAMIL'
 
+! Number of Lanczos eigenpairs to find.
+integer :: nlanczos_eigv = 5
+! Size of Lanczos basis.
+integer :: lanczos_basis_length = 40
+
 private :: hamil_vector
 
 contains
@@ -131,11 +136,16 @@ contains
         use trl_info
         use trl_interface
         
-        integer, parameter :: lohi = -1, ned = 5, maxlen = 40, mev = 10
-        real(dp) :: eval(mev)
+        integer, parameter :: lohi = -1
+        integer :: mev
+        real(dp), allocatable :: eval(:) ! (mev)
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         type(trl_info_t) :: info
         integer :: i, ierr
+
+        ! mev: number of eigenpairs that can be stored in eval and evec.
+        ! twice the number of eigenvalues to be found is a reasonable default.
+        mev = max(2*nlanczos_eigv, ndets)
        
         if (iproc == parent) then
             write (6,'(1X,a23,/,1X,23("-"))') 'Lanczos diagonalisation'
@@ -145,12 +155,13 @@ contains
         ! Initialise trlan.
         ! info: type(trl_info_t).  Used by trl to store calculation info.
         ! ndets: number of rows of matrix on processor.
-        ! maxlen: maximum Lanczos basis size.
+        ! lanczos_basis_length: maximum Lanczos basis size.
         ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
         !       the largest).
-        ! ned: number of eigenvalues to compute.
-        call trl_init_info(info, ndets, maxlen, lohi, ned)
+        ! nlanczos_eigv: number of eigenvalues to compute.
+        call trl_init_info(info, ndets, lanczos_basis_length, lohi, nlanczos_eigv)
        
+        allocate(eval(mev), stat=ierr)
         allocate(evec(ndets,mev), stat=ierr)
        
         ! Call Lanczos diagonalizer.
@@ -166,7 +177,7 @@ contains
         ! Get info...
         if (iproc == parent) then
             write (6,'(1X,a8,3X,a12)') 'State','Total energy'
-            do i = 1, ned
+            do i = 1, nlanczos_eigv
                 write (6,'(1X,i8,f18.12)') i, eval(i)
             end do
             write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', eval(1)
@@ -175,6 +186,9 @@ contains
             call trl_print_info(info, ndets*2)
             write (6,'()')
         end if
+
+        deallocate(eval, stat=ierr)
+        deallocate(evec, stat=ierr)
 
     end subroutine lanczos_diagonalisation
        

@@ -1,5 +1,3 @@
-0. deallocation
-1. lanczos input options
 2. exact diagonalisation/lanczos (parallel)
 3. real space formulation (+refactor?)
 4. option to obtain eigenvalues (default) or eigenvectors as well.

@@ -87,6 +87,10 @@ contains
                 t_exact = .true.
             case('LANCZOS')
                 t_lanczos = .true.
+            case('LANCZOS_BASIS')
+                call readi(lanczos_basis_length)
+            case('LANCZOS_SOLUTIONS','LANCZOS_SOLNS')
+                call readi(nlanczos_eigv)
             case('EIGENVALUES')
                 find_eigenvectors = .false.
             case('EIGENVECTORS')
