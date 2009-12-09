@@ -179,6 +179,11 @@ docs:
 clean: 
 \t-rm -f {$(DEST)/,bin/}{*.mod,*.o,*.x}
 
+test:
+	cd test_suite && testcode.py
+
+tests: test
+
 # Build from scratch.
 new: clean %(PROGRAM)s
 
@@ -196,6 +201,8 @@ help:
 \t@echo "  %(PROGRAM)-20s [default target] Compile program."
 \t@echo "  clean                Remove the compiled objects."
 \t@echo "  new                  Remove all previously compiled objects and re-compile."
+\t@echo "  tests                Run test suite."
+\t@echo "  test                 Run test suite."
 \t@echo "  depend               Produce the .depend file containing the dependencies."
 \t@echo "                       Requires the makedepf90 tool to be installed."
 \t@echo "  docs                 Build documents in pdf and html formats."
