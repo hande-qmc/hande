@@ -160,7 +160,7 @@ make_dest:=$(shell	test -e $(DEST) || mkdir -p $(DEST))
 # expanded in the .depend file.
 # Note the recursive make: this is so that compilation of the environment report is forced
 # if any other files are compiled.
-LINK_LINE="\$$(MAKE) \$$(DEST)/environment_report.o FORCE=frc_rebuild ;\$$(FC) -o \$$@ \$$(FFLAGS) \$$(LDFLAGS) -I \$$(DEST) \$$(FOBJ) \$$(LIBS)" 
+LINK_LINE="\$$(MAKE) \$$(DEST)/environment_report.o FORCE=frc_rebuild ;test -e \`dirname \$$@\` || mkdir -p \`dirname \$$@\`;\$$(FC) -o \$$@ \$$(FFLAGS) \$$(LDFLAGS) -I \$$(DEST) \$$(FOBJ) \$$(LIBS)"
 
 .SUFFIXES:
 .SUFFIXES: .f90 .F90
@@ -189,7 +189,7 @@ frc_rebuild: ;
 # files are built (even if not necessary).
 # sed is used for prettier output, as makedepf90 won't let us have multiple lines in the link statement.
 depend .depend:
-\tmakedepf90 -o %(PROGRAM)s -b "\$$(DEST)" -l $(LINK_LINE) %(SOURCE_CODE)s -d "\$$(FORCE)" | sed -e 's/;/\\n\\t/' > .depend
+\tmakedepf90 -o %(PROGRAM)s -b "\$$(DEST)" -l $(LINK_LINE) %(SOURCE_CODE)s -d "\$$(FORCE)" | sed -e 's/;/\\n\\t/g' > .depend
 
 help:
 \t@echo "Please use \`make <target>' where <target> is one of:"

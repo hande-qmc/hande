@@ -2,6 +2,7 @@ FOBJ=$(DEST)/comb.o $(DEST)/mrgref.o $(DEST)/trl_info.o $(DEST)/utils.o $(DEST)/
 
 bin/hubbard.x: $(FOBJ)
 	$(MAKE) $(DEST)/environment_report.o FORCE=frc_rebuild 
+	test -e `dirname $@` || mkdir -p `dirname $@`
 	$(FC) -o $@ $(FFLAGS) $(LDFLAGS) -I $(DEST) $(FOBJ) $(LIBS)
 
 $(DEST)/comb.o : lib/comb.f90 $(FORCE) 
