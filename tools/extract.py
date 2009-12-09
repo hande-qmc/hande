@@ -39,7 +39,10 @@ try:
     any([])
 except NameError:
     def any(iterable):
-        '''any(iterable) -> bool\n\nReturn True if bool(x) is True for any x in the iterable.'''
+        '''any(iterable) -> bool
+        
+Return True if bool(x) is True for any x in the iterable.
+'''
         for val in iterable:
             if val:
                 return True
