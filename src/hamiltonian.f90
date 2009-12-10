@@ -221,6 +221,9 @@ contains
         integer :: i
  
         do i = 1, ncol
+            ! y = H x,
+            ! where H is the Hamiltonian matrix, x is the input Lanczos vector
+            ! and y the output Lanczos vector.
             call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
         end do
  
@@ -246,9 +249,12 @@ contains
         hmatel = 0.0_dp
 
         select case(excitation%nexcit)
+        ! Apply Slater--Condon rules.
         case(0)
 
             root_det = decode_det(root_det_f)
+
+            ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
 
             ! One electron operator
             do i = 1, nel
@@ -266,6 +272,8 @@ contains
 
             root_det = decode_det(root_det_f)
 
+            ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+
             ! One electron operator
             hmatel = hmatel + get_one_e_int(excitation%from_orb(1), excitation%to_orb(1)) 
 
@@ -277,6 +285,8 @@ contains
             if (excitation%perm) hmatel = -hmatel
 
         case(2)
+
+            ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
             ! Two electron operator
             hmatel = get_two_e_int(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
