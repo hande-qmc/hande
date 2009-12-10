@@ -1,7 +1,7 @@
 module parse_input
 ! Parse input options and check input for validity.
 
-use parallel, only: iproc, parent
+use parallel, only: parent
 use errors
 use system
 use hamiltonian
@@ -46,13 +46,13 @@ contains
             end if
             open(1, file=cInp, status='old', form='formatted', iostat=ios)
         else
-            if (iproc == parent) write (6,'(a19)') 'Reading from STDIN'
+            if (parent) write (6,'(a19)') 'Reading from STDIN'
             ir = 5
             ios = 0
         end if
 
-        if (iproc == parent) write (6,'(a14,/,1X,13("-"),/)') 'Input options'
-        call input_options(echo_lines=iproc==parent, skip_blank_lines=.true.)
+        if (parent) write (6,'(a14,/,1X,13("-"),/)') 'Input options'
+        call input_options(echo_lines=parent, skip_blank_lines=.true.)
 
         do
             call read_line(eof)
@@ -109,7 +109,7 @@ contains
         end do
 
         if (ios.gt.0) then
-            if (iproc == parent) write (6,*) 'Problem reading input.'
+            if (parent) write (6,*) 'Problem reading input.'
             stop
         end if
 
@@ -142,7 +142,7 @@ contains
 
         if (nel > 2*nsites) call stop_all('check_input', 'More than two electrons per site.')
 
-        if (iproc == parent) write (6,'(/,1X,13("-"),/)') 
+        if (parent) write (6,'(/,1X,13("-"),/)') 
 
     end subroutine check_input
 

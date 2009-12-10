@@ -102,7 +102,7 @@ contains
         integer :: info, ierr, lwork
         integer :: i
 
-        if (iproc == parent) then
+        if (parent) then
             write (6,'(1X,a21,/,1X,21("-"))') 'Exact diagonalisation'
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
@@ -119,7 +119,7 @@ contains
 
         deallocate(work)
 
-        if (iproc == parent) then
+        if (parent) then
             write (6,'(1X,a8,3X,a12)') 'State','Total energy'
             do i = 1, ndets
                 write (6,'(1X,i8,f18.12)') i, eigv(i)
@@ -147,7 +147,7 @@ contains
         ! twice the number of eigenvalues to be found is a reasonable default.
         mev = max(2*nlanczos_eigv, ndets)
        
-        if (iproc == parent) then
+        if (parent) then
             write (6,'(1X,a23,/,1X,23("-"))') 'Lanczos diagonalisation'
             write (6,'(/,1X,a37,/)') 'Performing lanczos diagonalisation...'
         end if
@@ -175,7 +175,7 @@ contains
         call trlan(hamil_vector, info, ndets, mev, eval, evec, ndets)
        
         ! Get info...
-        if (iproc == parent) then
+        if (parent) then
             write (6,'(1X,a8,3X,a12)') 'State','Total energy'
             do i = 1, nlanczos_eigv
                 write (6,'(1X,i8,f18.12)') i, eval(i)

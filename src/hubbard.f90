@@ -21,7 +21,7 @@ contains
 
         use m_mrgref, only: mrgref
         use errors, only: stop_all
-        use parallel, only: iproc, parent
+        use parallel, only: parent
 
         integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
         integer :: i, j, k, ibasis, ierr
@@ -95,7 +95,7 @@ contains
         deallocate(tmp_basis_fns, stat=ierr)
         deallocate(basis_fns_ranking, stat=ierr)
 
-        if (iproc == parent) then
+        if (parent) then
             write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
             write (6,'(1X,a7)', advance='no') 'k-point'
             do i = 1, ndim

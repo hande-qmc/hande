@@ -1,5 +1,6 @@
 program hubbard_fciqmc
 
+implicit none
 
 call init_calc()
 
@@ -21,11 +22,14 @@ contains
         use system, only: init_system
         use hubbard, only: init_basis_fns
         use determinants, only: init_determinants
-        use parallel
+        use parallel, only: init_parallel, parent
 
-        if (parent == proc) write (6,'(/,a8,/)') 'Hubbard'
+        call init_parallel
 
-        call environment_report()
+        if (parent) then
+            write (6,'(/,a8,/)') 'Hubbard'
+            call environment_report()
+        end if
 
         call read_input()
 

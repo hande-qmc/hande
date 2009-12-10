@@ -63,7 +63,7 @@ contains
         basis_length = nbasis/8
         if (mod(nbasis,8) /= 0) basis_length = basis_length + 1
 
-        if (iproc == parent) then
+        if (parent) then
             write (6,'(1X,a20,i4)') 'Number of electrons:', nel
             write (6,'(1X,a26,i4)') 'Number of basis functions:', nbasis
             write (6,'(1X,a26,i8,/)') 'Size of determinant space:', ndets
