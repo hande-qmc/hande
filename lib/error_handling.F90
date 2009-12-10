@@ -17,7 +17,7 @@ contains
         character(*), intent(in) :: sub_name,error_msg
 
         ! It seems that giving STOP a string is far more portable.
-        ! MPI_Abort requires an integer though.
+        ! mpi_abort requires an integer though.
         integer, parameter :: error_code=999
         character(3), parameter :: error_str='999'
 
@@ -28,7 +28,11 @@ contains
 
         call flush(6)
 
+#if _PARALLEL
+        call stop_all_processors(error_code, error_str)
+#else
         stop error_str
+#endif
 
         return
 

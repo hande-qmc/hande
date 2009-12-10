@@ -69,11 +69,14 @@ contains
         use hubbard, only: end_basis_fns
         use determinants, only: end_determinants
         use hamiltonian, only: end_hamil
+        use parallel, only: end_parallel
 
         call end_system()
         call end_basis_fns()
         call end_determinants()
         call end_hamil()
+
+        call end_parallel()
 
     end subroutine end_calc
 
