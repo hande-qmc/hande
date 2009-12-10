@@ -40,26 +40,12 @@ contains
         use utils, only: get_free_unit
 
         integer :: ierr, i, j, iunit
-        type(excit) :: excitation
-        logical :: hamil_element_set
 
         allocate(hamil(ndets,ndets), stat=ierr)
 
-        do i=1, ndets
-            do j=i, ndets
-                hamil_element_set = .false.
-                if (dets(i)%Ms == dets(j) % Ms) then
-                    excitation = get_excitation(dets(i)%f, dets(j)%f)
-                    if (excitation%nexcit <= 2) then
-                        if (is_reciprocal_lattice_vector(dets(i)%k-dets(j)%k)) then
-                            hamil(i,j) = get_hmatel(dets(i)%f, excitation)
-                            hamil_element_set = .true.
-                        end if
-                    end if
-                end if
-                if (.not.hamil_element_set) hamil(i,j) = 0.0_dp
-            end do
-        end do
+        forall (i=1:ndets) 
+            forall (j=i:ndets) hamil(i,j) = get_hmatel(i,j)
+        end forall
 
         ! Fill in rest of Hamiltonian matrix.  In this case the Hamiltonian is
         ! symmetric (rather than "just" Hermitian).
@@ -229,71 +215,89 @@ contains
  
     end subroutine hamil_vector
     
-    pure function get_hmatel(root_det_f, excitation) result(hmatel)
+    pure function get_hmatel(d1, d2) result(hmatel)
 
         ! In:
-        !    root_det_f(basis_length): bit string representation of the "root" Slater
-        !        determinant (i.e. the determinant the excitation is from).
-        !    excitation: excitation information linking another determinant to
-        !        the root determinant.
+        !    d1, d2: integer labels of two determinants, as stored in the
+        !            dets array.
         ! Returns:
-        !    Hamiltonian matrix element between the root determinant and the
-        !        excited determinant.
+        !    Hamiltonian matrix element between the two determinants, 
+        !    < D1 | H | D2 >.
 
         real(dp) :: hmatel
-        type(excit), intent(in) :: excitation
-        integer(i0), intent(in) :: root_det_f(basis_length)
+        integer, intent(in) :: d1, d2
+        logical :: non_zero
+        type(excit) :: excitation
         integer :: root_det(nel)
         integer :: i, j
 
         hmatel = 0.0_dp
+        non_zero = .false.
 
-        select case(excitation%nexcit)
-        ! Apply Slater--Condon rules.
-        case(0)
+        ! Test to see if Hamiltonian matrix element is non-zero.
 
-            root_det = decode_det(root_det_f)
+        ! Spin symmetry conserved?
+        if (dets(d1)%Ms == dets(d2)%Ms) then
+            excitation = get_excitation(dets(d1)%f, dets(d2)%f)
+            ! Connected determinants can differ by (at most) 2 spin orbitals.
+            if (excitation%nexcit <= 2) then
+                ! In the momentum space description the overall crystal 
+                ! momentum must be conserved up to a reciprocal lattice
+                ! vector (i.e. satisfy translational symmetry).
+                if (is_reciprocal_lattice_vector(dets(d1)%k-dets(d2)%k)) then
+                    non_zero = .true.
+                end if
+            end if
+        end if
 
-            ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+        if (non_zero) then
+            select case(excitation%nexcit)
+            ! Apply Slater--Condon rules.
+            case(0)
 
-            ! One electron operator
-            do i = 1, nel
-                hmatel = hmatel + get_one_e_int(root_det(i), root_det(i))
-            end do
+                root_det = decode_det(dets(d1)%f)
 
-            ! Two electron operator
-            do i = 1, nel
-                do j = i+1, nel
-                    hmatel = hmatel + get_two_e_int(root_det(i), root_det(j), root_det(i), root_det(j))
+                ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+
+                ! One electron operator
+                do i = 1, nel
+                    hmatel = hmatel + get_one_e_int(root_det(i), root_det(i))
                 end do
-            end do
 
-        case(1)
+                ! Two electron operator
+                do i = 1, nel
+                    do j = i+1, nel
+                        hmatel = hmatel + get_two_e_int(root_det(i), root_det(j), root_det(i), root_det(j))
+                    end do
+                end do
 
-            root_det = decode_det(root_det_f)
+            case(1)
 
-            ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+                root_det = decode_det(dets(d1)%f)
 
-            ! One electron operator
-            hmatel = hmatel + get_one_e_int(excitation%from_orb(1), excitation%to_orb(1)) 
+                ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
-            ! Two electron operator
-            do i = 1, nel
-                hmatel = hmatel + get_two_e_int(root_det(i), excitation%from_orb(1), root_det(i), excitation%to_orb(1))
-            end do
+                ! One electron operator
+                hmatel = hmatel + get_one_e_int(excitation%from_orb(1), excitation%to_orb(1)) 
 
-            if (excitation%perm) hmatel = -hmatel
+                ! Two electron operator
+                do i = 1, nel
+                    hmatel = hmatel + get_two_e_int(root_det(i), excitation%from_orb(1), root_det(i), excitation%to_orb(1))
+                end do
 
-        case(2)
+                if (excitation%perm) hmatel = -hmatel
 
-            ! < D | H | D_{ij}^{ab} > = < ij || ab >
+            case(2)
 
-            ! Two electron operator
-            hmatel = get_two_e_int(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
+                ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-            if (excitation%perm) hmatel = -hmatel
+                ! Two electron operator
+                hmatel = get_two_e_int(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
 
-        end select
+                if (excitation%perm) hmatel = -hmatel
+
+            end select
+        end if
 
     end function get_hmatel
 
