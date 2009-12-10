@@ -107,7 +107,13 @@ contains
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
-        lwork = 3*ndets - 1
+        ! Find the optimal size of the workspace.
+        allocate(work(1), stat=ierr)
+        call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, -1, info)
+        lwork = work(1)
+        deallocate(work)
+
+        ! Now perform the diagonalisation.
         allocate(work(lwork), stat=ierr)
         allocate(eigv(ndets), stat=ierr)
 
