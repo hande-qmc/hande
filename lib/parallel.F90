@@ -30,6 +30,7 @@ contains
         ! set.
 
         use errors
+        integer :: ierr
 
 #ifdef _PARALLEL
         call mpi_init(ierr)
