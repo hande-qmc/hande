@@ -323,7 +323,6 @@ contains
         !        The second element of from_orbs and to_orbs is zero for single
         !        excitations.
 
-
         use bit_utils
 
         type(excit) :: excitation
@@ -343,6 +342,10 @@ contains
 
             ! Excitation level...
 #ifdef _PGI
+            ! Work round an *insane* bug in PGI where intrinsic bit operations
+            ! return an integer(4) if the arguments are of a kind smaller than
+            ! 4.  PGI gets it right if the kind is larger than 4, but that
+            ! doesn't help us in this case...
             excitation%nexcit = sum(count_set_bits(int(ieor(f1,f2),i0)))/2
 #else
             excitation%nexcit = sum(count_set_bits(ieor(f1,f2)))/2

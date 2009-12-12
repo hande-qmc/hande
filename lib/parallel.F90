@@ -30,6 +30,7 @@ contains
         ! set.
 
         use errors
+        integer :: ierr
 
 #ifdef _PARALLEL
         call mpi_init(ierr)
@@ -58,25 +59,5 @@ contains
 #endif
 
     end subroutine end_parallel
-
-    subroutine stop_all_processors(error_code, error_string)
-
-        ! Abort all processors.
-        ! This is just a empty procedure in serial mode.
-        ! In:
-        !    error_code: error code given to mpi_abort which returns it to the
-        !        invoking environment.
-        !    error_string: string (length 3) containing error code.  Used as an
-        !        argument to stop.
-
-        character(3), intent(in) :: error_string
-        integer :: error_code, ierr
-
-#if _PARALLEL
-        call mpi_abort(mpi_comm_world, error_code, ierr)
-        stop error_string
-#endif
-
-    end subroutine stop_all_processors
 
 end module parallel
