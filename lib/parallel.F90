@@ -32,9 +32,11 @@ integer, parameter :: block_size = 64
 
 ! Type for storing information about a processor as used in blacs and scalapack.
 type blacs_info
-    ! Location of the processor within the grid.
+    ! Location of the processor within the grid.  Negative is the processor
+    ! isn't involved in the grid.
     integer :: procx, procy
     ! Number of rows and columns of the global matrix stored on the processor.
+    ! Negative is the processor isn't involved in the grid.
     integer :: nrows, ncols
     ! blacs and scalapack use a 9 element integer array as a description of how
     ! a matrix is distributed throughout the processor grid.
