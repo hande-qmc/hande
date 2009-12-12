@@ -42,7 +42,7 @@ type blacs_info
     ! a matrix is distributed throughout the processor grid.
     ! Store two descriptors: desca refers to the matrix and descz to the output
     ! eigenvector matrix.
-    integer :: my_desca(9), my_descz(9)
+    integer :: desca(9), descz(9)
 end type blacs_info
 
 contains
