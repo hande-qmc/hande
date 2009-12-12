@@ -24,7 +24,10 @@ integer, parameter :: i0_length = bit_size(int(0,i0))
 ! (Bit indexing in fortran ranges from 0 to bit_size-1.)
 integer, parameter :: i0_end = bit_size(int(0,i0))-1
 
-integer, parameter :: dp = kind(0.0d0)
+! Double precision kind.
+! If this is changed then the lapack and scalapack calls must also be changed
+! accordingly.
+integer, parameter :: dp = selected_real_kind(15,307)
 
 real(dp), parameter :: pi = 3.1415926535897931_dp
 
