@@ -28,43 +28,77 @@ integer :: nlanczos_eigv = 5
 ! Size of Lanczos basis.
 integer :: lanczos_basis_length = 40
 
+! BLACS info for diagonalisation
+type(blacs_info) :: proc_blacs_info
+
+! Procedure to multiply the hamiltonian matrix by a Lanczos vector.
 private :: hamil_vector
 
 contains
 
-    subroutine generate_hamil()
+    subroutine generate_hamil(distribute_mode)
 
         ! Generate the Hamiltonian matrix.
         ! Only generate the upper diagonal for use with Lapack routines.
 
         use utils, only: get_free_unit
+        use errors
 
-        integer :: ierr, i, j, iunit
+        integer, optional :: distribute_mode
+        integer, parameter :: distribute_off = 0, distribute_blocks = 1, distribute_cols = 2
+        integer :: ierr, i, j, iunit, distribute, n1, n2
 
-        allocate(hamil(ndets,ndets), stat=ierr)
+        if (allocated(hamil)) then
+            deallocate(hamil, stat=ierr)
+        end if
 
-        forall (i=1:ndets) 
-            forall (j=i:ndets) hamil(i,j) = get_hmatel(i,j)
-        end forall
+        if (present(distribute_mode)) then
+            distribute = distribute_mode
+        else
+            distribute = distribute_off
+        end if
 
-        ! Fill in rest of Hamiltonian matrix.  In this case the Hamiltonian is
-        ! symmetric (rather than "just" Hermitian).
-!        do i=1,ndets
-!            do j=1,i-1
-!                hamil(i,j) = hamil(j,i)
-!            end do
-!        end do
+        ! Find dimensions of local array.
+        select case(distribute)
+        case(distribute_off)
+            n1 = ndets
+            n2 = ndets
+        case(distribute_blocks)
+            proc_blacs_info = get_blacs_info(ndets)
+        case(distribute_cols)
+            call stop_all('generate_hamil','Distribution scheme not currently implemented.')
+        case default
+            call stop_all('generate_hamil','Unknown distribution scheme.')
+        end select
+
+        allocate(hamil(n1,n2), stat=ierr)
+
+        ! Form the Hamiltonian matrix < D_i | H | D_j >.
+        select case(distribute)
+        case(distribute_off)
+            forall (i=1:ndets) 
+                forall (j=i:ndets) hamil(i,j) = get_hmatel(i,j)
+            end forall
+        case(distribute_blocks)
+            call stop_all('generate_hamil','Distribution scheme not currently implemented.')
+        case(distribute_cols)
+            call stop_all('generate_hamil','Distribution scheme not currently implemented.')
+        end select
 
         if (write_hamiltonian) then
-            iunit = get_free_unit()
-            open(iunit, file=hamiltonian_file, status='unknown')
-            do i=1,ndets
-                write (iunit,*) i,i,hamil(i,i)
-                do j=i+1, ndets
-                    if (abs(hamil(i,j)) > depsilon) write (iunit,*) i,j,hamil(i,j)
+            if (nprocs > 1) then
+                if (parent) call warning('generate_hamil','Output of hamiltonian not implemented in parallel.')
+            else
+                iunit = get_free_unit()
+                open(iunit, file=hamiltonian_file, status='unknown')
+                do i=1,ndets
+                    write (iunit,*) i,i,hamil(i,i)
+                    do j=i+1, ndets
+                        if (abs(hamil(i,j)) > depsilon) write (iunit,*) i,j,hamil(i,j)
+                    end do
                 end do
-            end do
-            close(iunit, status='keep')
+                close(iunit, status='keep')
+            end if
         end if
 
     end subroutine generate_hamil
