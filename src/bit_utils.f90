@@ -89,7 +89,7 @@ contains
         ! * The first line can be replaced by:
         !     x = x - ( (x>>1) & 01010101...)
         !   thanks to the population (number of set bits) in an integer
-        !   containing p bits is given by:
+        !   containing p bits being given by:
         !     pop(x) = \sum_{i=0}^{p-1} x/2^i
         ! * Summing 8 bit fields together can be performed via a multiplication
         !   followed by a right shift.
