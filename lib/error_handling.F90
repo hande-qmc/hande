@@ -54,8 +54,8 @@ contains
 
         character(*), intent(in) :: sub_name,error_msg
 
-        write (6,'(/a)') 'WARNING.  Error in '//adjustl(sub_name)
-        write (6,'(a/)') adjustl(error_msg)
+        write (6,'(/,1X,a)') 'WARNING: error in '//adjustl(sub_name)//'.'
+        write (6,'(1X,a/)') adjustl(error_msg)
 
         return
 
