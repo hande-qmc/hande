@@ -23,7 +23,7 @@ contains
         integer :: i
 
         nbits = 0
-        do i = 0,7
+        do i = 0, i0_end
             if (btest(b, i)) nbits = nbits + 1
         end do
 
@@ -36,10 +36,18 @@ contains
         ! Returns:
         !    A binary representation of the bit string as a character string.
 
-        character(8) :: s
+        character(i0_length) :: s
         integer(i0), intent(in) :: b
+        character(10) :: bit_fmt
 
-        write (s,'(B8.8)') b
+        ! This is good for integers containing less than 1000 bits.
+        ! Producing the format string each time is non-optimal, but this is only
+        ! i/o.
+        ! The format is something like (B8.8), which gives a bit string of
+        ! length 8 and forces all 8 bits to be written (including leading 0s). 
+        write (bit_fmt,'("(B",I3,".",I3,")")') i0_length, i0_length
+
+        write (s,bit_fmt) b
 
     end function bit_string
 

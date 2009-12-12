@@ -45,6 +45,12 @@ end type excit
 logical :: write_determinants = .false.
 character(255) :: determinant_file = 'DETS'
 
+! Bit masks to reveal the list of alpha basis functions and beta functions
+! occupied in a Slater determinant.
+! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
+! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
+integer(i0) :: alpha_mask, beta_mask
+
 contains
 
     subroutine init_determinants()
@@ -60,8 +66,8 @@ contains
         ndets = binom(nbasis, nel)
 
         ! See note in basis.
-        basis_length = nbasis/8
-        if (mod(nbasis,8) /= 0) basis_length = basis_length + 1
+        basis_length = nbasis/i0_length
+        if (mod(nbasis,i0_length) /= 0) basis_length = basis_length + 1
 
         if (parent) then
             write (6,'(1X,a20,i4)') 'Number of electrons:', nel
@@ -71,15 +77,27 @@ contains
 
         ! Lookup arrays.
         allocate(bit_lookup(2,nbasis), stat=ierr)
-        allocate(basis_lookup(0:7,basis_length), stat=ierr)
+        allocate(basis_lookup(0:i0_end,basis_length), stat=ierr)
         basis_lookup = 0
 
         do i = 1, nbasis
-            bit_pos = mod(i, 8) - 1
-            if (bit_pos == -1) bit_pos = 7
-            bit_element = (i+7)/8
+            bit_pos = mod(i, i0_length) - 1
+            if (bit_pos == -1) bit_pos = i0_end
+            bit_element = (i+i0_end)/i0_length
             bit_lookup(:,i) = (/ bit_pos, bit_element /)
             basis_lookup(bit_pos, bit_element) = i
+        end do
+
+        ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
+        ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
+        alpha_mask = 0
+        beta_mask = 0
+        do i = 0, i0_end
+            if (mod(i,2)==0) then
+                alpha_mask = ibset(alpha_mask,i)
+            else
+                beta_mask = ibset(beta_mask,i)
+            end if
         end do
 
     end subroutine init_determinants
@@ -160,8 +178,8 @@ contains
         !    occ_list(nel): integer list of occupied orbitals in the Slater determinant.
         ! Returns:
         !    bit_list(basis_length): a bit string representation of the occupied
-        !        orbitals.   The first element contains the first 8 basis
-        !        functions, the second element the next 8 and so on.  A basis
+        !        orbitals.   The first element contains the first i0_length basis
+        !        functions, the second element the next i0_length and so on.  A basis
         !        function is occupied if the relevant bit is set.
 
         integer(i0) :: bit_list(basis_length)
@@ -192,7 +210,7 @@ contains
 
         iorb = 1
         outer: do i = 1, basis_length
-            do j = 0, 7
+            do j = 0, i0_end
                 if (btest(f(i), j)) then
                     occ_list(iorb) = basis_lookup(j, i)
                     if (iorb == nel) exit outer
@@ -270,13 +288,9 @@ contains
 
         integer :: Ms
         integer(i0), intent(in) :: f(basis_length)
-        integer(i0) :: alpha_mask, beta_mask, a, b
+        integer(i0) :: a, b
         integer :: i
 
-        ! Alpha basis functions are in the even bits.
-        alpha_mask = 85 !01010101
-        ! Beta basis functions are in the odd bits.
-        beta_mask = -86 !10101010
         Ms = 0
         do i = 1, basis_length
             ! Find bit string of all alpha orbitals.
@@ -365,7 +379,7 @@ contains
 
                 do i = 1, basis_length
                     if (f1(i) == f2(i)) cycle
-                    do j = 0, 7
+                    do j = 0, i0_end
 
                         test_f1 = btest(f1(i),j)
                         test_f2 = btest(f2(i),j)
