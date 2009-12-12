@@ -15,7 +15,10 @@ implicit none
 ! being a multiple of the number of bits in i0) can increase with the kind.
 ! However, the performance of intrinsic bit operations with 32 bit integers is
 ! far superior to that of 8 bit integers (tested on a 64-bit Xeon quad-core).
-integer, parameter :: i0 = selected_int_kind(0)
+! If this is changed then the count_set_bits function in the bit_utils module
+! must also be changed: code is provided (but commented out where appropriate)
+! for 8, 16, 32 and 64 bit integers.
+integer, parameter :: i0 = selected_int_kind(9)
 
 ! Number of bits in an integer of type i0.
 integer, parameter :: i0_length = bit_size(int(0,i0))
