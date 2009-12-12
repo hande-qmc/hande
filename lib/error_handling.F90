@@ -13,7 +13,9 @@ contains
         !    sub_name:  calling subroutine name.
         !    error_msg: error message.
 
+#ifdef _PARALLEL
         use mpi
+#endif
 
         character(*), intent(in) :: sub_name,error_msg
 
@@ -66,7 +68,9 @@ contains
         ! In:
         !    msg (optional) : Print msg before exiting if msg is present.
 
+#ifdef _PARALLEL
         use mpi
+#endif
 
         character(*), intent(in), optional :: msg
         integer :: ierr
