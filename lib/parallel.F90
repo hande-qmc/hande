@@ -72,6 +72,17 @@ contains
 
     end subroutine init_parallel
 
+    subroutine parallel_report()
+
+        ! Print out information about the parallel environment.
+
+        character(2) :: fmt1
+
+        write (fmt1,'("i",i1)') nint(log10(real(nprocs))+2)
+        write (6,'(1X,"Running on"'//fmt1//'" processors.",/)') nprocs
+
+    end subroutine parallel_report
+
     subroutine end_parallel()
 
         ! Terminate the parallel environment.

@@ -22,7 +22,7 @@ contains
         use system, only: init_system
         use hubbard, only: init_basis_fns
         use determinants, only: init_determinants
-        use parallel, only: init_parallel, parent
+        use parallel, only: init_parallel, parallel_report, nprocs, parent
 
         call init_parallel
 
@@ -30,6 +30,8 @@ contains
             write (6,'(/,a8,/)') 'Hubbard'
             call environment_report()
         end if
+
+        if (nprocs > 1) call parallel_report()
 
         call read_input()
 
