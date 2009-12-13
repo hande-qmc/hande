@@ -34,19 +34,39 @@ type(blacs_info) :: proc_blacs_info
 ! Procedure to multiply the hamiltonian matrix by a Lanczos vector.
 private :: hamil_vector
 
+! Distribution of Hamiltonian matrix across the processors. 
+! No distribution.
+integer, parameter :: distribute_off = 0
+! Block cyclic distribution (see comments in parallel.F90 and the blacs and
+! scalapack documentation).  Used for parallel exact diagonalisation.
+integer, parameter :: distribute_blocks = 1
+! Distribute matrix by columns.  Used for parallel Lanczos.
+integer, parameter :: distribute_cols = 2
+
+! Flag which stores which distribution mode is in use.
+integer :: distribute = distribute_off
+
 contains
 
     subroutine generate_hamil(distribute_mode)
 
         ! Generate the Hamiltonian matrix.
-        ! Only generate the upper diagonal for use with Lapack routines.
+        ! Only generate the upper diagonal for use with (sca)lapack and Lanczos routines.
+        ! In:
+        !    distribute_mode (optional): flag for determining how the
+        !        Hamiltonian matrix is distributed among processors.  It is
+        !        irrelevant if only one processor is used: the distribution schemes
+        !        all reduce to the storing the entire matrix on the single
+        !        processor.  Can take the values given by the distribute_off,
+        !        distribute_blocks and distribute_cols parameters.  See above
+        !        for descriptions of the different behaviours.
 
         use utils, only: get_free_unit
         use errors
 
         integer, optional :: distribute_mode
-        integer, parameter :: distribute_off = 0, distribute_blocks = 1, distribute_cols = 2
-        integer :: ierr, i, j, iunit, distribute, n1, n2
+        integer :: ierr, iunit, n1, n2
+        integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal
 
         if (allocated(hamil)) then
             deallocate(hamil, stat=ierr)
@@ -65,6 +85,8 @@ contains
             n2 = ndets
         case(distribute_blocks)
             proc_blacs_info = get_blacs_info(ndets)
+            n1 = proc_blacs_info%nrows
+            n2 = proc_blacs_info%ncols
         case(distribute_cols)
             call stop_all('generate_hamil','Distribution scheme not currently implemented.')
         case default
@@ -80,7 +102,33 @@ contains
                 forall (j=i:ndets) hamil(i,j) = get_hmatel(i,j)
             end forall
         case(distribute_blocks)
-            call stop_all('generate_hamil','Distribution scheme not currently implemented.')
+            ! blacs divides the matrix up into sub-matrices of size block_size x block_size.
+            ! The blocks are distributed in a cyclic fashion amongst the
+            ! processors.
+            ! Each processor stores a total of nrows of the matrix. 
+            ! i gives the index of the first row in the current block.
+            ! ii gives the index of the current row within the current block.
+            ! The local i index is thus i-1+ii.  This is used to refer to the
+            ! matrix element as stored (continuously) on the processor.
+            ! The global i index is given by the sum of the rows held on
+            ! preceeding proecssors for the previous loops over processors (as
+            ! done in the loop over i), the rows held on other processors during
+            ! the corrent loop over processors and the position within the
+            ! current block.
+            ! Similarly for the other indices.
+            do i = 1, proc_blacs_info%nrows, block_size
+                do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
+                    ilocal = i - 1 + ii
+                    iglobal = (i-1)*nproc_rows + proc_blacs_info%procx*block_size + ii
+                    do j = 1, proc_blacs_info%ncols, block_size
+                        do jj = 1, min(block_size, proc_blacs_info%ncols - j + 1)
+                            jlocal = j - 1 + jj
+                            jglobal = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj
+                            hamil(ilocal, jlocal) = get_hmatel(iglobal, jglobal)
+                        end do
+                    end do
+                end do
+            end do
         case(distribute_cols)
             call stop_all('generate_hamil','Distribution scheme not currently implemented.')
         end select
@@ -118,7 +166,9 @@ contains
         ! Perform an exact diagonalisation of the Hamiltonian matrix.
         ! Note that this destroys the Hamiltonian matrix stored in hamil.
 
-        real(dp), allocatable :: eigv(:), work(:)
+        use errors, only: stop_all
+
+        real(dp), allocatable :: eigv(:), work(:), eigvec(:,:)
         integer :: info, ierr, lwork
         integer :: i
 
@@ -127,9 +177,22 @@ contains
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
+        if (distribute /= distribute_off .and. distribute /= distribute_blocks) then
+            call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
+        end if
+        
+        allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
-        call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, -1, info)
+        if (nprocs == 1) then
+            call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, -1, info)
+        else
+#ifdef _PARALLEL
+            call pdsyev('N', 'U', ndets, hamil, 1, 1, proc_blacs_info%desca, eigv, eigvec, 1, 1, proc_blacs_info%descz, work, -1, info)
+#endif
+        end if
+
         lwork = work(1)
         deallocate(work)
 
@@ -137,13 +200,26 @@ contains
         allocate(work(lwork), stat=ierr)
         allocate(eigv(ndets), stat=ierr)
 
-        if (find_eigenvectors) then
-            call dsyev('V', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+        if (nprocs == 1) then
+            ! Use lapack.
+            if (find_eigenvectors) then
+                call dsyev('V', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+            else
+                call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+            end if
         else
-            call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+#ifdef _PARALLEL
+            ! Use scalapack to do the diagonalisation in parallel.
+            if (find_eigenvectors) then
+                call pdsyev('V', 'U', ndets, hamil, 1, 1, proc_blacs_info%desca, eigv, eigvec, 1, 1, proc_blacs_info%descz, work, lwork, info)
+            else
+                call pdsyev('N', 'U', ndets, hamil, 1, 1, proc_blacs_info%desca, eigv, eigvec, 1, 1, proc_blacs_info%descz, work, lwork, info)
+            end if
+#endif
         end if
 
-        deallocate(work)
+        deallocate(work, stat=ierr)
+        deallocate(eigvec, stat=ierr)
 
         if (parent) then
             write (6,'(1X,a8,3X,a12)') 'State','Total energy'
@@ -161,6 +237,7 @@ contains
 
         use trl_info
         use trl_interface
+        use errors, only: stop_all
         
         integer, parameter :: lohi = -1
         integer :: mev
@@ -178,6 +255,9 @@ contains
             write (6,'(/,1X,a37,/)') 'Performing lanczos diagonalisation...'
         end if
        
+        if (distribute /= distribute_off .and. distribute /= distribute_cols) then
+            call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
+        end if
         ! Initialise trlan.
         ! info: type(trl_info_t).  Used by trl to store calculation info.
         ! ndets: number of rows of matrix on processor.

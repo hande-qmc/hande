@@ -48,16 +48,28 @@ contains
         ! Run the calculation based upon the input options.
 
         use determinants, only: find_all_determinants
-        use hamiltonian, only: t_exact, t_lanczos, generate_hamil, exact_diagonalisation, lanczos_diagonalisation
+        use hamiltonian
 
         call find_all_determinants()
 
-        call generate_hamil()
+        if (nprocs == 1) call generate_hamil(distribute_off)
 
-        if (t_lanczos) call lanczos_diagonalisation()
+        ! Lanczos.
+        if (t_lanczos) then
+            ! Construct the Hamiltonian matrix distributed over the processors
+            ! if running in parallel.
+            if (nprocs > 1) call generate_hamil(distribute_cols)
+            call lanczos_diagonalisation()
+        end if
 
+        ! Exact diagonalisation.
         ! Warning: this destroys the Hamiltonian matrix...
-        if (t_exact) call exact_diagonalisation()
+        if (t_exact) then
+            ! Construct the Hamiltonian matrix distributed over the processors
+            ! if running in parallel.
+            if (nprocs > 1) call generate_hamil(distribute_blocks)
+            call exact_diagonalisation()
+        end if
 
     end subroutine run_calc
 
