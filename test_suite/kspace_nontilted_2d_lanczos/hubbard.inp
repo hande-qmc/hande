@@ -3,3 +3,6 @@ lattice
 0 2
 electrons 2
 lanczos
+lanczos_basis 20
+lanczos_solns 8
+block_size 8

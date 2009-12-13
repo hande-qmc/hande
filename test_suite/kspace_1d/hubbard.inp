@@ -3,3 +3,5 @@ lattice
 electrons 4
 fci
 lanczos
+eigenvectors
+end
