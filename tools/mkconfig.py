@@ -81,7 +81,7 @@ gfortran_mpi.update(
           FC='mpif90',
           FFLAGS='-I /usr/local/shared/suse-10.3/x86_64/openmpi-1.2.6-gnu/lib',
           LD='mpif90',
-          CPPDEFS='-D_PARALLEL'
+          CPPDEFS='-D_PARALLEL',
           LIBS='-ltrlan -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas',
       )
 
@@ -110,7 +110,7 @@ pgf90_mpi=makefile_flags(**pgf90)
 pgf90_mpi.update(
           FC='mpif90',
           LD='mpif90',
-          CPPDEFS='-D_PARALLEL'
+          CPPDEFS='-D_PARALLEL',
           LIBS='-ltrlan -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas',
       )
 
