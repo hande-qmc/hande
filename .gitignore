@@ -5,3 +5,7 @@ test*.out*
 testcode*.err*
 DETS
 HAMIL
+*.out
+*.err
+*.log
+fort.*
