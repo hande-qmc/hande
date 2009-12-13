@@ -89,7 +89,11 @@ contains
             n1 = proc_blacs_info%nrows
             n2 = proc_blacs_info%ncols
         case(distribute_cols)
-            call stop_all('generate_hamil','Distribution scheme not currently implemented.')
+            ! TRLan assumes that the only the rows of the matrix
+            ! are distributed.
+            proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
+            n1 = proc_blacs_info%nrows
+            n2 = proc_blacs_info%ncols
         case default
             call stop_all('generate_hamil','Unknown distribution scheme.')
         end select
@@ -102,7 +106,7 @@ contains
             forall (i=1:ndets) 
                 forall (j=i:ndets) hamil(i,j) = get_hmatel(i,j)
             end forall
-        case(distribute_blocks)
+        case(distribute_blocks, distribute_cols)
             ! blacs divides the matrix up into sub-matrices of size block_size x block_size.
             ! The blocks are distributed in a cyclic fashion amongst the
             ! processors.
@@ -130,8 +134,6 @@ contains
                     end do
                 end do
             end do
-        case(distribute_cols)
-            call stop_all('generate_hamil','Distribution scheme not currently implemented.')
         end select
 
         if (write_hamiltonian) then
@@ -271,6 +273,7 @@ contains
         if (distribute /= distribute_off .and. distribute /= distribute_cols) then
             call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
         end if
+
         ! Initialise trlan.
         ! info: type(trl_info_t).  Used by trl to store calculation info.
         ! ndets: number of rows of matrix on processor.
@@ -292,7 +295,7 @@ contains
         ! evec: array to store the eigenvectors
         ! lde: the leading dimension of evec (in serial case: ndets).
         call trlan(hamil_vector, info, ndets, mev, eval, evec, ndets)
-       
+
         ! Get info...
         if (parent) then
             write (6,'(1X,a8,3X,a12)') 'State','Total energy'
@@ -302,15 +305,17 @@ contains
             write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', eval(1)
        
             write (6,'(1X,a27,/,1X,27("-"),/)') 'TRLan (Lanczos) information'
-            ! dsymv uses 2(N^2+2N) floating point operations.
-            ! Ref: Benchmark of the Extended Basic Linear Algebra Subprograms on
-            ! the NEC SX-2 Supercomputer, by R. M. Dubash, J. L. Fredin and O. G.
-            ! Johnson, Supercomputing, 1st International Conference, Athens,
-            ! Greece, June 8-12, 1987, Proceedings, Lecture Notes in Computer
-            ! Science, 297 (1987) 894-913.
-            call trl_print_info(info, 2*(ndets**2+2*ndets))
-            write (6,'()')
         end if
+        ! dsymv uses 2(N^2+2N) floating point operations.
+        ! Ref: Benchmark of the Extended Basic Linear Algebra Subprograms on
+        ! the NEC SX-2 Supercomputer, by R. M. Dubash, J. L. Fredin and O. G.
+        ! Johnson, Supercomputing, 1st International Conference, Athens,
+        ! Greece, June 8-12, 1987, Proceedings, Lecture Notes in Computer
+        ! Science, 297 (1987) 894-913.
+        ! trl_print_info gathers information from the processors so must be
+        ! a global call but only prints information from one processor.
+        call trl_print_info(info, 2*(ndets**2+2*ndets))
+        if (parent) write (6,'()')
 
         deallocate(eval, stat=ierr)
         deallocate(evec, stat=ierr)
@@ -339,12 +344,31 @@ contains
         ! local variables
         integer :: i
  
-        do i = 1, ncol
-            ! y = H x,
-            ! where H is the Hamiltonian matrix, x is the input Lanczos vector
-            ! and y the output Lanczos vector.
-            call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
-        end do
+        if (nprocs == 1) then
+            ! Use blas to perform matrix-vector multiplication.
+            do i = 1, ncol
+                ! y = H x,
+                ! where H is the Hamiltonian matrix, x is the input Lanczos vector
+                ! and y the output Lanczos vector.
+                call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
+            end do
+        else
+#ifdef _PARALLEL
+            ! Use pblas to perform matrix-vector multiplication.
+            if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
+                ! Some of the matrix on this processor.
+                do i = 1, ncol
+                    ! y = H x,
+                    ! where H is the Hamiltonian matrix, x is the input Lanczos vector
+                    ! and y the output Lanczos vector.
+                    call pdsymv('U', ndets, 1.0_8, hamil, 1, 1,                 &
+                                proc_blacs_info%desc_m, xin(:,i), 1, 1,         &
+                                proc_blacs_info%desc_v, 1, 0.0_8, yout(:,i), 1, &
+                                1, proc_blacs_info%desc_v, 1)
+                end do
+            end if
+#endif
+        end if
  
     end subroutine hamil_vector
     
