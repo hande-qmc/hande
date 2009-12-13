@@ -185,10 +185,17 @@ contains
         real(dp), allocatable :: eigv(:), work(:), eigvec(:,:)
         integer :: info, ierr, lwork
         integer :: i
+        character(1) :: job
 
         if (parent) then
             write (6,'(1X,a21,/,1X,21("-"))') 'Exact diagonalisation'
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
+        end if
+
+        if (find_eigenvectors) then
+            job = 'V'
+        else
+            job = 'N'
         end if
 
         if (distribute /= distribute_off .and. distribute /= distribute_blocks) then
@@ -200,12 +207,12 @@ contains
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         if (nprocs == 1) then
-            call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, -1, info)
+            call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
         else
 #ifdef _PARALLEL
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Part of matrix on this processor.
-                call pdsyev('N', 'U', ndets, hamil, 1, 1,               &
+                call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                             proc_blacs_info%desc_m, work, -1, info)
             end if
@@ -221,25 +228,15 @@ contains
 
         if (nprocs == 1) then
             ! Use lapack.
-            if (find_eigenvectors) then
-                call dsyev('V', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
-            else
-                call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, lwork, info)
-            end if
+            call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
         else
 #ifdef _PARALLEL
             ! Use scalapack to do the diagonalisation in parallel.
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Part of matrix on this processor.
-                if (find_eigenvectors) then
-                    call pdsyev('V', 'U', ndets, hamil, 1, 1,               &
-                                proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                                proc_blacs_info%desc_m, work, lwork, info)
-                else
-                    call pdsyev('N', 'U', ndets, hamil, 1, 1,               &
-                                proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                                proc_blacs_info%desc_m, work, lwork, info)
-                end if
+                call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, work, lwork, info)
             end if
 #endif
         end if
