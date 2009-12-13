@@ -91,6 +91,17 @@ contains
         case(distribute_cols)
             ! TRLan assumes that the only the rows of the matrix
             ! are distributed.
+            ! Furthermore it seems TRLan assumes all processors store at least
+            ! some of the matrix.
+            if ((nprocs-1)*block_size > ndets) then
+                if (parent) then
+                    call warning('generate_hamil','Reducing block size so that all processors contain at least a single row.', .false.)
+                    write (6,'(1X,a69)') 'Consider running on fewer processors or reducing block size in input.'
+                    write (6,'(1X,a19,i4)') 'Old block size was:',block_size
+                end if
+                block_size = ndets/nprocs
+                if (parent) write (6,'(1X,a18,i4,/)') 'New block size is:',block_size
+            end if
             proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
             n1 = proc_blacs_info%nrows
             n2 = proc_blacs_info%ncols
@@ -366,6 +377,8 @@ contains
                                 proc_blacs_info%desc_v, 1, 0.0_8, yout(:,i), 1, &
                                 1, proc_blacs_info%desc_v, 1)
                 end do
+            else
+                yout = 0.0_dp
             end if
 #endif
         end if
