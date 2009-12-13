@@ -28,7 +28,7 @@ logical :: parent
 ! distributed around the processors in a cyclic fashion.
 ! The block size is critical to performance.  64 seems to be a good value (see
 ! scalapack documentation).
-integer, parameter :: block_size = 64
+integer :: block_size = 64
 
 ! Type for storing information about a processor as used in blacs and scalapack.
 ! Conveniently filled by the function get_blacs_info. 

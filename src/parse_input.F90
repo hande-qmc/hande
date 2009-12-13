@@ -101,6 +101,8 @@ contains
             case('DET','DETERMINANTS')
                 write_determinants = .true.
                 if (item /= nitems) call reada(determinant_file)
+            case('BLOCK_SIZE')
+                call readi(block_size)
             case('END')
                 exit
             case default
