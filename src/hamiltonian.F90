@@ -84,6 +84,7 @@ contains
             n1 = ndets
             n2 = ndets
         case(distribute_blocks)
+            ! Use as square a processor grid as possible.
             proc_blacs_info = get_blacs_info(ndets)
             n1 = proc_blacs_info%nrows
             n2 = proc_blacs_info%ncols
@@ -189,7 +190,12 @@ contains
             call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, -1, info)
         else
 #ifdef _PARALLEL
-            call pdsyev('N', 'U', ndets, hamil, 1, 1, proc_blacs_info%desc_m, eigv, eigvec, 1, 1, proc_blacs_info%desc_m, work, -1, info)
+            if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
+                ! Part of matrix on this processor.
+                call pdsyev('N', 'U', ndets, hamil, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, work, -1, info)
+            end if
 #endif
         end if
 
@@ -210,10 +216,17 @@ contains
         else
 #ifdef _PARALLEL
             ! Use scalapack to do the diagonalisation in parallel.
-            if (find_eigenvectors) then
-                call pdsyev('V', 'U', ndets, hamil, 1, 1, proc_blacs_info%desc_m, eigv, eigvec, 1, 1, proc_blacs_info%desc_m, work, lwork, info)
-            else
-                call pdsyev('N', 'U', ndets, hamil, 1, 1, proc_blacs_info%desc_m, eigv, eigvec, 1, 1, proc_blacs_info%desc_m, work, lwork, info)
+            if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
+                ! Part of matrix on this processor.
+                if (find_eigenvectors) then
+                    call pdsyev('V', 'U', ndets, hamil, 1, 1,               &
+                                proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                                proc_blacs_info%desc_m, work, lwork, info)
+                else
+                    call pdsyev('N', 'U', ndets, hamil, 1, 1,               &
+                                proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                                proc_blacs_info%desc_m, work, lwork, info)
+                end if
             end if
 #endif
         end if
