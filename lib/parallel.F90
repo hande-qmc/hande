@@ -31,18 +31,20 @@ logical :: parent
 integer, parameter :: block_size = 64
 
 ! Type for storing information about a processor as used in blacs and scalapack.
+! Conveniently filled by the function get_blacs_info. 
 type blacs_info
-    ! Location of the processor within the grid.  Negative is the processor
+    ! Location of the processor within the grid.  Negative if the processor
     ! isn't involved in the grid.
     integer :: procx, procy
     ! Number of rows and columns of the global matrix stored on the processor.
-    ! Negative is the processor isn't involved in the grid.
+    ! Negative if the processor isn't involved in the grid.
     integer :: nrows, ncols
     ! blacs and scalapack use a 9 element integer array as a description of how
     ! a matrix is distributed throughout the processor grid.
-    ! Store two descriptors: desca refers to the matrix and descz to the output
-    ! eigenvector matrix.
-    integer :: desca(9), descz(9)
+    ! Descriptor for distributing an NxN matrix:
+    integer :: desc_m(9)
+    ! Descriptor for distributing vector of length N:
+    integer :: desc_v(9)
 end type blacs_info
 
 contains
@@ -102,7 +104,7 @@ contains
         integer :: i, j, k
         integer :: numroc ! scalapack function 
         integer :: procy, procx, nrows, ncols
-        integer :: desca(9), descz(9)
+        integer :: desc_m(9), desc_v(9)
         integer :: ierr
 
         ! Set processor grid dimensions.
@@ -132,14 +134,14 @@ contains
         ncols = numroc(matrix_size, block_size, procy, 0, nproc_cols)
 
         ! Initialise the descriptor vectors needed for scalapack procedures.
-        call descinit(desca, matrix_size, matrix_size, block_size, block_size, 0, 0, context, nrows, ierr)
-        call descinit(descz, matrix_size, matrix_size, block_size, block_size, 0, 0, context, nrows, ierr)
+        call descinit(desc_m, matrix_size, matrix_size, block_size, block_size, 0, 0, context, nrows, ierr)
+        call descinit(desc_v, matrix_size, 1, block_size, block_size, 0, 0, context, nrows, ierr)
 
-        my_blacs_info = blacs_info(procx, procy, nrows, ncols, desca, descz)
+        my_blacs_info = blacs_info(procx, procy, nrows, ncols, desc_m, desc_v)
 #else
-        desca = 0
-        descz = 0
-        my_blacs_info = blacs_info(0, 0, 1, 1, desca, descz)
+        desc_m = 0
+        desc_v = 0
+        my_blacs_info = blacs_info(0, 0, 1, 1, desc_m, desc_v)
 #endif
 
     end function get_blacs_info

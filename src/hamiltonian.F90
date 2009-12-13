@@ -189,7 +189,7 @@ contains
             call dsyev('N', 'U', ndets, hamil, ndets, eigv, work, -1, info)
         else
 #ifdef _PARALLEL
-            call pdsyev('N', 'U', ndets, hamil, 1, 1, proc_blacs_info%desca, eigv, eigvec, 1, 1, proc_blacs_info%descz, work, -1, info)
+            call pdsyev('N', 'U', ndets, hamil, 1, 1, proc_blacs_info%desc_m, eigv, eigvec, 1, 1, proc_blacs_info%desc_m, work, -1, info)
 #endif
         end if
 
@@ -211,9 +211,9 @@ contains
 #ifdef _PARALLEL
             ! Use scalapack to do the diagonalisation in parallel.
             if (find_eigenvectors) then
-                call pdsyev('V', 'U', ndets, hamil, 1, 1, proc_blacs_info%desca, eigv, eigvec, 1, 1, proc_blacs_info%descz, work, lwork, info)
+                call pdsyev('V', 'U', ndets, hamil, 1, 1, proc_blacs_info%desc_m, eigv, eigvec, 1, 1, proc_blacs_info%desc_m, work, lwork, info)
             else
-                call pdsyev('N', 'U', ndets, hamil, 1, 1, proc_blacs_info%desca, eigv, eigvec, 1, 1, proc_blacs_info%descz, work, lwork, info)
+                call pdsyev('N', 'U', ndets, hamil, 1, 1, proc_blacs_info%desc_m, eigv, eigvec, 1, 1, proc_blacs_info%desc_m, work, lwork, info)
             end if
 #endif
         end if
