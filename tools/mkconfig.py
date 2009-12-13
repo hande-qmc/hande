@@ -65,7 +65,8 @@ ifort_mpi=makefile_flags(**ifort) # Initialise with the same settings as the ser
 ifort_mpi.update(                 # Now change only the settings we want to...
           FC='mpif90',
           LD='mpif90',
-          CPPDEFS='-D__PARALLEL'
+          CPPDEFS='-D_PARALLEL',
+          LIBS='-ltrlan -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas',
       )
 
 gfortran=makefile_flags(
@@ -80,7 +81,8 @@ gfortran_mpi.update(
           FC='mpif90',
           FFLAGS='-I /usr/local/shared/suse-10.3/x86_64/openmpi-1.2.6-gnu/lib',
           LD='mpif90',
-          CPPDEFS='-D__PARALLEL'
+          CPPDEFS='-D_PARALLEL'
+          LIBS='-ltrlan -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas',
       )
 
 g95=makefile_flags(
@@ -108,7 +110,8 @@ pgf90_mpi=makefile_flags(**pgf90)
 pgf90_mpi.update(
           FC='mpif90',
           LD='mpif90',
-          CPPDEFS='-D__PARALLEL'
+          CPPDEFS='-D_PARALLEL'
+          LIBS='-ltrlan -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas',
       )
 
 pathf95=makefile_flags(
