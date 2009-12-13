@@ -1,9 +1,9 @@
-1. exact diagonalisation/lanczos (parallel)
-2. real space formulation (+refactor?)
-3. option to obtain eigenvalues (default) or eigenvectors as well.
-4. timing
-5. memory logging
-6. config/makefile/build
-7. document
-8. checktest
-9. block diagonalise hamiltonian matrix for kspace and spin...
+1. real space formulation (+refactor?)
+2. option to obtain eigenvalues (default) or eigenvectors as well.
+3. timing
+4. memory logging
+5. config/makefile/build
+6. document
+7. checktest
+8. block diagonalise hamiltonian matrix for kspace and spin...
+9. distribute input data...
