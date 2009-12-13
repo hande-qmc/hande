@@ -51,27 +51,38 @@ contains
         ! In:
         !    sub_name:  calling subroutine name.
         !    error_msg: error message.
-        !    blank_lines (optional): if true print a blank line after the warning
-        !                           message.  This is the default behaviour.
+        !    blank_lines (optional): if 0, print a blank line either side of the
+        !        warning message.  This is the default behaviour. If 1, a blank
+        !        line is only printed before the warning message.  If 2, a blank
+        !        line is only printed after the warning message.  No blank lines
+        !        are printed for any other value.
 
         character(*), intent(in) :: sub_name,error_msg
-        logical, optional :: blank_lines
+        integer, optional :: blank_lines
 
-        call write_blank()
+        call write_blank(1)
         write (6,'(1X,a)') 'WARNING: error in '//adjustl(sub_name)//'.'
         write (6,'(1X,a)') adjustl(error_msg)
-        call write_blank()
+        call write_blank(2)
 
         return
 
         contains
 
-            subroutine write_blank()
+            subroutine write_blank(point)
+
+                integer :: point
+
                 if (present(blank_lines)) then
-                    if (blank_lines) write (6,'()')
+                    if (blank_lines == 0) then
+                        write (6,'()')
+                    else if (blank_lines == point) then
+                        write (6,'()')
+                    end if
                 else
                     write (6,'()')
                 end if
+
             end subroutine write_blank
 
     end subroutine warning

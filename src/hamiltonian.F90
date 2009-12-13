@@ -95,7 +95,7 @@ contains
             ! some of the matrix.
             if ((nprocs-1)*block_size > ndets) then
                 if (parent) then
-                    call warning('generate_hamil','Reducing block size so that all processors contain at least a single row.', .false.)
+                    call warning('generate_hamil','Reducing block size so that all processors contain at least a single row.', 3)
                     write (6,'(1X,a69)') 'Consider running on fewer processors or reducing block size in input.'
                     write (6,'(1X,a19,i4)') 'Old block size was:',block_size
                 end if
@@ -149,7 +149,7 @@ contains
 
         if (write_hamiltonian) then
             if (nprocs > 1) then
-                if (parent) call warning('generate_hamil','Output of hamiltonian not implemented in parallel.')
+                if (parent) call warning('generate_hamil','Output of hamiltonian not implemented in parallel.',2)
             else
                 iunit = get_free_unit()
                 open(iunit, file=hamiltonian_file, status='unknown')
