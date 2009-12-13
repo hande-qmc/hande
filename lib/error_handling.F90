@@ -44,20 +44,35 @@ contains
 
     end subroutine stop_all
 
-    subroutine warning(sub_name,error_msg)
+    subroutine warning(sub_name,error_msg,blank_lines)
         ! Print a warning message in a (helpfully consistent) format.
         ! I was bored of typing the same formatting in different places. ;-)
         !
         ! In:
         !    sub_name:  calling subroutine name.
         !    error_msg: error message.
+        !    blank_lines (optional): if true print a blank line after the warning
+        !                           message.  This is the default behaviour.
 
         character(*), intent(in) :: sub_name,error_msg
+        logical, optional :: blank_lines
 
-        write (6,'(/,1X,a)') 'WARNING: error in '//adjustl(sub_name)//'.'
-        write (6,'(1X,a/)') adjustl(error_msg)
+        call write_blank()
+        write (6,'(1X,a)') 'WARNING: error in '//adjustl(sub_name)//'.'
+        write (6,'(1X,a)') adjustl(error_msg)
+        call write_blank()
 
         return
+
+        contains
+
+            subroutine write_blank()
+                if (present(blank_lines)) then
+                    if (blank_lines) write (6,'()')
+                else
+                    write (6,'()')
+                end if
+            end subroutine write_blank
 
     end subroutine warning
 
