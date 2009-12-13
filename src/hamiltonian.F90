@@ -289,7 +289,13 @@ contains
             write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', eval(1)
        
             write (6,'(1X,a27,/,1X,27("-"),/)') 'TRLan (Lanczos) information'
-            call trl_print_info(info, ndets*2)
+            ! dsymv uses 2(N^2+2N) floating point operations.
+            ! Ref: Benchmark of the Extended Basic Linear Algebra Subprograms on
+            ! the NEC SX-2 Supercomputer, by R. M. Dubash, J. L. Fredin and O. G.
+            ! Johnson, Supercomputing, 1st International Conference, Athens,
+            ! Greece, June 8-12, 1987, Proceedings, Lecture Notes in Computer
+            ! Science, 297 (1987) 894-913.
+            call trl_print_info(info, 2*(ndets**2+2*ndets))
             write (6,'()')
         end if
 
