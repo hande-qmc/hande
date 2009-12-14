@@ -7,17 +7,17 @@ use kpoints
 implicit none
 
 ! The kpoint type is used to specify a spin orbital in momentum space.
-type kpoint
+type basis_fn
     ! Wavevector in terms of the reciprocal lattice vectors of the crystal cell.
     integer, pointer :: k(:) => NULL()
     ! Spin of the electron (1 or -1).
     integer :: ms
     ! Kinetic energy.
     real(dp) :: kinetic
-end type kpoint
+end type basis_fn
 
 ! Store of information about the (spin) basis functions of the system.
-type(kpoint), allocatable :: basis_fns(:) ! (nbasis)
+type(basis_fn), allocatable :: basis_fns(:) ! (nbasis)
 
 ! number of basis functions.  Equal to 2*number of sites as there are
 ! 2 spin orbitals per site.
@@ -63,7 +63,7 @@ contains
         ! This should be called even if k and ms are not specified so that the
         ! k component can be correctly allocated.
 
-        type(kpoint), intent(out) :: kp
+        type(basis_fn), intent(out) :: kp
         integer, intent(in), optional  :: k(ndim)
         integer, intent(in), optional  :: ms
         integer :: ierr
@@ -92,7 +92,7 @@ contains
         !        the end of the list of occupied orbitals.  Default: no
         !        new line.
 
-        type(kpoint), intent(in) :: k
+        type(basis_fn), intent(in) :: k
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
         integer :: i, io

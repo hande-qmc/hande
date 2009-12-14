@@ -4,7 +4,7 @@ module hubbard
 
 use basis
 use system
-use kpoints
+use basis
 
 implicit none
 
@@ -25,8 +25,8 @@ contains
 
         integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
         integer :: i, j, k, ibasis, ierr
-        type(kpoint), allocatable, target :: tmp_basis_fns(:)
-        type(kpoint), pointer :: basis_fn
+        type(basis_fn), allocatable, target :: tmp_basis_fns(:)
+        type(basis_fn), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
 
         nbasis = 2*nsites
@@ -88,8 +88,8 @@ contains
         do i = 1, nbasis
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
-            basis_fn => tmp_basis_fns(basis_fns_ranking(i))
-            call init_kpoint(basis_fns(i), basis_fn%k, basis_fn%ms)
+            basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
+            call init_kpoint(basis_fns(i), basis_fn_p%k, basis_fn_p%ms)
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%k, stat=ierr)
         end do
         deallocate(tmp_basis_fns, stat=ierr)
