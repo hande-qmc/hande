@@ -6,6 +6,16 @@ use kpoints
 
 implicit none
 
+! The kpoint type is used to specify a spin orbital in momentum space.
+type kpoint
+    ! Wavevector in terms of the reciprocal lattice vectors of the crystal cell.
+    integer, pointer :: k(:) => NULL()
+    ! Spin of the electron (1 or -1).
+    integer :: ms
+    ! Kinetic energy.
+    real(dp) :: kinetic
+end type kpoint
+
 ! Store of information about the (spin) basis functions of the system.
 type(kpoint), allocatable :: basis_fns(:) ! (nbasis)
 
@@ -36,6 +46,76 @@ integer, allocatable :: bit_lookup(:,:) ! (2, nbasis)
 integer, allocatable :: basis_lookup(:,:) ! (8, basis_length)
 
 contains
+
+    pure subroutine init_kpoint(kp,k,ms)
+
+        ! Initialise a variable of type kpoint.
+        ! In:
+        !    k (optional): wavevector in units of the reciprocal lattice vectors
+        !                  of the crystal cell.
+        !    ms (optional): set spin of an electron occupying the basis function.
+        ! Out:
+        !    kp: initialsed kp.  The wavevector and kinetic energy components are
+        !        set if the k arguments is given and the ms component is set if
+        !        the ms argument is given.  If no optional arguments are
+        !        specified then a completely blank variable is returned.
+        !
+        ! This should be called even if k and ms are not specified so that the
+        ! k component can be correctly allocated.
+
+        type(kpoint), intent(out) :: kp
+        integer, intent(in), optional  :: k(ndim)
+        integer, intent(in), optional  :: ms
+        integer :: ierr
+
+        if (.not.associated(kp%k)) then
+            allocate(kp%k(ndim),stat=ierr)
+        end if
+
+        if (present(k)) then
+            kp%k = k
+            kp%kinetic = calc_kinetic(k)
+        end if
+
+        if (present(ms)) kp%ms = ms
+
+    end subroutine init_kpoint
+
+    subroutine write_kpoint(k, iunit, new_line)
+
+        ! Print out information stored in k.
+        ! In:
+        !    k: kpoint variable.
+        !    iunit (optional): io unit to which the output is written.
+        !        Default: 6 (stdout).
+        !    new_line (optional): if true, then a new line is written at
+        !        the end of the list of occupied orbitals.  Default: no
+        !        new line.
+
+        type(kpoint), intent(in) :: k
+        integer, intent(in), optional :: iunit
+        logical, intent(in), optional :: new_line
+        integer :: i, io
+
+        if (present(iunit)) then
+            io = iunit
+        else
+            io = 6
+        end if
+
+        write (io,'(1X,"(")', advance='no')
+        write (io,'(i2)',advance='no') k%k(1)
+        do i = 2,ndim
+            write (io,'(",",i2)',advance='no') k%k(i)
+        end do
+        write (io,'(")")', advance='no')
+        write (io,'(5X,i2)', advance='no') k%ms
+        write (io,'(4X,f12.8)', advance='no') k%kinetic
+        if (present(new_line)) then
+            if (new_line) write (io,'()')
+        end if
+
+    end subroutine write_kpoint
 
     pure function spin_symmetry(i, j) result(spin_match)
 
