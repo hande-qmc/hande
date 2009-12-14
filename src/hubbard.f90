@@ -31,6 +31,20 @@ contains
 
         nbasis = 2*nsites
 
+        ! Find basis functions.
+
+        ! We use a minimal basis: the hubbard model consisting of two
+        ! spin-orbitals per lattice site.
+
+        ! In the momentum space formulation the basis functions consist of a
+        ! set of wavevectors/k-points that lie within the first Brillouin zone.
+
+        ! In the real space formulation the basis functions used are those
+        ! residing at the lattice points: we just need to find which lattice
+        ! points fall within the crystal cell.
+
+        ! Momentum space:
+
         ! Fold the crystal cell into the FBZ.
         ! The k-points must be integer multiples of the reciprocal lattice
         ! vectors of the crystal cell (so that the wavefunction is periodic in
@@ -41,6 +55,14 @@ contains
         ! number of reciprocal crystal cells in the FBZ of the unit cell and 
         ! hence this gives the required number of wavevectors.
 
+        ! Real space:
+
+        ! The same procedure applies as for the momentum space: we find which
+        ! lattice sites lie within the Wigner--Seitz cell.  In fact, due to the
+        ! relationship between reciprocal space and real space (and due to how
+        ! we store the wavevectors in terms of the reciprocal lattice vectors of
+        ! the crystal cell), *exactly* the same approach is needed, so we're
+        ! just going to abuse the same code. Shocking, I know.
 
         ! Maximum limits...
         ! [Does it show that I've been writing a lot of python recently?]
@@ -69,12 +91,12 @@ contains
                         if (ibasis==nbasis) then
                             call stop_all('init_basis_fns','Too many basis functions found.')
                         else
-                            ! Have found an allowed wavevector.
+                            ! Have found an allowed wavevector/site.
                             ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
-                            call init_kpoint(tmp_basis_fns(ibasis), kp(1:ndim), 1)
+                            call init_basis_fn(tmp_basis_fns(ibasis), kp(1:ndim), 1)
                             ibasis = ibasis + 1
-                            call init_kpoint(tmp_basis_fns(ibasis), kp(1:ndim), -1)
+                            call init_basis_fn(tmp_basis_fns(ibasis), kp(1:ndim), -1)
                         end if
                     end if
                 end do
@@ -89,7 +111,7 @@ contains
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
-            call init_kpoint(basis_fns(i), basis_fn_p%l, basis_fn_p%ms)
+            call init_basis_fn(basis_fns(i), basis_fn_p%l, basis_fn_p%ms)
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
         end do
         deallocate(tmp_basis_fns, stat=ierr)
@@ -101,9 +123,10 @@ contains
             do i = 1, ndim
                 write (6,'(3X)', advance='no')
             end do
-            write (6,'(a,4X,a7)') 'ms','kinetic'
+            write (6,'(a2)', advance='no') 'ms'
+            if (system_type /= hub_real) write(6,'(5X,a7)') 'kinetic'
             do i = 1, nbasis
-                call write_kpoint(basis_fns(i), new_line=.true.)
+                call write_basis_fn(basis_fns(i), new_line=.true.)
             end do
             write (6,'()')
         end if

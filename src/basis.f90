@@ -55,52 +55,65 @@ integer, allocatable :: basis_lookup(:,:) ! (8, basis_length)
 
 contains
 
-    pure subroutine init_kpoint(kp,k,ms)
+    pure subroutine init_basis_fn(b, l, ms)
 
-        ! Initialise a variable of type kpoint.
+        ! Initialise a variable of type basis_fn.
         ! In:
-        !    k (optional): wavevector in units of the reciprocal lattice vectors
-        !                  of the crystal cell.
+        !    k (optional): quantum numbers of the basis function.
+        !                  Momentum space formulation:
+        !                      wavevector in units of the reciprocal lattice vectors
+        !                      of the crystal cell.
+        !                  Real space formulation:
+        !                      position of basis function within the crystal cell
+        !                      in units of the primitive lattice vectors.
         !    ms (optional): set spin of an electron occupying the basis function.
         ! Out:
-        !    kp: initialsed kp.  The wavevector and kinetic energy components are
-        !        set if the k arguments is given and the ms component is set if
-        !        the ms argument is given.  If no optional arguments are
-        !        specified then a completely blank variable is returned.
+        !    b: initialsed basis function.  The wavevector and kinetic energy
+        !      components are set if the k arguments is given and the ms component
+        !      is set if the ms argument is given.  If no optional arguments are
+        !      specified then a completely blank variable is returned.
         !
-        ! This should be called even if k and ms are not specified so that the
-        ! k component can be correctly allocated.
+        ! This should be called even if l and ms are not specified so that the
+        ! l component can be correctly allocated.
 
-        type(basis_fn), intent(out) :: kp
-        integer, intent(in), optional  :: k(ndim)
+        use system, only: system_type, hub_real
+
+        type(basis_fn), intent(out) :: b
+        integer, intent(in), optional  :: l(ndim)
         integer, intent(in), optional  :: ms
         integer :: ierr
 
-        if (.not.associated(kp%l)) then
-            allocate(kp%l(ndim),stat=ierr)
+        if (.not.associated(b%l)) then
+            allocate(b%l(ndim),stat=ierr)
         end if
 
-        if (present(k)) then
-            kp%l = k
-            kp%kinetic = calc_kinetic(k)
+        if (present(l)) then
+            b%l = l
+            if (system_type /= hub_real) then
+                b%kinetic = calc_kinetic(l)
+            else
+                b%kinetic = 0.0_dp
+            end if
         end if
 
-        if (present(ms)) kp%ms = ms
+        if (present(ms)) b%ms = ms
 
-    end subroutine init_kpoint
+    end subroutine init_basis_fn
 
-    subroutine write_kpoint(k, iunit, new_line)
+    subroutine write_basis_fn(b, iunit, new_line)
 
-        ! Print out information stored in k.
+        use system, only: system_type, hub_real
+
+        ! Print out information stored in b.
         ! In:
-        !    k: kpoint variable.
+        !    b: basis_fn variable.
         !    iunit (optional): io unit to which the output is written.
         !        Default: 6 (stdout).
         !    new_line (optional): if true, then a new line is written at
         !        the end of the list of occupied orbitals.  Default: no
         !        new line.
 
-        type(basis_fn), intent(in) :: k
+        type(basis_fn), intent(in) :: b
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
         integer :: i, io
@@ -112,18 +125,18 @@ contains
         end if
 
         write (io,'(1X,"(")', advance='no')
-        write (io,'(i2)',advance='no') k%l(1)
+        write (io,'(i2)',advance='no') b%l(1)
         do i = 2,ndim
-            write (io,'(",",i2)',advance='no') k%l(i)
+            write (io,'(",",i2)',advance='no') b%l(i)
         end do
         write (io,'(")")', advance='no')
-        write (io,'(5X,i2)', advance='no') k%ms
-        write (io,'(4X,f12.8)', advance='no') k%kinetic
+        write (io,'(5X,i2)', advance='no') b%ms
+        if (system_type /= hub_real) write (io,'(4X,f12.8)', advance='no') b%kinetic
         if (present(new_line)) then
             if (new_line) write (io,'()')
         end if
 
-    end subroutine write_kpoint
+    end subroutine write_basis_fn
 
     pure function spin_symmetry(i, j) result(spin_match)
 
