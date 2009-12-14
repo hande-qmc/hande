@@ -4,7 +4,6 @@ module hubbard
 
 use basis
 use system
-use basis
 
 implicit none
 
