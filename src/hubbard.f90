@@ -89,8 +89,8 @@ contains
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
-            call init_kpoint(basis_fns(i), basis_fn_p%k, basis_fn_p%ms)
-            deallocate(tmp_basis_fns(basis_fns_ranking(i))%k, stat=ierr)
+            call init_kpoint(basis_fns(i), basis_fn_p%l, basis_fn_p%ms)
+            deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
         end do
         deallocate(tmp_basis_fns, stat=ierr)
         deallocate(basis_fns_ranking, stat=ierr)
@@ -117,7 +117,7 @@ contains
         integer :: ierr, i
 
         do i = 1, nbasis
-            deallocate(basis_fns(i)%k, stat=ierr)
+            deallocate(basis_fns(i)%l, stat=ierr)
         end do
         deallocate(basis_fns, stat=ierr)
 
@@ -196,7 +196,7 @@ contains
 
         ! k_i + k_j - k_k -k_l in units of the reciprocal lattice vectors of the
         ! crystal cell.
-        delta_k = basis_fns(i)%k + basis_fns(j)%k - basis_fns(k)%k - basis_fns(l)%k
+        delta_k = basis_fns(i)%l + basis_fns(j)%l - basis_fns(k)%l - basis_fns(l)%l
 
         conserved = is_reciprocal_lattice_vector(delta_k)
 

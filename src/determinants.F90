@@ -234,7 +234,7 @@ contains
 
         k = 0
         do i = 1, nel
-            k = k + basis_fns(occ_list(i))%k
+            k = k + basis_fns(occ_list(i))%l
         end do
 
     end function det_momentum

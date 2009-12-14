@@ -8,8 +8,16 @@ implicit none
 
 ! The kpoint type is used to specify a spin orbital in momentum space.
 type basis_fn
-    ! Wavevector in terms of the reciprocal lattice vectors of the crystal cell.
-    integer, pointer :: k(:) => NULL()
+    ! l is used in two different contexts depending upon whether a momentum
+    ! space description or real space description is being used.
+    ! Momentum space:
+    !     l is the wavevector in terms of the reciprocal lattice vectors of the crystal cell.
+    ! Real space:
+    !     l is the position of the basis function within the crystal cell in
+    !     units of the lattice vectors of the primitive unit cell.
+    ! Obviously we should not convert between the two descritions within one
+    ! calculation! ;-)
+    integer, pointer :: l(:) => NULL()
     ! Spin of the electron (1 or -1).
     integer :: ms
     ! Kinetic energy.
@@ -68,12 +76,12 @@ contains
         integer, intent(in), optional  :: ms
         integer :: ierr
 
-        if (.not.associated(kp%k)) then
-            allocate(kp%k(ndim),stat=ierr)
+        if (.not.associated(kp%l)) then
+            allocate(kp%l(ndim),stat=ierr)
         end if
 
         if (present(k)) then
-            kp%k = k
+            kp%l = k
             kp%kinetic = calc_kinetic(k)
         end if
 
@@ -104,9 +112,9 @@ contains
         end if
 
         write (io,'(1X,"(")', advance='no')
-        write (io,'(i2)',advance='no') k%k(1)
+        write (io,'(i2)',advance='no') k%l(1)
         do i = 2,ndim
-            write (io,'(",",i2)',advance='no') k%k(i)
+            write (io,'(",",i2)',advance='no') k%l(i)
         end do
         write (io,'(")")', advance='no')
         write (io,'(5X,i2)', advance='no') k%ms
