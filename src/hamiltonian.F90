@@ -3,7 +3,7 @@ module hamiltonian
 use const
 use basis
 use determinants
-use hubbard
+use hubbard_k
 use parallel
 
 implicit none
@@ -428,13 +428,13 @@ contains
 
                 ! One electron operator
                 do i = 1, nel
-                    hmatel = hmatel + get_one_e_int(root_det(i), root_det(i))
+                    hmatel = hmatel + get_one_e_int_k(root_det(i), root_det(i))
                 end do
 
                 ! Two electron operator
                 do i = 1, nel
                     do j = i+1, nel
-                        hmatel = hmatel + get_two_e_int(root_det(i), root_det(j), root_det(i), root_det(j))
+                        hmatel = hmatel + get_two_e_int_k(root_det(i), root_det(j), root_det(i), root_det(j))
                     end do
                 end do
 
@@ -445,11 +445,11 @@ contains
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
                 ! One electron operator
-                hmatel = hmatel + get_one_e_int(excitation%from_orb(1), excitation%to_orb(1)) 
+                hmatel = hmatel + get_one_e_int_k(excitation%from_orb(1), excitation%to_orb(1)) 
 
                 ! Two electron operator
                 do i = 1, nel
-                    hmatel = hmatel + get_two_e_int(root_det(i), excitation%from_orb(1), root_det(i), excitation%to_orb(1))
+                    hmatel = hmatel + get_two_e_int_k(root_det(i), excitation%from_orb(1), root_det(i), excitation%to_orb(1))
                 end do
 
                 if (excitation%perm) hmatel = -hmatel
@@ -459,7 +459,7 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
-                hmatel = get_two_e_int(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
+                hmatel = get_two_e_int_k(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
 
                 if (excitation%perm) hmatel = -hmatel
 
