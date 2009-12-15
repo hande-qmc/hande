@@ -391,6 +391,38 @@ contains
         !    Hamiltonian matrix element between the two determinants, 
         !    < D1 | H | D2 >.
 
+        ! This is just a wrapper function around the system specific get_hmatel
+        ! functions.
+
+        ! Having separate functions for the different systems might seem
+        ! somewhat redundant (a lot of the code in the functions is similar)
+        ! but enables us to use only one test for the system type.  A small
+        ! efficiency for not much effort. :-)
+
+        real(dp) :: hmatel
+        integer, intent(in) :: d1, d2
+
+        select case(system_type)
+        case(hub_k)
+            hmatel = get_hmatel_k(d1, d2)
+        case(hub_real)
+            hmatel = get_hmatel_real(d1, d2)
+        end select
+
+    end function get_hmatel
+
+    pure function get_hmatel_k(d1, d2) result(hmatel)
+
+        ! In:
+        !    d1, d2: integer labels of two determinants, as stored in the
+        !            dets array.
+        ! Returns:
+        !    Hamiltonian matrix element between the two determinants, 
+        !    < D1 | H | D2 >, where the determinants are formed from
+        !    momentum space basis functions.
+
+        ! Used in the momentum space formulation of the Hubbard model only.
+
         real(dp) :: hmatel
         integer, intent(in) :: d1, d2
         logical :: non_zero
@@ -445,7 +477,7 @@ contains
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
                 ! One electron operator
-                hmatel = hmatel + get_one_e_int_k(excitation%from_orb(1), excitation%to_orb(1)) 
+                hmatel = get_one_e_int_k(excitation%from_orb(1), excitation%to_orb(1)) 
 
                 ! Two electron operator
                 do i = 1, nel
@@ -466,6 +498,83 @@ contains
             end select
         end if
 
-    end function get_hmatel
+    end function get_hmatel_k
+
+    pure function get_hmatel_real(d1, d2) result(hmatel)
+
+        ! In:
+        !    d1, d2: integer labels of two determinants, as stored in the
+        !            dets array.
+        ! Returns:
+        !    Hamiltonian matrix element between the two determinants, 
+        !    < D1 | H | D2 >, where the determinants are formed from
+        !    real space basis functions.
+
+        ! Used in the real space formulation of the Hubbard model only.
+
+        real(dp) :: hmatel
+        integer, intent(in) :: d1, d2
+        logical :: non_zero
+        type(excit) :: excitation
+        integer :: root_det(nel)
+        integer :: i, j
+
+        hmatel = 0.0_dp
+        non_zero = .false.
+
+        ! Test to see if Hamiltonian matrix element is non-zero.
+
+        ! Spin symmetry conserved?
+        if (dets(d1)%Ms == dets(d2)%Ms) then
+            excitation = get_excitation(dets(d1)%f, dets(d2)%f)
+            ! Connected determinants can differ by (at most) 2 spin orbitals.
+            if (excitation%nexcit <= 2) then
+                ! Space group symmetry not currently implemented.
+                non_zero = .true.
+            end if
+        end if
+
+        if (non_zero) then
+            select case(excitation%nexcit)
+            ! Apply Slater--Condon rules.
+            case(0)
+
+                ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+
+                ! < D | T | D > = 0 within the real space formulation of the
+                ! Hubbard model.
+
+                ! Two electron operator
+                ! hmatel = 
+
+            case(1)
+
+                root_det = decode_det(dets(d1)%f)
+
+                ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+
+                ! One electron operator
+                ! hmatel = get_one_e_int_k(excitation%from_orb(1), excitation%to_orb(1)) 
+
+                ! Two electron operator
+                !do i = 1, nel
+                !    hmatel = hmatel + get_two_e_int_k(root_det(i), excitation%from_orb(1), root_det(i), excitation%to_orb(1))
+                !end do
+
+                if (excitation%perm) hmatel = -hmatel
+
+            case(2)
+
+                ! < D | H | D_{ij}^{ab} > = < ij || ab >
+
+                ! Two electron operator
+                !hmatel = get_two_e_int_k(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
+
+                if (excitation%perm) hmatel = -hmatel
+
+            end select
+        end if
+
+    end function get_hmatel_real
 
 end module hamiltonian
