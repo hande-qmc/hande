@@ -32,7 +32,7 @@ integer :: lanczos_basis_length = 40
 type(blacs_info) :: proc_blacs_info
 
 ! Procedure to multiply the hamiltonian matrix by a Lanczos vector.
-private :: hamil_vector
+private :: HPsi, HPsi_direct
 
 ! Distribution of Hamiltonian matrix across the processors. 
 ! No distribution.
@@ -327,7 +327,7 @@ contains
         if (direct_lanczos) then
             call trlan(HPsi_direct, info, nrows, mev, eval, evec, nrows)
         else
-            call trlan(hamil_vector, info, nrows, mev, eval, evec, nrows)
+            call trlan(HPsi, info, nrows, mev, eval, evec, nrows)
         end if
 
         ! Get info...
@@ -356,7 +356,7 @@ contains
 
     end subroutine lanczos_diagonalisation
        
-    subroutine hamil_vector(nrow, ncol, xin, ldx, yout, ldy)
+    subroutine HPsi(nrow, ncol, xin, ldx, yout, ldy)
  
         ! Matrix-vector multiplication procedure for use with trlan.
         ! In:
@@ -405,7 +405,7 @@ contains
 #endif
         end if
  
-    end subroutine hamil_vector
+    end subroutine HPsi
 
     subroutine HPsi_direct(nrow, ncol, xin, ldx, yout, ldy)
 
