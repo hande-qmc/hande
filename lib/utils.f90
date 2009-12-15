@@ -30,4 +30,40 @@ contains
 
     end function get_free_unit
 
+    elemental function int_fmt(i, padding) result(fmt1)
+    
+        ! In:
+        !    i: an integer
+        !    padding (optional): amount of padding to add to format statement.
+        !        The default amount is 2.
+        ! Returns:
+        !    fmt1: a format statement for an integer field which will hold
+        !        i perfectly plus an amount of padding.
+        
+        ! This does take i/o formatting to a slightly OCD level addmittedly...
+
+        character(2) :: fmt1
+        integer, intent(in) :: i
+        integer, intent(in), optional :: padding
+        integer :: p
+        real :: r
+
+        if (present(padding)) then
+            p = padding
+        else
+            p  = 2
+        end if
+
+        r = log10(real(i))
+        if (r < 10) then
+            write (fmt1,'("i",i1)') nint(r+p)
+        else if (r < 100) then
+            write (fmt1,'("i",i2)') nint(r+p)
+        else
+            ! By this point we'll have hit integer overflow anyway...
+            write (fmt1,'("i",i3)') nint(r+p)
+        end if
+
+    end function int_fmt
+
 end module utils

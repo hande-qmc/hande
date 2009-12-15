@@ -60,8 +60,10 @@ contains
         ! integer list of orbitals to bit strings and vice versa.
 
         use comb_m, only: binom
+        use utils, only: int_fmt
 
         integer :: i, bit_pos, bit_element, ierr
+        character(2) :: fmt1(3)
 
         ndets = binom(nbasis, nel)
 
@@ -70,9 +72,10 @@ contains
         if (mod(nbasis,i0_length) /= 0) basis_length = basis_length + 1
 
         if (parent) then
-            write (6,'(1X,a20,i4)') 'Number of electrons:', nel
-            write (6,'(1X,a26,i4)') 'Number of basis functions:', nbasis
-            write (6,'(1X,a26,i8,/)') 'Size of determinant space:', ndets
+            fmt1 = int_fmt((/nel, nbasis, ndets/), padding=1)
+            write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
+            write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
+            write (6,'(1X,a26,'//fmt1(3)//',/)') 'Size of determinant space:', ndets
         end if
 
         ! Lookup arrays.
@@ -125,9 +128,10 @@ contains
         ! basis functions.
 
         use comb_m, only: comb
-        use utils, only: get_free_unit
+        use utils, only: get_free_unit, int_fmt
 
         integer :: i, c(nel), ierr, iunit
+        character(2) :: fmt1
 
         allocate(dets(ndets), stat=ierr)
         
@@ -136,11 +140,12 @@ contains
             open(iunit, file=determinant_file, status='unknown')
         end if
 
+        fmt1 = int_fmt(ndets, padding=1)
         do i = 1, ndets
             c = comb(nbasis, nel, i)
             call init_det(c, dets(i))
             if (write_determinants) then
-                write (iunit,'(1X,i8,4X)',advance='no') i
+                write (iunit,'('//fmt1//',4X)',advance='no') i
                 call write_det(dets(i)%f, iunit, new_line=.true.)
             end if
         end do

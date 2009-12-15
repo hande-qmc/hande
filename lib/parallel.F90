@@ -76,9 +76,11 @@ contains
 
         ! Print out information about the parallel environment.
 
+        use utils, only: int_fmt
+
         character(2) :: fmt1
 
-        write (fmt1,'("i",i1)') nint(log10(real(nprocs))+2)
+        fmt1 = int_fmt(nprocs)
         write (6,'(1X,"Running on"'//fmt1//'" processors.",/)') nprocs
 
     end subroutine parallel_report
