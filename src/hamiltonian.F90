@@ -3,7 +3,6 @@ module hamiltonian
 use const
 use basis
 use determinants
-use hubbard_k
 use parallel
 
 implicit none
@@ -484,6 +483,8 @@ contains
 
         ! Used in the momentum space formulation of the Hubbard model only.
 
+        use hubbard_k
+
         real(dp) :: hmatel
         integer, intent(in) :: d1, d2
         logical :: non_zero
@@ -572,6 +573,8 @@ contains
         !    real space basis functions.
 
         ! Used in the real space formulation of the Hubbard model only.
+
+        use hubbard_real
 
         real(dp) :: hmatel
         integer, intent(in) :: d1, d2

@@ -2,6 +2,8 @@ module hubbard_k
 
 ! Momentum space formulation of the Hubbard model.
 
+use const
+
 implicit none
 
 contains
