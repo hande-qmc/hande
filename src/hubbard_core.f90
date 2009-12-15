@@ -54,13 +54,17 @@ contains
 
         call find_all_determinants()
 
-        if (nprocs == 1) call generate_hamil(distribute_off)
+        if (nprocs == 1) then
+            if (t_exact .or. (t_lanczos .and. .not.direct_lanczos) ) then
+                call generate_hamil(distribute_off)
+            end if
+        end if
 
         ! Lanczos.
         if (t_lanczos) then
             ! Construct the Hamiltonian matrix distributed over the processors
             ! if running in parallel.
-            if (nprocs > 1) call generate_hamil(distribute_cols)
+            if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
             call lanczos_diagonalisation()
         end if
 

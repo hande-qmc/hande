@@ -46,6 +46,8 @@ integer, parameter :: distribute_cols = 2
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
 
+logical :: direct_lanczos = .false.
+
 contains
 
     subroutine generate_hamil(distribute_mode)
@@ -174,7 +176,7 @@ contains
 
         integer :: ierr
 
-        deallocate(hamil, stat=ierr)
+        if (allocated(hamil)) deallocate(hamil, stat=ierr)
 
     end subroutine end_hamil
 
@@ -278,11 +280,25 @@ contains
        
         if (parent) then
             write (6,'(1X,a23,/,1X,23("-"))') 'Lanczos diagonalisation'
-            write (6,'(/,1X,a37,/)') 'Performing lanczos diagonalisation...'
+            if (direct_lanczos) then
+                write (6,'(/,1X,a44,/)') 'Performing direct lanczos diagonalisation...'
+            else
+                write (6,'(/,1X,a37,/)') 'Performing lanczos diagonalisation...'
+            end if
         end if
        
         if (distribute /= distribute_off .and. distribute /= distribute_cols) then
             call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
+        end if
+
+        if (.not.t_exact .and. direct_lanczos) then
+            ! Didn't execute generate_hamil so need to set up
+            ! the processor grid.
+            proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
+        end if
+
+        if (direct_lanczos .and. nprocs > 1) then
+            call stop_all('lanczos_diagonalisation','Direct Lanczos not implemented in parallel.')
         end if
 
         nrows = proc_blacs_info%nrows
@@ -308,7 +324,11 @@ contains
         ! eval: array to store eigenvalue
         ! evec: array to store the eigenvectors
         ! lde: the leading dimension of evec (in serial case: ndets).
+        if (direct_lanczos) then
+            call trlan(HPsi_direct, info, nrows, mev, eval, evec, nrows)
+        else
             call trlan(hamil_vector, info, nrows, mev, eval, evec, nrows)
+        end if
 
         ! Get info...
         if (parent) then
@@ -356,7 +376,7 @@ contains
         real(dp), intent(out) :: yout(ldy,ncol)
         ! local variables
         integer :: i
- 
+
         if (nprocs == 1) then
             ! Use blas to perform matrix-vector multiplication.
             do i = 1, ncol
@@ -386,6 +406,42 @@ contains
         end if
  
     end subroutine hamil_vector
+
+    subroutine HPsi_direct(nrow, ncol, xin, ldx, yout, ldy)
+
+        ! Matrix-vector multiplication procedure for use with trlan.
+        ! The Hamiltonian matrix elements are calculated directly ('on-the-fly')
+        ! rather than looked up in the precomputed array hamil.
+        ! In:
+        !    nrow: the number of rows on this processor if the problem is distributed 
+        !        using MPI, otherwise the number of total rows in a Lanczos vector. 
+        !    ncol: the number of vectors (columns in xin and yout) to be multiplied. 
+        !    xin: the array to store the input vectors to be multiplied.
+        !    ldx: the leading dimension of the array xin when it is declared as 
+        !       two-dimensional array.
+        !    ldy: the leading dimension of the array yout when it is declared as 
+        !       two-dimensional array.
+        ! Out:
+        !    yout: the array to store results of the multiplication.
+ 
+        integer, intent(in) :: nrow, ncol, ldx, ldy
+        real(dp), intent(in) :: xin(ldx,ncol)
+        real(dp), intent(out) :: yout(ldy,ncol)
+        integer :: i, j, k
+ 
+        yout = 0.0_dp
+        do k = 1, ncol
+            ! y = H x,
+            ! where H is the Hamiltonian matrix, x is the input Lanczos vector
+            ! and y the output Lanczos vector.
+            do j = 1, ndets
+                do i = 1, nrow
+                    yout(i,k) = yout(i,k) + get_hmatel(i,j)*xin(j, k)
+                end do
+            end do
+        end do
+
+    end subroutine HPsi_direct
     
     elemental function get_hmatel(d1, d2) result(hmatel)
 

@@ -89,6 +89,9 @@ contains
                 call readf(hubu)
             case('EXACT','FCI')
                 t_exact = .true.
+            case('LANCZOS_DIRECT')
+                t_lanczos = .true.
+                direct_lanczos = .true.
             case('LANCZOS')
                 t_lanczos = .true.
             case('LANCZOS_BASIS')
