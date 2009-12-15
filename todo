@@ -1,4 +1,4 @@
-1. real space formulation (+refactor?)
+1. real space formulation
 2. option to obtain eigenvalues (default) or eigenvectors as well.
 3. timing
 4. memory logging
@@ -7,3 +7,5 @@
 7. checktest
 8. block diagonalise hamiltonian matrix for kspace and spin...
 9. distribute input data...
+10. refer to krylov vectors correctly
+11. parallel direct lanczos.
