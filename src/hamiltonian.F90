@@ -81,6 +81,9 @@ contains
         ! Find dimensions of local array.
         select case(distribute)
         case(distribute_off)
+            ! Useful to have a dummy proc_blacs_info to refer to.  Everything
+            ! apart from the matrix descriptors are valid in the dummy instance.
+            proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
             n1 = ndets
             n2 = ndets
         case(distribute_blocks)
@@ -267,7 +270,7 @@ contains
         real(dp), allocatable :: eval(:) ! (mev)
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         type(trl_info_t) :: info
-        integer :: i, ierr
+        integer :: i, ierr, nrows
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
@@ -282,27 +285,30 @@ contains
             call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
         end if
 
+        nrows = proc_blacs_info%nrows
+
         ! Initialise trlan.
         ! info: type(trl_info_t).  Used by trl to store calculation info.
-        ! ndets: number of rows of matrix on processor.
+        ! nrows: number of rows of matrix on processor.
         ! lanczos_basis_length: maximum Lanczos basis size.
         ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
         !       the largest).
         ! nlanczos_eigv: number of eigenvalues to compute.
-        call trl_init_info(info, ndets, lanczos_basis_length, lohi, nlanczos_eigv)
+        call trl_init_info(info, nrows, lanczos_basis_length, lohi, nlanczos_eigv)
        
         allocate(eval(mev), stat=ierr)
-        allocate(evec(ndets,mev), stat=ierr)
+
+        allocate(evec(nrows,mev), stat=ierr)
        
         ! Call Lanczos diagonalizer.
         ! hamil_vector: matrix-vector multiplication routine.
         ! info: created in trl_init_info.
-        ! ndets: number of rows of matrix on processor.
+        ! nrows: number of rows of matrix on processor.
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! eval: array to store eigenvalue
         ! evec: array to store the eigenvectors
         ! lde: the leading dimension of evec (in serial case: ndets).
-        call trlan(hamil_vector, info, ndets, mev, eval, evec, ndets)
+            call trlan(hamil_vector, info, nrows, mev, eval, evec, nrows)
 
         ! Get info...
         if (parent) then
