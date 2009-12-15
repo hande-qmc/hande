@@ -163,13 +163,16 @@ contains
             desc_m = 0
             desc_v = 0
         end if
-
-        my_blacs_info = blacs_info(procx, procy, nrows, ncols, desc_m, desc_v)
 #else
+        procx = 0
+        procy = 0
+        nrows = matrix_size
+        ncols = matrix_size
         desc_m = 0
         desc_v = 0
-        my_blacs_info = blacs_info(0, 0, 1, 1, desc_m, desc_v)
 #endif
+
+        my_blacs_info = blacs_info(procx, procy, nrows, ncols, desc_m, desc_v)
 
     end function get_blacs_info
 
