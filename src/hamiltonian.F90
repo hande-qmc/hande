@@ -351,7 +351,6 @@ contains
         ! Out:
         !    yout: the array to store results of the multiplication.
  
-        implicit None
         integer, intent(in) :: nrow, ncol, ldx, ldy
         real(dp), intent(in) :: xin(ldx,ncol)
         real(dp), intent(out) :: yout(ldy,ncol)
@@ -388,7 +387,7 @@ contains
  
     end subroutine hamil_vector
     
-    pure function get_hmatel(d1, d2) result(hmatel)
+    elemental function get_hmatel(d1, d2) result(hmatel)
 
         ! In:
         !    d1, d2: integer labels of two determinants, as stored in the
@@ -417,7 +416,7 @@ contains
 
     end function get_hmatel
 
-    pure function get_hmatel_k(d1, d2) result(hmatel)
+    elemental function get_hmatel_k(d1, d2) result(hmatel)
 
         ! In:
         !    d1, d2: integer labels of two determinants, as stored in the
@@ -506,7 +505,7 @@ contains
 
     end function get_hmatel_k
 
-    pure function get_hmatel_real(d1, d2) result(hmatel)
+    elemental function get_hmatel_real(d1, d2) result(hmatel)
 
         ! In:
         !    d1, d2: integer labels of two determinants, as stored in the
