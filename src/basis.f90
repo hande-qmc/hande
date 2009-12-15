@@ -32,11 +32,11 @@ type(basis_fn), allocatable :: basis_fns(:) ! (nbasis)
 integer :: nbasis
 
 ! The determinants are stored as a bit string.  Each element of an array is
-! a byte (containing 8 bytes) as this was the smallest possible integer type
-! that standard fortran can currently handle. (The bit type has just been
-! deleted from the forthcoming F2008 standard, so we won't hold out breath...)
+! an integer of kind i0 (containing i0_length bits).
+! (The bit type has just been deleted from the forthcoming F2008 standard, so we
+! won't hold out breath until we can use bits directly......)
 ! basis_length is the length of the byte array necessary to contain a bit for
-! each basis function, i.e. ceiling(nbasis/8).
+! each basis function, i.e. ceiling(nbasis/i0_length).
 integer :: basis_length
 
 ! A determinant is stored in the array f(nbasis).  A basis function is occupied
@@ -51,7 +51,7 @@ integer, allocatable :: bit_lookup(:,:) ! (2, nbasis)
 ! The reverse lookup to bit_lookup.
 ! basis_lookup(i,j) gives the basis function corresponding to
 ! the i-th bit in the j-th element of a determinant array.
-integer, allocatable :: basis_lookup(:,:) ! (8, basis_length)
+integer, allocatable :: basis_lookup(:,:) ! (i0_length, basis_length)
 
 contains
 
