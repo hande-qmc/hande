@@ -59,6 +59,10 @@ contains
             if (eof) exit
             call readu(w)
             select case(w)
+            case('REAL_SPACE')
+                system_type = hub_real
+            case('K_SPACE','MOMENTUM_SPACE')
+                system_type = hub_k
             case('LATTICE')
                 ! Lattice block
                 call read_line(eof)

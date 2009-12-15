@@ -124,7 +124,11 @@ contains
                 write (6,'(3X)', advance='no')
             end do
             write (6,'(a2)', advance='no') 'ms'
-            if (system_type /= hub_real) write(6,'(5X,a7)') 'kinetic'
+            if (system_type == hub_real) then
+                write(6,'()')
+            else
+                write(6,'(5X,a7)') 'kinetic'
+            end if
             do i = 1, nbasis
                 call write_basis_fn(basis_fns(i), new_line=.true.)
             end do
