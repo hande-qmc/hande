@@ -31,7 +31,7 @@ contains
             call environment_report()
         end if
 
-        if (nprocs > 1) call parallel_report()
+        if (nprocs > 1 .and. parent) call parallel_report()
 
         call read_input()
 

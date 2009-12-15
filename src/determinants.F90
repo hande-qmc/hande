@@ -135,7 +135,7 @@ contains
 
         allocate(dets(ndets), stat=ierr)
         
-        if (write_determinants) then
+        if (write_determinants .and. parent) then
             iunit = get_free_unit()
             open(iunit, file=determinant_file, status='unknown')
         end if
@@ -144,13 +144,13 @@ contains
         do i = 1, ndets
             c = comb(nbasis, nel, i)
             call init_det(c, dets(i))
-            if (write_determinants) then
+            if (write_determinants .and. parent) then
                 write (iunit,'('//fmt1//',4X)',advance='no') i
                 call write_det(dets(i)%f, iunit, new_line=.true.)
             end if
         end do
 
-        close(iunit, status='keep')
+        if (write_determinants .and. parent) close(iunit, status='keep')
 
     end subroutine find_all_determinants
 
