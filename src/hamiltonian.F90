@@ -65,6 +65,8 @@ contains
         use utils, only: get_free_unit
         use errors
 
+        use hubbard_real
+
         integer, optional :: distribute_mode
         integer :: ierr, iunit, n1, n2
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal
@@ -598,6 +600,15 @@ contains
             end if
         end if
 
+        ! Matrix elements in the real space formulation are quite simple.
+
+        ! 1. < i | T | i > = 0
+        !    Thus the one-electron terms only occur between single excitation
+        !    matrix elements.
+        ! 2. < m,s1 n,s2 | U | p,s1 q,s2 > = U \delta_{m,n} \delta_{m,p} \delta_{m,q} , s1/=s2
+        !    Thus the Coulomb integrals that occur in < D | H | D_i^a > and
+        !    < D | H | D_{ij}^{ab} > are zero.
+
         if (non_zero) then
             select case(excitation%nexcit)
             ! Apply Slater--Condon rules.
@@ -605,36 +616,39 @@ contains
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
 
-                ! < D | T | D > = 0 within the real space formulation of the
-                ! Hubbard model.
+                ! < i | T | i > = 0 within the real space formulation of the
+                ! Hubbard model, unless site i is its own periodic image, in
+                ! which case it has a kinetic interaction with its self-image.
+                ! This only arises if there is at least one crystal cell vector
+                ! which is a unit cell vector.
+                if (t_self_images) then
+                    root_det = decode_det(dets(d1)%f)
+                    do i = 1, nel
+                        hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
+                    end do
+                end if
 
                 ! Two electron operator
-                ! hmatel = 
+                hmatel = hmatel + get_coulomb_matel_real(dets(d1)%f)
 
             case(1)
-
-                root_det = decode_det(dets(d1)%f)
 
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
                 ! One electron operator
-                ! hmatel = get_one_e_int_k(excitation%from_orb(1), excitation%to_orb(1)) 
+                 hmatel = get_one_e_int_real(excitation%from_orb(1), excitation%to_orb(1)) 
 
                 ! Two electron operator
-                !do i = 1, nel
-                !    hmatel = hmatel + get_two_e_int_k(root_det(i), excitation%from_orb(1), root_det(i), excitation%to_orb(1))
-                !end do
+                ! < D | U | D_i^a > = 0 within the real space formulation of the
+                ! Hubbard model.
 
                 if (excitation%perm) hmatel = -hmatel
 
-            case(2)
+!            case(2)
 
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
-
-                ! Two electron operator
-                !hmatel = get_two_e_int_k(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
-
-                if (excitation%perm) hmatel = -hmatel
+                !                         = 0 within the real space formulation
+                !                             of the Hubbard model.
 
             end select
         end if
