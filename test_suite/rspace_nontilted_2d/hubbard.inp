@@ -1,9 +1,7 @@
-k_space
+real_space
 lattice
 2 0
 0 2
 electrons 4
 fci
-eigenvalues
-hamil 
-det 
+lanczos_direct
