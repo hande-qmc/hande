@@ -119,7 +119,11 @@ contains
 
         if (parent) then
             write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
-            write (6,'(1X,a7)', advance='no') 'k-point'
+            if (system_type == hub_real) then
+                write (6,'(1X,a4,3X)', advance='no') 'site'
+            else
+                write (6,'(1X,a7)', advance='no') 'k-point'
+            end if
             do i = 1, ndim
                 write (6,'(3X)', advance='no')
             end do
