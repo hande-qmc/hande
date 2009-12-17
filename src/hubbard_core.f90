@@ -18,7 +18,7 @@ contains
         ! to be used.
 
         use report, only: environment_report
-        use parse_input, only: read_input, check_input
+        use parse_input, only: read_input, check_input, distribute_input
         use system, only: init_system, system_type, hub_real
         use hubbard, only: init_basis_fns
         use determinants, only: init_determinants
@@ -34,7 +34,9 @@ contains
 
         if (nprocs > 1 .and. parent) call parallel_report()
 
-        call read_input()
+        if (parent) call read_input()
+
+        call distribute_input()
 
         call init_system()
 
