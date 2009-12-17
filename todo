@@ -1,10 +1,10 @@
-1. option to obtain eigenvalues (default) or eigenvectors as well.
-2. timing
-3. memory logging
-4. config/makefile/build
-5. document
-6. checktest
-7. block diagonalise hamiltonian matrix for kspace and spin...
-8. distribute input data...
-9.  refer to krylov vectors correctly
-10. parallel direct lanczos.
+1.  option to obtain eigenvalues (default) or eigenvectors as well.
+2.  timing
+3.  memory logging
+4.  config/makefile/build
+5.  document
+6.  checktest
+7.  block diagonalise hamiltonian matrix for kspace and spin...
+8.  parallel direct lanczos.
+9. UEG.
+10. FCIQMC.
