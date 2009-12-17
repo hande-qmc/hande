@@ -57,6 +57,8 @@ if [ ! -z "$undocumented_keywords" ]; then
         echo $keyword | sed -e 's/\\|/ or /g'
     done
     echo
+else
+    echo "All keywords appear in the documentation."
 fi
 
 # test to see if keyword is used in the test suite.
@@ -75,4 +77,6 @@ if [ ! -z "$untested_keywords" ]; then
         echo $keyword | sed -e 's/\\|/ or /g'
     done
     echo
+else
+    echo "All keywords (or their synonyms) appear in the input files in the test suite."
 fi
