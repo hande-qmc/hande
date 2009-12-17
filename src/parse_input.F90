@@ -155,4 +155,39 @@ contains
 
     end subroutine check_input
 
+    subroutine distribute_input()
+
+        ! Distribute the data read in by the parent processor to all other
+        ! processors.
+
+        ! Completely empty (courtesy of C pre-processing) when compiled in
+        ! serial.
+
+#ifdef _PARALLEL
+
+        use mpi
+
+        integer :: ierr
+
+        call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
+        call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(hubt, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(hubu, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(t_exact, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(t_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(find_eigenvectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
+#endif
+
+    end subroutine distribute_input
+
 end module parse_input
