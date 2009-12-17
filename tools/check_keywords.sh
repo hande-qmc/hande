@@ -8,7 +8,10 @@ script_location=$(dirname $0)
 # hence location of src directory.
 src=$script_location/../src
 
-# hence location of test_suite directory.
+# hence location of the documentation directory.
+docs=$script_location/../documentation
+
+# hence location of the test_suite directory.
 test_suite=$script_location/../test_suite
 
 parse_source_files=$src/parse_input.F90
@@ -38,13 +41,23 @@ unique_keywords=$(perl -nle \
     }" \
 $parse_source_files)
 
-# Once there is documentation, test that the keywords are present.
-
-echo -e "Undocumented keywords are:\n"
-for keyword in $all_keywords; do
-    echo $keyword
+# test to see if keyword is mentioned in the documentation.
+undocumented_keywords=''
+for keyword in $unique_keywords; do
+    undocumented_keywords="$undocumented_keywords $(grep -qi $keyword $docs/*rst || echo $keyword)"
 done
-echo
+
+# Remove trailing blanks
+undocumented_keywords=$(echo $undocumented_keywords | sed -e 's/ *$//')
+
+# Output
+if [ ! -z "$undocumented_keywords" ]; then
+    echo -e "Undocumented keywords are:\n"
+    for keyword in $undocumented_keywords; do
+        echo $keyword | sed -e 's/\\|/ or /g'
+    done
+    echo
+fi
 
 # test to see if keyword is used in the test suite.
 untested_keywords=''
