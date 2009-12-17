@@ -534,21 +534,20 @@ contains
                     end do
                 end do
 
-            case(1)
-
-                root_det = decode_det(dets(d1)%f)
+!            case(1)
 
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
+                ! Single excitations are not connected in the momentum space
+                ! basis.
+
                 ! One electron operator
-                hmatel = get_one_e_int_k(excitation%from_orb(1), excitation%to_orb(1)) 
+                ! The kinetic operator is diagonal in the momentum space basis.
 
                 ! Two electron operator
-                do i = 1, nel
-                    hmatel = hmatel + get_two_e_int_k(root_det(i), excitation%from_orb(1), root_det(i), excitation%to_orb(1))
-                end do
-
-                if (excitation%perm) hmatel = -hmatel
+                ! < ij | aj > = 0 only if crystal momentum is conserved up to
+                ! a reciprocal lattice vector.
+                ! As k_i /= k_j, this cannot be met.
 
             case(2)
 
