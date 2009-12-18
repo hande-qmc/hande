@@ -39,6 +39,26 @@ integer :: distribute = distribute_off
 
 contains
 
+    subroutine diagonalise()
+
+        ! 
+
+        use system, only: nel
+
+        integer :: ms
+
+        ! The Hamiltonian can be written in block diagonal form using the spin
+        ! quantum number.  < D_1 | H | D_2 > /= 0 only if D_1 and D_2 have the
+        ! same total spin.
+
+        ! For a given number of electrons, n, the total spin can range from -n
+        ! to +n in steps of 2.
+        spin_block: do ms = -nel, nel, 2
+            ! Find all determinants with this spin.
+        end do spin_block
+
+    end subroutine diagonalise
+
     subroutine generate_hamil(distribute_mode)
 
         ! Generate the Hamiltonian matrix.

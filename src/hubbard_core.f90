@@ -54,12 +54,19 @@ contains
 
         ! Run the calculation based upon the input options.
 
-        use determinants, only: find_all_determinants
         use hamiltonian
         use lanczos
         use full_diagonalisation
 
-        call find_all_determinants()
+        use system
+        use errors
+        use determinants
+        integer :: i
+
+        do i = -nel, nel, 2
+            call enumerate_determinants(i)
+        end do
+        call stop_all('run_calc','test')
 
         if (nprocs == 1) then
             if (t_exact .or. (t_lanczos .and. .not.direct_lanczos) ) then
