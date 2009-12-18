@@ -56,6 +56,8 @@ contains
 
         use determinants, only: find_all_determinants
         use hamiltonian
+        use lanczos
+        use full_diagonalisation
 
         call find_all_determinants()
 
@@ -91,7 +93,7 @@ contains
         use system, only: end_system, system_type, hub_real
         use hubbard, only: end_basis_fns
         use determinants, only: end_determinants
-        use hamiltonian, only: end_hamil
+        use diagonalisation, only: end_hamil
         use parallel, only: end_parallel
         use hubbard_real, only: end_real_space_hub
 

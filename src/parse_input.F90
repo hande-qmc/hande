@@ -5,6 +5,7 @@ use parallel, only: parent
 use errors
 use system
 use hamiltonian
+use lanczos
 
 implicit none
 

@@ -1,4 +1,4 @@
-FOBJ=$(DEST)/comb.o $(DEST)/mrgref.o $(DEST)/trl_info.o $(DEST)/utils.o $(DEST)/environment_report.o $(DEST)/error_handling.o $(DEST)/input.o $(DEST)/parallel.o $(DEST)/basis.o $(DEST)/bit_utils.o $(DEST)/const.o $(DEST)/hubbard_core.o $(DEST)/hubbard.o $(DEST)/hubbard_k.o $(DEST)/hubbard_real.o $(DEST)/kpoints.o $(DEST)/system.o $(DEST)/determinants.o $(DEST)/hamiltonian.o $(DEST)/parse_input.o 
+FOBJ=$(DEST)/comb.o $(DEST)/mrgref.o $(DEST)/trl_info.o $(DEST)/utils.o $(DEST)/environment_report.o $(DEST)/error_handling.o $(DEST)/input.o $(DEST)/parallel.o $(DEST)/basis.o $(DEST)/bit_utils.o $(DEST)/const.o $(DEST)/diagonalisation.o $(DEST)/hubbard_core.o $(DEST)/hubbard.o $(DEST)/hubbard_k.o $(DEST)/hubbard_real.o $(DEST)/kpoints.o $(DEST)/system.o $(DEST)/determinants.o $(DEST)/full_diagonalisation.o $(DEST)/hamiltonian.o $(DEST)/lanczos.o $(DEST)/parse_input.o 
 
 bin/hubbard.x: $(FOBJ)
 	$(MAKE) $(DEST)/environment_report.o FORCE=frc_rebuild 
@@ -16,12 +16,15 @@ $(DEST)/parallel.o : lib/parallel.F90 $(DEST)/utils.o $(DEST)/error_handling.o $
 $(DEST)/basis.o : src/basis.f90 $(DEST)/system.o $(DEST)/kpoints.o $(FORCE) 
 $(DEST)/bit_utils.o : src/bit_utils.f90 $(DEST)/const.o $(FORCE) 
 $(DEST)/const.o : src/const.f90 $(FORCE) 
-$(DEST)/hubbard_core.o : src/hubbard_core.f90 $(DEST)/hamiltonian.o $(DEST)/hubbard_real.o $(DEST)/parallel.o $(DEST)/determinants.o $(DEST)/hubbard.o $(DEST)/system.o $(DEST)/parse_input.o $(DEST)/environment_report.o $(FORCE) 
+$(DEST)/diagonalisation.o : src/diagonalisation.f90 $(DEST)/hubbard_real.o $(DEST)/hamiltonian.o $(DEST)/determinants.o $(DEST)/error_handling.o $(DEST)/utils.o $(DEST)/parallel.o $(DEST)/const.o $(FORCE) 
+$(DEST)/hubbard_core.o : src/hubbard_core.f90 $(DEST)/full_diagonalisation.o $(DEST)/lanczos.o $(DEST)/hamiltonian.o $(DEST)/hubbard_real.o $(DEST)/parallel.o $(DEST)/determinants.o $(DEST)/hubbard.o $(DEST)/system.o $(DEST)/parse_input.o $(DEST)/environment_report.o $(FORCE) 
 $(DEST)/hubbard.o : src/hubbard.f90 $(DEST)/parallel.o $(DEST)/error_handling.o $(DEST)/mrgref.o $(DEST)/system.o $(DEST)/basis.o $(FORCE) 
 $(DEST)/hubbard_k.o : src/hubbard_k.f90 $(DEST)/system.o $(DEST)/basis.o $(DEST)/const.o $(FORCE) 
 $(DEST)/hubbard_real.o : src/hubbard_real.f90 $(DEST)/determinants.o $(DEST)/bit_utils.o $(DEST)/system.o $(DEST)/basis.o $(DEST)/const.o $(FORCE) 
 $(DEST)/kpoints.o : src/kpoints.f90 $(DEST)/system.o $(DEST)/const.o $(FORCE) 
 $(DEST)/system.o : src/system.f90 $(DEST)/const.o $(FORCE) 
 $(DEST)/determinants.o : src/determinants.F90 $(DEST)/bit_utils.o $(DEST)/utils.o $(DEST)/comb.o $(DEST)/parallel.o $(DEST)/basis.o $(DEST)/system.o $(DEST)/const.o $(FORCE) 
-$(DEST)/hamiltonian.o : src/hamiltonian.F90 $(DEST)/hubbard_k.o $(DEST)/trl_info.o $(DEST)/trl_info.o $(DEST)/hubbard_real.o $(DEST)/error_handling.o $(DEST)/utils.o $(DEST)/parallel.o $(DEST)/determinants.o $(DEST)/basis.o $(DEST)/const.o $(FORCE) 
-$(DEST)/parse_input.o : src/parse_input.F90 $(DEST)/const.o $(DEST)/input.o $(DEST)/hamiltonian.o $(DEST)/system.o $(DEST)/error_handling.o $(DEST)/parallel.o $(FORCE) 
+$(DEST)/full_diagonalisation.o : src/full_diagonalisation.F90 $(DEST)/error_handling.o $(DEST)/hamiltonian.o $(DEST)/const.o $(FORCE) 
+$(DEST)/hamiltonian.o : src/hamiltonian.F90 $(DEST)/hubbard_real.o $(DEST)/hubbard_k.o $(DEST)/parallel.o $(DEST)/determinants.o $(DEST)/basis.o $(DEST)/const.o $(FORCE) 
+$(DEST)/lanczos.o : src/lanczos.F90 $(DEST)/error_handling.o $(DEST)/trl_info.o $(DEST)/trl_info.o $(DEST)/hamiltonian.o $(DEST)/const.o $(FORCE) 
+$(DEST)/parse_input.o : src/parse_input.F90 $(DEST)/const.o $(DEST)/input.o $(DEST)/lanczos.o $(DEST)/hamiltonian.o $(DEST)/system.o $(DEST)/error_handling.o $(DEST)/parallel.o $(FORCE) 
