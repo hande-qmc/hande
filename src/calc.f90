@@ -9,7 +9,9 @@ implicit none
 logical :: t_exact = .false., t_lanczos = .false.
 
 ! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
-! size is horrendous.
+! size is horrendous.  We only store one spin block at a time though.
+! Best contained within a module to allow easy access from the Lanczos
+! matrix-vector multiplication routines.
 real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)
 
 ! If true, then the eigenvectors are found during exact diagonalisation as well

@@ -12,7 +12,8 @@ contains
 
     subroutine diagonalise()
 
-        ! 
+        ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
+        ! exact diagonalisation.
 
         use system, only: nel
         use determinants, only: enumerate_determinants, tot_ndets, ndets
@@ -31,8 +32,11 @@ contains
 
         type(soln), allocatable :: lanczos_solns(:), exact_solns(:)
 
+        ! For communication with Lanczos and exact diagonalisers.
         real(dp), allocatable :: eigv(:)
 
+        ! For sorting the solutions by energy rather than by energy within each
+        ! spin block.
         integer, allocatable :: ranking(:)
 
         if (parent) write (6,'(1X,a15,/,1X,15("="),/)') 'Diagonalisation'
