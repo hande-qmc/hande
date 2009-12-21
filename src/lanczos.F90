@@ -114,7 +114,7 @@ contains
         if (parent) write (6,'()')
 
         nfound = min(nlanczos_eigv,ndets)
-        eigv = eval(1:nfound)
+        eigv(1:nfound) = eval(1:nfound)
 
         deallocate(eval, stat=ierr)
         deallocate(evec, stat=ierr)

@@ -76,7 +76,7 @@ contains
                 ! if running in parallel.
                 if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
                 call lanczos_diagonalisation(nfound, eigv)
-                lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = eigv
+                lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = eigv(:nfound)
                 lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
                 nlanczos = nlanczos + nfound
             end if
