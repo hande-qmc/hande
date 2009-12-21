@@ -13,6 +13,10 @@ type det
     ! Bit string representation of the Slater determinant.
     ! f is used throughout to indicate a Slater determinant
     ! represented as a bit string.
+    ! The *even* bits contain the alpha (spin up) functions.  This is in
+    ! contrast to the list of basis functions, basis_fns, where the *odd*
+    ! indices refer to alpha (spin up) functions.  This difference arises because 
+    ! fortran numbers bits from 0...
     integer(i0), pointer :: f(:) ! (basis_length)
     ! Total spin of the determinant in units of electron spin (1/2).   
     integer(i0) :: Ms
