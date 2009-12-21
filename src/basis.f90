@@ -25,6 +25,10 @@ type basis_fn
 end type basis_fn
 
 ! Store of information about the (spin) basis functions of the system.
+! The *odd* indices contain the alpha (spin up) functions.  This is in
+! contrast to the bit strings used to refer to determinants where the *even*
+! bits refer to alpha (spin up) functions.  This difference arises because 
+! fortran numbers bits from 0...
 type(basis_fn), allocatable :: basis_fns(:) ! (nbasis)
 
 ! number of basis functions.  Equal to 2*number of sites as there are
