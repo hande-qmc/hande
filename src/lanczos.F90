@@ -17,9 +17,15 @@ private :: HPsi, HPsi_direct
 
 contains
 
-    subroutine lanczos_diagonalisation()
+    subroutine lanczos_diagonalisation(nfound, eigv)
 
-        ! Perform a Lanczos diagonalisation of the Hamiltonian matrix.
+        ! Perform a Lanczos diagonalisation of the current (spin) block of the
+        ! Hamiltonian matrix.
+        ! Out:
+        !    nfound: number of solutions found from this block.  This is
+        !        min(number of determinants with current spin, nlanczos_eigv).
+        !    eigv(:nfound): Lanczos eigenvalues of the current block of the
+        !        Hamiltonian matrix.
 
         use trl_info
         use trl_interface
@@ -28,6 +34,9 @@ contains
 
         use calc
         use determinants, only: ndets
+
+        integer, intent(out) :: nfound
+        real(dp), intent(out) :: eigv(ndets)
         
         integer, parameter :: lohi = -1
         integer :: mev
@@ -41,11 +50,10 @@ contains
         mev = max(2*nlanczos_eigv, ndets)
        
         if (parent) then
-            write (6,'(1X,a23,/,1X,23("-"))') 'Lanczos diagonalisation'
             if (direct_lanczos) then
-                write (6,'(/,1X,a44,/)') 'Performing direct lanczos diagonalisation...'
+                write (6,'(/,1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
             else
-                write (6,'(/,1X,a37,/)') 'Performing lanczos diagonalisation...'
+                write (6,'(/,1X,a37,/)') 'Performing Lanczos diagonalisation...'
             end if
         end if
        
@@ -72,7 +80,7 @@ contains
         ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
         !       the largest).
         ! nlanczos_eigv: number of eigenvalues to compute.
-        call trl_init_info(info, nrows, lanczos_basis_length, lohi, nlanczos_eigv)
+        call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,ndets))
        
         allocate(eval(mev), stat=ierr)
 
@@ -93,15 +101,6 @@ contains
         end if
 
         ! Get info...
-        if (parent) then
-            write (6,'(1X,a8,3X,a12)') 'State','Total energy'
-            do i = 1, nlanczos_eigv
-                write (6,'(1X,i8,f18.12)') i, eval(i)
-            end do
-            write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', eval(1)
-       
-            write (6,'(1X,a27,/,1X,27("-"),/)') 'TRLan (Lanczos) information'
-        end if
         ! dsymv uses 2(N^2+2N) floating point operations.
         ! Ref: Benchmark of the Extended Basic Linear Algebra Subprograms on
         ! the NEC SX-2 Supercomputer, by R. M. Dubash, J. L. Fredin and O. G.
@@ -110,8 +109,12 @@ contains
         ! Science, 297 (1987) 894-913.
         ! trl_print_info gathers information from the processors so must be
         ! a global call but only prints information from one processor.
+        if (parent) write (6,'(1X,a28,/)') 'TRLan (Lanczos) information:'
         call trl_print_info(info, 2*(ndets**2+2*ndets))
         if (parent) write (6,'()')
+
+        nfound = min(nlanczos_eigv,ndets)
+        eigv = eval(1:nfound)
 
         deallocate(eval, stat=ierr)
         deallocate(evec, stat=ierr)

@@ -9,10 +9,14 @@ implicit none
 
 contains
 
-    subroutine exact_diagonalisation()
+    subroutine exact_diagonalisation(eigv)
     
-        ! Perform an exact diagonalisation of the Hamiltonian matrix.
+        ! Perform an exact diagonalisation of the current (spin) block of the
+        ! Hamiltonian matrix.
         ! Note that this destroys the Hamiltonian matrix stored in hamil.
+        ! Out:
+        !    eigv(:ndets): Lanczos eigenvalues of the current block of the
+        !        Hamiltonian matrix.
 
         use errors, only: stop_all
         use parallel, only: parent, nprocs
@@ -20,13 +24,13 @@ contains
         use calc
         use determinants, only: ndets
 
-        real(dp), allocatable :: eigv(:), work(:), eigvec(:,:)
+        real(dp), intent(out) :: eigv(ndets)
+        real(dp), allocatable :: work(:), eigvec(:,:)
         integer :: info, ierr, lwork
         integer :: i
         character(1) :: job
 
         if (parent) then
-            write (6,'(1X,a21,/,1X,21("-"))') 'Exact diagonalisation'
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
@@ -62,7 +66,6 @@ contains
 
         ! Now perform the diagonalisation.
         allocate(work(lwork), stat=ierr)
-        allocate(eigv(ndets), stat=ierr)
 
         if (nprocs == 1) then
             ! Use lapack.
@@ -81,14 +84,6 @@ contains
 
         deallocate(work, stat=ierr)
         deallocate(eigvec, stat=ierr)
-
-        if (parent) then
-            write (6,'(1X,a8,3X,a12)') 'State','Total energy'
-            do i = 1, ndets
-                write (6,'(1X,i8,f18.12)') i, eigv(i)
-            end do
-            write (6,'(/,1X,a19,f18.12,/)') 'Exact ground state:', eigv(1)
-        end if
 
     end subroutine exact_diagonalisation
 

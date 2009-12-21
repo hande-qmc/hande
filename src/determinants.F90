@@ -31,7 +31,12 @@ end type det
 type(det), allocatable :: dets(:) ! (ndets)
 
 ! Number of determinants stored in dets.
+! This is the number of determinants enumerated in enumerate_determinants with
+! the desired spin.
 integer :: ndets
+
+! Total size of determinant space.
+integer :: tot_ndets
 
 ! A handy type for containing the excitation information needed to connect one
 ! determinant to another.
@@ -67,7 +72,7 @@ contains
         use comb_m, only: binom
         use utils, only: int_fmt
 
-        integer :: i, bit_pos, bit_element, ierr, tot_ndets
+        integer :: i, bit_pos, bit_element, ierr
         character(2) :: fmt1(3)
 
         tot_ndets = binom(nbasis, nel)

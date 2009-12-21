@@ -15,11 +15,27 @@ contains
         ! 
 
         use system, only: nel
-        use determinants, only: enumerate_determinants
+        use determinants, only: enumerate_determinants, tot_ndets, ndets
         use lanczos
         use full_diagonalisation
 
-        integer :: ms
+        use utils, only: int_fmt
+        use m_mrgref, only: mrgref
+
+        type soln
+            integer :: ms
+            real(dp) :: energy
+        end type soln
+
+        integer :: ms, ms_min, ierr, nlanczos, nexact, nfound, i, ind, state
+
+        type(soln), allocatable :: lanczos_solns(:), exact_solns(:)
+
+        real(dp), allocatable :: eigv(:)
+
+        integer, allocatable :: ranking(:)
+
+        if (parent) write (6,'(1X,a15,/,1X,15("="),/)') 'Diagonalisation'
 
         ! The Hamiltonian can be written in block diagonal form using the spin
         ! quantum number.  < D_1 | H | D_2 > /= 0 only if D_1 and D_2 have the
@@ -27,10 +43,26 @@ contains
 
         ! For a given number of electrons, n, the total spin can range from -n
         ! to +n in steps of 2.
-        do ms = -nel, nel, 2
+        ! The -ms blocks are degenerate with the +ms blocks so only need to
+        ! solve for ms >= 0.
+        
+        ms_min = mod(nel,2)
+
+        if (t_lanczos) allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)), stat=ierr)
+        if (t_exact) allocate(exact_solns(tot_ndets), stat=ierr)
+
+        ! Number of lanczos and exact solutions found.
+        nlanczos = 0
+        nexact = 0
+
+        do ms = ms_min, nel, 2
+
+            if (parent) write (6,'(1X,a58,'//int_fmt(ms)//')') 'Diagonalising Hamiltonian block of determinants with spin:', ms
 
             ! Find all determinants with this spin.
             call enumerate_determinants(ms)
+
+            allocate(eigv(ndets), stat=ierr)
 
             if (nprocs == 1) call generate_hamil(distribute_off)
 
@@ -39,7 +71,10 @@ contains
                 ! Construct the Hamiltonian matrix distributed over the processors
                 ! if running in parallel.
                 if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
-                call lanczos_diagonalisation()
+                call lanczos_diagonalisation(nfound, eigv)
+                lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = eigv
+                lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
+                nlanczos = nlanczos + nfound
             end if
 
             ! Exact diagonalisation.
@@ -48,10 +83,62 @@ contains
                 ! Construct the Hamiltonian matrix distributed over the processors
                 ! if running in parallel.
                 if (nprocs > 1) call generate_hamil(distribute_blocks)
-                call exact_diagonalisation()
+                call exact_diagonalisation(eigv)
+                exact_solns(nexact+1:nexact+ndets)%energy = eigv
+                exact_solns(nexact+1:nexact+ndets)%ms = ms 
+                nexact = nexact + ndets
             end if
 
+            deallocate(eigv)
+
+            if (parent) write (6,'(1X,15("-"),/)')
+
         end do
+
+        ! Output results.
+
+        if (t_lanczos .and. parent) then
+            write (6,'(1X,a31,/,1X,31("-"),/)') 'Lanczos diagonalisation results'
+            allocate(ranking(nlanczos), stat=ierr)
+            call mrgref(lanczos_solns(:nlanczos)%energy, ranking)
+            write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
+            state = 0
+            do i = 1, nlanczos
+                ind = ranking(i)
+                state = state + 1
+                write (6,'(1X,i6,2X,i6,1X,f18.12)') state, lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
+                if (lanczos_solns(ind)%ms /= 0) then
+                    ! Also a degenerate -ms solution.
+                    state = state + 1
+                    write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
+                end if
+            end do
+            write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', lanczos_solns(ranking(1))%energy
+            deallocate(ranking, stat=ierr)
+        end if
+
+        if (t_exact .and. parent) then
+            write (6,'(1X,a29,/,1X,29("-"),/)') 'Exact diagonalisation results'
+            allocate(ranking(nexact), stat=ierr)
+            call mrgref(exact_solns(:nexact)%energy, ranking)
+            write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
+            state = 0
+            do i = 1, nexact
+                ind = ranking(i)
+                state = state + 1
+                write (6,'(1X,i6,2X,i6,1X,f18.12)') state, exact_solns(ind)%ms, exact_solns(ind)%energy
+                if (exact_solns(ind)%ms /= 0) then
+                    ! Also a degenerate -ms solution.
+                    state = state + 1
+                    write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -exact_solns(ind)%ms, exact_solns(ind)%energy
+                end if
+            end do
+            write (6,'(/,1X,a19,f18.12,/)') 'Exact ground state:', exact_solns(ranking(1))%energy
+            deallocate(ranking, stat=ierr)
+        end if
+
+        if (t_lanczos) deallocate(lanczos_solns, stat=ierr)
+        if (t_exact) deallocate(exact_solns, stat=ierr)
 
     end subroutine diagonalise
 
