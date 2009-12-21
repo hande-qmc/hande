@@ -77,9 +77,10 @@ contains
         end forall
 
         allocate(basis_fns(nbasis), stat=ierr)
-        allocate(tmp_basis_fns(nbasis), stat=ierr)
-        allocate(basis_fns_ranking(nbasis), stat=ierr)
+        allocate(tmp_basis_fns(nbasis/2), stat=ierr)
+        allocate(basis_fns_ranking(nbasis/2), stat=ierr)
 
+        ! Find all alpha spin orbitals.
         ibasis = 0
         do k = -nmax(3), nmax(3)
             do j = -nmax(2), nmax(2)
@@ -95,23 +96,25 @@ contains
                             ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
                             call init_basis_fn(tmp_basis_fns(ibasis), kp(1:ndim), 1)
-                            ibasis = ibasis + 1
-                            call init_basis_fn(tmp_basis_fns(ibasis), kp(1:ndim), -1)
                         end if
                     end if
                 end do
             end do
         end do
 
-        if (ibasis /= nbasis) call stop_all('init_basis_fns','Not enough basis functions found.')
+        if (ibasis /= nbasis/2) call stop_all('init_basis_fns','Not enough basis functions found.')
 
-        ! Sort by kinetic energy.
+        ! Rank by kinetic energy (applies to momentum space formulation only).
         call mrgref(tmp_basis_fns(:)%kinetic, basis_fns_ranking)
-        do i = 1, nbasis
+
+        ! Form the list of sorted basis functions with both alpha and beta
+        ! spins.
+        do i = 1, nbasis/2
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
-            call init_basis_fn(basis_fns(i), basis_fn_p%l, basis_fn_p%ms)
+            call init_basis_fn(basis_fns(2*i-1), basis_fn_p%l, basis_fn_p%ms)
+            call init_basis_fn(basis_fns(2*i), basis_fn_p%l, -basis_fn_p%ms)
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
         end do
         deallocate(tmp_basis_fns, stat=ierr)
