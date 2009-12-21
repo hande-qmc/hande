@@ -3,39 +3,10 @@ module diagonalisation
 ! Module for coordinating complete and Lanczos diagonalisations.
 
 use const
-use parallel, only: blacs_info
+use parallel, only: iproc, nprocs, parent
+use calc
 
 implicit none
-
-! Flags for doing exact and/or Lanczos diagonalisation.
-logical :: t_exact = .false., t_lanczos = .false.
-
-! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
-! size is horrendous.
-real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)
-
-! If true, then the eigenvectors are found during exact diagonalisation as well
-! as the eigenvalues.  Doing this is substantially more expensive.
-logical :: find_eigenvectors = .false.
-
-! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
-logical :: write_hamiltonian = .false.
-character(255) :: hamiltonian_file = 'HAMIL'
-
-! BLACS info for diagonalisation
-type(blacs_info) :: proc_blacs_info
-
-! Distribution of Hamiltonian matrix across the processors. 
-! No distribution.
-integer, parameter :: distribute_off = 0
-! Block cyclic distribution (see comments in parallel.F90 and the blacs and
-! scalapack documentation).  Used for parallel exact diagonalisation.
-integer, parameter :: distribute_blocks = 1
-! Distribute matrix by columns.  Used for parallel Lanczos.
-integer, parameter :: distribute_cols = 2
-
-! Flag which stores which distribution mode is in use.
-integer :: distribute = distribute_off
 
 contains
 
@@ -44,6 +15,9 @@ contains
         ! 
 
         use system, only: nel
+        use determinants, only: enumerate_determinants
+        use lanczos
+        use full_diagonalisation
 
         integer :: ms
 
@@ -53,9 +27,31 @@ contains
 
         ! For a given number of electrons, n, the total spin can range from -n
         ! to +n in steps of 2.
-        spin_block: do ms = -nel, nel, 2
+        do ms = -nel, nel, 2
+
             ! Find all determinants with this spin.
-        end do spin_block
+            call enumerate_determinants(ms)
+
+            if (nprocs == 1) call generate_hamil(distribute_off)
+
+            ! Lanczos.
+            if (t_lanczos) then
+                ! Construct the Hamiltonian matrix distributed over the processors
+                ! if running in parallel.
+                if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
+                call lanczos_diagonalisation()
+            end if
+
+            ! Exact diagonalisation.
+            ! Warning: this destroys the Hamiltonian matrix...
+            if (t_exact) then
+                ! Construct the Hamiltonian matrix distributed over the processors
+                ! if running in parallel.
+                if (nprocs > 1) call generate_hamil(distribute_blocks)
+                call exact_diagonalisation()
+            end if
+
+        end do
 
     end subroutine diagonalise
 

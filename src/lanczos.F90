@@ -2,8 +2,6 @@ module lanczos
 
 use const
 
-use diagonalisation
-
 implicit none
 
 ! Number of Lanczos eigenpairs to find.
@@ -27,6 +25,7 @@ contains
         use errors, only: stop_all
         use parallel, only: parent, nprocs, get_blacs_info
 
+        use calc
         use determinants, only: ndets
         
         integer, parameter :: lohi = -1
@@ -134,6 +133,8 @@ contains
         !    yout: the array to store results of the multiplication.
 
         use parallel, only: nprocs
+
+        use calc, only: hamil
  
         integer, intent(in) :: nrow, ncol, ldx, ldy
         real(dp), intent(in) :: xin(ldx,ncol)

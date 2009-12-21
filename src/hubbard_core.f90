@@ -54,42 +54,9 @@ contains
 
         ! Run the calculation based upon the input options.
 
-        use hamiltonian
-        use lanczos
-        use full_diagonalisation
+        use diagonalisation
 
-        use system
-        use errors
-        use determinants
-        integer :: i
-
-        do i = -nel, nel, 2
-            call enumerate_determinants(i)
-        end do
-        call stop_all('run_calc','test')
-
-        if (nprocs == 1) then
-            if (t_exact .or. (t_lanczos .and. .not.direct_lanczos) ) then
-                call generate_hamil(distribute_off)
-            end if
-        end if
-
-        ! Lanczos.
-        if (t_lanczos) then
-            ! Construct the Hamiltonian matrix distributed over the processors
-            ! if running in parallel.
-            if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
-            call lanczos_diagonalisation()
-        end if
-
-        ! Exact diagonalisation.
-        ! Warning: this destroys the Hamiltonian matrix...
-        if (t_exact) then
-            ! Construct the Hamiltonian matrix distributed over the processors
-            ! if running in parallel.
-            if (nprocs > 1) call generate_hamil(distribute_blocks)
-            call exact_diagonalisation()
-        end if
+        call diagonalise()
 
     end subroutine run_calc
 

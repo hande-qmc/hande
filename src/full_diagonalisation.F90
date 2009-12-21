@@ -4,7 +4,6 @@ module full_diagonalisation
 ! libraries.
 
 use const
-use diagonalisation
 
 implicit none
 
@@ -18,6 +17,7 @@ contains
         use errors, only: stop_all
         use parallel, only: parent, nprocs
 
+        use calc
         use determinants, only: ndets
 
         real(dp), allocatable :: eigv(:), work(:), eigvec(:,:)
