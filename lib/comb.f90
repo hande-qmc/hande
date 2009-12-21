@@ -30,24 +30,29 @@ contains
         integer :: c(p)
         integer :: k, r, p1,i
 
-        ! Initialise lower bound at zero.
-        k = 0
-        ! Loop to select elements in ascending order.
-        p1 = p-1
-        do i = 1, p1
-            ! Set lower bound for next element value.
-            c(i) = 0
-            if (i /= 1) c(i) = c(i-1)
-            ! Loop to check validity of each element value.
-            do
-                c(i) = c(i) + 1
-                r = binom(n-c(i), p-i)
-                k = k + r
-                if (k >= l) exit
+        ! Account for the special cases of p==0 and p==1.
+        if (p == 1) then
+            c = l
+        else if (p > 1) then
+            ! Initialise lower bound at zero.
+            k = 0
+            ! Loop to select elements in ascending order.
+            p1 = p-1
+            do i = 1, p1
+                ! Set lower bound for next element value.
+                c(i) = 0
+                if (i /= 1) c(i) = c(i-1)
+                ! Loop to check validity of each element value.
+                do
+                    c(i) = c(i) + 1
+                    r = binom(n-c(i), p-i)
+                    k = k + r
+                    if (k >= l) exit
+                end do
+                k = k - r
             end do
-            k = k - r
-        end do
-        c(p) = c(p1) + l - k
+            c(p) = c(p1) + l - k
+        end if
 
     end function comb
 
