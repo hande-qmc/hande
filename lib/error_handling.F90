@@ -26,9 +26,9 @@ contains
         integer :: ierr
 
         write (6,'(/a7)') 'ERROR.'
-        write (6,'(a30,a)') 'hubbard stops in subroutine: ',adjustl(sub_name)
-        write (6,'(a9,18X,a)') 'Reason: ',adjustl(error_msg)
-        write (6,'(a11)') 'EXITING...'
+        write (6,'(1X,a)') 'hubbard stops in subroutine: '//adjustl(sub_name)//'.'
+        write (6,'(a9,a)') 'Reason: ',adjustl(error_msg)
+        write (6,'(1X,a10)') 'EXITING...'
 
         call flush(6)
 
