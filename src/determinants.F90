@@ -158,36 +158,26 @@ contains
             nbeta_combinations = binom(nbasis/2, nbeta)
             nalpha_combinations = binom(nbasis/2, nalpha)
             ndets = nalpha_combinations*nbeta_combinations
-            write (6,*) 'dets...',nel, Ms, nalpha, nbeta
         else
             ! Total size of determinant space.  (This will be painful!)
             ndets = binom(nbasis, nel)
         end if
 
         allocate(dets(ndets), stat=ierr)
-        
+
         if (present(Ms)) then
             do i = 1, nbeta_combinations
                 ! comb(nbasis/2, nbeta, i) will give the sites occupied by
                 ! electrons in the beta spin orbital.
-                ! beta orbitals are defined to be the odd numbered basis
+                ! beta orbitals are defined to be the even numbered basis
                 ! functions, hence the conversion.
-                write (6,*) 'index', nbeta, nalpha
-                if (nbeta > 0) then
-                    write (6,*) 'setting beta',  2*comb(nbasis/2, nbeta, i) - 1
-                    c = 2*comb(nbasis/2, nbeta, i) - 1
-                end if
+                c = 2*comb(nbasis/2, nbeta, i)
                 do j = 1, nalpha_combinations
-                    ! alpha orbitals are defined to be the even numbered basis functions, hence
+                    ! alpha orbitals are defined to be the odd numbered basis functions, hence
                     ! the conversion.
-                    write (6,*) 'index', nbeta+1, size(c), size(comb(nbasis/2, nalpha, j))
-                    if (nalpha > 0) then
-                        write (6,*) 'setting alpha'
-                        c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j)
-                    end if
-                    !idet = (i-1)*nalpha_combinations + j
-                    !call init_det(c, dets(idet))
-                    !write (6,*) idet, dets(idet)%Ms, c
+                    c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j) - 1
+                    idet = (i-1)*nalpha_combinations + j
+                    call init_det(c, dets(idet))
                 end do
             end do
         else
