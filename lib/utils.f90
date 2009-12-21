@@ -56,12 +56,12 @@ contains
 
         r = log10(real(i))
         if (r < 10) then
-            write (fmt1,'("i",i1)') nint(r+p)
+            write (fmt1,'("i",i1)') ceiling(r+p)
         else if (r < 100) then
-            write (fmt1,'("i",i2)') nint(r+p)
+            write (fmt1,'("i",i2)') ceiling(r+p)
         else
             ! By this point we'll have hit integer overflow anyway...
-            write (fmt1,'("i",i3)') nint(r+p)
+            write (fmt1,'("i",i3)') ceiling(r+p)
         end if
 
     end function int_fmt
