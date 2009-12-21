@@ -54,33 +54,9 @@ contains
 
         ! Run the calculation based upon the input options.
 
-        use determinants, only: find_all_determinants
-        use hamiltonian
+        use diagonalisation
 
-        call find_all_determinants()
-
-        if (nprocs == 1) then
-            if (t_exact .or. (t_lanczos .and. .not.direct_lanczos) ) then
-                call generate_hamil(distribute_off)
-            end if
-        end if
-
-        ! Lanczos.
-        if (t_lanczos) then
-            ! Construct the Hamiltonian matrix distributed over the processors
-            ! if running in parallel.
-            if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
-            call lanczos_diagonalisation()
-        end if
-
-        ! Exact diagonalisation.
-        ! Warning: this destroys the Hamiltonian matrix...
-        if (t_exact) then
-            ! Construct the Hamiltonian matrix distributed over the processors
-            ! if running in parallel.
-            if (nprocs > 1) call generate_hamil(distribute_blocks)
-            call exact_diagonalisation()
-        end if
+        call diagonalise()
 
     end subroutine run_calc
 
@@ -91,7 +67,7 @@ contains
         use system, only: end_system, system_type, hub_real
         use hubbard, only: end_basis_fns
         use determinants, only: end_determinants
-        use hamiltonian, only: end_hamil
+        use diagonalisation, only: end_hamil
         use parallel, only: end_parallel
         use hubbard_real, only: end_real_space_hub
 

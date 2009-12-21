@@ -4,7 +4,9 @@ module parse_input
 use parallel, only: parent
 use errors
 use system
-use hamiltonian
+use calc
+use lanczos
+use determinants
 
 implicit none
 

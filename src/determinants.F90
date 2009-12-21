@@ -24,13 +24,19 @@ type det
     integer, pointer :: k(:) => NULL()
 end type det
 
-! Number of possible determinants in the system.
-integer :: ndets
-
-! Store of all determinants.
+! Store of determinant list.
 ! This will quickly become a memory issue, but for dealing with the FCI of small
 ! systems it is ok.
+! It is possible to store only determinants of the same spin at the same time.
 type(det), allocatable :: dets(:) ! (ndets)
+
+! Number of determinants stored in dets.
+! This is the number of determinants enumerated in enumerate_determinants with
+! the desired spin.
+integer :: ndets
+
+! Total size of determinant space.
+integer :: tot_ndets
 
 ! A handy type for containing the excitation information needed to connect one
 ! determinant to another.
@@ -69,17 +75,17 @@ contains
         integer :: i, bit_pos, bit_element, ierr
         character(2) :: fmt1(3)
 
-        ndets = binom(nbasis, nel)
+        tot_ndets = binom(nbasis, nel)
 
         ! See note in basis.
         basis_length = nbasis/i0_length
         if (mod(nbasis,i0_length) /= 0) basis_length = basis_length + 1
 
         if (parent) then
-            fmt1 = int_fmt((/nel, nbasis, ndets/), padding=1)
+            fmt1 = int_fmt((/nel, nbasis, tot_ndets/), padding=1)
             write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
-            write (6,'(1X,a26,'//fmt1(3)//',/)') 'Size of determinant space:', ndets
+            write (6,'(1X,a26,'//fmt1(3)//',/)') 'Size of determinant space:', tot_ndets
         end if
 
         ! Lookup arrays.
@@ -126,37 +132,81 @@ contains
 
     end subroutine end_determinants
 
-    subroutine find_all_determinants()
+    subroutine enumerate_determinants(Ms)
     
-        ! Find all possible Slater determinants that can be formed from the
+        ! Find the Slater determinants that can be formed from the
         ! basis functions.
+        ! In:
+        !   Ms: spin of determinants to be found.  If not given then
+        !       all determinants are enumerated.
+        !       The determinant list is stored in the dets array.
+        !       If Ms is not given then all possible determinants are 
+        !       enumerated.
 
-        use comb_m, only: comb
+        use comb_m, only: binom, comb
         use utils, only: get_free_unit, int_fmt
+        use errors, only: stop_all
 
-        integer :: i, c(nel), ierr, iunit
+        integer, intent(in), optional :: Ms
+
+        integer :: i, j, idet, c(nel), ierr, iunit
+        integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
         character(2) :: fmt1
 
+        if (allocated(dets)) deallocate(dets, stat=ierr)
+
+        if (present(Ms)) then
+            ! Find the number of determinants with the required spin.
+            if (mod(Ms,2) /= mod(nel,2)) call stop_all('enumerate_dets','Required Ms not possible.')
+            nbeta = (nel - Ms)/2
+            nalpha = (nel + Ms)/2
+            nbeta_combinations = binom(nbasis/2, nbeta)
+            nalpha_combinations = binom(nbasis/2, nalpha)
+            ndets = nalpha_combinations*nbeta_combinations
+        else
+            ! Total size of determinant space.  (This will be painful!)
+            ndets = binom(nbasis, nel)
+        end if
+
         allocate(dets(ndets), stat=ierr)
-        
+
+        if (present(Ms)) then
+            do i = 1, nbeta_combinations
+                ! comb(nbasis/2, nbeta, i) will give the sites occupied by
+                ! electrons in the beta spin orbital.
+                ! beta orbitals are defined to be the even numbered basis
+                ! functions, hence the conversion.
+                c = 2*comb(nbasis/2, nbeta, i)
+                do j = 1, nalpha_combinations
+                    ! alpha orbitals are defined to be the odd numbered basis functions, hence
+                    ! the conversion.
+                    c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j) - 1
+                    idet = (i-1)*nalpha_combinations + j
+                    call init_det(c, dets(idet))
+                end do
+            end do
+        else
+            ! For the entire list it's easy: we just loop over all determinants
+            ! and comb returns each possible combination in lexicographical
+            ! order.
+            do i = 1, ndets
+                c = comb(nbasis, nel, i)
+                call init_det(c, dets(i))
+            end do
+        end if
+
         if (write_determinants .and. parent) then
             iunit = get_free_unit()
             open(iunit, file=determinant_file, status='unknown')
-        end if
-
-        fmt1 = int_fmt(ndets, padding=1)
-        do i = 1, ndets
-            c = comb(nbasis, nel, i)
-            call init_det(c, dets(i))
-            if (write_determinants .and. parent) then
+            fmt1 = int_fmt(ndets, padding=1)
+            do i = 1, ndets
                 write (iunit,'('//fmt1//',4X)',advance='no') i
                 call write_det(dets(i)%f, iunit, new_line=.true.)
-            end if
-        end do
+            end do
+            close(iunit, status='keep')
+        end if
 
-        if (write_determinants .and. parent) close(iunit, status='keep')
-
-    end subroutine find_all_determinants
+    end subroutine enumerate_determinants
 
     subroutine init_det(occ_list, d)
 
