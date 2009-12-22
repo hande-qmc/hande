@@ -199,16 +199,23 @@ contains
         real(dp), intent(in) :: xin(ldx,ncol)
         real(dp), intent(out) :: yout(ldy,ncol)
         integer :: i, j, k
+        real(dp) :: tmp, hmatel
  
         yout = 0.0_dp
         do k = 1, ncol
             ! y = H x,
             ! where H is the Hamiltonian matrix, x is the input Lanczos vector
             ! and y the output Lanczos vector.
+            ! Borrowing from ideas in dsymv, we can perform this only using one
+            ! triangle of the Hamiltonian matrix.
             do j = 1, nhamil
-                do i = 1, nrow
-                    yout(i,k) = yout(i,k) + get_hmatel(i,j)*xin(j, k)
+                tmp = 0.0_dp
+                do i = 1, j-1
+                    hmatel = get_hmatel(i,j) 
+                    yout(i,k) = yout(i,k) + hmatel*xin(j, k)
+                    tmp = tmp + hmatel*xin(i,k)
                 end do
+                yout(j,k) = get_hmatel(j,j)*xin(j,k) + tmp
             end do
         end do
 
