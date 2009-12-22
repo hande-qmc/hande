@@ -55,7 +55,7 @@ contains
             p  = 2
         end if
 
-        if (i == 0) then
+        if (i == 0 .or. i==1) then
             r = 1.0
         else
             r = log10(real(abs(i)))
