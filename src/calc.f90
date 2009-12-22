@@ -9,8 +9,21 @@ implicit none
 logical :: t_exact = .false., t_lanczos = .false.
 
 ! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
-! size is horrendous.
-real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)
+! size is horrendous.  We only store one symmetry block at a time though.
+! Best contained within a module to allow easy access from the Lanczos
+! matrix-vector multiplication routines.
+real(dp), allocatable :: hamil(:,:) ! (nhamil, nhamil)
+
+! Dimension of current block of the Hamiltonian matrix.
+integer :: nhamil
+
+! Symmetry information about the determinant list.
+! sym_blocks(i) gives the index of the first determinant in the i-th symmetry
+! block.
+integer, allocatable :: sym_blocks(:) ! overallocated as (nbasis/2).
+
+! Number of symmetry blocks within the determinant list.
+integer :: nsym_blocks
 
 ! If true, then the eigenvectors are found during exact diagonalisation as well
 ! as the eigenvalues.  Doing this is substantially more expensive.

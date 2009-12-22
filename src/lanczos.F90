@@ -33,21 +33,20 @@ contains
         use parallel, only: parent, nprocs, get_blacs_info
 
         use calc
-        use determinants, only: ndets
 
         integer, intent(out) :: nfound
-        real(dp), intent(out) :: eigv(ndets)
+        real(dp), intent(out) :: eigv(nhamil)
         
         integer, parameter :: lohi = -1
         integer :: mev
         real(dp), allocatable :: eval(:) ! (mev)
-        real(dp), allocatable :: evec(:,:) ! (ndets, mev)
+        real(dp), allocatable :: evec(:,:) ! (nhamil, mev)
         type(trl_info_t) :: info
         integer :: i, ierr, nrows
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
-        mev = max(2*nlanczos_eigv, ndets)
+        mev = max(2*nlanczos_eigv, nhamil)
        
         if (parent) then
             if (direct_lanczos) then
@@ -64,7 +63,7 @@ contains
         if (.not.t_exact .and. direct_lanczos) then
             ! Didn't execute generate_hamil so need to set up
             ! the processor grid.
-            proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
+            proc_blacs_info = get_blacs_info(nhamil, (/1, nprocs/))
         end if
 
         if (direct_lanczos .and. nprocs > 1) then
@@ -80,7 +79,7 @@ contains
         ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
         !       the largest).
         ! nlanczos_eigv: number of eigenvalues to compute.
-        call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,ndets))
+        call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,nhamil))
        
         allocate(eval(mev), stat=ierr)
 
@@ -93,7 +92,7 @@ contains
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! eval: array to store eigenvalue
         ! evec: array to store the eigenvectors
-        ! lde: the leading dimension of evec (in serial case: ndets).
+        ! lde: the leading dimension of evec (in serial case: nhamil).
         if (direct_lanczos) then
             call trlan(HPsi_direct, info, nrows, mev, eval, evec, nrows)
         else
@@ -110,11 +109,11 @@ contains
         ! trl_print_info gathers information from the processors so must be
         ! a global call but only prints information from one processor.
         if (parent) write (6,'(1X,a28,/)') 'TRLan (Lanczos) information:'
-        call trl_print_info(info, 2*(ndets**2+2*ndets))
+        call trl_print_info(info, 2*(nhamil**2+2*nhamil))
         if (parent) write (6,'()')
 
-        nfound = min(nlanczos_eigv,ndets)
-        eigv = eval(1:nfound)
+        nfound = min(nlanczos_eigv,nhamil)
+        eigv(1:nfound) = eval(1:nfound)
 
         deallocate(eval, stat=ierr)
         deallocate(evec, stat=ierr)
@@ -163,7 +162,7 @@ contains
                     ! y = H x,
                     ! where H is the Hamiltonian matrix, x is the input Lanczos vector
                     ! and y the output Lanczos vector.
-                    call pdsymv('U', ndets, 1.0_8, hamil, 1, 1,                 &
+                    call pdsymv('U', nhamil, 1.0_8, hamil, 1, 1,                 &
                                 proc_blacs_info%desc_m, xin(:,i), 1, 1,         &
                                 proc_blacs_info%desc_v, 1, 0.0_8, yout(:,i), 1, &
                                 1, proc_blacs_info%desc_v, 1)
@@ -193,7 +192,7 @@ contains
         ! Out:
         !    yout: the array to store results of the multiplication.
 
-        use determinants, only: ndets
+        use calc , only: nhamil
         use hamiltonian, only: get_hmatel
  
         integer, intent(in) :: nrow, ncol, ldx, ldy
@@ -206,7 +205,7 @@ contains
             ! y = H x,
             ! where H is the Hamiltonian matrix, x is the input Lanczos vector
             ! and y the output Lanczos vector.
-            do j = 1, ndets
+            do j = 1, nhamil
                 do i = 1, nrow
                     yout(i,k) = yout(i,k) + get_hmatel(i,j)*xin(j, k)
                 end do

@@ -15,16 +15,15 @@ contains
         ! Hamiltonian matrix.
         ! Note that this destroys the Hamiltonian matrix stored in hamil.
         ! Out:
-        !    eigv(:ndets): Lanczos eigenvalues of the current block of the
+        !    eigv(:nhamil): Lanczos eigenvalues of the current block of the
         !        Hamiltonian matrix.
 
         use errors, only: stop_all
         use parallel, only: parent, nprocs
 
         use calc
-        use determinants, only: ndets
 
-        real(dp), intent(out) :: eigv(ndets)
+        real(dp), intent(out) :: eigv(nhamil)
         real(dp), allocatable :: work(:), eigvec(:,:)
         integer :: info, ierr, lwork
         integer :: i
@@ -49,12 +48,12 @@ contains
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         if (nprocs == 1) then
-            call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
+            call dsyev(job, 'U', nhamil, hamil, nhamil, eigv, work, -1, info)
         else
 #ifdef _PARALLEL
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Part of matrix on this processor.
-                call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
+                call pdsyev(job, 'U', nhamil, hamil, 1, 1,               &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                             proc_blacs_info%desc_m, work, -1, info)
             end if
@@ -69,13 +68,13 @@ contains
 
         if (nprocs == 1) then
             ! Use lapack.
-            call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+            call dsyev(job, 'U', nhamil, hamil, nhamil, eigv, work, lwork, info)
         else
 #ifdef _PARALLEL
             ! Use scalapack to do the diagonalisation in parallel.
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Part of matrix on this processor.
-                call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
+                call pdsyev(job, 'U', nhamil, hamil, 1, 1,               &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                             proc_blacs_info%desc_m, work, lwork, info)
             end if

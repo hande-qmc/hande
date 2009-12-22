@@ -26,9 +26,11 @@ end type det
 
 ! Store of determinant list.
 ! This will quickly become a memory issue, but for dealing with the FCI of small
-! systems it is ok.
-! It is possible to store only determinants of the same spin at the same time.
-type(det), allocatable :: dets(:) ! (ndets)
+! systems it is ok.  It is possible to store only determinants of the same spin
+! at the same time, reducing memory requirements.
+! For momentum-space systems the list of determinants is grouped by wavevector
+! (up to a reciprocal lattice vector).
+type(det), allocatable, target :: dets(:) ! (ndets)
 
 ! Number of determinants stored in dets.
 ! This is the number of determinants enumerated in enumerate_determinants with
@@ -135,7 +137,10 @@ contains
     subroutine enumerate_determinants(Ms)
     
         ! Find the Slater determinants that can be formed from the
-        ! basis functions.
+        ! basis functions.  The list of determinants is stored in the
+        ! module level dets array.  For momentum-space systems the list
+        ! of determinants is grouped by wavevector (up to a reciprocal lattice
+        ! vector).
         ! In:
         !   Ms: spin of determinants to be found.  If not given then
         !       all determinants are enumerated.
@@ -144,14 +149,18 @@ contains
         !       enumerated.
 
         use comb_m, only: binom, comb
-        use utils, only: get_free_unit, int_fmt
         use errors, only: stop_all
+        use m_mrgref, only: mrgref
+        use utils, only: get_free_unit, int_fmt
 
         integer, intent(in), optional :: Ms
 
         integer :: i, j, idet, c(nel), ierr, iunit
         integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
         character(2) :: fmt1
+        type(det), allocatable, target :: dets_tmp(:)
+        type(det), pointer :: dets_p(:)
+        integer, allocatable :: dets_sym(:), ranking(:)
 
         if (allocated(dets)) deallocate(dets, stat=ierr)
 
@@ -170,6 +179,14 @@ contains
 
         allocate(dets(ndets), stat=ierr)
 
+        if (system_type == hub_real) then
+            dets_p => dets
+        else
+            allocate(dets_tmp(ndets), stat=ierr)
+            allocate(dets_sym(ndets), stat=ierr)
+            dets_p => dets_tmp
+        end if
+
         if (present(Ms)) then
             do i = 1, nbeta_combinations
                 ! comb(nbasis/2, nbeta, i) will give the sites occupied by
@@ -182,7 +199,7 @@ contains
                     ! the conversion.
                     c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j) - 1
                     idet = (i-1)*nalpha_combinations + j
-                    call init_det(c, dets(idet))
+                    call init_det(c, dets_p(idet))
                 end do
             end do
         else
@@ -191,8 +208,35 @@ contains
             ! order.
             do i = 1, ndets
                 c = comb(nbasis, nel, i)
-                call init_det(c, dets(i))
+                call init_det(c, dets_p(i))
             end do
+        end if
+
+        if (system_type /= hub_real) then
+            ! Rank by wavevector.
+            ! All determinants have an overall wavevector that is one of the
+            ! wavevectors sampled in the Brillouin zone (up to a reciprocal
+            ! lattice vector).
+            do idet = 1, ndets
+                do i = 1, nbasis, 2
+                    if (is_reciprocal_lattice_vector(basis_fns(i)%l-dets_p(idet)%k)) then
+                        dets_sym(idet) = i
+                        exit
+                    end if
+                end do
+            end do
+
+            allocate(ranking(ndets), stat=ierr)
+            call mrgref(dets_sym, ranking)
+
+            ! Store in dets in block format: group wavevectors together.
+            do idet = 1, ndets
+                dets(idet) = dets_p(ranking(idet))
+            end do
+
+            deallocate(ranking, stat=ierr)
+            deallocate(dets_tmp, stat=ierr)
+            dets_p => NULL()
         end if
 
         if (write_determinants .and. parent) then
