@@ -137,7 +137,7 @@ contains
 
         use parallel, only: nprocs
 
-        use calc, only: hamil
+        use calc, only: hamil, nhamil, proc_blacs_info
  
         integer, intent(in) :: nrow, ncol, ldx, ldy
         real(dp), intent(in) :: xin(ldx,ncol)

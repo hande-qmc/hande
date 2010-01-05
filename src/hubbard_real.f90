@@ -45,7 +45,6 @@ contains
         integer :: r(ndim)
 
         t_self_images = any(abs(box_length-1.0_dp) < depsilon)
-        write (6,*) t_self_images, abs(box_length-1.0_dp)
 
         allocate(tmat(basis_length,nbasis), stat=ierr)
 

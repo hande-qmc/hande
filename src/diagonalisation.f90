@@ -20,6 +20,7 @@ contains
         use determinants, only: enumerate_determinants, tot_ndets, ndets
         use lanczos
         use full_diagonalisation
+        use hamiltonian, only: get_hmatel
 
         use utils, only: int_fmt
         use m_mrgref, only: mrgref
@@ -86,34 +87,51 @@ contains
                     nhamil = sym_blocks(isym+1) - sym_blocks(isym)
                 end if
 
-                allocate(eigv(nhamil), stat=ierr)
+                if (nhamil == 1) then
+                    ! The trivial case seems to trip up TRLan and scalapack in
+                    ! parallel.
+                    if (t_lanczos) then
+                        lanczos_solns(nlanczos+1)%energy = get_hmatel(sym_blocks(isym),sym_blocks(isym))
+                        lanczos_solns(nlanczos+1)%ms = ms 
+                        nlanczos = nlanczos + 1
+                    end if
+                    if (t_exact) then
+                        exact_solns(nexact+1)%energy = get_hmatel(sym_blocks(isym),sym_blocks(isym))
+                        exact_solns(nexact+1)%ms = ms 
+                        nexact = nexact + nhamil
+                    end if
+                else
 
-                if (nprocs == 1) call generate_hamil(isym, distribute_off)
+                    allocate(eigv(nhamil), stat=ierr)
 
-                ! Lanczos.
-                if (t_lanczos) then
-                    ! Construct the Hamiltonian matrix distributed over the processors
-                    ! if running in parallel.
-                    if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(isym, distribute_cols)
-                    call lanczos_diagonalisation(nfound, eigv)
-                    lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = eigv(:nfound)
-                    lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
-                    nlanczos = nlanczos + nfound
+                    if (nprocs == 1) call generate_hamil(isym, distribute_off)
+
+                    ! Lanczos.
+                    if (t_lanczos) then
+                        ! Construct the Hamiltonian matrix distributed over the processors
+                        ! if running in parallel.
+                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(isym, distribute_cols)
+                        call lanczos_diagonalisation(nfound, eigv)
+                        lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = eigv(:nfound)
+                        lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
+                        nlanczos = nlanczos + nfound
+                    end if
+
+                    ! Exact diagonalisation.
+                    ! Warning: this destroys the Hamiltonian matrix...
+                    if (t_exact) then
+                        ! Construct the Hamiltonian matrix distributed over the processors
+                        ! if running in parallel.
+                        if (nprocs > 1) call generate_hamil(isym, distribute_blocks)
+                        call exact_diagonalisation(eigv)
+                        exact_solns(nexact+1:nexact+nhamil)%energy = eigv
+                        exact_solns(nexact+1:nexact+nhamil)%ms = ms 
+                        nexact = nexact + nhamil
+                    end if
+
+                    deallocate(eigv)
+
                 end if
-
-                ! Exact diagonalisation.
-                ! Warning: this destroys the Hamiltonian matrix...
-                if (t_exact) then
-                    ! Construct the Hamiltonian matrix distributed over the processors
-                    ! if running in parallel.
-                    if (nprocs > 1) call generate_hamil(isym, distribute_blocks)
-                    call exact_diagonalisation(eigv)
-                    exact_solns(nexact+1:nexact+nhamil)%energy = eigv
-                    exact_solns(nexact+1:nexact+nhamil)%ms = ms 
-                    nexact = nexact + nhamil
-                end if
-
-                deallocate(eigv)
 
                 if (parent) write (6,'(1X,15("-"),/)')
 
@@ -275,7 +293,7 @@ contains
             ! are distributed.
             ! Furthermore it seems TRLan assumes all processors store at least
             ! some of the matrix.
-            if ((nprocs-1)*block_size > nhamil) then
+            if (nprocs*block_size > nhamil) then
                 if (parent) then
                     call warning('generate_hamil','Reducing block size so that all processors contain at least a single row.', 3)
                     write (6,'(1X,a69)') 'Consider running on fewer processors or reducing block size in input.'
