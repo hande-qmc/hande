@@ -42,7 +42,7 @@ contains
 
         ! In:
         !    d1, d2: integer labels of two determinants, as stored in the
-        !            dets array.
+        !            dets_* arrays.
         ! Returns:
         !    Hamiltonian matrix element between the two determinants, 
         !    < D1 | H | D2 >, where the determinants are formed from
@@ -65,14 +65,14 @@ contains
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! Spin symmetry conserved?
-        if (dets(d1)%Ms == dets(d2)%Ms) then
-            excitation = get_excitation(dets(d1)%f, dets(d2)%f)
+        if (dets_Ms(d1) == dets_Ms(d2)) then
+            excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
             ! Connected determinants can differ by (at most) 2 spin orbitals.
             if (excitation%nexcit <= 2) then
                 ! In the momentum space description the overall crystal 
                 ! momentum must be conserved up to a reciprocal lattice
                 ! vector (i.e. satisfy translational symmetry).
-                if (is_reciprocal_lattice_vector(dets(d1)%k-dets(d2)%k)) then
+                if (is_reciprocal_lattice_vector(dets_k(:,d1)-dets_k(:,d2))) then
                     non_zero = .true.
                 end if
             end if
@@ -83,7 +83,7 @@ contains
             ! Apply Slater--Condon rules.
             case(0)
 
-                root_det = decode_det(dets(d1)%f)
+                root_det = decode_det(dets_list(:,d1))
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
 
@@ -155,8 +155,8 @@ contains
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! Spin symmetry conserved?
-        if (dets(d1)%Ms == dets(d2)%Ms) then
-            excitation = get_excitation(dets(d1)%f, dets(d2)%f)
+        if (dets_Ms(d1) == dets_Ms(d2)) then
+            excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
             ! Connected determinants can differ by (at most) 2 spin orbitals.
             if (excitation%nexcit <= 2) then
                 ! Space group symmetry not currently implemented.
@@ -186,14 +186,14 @@ contains
                 ! This only arises if there is at least one crystal cell vector
                 ! which is a unit cell vector.
                 if (t_self_images) then
-                    root_det = decode_det(dets(d1)%f)
+                    root_det = decode_det(dets_list(:,d1))
                     do i = 1, nel
                         hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
                     end do
                 end if
 
                 ! Two electron operator
-                hmatel = hmatel + get_coulomb_matel_real(dets(d1)%f)
+                hmatel = hmatel + get_coulomb_matel_real(dets_list(:,d1))
 
             case(1)
 

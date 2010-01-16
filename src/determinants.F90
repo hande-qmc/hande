@@ -17,20 +17,33 @@ type det
     ! contrast to the list of basis functions, basis_fns, where the *odd*
     ! indices refer to alpha (spin up) functions.  This difference arises because 
     ! fortran numbers bits from 0...
-    integer(i0), pointer :: f(:) ! (basis_length)
+    integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
     ! Total spin of the determinant in units of electron spin (1/2).   
-    integer(i0) :: Ms
+    integer(i0), pointer :: Ms => NULL()
     ! Overall wavevector associated with the Slater determinant.
-    integer, pointer :: k(:) => NULL()
+    integer, pointer :: k(:) => NULL()       ! (ndim)
 end type det
 
-! Store of determinant list.
+! Store of determinant information.
 ! This will quickly become a memory issue, but for dealing with the FCI of small
 ! systems it is ok.  It is possible to store only determinants of the same spin
 ! at the same time, reducing memory requirements.
 ! For momentum-space systems the list of determinants is grouped by wavevector
 ! (up to a reciprocal lattice vector).
-type(det), allocatable, target :: dets(:) ! (ndets)
+
+! Rather than creating an array of type(det), which leads to a serious
+! memory overhead due to the need for pointers/allocatable arrays in the
+! derived type, we instead create 3 separate arrays.  A variable of type det
+! can be used to point to the appropriate information, if needed.
+
+! Bit list of the Slater determinant.  See note for f in det type.
+integer(i0), allocatable, target :: dets_list(:,:) ! (basis_length,ndets)
+
+!  Total spin of each determinant in units of electron spin (1/2).
+integer(i0), allocatable, target :: dets_Ms(:) ! (ndets)
+
+! Overall wavevector associated with each Slater determinant.
+integer(i0), allocatable, target :: dets_k(:,:) ! (ndim,ndets)
 
 ! Number of determinants stored in dets.
 ! This is the number of determinants enumerated in enumerate_determinants with
@@ -123,12 +136,9 @@ contains
 
         integer :: ierr, i
 
-        do i = 1,ndets 
-            deallocate(dets(i)%f, stat=ierr)
-            deallocate(dets(i)%k, stat=ierr)
-        end do
-
-        deallocate(dets, stat=ierr)
+        deallocate(dets_list, stat=ierr)
+        deallocate(dets_Ms, stat=ierr)
+        deallocate(dets_k, stat=ierr)
         deallocate(bit_lookup, stat=ierr)
         deallocate(basis_lookup, stat=ierr)
 
@@ -155,14 +165,16 @@ contains
 
         integer, intent(in), optional :: Ms
 
-        integer :: i, j, idet, c(nel), ierr, iunit
+        integer :: i, j, idet, c(nel), ierr, iunit, ibasis
         integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
         character(2) :: fmt1
-        type(det), allocatable, target :: dets_tmp(:)
-        type(det), pointer :: dets_p(:)
+        integer(i0), allocatable, target :: dets_tmp(:,:)
+        integer(i0), pointer :: dets_p(:,:)
         integer, allocatable :: dets_sym(:), ranking(:)
 
-        if (allocated(dets)) deallocate(dets, stat=ierr)
+        if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
+        if (allocated(dets_Ms)) deallocate(dets_Ms, stat=ierr)
+        if (allocated(dets_k)) deallocate(dets_k, stat=ierr)
 
         if (present(Ms)) then
             ! Find the number of determinants with the required spin.
@@ -177,15 +189,16 @@ contains
             ndets = binom(nbasis, nel)
         end if
 
-        allocate(dets(ndets), stat=ierr)
+        allocate(dets_list(basis_length,ndets), stat=ierr)
 
         if (system_type == hub_real) then
-            dets_p => dets
+            dets_p => dets_list
         else
-            allocate(dets_tmp(ndets), stat=ierr)
+            allocate(dets_tmp(basis_length,ndets), stat=ierr)
             allocate(dets_sym(ndets), stat=ierr)
             dets_p => dets_tmp
         end if
+        allocate(dets_Ms(ndets))
 
         if (present(Ms)) then
             do i = 1, nbeta_combinations
@@ -199,7 +212,19 @@ contains
                     ! the conversion.
                     c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j) - 1
                     idet = (i-1)*nalpha_combinations + j
-                    call init_det(c, dets_p(idet))
+                    dets_p(:,idet) = encode_det(c)
+                    dets_Ms(idet) = det_spin(dets_p(:,idet))
+                    if (system_type /= hub_real) then
+                        ! All determinants have an overall wavevector that is one of the
+                        ! wavevectors sampled in the Brillouin zone (up to a reciprocal
+                        ! lattice vector).
+                        do ibasis = 1, nbasis, 2
+                            if (is_reciprocal_lattice_vector(basis_fns(ibasis)%l-det_momentum(c))) then
+                                dets_sym(idet) = ibasis
+                                exit
+                            end if
+                        end do
+                    end if
                 end do
             end do
         else
@@ -208,30 +233,25 @@ contains
             ! order.
             do i = 1, ndets
                 c = comb(nbasis, nel, i)
-                call init_det(c, dets_p(i))
+                dets_p(:,idet) = encode_det(c)
+                dets_Ms(idet) = det_spin(dets_p(:,idet))
             end do
         end if
 
         if (system_type /= hub_real) then
             ! Rank by wavevector.
-            ! All determinants have an overall wavevector that is one of the
-            ! wavevectors sampled in the Brillouin zone (up to a reciprocal
-            ! lattice vector).
-            do idet = 1, ndets
-                do i = 1, nbasis, 2
-                    if (is_reciprocal_lattice_vector(basis_fns(i)%l-dets_p(idet)%k)) then
-                        dets_sym(idet) = i
-                        exit
-                    end if
-                end do
-            end do
 
             allocate(ranking(ndets), stat=ierr)
             call mrgref(dets_sym, ranking)
 
+            deallocate(dets_sym, stat=ierr)
+            allocate(dets_k(ndim,ndets), stat=ierr)
+
             ! Store in dets in block format: group wavevectors together.
             do idet = 1, ndets
-                dets(idet) = dets_p(ranking(idet))
+                dets_list(:,idet) = dets_p(:,ranking(idet))
+                dets_Ms(idet) = det_spin(dets_list(:,idet))
+                dets_k(:,idet) = det_momentum(decode_det(dets_list(:,idet)))
             end do
 
             deallocate(ranking, stat=ierr)
@@ -252,28 +272,24 @@ contains
 
     end subroutine enumerate_determinants
 
-    subroutine init_det(occ_list, d)
+    function point_to_det(i) result(d)
 
-        ! Initialise a Slater determinant.
+        ! Return a variable of type dets which has components
+        ! that point to the bit string, spin and wavevector (if
+        ! doing a momentum space calculation) of a determinant.
         ! In:
-        !    occ_list(nel): list of occupied orbitals in the Slater determinant.
-        ! Out:
-        !    d: variable of type det containing a bit repesentation of the 
-        !       occupied orbitals and the total spin.
+        !    i: index of determinant.
 
-        integer, intent(in) :: occ_list(nel)
-        type(det), intent(out) :: d
+        use system, only: system_type, hub_real
 
-        integer :: ierr
+        type(det) :: d
+        integer, intent(in) :: i
 
-        allocate(d%f(basis_length), stat=ierr)
-        allocate(d%k(ndim), stat=ierr)
-
-        d%f = encode_det(occ_list)
-        d%Ms = det_spin(d%f)
-        d%k = det_momentum(occ_list)
+        d%f => dets_list(:,i)
+        d%Ms => dets_Ms(i)
+        if (system_type /= hub_real) d%k = dets_k(:,i)
     
-    end subroutine init_det
+    end function point_to_det
 
     pure function encode_det(occ_list) result(bit_list)
 

@@ -193,7 +193,7 @@ contains
         ! Currently only relevant to momentum space.
 
         use basis, only: nbasis
-        use determinants, only: ndets, dets
+        use determinants, only: ndets, dets_k
         use kpoints, only: is_reciprocal_lattice_vector 
         use system, only: system_type, hub_real
 
@@ -217,7 +217,7 @@ contains
             iblk = 1
             sym_blocks(iblk) = 1
             do i = 2, ndets
-                if (is_reciprocal_lattice_vector(dets(i)%k - dets(i-1)%k)) then
+                if (is_reciprocal_lattice_vector(dets_k(:,i) - dets_k(:,i-1))) then
                     cycle
                 else
                     ! New block!
@@ -251,7 +251,6 @@ contains
         use errors
         use parallel
 
-        use determinants, only: dets
         use hamiltonian, only: get_hmatel
         use hubbard_real
 
