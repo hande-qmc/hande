@@ -43,7 +43,7 @@ $parse_source_files)
 
 # test to see if keyword is mentioned in the documentation.
 undocumented_keywords=''
-for keyword in $unique_keywords; do
+for keyword in $all_keywords; do
     undocumented_keywords="$undocumented_keywords $(grep -qi $keyword $docs/*rst || echo $keyword)"
 done
 
@@ -54,14 +54,14 @@ undocumented_keywords=$(echo $undocumented_keywords | sed -e 's/ *$//')
 if [ ! -z "$undocumented_keywords" ]; then
     echo -e "Undocumented keywords are:\n"
     for keyword in $undocumented_keywords; do
-        echo $keyword | sed -e 's/\\|/ or /g'
+        echo $keyword
     done
     echo
 else
     echo "All keywords appear in the documentation."
 fi
 
-# test to see if keyword is used in the test suite.
+# test to see if keyword (or a synonym) is used in the test suite.
 untested_keywords=''
 for keyword in $unique_keywords; do
     untested_keywords="$untested_keywords $(grep -qi $keyword $test_suite/*/*inp || echo $keyword)"
