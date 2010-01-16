@@ -15,7 +15,7 @@
 
 kspace = kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci kspace_nontilted_2d_lanczos
 
-rspace = rspace_nontilted_2d_fci rspace_rectangle_2d_lanczos
+rspace = rspace_nontilted_2d rspace_rectangle_2d_lanczos
 
 fci =  kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci rspace_nontilted_2d
 lanczos = kspace_1d kspace_nontilted_2d_lanczos rspace_nontilted_2d rspace_rectangle_2d_lanczos
