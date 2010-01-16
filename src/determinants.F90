@@ -69,6 +69,7 @@ end type excit
 ! If true then the determinant list is written to determinant_file.
 logical :: write_determinants = .false.
 character(255) :: determinant_file = 'DETS'
+integer :: det_unit
 
 ! Bit masks to reveal the list of alpha basis functions and beta functions
 ! occupied in a Slater determinant.
@@ -85,7 +86,7 @@ contains
         ! integer list of orbitals to bit strings and vice versa.
 
         use comb_m, only: binom
-        use utils, only: int_fmt
+        use utils, only: get_free_unit, int_fmt
 
         integer :: i, bit_pos, bit_element, ierr
         character(2) :: fmt1(3)
@@ -128,6 +129,9 @@ contains
             end if
         end do
 
+        det_unit = get_free_unit()
+        open(det_unit, file=determinant_file, status='unknown')
+
     end subroutine init_determinants
 
     subroutine end_determinants()
@@ -141,6 +145,8 @@ contains
         deallocate(dets_k, stat=ierr)
         deallocate(bit_lookup, stat=ierr)
         deallocate(basis_lookup, stat=ierr)
+
+        close(det_unit, status='keep')
 
     end subroutine end_determinants
 
@@ -260,14 +266,11 @@ contains
         end if
 
         if (write_determinants .and. parent) then
-            iunit = get_free_unit()
-            open(iunit, file=determinant_file, status='unknown')
             fmt1 = int_fmt(ndets, padding=1)
             do i = 1, ndets
-                write (iunit,'('//fmt1//',4X)',advance='no') i
-                call write_det(dets(i)%f, iunit, new_line=.true.)
+                write (det_unit,'('//fmt1//',4X)',advance='no') i
+                call write_det(dets_list(:,i), det_unit, new_line=.true.)
             end do
-            close(iunit, status='keep')
         end if
 
     end subroutine enumerate_determinants
