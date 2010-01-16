@@ -228,11 +228,11 @@ endif
 
 # Files to be pre-processed then compiled.
 $(DEST)/%%.o: %%.F90
-\t$(FC) $(CPPDEFS) $(CPPFLAGS) -c $(FFLAGS) $< -o $@ %(MODULE_FLAG)s $(DEST)
+\t$(FC) $(CPPDEFS) $(CPPFLAGS) -c $(FFLAGS) $< -o $@ %(MODULE_FLAG)s
 
 # Files to compiled directly.
 $(DEST)/%%.o: %%.f90
-\t$(FC) -c $(FFLAGS) $< -o $@ %(MODULE_FLAG)s $(DEST)
+\t$(FC) -c $(FFLAGS) $< -o $@ %(MODULE_FLAG)s
 
 #-----
 # Goals.
