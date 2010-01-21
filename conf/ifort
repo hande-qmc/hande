@@ -1,0 +1,11 @@
+[main]
+fc = ifort
+ld = ifort
+libs = -ltrlan -llapack -lblas
+module_flag = -module
+
+[opt]
+fflags = -O3
+
+[dbg]
+fflags = -g -traceback -CB
