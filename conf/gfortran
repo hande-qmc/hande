@@ -1,0 +1,11 @@
+[main]
+fc = gfortran
+ld = gfortran
+libs = -ltrlan -llapack -lblas
+module_flag = -M
+
+[opt]
+fflags = -O3
+
+[dbg]
+fflags = -g -fbounds-check

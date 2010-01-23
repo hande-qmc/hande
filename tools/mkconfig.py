@@ -1,157 +1,90 @@
 #!/usr/bin/python
 '''Produce a makefile for compiling the source code for a specified target/configuration.
-The resultant makefile requires makedepf90 (http://personal.inet.fi/private/erikedelmann/makedepf90/)
-to produce a list of dependencies.
 
 Usage:
-    ./mkconfig.py [options] configuration
+    mkconfig.py [options] configuration_file
 
-where [options] are:
-    -h,--help   Print this message and exit.
-    -c,--config Print out the available configurations and their settings.
-    -d,--debug  Turn on debug flags (and turn off all optimisations).
+A platform is defined using a simple ini file, consisting of three sections:
+main, opt and dbg.  For instance::
+
+    [main]
+    cc = gcc
+    ld = gcc
+    libs = -larmadillo
+
+    [opt]
+    cflags = -O3
+
+    [dbg]
+    cflags = -g
+
+The 'opt' and 'dbg' sections inherit settings from the 'main' section.  The settings
+in 'opt' are used by default; the debug options can be selected by passing the
+-g option to mkconfig.py.
+
+Available options are:
+
+fc
+    Set the fortran compiler.
+fflags
+    Set flags to be passed to the fortran compiler during compilation.
+cppdefs
+    Set definitions to be used in the C pre-processing step.
+cppflags
+    Set flags to be used in the C pre-processing step.
+ld
+    Set the linker program.
+ldflags
+    Set flags to be passed to the linker during linking of the compiled objects.
+libs
+    Set libraries to be used during the linking step.
+module_flag
+    Set the flag used by the compiler which is used to specify the directory
+    where module (.mod) files are placed when created and where they should be
+    searched for.
 '''
 
-import os,pprint,sys
-
-class makefile_flags(dict):
-    '''Initialise dictionary with all makefile variables not given set to be empty.
-
-    Usage: makefile_flags(FC='ifort',FFLAGS='-O3') creates a dictionary of the 
-    makefile flags and sets FC and FFLAGS, with all other flags existing but set to 
-    be empty.'''
-    def __init__(self,**kwargs):
-        dict.__init__(self,FC='',
-                           FFLAGS='',
-                           CPPDEFS='',
-                           CPPFLAGS='',
-                           LD='',
-                           LDFLAGS='',
-                           LIBS='-ltrlan -llapack -lblas',
-                           MODULE_FLAG='',) # Flag compiler uses for setting the directory 
-                                            # in which to place/search for .mod files.
-                                            # Must be followed by $(DEST).  This is to 
-                                            # accommodate the compilers which want a space
-                                            # after the flag as well as those that don't!
-                                            # e.g. for g95 MODULE_FLAG='-fmod=$(DEST)' 
-                                            # whilst for gfortran MODULE_FLAG='-J $(DEST)'.
-        self.update(**kwargs)
+import ConfigParser
+import optparse
+import os
+import pprint
+import sys
 
 #======================================================================
 # Local settings.
 
-program_name='hubbard.x'
+PROGRAM_NAME='hubbard.x'
 
 # Directory in which compiled objects are placed.
-dest='dest'
+DEST='dest'
 
 # Directory in which the compiled executable is placed.
-exe='bin'
+EXE='bin'
 
 # List of directories (colon-separated) containing the source files.
-vpath='src:lib'
+VPATH='src:lib'
 
 # Space separated list of file extensions for the source files.
-source_ext='.f90 .F90'
-
-#======================================================================
-# Edit this section to add new configurations.
-
-ifort=makefile_flags(
-          FC='ifort',
-          FFLAGS='',
-          LD='ifort',
-          MODULE_FLAG='-module $(DEST)'
-      )
-
-# Use makefile_flags(**ifort) rather than just =ifort so that 
-# ifort_mpi has the makefile_flags class, rather than being a normal
-# dict. This enables us to search for all created configurations automatically.
-# The same can be achieved using ifort_mpi=copy.copy(ifort), but I chose not to.
-ifort_mpi=makefile_flags(**ifort) # Initialise with the same settings as the serial platform.
-ifort_mpi.update(                 # Now change only the settings we want to...
-          FC='mpif90',
-          LD='mpif90',
-          CPPDEFS='-D_PARALLEL',
-          LIBS='-ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas',
-      )
-
-gfortran=makefile_flags(
-          FC='gfortran',
-          FFLAGS='-O3 -fbounds-check',
-          LD='gfortran',
-          MODULE_FLAG='-M $(DEST)',
-      )
-
-gfortran_mpi=makefile_flags(**gfortran)
-gfortran_mpi.update(
-          FC='mpif90',
-          FFLAGS='-I /usr/local/shared/suse-10.3/x86_64/openmpi-1.2.6-gnu/lib',
-          LD='mpif90',
-          CPPDEFS='-D_PARALLEL',
-          LIBS='-ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas',
-      )
-
-g95=makefile_flags(
-          FC='g95',
-          FFLAGS='-fbounds-check',
-          LD='g95',
-          MODULE_FLAG='-fmod=$(DEST)',
-      )
-
-nag=makefile_flags(
-          FC='nagfor',
-          CPPFLAGS='-DNAGF95',
-          LD='nagfor',
-          MODULE_FLAG='-mdir $(DEST)',
-      )
-
-pgf90=makefile_flags(
-          FC='pgf90',
-          FFLAGS='-O3',
-          LD='pgf90',
-          MODULE_FLAG='-module $(DEST)'
-      )
-
-pgf90_mpi=makefile_flags(**pgf90)
-pgf90_mpi.update(
-          FC='mpif90',
-          LD='mpif90',
-          CPPDEFS='-D_PARALLEL',
-          LIBS='-ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas',
-      )
-
-pathf95=makefile_flags(
-          FC='pathf95',
-          FFLAGS='',
-          LD='pathf95',
-          MODULE_FLAG='-module $(DEST)'
-      )
+SOURCE_EXT='.f90 .F90'
 
 #======================================================================
 
-# Get list of possible platforms.
-configurations={}
-for name,value in locals().items():
-    if value.__class__==makefile_flags().__class__:
-        configurations[name]=value
-
-makefile_template='''# Generated by mkconfig.py.
+MAKEFILE_TEMPLATE='''# Generated by mkconfig.py.
 
 SHELL=/bin/bash # For our sanity!
 
 #-----
 # Compiler configuration.
 
-FC=%(FC)s
-FFLAGS=-I $(DEST) %(FFLAGS)s
+FC=%(fc)s
+FFLAGS=-I $(DEST) %(fflags)s
 
-CPPDEFS=%(CPPDEFS)s -D_VCS_VER='$(VCS_VER)'
-CPPFLAGS=%(CPPFLAGS)s $(WORKING_DIR_CHANGES)
+CPPDEFS = %(cppdefs)s -D_VCS_VERSION='$(VCS_VERSION)'
+CPPFLAGS = %(cppflags)s $(WORKING_DIR_CHANGES)
 
-LD=%(LD)s
-LDFLAGS=%(LDFLAGS)s
-LIBS=%(LIBS)s
+LD = %(ld)s
+LDFLAGS = %(ldflags)s
+LIBS = %(libs)s
 
 #-----
 # Directory structure and setup.
@@ -177,7 +110,7 @@ PROG=%(PROGRAM)s
 # VCS info.
 
 # Get the version control id.  Git only.  Outputs a string.
-VCS_VER:=$(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 --pretty=format:%%H || echo -n 'Not under version control.' ) 2> /dev/null | tr -d '\\r\\n'  && echo -n \\")
+VCS_VERSION := $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 --pretty=format:%%H || echo -n 'Not under version control.' ) 2> /dev/null | tr -d '\\r\\n'  && echo -n \\")
 
 # Test to see if the working directory contains changes.  Git only.  If the
 # working directory contains changes (or is not under version control) then
@@ -228,11 +161,11 @@ endif
 
 # Files to be pre-processed then compiled.
 $(DEST)/%%.o: %%.F90
-\t$(FC) $(CPPDEFS) $(CPPFLAGS) -c $(FFLAGS) $< -o $@ %(MODULE_FLAG)s
+\t$(FC) $(CPPDEFS) $(CPPFLAGS) -c $(FFLAGS) $< -o $@ %(module_flag)s$(DEST)
 
 # Files to compiled directly.
 $(DEST)/%%.o: %%.f90
-\t$(FC) -c $(FFLAGS) $< -o $@ %(MODULE_FLAG)s
+\t$(FC) -c $(FFLAGS) $< -o $@ %(module_flag)s$(DEST)
 
 #-----
 # Goals.
@@ -292,34 +225,114 @@ help:
 include $(DEPEND)
 '''
 
-def create_makefile(config,debug=False):
-    '''Create the Makefile for the desired config.  If debug is True, then the FFLAGS and LDFLAGS of the configuration are overwritten with the -g debug flag.'''
-    if debug: config.update(FFLAGS='-g',LDFLAGS='-g')
-    config.update(PROGRAM=program_name, DEST=dest, EXE=exe, VPATH=vpath, EXT=source_ext)
+def parse_options(my_args):
+    parser = optparse.OptionParser(usage='mkconfig.py [options] configuration_file')
+    parser.add_option('-l', '--ls', action='store_true', default=False, help='Print list of available configurations.')
+    parser.add_option('-d', '--dir', default='conf/', help='Set directory containing the configuration files. Default: %default.')
+    parser.add_option('-g', '--debug', action='store_true', default=False, help='Use the debug settings.  Default: use optimised settings.')
+    parser.add_option('-p', '--print', dest='print_conf', action='store_true', default=False, help='Print settings in configuration file specified, or all settings if no configuration file is specified.')
+    (options, args) = parser.parse_args(my_args)
+    if not (options.print_conf or options.ls) and len(args) != 1:
+        print 'Incorrect arguments.'
+        parser.print_help()
+        sys.exit(1)
+    elif len(args) == 1:
+        config_file = args[0]
+    else:
+        config_file = None
+    return (options, config_file)
+
+def list_configs(config_dir):
+    '''List all config files in config dir.  We assume only config files are in config_dir'''
+    if os.path.isdir(config_dir):
+        return os.listdir(config_dir)
+    else:
+        raise IOError, 'Config directory specified is not a directory: %s.' % (config_dir)
+
+def parse_config(config_dir, config_file):
+    '''Parse the configuration file config_file located in the directory config_dir.'''
+    parser = ConfigParser.RawConfigParser()
+
+    valid_sections = ['main', 'opt', 'dbg']
+
+    valid_sections_upper = [s.upper() for s in valid_sections]
+
+    valid_options = ['fc', 'fflags', 'cppdefs', 'cppflags', 'ld', 'ldflags', 'libs', 'module_flag']
+    minimal_options = ['fc', 'ld', 'libs', 'module_flag']
+
+    file = os.path.join(config_dir, config_file)
+
+    parser.read(file)
+
+    for s in parser.sections():
+        if s not in valid_sections and s not in valid_sections_upper:
+            raise IOError, 'Invalid section in configuration file: %s.' % (s)
+
+    for s in valid_sections:
+        if s not in parser.sections() and s.upper() not in parser.sections():
+            raise IOError, 'Section not present in configuration file: %s.' % (s)             
+
+    if not parser.sections():
+        raise IOError, 'No sections in configuration file: %s.' % (s)
+
+    config = {}
+
+    for s in valid_sections:
+        config[s] = dict(parser.items('main'))
+        if s in parser.sections():
+            config[s].update(parser.items(s))
+        elif s.upper() in parser.sections():
+            config[s].update(parser.items(s.upper()))
+
+    for s in valid_sections:
+        for opt in config[s].keys():
+            if opt not in valid_options:
+                raise IOError, 'Invalid option in configuration file: %s.' % (opt)
+        # Fill in blanks
+        for opt in valid_options:
+            if opt not in config[s].keys():
+                config[s][opt] = ''
+
+    config.pop('main')
+
+    for s in config.keys():
+        # Check minimal options.
+        for opt in minimal_options:
+            if not config[s][opt]:
+                raise IOError, 'Required option not set: %s' % (opt)
+        # Treat module_flag specially: append a space if it doesn't end in =.
+        # This is to allow the same template to be used no matter how the compiler
+        # insists on handling this flag.
+        if not config[s]['module_flag'][-1] == '=':
+            config[s]['module_flag'] = '%s ' % (config[s]['module_flag'])
+
+    return config
+
+def create_makefile(config):
+    '''Create the Makefile using the options given in the config dictionary.'''
+    config.update(PROGRAM=PROGRAM_NAME, DEST=DEST, EXE=EXE, VPATH=VPATH, EXT=SOURCE_EXT)
     f=open('Makefile','w')
-    f.write(makefile_template % config)
+    f.write(MAKEFILE_TEMPLATE % config)
     f.close()
 
 if __name__=='__main__':
     args=sys.argv[1:]
-    if '-d' in args or '--debug' in args:
-        debug=True
-        args=[arg for arg in args if (arg!='-d' and arg!='--debug')]
+    (options, config_file) = parse_options(args)
+    if options.ls:
+        print 'Available configurations are: %s.' % (', '.join(list_configs(options.dir)))
+    elif options.print_conf:
+        if config_file:
+            config_files = [config_file]
+        else:
+            config_files = list_configs(options.dir)
+        for config_file in config_files:
+            config = parse_config(options.dir, config_file)
+            print 'Settings in configuration file: %s' % (config_file)
+            pprint.pprint(config)
+            print
     else:
-        debug=False
-    if '-c' in args or '--config' in args:
-        print 'Available configurations are:'
-        for k,v in sorted(configurations.items()):
-            print '\n%s' % k
-            pprint.pprint(v)
-        sys.exit()
-    if '-h' in args or '--help' in args or len(args)!=1:
-        print '%s\nAvailable configurations are: %s.' % (__doc__,', '.join(sorted(configurations.keys())))
-        sys.exit()
-    try:
-        config=configurations[args[0]]
-    except KeyError:
-        print 'Configuration not recognized: %s' % args[0]
-        print 'Available configurations are: %s.' % (', '.join(sorted(configurations.keys())))
-        sys.exit()
-    create_makefile(config,debug)
+        config = parse_config(options.dir, config_file)
+        if options.debug:
+            create_makefile(config['dbg'])
+        else:
+            create_makefile(config['opt'])

@@ -56,7 +56,7 @@ contains
     !   used.
     ! * _WORKING_DIR_CHANGES: define if the working directory contains local
     !   (uncommitted) changes.
-    ! * _VCS_VER: set to a (quoted!) string containing the VCS revision id of the current
+    ! * _VCS_VERSION: set to a (quoted!) string containing the VCS revision id of the current
     !   commit.
     ! 
     ! The VCS information can be simply obtained via shell commands in the makefile:
@@ -64,7 +64,7 @@ contains
     ! repositories.  For instance, if a subversion repository is being used, then the
     ! version id can be obtained using::
     !
-    !     VCS_VER:=$(shell echo -n \"`svn info | grep 'Revision'| sed -e 's/Revision: //'`\")
+    !     VCS_VERSION:=$(shell echo -n \"`svn info | grep 'Revision'| sed -e 's/Revision: //'`\")
     ! 
     ! and if the working directory contains local changes, then the command::
     ! 
@@ -78,13 +78,13 @@ contains
     ! 
     ! environment_report.F90 can thus be appropriately compiled with the command::
     ! 
-    !    $(FC) $(WORKING_DIR_CHANGES) -D_VCS_VER='$(VCS_VER)' -c environment_report.F90 -o environment_report.o
+    !    $(FC) $(WORKING_DIR_CHANGES) -D_VCS_VERSION='$(VCS_VERSION)' -c environment_report.F90 -o environment_report.o
     !   
     ! where $(FC) is defined to be the desired fortran compiler.
     ! 
     ! Similarly for git::
     ! 
-    !     VCS_VER:=$(shell echo -n \" && git log --max-count=1 --pretty=format:%H && echo -n \")
+    !     VCS_VERSION:=$(shell echo -n \" && git log --max-count=1 --pretty=format:%H && echo -n \")
     !     WORKING_DIR_CHANGES := $(shell git diff-index --quiet --cached HEAD
     !                             --ignore-submodules -- && git diff-files --quiet
     !                             --ignore-submodules || echo -n "-D_WORKING_DIR_CHANGES") # on one line. 
@@ -122,7 +122,7 @@ contains
     write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
 #endif
 
-    write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',_VCS_VER
+    write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',_VCS_VERSION
 #ifdef _WORKING_DIR_CHANGES
     write (io_unit,'(a42)') 'Working directory contains local changes.'
 #endif

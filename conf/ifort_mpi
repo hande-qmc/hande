@@ -1,0 +1,11 @@
+[main]
+fc = mpif90
+ld = impif90
+libs = -ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas
+module_flag = -module
+
+[opt]
+fflags = -O3
+
+[dbg]
+fflags = -g -traceback -CB
