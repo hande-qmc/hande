@@ -174,7 +174,7 @@ $(DEST)/%%.o: %%.f90
 
 # Compile program.
 $(PROG): $(EXE)/$(PROG_VERSION)
-\tcd $(EXE) && ln -s -f $< $(notdir $@)
+\tcd $(EXE) && ln -s -f $(notdir $<) $@
 
 $(EXE)/$(PROG_VERSION): $(OBJECTS)
 \t$(MAKE) -B $(DEST)/environment_report.o
