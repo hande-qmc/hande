@@ -2,15 +2,17 @@
 '''Produce a makefile for compiling the source code for a specified target/configuration.
 
 Usage:
-    mkconfig.py [options] configuration_file
+    mkconfig.py [options] [configuration_file]
+
+Use the --help option to see more details.
 
 A platform is defined using a simple ini file, consisting of three sections:
 main, opt and dbg.  For instance::
 
     [main]
-    cc = gcc
-    ld = gcc
-    libs = -larmadillo
+    cc = gfortran
+    ld = gfortran
+    libs = -llapack -lblas
 
     [opt]
     cflags = -O3
@@ -55,6 +57,8 @@ import sys
 
 PROGRAM_NAME='hubbard.x'
 
+(PROGRAM_STEM, PROGRAM_EXT) = os.path.splitext(PROGRAM_NAME)
+
 # Directory in which compiled objects are placed.
 DEST='dest'
 
@@ -89,22 +93,30 @@ LIBS = %(libs)s
 #-----
 # Directory structure and setup.
 
+# Config info.
+CONFIG = %(config)s
+OPT = %(opt_level)s
+
 # Directories containing source files.
-VPATH=%(VPATH)s
+VPATH = %(VPATH)s
 
 # Directory for objects.
-DEST=%(DEST)s
+DEST = %(DEST)s/$(CONFIG)/$(OPT)
 
 # Directory for compiled executables.
-EXE=%(EXE)s
+EXE = %(EXE)s
 
 # We put compiled objects and modules in $(DEST).  If it doesn't exist, create it.
-make_dest:=$(shell test -e $(DEST) || mkdir -p $(DEST))
+make_dest := $(shell test -e $(DEST) || mkdir -p $(DEST))
 
 # We put the compiled executable in $(EXE).  If it doesn't exist, then create it.
-make_exe:=$(shell test -e $(EXE) || mkdir -p $(EXE))
+make_exe := $(shell test -e $(EXE) || mkdir -p $(EXE))
 
-PROG=%(PROGRAM)s
+# Specific version of binary.
+PROG_VERSION = %(PROGRAM_STEM)s.$(CONFIG).$(OPT)%(PROGRAM_EXT)s
+
+# Symbolic link which points to $(PROG_VERSION).
+PROG = %(PROGRAM)s
 
 #-----
 # VCS info.
@@ -121,7 +133,7 @@ WORKING_DIR_CHANGES := $(shell git diff --quiet --cached && git diff --quiet 2> 
 # Find source files and resultant object files.
 
 # Source extensions.
-EXTS = %(EXT)s
+EXTS = %(SOURCE_EXT)s
 
 # Space separated list of source directories.
 SRCDIRS := $(subst :, ,$(VPATH))
@@ -139,19 +151,7 @@ OBJECTS := $(addprefix $(DEST)/, $(OBJ))
 #-----
 # Dependency file.
 
-DEPEND = .depend
-
-DEPEND_EXISTS := $(wildcard $(DEPEND))
-
-# If the dependency file does not exist, then it is generated.  This 
-# pass of make will not have the correct dependency knowledge though,
-# so we force an exit.
-ifneq ($(DEPEND_EXISTS),$(DEPEND))
-\tTEST_DEPEND = no_depend
-\tDEPEND_TARGET = $(DEPEND)
-else
-\tDEPEND_TARGET = depend_target
-endif
+DEPEND = %(DEST)s/.depend
 
 #-----
 # Compilation macros.
@@ -170,22 +170,26 @@ $(DEST)/%%.o: %%.f90
 #-----
 # Goals.
 
-.PHONY: clean test tests $(DEPEND_TARGET) depend help $(PROG) no_depend
+.PHONY: clean test tests depend help $(PROG)
 
 # Compile program.
-$(EXE)/$(PROG): $(TEST_DEPEND) $(OBJECTS)
+$(PROG): $(EXE)/$(PROG_VERSION)
+\tcd $(EXE) && ln -s -f $< $(notdir $@)
+
+$(EXE)/$(PROG_VERSION): $(OBJECTS)
 \t$(MAKE) -B $(DEST)/environment_report.o
 \ttest -e `dirname $@` || mkdir -p `dirname $@`
 \t$(FC) -o $@ $(FFLAGS) $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
 
-$(PROG): $(EXE)/$(PROG)
-
 # Remove compiled objects and executable.
 clean: 
-\trm -f $(DEST)/*.{mod,o} $(EXE)/$(PROG)
+\trm -f $(DEST)/*.{d,o} $(EXE)/$(PROG_VERSION)
+
+cleanall:
+\trm -rf %(DEST)s $(EXE)
 
 # Build from scratch.
-new: clean $(EXE)/$(PROG)
+new: clean $(PROG)
 
 # Run tests.
 test:
@@ -194,23 +198,17 @@ test:
 tests: test
 
 # Generate dependency file.
-$(DEPEND_TARGET):
-\ttools/sfmakedepend --file - --silent $(SRCFILES) --objdir \$$\(DEST\) --moddir \$$\(DEST\) > $(DEPEND)
+$(DEPEND):
+\ttools/sfmakedepend --file - --silent $(SRCFILES) --objdir \$$\(DEST\) --moddir \$$\(DEST\) > $@
 
-depend: $(DEPEND_TARGET)
-
-# Force exit if dependency file didn't exist as make didn't pickup the correct
-# dependencies on this pass.
-no_depend:
-\t@echo "The required dependency file did not exist but has now been generated."
-\t@echo "Please re-run make."
-\texit 2
+depend: 
+\t$(MAKE) -B $(DEPEND)
 
 help:
-\t@echo "Please use \`make <target>' where <target> is one of:"
-\t@echo "  bin/hubbard.x        [default target] Compile program."
-\t@echo "  hubbard.x            Compile program."
+\t@echo "Please use 'make <target>' where <target> is one of:"
+\t@echo "  %(PROGRAM)-14s       [default target] Compile program in the %(EXE)s directory."
 \t@echo "  clean                Remove the compiled objects."
+\t@echo "  ctags                Run ctags on the source files.  This is performed by default at the end of a successful compilation."
 \t@echo "  new                  Remove all previously compiled objects and re-compile."
 \t@echo "  tests                Run test suite."
 \t@echo "  test                 Run test suite."
@@ -226,31 +224,50 @@ include $(DEPEND)
 '''
 
 def parse_options(my_args):
-    parser = optparse.OptionParser(usage='mkconfig.py [options] configuration_file')
-    parser.add_option('-l', '--ls', action='store_true', default=False, help='Print list of available configurations.')
-    parser.add_option('-d', '--dir', default='conf/', help='Set directory containing the configuration files. Default: %default.')
+    '''Parse command line options given in the my_args list.
+
+Returns the options object and a space separated list of configuration files.'''
+    parser = optparse.OptionParser(usage='''mkconfig.py [options] [configuration_file(s)]
+
+If no configuration file is given then the .default file in the specified directory is used.
+A configuration file does not need to be specified with the --ls and --print options.
+Multiple configuration files can only be given in conjunction with the --print option.''')
+    parser.add_option('-d', '--dir', default='config/', help='Set directory containing the configuration files. Default: %default.')
     parser.add_option('-g', '--debug', action='store_true', default=False, help='Use the debug settings.  Default: use optimised settings.')
-    parser.add_option('-p', '--print', dest='print_conf', action='store_true', default=False, help='Print settings in configuration file specified, or all settings if no configuration file is specified.')
+    parser.add_option('-l', '--ls', action='store_true', default=False, help='Print list of available configurations.')
+    parser.add_option('-o', '--out', default='Makefile', help='Set the output filename to which the makefile is written.  Use -o - to write to stdout.  Default: %default.')
+    parser.add_option('-p', '--print', dest='print_conf', action='store_true', default=False, help='Print settings in configuration file(s) specified, or all settings if no configuration file is specified.')
+
     (options, args) = parser.parse_args(my_args)
-    if not (options.print_conf or options.ls) and len(args) != 1:
-        print 'Incorrect arguments.'
-        parser.print_help()
-        sys.exit(1)
-    elif len(args) == 1:
-        config_file = args[0]
+
+    if len(args) >= 1:
+        config_file = ' '.join(os.path.join(options.dir, c) for c in args)
+    elif len(args) == 0 and os.path.exists(os.path.join(options.dir, '.default')):
+        config_file = os.path.join(options.dir, '.default')
     else:
         config_file = None
+
+    if not (options.print_conf or options.ls):
+        if len(args) > 1:
+            print 'Incorrect arguments.'
+            parser.print_help()
+            sys.exit(1)
+        if not config_file:
+            print '.default file not found.'
+            parser.print_help()
+            sys.exit(1)
+
     return (options, config_file)
 
 def list_configs(config_dir):
-    '''List all config files in config dir.  We assume only config files are in config_dir'''
+    '''Return the path to all config files in config_dir.  We assume only config files are in config_dir'''
     if os.path.isdir(config_dir):
-        return os.listdir(config_dir)
+        return [os.path.join(config_dir, f) for f in os.listdir(config_dir)]
     else:
         raise IOError, 'Config directory specified is not a directory: %s.' % (config_dir)
 
-def parse_config(config_dir, config_file):
-    '''Parse the configuration file config_file located in the directory config_dir.'''
+def parse_config(config_file):
+    '''Parse the configuration file config_file.'''
     parser = ConfigParser.RawConfigParser()
 
     valid_sections = ['main', 'opt', 'dbg']
@@ -258,22 +275,24 @@ def parse_config(config_dir, config_file):
     valid_sections_upper = [s.upper() for s in valid_sections]
 
     valid_options = ['fc', 'fflags', 'cppdefs', 'cppflags', 'ld', 'ldflags', 'libs', 'module_flag']
+
     minimal_options = ['fc', 'ld', 'libs', 'module_flag']
 
-    file = os.path.join(config_dir, config_file)
+    if not os.path.exists(config_file):
+        raise IOError,'Config file does not exist: %s' % (config_file)
 
-    parser.read(file)
+    parser.read(config_file)
 
     for s in parser.sections():
         if s not in valid_sections and s not in valid_sections_upper:
-            raise IOError, 'Invalid section in configuration file: %s.' % (s)
+            raise IOError, 'Invalid section in configuration file %s: %s.' % (config_file, s)
 
     for s in valid_sections:
         if s not in parser.sections() and s.upper() not in parser.sections():
-            raise IOError, 'Section not present in configuration file: %s.' % (s)             
+            raise IOError, 'Section not present in configuration file %s: %s.' % (config_file, s)             
 
     if not parser.sections():
-        raise IOError, 'No sections in configuration file: %s.' % (s)
+        raise IOError, 'No sections in configuration file %s: %s.' % (config_file, s)
 
     config = {}
 
@@ -308,12 +327,21 @@ def parse_config(config_dir, config_file):
 
     return config
 
-def create_makefile(config):
-    '''Create the Makefile using the options given in the config dictionary.'''
-    config.update(PROGRAM=PROGRAM_NAME, DEST=DEST, EXE=EXE, VPATH=VPATH, EXT=SOURCE_EXT)
-    f=open('Makefile','w')
-    f.write(MAKEFILE_TEMPLATE % config)
-    f.close()
+def create_makefile(config_file, use_debug=False):
+    '''Returns the makefile using the options given in the config_file.'''
+    if use_debug:
+        config = parse_config(config_file)['dbg']
+        config.update(opt_level='debug')
+    else:
+        config = parse_config(config_file)['opt']
+        config.update(opt_level='optimised')
+    # Set the name in the Makefile to be the basename of the config filename.  Follow any links.
+    if os.path.islink(config_file):
+        config_name = os.path.basename(os.readlink(config_file))
+    else:
+        config_name = os.path.basename(config_file)
+    config.update(PROGRAM=PROGRAM_NAME, PROGRAM_STEM=PROGRAM_STEM, PROGRAM_EXT=PROGRAM_EXT, DEST=DEST, EXE=EXE, VPATH=VPATH, SOURCE_EXT=SOURCE_EXT, config=config_name)
+    return MAKEFILE_TEMPLATE % (config)
 
 if __name__=='__main__':
     args=sys.argv[1:]
@@ -322,17 +350,19 @@ if __name__=='__main__':
         print 'Available configurations are: %s.' % (', '.join(list_configs(options.dir)))
     elif options.print_conf:
         if config_file:
-            config_files = [config_file]
+            config_files = config_file.split()
         else:
             config_files = list_configs(options.dir)
         for config_file in config_files:
-            config = parse_config(options.dir, config_file)
+            config = parse_config(config_file)
             print 'Settings in configuration file: %s' % (config_file)
             pprint.pprint(config)
             print
     else:
-        config = parse_config(options.dir, config_file)
-        if options.debug:
-            create_makefile(config['dbg'])
+        if options.out == '-':
+            f = sys.stdout
         else:
-            create_makefile(config['opt'])
+            f = open(options.out, 'w')
+        f.write(create_makefile(config_file, options.debug))
+        if options.out != '-':
+            f.close()
