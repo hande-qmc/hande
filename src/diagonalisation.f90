@@ -193,7 +193,7 @@ contains
         ! Currently only relevant to momentum space.
 
         use basis, only: nbasis
-        use determinants, only: ndets, dets_k
+        use determinants, only: ndets, dets_ksum
         use kpoints, only: is_reciprocal_lattice_vector 
         use system, only: system_type, hub_real
 
@@ -209,15 +209,19 @@ contains
             sym_blocks(1) = 1
         else
             ! Hamiltonian matrix elements, < D_i | H | D_j >, are only non-zero
-            ! if k_i and k_j differ by (at most) a reciprocal lattice vector of
+            ! if ksum_i and ksum_j differ by (at most) a reciprocal lattice vector of
             ! the primitive cell.
+            ! This is because single excitations are not connected and for
+            ! a connected double excitation, the integral <mn|ab> has to be
+            ! non-zero.  This is only true if the k_m+k_n-k_a-k_b is
+            ! a reciprocal lattice vector.
             ! The list of determinants are helpfully sorted in this order, so we
             ! just need to find which determinants are the first in each
             ! symmetry block.
             iblk = 1
             sym_blocks(iblk) = 1
             do i = 2, ndets
-                if (is_reciprocal_lattice_vector(dets_k(:,i) - dets_k(:,i-1))) then
+                if (is_reciprocal_lattice_vector(dets_ksum(:,i) - dets_ksum(:,i-1))) then
                     cycle
                 else
                     ! New block!
