@@ -105,7 +105,9 @@ Calculation options
     http://crd.lbl.gov/~kewu/ps/trlan_.html, for more details.  The default is 40.
 **lanczos_solutions** *nsolns*
     Set the number of eigenvalues (and eigenvectors, if required) to be found
-    via Lanczos diagonlisation.  The default is 5.
+    via Lanczos diagonlisation.  The default is 5.  The Hamiltonian matrix
+    is constructed in block diagonal form using spin and crystal momentum
+    conservation rules.  nsolns is the number of solutions found per block.
 **lanczos_solns** *nsolns*
     Synonym for **lanczos_solutions**.
 
