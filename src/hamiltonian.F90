@@ -64,17 +64,15 @@ contains
 
         ! Test to see if Hamiltonian matrix element is non-zero.
 
-        ! Spin symmetry conserved?
-        if (dets_Ms(d1) == dets_Ms(d2)) then
-            excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
-            ! Connected determinants can differ by (at most) 2 spin orbitals.
-            if (excitation%nexcit <= 2) then
-                ! In the momentum space description the overall crystal 
-                ! momentum must be conserved up to a reciprocal lattice
-                ! vector (i.e. satisfy translational symmetry).
-                if (is_reciprocal_lattice_vector(dets_ksum(:,d1)-dets_ksum(:,d2))) then
-                    non_zero = .true.
-                end if
+        ! We assume Ms is conserved (ie has already been checked for).
+        excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
+        ! Connected determinants can differ by (at most) 2 spin orbitals.
+        if (excitation%nexcit <= 2) then
+            ! In the momentum space description the overall crystal 
+            ! momentum must be conserved up to a reciprocal lattice
+            ! vector (i.e. satisfy translational symmetry).
+            if (is_reciprocal_lattice_vector(dets_ksum(:,d1)-dets_ksum(:,d2))) then
+                non_zero = .true.
             end if
         end if
 
@@ -154,14 +152,12 @@ contains
 
         ! Test to see if Hamiltonian matrix element is non-zero.
 
-        ! Spin symmetry conserved?
-        if (dets_Ms(d1) == dets_Ms(d2)) then
-            excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
-            ! Connected determinants can differ by (at most) 2 spin orbitals.
-            if (excitation%nexcit <= 2) then
-                ! Space group symmetry not currently implemented.
-                non_zero = .true.
-            end if
+        ! We assume Ms is conserved (ie has already been checked for).
+        excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
+        ! Connected determinants can differ by (at most) 2 spin orbitals.
+        if (excitation%nexcit <= 2) then
+            ! Space group symmetry not currently implemented.
+            non_zero = .true.
         end if
 
         ! Matrix elements in the real space formulation are quite simple.

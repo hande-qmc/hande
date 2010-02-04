@@ -21,33 +21,33 @@ type det
     ! Total spin of the determinant in units of electron spin (1/2).   
     integer(i0), pointer :: Ms => NULL()
     ! Sum of wavevectors of the occupied orbitals in the Slater determinant.
-    integer, pointer :: k(:) => NULL()       ! (ndim)
+    integer, pointer :: ksum(:) => NULL()       ! (ndim)
 end type det
 
 ! Store of determinant information.
 ! This will quickly become a memory issue, but for dealing with the FCI of small
-! systems it is ok.  It is possible to store only determinants of the same spin
-! at the same time, reducing memory requirements.
-! For momentum-space systems the list of determinants is grouped by wavevector
-! (up to a reciprocal lattice vector).
+! systems it is ok.
 
 ! Rather than creating an array of type(det), which leads to a serious
 ! memory overhead due to the need for pointers/allocatable arrays in the
-! derived type, we instead create 3 separate arrays.  A variable of type det
+! derived type, we instead create 3 separate variables.  A variable of type det
 ! can be used to point to the appropriate information, if needed.
 
 ! Bit list of the Slater determinant.  See note for f in det type.
+! We only store determinants of the same Ms and (for momentum space
+! calculations) same ksum.
 integer(i0), allocatable, target :: dets_list(:,:) ! (basis_length,ndets)
 
-!  Total spin of each determinant in units of electron spin (1/2).
-integer(i0), allocatable, target :: dets_Ms(:) ! (ndets)
+! Total spin of each Slater determinant stored in dets_list in units of electron spin (1/2).
+integer, target :: dets_Ms 
 
-! Sum of wavevectors of the occupied orbitals in the Slater determinant.
-integer(i0), allocatable, target :: dets_ksum(:,:) ! (ndim,ndets)
+! Sum of wavevectors of the occupied orbitals in each Slater determinant stored
+! in det_list.  Sum is to within a reciprocal lattice vector.
+integer(i0), allocatable, target :: dets_ksum(:,:) ! (ndim, ndets)
 
 ! Number of determinants stored in dets.
 ! This is the number of determinants enumerated in enumerate_determinants with
-! the desired spin.
+! the desired spin and momentum symmetry.
 integer :: ndets
 
 ! Total size of determinant space.
@@ -141,7 +141,6 @@ contains
         integer :: ierr, i
 
         deallocate(dets_list, stat=ierr)
-        deallocate(dets_Ms, stat=ierr)
         if (allocated(dets_ksum)) deallocate(dets_ksum, stat=ierr)
         deallocate(bit_lookup, stat=ierr)
         deallocate(basis_lookup, stat=ierr)
@@ -181,7 +180,6 @@ contains
         type(det) :: d
 
         if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
-        if (allocated(dets_Ms)) deallocate(dets_Ms, stat=ierr)
         if (allocated(dets_ksum)) deallocate(dets_ksum, stat=ierr)
 
         ! Find the number of determinants with the required spin.
@@ -193,7 +191,6 @@ contains
         ndets = nalpha_combinations*nbeta_combinations
 
         allocate(dets_list(basis_length, ndets), stat=ierr)
-        allocate(dets_Ms(ndets), stat=ierr)
 
         if (system_type == hub_real) then
             dets_p => dets_list
@@ -244,7 +241,6 @@ contains
             do idet = 1, ndets
                 dets_list(:,idet) = dets_p(:,ranking(idet))
                 dets_ksum(:,idet) = dets_ksum_tmp(:,ranking(idet))
-                dets_Ms(idet) = det_spin(dets_list(:,idet))
             end do
 
             deallocate(ranking, stat=ierr)
@@ -252,9 +248,10 @@ contains
             deallocate(dets_ksum_tmp, stat=ierr)
         else
             do idet = 1, ndets
-                dets_Ms(idet) = det_spin(dets_p(:,idet))
             end do
         end if
+
+        dets_Ms = Ms
 
         dets_p => NULL()
 
@@ -282,8 +279,8 @@ contains
         integer, intent(in) :: i
 
         d%f => dets_list(:,i)
-        d%Ms => dets_Ms(i)
-        if (system_type /= hub_real) d%k = dets_ksum(:,i)
+        d%Ms => dets_Ms
+        if (system_type /= hub_real) d%ksum = dets_ksum(:,i)
     
     end function point_to_det
 
