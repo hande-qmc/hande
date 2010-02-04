@@ -169,7 +169,7 @@ contains
         use m_mrgref, only: mrgref
         use utils, only: get_free_unit, int_fmt
 
-        integer, intent(in), optional :: Ms
+        integer, intent(in) :: Ms
 
         integer :: i, j, idet, c(nel), ierr, iunit, ibasis
         integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
@@ -184,18 +184,13 @@ contains
         if (allocated(dets_Ms)) deallocate(dets_Ms, stat=ierr)
         if (allocated(dets_ksum)) deallocate(dets_ksum, stat=ierr)
 
-        if (present(Ms)) then
-            ! Find the number of determinants with the required spin.
-            if (mod(Ms,2) /= mod(nel,2)) call stop_all('enumerate_dets','Required Ms not possible.')
-            nbeta = (nel - Ms)/2
-            nalpha = (nel + Ms)/2
-            nbeta_combinations = binom(nbasis/2, nbeta)
-            nalpha_combinations = binom(nbasis/2, nalpha)
-            ndets = nalpha_combinations*nbeta_combinations
-        else
-            ! Total size of determinant space.  (This will be painful!)
-            ndets = binom(nbasis, nel)
-        end if
+        ! Find the number of determinants with the required spin.
+        if (mod(Ms,2) /= mod(nel,2)) call stop_all('enumerate_dets','Required Ms not possible.')
+        nbeta = (nel - Ms)/2
+        nalpha = (nel + Ms)/2
+        nbeta_combinations = binom(nbasis/2, nbeta)
+        nalpha_combinations = binom(nbasis/2, nalpha)
+        ndets = nalpha_combinations*nbeta_combinations
 
         allocate(dets_list(basis_length, ndets), stat=ierr)
         allocate(dets_Ms(ndets), stat=ierr)
@@ -210,31 +205,21 @@ contains
             dets_p => dets_list_tmp
         end if
 
-        if (present(Ms)) then
-            do i = 1, nbeta_combinations
-                ! comb(nbasis/2, nbeta, i) will give the sites occupied by
-                ! electrons in the beta spin orbital.
-                ! beta orbitals are defined to be the even numbered basis
-                ! functions, hence the conversion.
-                c = 2*comb(nbasis/2, nbeta, i)
-                do j = 1, nalpha_combinations
-                    ! alpha orbitals are defined to be the odd numbered basis functions, hence
-                    ! the conversion.
-                    c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j) - 1
-                    idet = (i-1)*nalpha_combinations + j
-                    dets_p(:,idet) = encode_det(c)
-                    dets_ksum_tmp(:,idet) = det_momentum(c)
-                end do
-            end do
-        else
-            ! For the entire list it's easy: we just loop over all determinants
-            ! and comb returns each possible combination in lexicographical
-            ! order.
-            do i = 1, ndets
-                c = comb(nbasis, nel, i)
+        do i = 1, nbeta_combinations
+            ! comb(nbasis/2, nbeta, i) will give the sites occupied by
+            ! electrons in the beta spin orbital.
+            ! beta orbitals are defined to be the even numbered basis
+            ! functions, hence the conversion.
+            c = 2*comb(nbasis/2, nbeta, i)
+            do j = 1, nalpha_combinations
+                ! alpha orbitals are defined to be the odd numbered basis functions, hence
+                ! the conversion.
+                c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j) - 1
+                idet = (i-1)*nalpha_combinations + j
                 dets_p(:,idet) = encode_det(c)
+                dets_ksum_tmp(:,idet) = det_momentum(c)
             end do
-        end if
+        end do
 
         if (system_type /= hub_real) then
             ! Rank by wavevector.
