@@ -72,7 +72,7 @@ contains
                 ! In the momentum space description the overall crystal 
                 ! momentum must be conserved up to a reciprocal lattice
                 ! vector (i.e. satisfy translational symmetry).
-                if (is_reciprocal_lattice_vector(dets_k(:,d1)-dets_k(:,d2))) then
+                if (is_reciprocal_lattice_vector(dets_ksum(:,d1)-dets_ksum(:,d2))) then
                     non_zero = .true.
                 end if
             end if
