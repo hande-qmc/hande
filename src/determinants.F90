@@ -184,6 +184,7 @@ contains
 
         ! Find the number of determinants with the required spin.
         if (mod(Ms,2) /= mod(nel,2)) call stop_all('enumerate_dets','Required Ms not possible.')
+
         nbeta = (nel - Ms)/2
         nalpha = (nel + Ms)/2
         nbeta_combinations = binom(nbasis/2, nbeta)
@@ -214,7 +215,7 @@ contains
                 c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j) - 1
                 idet = (i-1)*nalpha_combinations + j
                 dets_p(:,idet) = encode_det(c)
-                dets_ksum_tmp(:,idet) = det_momentum(c)
+                if (system_type /= hub_real) dets_ksum_tmp(:,idet) = det_momentum(c)
             end do
         end do
 
