@@ -247,9 +247,6 @@ contains
             deallocate(ranking, stat=ierr)
             deallocate(dets_list_tmp, stat=ierr)
             deallocate(dets_ksum_tmp, stat=ierr)
-        else
-            do idet = 1, ndets
-            end do
         end if
 
         dets_Ms = Ms
