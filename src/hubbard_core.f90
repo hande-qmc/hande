@@ -24,6 +24,7 @@ contains
         use determinants, only: init_determinants
         use parallel, only: init_parallel, parallel_report, nprocs, parent
         use hubbard_real, only: init_real_space_hub
+        use symmetry, only: init_symmetry
 
         call init_parallel
 
@@ -45,6 +46,8 @@ contains
         call init_basis_fns()
 
         call init_determinants()
+
+        call init_symmetry()
 
         if (system_type == hub_real) call init_real_space_hub()
 
@@ -70,9 +73,11 @@ contains
         use diagonalisation, only: end_hamil
         use parallel, only: end_parallel
         use hubbard_real, only: end_real_space_hub
+        use symmetry, only: end_symmetry
 
         call end_system()
         call end_basis_fns()
+        call end_symmetry()
         call end_determinants()
         call end_hamil()
 
