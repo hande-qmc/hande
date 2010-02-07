@@ -167,10 +167,11 @@ contains
         use errors, only: stop_all
         use m_mrgref, only: mrgref
         use utils, only: get_free_unit, int_fmt
+        use bit_utils, only: first_perm, bit_permutation
 
         integer, intent(in) :: Ms
 
-        integer :: i, j, idet, c(nel), ierr, iunit, ibasis
+        integer :: i, j, idet, c(nel), ierr, iunit, ibasis, ibit
         integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
         character(2) :: fmt1
         integer(i0), allocatable :: dets_ksum_tmp(:,:)
@@ -178,6 +179,7 @@ contains
         integer(i0), pointer :: dets_p(:,:)
         integer, allocatable :: dets_sym(:), ranking(:)
         type(det) :: d
+        integer(i0) :: f_alpha, f_beta
 
         if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
         if (allocated(dets_ksum)) deallocate(dets_ksum, stat=ierr)
@@ -203,19 +205,43 @@ contains
             dets_p => dets_list_tmp
         end if
 
+        ! Assume that we're not attempting to do FCI for more than
+        ! a 2*i0_length spin orbitals, which is quite large... ;-)
+        if (nbasis/2 > i0_length) then
+            call stop_all('enumerate_determinants','Number of alpha spin functions longer than the an i0 integer.')
+        end if
+
+        idet = 0
         do i = 1, nbeta_combinations
-            ! comb(nbasis/2, nbeta, i) will give the sites occupied by
-            ! electrons in the beta spin orbital.
-            ! beta orbitals are defined to be the even numbered basis
-            ! functions, hence the conversion.
-            c = 2*comb(nbasis/2, nbeta, i)
+            ! Get beta orbitals.
+            if (i == 1) then
+                f_beta = first_perm(nbeta)
+            else
+                f_beta = bit_permutation(f_beta)
+            end if
             do j = 1, nalpha_combinations
-                ! alpha orbitals are defined to be the odd numbered basis functions, hence
-                ! the conversion.
-                c(nbeta+1:nel) = 2*comb(nbasis/2, nalpha, j) - 1
-                idet = (i-1)*nalpha_combinations + j
-                dets_p(:,idet) = encode_det(c)
-                if (system_type /= hub_real) dets_ksum_tmp(:,idet) = det_momentum(c)
+                ! Get alpha orbitals.
+                if (j == 1) then
+                    f_alpha = first_perm(nalpha)
+                else
+                    f_alpha = bit_permutation(f_alpha)
+                end if
+                idet = idet + 1
+
+                ! Merge alpha and beta sets into determinant list.
+                ! Alpha orbitals are stored in the even bits, beta orbitals in
+                ! the odd bits (hence the conversion).
+                dets_p(:,idet) = 0
+                do ibit = 0, min(nbasis/2, i0_length/2-1)
+                    if (btest(f_alpha,ibit)) dets_p(1,idet) = ibset(dets_p(1,idet), 2*ibit)
+                    if (btest(f_beta,ibit)) dets_p(1,idet) = ibset(dets_p(1,idet), 2*ibit+1)
+                end do
+                do ibit = i0_length/2, max(nbasis/2, i0_end)
+                    if (btest(f_alpha,ibit)) dets_p(2,idet) = ibset(dets_p(2,idet), 2*ibit-i0_length)
+                    if (btest(f_beta,ibit)) dets_p(2,idet) = ibset(dets_p(2,idet), 2*ibit+1-i0_length)
+                end do
+
+                if (system_type /= hub_real) dets_ksum_tmp(:,idet) = det_momentum(decode_det(dets_p(:,idet)))
             end do
         end do
 

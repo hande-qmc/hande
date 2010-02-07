@@ -142,4 +142,48 @@ contains
 
     end function bit_string
 
+    function first_perm(n) result(p)
+
+        ! In:
+        !    n: number of bits to set.
+        ! Returns:
+        !    i0 bit string containing the lexicographically first permutation of n set bits.
+
+        integer(i0) :: p
+        integer(i0), intent(in) :: n
+        integer :: i
+
+        p = 0
+        do i = 0, n-1
+            p = ibset(p,i)
+        end do
+
+    end function first_perm
+
+    function bit_permutation(v) result(w)
+
+        ! In:
+        !    v: a bit string. 
+        ! Returns:
+        !    The next permutation of the bit string in lexicographic order.
+        !
+        !    As we store the bit strings as i0 integers, overflow is possible,
+        !    i.e. with 10 spin functions and 5 electrons, bit_permuation can
+        !    return bits set in the 11th and higher sites.  Fortunately this
+        !    only happens after all permutations involving just the first 10
+        !    sites are exhausted (by design!), so only happens if bit_permuation
+        !    is called too many times...
+
+        integer(i0) :: w
+        integer(i0), intent(in) :: v
+        integer(i0) :: t1, t2
+
+        ! From http://graphics.stanford.edu/~seander/bithacks.html.
+
+        t1 = ior(v, v-1) + 1
+        t2 = ishft(iand(t1,-t1)/iand(v,-v),-1) - 1
+        w = ior(t1, t2)
+
+    end function bit_permutation
+
 end module bit_utils
