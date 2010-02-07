@@ -101,7 +101,7 @@ contains
             fmt1 = int_fmt((/nel, nbasis, tot_ndets/), padding=1)
             write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
-            write (6,'(1X,a26,'//fmt1(3)//',/)') 'Size of determinant space:', tot_ndets
+            write (6,'(1X,a32,'//fmt1(3)//',/)') 'Total size of determinant space:', tot_ndets
         end if
 
         ! Lookup arrays.

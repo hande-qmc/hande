@@ -122,9 +122,12 @@ contains
 
         if (parent) then
             write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
+            write (6,'(1X,a27)') 'Spin given in units of 1/2.'
             if (system_type == hub_real) then
+                write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
                 write (6,'(1X,a4,3X)', advance='no') 'site'
             else
+                write (6,'(1X,a80,/)') 'k-points given in terms of the reciprocal lattice vectors of the primitive cell.'
                 write (6,'(1X,a7)', advance='no') 'k-point'
             end if
             do i = 1, ndim
@@ -134,7 +137,7 @@ contains
             if (system_type == hub_real) then
                 write(6,'()')
             else
-                write(6,'(5X,a7)') 'kinetic'
+                write(6,'(5X,a14)') 'kinetic energy'
             end if
             do i = 1, nbasis
                 call write_basis_fn(basis_fns(i), new_line=.true.)
