@@ -58,7 +58,7 @@ contains
         if (i == 0 .or. i==1) then
             r = 1.0
         else
-            r = log10(real(abs(i)))
+            r = log10(real(abs(i)+1))
         end if
 
         if (r < 10) then
