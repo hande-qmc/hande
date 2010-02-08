@@ -141,8 +141,6 @@ contains
 
         if (nel <= 0) call stop_all('check_input','Number of electrons must be positive.')
 
-        if (mod(nel, 2) /= 0) call stop_all('check_input', 'Odd number of electrons => open shell.')
-
         do ivec = 1, ndim
             do jvec = ivec+1, ndim
                 if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
