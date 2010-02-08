@@ -124,17 +124,6 @@ PROG_VERSION = %(PROGRAM_STEM)s.$(CONFIG).$(OPT)%(PROGRAM_EXT)s
 PROG = %(PROGRAM)s
 
 #-----
-# VCS info.
-
-# Get the version control id.  Git only.  Outputs a string.
-VCS_VERSION := $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 --pretty=format:%%H || echo -n 'Not under version control.' ) 2> /dev/null | tr -d '\\r\\n'  && echo -n \\")
-
-# Test to see if the working directory contains changes.  Git only.  If the
-# working directory contains changes (or is not under version control) then
-# the _WORKING_DIR_CHANGES flag is set.
-WORKING_DIR_CHANGES := $(shell git diff --quiet --cached && git diff --quiet 2> /dev/null || echo -n "-D_WORKING_DIR_CHANGES")
-
-#-----
 # Find source files and resultant object files.
 
 # Source extensions.
@@ -152,6 +141,17 @@ OBJ := $(addsuffix .o,$(basename $(notdir $(SRCFILES))))
 
 # Full path to all objects.
 OBJECTS := $(addprefix $(DEST)/, $(OBJ))
+
+#-----
+# VCS info.
+
+# Get the version control id.  Git only.  Outputs a string.
+VCS_VERSION := $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 --pretty=format:%%H || echo -n 'Not under version control.' ) 2> /dev/null | tr -d '\\r\\n'  && echo -n \\")
+
+# Test to see if the working directory contains changes.  Git only.  If the
+# working directory contains changes (or is not under version control) then
+# the _WORKING_DIR_CHANGES flag is set.
+WORKING_DIR_CHANGES := $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_WORKING_DIR_CHANGES")
 
 #-----
 # Dependency file.
