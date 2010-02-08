@@ -233,7 +233,14 @@ contains
 
         end if
 
-        if (parent) write (6,*) 'Space size',sym_space_size
+        if (parent) then
+            write (6,'(1X,a13,/,1X,13("-"),/)') 'Size of space'
+            write (6,'(1X,a5,6X,a6)') 'Index','# dets'
+            do i = 1, nsym
+                write (6,'(1X,i4,i13)') i, sym_space_size(i)
+            end do
+            write (6,'()')
+        end if
 
     end subroutine find_sym_space_size
 

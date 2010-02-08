@@ -67,7 +67,7 @@ contains
 
         do ms = ms_min, nel, 2
 
-            if (parent) write (6,'(1X,a58,'//int_fmt(ms)//')') 'Diagonalising Hamiltonian block of determinants with spin:', ms
+            if (parent) write (6,'(1X,a35,'//int_fmt(ms)//',/)') 'Considering determinants with spin:', ms
 
             call find_sym_space_size(ms)
 
@@ -75,6 +75,11 @@ contains
             do isym = 1, nsym
 
                 if (sym_space_size(isym)==0) then
+                    if (parent) then
+                        fmt1 = '(1X,a25,'//int_fmt(isym,1)//',1X,a17,'//int_fmt(nsym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
+                        write (6,fmt1) 'No determinants with spin',ms,'in symmetry block',isym,'out of',nsym
+                        write (6,'(/,1X,15("-"),/)')
+                    end if
                     cycle
                 end if
 
@@ -87,6 +92,10 @@ contains
                 call enumerate_determinants(ms,isym)
 
                 if (ndets == 1) then
+
+                    if (parent) then
+                        write (6,'(/,1X,a35,/)') 'Performing trivial diagonalisation.'
+                    end if
 
                     ! The trivial case seems to trip up TRLan and scalapack in
                     ! parallel.
