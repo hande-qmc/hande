@@ -89,6 +89,10 @@ contains
                 call readf(hubt)
             case('U')
                 call readf(hubu)
+            case('MS')
+                call readi(ms_in)
+            case('SYM','SYMMETRY')
+                call readi(sym_in)
             case('EXACT','FCI')
                 t_exact = .true.
             case('LANCZOS_DIRECT')
@@ -170,6 +174,9 @@ contains
         integer :: ierr
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(isym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)

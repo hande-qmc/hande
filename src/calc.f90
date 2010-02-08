@@ -8,6 +8,15 @@ implicit none
 ! Flags for doing exact and/or Lanczos diagonalisation.
 logical :: t_exact = .false., t_lanczos = .false.
 
+! Ms of determinants.  If not set, then all possible values of Ms are considered
+! in FCI.
+integer :: ms_in = huge(1)
+
+! Symmetry block of determinants.
+! Ignored for real space formulation.
+! Refers to a wavevector in momentum space formulation.
+integer :: sym_in = huge(1)
+
 ! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
 ! size is horrendous.  We only store one symmetry block at a time though.
 ! Best contained within a module to allow easy access from the Lanczos

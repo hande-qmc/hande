@@ -32,7 +32,7 @@ contains
             real(dp) :: energy
         end type soln
 
-        integer :: ms, ms_min, ierr, nlanczos, nexact, nfound, i, ind, state, isym
+        integer :: ms, ms_min, ms_max, ierr, nlanczos, nexact, nfound, i, ind, state, isym, sym_min, sym_max
 
         type(soln), allocatable :: lanczos_solns(:), exact_solns(:)
 
@@ -56,7 +56,23 @@ contains
         ! The -ms blocks are degenerate with the +ms blocks so only need to
         ! solve for ms >= 0.
         
-        ms_min = mod(nel,2)
+        if (ms_in == huge(1)) then
+            ms_min = mod(nel,2)
+            ms_max = nel
+        else
+            ! ms was set in input
+            ms_min = ms_in
+            ms_max = ms_in
+        end if
+        
+        if (sym_in == huge(1)) then
+            sym_min = 1
+            sym_max = nsym
+        else
+            ! sym was set in input
+            sym_min = sym_in
+            sym_max = sym_in
+        end if
 
         if (t_lanczos) allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
         if (t_exact) allocate(exact_solns(tot_ndets), stat=ierr)
@@ -65,14 +81,14 @@ contains
         nlanczos = 0
         nexact = 0
 
-        do ms = ms_min, nel, 2
+        do ms = ms_min, ms_max, 2
 
             if (parent) write (6,'(1X,a35,'//int_fmt(ms)//',/)') 'Considering determinants with spin:', ms
 
             call find_sym_space_size(ms)
 
             ! Diagonalise each symmetry block in turn.
-            do isym = 1, nsym
+            do isym = sym_min, sym_max
 
                 if (sym_space_size(isym)==0) then
                     if (parent) then
