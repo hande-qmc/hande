@@ -7,11 +7,14 @@ integer :: nsym
 ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
 integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
 
+! inv_sym(i) = j means that k_i + k_j = 0 (ie k_j is the inverse of k_i).
+integer, allocatable :: inv_sym(:) ! nsym
+
 contains
 
     subroutine init_symmetry()
 
-        ! Construct the symmetry table.
+        ! Construct the symmetry tables.
 
         use basis, only: nbasis, basis_fns
         use system, only: ndim, system_type, hub_real
@@ -31,6 +34,7 @@ contains
 
             nsym = nbasis/2
             allocate(sym_table(nsym, nsym), stat=ierr)
+            allocate(inv_sym(nsym), stat=ierr)
 
             fmt1 = int_fmt(nsym)
 
@@ -41,24 +45,33 @@ contains
                         if (is_reciprocal_lattice_vector(ksum - basis_fns(k*2)%l)) then
                             sym_table(i,j) = k
                             sym_table(j,i) = k
+                            if (k==1) then
+                                inv_sym(i) = j
+                                inv_sym(j) = i
+                            end if
                             exit
                         end if
                     end do
                 end do
-                if (parent) then
-                    if (i == 1) then
-                        write (6,'(1X,a14,/,1X,14("-"),2/,1X,a82,/,1X,a67,/)') &
-                            "Symmetry table", &
-                            "The table below gives the result of k_i+k_j to within a reciprocal lattice vector.", &
-                            "An index i refers to the wavevector of the i-th alpha spin-orbital."
-                    end if
+            end do
+            if (parent) then
+                write (6,'(1X,a20,/,1X,20("-"),2/,1X,a67,2/,1X,a82,/)') &
+                    "Symmetry information", &
+                    "An index i refers to the wavevector of the i-th alpha spin-orbital.", &
+                    "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
+                do i = 1, nsym
                     do j = 1, nsym
                         write (6,'('//fmt1//')', advance='no') sym_table(j,i)
                     end do
                     write (6,'()')
-                    if (i == nsym) write (6,'()')
-                end if
-            end do
+                end do
+                write (6,'(/,1X,a53,/)') 'The table below gives the inverse of each wavevector.'
+                write (6,'(1X,a5,3X,a7)') 'Index','Inverse'
+                do i = 1, nsym
+                    write (6,'(i4,5X,i4)') i,inv_sym(i)
+                end do
+                write (6,'()')
+            end if
 
         end if
 
@@ -71,6 +84,7 @@ contains
         integer :: ierr
 
         if (allocated(sym_table)) deallocate(sym_table, stat=ierr)
+        if (allocated(inv_sym)) deallocate(inv_sym, stat=ierr)
 
     end subroutine end_symmetry
 
