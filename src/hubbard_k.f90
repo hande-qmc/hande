@@ -82,15 +82,17 @@ contains
         !    True if crystal momentum is conserved in the integral <k_i k_j | U | k_k k_l>
         !    i.e. if k_i + k_j - k_k -k_l = 0 up to a reciprocal lattice vector.
 
+        use symmetry
+
         logical :: conserved
         integer, intent(in) :: i, j, k, l
-        integer :: delta_k(ndim)
+        integer :: delta_k
 
-        ! k_i + k_j - k_k -k_l in units of the reciprocal lattice vectors of the
-        ! crystal cell.
-        delta_k = basis_fns(i)%l + basis_fns(j)%l - basis_fns(k)%l - basis_fns(l)%l
+        delta_k = sym_table((i+1)/2,(j+1)/2)
+        delta_k = sym_table(delta_k,inv_sym((k+1)/2))
+        delta_k = sym_table(delta_k,inv_sym((l+1)/2))
 
-        conserved = is_reciprocal_lattice_vector(delta_k)
+        conserved = delta_k == 1
 
     end function momentum_conserved
 
