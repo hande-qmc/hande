@@ -17,10 +17,12 @@ contains
 
         use basis, only: nbasis
         use system, only: nel
-        use determinants, only: enumerate_determinants, tot_ndets, ndets
+        use determinants, only: enumerate_determinants, find_sym_space_size
+        use determinants, only: tot_ndets, ndets, sym_space_size
         use lanczos
         use full_diagonalisation
         use hamiltonian, only: get_hmatel
+        use symmetry, only: nsym
 
         use utils, only: int_fmt
         use m_mrgref, only: mrgref
@@ -67,42 +69,41 @@ contains
 
             if (parent) write (6,'(1X,a58,'//int_fmt(ms)//')') 'Diagonalising Hamiltonian block of determinants with spin:', ms
 
-            ! Find all determinants with this spin.
-            call enumerate_determinants(ms)
-
-            ! Symmetry blocks within the spin block.
-            call find_sym_blocks()
+            call find_sym_space_size(ms)
 
             ! Diagonalise each symmetry block in turn.
-            do isym = 1, nsym_blocks
+            do isym = 1, nsym
+
+                if (sym_space_size(isym)==0) then
+                    cycle
+                end if
 
                 if (parent) then
-                    fmt1 = '(1X,a28,'//int_fmt(isym,1)//',1X,a6,'//int_fmt(nsym_blocks,1)//')'
-                    write (6,fmt1) 'Diagonalising symmetry block',isym,'out of',nsym_blocks
+                    fmt1 = '(1X,a28,'//int_fmt(isym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
+                    write (6,fmt1) 'Diagonalising symmetry block',isym,'out of',nsym
                 end if
 
-                if (isym == nsym_blocks) then
-                    nhamil = ndets - sym_blocks(isym) + 1
-                else
-                    nhamil = sym_blocks(isym+1) - sym_blocks(isym)
-                end if
+                ! Find all determinants with this spin.
+                call enumerate_determinants(ms,isym)
 
-                if (nhamil == 1) then
+                if (ndets == 1) then
+
                     ! The trivial case seems to trip up TRLan and scalapack in
                     ! parallel.
                     if (t_lanczos) then
-                        lanczos_solns(nlanczos+1)%energy = get_hmatel(sym_blocks(isym),sym_blocks(isym))
+                        lanczos_solns(nlanczos+1)%energy = get_hmatel(1,1)
                         lanczos_solns(nlanczos+1)%ms = ms 
                         nlanczos = nlanczos + 1
                     end if
                     if (t_exact) then
-                        exact_solns(nexact+1)%energy = get_hmatel(sym_blocks(isym),sym_blocks(isym))
+                        exact_solns(nexact+1)%energy = get_hmatel(1,1)
                         exact_solns(nexact+1)%ms = ms 
-                        nexact = nexact + nhamil
+                        nexact = nexact + 1
                     end if
+
                 else
 
-                    allocate(eigv(nhamil), stat=ierr)
+                    allocate(eigv(ndets), stat=ierr)
 
                     if (nprocs == 1) call generate_hamil(isym, distribute_off)
 
@@ -124,9 +125,9 @@ contains
                         ! if running in parallel.
                         if (nprocs > 1) call generate_hamil(isym, distribute_blocks)
                         call exact_diagonalisation(eigv)
-                        exact_solns(nexact+1:nexact+nhamil)%energy = eigv
-                        exact_solns(nexact+1:nexact+nhamil)%ms = ms 
-                        nexact = nexact + nhamil
+                        exact_solns(nexact+1:nexact+ndets)%energy = eigv
+                        exact_solns(nexact+1:nexact+ndets)%ms = ms 
+                        nexact = nexact + ndets
                     end if
 
                     deallocate(eigv)
@@ -185,55 +186,6 @@ contains
 
     end subroutine diagonalise
 
-    subroutine find_sym_blocks()
-
-        ! Identify the symmetry blocks in the determinant list.
-        ! This sets up sym_blocks, an array which contains the index of the
-        ! first determinant in each symmetry block.
-        ! Currently only relevant to momentum space.
-
-        use basis, only: nbasis
-        use determinants, only: ndets, dets_ksum
-        use kpoints, only: is_reciprocal_lattice_vector 
-        use system, only: system_type, hub_real
-
-        integer :: i, iblk, ierr
-
-        ! This is the maximum size of sym_blocks.  Allocating it to be this size
-        ! means we can use it throughout an entire calculation.  The memory
-        ! wastage is insignificant.
-        if (.not.allocated(sym_blocks)) allocate(sym_blocks(nbasis/2), stat=ierr)
-
-        if (system_type == hub_real) then
-            nsym_blocks = 1
-            sym_blocks(1) = 1
-        else
-            ! Hamiltonian matrix elements, < D_i | H | D_j >, are only non-zero
-            ! if ksum_i and ksum_j differ by (at most) a reciprocal lattice vector of
-            ! the primitive cell.
-            ! This is because single excitations are not connected and for
-            ! a connected double excitation, the integral <mn|ab> has to be
-            ! non-zero.  This is only true if the k_m+k_n-k_a-k_b is
-            ! a reciprocal lattice vector.
-            ! The list of determinants are helpfully sorted in this order, so we
-            ! just need to find which determinants are the first in each
-            ! symmetry block.
-            iblk = 1
-            sym_blocks(iblk) = 1
-            do i = 2, ndets
-                if (is_reciprocal_lattice_vector(dets_ksum(:,i) - dets_ksum(:,i-1))) then
-                    cycle
-                else
-                    ! New block!
-                    iblk = iblk + 1
-                    sym_blocks(iblk) = i
-                end if
-            end do
-            nsym_blocks = iblk
-        end if
-
-    end subroutine find_sym_blocks
-
     subroutine generate_hamil(isym, distribute_mode)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
@@ -257,6 +209,7 @@ contains
 
         use hamiltonian, only: get_hmatel
         use hubbard_real
+        use determinants, only: ndets
 
         integer, intent(in) :: isym
         integer, intent(in), optional :: distribute_mode
@@ -266,7 +219,7 @@ contains
         ! Store how many determinants have already been considered.
         ! This allows for the correct indexing scheme to be used in
         ! output of the Hamiltonian matrix.
-        integer, save :: nhamil_prev = 0
+        integer, save :: ndets_prev = 0
 
         if (allocated(hamil)) then
             deallocate(hamil, stat=ierr)
@@ -283,12 +236,12 @@ contains
         case(distribute_off)
             ! Useful to have a dummy proc_blacs_info to refer to.  Everything
             ! apart from the matrix descriptors are valid in the dummy instance.
-            proc_blacs_info = get_blacs_info(nhamil, (/1, nprocs/))
-            n1 = nhamil
-            n2 = nhamil
+            proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
+            n1 = ndets
+            n2 = ndets
         case(distribute_blocks)
             ! Use as square a processor grid as possible.
-            proc_blacs_info = get_blacs_info(nhamil)
+            proc_blacs_info = get_blacs_info(ndets)
             n1 = proc_blacs_info%nrows
             n2 = proc_blacs_info%ncols
         case(distribute_cols)
@@ -296,16 +249,16 @@ contains
             ! are distributed.
             ! Furthermore it seems TRLan assumes all processors store at least
             ! some of the matrix.
-            if (nprocs*block_size > nhamil) then
+            if (nprocs*block_size > ndets) then
                 if (parent) then
                     call warning('generate_hamil','Reducing block size so that all processors contain at least a single row.', 3)
                     write (6,'(1X,a69)') 'Consider running on fewer processors or reducing block size in input.'
                     write (6,'(1X,a19,i4)') 'Old block size was:',block_size
                 end if
-                block_size = nhamil/nprocs
+                block_size = ndets/nprocs
                 if (parent) write (6,'(1X,a18,i4,/)') 'New block size is:',block_size
             end if
-            proc_blacs_info = get_blacs_info(nhamil, (/1, nprocs/))
+            proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
             n1 = proc_blacs_info%nrows
             n2 = proc_blacs_info%ncols
         case default
@@ -316,13 +269,14 @@ contains
 
         ! index offset for the symmetry block compared to the index of the
         ! determinant list.
-        ind_offset = sym_blocks(isym) - 1
+        !ind_offset = ???
+        ind_offset = 0
 
         ! Form the Hamiltonian matrix < D_i | H | D_j >.
         select case(distribute)
         case(distribute_off)
-            forall (i=1:nhamil) 
-                forall (j=i:nhamil) hamil(i,j) = get_hmatel(i+ind_offset,j+ind_offset)
+            forall (i=1:ndets) 
+                forall (j=i:ndets) hamil(i,j) = get_hmatel(i+ind_offset,j+ind_offset)
             end forall
         case(distribute_blocks, distribute_cols)
             ! blacs divides the matrix up into sub-matrices of size block_size x block_size.
@@ -360,14 +314,14 @@ contains
             else
                 iunit = get_free_unit()
                 open(iunit, file=hamiltonian_file, status='unknown')
-                do i=1, nhamil
+                do i=1, ndets
                     write (iunit,*) i,i,hamil(i,i)
-                    do j=i+1, nhamil
-                        if (abs(hamil(i,j)) > depsilon) write (iunit,*) i+nhamil_prev,j+nhamil_prev,hamil(i,j)
+                    do j=i+1, ndets
+                        if (abs(hamil(i,j)) > depsilon) write (iunit,*) i+ndets_prev,j+ndets_prev,hamil(i,j)
                     end do
                 end do
                 close(iunit, status='keep')
-                nhamil_prev = nhamil
+                ndets_prev = ndets
             end if
         end if
 
@@ -380,7 +334,6 @@ contains
         integer :: ierr
 
         if (allocated(hamil)) deallocate(hamil, stat=ierr)
-        if (allocated(sym_blocks)) deallocate(sym_blocks, stat=ierr)
 
     end subroutine end_hamil
 

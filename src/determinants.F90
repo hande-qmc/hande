@@ -21,7 +21,8 @@ type det
     ! Total spin of the determinant in units of electron spin (1/2).   
     integer(i0), pointer :: Ms => NULL()
     ! Sum of wavevectors of the occupied orbitals in the Slater determinant.
-    integer, pointer :: ksum(:) => NULL()       ! (ndim)
+    ! Refers to the wavevector of the i-th alpha spin-orbitals.
+    integer, pointer :: ksum => NULL() 
 end type det
 
 ! Store of determinant information.
@@ -35,7 +36,7 @@ end type det
 
 ! Bit list of the Slater determinant.  See note for f in det type.
 ! We only store determinants of the same Ms and (for momentum space
-! calculations) same ksum.
+! calculations) same ksum at a time.
 integer(i0), allocatable, target :: dets_list(:,:) ! (basis_length,ndets)
 
 ! Total spin of each Slater determinant stored in dets_list in units of electron spin (1/2).
@@ -43,7 +44,8 @@ integer, target :: dets_Ms
 
 ! Sum of wavevectors of the occupied orbitals in each Slater determinant stored
 ! in det_list.  Sum is to within a reciprocal lattice vector.
-integer(i0), allocatable, target :: dets_ksum(:,:) ! (ndim, ndets)
+! Refers to the wavevector of the i-th alpha spin-orbitals.
+integer(i0), target :: dets_ksum
 
 ! Number of determinants stored in dets.
 ! This is the number of determinants enumerated in enumerate_determinants with
@@ -52,6 +54,9 @@ integer :: ndets
 
 ! Total size of determinant space.
 integer :: tot_ndets
+
+! Number of determinants of each symmetry.
+integer, allocatable :: sym_space_size(:) ! (nsym)
 
 ! A handy type for containing the excitation information needed to connect one
 ! determinant to another.
@@ -141,69 +146,138 @@ contains
         integer :: ierr, i
 
         deallocate(dets_list, stat=ierr)
-        if (allocated(dets_ksum)) deallocate(dets_ksum, stat=ierr)
         deallocate(bit_lookup, stat=ierr)
         deallocate(basis_lookup, stat=ierr)
+        deallocate(sym_space_size, stat=ierr)
 
         close(det_unit, status='keep')
 
     end subroutine end_determinants
 
-    subroutine enumerate_determinants(Ms)
+    subroutine find_sym_space_size(Ms)
+
+        ! Finds the number of Slater determinants that can be formed from the
+        ! basis functions belonging to each symmetry.
+        ! Currently only crystal momentum symmetry is implemented.
+        ! find_sym_space_size must be called first for each value of Ms.
+        ! In:
+        !   Ms: spin of determinants to be found. 
+
+        use comb_m, only: binom
+        use utils, only: int_fmt
+        use bit_utils, only: first_perm, bit_permutation
+        use symmetry, only: nsym, sym_table
+
+        integer, intent(in) :: Ms
+        integer :: i, j, idet, ierr, ibit
+        integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
+        integer :: k_beta, k
+        integer(i0) :: f_alpha, f_beta
+
+        allocate(sym_space_size(nsym), stat=ierr)
+
+        nbeta = (nel - Ms)/2
+        nalpha = (nel + Ms)/2
+
+        nbeta_combinations = binom(nbasis/2, nbeta)
+        nalpha_combinations = binom(nbasis/2, nalpha)
+
+        if (system_type == hub_real) then
+
+            sym_space_size = nalpha_combinations*nbeta_combinations
+
+        else
+
+            ! Determinants are assigned a given symmetry by the sum of the
+            ! wavevectors of the occupied basis functions.  This is because only
+            ! doubly excitations are connected and D and D_{ij}^{ab} are only
+            ! connected if k_i + k_j - k_a - k_b is a reciprocal lattice vector.
+            ! Thus we can regard the sum of the wavevectors of the occupied
+            ! spin-orbitals as a symmetry label.
+
+            sym_space_size = 0
+
+            do i = 1, nbeta_combinations
+
+                ! Get beta orbitals.
+                if (i == 1) then
+                    f_beta = first_perm(nbeta)
+                else
+                    f_beta = bit_permutation(f_beta)
+                end if
+
+                k_beta = 1
+                do ibit = 0, i0_end
+                    if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
+                end do
+
+                do j = 1, nalpha_combinations
+
+                    ! Get alpha orbitals.
+                    if (j == 1) then
+                        f_alpha = first_perm(nalpha)
+                    else
+                        f_alpha = bit_permutation(f_alpha)
+                    end if
+
+                    ! Symmetry of all orbitals.
+                    k = k_beta
+                    do ibit = 0, i0_end
+                        if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
+                    end do
+
+                    sym_space_size(k) = sym_space_size(k) + 1
+
+                end do
+            end do
+
+        end if
+
+        if (parent) write (6,*) 'Space size',sym_space_size
+
+    end subroutine find_sym_space_size
+
+    subroutine enumerate_determinants(Ms, ksum)
     
         ! Find the Slater determinants that can be formed from the
         ! basis functions.  The list of determinants is stored in the
-        ! module level dets array.  For momentum-space systems the list
-        ! of determinants is grouped by wavevector (up to a reciprocal lattice
-        ! vector).
+        ! module level dets_list array.
+        ! find_sym_space_size must be called first for each value of Ms.
         ! In:
-        !   Ms: spin of determinants to be found.  If not given then
-        !       all determinants are enumerated.
-        !       The determinant list is stored in the dets array.
-        !       If Ms is not given then all possible determinants are 
-        !       enumerated.
+        !   Ms: spin of determinants to be found. 
+        !   ksum: index of a wavevector.  Only determinants with the same
+        !         wavevector (up to a reciprocal lattice vector) are stored.
+        !         Ignored for the real space formulation of the Hubbard model.
 
-        use comb_m, only: binom, comb
+        use comb_m, only: binom
         use errors, only: stop_all
-        use m_mrgref, only: mrgref
         use utils, only: get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation
+        use symmetry, only: nsym, sym_table
 
-        integer, intent(in) :: Ms
+        integer, intent(in) :: Ms, ksum
 
-        integer :: i, j, idet, c(nel), ierr, iunit, ibasis, ibit
+        integer :: i, j, idet, ierr, iunit, ibasis, ibit
         integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
+        integer :: k_beta, k
         character(2) :: fmt1
-        integer(i0), allocatable :: dets_ksum_tmp(:,:)
-        integer(i0), allocatable, target :: dets_list_tmp(:,:)
-        integer(i0), pointer :: dets_p(:,:)
-        integer, allocatable :: dets_sym(:), ranking(:)
         type(det) :: d
         integer(i0) :: f_alpha, f_beta
 
         if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
-        if (allocated(dets_ksum)) deallocate(dets_ksum, stat=ierr)
 
         ! Find the number of determinants with the required spin.
         if (mod(Ms,2) /= mod(nel,2)) call stop_all('enumerate_dets','Required Ms not possible.')
 
         nbeta = (nel - Ms)/2
         nalpha = (nel + Ms)/2
+
         nbeta_combinations = binom(nbasis/2, nbeta)
         nalpha_combinations = binom(nbasis/2, nalpha)
-        ndets = nalpha_combinations*nbeta_combinations
+
+        ndets = sym_space_size(ksum)
 
         allocate(dets_list(basis_length, ndets), stat=ierr)
-
-        if (system_type == hub_real) then
-            dets_p => dets_list
-        else
-            allocate(dets_list_tmp(basis_length, ndets), stat=ierr)
-            allocate(dets_ksum_tmp(ndim, ndets), stat=ierr)
-            allocate(dets_ksum(ndim, ndets), stat=ierr)
-            allocate(dets_sym(ndets), stat=ierr)
-            dets_p => dets_list_tmp
-        end if
 
         ! Assume that we're not attempting to do FCI for more than
         ! a 2*i0_length spin orbitals, which is quite large... ;-)
@@ -213,71 +287,63 @@ contains
 
         idet = 0
         do i = 1, nbeta_combinations
+
             ! Get beta orbitals.
             if (i == 1) then
                 f_beta = first_perm(nbeta)
             else
                 f_beta = bit_permutation(f_beta)
             end if
+
+            ! Symmetry of the beta orbitals.
+            if (system_type /= hub_real) then
+                k_beta = 1
+                do ibit = 0, i0_end
+                    if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
+                end do
+            end if
+
             do j = 1, nalpha_combinations
+
                 ! Get alpha orbitals.
                 if (j == 1) then
                     f_alpha = first_perm(nalpha)
                 else
                     f_alpha = bit_permutation(f_alpha)
                 end if
-                idet = idet + 1
 
-                ! Merge alpha and beta sets into determinant list.
-                ! Alpha orbitals are stored in the even bits, beta orbitals in
-                ! the odd bits (hence the conversion).
-                dets_p(:,idet) = 0
-                do ibit = 0, min(nbasis/2, i0_length/2-1)
-                    if (btest(f_alpha,ibit)) dets_p(1,idet) = ibset(dets_p(1,idet), 2*ibit)
-                    if (btest(f_beta,ibit)) dets_p(1,idet) = ibset(dets_p(1,idet), 2*ibit+1)
-                end do
-                do ibit = i0_length/2, max(nbasis/2, i0_end)
-                    if (btest(f_alpha,ibit)) dets_p(2,idet) = ibset(dets_p(2,idet), 2*ibit-i0_length)
-                    if (btest(f_beta,ibit)) dets_p(2,idet) = ibset(dets_p(2,idet), 2*ibit+1-i0_length)
-                end do
+                ! Symmetry of all orbitals.
+                if (system_type /= hub_real) then
+                    k = k_beta
+                    do ibit = 0, i0_end
+                        if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
+                    end do
+                end if
 
-                if (system_type /= hub_real) dets_ksum_tmp(:,idet) = det_momentum(decode_det(dets_p(:,idet)))
+                if (system_type == hub_real .or. k == ksum) then
+
+                    idet = idet + 1
+
+                    ! Merge alpha and beta sets into determinant list.
+                    ! Alpha orbitals are stored in the even bits, beta orbitals in
+                    ! the odd bits (hence the conversion).
+                    dets_list(:,idet) = 0
+                    do ibit = 0, min(nbasis/2, i0_length/2-1)
+                        if (btest(f_alpha,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit)
+                        if (btest(f_beta,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit+1)
+                    end do
+                    do ibit = i0_length/2, max(nbasis/2, i0_end)
+                        if (btest(f_alpha,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit-i0_length)
+                        if (btest(f_beta,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit+1-i0_length)
+                    end do
+
+                end if
+
             end do
         end do
 
-        if (system_type /= hub_real) then
-            ! Rank by wavevector.
-            ! All determinants have an overall wavevector that is one of the
-            ! wavevectors sampled in the Brillouin zone (up to a reciprocal
-            ! lattice vector).
-            do idet = 1, ndets
-                do i = 1, nbasis, 2
-                    if (is_reciprocal_lattice_vector(basis_fns(i)%l-dets_ksum_tmp(:,idet))) then
-                        dets_sym(idet) = i
-                        exit
-                    end if
-                end do
-            end do
-
-            allocate(ranking(ndets), stat=ierr)
-            call mrgref(dets_sym, ranking)
-
-            deallocate(dets_sym, stat=ierr)
-
-            ! Store in dets in block format: group wavevectors together.
-            do idet = 1, ndets
-                dets_list(:,idet) = dets_p(:,ranking(idet))
-                dets_ksum(:,idet) = dets_ksum_tmp(:,ranking(idet))
-            end do
-
-            deallocate(ranking, stat=ierr)
-            deallocate(dets_list_tmp, stat=ierr)
-            deallocate(dets_ksum_tmp, stat=ierr)
-        end if
-
         dets_Ms = Ms
-
-        dets_p => NULL()
+        dets_ksum = ksum
 
         if (write_determinants .and. parent) then
             fmt1 = int_fmt(ndets, padding=1)
@@ -304,7 +370,7 @@ contains
 
         d%f => dets_list(:,i)
         d%Ms => dets_Ms
-        if (system_type /= hub_real) d%ksum = dets_ksum(:,i)
+        if (system_type /= hub_real) d%ksum = dets_ksum
     
     end function point_to_det
 

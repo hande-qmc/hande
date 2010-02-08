@@ -64,16 +64,19 @@ contains
 
         ! Test to see if Hamiltonian matrix element is non-zero.
 
-        ! We assume Ms is conserved (ie has already been checked for).
-        excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
-        ! Connected determinants can differ by (at most) 2 spin orbitals.
-        if (excitation%nexcit <= 2) then
+        ! Assume D1 and D2 are of the same symmetry.  Namely:
+
+            ! We assume Ms is conserved (ie has already been checked for).
+
             ! In the momentum space description the overall crystal 
             ! momentum must be conserved up to a reciprocal lattice
             ! vector (i.e. satisfy translational symmetry).
-            if (is_reciprocal_lattice_vector(dets_ksum(:,d1)-dets_ksum(:,d2))) then
-                non_zero = .true.
-            end if
+            ! We assume this is also already checked.
+
+        excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
+        ! Connected determinants can differ by (at most) 2 spin orbitals.
+        if (excitation%nexcit <= 2) then
+            non_zero = .true.
         end if
 
         if (non_zero) then
