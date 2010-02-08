@@ -13,11 +13,15 @@ contains
         use system, only: ndim, system_type, hub_real
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
+        use utils, only: int_fmt
 
         integer :: i, j, ierr
         integer :: ksum(ndim)
+        character(10) :: fmt1
 
         if (system_type /= hub_real) then
+
+            fmt1 = int_fmt(nbasis/2)
 
             allocate(sym_table(nbasis/2, nbasis/2), stat=ierr)
 
@@ -40,7 +44,7 @@ contains
                             "An index i refers to the wavevector of the i-th alpha spin-orbital."
                     end if
                     do j = 1, nbasis/2
-                        write (6,'(i4)', advance='no') sym_table(j,i)
+                        write (6,'('//fmt1//')', advance='no') sym_table(j,i)
                     end do
                     write (6,'()')
                     if (i == nbasis/2) write (6,'()')
