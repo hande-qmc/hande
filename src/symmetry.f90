@@ -1,13 +1,17 @@
 module symmetry
 
-integer, allocatable :: sym_table(:,:)
+! Number of symmetries.
+! Currently only crystal momentum is implemented.
+integer :: nsym
+
+! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
+integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
 
 contains
 
     subroutine init_symmetry()
 
         ! Construct the symmetry table.
-        ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
 
         use basis, only: nbasis, basis_fns
         use system, only: ndim, system_type, hub_real
@@ -19,16 +23,21 @@ contains
         integer :: ksum(ndim)
         character(10) :: fmt1
 
-        if (system_type /= hub_real) then
+        if (system_type == hub_real) then
 
-            fmt1 = int_fmt(nbasis/2)
+            nsym = 1
 
-            allocate(sym_table(nbasis/2, nbasis/2), stat=ierr)
+        else
 
-            do i = 1, nbasis/2
-                do j = i, nbasis/2
+            nsym = nbasis/2
+            allocate(sym_table(nsym, nsym), stat=ierr)
+
+            fmt1 = int_fmt(nsym)
+
+            do i = 1, nsym
+                do j = i, nsym
                     ksum = basis_fns(i*2)%l + basis_fns(j*2)%l
-                    do k = 1, nbasis/2
+                    do k = 1, nsym
                         if (is_reciprocal_lattice_vector(ksum - basis_fns(k*2)%l)) then
                             sym_table(i,j) = k
                             sym_table(j,i) = k
@@ -43,11 +52,11 @@ contains
                             "The table below gives the result of k_i+k_j to within a reciprocal lattice vector.", &
                             "An index i refers to the wavevector of the i-th alpha spin-orbital."
                     end if
-                    do j = 1, nbasis/2
+                    do j = 1, nsym
                         write (6,'('//fmt1//')', advance='no') sym_table(j,i)
                     end do
                     write (6,'()')
-                    if (i == nbasis/2) write (6,'()')
+                    if (i == nsym) write (6,'()')
                 end if
             end do
 
