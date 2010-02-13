@@ -43,7 +43,7 @@ contains
         real(dp), allocatable :: eval(:) ! (mev)
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         type(trl_info_t) :: info
-        integer :: i, ierr, nrows
+        integer :: ierr, nrows
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.

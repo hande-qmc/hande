@@ -56,9 +56,10 @@ contains
         ! set.
 
         use errors
-        integer :: ierr
 
 #ifdef _PARALLEL
+        integer :: ierr
+
         call mpi_init(ierr)
         if (ierr /= mpi_success) call stop_all('init_parallel','Error initialising MPI.')
         call mpi_comm_size(mpi_comm_world, nprocs, ierr)
@@ -90,9 +91,10 @@ contains
         ! Terminate the parallel environment.
         ! This is just a empty procedure in serial mode.
         use errors
-        integer :: ierr
 
 #if _PARALLEL
+        integer :: ierr
+
         call mpi_finalize(ierr)
         if (ierr /= mpi_success) call stop_all('end_parallel','Error terminating MPI.')
 #endif
@@ -117,12 +119,14 @@ contains
         type(blacs_info) :: my_blacs_info
         integer, intent(in) :: matrix_size
         integer, intent(in), optional :: proc_grid(2)
-        integer :: context
         integer :: i, j, k
-        integer :: numroc ! scalapack function 
         integer :: procy, procx, nrows, ncols
         integer :: desc_m(9), desc_v(9)
+#if _PARALLEL
+        integer :: numroc ! scalapack function 
         integer :: ierr
+        integer :: context
+#endif
 
         ! Set processor grid dimensions.
         if (present(proc_grid)) then

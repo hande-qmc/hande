@@ -130,13 +130,13 @@ contains
 
                     allocate(eigv(ndets), stat=ierr)
 
-                    if (nprocs == 1) call generate_hamil(isym, distribute_off)
+                    if (nprocs == 1) call generate_hamil(distribute_off)
 
                     ! Lanczos.
                     if (t_lanczos) then
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(isym, distribute_cols)
+                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
                         call lanczos_diagonalisation(nfound, eigv)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = eigv(:nfound)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
@@ -148,7 +148,7 @@ contains
                     if (t_exact) then
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1) call generate_hamil(isym, distribute_blocks)
+                        if (nprocs > 1) call generate_hamil(distribute_blocks)
                         call exact_diagonalisation(eigv)
                         exact_solns(nexact+1:nexact+ndets)%energy = eigv
                         exact_solns(nexact+1:nexact+ndets)%ms = ms 
@@ -211,15 +211,13 @@ contains
 
     end subroutine diagonalise
 
-    subroutine generate_hamil(isym, distribute_mode)
+    subroutine generate_hamil(distribute_mode)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
         ! only determinants of a specified spin.
         ! Only generate the upper diagonal for use with (sca)lapack and Lanczos routines.
         ! In:
-        !    isym: index of the symmetry block of the Hamiltonian matrix to
-        !    generate.
         !    distribute_mode (optional): flag for determining how the
         !        Hamiltonian matrix is distributed among processors.  It is
         !        irrelevant if only one processor is used: the distribution schemes
@@ -236,7 +234,6 @@ contains
         use hubbard_real
         use determinants, only: ndets
 
-        integer, intent(in) :: isym
         integer, intent(in), optional :: distribute_mode
         integer :: ierr, iunit, n1, n2, ind_offset
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal
