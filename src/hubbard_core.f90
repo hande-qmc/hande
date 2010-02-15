@@ -57,9 +57,10 @@ contains
 
         ! Run the calculation based upon the input options.
 
-        use diagonalisation
+        use calc, only: t_exact, t_lanczos
+        use diagonalisation, only: diagonalise
 
-        call diagonalise()
+        if (t_exact .or. t_lanczos) call diagonalise()
 
     end subroutine run_calc
 
