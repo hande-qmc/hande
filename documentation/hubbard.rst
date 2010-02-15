@@ -1,12 +1,146 @@
-Hubbard
+hubbard
 =======
 
-Hubbard can currently perform FCI calculations of the Hubbard model using
+Introduction
+------------
+
+hubbard can currently perform FCI calculations of the Hubbard model using
 either the real space or momentum space formulation.  Full and Lanczos
 diagonalisation methods are implemented using external libraries
-(lapack/scalapack and trlan respectively) and can be performed in both serial
+(lapack/scalapack and TRLan respectively) and can be performed in both serial
 and parallel.  Lanczos diagonalisation can be performed with or without
 precomputing the Hamiltonian matrix.
+
+The target is to implement an efficient FCIQMC algorithm for the Hubbard model.
+
+Directory structure
+--------------------
+
+./
+    Root directory of the program.
+bin/
+  Directory containing the compiled program, hubbard.x.  Created during
+  compilation.
+config/
+  Directory containing the configuration input files used to generate makefiles.
+dest/
+  Directory containing the compiled object files and dependency files.  Created
+  during compilation.
+documentation/
+   Directory containing documentation on the hubbard program.  The
+   documentation is written in reStructured Text and can be converted
+   into a wide range of output formats.
+src/
+    Directory containing the main source files.
+lib/
+   Directory containing "library" source files.  These a procedures which are
+   not specific to the hubbard code but are generally useful.  Some are written
+   by the authors, some are freely available (as noted in the source files).
+tools/
+    Directory containing scripts and tools for compiling, running and analysing
+    output from hubbard.
+
+Compilation
+-----------
+
+hubbard requires the lapack (http://www.netlib.org/lapack/), blas
+(http://www.netlib.org/blas) and TRLan
+(http://crd.lbl.gov/~kewu/ps/trlan_.html) libaries.
+
+After meeting these requirements, produce a makefile by running the mkconfig.py
+(residing in the tools subdirectory) script in the root directory:
+
+.. code-block:: bash
+
+    tools/mkconfig.py config
+
+where config is one of the platforms available.  The config name is simply the
+name of the relevant file residing in the config/ directory.  Various configurations
+are provided and it is simple to adapt one to the local environment (e.g. changing
+compiler or library paths).
+
+Run
+
+.. code-block:: bash
+
+    tools/mkconfig.py --help
+
+to see the options available, including inspecting available platforms.
+A platform is defined using a simple ini file, consisting of three sections:
+main, opt and dbg.  For instance::
+
+    [main]
+    cc = gfortran
+    ld = gfortran
+    libs = -llapack -lblas
+
+    [opt]
+    cflags = -O3
+
+    [dbg]
+    cflags = -g
+
+Any option not specified in the 'opt' and 'dbg' sections is inherited from the
+'main' section.  The settings in 'opt' are used by default; the debug options
+can be selected by passing the -g option to mkconfig.py.
+
+Available options are:
+
+fc
+    Set the fortran compiler.
+fflags
+    Set flags to be passed to the fortran compiler during compilation.
+cppdefs
+    Set definitions to be used in the C pre-processing step.
+cppflags
+    Set flags to be used in the C pre-processing step.
+ld
+    Set the linker program.
+ldflags
+    Set flags to be passed to the linker during linking of the compiled objects.
+libs
+    Set libraries to be used during the linking step.
+module_flag
+    Set the compiler-specific flag which specifies the directory where module
+    (.mod) files are placed when created and where they should be searched for.
+
+To compile the code run 
+
+.. code-block:: bash
+
+    make
+    
+hubbard.x uses the sfmakedepend script (http://www.arsc.edu/~kate/Perl/,
+supplied in tools/) by Kate Hedstrom to generate the dependencies.  These are
+generated automatically when make is run if the dependency files don't exist.
+
+The executable, hubbard.x, is placed in the bin subdirectory.  Note that this is
+actually a symbolic link: a unique executable is produced for each platform and
+optimisation level and hubbard.x merely points to the most recently compiled executable
+for convenience.  This makes testing against multiple platforms particularly easy.
+
+There are various goals in the makefile.  Run
+
+.. code-block:: bash
+
+    make help
+
+to see the available goals.
+
+Usage
+-----
+
+.. code-block:: bash
+
+    hubbard.x [input_filename]
+
+If no input filename is provided then the input options are read from STDIN.
+Note that this feature is not guaranteed to work when run in parallel!
+
+Output is sent to STDOUT and can be redirected as desired.
+
+hubbard.x only performs i/o operations on the root processor when run on
+multiple processors.
 
 Input options
 -------------
@@ -14,7 +148,7 @@ Input options
 Input options are case insensitive and can be given in any order.  A new line
 is required for each keyword.  Keywords are given in **bold** text.  Items
 following a keyword that are in *italics* are given as input values to that
-keyword.  Optional items are enclosed in square brackets.
+keyword.  Optional arguments are enclosed in square brackets.
 
 With the exception of the **lattice** keyword, all values associated with
 a specific keyword should appear on the same line as that keyword.
