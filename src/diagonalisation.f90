@@ -17,7 +17,7 @@ contains
 
         use basis, only: nbasis
         use system, only: nel
-        use determinants, only: enumerate_determinants, find_sym_space_size
+        use determinants, only: enumerate_determinants, find_sym_space_size, set_spin_polarisation
         use determinants, only: tot_ndets, ndets, sym_space_size
         use lanczos
         use full_diagonalisation
@@ -85,7 +85,9 @@ contains
 
             if (parent) write (6,'(1X,a35,'//int_fmt(ms)//',/)') 'Considering determinants with spin:', ms
 
-            call find_sym_space_size(ms)
+            ! Find and set information about the space.
+            call set_spin_polarisation(ms)
+            call find_sym_space_size()
 
             ! Diagonalise each symmetry block in turn.
             do isym = sym_min, sym_max
@@ -105,7 +107,7 @@ contains
                 end if
 
                 ! Find all determinants with this spin.
-                call enumerate_determinants(ms,isym)
+                call enumerate_determinants(isym)
 
                 if (ndets == 1) then
 

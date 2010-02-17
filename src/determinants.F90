@@ -154,12 +154,41 @@ contains
 
     end subroutine end_determinants
 
-    subroutine find_sym_space_size(Ms)
+    subroutine set_spin_polarisation(Ms)
+
+        ! Set the spin polarisation information stored in module-level
+        ! variables:
+        !    dets_Ms: spin of determinants that are being considered.
+        !    nalpha: number of alpha electrons.
+        !    nbeta: number of beta electrons.
+        ! In:
+        !    Ms: spin of determinants that are being considered.
+
+        use errors, only: stop_all
+
+        integer, intent(in) :: Ms
+
+        ! Find the number of determinants with the required spin.
+        if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
+         
+        dets_Ms = Ms
+
+        nbeta = (nel - Ms)/2
+        nalpha = (nel + Ms)/2
+
+    end subroutine set_spin_polarisation
+
+    subroutine find_sym_space_size()
 
         ! Finds the number of Slater determinants that can be formed from the
         ! basis functions belonging to each symmetry.
         ! Currently only crystal momentum symmetry is implemented.
-        ! find_sym_space_size must be called first for each value of Ms.
+        ! Note that this will overflow for large spaces (but we should be not
+        ! doing FCI on such spaces anyway...).
+        ! The spin polarisation of the system must be set first (by calling
+        ! set_spin_polarisation).
+        ! find_sym_space_size must be called first for each value of Ms before
+        ! enumerating the determinant list.
         ! In:
         !   Ms: spin of determinants to be found. 
 
@@ -168,16 +197,12 @@ contains
         use bit_utils, only: first_perm, bit_permutation
         use symmetry, only: nsym, sym_table
 
-        integer, intent(in) :: Ms
         integer :: i, j, ierr, ibit
-        integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
+        integer :: nalpha_combinations, nbeta_combinations
         integer :: k_beta, k
         integer(i0) :: f_alpha, f_beta
 
         allocate(sym_space_size(nsym), stat=ierr)
-
-        nbeta = (nel - Ms)/2
-        nalpha = (nel + Ms)/2
 
         nbeta_combinations = binom(nbasis/2, nbeta)
         nalpha_combinations = binom(nbasis/2, nalpha)
@@ -244,14 +269,13 @@ contains
 
     end subroutine find_sym_space_size
 
-    subroutine enumerate_determinants(Ms, ksum)
+    subroutine enumerate_determinants(ksum)
     
         ! Find the Slater determinants that can be formed from the
         ! basis functions.  The list of determinants is stored in the
         ! module level dets_list array.
         ! find_sym_space_size must be called first for each value of Ms.
         ! In:
-        !   Ms: spin of determinants to be found. 
         !   ksum: index of a wavevector.  Only determinants with the same
         !         wavevector (up to a reciprocal lattice vector) are stored.
         !         Ignored for the real space formulation of the Hubbard model.
@@ -262,21 +286,15 @@ contains
         use bit_utils, only: first_perm, bit_permutation
         use symmetry, only: nsym, sym_table
 
-        integer, intent(in) :: Ms, ksum
+        integer, intent(in) :: ksum
 
         integer :: i, j, idet, ierr, ibit
-        integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
+        integer :: nalpha_combinations, nbeta_combinations
         integer :: k_beta, k
         character(2) :: fmt1
         integer(i0) :: f_alpha, f_beta
 
         if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
-
-        ! Find the number of determinants with the required spin.
-        if (mod(Ms,2) /= mod(nel,2)) call stop_all('enumerate_dets','Required Ms not possible.')
-
-        nbeta = (nel - Ms)/2
-        nalpha = (nel + Ms)/2
 
         nbeta_combinations = binom(nbasis/2, nbeta)
         nalpha_combinations = binom(nbasis/2, nalpha)
@@ -348,7 +366,6 @@ contains
             end do
         end do
 
-        dets_Ms = Ms
         dets_ksum = ksum
 
         if (write_determinants .and. parent) then
