@@ -446,6 +446,53 @@ contains
 
     end function decode_det
 
+    pure subroutine decode_det_occ_unocc(f, occ_list, unocc_list_alpha, unocc_list_beta)
+
+        ! Decode determinant bit string into integer lists containing the
+        ! occupied and unoccupied orbitals.  The unoccupied alpha and beta
+        ! orbitals are given separately, as this is convenient for FCIQMC.
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Out:
+        !    occ_list(nel): integer list of occupied spin-orbitals in the Slater determinant.
+        !    unocc_list_alpha(nvirt_alpha): integer list of unoccupied alpha
+        !        spin-orbitals in the Slater determinant.
+        !    unocc_list_beta(nvirt_beta): integer list of unoccupied beta
+        !        spin-orbitals in the Slater determinant.
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(out) :: occ_list(nel), unocc_list_alpha(nsites-nalpha), unocc_list_beta(nsites-nbeta)
+        integer :: i, j, iocc, iunocc_a, iunocc_b
+
+        iocc = 0
+        iunocc_a = 0
+        iunocc_b = 0
+
+        do i = 1, basis_length
+            do j = 0, i0_end
+                if (btest(f(i), j)) then
+                    iocc = iocc + 1
+                    occ_list(iocc) = basis_lookup(j, i)
+                else
+                    if (mod(j,2)==0) then
+                        ! alpha state
+                        iunocc_a = iunocc_a + 1
+                        unocc_list_alpha(iunocc_a) = basis_lookup(j, i)
+                    else
+                        ! beta state 
+                        iunocc_b = iunocc_b + 1
+                        unocc_list_beta(iunocc_b) = basis_lookup(j, i)
+                    end if
+                end if
+                ! Have we covered all basis functions?
+                ! This avoids examining any "padding" at the end of f.
+                if (iocc+iunocc_a+iunocc_b==nbasis) exit
+            end do
+        end do
+
+    end subroutine decode_det_occ_unocc
+
     pure function det_momentum(occ_list) result(ksum)
 
         ! In:
