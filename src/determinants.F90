@@ -159,8 +159,8 @@ contains
         ! Set the spin polarisation information stored in module-level
         ! variables:
         !    dets_Ms: spin of determinants that are being considered.
-        !    nalpha: number of alpha electrons.
-        !    nbeta: number of beta electrons.
+        !    nalpha, nbeta: number of alpha, beta electrons.
+        !    nvirt_alpha, nvirt_beta: number of alpha, beta virtual spin-orbitals.
         ! In:
         !    Ms: spin of determinants that are being considered.
 
@@ -175,6 +175,9 @@ contains
 
         nbeta = (nel - Ms)/2
         nalpha = (nel + Ms)/2
+
+        nvirt_alpha = nsites - nalpha
+        nvirt_beta = nsites - nbeta
 
     end subroutine set_spin_polarisation
 
@@ -462,7 +465,7 @@ contains
         !        spin-orbitals in the Slater determinant.
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(out) :: occ_list(nel), unocc_list_alpha(nsites-nalpha), unocc_list_beta(nsites-nbeta)
+        integer, intent(out) :: occ_list(nel), unocc_list_alpha(nvirt_alpha), unocc_list_beta(nvirt_beta)
         integer :: i, j, iocc, iunocc_a, iunocc_b
 
         iocc = 0

@@ -37,10 +37,11 @@ real(dp), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 integer :: nel = 0 
 
 ! Spin polarisation is set in set_spin_polarisation in the determinants module.
-! # number of alpha electrons
-integer :: nalpha
-! # number of beta electrons
-integer :: nbeta
+! # number of alpha, beta electrons
+integer :: nalpha, nbeta
+! # number of virtual alpha, beta spin-orbitals
+integer :: nvirt_alpha, nvirt_beta
+
 
 ! Hubbard T and U parameters specifying the kinetic energy and Coulomb
 ! interaction respectively.
