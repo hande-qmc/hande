@@ -23,7 +23,9 @@ contains
         ! mpi_abort requires an integer though.
         integer, parameter :: error_code=999
         character(3), parameter :: error_str='999'
+#ifdef _PARALLEL
         integer :: ierr
+#endif
 
         write (6,'(/a7)') 'ERROR.'
         write (6,'(1X,a)') 'hubbard stops in subroutine: '//adjustl(sub_name)//'.'
@@ -99,7 +101,9 @@ contains
 #endif
 
         character(*), intent(in), optional :: msg
+#ifdef _PARALLEL
         integer :: ierr
+#endif
 
         if (present(msg)) then
             write (6,'(1X,a)') adjustl(msg)

@@ -20,9 +20,9 @@ main, opt and dbg.  For instance::
     [dbg]
     cflags = -g
 
-The 'opt' and 'dbg' sections inherit settings from the 'main' section.  The settings
-in 'opt' are used by default; the debug options can be selected by passing the
--g option to mkconfig.py.
+Any option not specified in the 'opt' and 'dbg' sections is inherited from the
+'main' section.  The settings in 'opt' are used by default; the debug options
+can be selected by passing the -g option to mkconfig.py.
 
 Available options are:
 

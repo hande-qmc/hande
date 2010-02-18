@@ -143,7 +143,7 @@ contains
 
         ! Clean up after determinants.
 
-        integer :: ierr, i
+        integer :: ierr
 
         deallocate(dets_list, stat=ierr)
         deallocate(bit_lookup, stat=ierr)
@@ -169,7 +169,7 @@ contains
         use symmetry, only: nsym, sym_table
 
         integer, intent(in) :: Ms
-        integer :: i, j, idet, ierr, ibit
+        integer :: i, j, ierr, ibit
         integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
         integer :: k_beta, k
         integer(i0) :: f_alpha, f_beta
@@ -264,11 +264,10 @@ contains
 
         integer, intent(in) :: Ms, ksum
 
-        integer :: i, j, idet, ierr, iunit, ibasis, ibit
+        integer :: i, j, idet, ierr, ibit
         integer :: nalpha,  nbeta, nalpha_combinations, nbeta_combinations
         integer :: k_beta, k
         character(2) :: fmt1
-        type(det) :: d
         integer(i0) :: f_alpha, f_beta
 
         if (allocated(dets_list)) deallocate(dets_list, stat=ierr)

@@ -310,9 +310,9 @@ lines: do
         call report(trim(f)//" could not be opened",.true.)
       end if
       in=ir
-      file(level)=f
+      file(level)=f(:40)
     case("#CONCAT")
-      concat=f
+      concat=f(:8)
       lc=len(trim(concat))
     case("#REVERT")
       close(in)

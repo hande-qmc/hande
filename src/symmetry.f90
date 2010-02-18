@@ -16,7 +16,7 @@ contains
 
         ! Construct the symmetry tables.
 
-        use basis, only: nbasis, basis_fns
+        use basis, only: nbasis, basis_fns, write_basis_fn
         use system, only: ndim, system_type, hub_real
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
@@ -54,21 +54,28 @@ contains
                     end do
                 end do
             end do
+
             if (parent) then
-                write (6,'(1X,a20,/,1X,20("-"),2/,1X,a67,2/,1X,a82,/)') &
-                    "Symmetry information", &
-                    "An index i refers to the wavevector of the i-th alpha spin-orbital.", &
+                write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
+                write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
+                write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
+                do i = 1, ndim
+                    write (6,'(3X)', advance='no')
+                end do
+                write (6,'(a7)') 'Inverse'
+                do i = 1, nsym
+                    write (6,'(i4,5X)', advance='no') i
+                    call write_basis_fn(basis_fns(2*i), new_line=.false., print_full=.false.)
+                    write (6,'(5X,i4)') inv_sym(i)
+                end do
+                write (6,'()')
+                write (6,'(1X,a82,/)') &
                     "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
                 do i = 1, nsym
                     do j = 1, nsym
                         write (6,'('//fmt1//')', advance='no') sym_table(j,i)
                     end do
                     write (6,'()')
-                end do
-                write (6,'(/,1X,a53,/)') 'The table below gives the inverse of each wavevector.'
-                write (6,'(1X,a5,3X,a7)') 'Index','Inverse'
-                do i = 1, nsym
-                    write (6,'(i4,5X,i4)') i,inv_sym(i)
                 end do
                 write (6,'()')
             end if

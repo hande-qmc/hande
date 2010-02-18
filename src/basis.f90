@@ -104,7 +104,7 @@ contains
 
     end subroutine init_basis_fn
 
-    subroutine write_basis_fn(b, iunit, new_line)
+    subroutine write_basis_fn(b, iunit, new_line, print_full)
 
         use system, only: system_type, hub_real
 
@@ -116,10 +116,16 @@ contains
         !    new_line (optional): if true, then a new line is written at
         !        the end of the list of occupied orbitals.  Default: no
         !        new line.
+        !    print_full (optional): if true (default) then the quantum numbers,
+        !         spin and (for momentum space models) kinetic energy associated
+        !         with the basis function are printed.  If false, only the
+        !         quantum numbers are printed.
 
         type(basis_fn), intent(in) :: b
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
+        logical, intent(in), optional :: print_full
+        logical :: print_all
         integer :: i, io
 
         if (present(iunit)) then
@@ -128,14 +134,22 @@ contains
             io = 6
         end if
 
+        if (present(print_full)) then
+            print_all = print_full
+        else
+            print_all = .true.
+        end if
+
         write (io,'(1X,"(")', advance='no')
         write (io,'(i2)',advance='no') b%l(1)
         do i = 2,ndim
             write (io,'(",",i2)',advance='no') b%l(i)
         end do
         write (io,'(")")', advance='no')
-        write (io,'(5X,i2)', advance='no') b%ms
-        if (system_type /= hub_real) write (io,'(4X,f12.8)', advance='no') b%kinetic
+        if (print_all) then
+            write (io,'(5X,i2)', advance='no') b%ms
+            if (system_type /= hub_real) write (io,'(4X,f12.8)', advance='no') b%kinetic
+        end if
         if (present(new_line)) then
             if (new_line) write (io,'()')
         end if
