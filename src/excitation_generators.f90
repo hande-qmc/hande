@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    pure function calc_pgen_hub_k(ij_sym, ispin, f, unocc_alpha, unocc_beta) result(pgen)
+    pure function calc_pgen_hub_k(ij_sym, f, unocc_alpha, unocc_beta) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
         ! Hubbard model in momentum space.  The Hubbard model is a special case
@@ -19,12 +19,11 @@ contains
         ! Note that all the information required for input should be available
         ! during the FCIQMC algorithm and should not be needed to be calculated.
         !
+        ! Further, we assume only allowed excitations are generated.
+        !
         ! In:
         !    ij_sym: symmetry spanned by the (i,j) combination of occupied
         !        spin-orbitals from which electrons are excited.
-        !    ispin: type of excitation. ispin=-1 indicates i,j are both beta
-        !        orbitals, ispin=0 indicates i,j are an alpha and beta orbital and
-        !        ispin=1 indicates i,j are both alpha orbitals.
         !    f: bit string representation of the determinant we're exciting
         !        from.
         !    unocc_alpha, unocc_beta: integer list of the unoccupied alpha and
@@ -38,7 +37,7 @@ contains
         use symmetry, only: inv_sym, sym_table
 
         real(dp) :: pgen
-        integer, intent(in) :: ij_sym, ispin
+        integer, intent(in) :: ij_sym
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_alpha(nvirt_alpha), unocc_beta(nvirt_beta)
 
@@ -59,57 +58,25 @@ contains
 
         ! pgen then follows immediately.
 
-        select case(ispin)
-        case(-1)
-            ! exciting from beta, beta orbitals.
-            do a = 1, nvirt_beta
-                b = 2*sym_table(ij_sym, unocc_beta(a)/2)
-                if (a == b) then
-                    ! Can't have the a double excitation into the *same* spin-orbital.
-                    forbidden_excitations = forbidden_excitations + 1
-                else
-                    b_pos = bit_lookup(1,b)
-                    b_el = bit_lookup(2,b)
-                    if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
-                end if
-            end do
-            mallow = nsites - nalpha
-        case(0)
-            ! exciting from alpha, beta orbitals.
-            do a = 1, nvirt_alpha
-                b = 2*sym_table(ij_sym, unocc_beta(a)/2) ! b is a beta orbital.
-                b_pos = bit_lookup(1,b)
-                b_el = bit_lookup(2,b)
-                if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
-            end do
-            do a = 1, nvirt_beta
-                b = 2*sym_table(ij_sym, (unocc_beta(a)+1)/2) + 1 ! b is a alpha orbital.
-                b_pos = bit_lookup(1,b)
-                b_el = bit_lookup(2,b)
-                if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
-            end do
-            mallow = nsites - nbeta
-        case(1)
-            ! exciting from alpha, alpha orbitals.
-            do a = 1, nvirt_alpha
-                b = 2*sym_table(ij_sym, (unocc_alpha(a)+1)/2) + 1
-                if (a == b) then
-                    ! Can't have the a double excitation into the *same* spin-orbital.
-                    forbidden_excitations = forbidden_excitations + 1
-                else
-                    b_pos = bit_lookup(1,b)
-                    b_el = bit_lookup(2,b)
-                    if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
-                end if
-            end do
-            mallow = nbasis - nel
-        end select
+        ! exciting from alpha, beta orbitals.
+        do a = 1, nvirt_alpha
+            b = 2*sym_table(ab_sym, unocc_beta(a)/2) ! b is a beta orbital.
+            b_pos = bit_lookup(1,b)
+            b_el = bit_lookup(2,b)
+            if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
+        end do
+        do a = 1, nvirt_beta
+            b = 2*sym_table(ab_sym, (unocc_beta(a)+1)/2) + 1 ! b is an alpha orbital.
+            b_pos = bit_lookup(1,b)
+            b_el = bit_lookup(2,b)
+            if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
+        end do
+        mallow = nsites - nbeta
 
-        ! Common factor.
-        ! N(N-1)/2 is the number of ways of choosing i,j.
+        ! N^2/4 is the number of ways of choosing i,j.
         ! An additional factor of two arises from the symmetry in the order of
         ! choosing a and b.
-        pgen = 4.0_dp/(nel*(nel-1)*(mallow - forbidden_excitations))
+        pgen = 8.0_dp/(nel*nel*(mallow - forbidden_excitations))
 
     end function calc_pgen_hub_k
 
