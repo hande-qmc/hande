@@ -1,11 +1,15 @@
 [main]
 fc = mpif90
+cxx = mpiCC
 ld = impif90
-libs = -ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas
+cppdefs = -DHAVE_SSE2
+libs = -ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas -cxxlib
 module_flag = -module
 
 [opt]
 fflags = -O3
+cxxflags = -O3
 
 [dbg]
 fflags = -g -traceback -CB
+cxxflags = -g -traceback -CB

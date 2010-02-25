@@ -30,8 +30,14 @@ fc
     Set the fortran compiler.
 fflags
     Set flags to be passed to the fortran compiler during compilation.
+cxx
+    Set the C++ compiler.
+cxxflags
+    Set flags to be passed to the C++ compiler during compilation.
 cppdefs
     Set definitions to be used in the C pre-processing step.
+    C pre-processing is applied to .F90, .c and .cpp files (and not .f90
+    files).
 cppflags
     Set flags to be used in the C pre-processing step.
 ld
@@ -69,7 +75,7 @@ EXE='bin'
 VPATH='src:lib'
 
 # Space separated list of file extensions for the source files.
-SOURCE_EXT='.f90 .F90'
+SOURCE_EXT='.f90 .F90 .c .cpp'
 
 #======================================================================
 
@@ -85,12 +91,19 @@ my_make := $(MAKE) -f $(my_makefile)
 #-----
 # Compiler configuration.
 
-FC=%(fc)s
-FFLAGS=-I $(DEST) %(fflags)s
+# Fortran
+FC = %(fc)s
+FFLAGS = -I $(DEST) %(fflags)s
 
-CPPDEFS = %(cppdefs)s -D_VCS_VERSION='$(VCS_VERSION)'
-CPPFLAGS = %(cppflags)s $(WORKING_DIR_CHANGES)
+# C++
+CXX = %(cxx)s
+CXXFLAGS = %(cxxflags)s
 
+# Pre-processing
+CPPDEFS = -D_VCS_VERSION='$(VCS_VERSION)' -DDSFMT_MEXP=19937 %(cppdefs)s
+CPPFLAGS = $(WORKING_DIR_CHANGES) %(cppflags)s
+
+# Linker
 LD = %(ld)s
 LDFLAGS = %(ldflags)s
 LIBS = %(libs)s
@@ -164,6 +177,8 @@ DEPEND = %(DEST)s/.depend
 .SUFFIXES:
 .SUFFIXES: $(EXTS)
 
+#--- Fortran ---
+
 # Files to be pre-processed then compiled.
 $(DEST)/%%.o: %%.F90
 \t$(FC) $(CPPDEFS) $(CPPFLAGS) -c $(FFLAGS) $< -o $@ %(module_flag)s$(DEST)
@@ -171,6 +186,16 @@ $(DEST)/%%.o: %%.F90
 # Files to compiled directly.
 $(DEST)/%%.o: %%.f90
 \t$(FC) -c $(FFLAGS) $< -o $@ %(module_flag)s$(DEST)
+
+#--- C/C++ ---
+
+# All C/C++ files are preprocessed as part of the compilation.
+ 
+$(DEST)/%%.o: %%.c
+	$(CXX) $(CPPDEFS) $(CPPFLAGS) -c $(CXXFLAGS) $< -o $@
+
+$(DEST)/%%.o: %%.cpp
+	$(CXX) $(CPPDEFS) $(CPPFLAGS) -c $(CXXFLAGS) $< -o $@
 
 #-----
 # Goals.
@@ -279,9 +304,9 @@ def parse_config(config_file):
 
     valid_sections_upper = [s.upper() for s in valid_sections]
 
-    valid_options = ['fc', 'fflags', 'cppdefs', 'cppflags', 'ld', 'ldflags', 'libs', 'module_flag']
+    valid_options = ['fc', 'fflags', 'cxx', 'cxxflags', 'cppdefs', 'cppflags', 'ld', 'ldflags', 'libs', 'module_flag']
 
-    minimal_options = ['fc', 'ld', 'libs', 'module_flag']
+    minimal_options = ['fc', 'cxx', 'ld', 'libs', 'module_flag']
 
     if not os.path.exists(config_file):
         raise IOError,'Config file does not exist: %s' % (config_file)
