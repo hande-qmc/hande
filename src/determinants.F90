@@ -514,6 +514,33 @@ contains
 
     end function det_momentum
 
+    pure function det_invert_spin(f) result(f_inv)
+
+        ! Applies the spin inversion operator to a determinant.
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Returns:
+        !    f_inv(basis_length): bit string representation of the Slater
+        !        determinant after the application of the spin inversion
+        !        operator.
+
+        integer(i0) :: f_inv(basis_length)
+        integer(i0), intent(in) :: f(basis_length)
+
+        integer(i0) :: a,b
+        integer :: i
+
+        do i = 1, basis_length
+            ! Find bit string of all alpha orbitals.
+            a = iand(f(i), alpha_mask)
+            ! Find bit string of all beta orbitals.
+            b = iand(f(i), beta_mask)
+            f_inv(i) = ishft(a,1) + ishft(b,-1)
+        end do
+
+    end function det_invert_spin
+
     subroutine write_det(f, iunit, new_line)
 
         ! Write out a determinant as a list of occupied orbitals in the 
