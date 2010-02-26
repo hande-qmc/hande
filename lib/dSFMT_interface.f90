@@ -33,7 +33,6 @@ contains
         !    seed: seed for the RNG.
 
         integer, intent(in) :: seed
-        integer :: ierr
 
         call init_gen_rand(seed)
 
@@ -61,16 +60,6 @@ contains
 
     end function genrand_real2
 
-    subroutine dSFMT_end()
-
-        ! Tidy up: deallocate memory usage.
-
-        integer :: ierr
-
-!        if (allocated(random_store)) deallocate(random_store, stat=ierr)
-        
-    end subroutine dSFMT_end
-
     subroutine test_rand()
 
         integer :: i
@@ -78,7 +67,7 @@ contains
 
         call dSFMT_init(7)
 
-        do i = 1,10**10
+        do i = 1,10**7
             r = genrand_real2()
         end do
         write (6,*) r
