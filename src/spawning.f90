@@ -222,6 +222,12 @@ contains
         subroutine decode_tri_ind(ind, i, j)
 
             ! Decode a combined index.
+            ! The combined index, p, is given by:
+            !   p = i(i-1)/2 + j
+            ! Following the procedure by Rifkin, it is easy to show:
+            !   i = int(0.5 + sqrt( 2p - 7/4 )
+            ! and j hence follows.
+            !
             ! In:
             !    ind: combined index based upon i,j.
             ! Out:
@@ -231,7 +237,7 @@ contains
             integer, intent(in) :: ind
             integer, intent(out) :: i, j
 
-            i = int(0.50_dp + sqrt(2*ind-0.750_dp))
+            i = int(0.50_dp + sqrt(2*ind-1.750_dp))
             j = ind - (i*(i-1))/2
 
         end subroutine decode_tri_ind
@@ -239,6 +245,12 @@ contains
         subroutine decode_rect_ind(ind, n, i, j)
 
             ! Decode a combined index.
+            ! The combined index, p, is given by:
+            !   p = p = n(n+1)/2 + (i-n-1)*n + j
+            ! Following the procedure by Rifkin, it is easy to show:
+            !   i = int[ 1/n (p - n(n+1)/2 - 1 )] + n + 1
+            ! and j hence follows.
+            !
             ! In:
             !    ind: combined index based upon i,j.
             !    n: max value of j.
@@ -249,7 +261,7 @@ contains
             integer, intent(in) :: ind, n
             integer, intent(out) :: i, j
 
-            i = int(0.50_dp + sqrt(2*ind-0.750_dp))
+            i = int( (ind - (n*(n+1))/2 - 1.0_dp)/n ) + n + 1
             j = ind - (i*(i-1))/2
 
         end subroutine decode_rect_ind
