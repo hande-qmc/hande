@@ -51,6 +51,7 @@ contains
         ! Used in the momentum space formulation of the Hubbard model only.
 
         use hubbard_k
+        use excitations, only: excit, get_excitation
 
         real(dp) :: hmatel
         integer, intent(in) :: d1, d2
@@ -142,6 +143,7 @@ contains
         ! Used in the real space formulation of the Hubbard model only.
 
         use hubbard_real
+        use excitations, only: excit, get_excitation
 
         real(dp) :: hmatel
         integer, intent(in) :: d1, d2
