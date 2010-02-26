@@ -146,10 +146,10 @@ contains
     stat = hostnm(host)
 #endif
 
-
     call date_and_time(VALUES=date_values)
 
-    write (6,'(1X,"Started running on",1X,i2.2,"/",i2.2,"/",i4.4,1X,"at",1X,i2.2,   2(":",i2.2))') date_values(3:1:-1), date_values(5:7)
+    write (6,'(1X,a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+               "Started running on", date_values(3:1:-1), "at", date_values(5:7)
 
     if (stat.eq.0) then
         write (io_unit,'(a13,a)') 'Running on: ',trim(host)
