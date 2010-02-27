@@ -68,7 +68,8 @@ contains
         ! into 1.
         ! For i/=j and (for an arbitrary choice of i>j), a 1D index of 
         ! a strictly lower triangular array is:
-        !   p = (i-1)(i-2)/2 + j,   where 1<=j<i and 1<=p<=n(n-1)/2
+        !   p = (i-1)(i-2)/2 + j,
+        ! where 1<=j<i and 1<=p<=n(n-1)/2
         ! This maps the indexing scheme as:
         !    .                  .
         !   2,1  .              1  .
@@ -204,67 +205,67 @@ contains
         ! Symmetry info is a simple lookup...
         ij_sym = sym_table((i+1)/2,(j+1)/2)
 
-    contains
+        contains
 
-        ! The following are routines for decoding the combined index of an array
-        ! like:
-        !   1  .  .          1,1
-        !   2  3  .          1,2  2,2
-        !   3  4  5    to    1,3  2,3  3,3
-        !   6  7  8          1,4  2,4  3,4
-        !   9 10 11          1,5  2,5  3,5
-        ! ie we can't distinguish between i and j apart from the ranges:
-        !   1 <= i <= 5
-        !   1 <= j <= min(i,3)
-        ! the triangular part is decoded in decode_tri_ind, the rectangular part
-        ! in decode_rect_ind.
+            ! The following are routines for decoding the combined index of an array
+            ! like:
+            !   1  .  .          1,1
+            !   2  3  .          1,2  2,2
+            !   3  4  5    to    1,3  2,3  3,3
+            !   6  7  8          1,4  2,4  3,4
+            !   9 10 11          1,5  2,5  3,5
+            ! ie we can't distinguish between i and j apart from the ranges:
+            !   1 <= i <= 5
+            !   1 <= j <= min(i,3)
+            ! the triangular part is decoded in decode_tri_ind, the rectangular part
+            ! in decode_rect_ind.
 
-        subroutine decode_tri_ind(ind, i, j)
+            subroutine decode_tri_ind(ind, i, j)
 
-            ! Decode a combined index.
-            ! The combined index, p, is given by:
-            !   p = i(i-1)/2 + j
-            ! Following the procedure by Rifkin, it is easy to show:
-            !   i = int(0.5 + sqrt( 2p - 7/4 )
-            ! and j hence follows.
-            !
-            ! In:
-            !    ind: combined index based upon i,j.
-            ! Out:
-            !    i: i is in the range 1 <= i.
-            !    j: j is in the range 1 <= j <= i.
+                ! Decode a combined index.
+                ! The combined index, p, is given by:
+                !   p = i(i-1)/2 + j
+                ! Following the procedure by Rifkin, it is easy to show:
+                !   i = int(0.5 + sqrt( 2p - 7/4 )
+                ! and j hence follows.
+                !
+                ! In:
+                !    ind: combined index based upon i,j.
+                ! Out:
+                !    i: i is in the range 1 <= i.
+                !    j: j is in the range 1 <= j <= i.
 
-            integer, intent(in) :: ind
-            integer, intent(out) :: i, j
+                integer, intent(in) :: ind
+                integer, intent(out) :: i, j
 
-            i = int(0.50_dp + sqrt(2*ind-1.750_dp))
-            j = ind - (i*(i-1))/2
+                i = int(0.50_dp + sqrt(2*ind-1.750_dp))
+                j = ind - (i*(i-1))/2
 
-        end subroutine decode_tri_ind
+            end subroutine decode_tri_ind
 
-        subroutine decode_rect_ind(ind, n, i, j)
+            subroutine decode_rect_ind(ind, n, i, j)
 
-            ! Decode a combined index.
-            ! The combined index, p, is given by:
-            !   p = p = n(n+1)/2 + (i-n-1)*n + j
-            ! Following the procedure by Rifkin, it is easy to show:
-            !   i = int[ 1/n (p - n(n+1)/2 - 1 )] + n + 1
-            ! and j hence follows.
-            !
-            ! In:
-            !    ind: combined index based upon i,j.
-            !    n: max value of j.
-            ! Out:
-            !    i: i is in the range n+1 <= i.
-            !    j: j is in the range 1 <= j <= n.
+                ! Decode a combined index.
+                ! The combined index, p, is given by:
+                !   p = p = n(n+1)/2 + (i-n-1)*n + j
+                ! Following the procedure by Rifkin, it is easy to show:
+                !   i = int[ 1/n (p - n(n+1)/2 - 1 )] + n + 1
+                ! and j hence follows.
+                !
+                ! In:
+                !    ind: combined index based upon i,j.
+                !    n: max value of j.
+                ! Out:
+                !    i: i is in the range n+1 <= i.
+                !    j: j is in the range 1 <= j <= n.
 
-            integer, intent(in) :: ind, n
-            integer, intent(out) :: i, j
+                integer, intent(in) :: ind, n
+                integer, intent(out) :: i, j
 
-            i = int( (ind - (n*(n+1))/2 - 1.0_dp)/n ) + n + 1
-            j = ind - (i*(i-1))/2
+                i = int( (ind - (n*(n+1))/2 - 1.0_dp)/n ) + n + 1
+                j = ind - (i*(i-1))/2
 
-        end subroutine decode_rect_ind
+            end subroutine decode_rect_ind
 
     end subroutine choose_ij_hub_k
 
