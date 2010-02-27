@@ -164,7 +164,7 @@ contains
         !        spawning.
 
         use basis, only: basis_length, bit_lookup, nbasis
-        use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel, nsites
+        use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
         use symmetry, only: inv_sym, sym_table
 
         real(dp) :: pgen
@@ -172,7 +172,7 @@ contains
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_alpha(nvirt_alpha), unocc_beta(nvirt_beta)
 
-        integer :: forbidden_excitations, a, b, ab_sym, b_pos, b_el, mallow
+        integer :: forbidden_excitations, a, b, ab_sym, a_pos, a_el, b_pos, b_el, ka, kb
 
         forbidden_excitations = 0
 
@@ -181,33 +181,71 @@ contains
         ! k_a + k_b must be the inverse of this.
         ab_sym = inv_sym(ij_sym)
 
-        ! Fixing a means b is fixed in order to meet the symmetry requirements.
+        ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
+        ! 
+        ! The number of ways of choosing i,j is
+        ! 
+        !  nalpha*nbeta + nbeta*nalpha (i.e. i can be alpha or beta).
+        ! 
+        ! Due to the requirement that crystal momentum is conserved and that the Hubbard
+        ! model is a 2-band system:
+        ! 
+        !  p(a|i,j,b) = 1
+        !  p(b|i,j,a) = 1
+        ! 
+        ! i.e. once three spin-orbitals are selected, the fourth is fixed.
+        ! 
+        ! We now consider p(a|i,j).  Not all a are possible, as an a virtual spin-orbital
+        ! can have an occupied b spin-orbital, as b is fixed by the choice of i,j and a.
+        ! 
+        ! The number of spin-orbitals from which a can be chosen is
+        ! 
+        !  nbasis - nel - delta_d
+        ! 
+        ! where delta_d is the number of a orbitals which are forbidden due to b being occupied.
+        ! p(b|i,j) is identical.  Hence:
+        ! 
+        ! pgen = 1/(2*nalpha*nbeta) [ 1/(nbasis-nel-delta_d) + 1/(basis-nel-delta_d) ]
+        !                       1
+        !      =  ---------------------------------
+        !         nalpha*nbeta*(nbasis-nel-delta_d)
+
         ! We count the number of a orbitals which cannot be excited into due to
         ! the corresponding b orbital not being available.
         ! The Hubbard model is a 2-band system, which makes this pleasingly
         ! easy. :-)
 
-        ! pgen then follows immediately.
-
         ! exciting from alpha, beta orbitals.
-        do a = 1, nvirt_alpha
-            b = 2*sym_table(ab_sym, unocc_beta(a)/2) ! b is a beta orbital.
-            b_pos = bit_lookup(1,b)
-            b_el = bit_lookup(2,b)
-            if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
-        end do
-        do a = 1, nvirt_beta
-            b = 2*sym_table(ab_sym, (unocc_beta(a)+1)/2) + 1 ! b is an alpha orbital.
-            b_pos = bit_lookup(1,b)
-            b_el = bit_lookup(2,b)
-            if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
-        end do
-        mallow = nsites - nbeta
+        ! alpha orbitals are odd (1,3,5,...)
+        ! beta orbitals are odd (2,4,6,...)
+        ! [Note that this is not the indexing used in bit strings: see basis
+        ! module.]
+        ! To convert from the wavevector label, 1,2,3,..., where wavevector
+        ! 1 corresponds to orbitals 1 and 2, we do:
+        !   2*k-1    for alpha
+        !   2*k      for beta
+        ! and similarly for the reverse transformation.
 
-        ! N^2/4 is the number of ways of choosing i,j.
-        ! An additional factor of two arises from the symmetry in the order of
-        ! choosing a and b.
-        pgen = 8.0_dp/(nel*nel*(mallow - forbidden_excitations))
+        ! a is an alpha orbital
+        ! b is a beta orbital.
+        do a = 1, nvirt_alpha
+            ka = (unocc_alpha(a)+1)/2
+            b = 2*sym_table(ab_sym, ka)
+            b_pos = bit_lookup(1,b)
+            b_el = bit_lookup(2,b)
+            ! Are (a,b) both unoccupied?
+            if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
+        end do
+        do b = 1, nvirt_beta
+            kb = unocc_beta(b)/2
+            a = 2*sym_table(ab_sym, kb) - 1
+            a_pos = bit_lookup(1,a)
+            a_el = bit_lookup(2,a)
+            ! Are (a,b) both unoccupied?
+            if (btest(f(a_el), a_pos)) forbidden_excitations = forbidden_excitations + 1
+        end do
+
+        pgen = 1.0_dp/(nalpha*nbeta*(nbasis-nel-forbidden_excitations))
 
     end function calc_pgen_hub_k
 
