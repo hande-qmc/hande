@@ -7,16 +7,29 @@ implicit none
 
 contains
 
-    subroutine spawn_hub_k()
+    subroutine spawn_hub_k(cd)
 
         ! Attempt to spawn a new particle on a connected determinant.
+        ! In:
+        !    cd: info on the current determinant (cd) that we will spawn
+        !       from.
+
+        use determinants, only: det_info
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: calc_pgen_hub_k
+        use fciqmc_data, only: tau
+        use system, only: hub_k_coulomb
+
+        type(det_info) :: cd
+        real(dp) :: pgen, psuccess, pspawn
+        integer :: i, j, ij_sym, nparticles
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        !call choose_ij_hub_k(occ_list_alpha, occ_list_beta, i ,j, ij_sym)
+        call choose_ij_hub_k(cd%occ_list_alpha, cd%occ_list_beta, i ,j, ij_sym)
 
         ! 2. Calculate the generation probability of the excitation.
         ! For two-band systems this depends only upon the orbitals excited from.
-        !pgen = calc_pgen_hub_k(ij_sym, ij_spin, f, unocc_alpha, unocc_beta)
+        pgen = calc_pgen_hub_k(ij_sym, cd%f, cd%unocc_list_alpha, cd%unocc_list_beta)
 
         ! The hubbard model in momentum space is a special case. Connected
         ! non-identical determinants have the following properties:
@@ -34,9 +47,32 @@ contains
         ! completing the excitation.
 
         ! 3. Test that whether the attempted spawning is successful.
-        !psucess = genrand_real2()
+        ! We wish to spawn with probability
+        !   tau |H_ij|,
+        ! where tau is the timestep of the simulation.
+        ! The probability of doing something is the probability of selecting to
+        ! attempt to do it multiplied by the probability of actually doing it,
+        ! hence:
+        !   p_spawn = p_select tau*|H_ij|/p_gen
+        ! and p_select = p_gen for normalised probabilities.
+        ! p_select is included intrinsically in the algorithm, so we compare
+        ! to the probability tau*|H_ij|/p_gen.
+        pspawn = tau*hub_k_coulomb/pgen
+        psuccess = genrand_real2()
 
-        ! 4. 
+        ! Need to take into account the possibilty of a spawning attempt
+        ! producing multiple offspring...
+        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+        ! then spawn a particle with probability pspawn-floor(pspawn).
+        nparticles = int(pspawn)
+        pspawn = pspawn - nparticles
+
+        if (pspawn > psuccess) nparticles = nparticles + 1
+
+        ! 4. Well, I suppose we should find out which determinant we're spawning
+        ! on...
+
+        ! 5. Set info in spawning array.
     
     end subroutine spawn_hub_k
 
