@@ -47,6 +47,10 @@ integer :: nvirt_alpha, nvirt_beta
 ! interaction respectively.
 real(dp) :: hubu = 1, hubt = 1
 
+! The Coulomb integral in the momentum space formulation of the Hubbard model
+! is constant, so it's convenient to store it.
+real(dp) :: hub_k_coulomb
+
 contains
 
     subroutine init_system()
@@ -61,6 +65,8 @@ contains
         forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),dp))
         nsites = nint(product(box_length))
         forall (ivec=1:ndim) rlattice(:,ivec) = lattice(:,ivec)/box_length(ivec)**2
+
+        hub_k_coulomb = hubu/nsites
 
     end subroutine init_system
 

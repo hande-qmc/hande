@@ -56,14 +56,14 @@ contains
         ! <phi1 phi2 | phi3 phi4>
         if (spin_symmetry(phi1, phi3) .and. spin_symmetry(phi2, phi4)) then
             if (momentum_conserved(phi1, phi2, phi3, phi4)) then
-                two_e_int = hubu/nsites
+                two_e_int = hub_k_coulomb
             end if
         end if
 
         ! <phi1 phi2 | phi4 phi3>
         if (spin_symmetry(phi1, phi4) .and. spin_symmetry(phi2, phi3)) then
             if (momentum_conserved(phi1, phi2, phi4, phi3)) then
-                two_e_int = two_e_int - hubu/nsites
+                two_e_int = two_e_int - hub_k_coulomb
             end if
         end if
 
