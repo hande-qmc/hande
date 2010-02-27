@@ -97,7 +97,7 @@ contains
             ! Whilst the resultant number of permutations isn't necessarily the
             ! minimal number for the determinants to align, this is irrelevant
             ! as the Slater--Condon rules only care about whether the number of
-            ! permutations are odd or even.
+            ! permutations is even or odd.
             shift = nel - excitation%nexcit 
 
             if (excitation%nexcit <= 2) then
