@@ -139,7 +139,7 @@ contains
 
     end function get_excitation
 
-    pure function calc_pgen_hub_k(ij_sym, f, unocc_alpha, unocc_beta) result(pgen)
+    pure function calc_pgen_hub_k(ab_sym, f, unocc_alpha, unocc_beta) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
         ! Hubbard model in momentum space.  The Hubbard model is a special case
@@ -153,8 +153,8 @@ contains
         ! Further, we assume only allowed excitations are generated.
         !
         ! In:
-        !    ij_sym: symmetry spanned by the (i,j) combination of occupied
-        !        spin-orbitals from which electrons are excited.
+        !    ab_sym: symmetry spanned by the (a,b) combination of unoccupied
+        !        spin-orbitals into which electrons are excited.
         !    f: bit string representation of the determinant we're exciting
         !        from.
         !    unocc_alpha, unocc_beta: integer list of the unoccupied alpha and
@@ -165,21 +165,16 @@ contains
 
         use basis, only: basis_length, bit_lookup, nbasis
         use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
-        use symmetry, only: inv_sym, sym_table
+        use symmetry, only: sym_table
 
         real(dp) :: pgen
-        integer, intent(in) :: ij_sym
+        integer, intent(in) :: ab_sym
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_alpha(nvirt_alpha), unocc_beta(nvirt_beta)
 
-        integer :: forbidden_excitations, a, b, ab_sym, a_pos, a_el, b_pos, b_el, ka, kb
+        integer :: forbidden_excitations, a, b, a_pos, a_el, b_pos, b_el, ka, kb
 
         forbidden_excitations = 0
-
-        ! The excitation i,j -> a,b is only allowed if k_i + k_j - k_a - k_b = 0
-        ! (up to a reciprocal lattice vector).  We store k_i + k_j as ij_sym, so
-        ! k_a + k_b must be the inverse of this.
-        ab_sym = inv_sym(ij_sym)
 
         ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
         ! 

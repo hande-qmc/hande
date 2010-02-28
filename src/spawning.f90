@@ -7,29 +7,35 @@ implicit none
 
 contains
 
-    subroutine spawn_hub_k(cd)
+    subroutine spawn_hub_k(cdet)
 
         ! Attempt to spawn a new particle on a connected determinant.
         ! In:
-        !    cd: info on the current determinant (cd) that we will spawn
-        !       from.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: calc_pgen_hub_k
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
+        use symmetry, only: inv_sym
 
-        type(det_info) :: cd
+        type(det_info) :: cdet
         real(dp) :: pgen, psuccess, pspawn
-        integer :: i, j, ij_sym, nparticles
+        integer :: i, j, a, b, ij_sym, ab_sym, nparticles
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(cd%occ_list_alpha, cd%occ_list_beta, i ,j, ij_sym)
+        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
 
         ! 2. Calculate the generation probability of the excitation.
         ! For two-band systems this depends only upon the orbitals excited from.
-        pgen = calc_pgen_hub_k(ij_sym, cd%f, cd%unocc_list_alpha, cd%unocc_list_beta)
+        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
+
+        ! The excitation i,j -> a,b is only allowed if k_i + k_j - k_a - k_b = 0
+        ! (up to a reciprocal lattice vector).  We store k_i + k_j as ij_sym, so
+        ! k_a + k_b must be the inverse of this.
+        ab_sym = inv_sym(ij_sym)
 
         ! The hubbard model in momentum space is a special case. Connected
         ! non-identical determinants have the following properties:
@@ -39,9 +45,9 @@ contains
         !     < ij | ab > = U/N_k \delta_{s_i,s_a} \delta_{s_j,s_b} 
         !     and so < ij || ab > = 0 if s_i = s_a = s_j = s_b.
         !     In fact:
-        !     << ij || ab > = 0          if s_i = s_a = s_j = s_b
-        !                     U/N        if s_i = s_a & s_j = s_b & s_i /= s_b
-        !                    -U/N        if s_i = s_b & s_j = s_a & s_i /= s_a
+        !     < ij || ab > = 0          if s_i = s_a = s_j = s_b
+        !                    U/N        if s_i = s_a & s_j = s_b & s_i /= s_b
+        !                   -U/N        if s_i = s_b & s_j = s_a & s_i /= s_a
         ! The FCIQMC method allows us to only generate connected excitations, so
         ! we can actually test whether we accept the excitation before we finish
         ! completing the excitation.
@@ -69,11 +75,25 @@ contains
 
         if (pspawn > psuccess) nparticles = nparticles + 1
 
-        ! 4. Well, I suppose we should find out which determinant we're spawning
-        ! on...
+        if (nparticles > 0) then
+            ! 4. Well, I suppose we should find out which determinant we're spawning
+            ! on...
+            call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta, ab_sym, a, b)
 
-        ! 5. Set info in spawning array.
-    
+            ! 5. Is connecting matrix element positive (in which case we spawn with
+            ! negative walkers) or negative (in which case we spawn with positive
+            ! walkers)?
+            if (mod(i-a,2) == 0) then
+                ! i,a are both alpha spin-orbitals or both beta spin-orbitals.
+                ! Thus the connecting matrix element comes from the Coulomb
+                ! integral and is positive.
+                nparticles = -nparticles
+            end if
+
+            ! 6. Set info in spawning array.
+
+        end if
+        
     end subroutine spawn_hub_k
 
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
@@ -304,5 +324,67 @@ contains
             end subroutine decode_rect_ind
 
     end subroutine choose_ij_hub_k
+
+    subroutine choose_ab_hub_k(f, unocc_list_alpha, unocc_list_beta, ab_sym, a, b)
+
+        ! Choose a random pair of (a,b) unoccupied virtual spin-orbitals into
+        ! which electrons are excited.
+        ! (a,b) are chosen such that the (i,j)->(a,b) excitation is symmetry-
+        ! allowed.
+        ! In: 
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        !    unocc_alpha, unocc_beta: integer list of the unoccupied alpha and
+        !        beta (respectively) spin-orbitals.
+        !    ab_sym: symmetry spanned by the (a,b) combination of unoccupied
+        !        spin-orbitals into which electrons are excited.
+        ! Returns:
+        !    a,b: virtual spin orbitals involved in the excitation.
+
+        use basis, only: basis_length, bit_lookup, nbasis
+        use dSFMT_interface, only:  genrand_real2
+        use system, only: nvirt_alpha, nvirt_beta
+        use symmetry, only: sym_table
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: unocc_list_alpha(nvirt_alpha), unocc_list_beta(nvirt_beta)
+        integer, intent(in) :: ab_sym
+        integer, intent(out) :: a, b
+
+        integer :: r, b_pos, b_el, ka, ab_sym
+
+        do
+
+            ! Until we find an allowed excitation.
+
+            r = int(genrand_real2()*(nvirt_alpha+nvirt_beta)) + 1
+
+            if (r <= nvirt_alpha) then
+
+                a = unocc_list_alpha(r)
+                ! Find corresponding beta orbital which satisfies conservation
+                ! of crystal momentum.
+                ka = (a+1)/2
+                b = 2*sym_table(ab_sym, ka)
+
+            else
+
+                a = unocc_list_beta(r)
+                ! Find corresponding alpha orbital which satisfies conservation
+                ! of crystal momentum.
+                ka = a/2
+                b = 2*sym_table(ab_sym, ka) - 1
+
+            end if
+
+            b_pos = bit_lookup(1,b)
+            b_el = bit_lookup(2,b)
+
+            ! If b is unoccupied then have found the excitation.
+            if (.not.btest(f(b_el), b_pos)) exit
+
+        end do
+
+    end subroutine choose_ab_hub_k
 
 end module spawning
