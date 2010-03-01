@@ -44,7 +44,7 @@ contains
         !        excitations.
 
         use bit_utils
-        use determinants, only: basis_length, basis_lookup
+        use basis, only: basis_length, basis_lookup
         use system, only: nel
 
         type(excit) :: excitation
