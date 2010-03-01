@@ -14,6 +14,10 @@ contains
         !    spos: current position within the spawned walkers array.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
+        ! Out:
+        !    spos: next position within the spawned walkers array.
+        !        This is equal to the input if no spawning occurs and equal to
+        !        the input+1 if spawning occurs.
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
@@ -23,7 +27,7 @@ contains
         use symmetry, only: inv_sym
         use basis, only: basis_length
 
-        integer, intent(in) :: spos
+        integer, intent(inout) :: spos
         type(det_info), intent(in) :: cdet
 
         real(dp) :: pgen, psuccess, pspawn
@@ -103,6 +107,9 @@ contains
             call create_excited_det(cdet%f, connection, f_new)
             spawned_walker_dets(:,spos) = f_new
             spawned_walker_population(spos) = nparticles
+
+            ! Having spawned, move to the next position in the spawning array.
+            spos = spos + 1
 
         end if
         
