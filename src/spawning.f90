@@ -17,15 +17,19 @@ contains
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_k
-        use fciqmc_data, only: tau
+        use excitations, only: calc_pgen_hub_k, excit, create_excited_det
+        use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population
         use system, only: hub_k_coulomb
         use symmetry, only: inv_sym
+        use basis, only: basis_length
 
         integer, intent(in) :: spos
         type(det_info), intent(in) :: cdet
+
         real(dp) :: pgen, psuccess, pspawn
         integer :: i, j, a, b, ij_sym, ab_sym, nparticles
+        integer(i0) :: f_new(basis_length)
+        type(excit) :: connection
 
         ! 1. Select a random pair of spin orbitals to excite from.
         call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
@@ -93,6 +97,12 @@ contains
             end if
 
             ! 6. Set info in spawning array.
+            connection%nexcit = 2
+            connection%from_orb = (/ i,j /)
+            connection%to_orb = (/ a,b /)
+            call create_excited_det(cdet%f, connection, f_new)
+            spawned_walker_dets(:,spos) = f_new
+            spawned_walker_population(spos) = nparticles
 
         end if
         
