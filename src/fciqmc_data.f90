@@ -6,6 +6,9 @@ implicit none
 ! timestep
 real(dp) :: tau
 
+! shift
+real(dp) :: shift
+
 ! Walker information: main list.
 ! a) determinants
 integer(i0), allocatable :: walker_dets(:,:) ! (basis_length, walker_length)
