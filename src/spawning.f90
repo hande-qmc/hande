@@ -351,7 +351,7 @@ contains
         integer, intent(in) :: ab_sym
         integer, intent(out) :: a, b
 
-        integer :: r, b_pos, b_el, ka, ab_sym
+        integer :: r, b_pos, b_el, ka
 
         do
 
