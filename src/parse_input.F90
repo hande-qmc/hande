@@ -61,10 +61,14 @@ contains
             if (eof) exit
             call readu(w)
             select case(w)
+
+            ! System type
             case('REAL_SPACE')
                 system_type = hub_real
             case('K_SPACE','MOMENTUM_SPACE')
                 system_type = hub_k
+
+            ! System information.
             case('LATTICE')
                 ! Lattice block
                 call read_line(eof)
@@ -89,10 +93,14 @@ contains
                 call readf(hubt)
             case('U')
                 call readf(hubu)
+
+            ! Select symmetry of wavefunction.
             case('MS')
                 call readi(ms_in)
             case('SYM','SYMMETRY')
                 call readi(sym_in)
+
+            ! Calculation type.
             case('EXACT','FCI')
                 t_exact = .true.
             case('LANCZOS_DIRECT')
@@ -100,22 +108,31 @@ contains
                 direct_lanczos = .true.
             case('LANCZOS')
                 t_lanczos = .true.
+
+            ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
                 call readi(lanczos_basis_length)
             case('LANCZOS_SOLUTIONS','LANCZOS_SOLNS')
                 call readi(nlanczos_eigv)
+
+            ! Calculation options: lanczos/exact diagonalisation.
             case('EIGENVALUES')
                 find_eigenvectors = .false.
             case('EIGENVECTORS')
                 find_eigenvectors = .true.
+
+            ! Output information.
             case('HAMIL','HAMILTONIAN')
                 write_hamiltonian = .true.
                 if (item /= nitems) call reada(hamiltonian_file)
             case('DET','DETERMINANTS')
                 write_determinants = .true.
                 if (item /= nitems) call reada(determinant_file)
+
+            ! Parameters for parallel calculations.
             case('BLOCK_SIZE')
                 call readi(block_size)
+
             case('END')
                 exit
             case default
