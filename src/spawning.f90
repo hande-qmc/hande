@@ -7,10 +7,11 @@ implicit none
 
 contains
 
-    subroutine spawn_hub_k(cdet)
+    subroutine spawn_hub_k(spos, cdet)
 
         ! Attempt to spawn a new particle on a connected determinant.
         ! In:
+        !    spos: current position within the spawned walkers array.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
 
@@ -21,7 +22,8 @@ contains
         use system, only: hub_k_coulomb
         use symmetry, only: inv_sym
 
-        type(det_info) :: cdet
+        integer, intent(in) :: spos
+        type(det_info), intent(in) :: cdet
         real(dp) :: pgen, psuccess, pspawn
         integer :: i, j, a, b, ij_sym, ab_sym, nparticles
 
