@@ -139,6 +139,45 @@ contains
 
     end function get_excitation
 
+    subroutine create_excited_det(f_in, connection, f_out)
+
+        ! Generate a determinant from another determinant and the excitation
+        ! information connecting the two determinants.
+        ! In: 
+        !    f_in(basis_length): bit string representation of the reference
+        !        Slater determinant.
+        !    connection: excitation connecting f_in to f_out.  Note that
+        !        the perm field is not used.
+        ! Out:
+        !    f_out(basis_length): bit string representation of the excited
+        !        Slater determinant.
+
+        use basis, only: basis_length, bit_lookup
+
+        integer(i0), intent(in) :: f_in(basis_length)
+        type(excit), intent(in) :: connection
+        integer(i0), intent(out) :: f_out(basis_length)
+
+        integer :: i, orb, bit_pos, bit_element
+
+        ! Unset the orbitals which are excited from and set the orbitals which
+        ! are excited into.
+        f_out = f_in
+        do i = 1, connection%nexcit
+            ! Clear i/j orbital.
+            orb = connection%from_orb(i)
+            bit_pos = bit_lookup(1,orb)
+            bit_element = bit_lookup(2,orb)
+            f_out(bit_element) = ibclr(f_in(bit_element), bit_pos)
+            ! Set a/b orbital.
+            orb = connection%from_orb(i)
+            bit_pos = bit_lookup(1,orb)
+            bit_element = bit_lookup(2,orb)
+            f_out(bit_element) = ibset(f_in(bit_element), bit_pos)
+        end do
+
+    end subroutine create_excited_det
+
     pure function calc_pgen_hub_k(ab_sym, f, unocc_alpha, unocc_beta) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
