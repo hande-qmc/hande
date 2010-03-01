@@ -1,5 +1,7 @@
 module symmetry
 
+implicit none
+
 ! Number of symmetries.
 ! Currently only crystal momentum is implemented.
 integer :: nsym
@@ -22,7 +24,7 @@ contains
         use parallel, only: parent
         use utils, only: int_fmt
 
-        integer :: i, j, ierr
+        integer :: i, j, k, ierr
         integer :: ksum(ndim)
         character(10) :: fmt1
 
