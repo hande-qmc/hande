@@ -3,11 +3,27 @@ module fciqmc_data
 use const
 implicit none
 
+!--- Input data ---
+
+! number of monte carlo cycles/report loop
+integer :: ncycles
+! number of report cycles
+integer :: nreport
+
 ! timestep
-real(dp) :: tau
+real(dp) :: tau = 0.10_dp
 
 ! shift
-real(dp) :: shift
+real(dp) :: shift = 0.0_dp
+
+! Array sizes
+integer :: walker_length
+integer :: spawned_walker_length
+
+! Current number of walkers stored in the main list.
+integer :: tot_walkers
+
+!--- Walker data ---
 
 ! Walker information: main list.
 ! a) determinants
@@ -21,8 +37,8 @@ real(dp), allocatable :: walker_energies(:)
 
 ! Walker information: spawned list.
 ! a) determinants
-integer(i0), allocatable :: spawned_walker_dets(:,:) ! (basis_length, walker_length)
+integer(i0), allocatable :: spawned_walker_dets(:,:) ! (basis_length, spawned_walker_length)
 ! b) walker population
-integer, allocatable :: spawned_walker_population(:) ! (walker_length)
+integer, allocatable :: spawned_walker_population(:) ! (spawned_walker_length)
 
 end module fciqmc_data
