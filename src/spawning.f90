@@ -388,7 +388,7 @@ contains
 
             else
 
-                a = unocc_list_beta(r)
+                a = unocc_list_beta(r-nvirt_alpha)
                 ! Find corresponding alpha orbital which satisfies conservation
                 ! of crystal momentum.
                 ka = a/2
