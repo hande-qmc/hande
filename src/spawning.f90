@@ -227,50 +227,27 @@ contains
 
         ! We use a similar indexing scheme to choose_ij, except our initial
         ! indices refer to an index in the occupied alpha array and in the
-        ! occupied beta array.  This means that:
-        !   * i and j can be identical.
-        !   * we need to handle the case where nalpha/=nbeta (in choose_ij we
-        !     just consider a single list of nel spin-orbitals, whereas here
-        !     we need to consider a pick once from the list of of nalpha
-        !     spin-orbitals and once form the list of nbeta spin-orbitals.
-        !   * the number of possible unique i,j pairs is given by
-        !       n1*(n1+1)/2 + n1*(n2-n1)
-        !     where n1 = min(nalpha,nbeta) and n2 = max(nalpha,nbeta).
-        !     The first term accounts for the "triangular" part of the array,
-        !     The second part accounts for the case where we can choose
-        !     a j which is greater than the maximum i.
+        ! occupied beta array.  This means that rather than be a triangular
+        ! indexing scheme, we have a rectangular one:
+        !   1  2  3    to    1,1  2,1  1,1
+        !   3  5  6          1,2  2,2  3,2
+        !   7  8  9          1,3  2,3  3,3
+        !  10 11 12          1,4  2,4  3,4
+        ! total number of possible combinations is nalpha*nbeta.
+        ! The indexing scheme is:
+        !  p = (i-1)*n_j + j
+        ! Hence to invert this, following a similar method to Rifkin:
+        !  i = floor( (p-1)/n_j ) + 1
+        !  j = p - (i-1)*n_j
 
         r = genrand_real2()
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
-        if (nalpha == nbeta) then
-            ! Identical case to that given by Rifkin apart from the fact that
-            ! our indices go from 1 rather than 0.
-            ind = int(r*nalpha*(nalpha+1)/2) + 1
-            call decode_tri_ind(ind, i, j)
-        else if (nalpha > nbeta) then
-            ind = int(r*( nbeta*(nbeta+1)/2 + nbeta*(nalpha-nbeta)))
-            if (ind <= nbeta*(nbeta+1)/2) then
-                ! "triangular" part of array, where i,j can be generated either
-                ! way round.
-                call decode_tri_ind(ind, i, j)
-            else
-                ! Rectangular part.
-                call decode_rect_ind(ind, nbeta, i, j)
-            end if
-        else
-            ! Same as nalpha > nbeta case but with labels the other way round.
-            ind = int(r*( nalpha*(nalpha+1)/2 + nalpha*(nbeta-nalpha)))
-            if (ind <= nalpha*(nalpha+1)/2) then
-                ! "triangular" part of array, where i,j can be generated either
-                ! way round.
-                call decode_tri_ind(ind, j, i)
-            else
-                ! Rectangular part.
-                call decode_rect_ind(ind, nalpha, j, i)
-            end if
-        end if
+
+        ind = int(r*nalpha*nbeta) + 1
+        i = int( (ind-1.0_dp)/nbeta ) + 1
+        j = ind - (i-1)*nbeta
 
         ! i,j are the electrons we're exciting.  Find the occupied corresponding
         ! spin-orbitals.
@@ -279,68 +256,6 @@ contains
 
         ! Symmetry info is a simple lookup...
         ij_sym = sym_table((i+1)/2,(j+1)/2)
-
-        contains
-
-            ! The following are routines for decoding the combined index of an array
-            ! like:
-            !   1  .  .          1,1
-            !   2  3  .          1,2  2,2
-            !   3  4  5    to    1,3  2,3  3,3
-            !   6  7  8          1,4  2,4  3,4
-            !   9 10 11          1,5  2,5  3,5
-            ! ie we can't distinguish between i and j apart from the ranges:
-            !   1 <= i <= 5
-            !   1 <= j <= min(i,3)
-            ! the triangular part is decoded in decode_tri_ind, the rectangular part
-            ! in decode_rect_ind.
-
-            subroutine decode_tri_ind(ind, i, j)
-
-                ! Decode a combined index.
-                ! The combined index, p, is given by:
-                !   p = i(i-1)/2 + j
-                ! Following the procedure by Rifkin, it is easy to show:
-                !   i = int(0.5 + sqrt( 2p - 7/4 )
-                ! and j hence follows.
-                !
-                ! In:
-                !    ind: combined index based upon i,j.
-                ! Out:
-                !    i: i is in the range 1 <= i.
-                !    j: j is in the range 1 <= j <= i.
-
-                integer, intent(in) :: ind
-                integer, intent(out) :: i, j
-
-                i = int(0.50_dp + sqrt(2*ind-1.750_dp))
-                j = ind - (i*(i-1))/2
-
-            end subroutine decode_tri_ind
-
-            subroutine decode_rect_ind(ind, n, i, j)
-
-                ! Decode a combined index.
-                ! The combined index, p, is given by:
-                !   p = p = n(n+1)/2 + (i-n-1)*n + j
-                ! Following the procedure by Rifkin, it is easy to show:
-                !   i = int[ 1/n (p - n(n+1)/2 - 1 )] + n + 1
-                ! and j hence follows.
-                !
-                ! In:
-                !    ind: combined index based upon i,j.
-                !    n: max value of j.
-                ! Out:
-                !    i: i is in the range n+1 <= i.
-                !    j: j is in the range 1 <= j <= n.
-
-                integer, intent(in) :: ind, n
-                integer, intent(out) :: i, j
-
-                i = int( (ind - (n*(n+1))/2 - 1.0_dp)/n ) + n + 1
-                j = ind - (i*(i-1))/2
-
-            end subroutine decode_rect_ind
 
     end subroutine choose_ij_hub_k
 
