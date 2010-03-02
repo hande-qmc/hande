@@ -7,6 +7,7 @@ use system
 use calc
 use lanczos
 use determinants
+use fciqmc_data
 
 implicit none
 
@@ -108,6 +109,8 @@ contains
                 direct_lanczos = .true.
             case('LANCZOS')
                 t_lanczos = .true.
+            case('FCIQMC')
+                t_fciqmc = .true.
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -120,6 +123,17 @@ contains
                 find_eigenvectors = .false.
             case('EIGENVECTORS')
                 find_eigenvectors = .true.
+
+            ! Calculation options: fciqmc.
+            ! Just for testing: needs to be made friendlier.
+            case('MC_CYCLES')
+                call geti(ncycles)
+            case('NREPORTS')
+                call geti(nreport)
+            case('WALKER_LENGTH')
+                call geti(walker_length)
+            case('SPAWNED_WALKER_LENGTH')
+                call geti(spawned_walker_length)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
