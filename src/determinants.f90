@@ -473,7 +473,7 @@ contains
         !            spin-orbitals in the Slater determinant.
 
         integer(i0), intent(in) :: f(basis_length)
-        type(det_info), intent(out) :: d
+        type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b
 
         iocc = 0
@@ -526,7 +526,7 @@ contains
         !            spin-orbitals in the Slater determinant.
 
         integer(i0), intent(in) :: f(basis_length)
-        type(det_info), intent(out) :: d
+        type(det_info), intent(inout) :: d
         integer :: i, j, iocc_a, iocc_b, iunocc_a, iunocc_b
 
         iocc_a = 0
