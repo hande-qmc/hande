@@ -25,6 +25,9 @@ contains
         use parallel, only: init_parallel, parallel_report, nprocs, parent
         use hubbard_real, only: init_real_space_hub
         use symmetry, only: init_symmetry
+        use calc, only: t_fciqmc
+        use fciqmc, only: init_fciqmc
+        use dSFMT_interface, only: dSFMT_init
 
         call init_parallel
 
@@ -51,16 +54,24 @@ contains
 
         if (system_type == hub_real) call init_real_space_hub()
 
+        if (t_fciqmc) then
+            call dSFMT_init(7)
+            call init_fciqmc()
+        end if
+
     end subroutine init_calc
 
     subroutine run_calc()
 
         ! Run the calculation based upon the input options.
 
-        use calc, only: t_exact, t_lanczos
+        use calc, only: t_exact, t_lanczos, t_fciqmc
         use diagonalisation, only: diagonalise
+        use fciqmc, only: do_fciqmc
 
         if (t_exact .or. t_lanczos) call diagonalise()
+
+        if (t_fciqmc) call do_fciqmc()
 
     end subroutine run_calc
 
