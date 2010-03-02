@@ -29,7 +29,7 @@ contains
         use fciqmc, only: init_fciqmc
         use dSFMT_interface, only: dSFMT_init
 
-        call init_parallel
+        call init_parallel()
 
         if (parent) then
             write (6,'(/,a8,/)') 'Hubbard'
