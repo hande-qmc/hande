@@ -127,6 +127,8 @@ contains
             ! Having spawned, move to the next position in the spawning array.
             spawning_head = spawning_head + 1
 
+            write (6,*) 'SPAWNING', i,j,a,b
+
         end if
         
     end subroutine spawn_hub_k

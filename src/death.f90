@@ -64,6 +64,8 @@ contains
         end if
 
         walker_population(cpos) = new_pop
+        
+        if (kill /= 0) write (6,*) 'DEATH',cpos,kill
 
     end subroutine stochastic_death
 
