@@ -7,27 +7,26 @@ implicit none
 
 contains
 
-    subroutine spawn_hub_k(spos, cdet)
+    subroutine spawn_hub_k(cdet)
 
         ! Attempt to spawn a new particle on a connected determinant.
+        !
+        ! If the spawning is successful, then the spawned particle is
+        ! placed in the spawning arrays and the current position in the
+        ! spawning array is updated.
+        !
         ! In:
-        !    spos: current position within the spawned walkers array.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
-        ! Out:
-        !    spos: next position within the spawned walkers array.
-        !        This is equal to the input if no spawning occurs and equal to
-        !        the input+1 if spawning occurs.
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: calc_pgen_hub_k, excit, create_excited_det, find_excitation_permutation2
-        use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population
+        use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population, spawning_head
         use system, only: hub_k_coulomb
         use symmetry, only: inv_sym
         use basis, only: basis_length
 
-        integer, intent(inout) :: spos
         type(det_info), intent(in) :: cdet
 
         real(dp) :: pgen, psuccess, pspawn
@@ -122,11 +121,11 @@ contains
 
             ! 6. Set info in spawning array.
             call create_excited_det(cdet%f, connection, f_new)
-            spawned_walker_dets(:,spos) = f_new
-            spawned_walker_population(spos) = nparticles
+            spawned_walker_dets(:,spawning_head) = f_new
+            spawned_walker_population(spawning_head) = nparticles
 
             ! Having spawned, move to the next position in the spawning array.
-            spos = spos + 1
+            spawning_head = spawning_head + 1
 
         end if
         

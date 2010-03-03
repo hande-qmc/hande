@@ -1,5 +1,8 @@
 module fciqmc_data
 
+! Data for fciqmc calculations and procedures which manipulate fciqmc and only
+! fciqmc data.
+
 use const
 implicit none
 
@@ -36,9 +39,11 @@ integer, allocatable :: walker_population(:) ! (walker_length)
 real(dp), allocatable :: walker_energies(:)
 
 ! Walker information: spawned list.
-! a) determinants
+! a) determinants.
 integer(i0), allocatable :: spawned_walker_dets(:,:) ! (basis_length, spawned_walker_length)
-! b) walker population
+! b) walker population.
 integer, allocatable :: spawned_walker_population(:) ! (spawned_walker_length)
+! c) next empty slot in the spawning array.
+integer :: spawning_head
 
 end module fciqmc_data

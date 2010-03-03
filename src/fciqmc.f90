@@ -67,7 +67,6 @@ contains
 
         integer :: ierr
         integer :: idet, ireport, icycles, iparticles
-        integer :: spos ! Current index in spawning array.
         type(det_info) :: cdet
 
         ! Allocate det_info components.
@@ -85,11 +84,11 @@ contains
             do icycles = 1, ncycles
 
                 ! Reset the position in the spawning array to be the first slot.
-                spos = 1
+                spawning_head = 1
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
-                    write (6,*) 'idet',idet,spos,walker_population(idet)
+                    write (6,*) 'idet',idet,spawning_head,walker_population(idet)
 
                     cdet%f = walker_dets(:,idet)
 
@@ -98,7 +97,7 @@ contains
                     do iparticles = 1, abs(walker_population(idet))
                         
                         ! spawn
-                        call spawn_hub_k(spos, cdet)
+                        call spawn_hub_k(cdet)
 
                     end do
 
