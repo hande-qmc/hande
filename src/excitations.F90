@@ -145,6 +145,89 @@ contains
 
     end function get_excitation
 
+    subroutine find_excitation_permutation1(occ_list, excitation)
+
+        ! Find the parity of the permutation required to maximally line up
+        ! a determinant with an excitation of it, as needed for use with the
+        ! Slater--Condon rules.
+        !
+        ! This version is for single excitations of a determinant.
+        !
+        ! In:
+        !    occ_list: integer list of occupied orbitals in the Slater determinant.
+        !    excitation: excit type specifying how the excited determinant is
+        !        connected to the rdeterminant given in occ_list.
+        ! Out:
+        !    excitation: excit type with the parity of the permutation also
+        !        specified.
+        use system, only: nel
+    
+        integer, intent(in) :: occ_list(nel)
+        type(excit), intent(inout) :: excitation
+
+        integer :: i, shift
+
+        ! Adapt algorithm from get_excitation.
+        
+        shift = nel - excitation%nexcit 
+
+        excitation%perm = 0
+        do i = 1, nel
+            if (occ_list(i)==excitation%from_orb(1)) then
+                ! Number of permutations to get to the end of the list.
+                excitation%perm = excitation%perm + shift - i + 1
+            else if (occ_list(i)==excitation%to_orb(1)) then
+                ! Number of permutations to get to the end of the list.
+                excitation%perm = excitation%perm + shift - i + 1
+            end if
+        end do
+
+    end subroutine find_excitation_permutation1
+
+    subroutine find_excitation_permutation2(occ_list, excitation)
+
+        ! Find the parity of the permutation required to maximally line up
+        ! a determinant with an excitation of it, as needed for use with the
+        ! Slater--Condon rules.
+        !
+        ! This version is for double excitations of a determinant.
+        !
+        ! In:
+        !    occ_list: integer list of occupied orbitals in the Slater determinant.
+        !    excitation: excit type specifying how the excited determinant is
+        !        connected to the rdeterminant given in occ_list.
+        ! Out:
+        !    excitation: excit type with the parity of the permutation also
+        !        specified.
+        use system, only: nel
+    
+        integer, intent(in) :: occ_list(nel)
+        type(excit), intent(inout) :: excitation
+
+        integer :: i, shift
+
+        ! Adapt algorithm from get_excitation.
+        shift = nel - excitation%nexcit 
+        
+        excitation%perm = 0
+        do i = 1, nel
+            if (occ_list(i)==excitation%from_orb(1)) then
+                ! Number of permutations to get to the end of the list.
+                excitation%perm = excitation%perm + shift - i + 1
+            else if (occ_list(i)==excitation%from_orb(2)) then
+                ! Number of permutations to get to the end of the list.
+                excitation%perm = excitation%perm + shift - i + 2
+            else if (occ_list(i)==excitation%to_orb(1)) then
+                ! Number of permutations to get to the end of the list.
+                excitation%perm = excitation%perm + shift - i + 1
+            else if (occ_list(i)==excitation%to_orb(2)) then
+                ! Number of permutations to get to the end of the list.
+                excitation%perm = excitation%perm + shift - i + 2
+            end if
+        end do
+
+    end subroutine find_excitation_permutation2
+
     subroutine create_excited_det(f_in, connection, f_out)
 
         ! Generate a determinant from another determinant and the excitation
