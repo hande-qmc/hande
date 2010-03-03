@@ -680,4 +680,34 @@ contains
 
     end function det_spin
 
+    pure function det_gt(f1, f2) result(gt)
+
+        ! In:
+        !    f1(basis_length): bit string representation of the Slater
+        !        determinant.
+        !    f2(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Returns:
+        !    True if the first element of f1 which is not equal to the
+        !    corresponding element of f2 is greater than the corresponding
+        !    element in f2.
+        
+        logical :: gt
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+
+        integer :: i
+
+        gt = .false.
+        do i = 1, basis_length
+            if (f1(i) > f2(i)) then
+                gt = .true.
+                exit
+            else if (f1(i) < f2(i)) then
+                gt = .false.
+                exit
+            end if
+        end do
+
+    end function det_gt
+
 end module determinants
