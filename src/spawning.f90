@@ -21,7 +21,7 @@ contains
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_k, excit, create_excited_det
+        use excitations, only: calc_pgen_hub_k, excit, create_excited_det, find_excitation_permutation2
         use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population
         use system, only: hub_k_coulomb
         use symmetry, only: inv_sym
@@ -31,7 +31,7 @@ contains
         type(det_info), intent(in) :: cdet
 
         real(dp) :: pgen, psuccess, pspawn
-        integer :: i, j, a, b, ij_sym, ab_sym, nparticles
+        integer :: i, j, a, b, ij_sym, ab_sym, nparticles, s
         integer(i0) :: f_new(basis_length)
         type(excit) :: connection
 
@@ -73,6 +73,12 @@ contains
         ! and p_select = p_gen for normalised probabilities.
         ! p_select is included intrinsically in the algorithm, so we compare
         ! to the probability tau*|H_ij|/p_gen.
+        ! As we can only excite from (alpha,beta) or (beta,alpha),
+        !   H_ij =  < ij | ab >  *or*
+        !        = -< ij | ba >
+        ! so
+        !   |H_ij| = U/\Omega
+        ! for allowed excitations.
         pspawn = tau*hub_k_coulomb/pgen
         psuccess = genrand_real2()
 
@@ -90,20 +96,31 @@ contains
             ! on...
             call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta, ab_sym, a, b)
 
+            connection%nexcit = 2
+            connection%from_orb = (/ i,j /)
+            connection%to_orb = (/ a,b /)
+
             ! 5. Is connecting matrix element positive (in which case we spawn with
             ! negative walkers) or negative (in which case we spawn with positive
             ! walkers)?
-            if (mod(i-a,2) == 0) then
-                ! i,a are both alpha spin-orbitals or both beta spin-orbitals.
-                ! Thus the connecting matrix element comes from the Coulomb
-                ! integral and is positive.
+            call find_excitation_permutation2(cdet%occ_list, connection)
+            s = 1
+            if (connection%perm) then
+                ! Matrix element gets a -sign from rearranging determinants so
+                ! that they maximally line up.
+                s = -s
+            end if
+            if (mod(i-a,2) /= 0) then
+                ! (i,a) are (alpha,beta) or (beta,alpha).
+                ! Thus it is the exchange integral which contributes to the
+                ! connecting matrix element.
+                s = -s
+            end if
+            if (s > 0) then
                 nparticles = -nparticles
             end if
 
             ! 6. Set info in spawning array.
-            connection%nexcit = 2
-            connection%from_orb = (/ i,j /)
-            connection%to_orb = (/ a,b /)
             call create_excited_det(cdet%f, connection, f_new)
             spawned_walker_dets(:,spos) = f_new
             spawned_walker_population(spos) = nparticles
@@ -121,7 +138,7 @@ contains
         ! See choose_ij_hub_k for a specific procedure for the momentum space
         ! formulation of the hubbard model.
         ! In:
-        !    occ_list: Integer list of occupied spin-orbitals.
+        !    occ_list: integer list of occupied spin-orbitals in a determinant.
         ! Out:
         !    i, j: randomly selected spin-orbitals.
         !    ij_sym: symmetry label of the (i,j) combination.
