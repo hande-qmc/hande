@@ -509,13 +509,15 @@ contains
         ! Decode determinant bit string into integer lists containing the
         ! occupied and unoccupied orbitals.  
         !
-        ! We return the lists for alpha and beta electrons separately.
+        ! We also return the lists for alpha and beta electrons separately.
         !
         ! In:
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         ! Out:
         !    d: det_info variable.  The following components are set:
+        !        occ_list(nel): integer list of occupied spin-orbitals in the
+        !            Slater determinant.
         !        occ_list_alpha(nalpha): integer list of occupied alpha
         !            spin-orbitals in the Slater determinant.
         !        occ_list_beta(nbeta): integer list of occupied beta
@@ -527,8 +529,9 @@ contains
 
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
-        integer :: i, j, iocc_a, iocc_b, iunocc_a, iunocc_b
+        integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb
 
+        iocc = 0
         iocc_a = 0
         iocc_b = 0
         iunocc_a = 0
@@ -537,14 +540,17 @@ contains
         do i = 1, basis_length
             do j = 0, i0_end
                 if (btest(f(i), j)) then
+                    orb = basis_lookup(j, i)
+                    iocc = iocc + 1
+                    d%occ_list(iocc) = orb
                     if (mod(j,2)==0) then
                         ! alpha state
                         iocc_a = iocc_a + 1
-                        d%occ_list_alpha(iocc_a) = basis_lookup(j, i)
+                        d%occ_list_alpha(iocc_a) = orb
                     else
                         ! beta state
                         iocc_b = iocc_b +1
-                        d%occ_list_beta(iocc_b) = basis_lookup(j, i)
+                        d%occ_list_beta(iocc_b) = orb
                     end if
                 else
                     if (mod(j,2)==0) then
