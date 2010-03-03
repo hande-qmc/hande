@@ -46,4 +46,9 @@ integer, allocatable :: spawned_walker_population(:) ! (spawned_walker_length)
 ! c) next empty slot in the spawning array.
 integer :: spawning_head
 
+!--- Reference determinant ---
+
+! Energy of reference determinant.
+real(dp) :: H00
+
 end module fciqmc_data

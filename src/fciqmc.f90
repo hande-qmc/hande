@@ -11,7 +11,7 @@ contains
         use determinants, only: encode_det, set_spin_polarisation
         use hamiltonian, only: get_hmatel_k
         use system, only: nel
-        use hubbard_k
+        use hamiltonian, only: slater_condon0_hub_k
 
         integer :: ierr
         integer :: i, occ_list(nel)
@@ -37,10 +37,12 @@ contains
         forall (i=1:nel) occ_list(i) = i
         walker_dets(:,tot_walkers) = encode_det(occ_list)
 
+        ! Reference determinant.
         walker_energies(tot_walkers) = 0.0_dp
-        
-        write (6,*) 'energy',walker_energies(tot_walkers)
 
+        ! Energy of reference determinant.
+        H00 = slater_condon0_hub_k(occ_list)
+        
     end subroutine init_fciqmc
 
     subroutine end_fciqmc()
