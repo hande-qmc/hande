@@ -9,3 +9,5 @@ HAMIL
 *.err
 *.log
 fort.*
+.*.swp
+tags

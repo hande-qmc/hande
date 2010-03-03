@@ -83,4 +83,43 @@ contains
 
     end subroutine sort_spawning_list
 
+    subroutine search_walker_list(f, hit, pos)
+
+        ! Find where a determinant belongs in the main walker list.
+        !
+        ! This currently uses a linear search and should be changed to a binary
+        ! search algorithm for efficiency.
+        !
+        ! In:
+        !    f: bit string representation of the Slater determinant.
+        ! Out:
+        !    hit: true if found f in the main walker list.
+        !    pos : the corresponding position in the main walker list
+        !        where the determinant belongs.  If hit is true, then
+        !        the determinant in this position is the same as f, else
+        !        this is where f should go to keep the main walker list sorted.
+
+        use basis, only: basis_length
+        use determinants, only: det_gt
+
+        integer(i0), intent(in) :: f(basis_length)
+        logical, intent(out) :: hit
+        integer, intent(out) :: pos
+
+        integer :: i
+
+        do i = 1, tot_walkers
+            if (all(f == walker_dets(:,i))) then
+                hit = .true.
+                pos = i
+                exit
+            else if (det_gt(f, walker_dets(:,i))) then
+                hit = .false.
+                pos = i
+                exit
+            end if
+        end do
+
+    end subroutine search_walker_list
+
 end module fciqmc_data
