@@ -103,6 +103,12 @@ contains
             if (excitation%nexcit <= 2) then
 
                 do i = 1, basis_length
+                    ! Bonus optimisation: skip bit strings which aren't changed.
+                    ! This modifies the algorithm above by skipping basis
+                    ! functions which are already lined up.  Doing so is
+                    ! guaranteed to introduce an additional even number of
+                    ! permuations (as we underestimate both iel1 and iel2 by the
+                    ! same number of electrons).
                     if (f1(i) == f2(i)) cycle
                     do j = 0, i0_end
 
