@@ -50,7 +50,7 @@ contains
 
         ! Used in the momentum space formulation of the Hubbard model only.
 
-        use hubbard_k
+        use hubbard_k, only: get_two_e_int_k
         use excitations, only: excit, get_excitation
 
         real(dp) :: hmatel
@@ -89,17 +89,7 @@ contains
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
 
-                ! One electron operator
-                do i = 1, nel
-                    hmatel = hmatel + get_one_e_int_k(root_det(i), root_det(i))
-                end do
-
-                ! Two electron operator
-                do i = 1, nel
-                    do j = i+1, nel
-                        hmatel = hmatel + get_two_e_int_k(root_det(i), root_det(j), root_det(i), root_det(j))
-                    end do
-                end do
+                hmatel = slater_condon0_hub_k(root_det)
 
 !            case(1)
 
@@ -142,14 +132,12 @@ contains
 
         ! Used in the real space formulation of the Hubbard model only.
 
-        use hubbard_real
         use excitations, only: excit, get_excitation
 
         real(dp) :: hmatel
         integer, intent(in) :: d1, d2
         logical :: non_zero
         type(excit) :: excitation
-        integer :: root_det(nel)
         integer :: i
 
         hmatel = 0.0_dp
@@ -180,34 +168,11 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-
-                ! < i | T | i > = 0 within the real space formulation of the
-                ! Hubbard model, unless site i is its own periodic image, in
-                ! which case it has a kinetic interaction with its self-image.
-                ! This only arises if there is at least one crystal cell vector
-                ! which is a unit cell vector.
-                if (t_self_images) then
-                    root_det = decode_det(dets_list(:,d1))
-                    do i = 1, nel
-                        hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
-                    end do
-                end if
-
-                ! Two electron operator
-                hmatel = hmatel + get_coulomb_matel_real(dets_list(:,d1))
-
+                hmatel = slater_condon0_hub_real(dets_list(:,d1))
+    
             case(1)
 
-                ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
-
-                ! One electron operator
-                 hmatel = get_one_e_int_real(excitation%from_orb(1), excitation%to_orb(1)) 
-
-                ! Two electron operator
-                ! < D | U | D_i^a > = 0 within the real space formulation of the
-                ! Hubbard model.
-
-                if (excitation%perm) hmatel = -hmatel
+                hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
 
 !            case(2)
 
@@ -219,5 +184,112 @@ contains
         end if
 
     end function get_hmatel_real
+
+    pure function slater_condon0_hub_k(occ_list) result(hmatel)
+        
+        ! In:
+        !    occ_list: integer list of occupied spin-orbitals in a determinant, D_i.
+        ! Returns:
+        !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
+        !        the Hubbard model in momentum space.
+
+        use hubbard_k, only: get_one_e_int_k, get_two_e_int_k
+
+        real(dp) :: hmatel
+        integer, intent(in) :: occ_list(nel)
+        integer :: i, j
+
+        ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+
+        ! One electron operator
+        do i = 1, nel
+            hmatel = hmatel + get_one_e_int_k(occ_list(i), occ_list(i))
+        end do
+
+        ! Two electron operator
+        do i = 1, nel
+            do j = i+1, nel
+                hmatel = hmatel + get_two_e_int_k(occ_list(i), occ_list(j), occ_list(i), occ_list(j))
+            end do
+        end do
+
+    end function slater_condon0_hub_k
+
+    pure function slater_condon0_hub_real(f, occ_list) result(hmatel)
+
+        ! In:
+        !    f: bit string representation of the Slater determinant.
+        !    occ_list (optional): integer list of occupied spin-orbitals in
+        !        a determinant, D_i.  This is only needed if the system contains
+        !        self-periodic sites.  If not given then the determinant bit
+        !        string is decoded.
+        ! Returns:
+        !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
+        !        the Hubbard model in real space.
+
+        use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
+
+        real(dp) :: hmatel
+        integer, intent(in) :: f(basis_length)
+        integer, intent(in), optional :: occ_list(nel)
+        integer :: root_det(nel)
+        integer :: i
+
+        ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+
+        ! < i | T | i > = 0 within the real space formulation of the
+        ! Hubbard model, unless site i is its own periodic image, in
+        ! which case it has a kinetic interaction with its self-image.
+        ! This only arises if there is at least one crystal cell vector
+        ! which is a unit cell vector.
+        if (t_self_images) then
+            if (present(occ_list)) then
+                do i = 1, nel
+                    hmatel = hmatel + get_one_e_int_real(occ_list(i), occ_list(i))
+                end do
+            else
+                root_det = decode_det(f)
+                do i = 1, nel
+                    hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
+                end do
+            end if
+        end if
+
+        ! Two electron operator
+        hmatel = hmatel + get_coulomb_matel_real(f)
+
+    end function slater_condon0_hub_real
+
+    pure function slater_condon1_hub_real(i, a, perm) result(hmatel)
+
+        ! In:
+        !    i: index of the spin-orbital from which an electron is excited in
+        !        the reference determinant.
+        !    a: index of the spin-orbital into which an electron is excited in
+        !        the excited determinant.
+        !    perm: true if D and D_i^a are connected by an odd number of
+        !        permutations.
+        ! Returns:
+        !    < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !        determinant and a single excitation of it.
+
+        use hubbard_real, only: get_one_e_int_real
+
+        real(dp) :: hmatel
+        integer, intent(in) :: i, a
+        logical, intent(in) :: perm
+
+        ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+
+        ! One electron operator
+         hmatel = get_one_e_int_real(i, a)
+
+        ! Two electron operator
+        ! < D | U | D_i^a > = 0 within the real space formulation of the
+        ! Hubbard model.
+
+        if (perm) hmatel = -hmatel
+
+    end function slater_condon1_hub_real
 
 end module hamiltonian
