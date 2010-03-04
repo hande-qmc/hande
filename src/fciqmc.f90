@@ -15,7 +15,6 @@ contains
 
         integer :: ierr
         integer :: i, occ_list(nel)
-        real(dp) :: hmatel
 
         ! Allocate main walker lists.
         allocate(walker_dets(basis_length,walker_length), stat=ierr)
@@ -84,14 +83,18 @@ contains
 
         do ireport = 1, nreport
 
+            write (6,*) 'report',ireport
+
             do icycles = 1, ncycles
 
-                ! Reset the position in the spawning array to be the first slot.
-                spawning_head = 1
+                ! Reset the current position in the spawning array to be the
+                ! slot preceding the first slot.
+                spawning_head = 0
+                write (6,*)
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
-                    write (6,*) 'idet',idet,spawning_head,walker_population(idet)
+                    write (6,*) 'idet',idet,spawning_head,walker_population(idet), walker_dets(:,idet)
 
                     cdet%f = walker_dets(:,idet)
 

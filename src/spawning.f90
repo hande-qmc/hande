@@ -119,15 +119,15 @@ contains
                 nparticles = -nparticles
             end if
 
-            ! 6. Set info in spawning array.
+            ! 6. Move to the next position in the spawning array.
+            spawning_head = spawning_head + 1
+
+            ! 7. Set info in spawning array.
             call create_excited_det(cdet%f, connection, f_new)
             spawned_walker_dets(:,spawning_head) = f_new
             spawned_walker_population(spawning_head) = nparticles
 
-            ! Having spawned, move to the next position in the spawning array.
-            spawning_head = spawning_head + 1
-
-            write (6,*) 'SPAWNING', i,j,a,b
+            write (6,*) 'SPAWNING', i,j,a,b,cdet%f,f_new
 
         end if
         
