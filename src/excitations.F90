@@ -199,6 +199,7 @@ contains
         ! Out:
         !    excitation: excit type with the parity of the permutation also
         !        specified.
+
         use system, only: nel
     
         integer, intent(in) :: occ_list(nel)
