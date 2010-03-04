@@ -198,6 +198,7 @@ contains
         integer :: i, j
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+        hmatel = 0.0_dp
 
         ! One electron operator
         do i = 1, nel
@@ -234,6 +235,7 @@ contains
         integer :: i
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+        hmatel = 0.0_dp
 
         ! < i | T | i > = 0 within the real space formulation of the
         ! Hubbard model, unless site i is its own periodic image, in
