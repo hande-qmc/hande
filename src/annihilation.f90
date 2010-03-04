@@ -36,12 +36,34 @@ contains
         integer :: i, k, nremoved
 
         nremoved = 0
-        i = 0
+        i = 1
         k = 0
-        annihilate: do
-            i = i + 1
-            if (i > spawning_head) exit annihilate
+
+        ! Treat the first entry separately to make the subsequent removal of
+        ! walkers with 0 population easy.
+        if (spawning_head /= 0) then
             k = k + 1
+            ! Compress.
+            write (6,*) 'compress',i,k
+            spawned_walker_dets(:,k) = spawned_walker_dets(:,i)
+            spawned_walker_population(k) = spawned_walker_population(i)
+            i = i + 1
+            do while (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,i)))
+                ! Annihilate.
+                write (6,*) 'self-annihilating',spawned_walker_dets(:,k),spawned_walker_dets(:,i)
+                spawned_walker_population(k) = spawned_walker_population(k) + spawned_walker_population(i)
+                nremoved = nremoved + 1
+                i = i + 1
+                if (i > spawning_head) exit
+            end do
+        end if
+
+        annihilate: do
+            if (i > spawning_head) exit annihilate
+            if (spawned_walker_population(k) /= 0) then
+                ! Go to the next slot.
+                k = k + 1
+            end if
             ! Compress.
             spawned_walker_dets(:,k) = spawned_walker_dets(:,i)
             spawned_walker_population(k) = spawned_walker_population(i)
@@ -135,18 +157,18 @@ contains
             ! f is not in the main walker list
             call search_walker_list(f, istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
-            do j = iend, pos+1, -1
+            do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
                 k = pos + i
-                walker_dets(:,k) = walker_dets(:,i)
-                walker_population(k) = walker_population(i)
-                walker_energies(k) = walker_energies(i)
+                walker_dets(:,k) = walker_dets(:,j)
+                walker_population(k) = walker_population(j)
+                walker_energies(k) = walker_energies(j)
             end do
             ! Insert new walker
             walker_dets(:,pos) = f
             walker_population(pos) = spawned_walker_population(i)
             occ_list = decode_det(f)
-            walker_energies(pos) = slater_condon0_hub_k(occ_list)
+            walker_energies(pos) = slater_condon0_hub_k(occ_list) - H00
             ! Next walker will be inserted below this one.
             iend = pos
         end do
