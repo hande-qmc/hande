@@ -257,12 +257,12 @@ contains
             orb = connection%from_orb(i)
             bit_pos = bit_lookup(1,orb)
             bit_element = bit_lookup(2,orb)
-            f_out(bit_element) = ibclr(f_in(bit_element), bit_pos)
+            f_out(bit_element) = ibclr(f_out(bit_element), bit_pos)
             ! Set a/b orbital.
-            orb = connection%from_orb(i)
+            orb = connection%to_orb(i)
             bit_pos = bit_lookup(1,orb)
             bit_element = bit_lookup(2,orb)
-            f_out(bit_element) = ibset(f_in(bit_element), bit_pos)
+            f_out(bit_element) = ibset(f_out(bit_element), bit_pos)
         end do
 
     end subroutine create_excited_det
