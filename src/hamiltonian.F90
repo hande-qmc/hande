@@ -58,7 +58,6 @@ contains
         logical :: non_zero
         type(excit) :: excitation
         integer :: root_det(nel)
-        integer :: i, j
 
         hmatel = 0.0_dp
         non_zero = .false.
@@ -138,7 +137,6 @@ contains
         integer, intent(in) :: d1, d2
         logical :: non_zero
         type(excit) :: excitation
-        integer :: i
 
         hmatel = 0.0_dp
         non_zero = .false.
