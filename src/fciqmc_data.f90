@@ -53,7 +53,7 @@ real(dp) :: H00
 
 contains
 
-    subroutine sort_spawning_list()
+    subroutine sort_spawned_lists()
 
         ! Sort spawned_walker_dets and spawned_walker_populations according to
         ! the determinant list.
@@ -81,17 +81,21 @@ contains
             spawned_walker_population(j+1) = tmp_pop
         end do
 
-    end subroutine sort_spawning_list
+    end subroutine sort_spawned_lists
 
-    subroutine search_walker_list(f, hit, pos)
+    subroutine search_walker_list(f, istart, iend, hit, pos)
 
         ! Find where a determinant belongs in the main walker list.
+        ! Only elements between istart and iend are examined (use the 
+        ! array boundaries in the worst case).
         !
         ! This currently uses a linear search and should be changed to a binary
         ! search algorithm for efficiency.
         !
         ! In:
         !    f: bit string representation of the Slater determinant.
+        !    istart: first position to examine in the walker list.
+        !    iend: last position to examine in the walker list.
         ! Out:
         !    hit: true if found f in the main walker list.
         !    pos : the corresponding position in the main walker list
@@ -103,12 +107,13 @@ contains
         use determinants, only: det_gt
 
         integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: istart, iend
         logical, intent(out) :: hit
         integer, intent(out) :: pos
 
         integer :: i
 
-        do i = 1, tot_walkers
+        do i = istart, iend
             if (all(f == walker_dets(:,i))) then
                 hit = .true.
                 pos = i

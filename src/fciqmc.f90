@@ -61,6 +61,7 @@ contains
 
     subroutine do_fciqmc()
 
+        use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use death, only: stochastic_death
         use determinants, only: det_info, decode_det_spinocc_spinunocc
@@ -108,7 +109,7 @@ contains
 
                 end do
 
-                ! annihilate
+                call direct_annihilation()
 
             end do
 
