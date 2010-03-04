@@ -30,7 +30,7 @@ contains
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.
-        pd = pd*current_pop 
+        pd = pd*abs(current_pop)
 
         ! Number that definitely die...
         kill = int(pd)
@@ -55,12 +55,6 @@ contains
             new_pop = current_pop + kill
         else
             new_pop = current_pop - kill
-        end if
-
-        ! Are we creating anti-particles?
-        if ((new_pop > 0 .and. current_pop < 0) .or. (new_pop < 0 .and. current_pop > 0)) then
-            ! Anti-particles!  ooops...
-            ! Speak to George about how this needs to be handled.
         end if
 
         walker_population(cpos) = new_pop
