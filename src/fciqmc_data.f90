@@ -113,12 +113,14 @@ contains
 
         integer :: i
 
+        ! Assume it should go at the end to start with...
+        pos = iend + 1
         do i = istart, iend
-            if (all(f == walker_dets(:,i))) then
+            if (all(walker_dets(:,i) == f)) then
                 hit = .true.
                 pos = i
                 exit
-            else if (det_gt(f, walker_dets(:,i))) then
+            else if (det_gt(walker_dets(:,i),f)) then
                 hit = .false.
                 pos = i
                 exit
