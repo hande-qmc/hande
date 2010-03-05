@@ -127,8 +127,6 @@ contains
             spawned_walker_dets(:,spawning_head) = f_new
             spawned_walker_population(spawning_head) = nparticles
 
-            write (6,*) 'SPAWNING', i,j,a,b,cdet%f,f_new
-
         end if
         
     end subroutine spawn_hub_k

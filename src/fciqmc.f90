@@ -68,7 +68,7 @@ contains
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
 
         integer :: ierr
-        integer :: idet, ireport, icycles, iparticles
+        integer :: idet, ireport, icycle, iparticles
         type(det_info) :: cdet
 
         ! Allocate det_info components.
@@ -83,18 +83,14 @@ contains
 
         do ireport = 1, nreport
 
-            write (6,*) 'report',ireport
-
-            do icycles = 1, ncycles
+            do icycle = 1, ncycles
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
                 spawning_head = 0
-                write (6,*)
+                write (6,*) 'cycle',icycle
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
-
-                    write (6,*) 'idet',idet,spawning_head,walker_population(idet), walker_dets(:,idet)
 
                     cdet%f = walker_dets(:,idet)
 
@@ -119,6 +115,8 @@ contains
             ! report
 
         end do
+
+        write (6,*) 'DONE'
 
     end subroutine do_fciqmc
 
