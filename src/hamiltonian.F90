@@ -31,18 +31,18 @@ contains
 
         select case(system_type)
         case(hub_k)
-            hmatel = get_hmatel_k(d1, d2)
+            hmatel = get_hmatel_k(dets_list(:,d1), dets_list(:,d2))
         case(hub_real)
-            hmatel = get_hmatel_real(d1, d2)
+            hmatel = get_hmatel_real(dets_list(:,d1), dets_list(:,d2))
         end select
 
     end function get_hmatel
 
-    elemental function get_hmatel_k(d1, d2) result(hmatel)
+    pure function get_hmatel_k(f1, f2) result(hmatel)
 
         ! In:
-        !    d1, d2: integer labels of two determinants, as stored in the
-        !            dets_* arrays.
+        !    f1, f2: bit string representation of the Slater
+        !        determinants D1 and D2 respectively.
         ! Returns:
         !    Hamiltonian matrix element between the two determinants, 
         !    < D1 | H | D2 >, where the determinants are formed from
@@ -54,7 +54,7 @@ contains
         use excitations, only: excit, get_excitation
 
         real(dp) :: hmatel
-        integer, intent(in) :: d1, d2
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         logical :: non_zero
         type(excit) :: excitation
         integer :: root_det(nel)
@@ -73,7 +73,7 @@ contains
             ! vector (i.e. satisfy translational symmetry).
             ! We assume this is also already checked.
 
-        excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
+        excitation = get_excitation(f1,f2)
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then
             non_zero = .true.
@@ -84,7 +84,7 @@ contains
             ! Apply Slater--Condon rules.
             case(0)
 
-                root_det = decode_det(dets_list(:,d1))
+                root_det = decode_det(f1)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
 
@@ -119,11 +119,11 @@ contains
 
     end function get_hmatel_k
 
-    elemental function get_hmatel_real(d1, d2) result(hmatel)
+    pure function get_hmatel_real(f1, f2) result(hmatel)
 
         ! In:
-        !    d1, d2: integer labels of two determinants, as stored in the
-        !            dets array.
+        !    f1, f2: bit string representation of the Slater
+        !        determinants D1 and D2 respectively.
         ! Returns:
         !    Hamiltonian matrix element between the two determinants, 
         !    < D1 | H | D2 >, where the determinants are formed from
@@ -134,7 +134,7 @@ contains
         use excitations, only: excit, get_excitation
 
         real(dp) :: hmatel
-        integer, intent(in) :: d1, d2
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         logical :: non_zero
         type(excit) :: excitation
 
@@ -144,7 +144,7 @@ contains
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! We assume Ms is conserved (ie has already been checked for).
-        excitation = get_excitation(dets_list(:,d1), dets_list(:,d2))
+        excitation = get_excitation(f1, f2)
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then
             ! Space group symmetry not currently implemented.
@@ -166,7 +166,7 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel = slater_condon0_hub_real(dets_list(:,d1))
+                hmatel = slater_condon0_hub_real(f1)
     
             case(1)
 
