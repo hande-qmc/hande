@@ -14,7 +14,7 @@ integer :: ncycles
 integer :: nreport
 
 ! timestep
-real(dp) :: tau = 0.10_dp
+real(dp) :: tau = 0.20_dp
 
 ! shift
 real(dp) :: shift = 0.0_dp
@@ -115,6 +115,7 @@ contains
 
         ! Assume it should go at the end to start with...
         pos = iend + 1
+        hit = .false.
         do i = istart, iend
             if (all(walker_dets(:,i) == f)) then
                 hit = .true.
