@@ -134,6 +134,8 @@ contains
                 call geti(walker_length)
             case('SPAWNED_WALKER_LENGTH')
                 call geti(spawned_walker_length)
+            case('TAU')
+                call getf(tau)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')

@@ -14,7 +14,7 @@ integer :: ncycles
 integer :: nreport
 
 ! timestep
-real(dp) :: tau = 0.20_dp
+real(dp) :: tau
 
 ! shift
 real(dp) :: shift = 0.0_dp
