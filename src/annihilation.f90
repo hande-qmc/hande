@@ -41,16 +41,16 @@ contains
 
         ! Treat the first entry separately to make the subsequent removal of
         ! walkers with 0 population easy.
-        if (spawning_head /= 0) then
+        if (spawning_head == 1) then
+            ! Nothing to do bar ensure spawning_head remains 1.
+            k = 1
+            i = i + 1
+        else if (spawning_head > 1) then
             k = k + 1
             ! Compress.
-            write (6,*) 'compress',i,k
-            spawned_walker_dets(:,k) = spawned_walker_dets(:,i)
-            spawned_walker_population(k) = spawned_walker_population(i)
             i = i + 1
             do while (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,i)))
                 ! Annihilate.
-                write (6,*) 'self-annihilating',spawned_walker_dets(:,k),spawned_walker_dets(:,i)
                 spawned_walker_population(k) = spawned_walker_population(k) + spawned_walker_population(i)
                 nremoved = nremoved + 1
                 i = i + 1
@@ -79,7 +79,7 @@ contains
 
         ! The last element in the spawned list is now k.
         spawning_head = k
-
+        
     end subroutine annihilate_spawned_list
 
     subroutine annihilate_main_list()
@@ -116,21 +116,20 @@ contains
 
         spawning_head = spawning_head - nannihilate
 
-        if (nannihilate > 0) then
-            ! Remove any determinants with 0 population.
-            nzero = 0
-            do i = 1, tot_walkers
-                if (walker_population(i) == 0) then
-                    nzero = nzero + 1
-                else if (nzero > 0) then
-                    k = i - nzero
-                    walker_dets(:,k) = walker_dets(:,i)
-                    walker_population(k) = walker_population(i)
-                    walker_energies(k) = walker_energies(i)
-                end if
-            end do
-            tot_walkers = tot_walkers - nzero
-        end if
+        ! Remove any determinants with 0 population.
+        ! This can be done in a more efficient manner by doing it only when necessary...
+        nzero = 0
+        do i = 1, tot_walkers
+            if (walker_population(i) == 0) then
+                nzero = nzero + 1
+            else if (nzero > 0) then
+                k = i - nzero
+                walker_dets(:,k) = walker_dets(:,i)
+                walker_population(k) = walker_population(i)
+                walker_energies(k) = walker_energies(i)
+            end if
+        end do
+        tot_walkers = tot_walkers - nzero
 
     end subroutine annihilate_main_list
 
@@ -150,6 +149,23 @@ contains
         logical :: hit
 
         ! Merge new walkers into the main list.
+
+        ! Both the main list and the spawned list are sorted: the spawned list
+        ! is sorted explicitly and the main list is sorted by construction via
+        ! merging.
+
+        ! 1. Find the position where the spawned walker should go.
+        ! 2. Move all walkers above it to create the vacant slot for the new
+        ! walker.  As we know how many elements we are inserting, we only need
+        ! move a given walker at most once.
+        ! 3. Insert the new walker at the bottom of the shifted block so it
+        ! doesn't have to be moved again to accommodate other new walkers.
+        
+        ! We can make the search faster as we iterate through the spawned
+        ! walkers in descending order, so once we know where one walker goes, we
+        ! know that the next new walker has to go below it, allowing us to
+        ! search through an ever-decreasing number of elements.
+
         istart = 1
         iend = tot_walkers
         do i = spawning_head, 1, -1
@@ -159,22 +175,29 @@ contains
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
-                k = pos + i
+                k = j + i
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(k) = walker_population(j)
                 walker_energies(k) = walker_energies(j)
             end do
-            ! Insert new walker
-            walker_dets(:,pos) = f
-            walker_population(pos) = spawned_walker_population(i)
+            ! Insert new walker into pos and shift it to accommodate the number
+            ! of elements that are still to be inserted below it.
+            k = pos + i - 1
+            walker_dets(:,k) = f
+            walker_population(k) = spawned_walker_population(i)
             occ_list = decode_det(f)
-            walker_energies(pos) = slater_condon0_hub_k(occ_list) - H00
+            walker_energies(k) = slater_condon0_hub_k(occ_list) - H00
             ! Next walker will be inserted below this one.
-            iend = pos
+            iend = pos - 1
         end do
         
         ! Update tot_walkers
         tot_walkers = tot_walkers + spawning_head
+
+        write (6,*) 'main list after'
+        do i = 1, tot_walkers
+            write (6,*) i,walker_dets(:,i),walker_population(i)
+        end do
 
     end subroutine insert_new_walkers
 
