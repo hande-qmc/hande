@@ -27,6 +27,7 @@ contains
         real(dp), intent(out) :: eigv(ndets)
         real(dp), allocatable :: work(:), eigvec(:,:)
         integer :: info, ierr, lwork
+        integer :: i
         character(1) :: job
 
         if (parent) then
@@ -83,6 +84,12 @@ contains
 
         deallocate(work, stat=ierr)
         deallocate(eigvec, stat=ierr)
+
+        if (find_eigenvectors) then
+            do i = 1,ndets
+                write (6,*) i,'=',hamil(:,i)
+            end do
+        end if
 
     end subroutine exact_diagonalisation
 
