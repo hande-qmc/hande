@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine spawn_hub_k(cdet)
+    subroutine spawn_hub_k(cdet, parent_sign)
 
         ! Attempt to spawn a new particle on a connected determinant.
         !
@@ -28,23 +28,25 @@ contains
         use basis, only: basis_length
 
         type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
 
         real(dp) :: pgen, psuccess, pspawn
         integer :: i, j, a, b, ij_sym, ab_sym, nparticles, s
+        integer :: ip, ap
         integer(i0) :: f_new(basis_length)
         type(excit) :: connection
 
         ! 1. Select a random pair of spin orbitals to excite from.
         call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
 
-        ! 2. Calculate the generation probability of the excitation.
-        ! For two-band systems this depends only upon the orbitals excited from.
-        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
-
         ! The excitation i,j -> a,b is only allowed if k_i + k_j - k_a - k_b = 0
         ! (up to a reciprocal lattice vector).  We store k_i + k_j as ij_sym, so
         ! k_a + k_b must be the inverse of this.
         ab_sym = inv_sym(ij_sym)
+
+        ! 2. Calculate the generation probability of the excitation.
+        ! For two-band systems this depends only upon the orbitals excited from.
+        pgen = calc_pgen_hub_k(ab_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
 
         ! The hubbard model in momentum space is a special case. Connected
         ! non-identical determinants have the following properties:
@@ -102,6 +104,9 @@ contains
             ! 5. Is connecting matrix element positive (in which case we spawn with
             ! negative walkers) or negative (in which case we spawn with positive
             ! walkers)?
+
+            ! a) Negative sign from permuting the determinants so that they line
+            ! up?
             call find_excitation_permutation2(cdet%occ_list, connection)
             s = 1
             if (connection%perm) then
@@ -109,14 +114,31 @@ contains
                 ! that they maximally line up.
                 s = -s
             end if
-            if (mod(i-a,2) /= 0) then
-                ! (i,a) are (alpha,beta) or (beta,alpha).
+
+            ! b) Because the only non-zero excitations are when i is alpha and
+            ! j is beta or vice-versa, only the Coulomb integral or the exchange
+            ! integral is non-zero.  We need to find which.  The permuting
+            ! algorithm works by lining up the min(i,j) with min(a,b) and
+            ! max(i,j) with max(a,b) and hence we can find out whether the
+            ! Coulomb or exchange integral is non-zero.  If it's the exchange
+            ! integral, then we obtain an additional minus sign.
+            ip = min(i,j)
+            ap = min(a,b)
+            if (mod(ip-ap,2) /= 0) then
+                ! (i',a') are (alpha,beta) or (beta,alpha).
                 ! Thus it is the exchange integral which contributes to the
                 ! connecting matrix element.
                 s = -s
             end if
+
+            ! If H_ij is positive, then the spawned walker is of opposite sign
+            ! to the parent.
+            ! If H_ij is negative, then the spawned walker is of the same sign
+            ! as the parent.
             if (s > 0) then
-                nparticles = -nparticles
+                nparticles = -sign(nparticles, parent_sign)
+            else
+                nparticles = sign(nparticles, parent_sign)
             end if
 
             ! 6. Move to the next position in the spawning array.

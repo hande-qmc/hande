@@ -88,7 +88,7 @@ contains
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
                 spawning_head = 0
-                write (6,*) 'cycle',icycle
+                write (6,*) 'cycle',icycle+(ireport-1)*ncycles
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -99,7 +99,7 @@ contains
                     do iparticles = 1, abs(walker_population(idet))
                         
                         ! spawn
-                        call spawn_hub_k(cdet)
+                        call spawn_hub_k(cdet, walker_population(idet))
 
                     end do
 
