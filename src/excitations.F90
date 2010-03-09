@@ -165,22 +165,24 @@ contains
         integer, intent(in) :: occ_list(nel)
         type(excit), intent(inout) :: excitation
 
-        integer :: i, shift
+        integer :: i, shift, perm
 
         ! Adapt algorithm from get_excitation.
         
         shift = nel - excitation%nexcit 
 
-        excitation%perm = 0
+        perm = 0
         do i = 1, nel
             if (occ_list(i)==excitation%from_orb(1)) then
                 ! Number of permutations to get to the end of the list.
-                excitation%perm = excitation%perm + shift - i + 1
+                perm = perm + shift - i + 1
             else if (occ_list(i)==excitation%to_orb(1)) then
                 ! Number of permutations to get to the end of the list.
-                excitation%perm = excitation%perm + shift - i + 1
+                perm = perm + shift - i + 1
             end if
         end do
+
+        excitation%perm = mod(perm,2) == 1
 
     end subroutine find_excitation_permutation1
 
@@ -205,27 +207,29 @@ contains
         integer, intent(in) :: occ_list(nel)
         type(excit), intent(inout) :: excitation
 
-        integer :: i, shift
+        integer :: i, shift, perm
 
         ! Adapt algorithm from get_excitation.
         shift = nel - excitation%nexcit 
         
-        excitation%perm = 0
+        perm = 0
         do i = 1, nel
             if (occ_list(i)==excitation%from_orb(1)) then
                 ! Number of permutations to get to the end of the list.
-                excitation%perm = excitation%perm + shift - i + 1
+                perm = perm + shift - i + 1
             else if (occ_list(i)==excitation%from_orb(2)) then
                 ! Number of permutations to get to the end of the list.
-                excitation%perm = excitation%perm + shift - i + 2
+                perm = perm + shift - i + 2
             else if (occ_list(i)==excitation%to_orb(1)) then
                 ! Number of permutations to get to the end of the list.
-                excitation%perm = excitation%perm + shift - i + 1
+                perm = perm + shift - i + 1
             else if (occ_list(i)==excitation%to_orb(2)) then
                 ! Number of permutations to get to the end of the list.
-                excitation%perm = excitation%perm + shift - i + 2
+                perm = perm + shift - i + 2
             end if
         end do
+
+        excitation%perm = mod(perm,2) == 1
 
     end subroutine find_excitation_permutation2
 
