@@ -9,6 +9,8 @@ implicit none
 
 ! Flags for doing exact and/or Lanczos diagonalisation.
 logical :: t_exact = .false., t_lanczos = .false., t_fciqmc = .false.
+! Use the incredibly simple and naive FCIQMC implementation?
+logical :: tsimple = .false.
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.

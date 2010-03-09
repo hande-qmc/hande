@@ -109,6 +109,9 @@ contains
                 direct_lanczos = .true.
             case('LANCZOS')
                 t_lanczos = .true.
+            case('SIMPLE_FCIQMC')
+                tsimple = .true.
+                t_fciqmc = .true.
             case('FCIQMC')
                 t_fciqmc = .true.
 
