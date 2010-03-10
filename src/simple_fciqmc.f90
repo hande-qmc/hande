@@ -10,6 +10,7 @@ module simple_fciqmc
 ! Based on GHB's ModelFCIQMC code.
 
 use const
+use dSFMT_interface
 use errors
 
 use calc
@@ -67,7 +68,7 @@ contains
         spawned_walker_population = 0
 
         ! Initialise random numbers.
-        call random_seed()
+        call dSFMT_init(5234)
 
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
@@ -171,7 +172,7 @@ contains
             rate = abs(Tau*hamil(iwalker,j))
             nspawn = int(rate)
             rate = rate - nspawn
-            call random_number(r)
+            r = genrand_real2()
             if (rate > r) nspawn = nspawn + 1
 
             ! Create particles.
@@ -222,7 +223,7 @@ contains
         rate = rate - nkill
 
         ! Additional stochasitic death?
-        call random_number(r)
+        r = genrand_real2()
         if (abs(rate) > r) then
             if (rate > 0.0_dp) then
                 nkill = nkill + 1
