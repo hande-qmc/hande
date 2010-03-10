@@ -115,7 +115,7 @@ contains
             end do
 
             ! Update the shift
-            nparticles = sum(abs(walker_population)) ! This can be done more efficiently by counting as we go...
+            nparticles = sum(abs(walker_population(:tot_walkers))) ! This can be done more efficiently by counting as we go...
             if (vary_shift) then
                 call update_shift(nparticles_old, nparticles, ncycles)
             end if
