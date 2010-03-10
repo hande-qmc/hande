@@ -11,5 +11,8 @@
 FCIQMC
 ------
 
-reference energy
-annihilation
+Test more efficient (but currently wrong) FCIQMC procedures with simple_fciqmc.
+
+a) Use stochastic_death rather than simple_death
+b) Use excitation generators to spawn
+c) Change shift update function
