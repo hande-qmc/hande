@@ -313,7 +313,7 @@ contains
         ! 
         ! The number of ways of choosing i,j is
         ! 
-        !  nalpha*nbeta + nbeta*nalpha (i.e. i can be alpha or beta).
+        !  nalpha*nbeta
         ! 
         ! Due to the requirement that crystal momentum is conserved and that the Hubbard
         ! model is a 2-band system:
@@ -333,8 +333,8 @@ contains
         ! where delta_d is the number of a orbitals which are forbidden due to b being occupied.
         ! p(b|i,j) is identical.  Hence:
         ! 
-        ! pgen = 1/(2*nalpha*nbeta) [ 1/(nbasis-nel-delta_d) + 1/(basis-nel-delta_d) ]
-        !                       1
+        ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel-delta_d) + 1/(basis-nel-delta_d) ]
+        !                       2
         !      =  ---------------------------------
         !         nalpha*nbeta*(nbasis-nel-delta_d)
 
@@ -373,7 +373,7 @@ contains
             if (btest(f(a_el), a_pos)) forbidden_excitations = forbidden_excitations + 1
         end do
 
-        pgen = 1.0_dp/(nalpha*nbeta*(nbasis-nel-forbidden_excitations))
+        pgen = 2.0_dp/(nalpha*nbeta*(nbasis-nel-forbidden_excitations))
 
     end function calc_pgen_hub_k
 
