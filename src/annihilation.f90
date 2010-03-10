@@ -194,10 +194,6 @@ contains
         ! Update tot_walkers
         tot_walkers = tot_walkers + spawning_head
 
-        write (6,*) 'main list after'
-        do i = 1, tot_walkers
-            write (6,*) i,walker_dets(:,i),walker_population(i)
-        end do
 
     end subroutine insert_new_walkers
 
