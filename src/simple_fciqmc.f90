@@ -93,12 +93,8 @@ contains
         logical :: tVaryShift = .false.
         real(dp) :: shift_damping = 0.050_dp
         integer :: target_particles = 10000
-        integer :: ireport, icycle
+        integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
-
-        integer :: iwalker, ipart, j, nspawn, nkill
-        real(dp) :: rate
-        real(dp) :: r
 
         write (6,'(1X,a12,7X,a13,2X,a11)') '# iterations','Instant shift','# particles'
 
@@ -113,44 +109,10 @@ contains
                 spawndie: do iwalker = 1, ndets
 
                     ! Simulate spawning.
-                    ! 1. Consider all particles on current determinant.
                     spawning: do ipart = 1, abs(walker_population(iwalker))
-                        ! 2. Simulate spawning by attempting to spawn on all
+                        ! Attempt to spawn from the current particle onto all
                         ! connected determinants.
-                        do j = 1, ndets
-
-                            ! Can't spawn onto self.
-                            if (iwalker == j) cycle
-                            ! Can't spawn onto disconnected dets
-                            if (hamil(iwalker,j) == 0.0_dp) cycle
-
-                            ! Attempt spawning.
-                            rate = abs(Tau*hamil(iwalker,j))
-                            nspawn = int(rate)
-                            rate = rate - nspawn
-                            call random_number(r)
-                            if (rate > r) nspawn = nspawn + 1
-
-                            ! Create particles.
-                            if (hamil(iwalker,j) > 0.0_dp) then
-                                ! Flip child sign.
-                                if (walker_population(iwalker) < 0) then
-                                    ! Positive offspring.
-                                    spawned_walker_population(j) = spawned_walker_population(j) + nspawn
-                                else
-                                    spawned_walker_population(j) = spawned_walker_population(j) - nspawn
-                                end if
-                            else
-                                ! Same sign as parent.
-                                if (walker_population(iwalker) > 0) then
-                                    ! Positive offspring.
-                                    spawned_walker_population(j) = spawned_walker_population(j) + nspawn
-                                else
-                                    spawned_walker_population(j) = spawned_walker_population(j) - nspawn
-                                end if
-                            end if
-
-                        end do
+                        call attempt_spawn(iwalker)
                     end do spawning
 
                     call simple_death(iwalker)
@@ -180,6 +142,60 @@ contains
         write (6,'(1X,a12,1X,f22.12)') 'E0 + shift =',shift+H00
 
     end subroutine do_simple_fciqmc
+
+    subroutine attempt_spawn(iwalker)
+
+        ! Simulate spawning part of FCIQMC algorithm.
+        ! In:
+        !    iwalker: walker whose particles attempt to clone/die.
+
+        integer, intent(in) :: iwalker
+
+        integer :: j, nspawn
+        real(dp) :: rate
+        real(dp) :: r
+
+        ! Simulate spawning by attempting to spawn on all
+        ! connected determinants.
+        do j = 1, ndets
+
+            ! Can't spawn onto self.
+            if (iwalker == j) cycle
+            ! Can't spawn onto disconnected dets
+            if (hamil(iwalker,j) == 0.0_dp) cycle
+
+            ! Attempt spawning.
+            ! Spawn with probability tau|K_ij|.
+            ! As K_ij = H_ij for off-diagonal elements, we can just use the
+            ! stored Hamiltonian matrix directly.
+            rate = abs(Tau*hamil(iwalker,j))
+            nspawn = int(rate)
+            rate = rate - nspawn
+            call random_number(r)
+            if (rate > r) nspawn = nspawn + 1
+
+            ! Create particles.
+            if (hamil(iwalker,j) > 0.0_dp) then
+                ! Flip child sign.
+                if (walker_population(iwalker) < 0) then
+                    ! Positive offspring.
+                    spawned_walker_population(j) = spawned_walker_population(j) + nspawn
+                else
+                    spawned_walker_population(j) = spawned_walker_population(j) - nspawn
+                end if
+            else
+                ! Same sign as parent.
+                if (walker_population(iwalker) > 0) then
+                    ! Positive offspring.
+                    spawned_walker_population(j) = spawned_walker_population(j) + nspawn
+                else
+                    spawned_walker_population(j) = spawned_walker_population(j) - nspawn
+                end if
+            end if
+
+        end do
+
+    end subroutine attempt_spawn
 
     subroutine simple_death(iwalker)
 
