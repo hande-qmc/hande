@@ -22,7 +22,7 @@ contains
 
     subroutine init_simple_fciqmc()
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, parent
         use utils, only: int_fmt
 
         use diagonalisation, only: generate_hamil
@@ -49,6 +49,16 @@ contains
             end do
         end do
 
+        write (6,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
+        write (6,'(1X,a53,1X)') 'Using a simple (but correct) serial FCIQMC algorithm.'
+        write (6,'(1X,a137)') 'Enumeration of the determinant list and evaluation of &
+                              &the Hamiltonian matrix for the given symmetry block and &
+                              &spin polarization required.'
+        write (6,'(1X,a104,/)') 'This is slow and memory demanding: consider using the &
+                                &fciqmc option instead of the simple_fciqmc option.'
+        write (6,'(1X,a46,'//int_fmt(sym_in,1)//',1X,a9,'//int_fmt(ms_in,1)//',a1,/)') &
+            'Considering determinants belonging to symmetry',sym_in,'with spin',ms_in,"."
+
         ! Allocate main and spawned lists to hold population of walkers.
         allocate(walker_population(ndets), stat=ierr)
         allocate(spawned_walker_population(ndets), stat=ierr)
@@ -71,7 +81,10 @@ contains
         H00 = hamil(ref_det,ref_det)
         walker_population(ref_det) = 1
 
-        write (6,'(1X,a29,'//int_fmt(ref_det)//',/)') 'Reference det is determinant:', ref_det
+        write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
+        call write_det(dets_list(:,ref_det), new_line=.true.)
+        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+        write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 
     end subroutine init_simple_fciqmc
 
@@ -86,6 +99,8 @@ contains
         integer :: iwalker, ipart, j, nspawn, nkill
         real(dp) :: rate
         real(dp) :: r
+
+        write (6,'(1X,a12,7X,a13,2X,a11)') '# iterations','Instant shift','# particles'
 
         do ireport = 1, nreport
 
@@ -181,9 +196,12 @@ contains
             end if
             
             ! Output stats
-            write (6,'(i8,f20.10,i8)') ireport*ncycles, shift, nparticles
+            write (6,'(5X,i8,f20.10,2X,i11)') ireport*ncycles, shift, nparticles
 
         end do
+
+        write (6,'(/,1X,a13,f22.12)') 'final_shift =',shift
+        write (6,'(1X,a12,1X,f22.12)') 'E0 + shift =',shift+H00
 
     end subroutine do_simple_fciqmc
 

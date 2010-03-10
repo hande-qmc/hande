@@ -100,7 +100,7 @@ contains
         use utils, only: get_free_unit, int_fmt
 
         integer :: i, bit_pos, bit_element, ierr
-        character(2) :: fmt1(3)
+        character(4) :: fmt1(3)
 
         tot_ndets = binom(nbasis, nel)
 
@@ -198,8 +198,6 @@ contains
         ! set_spin_polarisation).
         ! find_sym_space_size must be called first for each value of Ms before
         ! enumerating the determinant list.
-        ! In:
-        !   Ms: spin of determinants to be found. 
 
         use comb_m, only: binom
         use utils, only: int_fmt
@@ -268,10 +266,13 @@ contains
         end if
 
         if (parent) then
-            write (6,'(1X,a13,/,1X,13("-"),/)') 'Size of space'
-            write (6,'(1X,a5,6X,a6)') 'Index','# dets'
+            write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
+            write (6,'(1X,a75,'//int_fmt(dets_Ms,0)//',a1,/)') &
+                     'The table below gives the number of determinants for each symmetry with Ms=', &
+                     dets_Ms,"."
+            write (6,'(1X,a14,6X,a6)') 'Symmetry index','# dets'
             do i = 1, nsym
-                write (6,'(1X,i4,i13)') i, sym_space_size(i)
+                write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
             end do
             write (6,'()')
         end if
@@ -300,7 +301,7 @@ contains
         integer :: i, j, idet, ierr, ibit
         integer :: nalpha_combinations, nbeta_combinations
         integer :: k_beta, k
-        character(2) :: fmt1
+        character(4) :: fmt1
         integer(i0) :: f_alpha, f_beta
 
         if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
@@ -630,10 +631,13 @@ contains
         !        the end of the list of occupied orbitals.  Default: no
         !        new line.
 
+        use utils, only: int_fmt
+
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
         integer :: occ_list(nel), io, i
+        character(4) :: fmt1
 
         if (present(iunit)) then
             io = iunit
@@ -642,12 +646,13 @@ contains
         end if
 
         occ_list = decode_det(f)
+        fmt1 = int_fmt(nbasis,1)
 
-        write (io,'("(")', advance='no')
-        do i = 1, nel-1
-            write (io,'(i4,",")', advance='no') occ_list(i)
+        write (io,'("|")', advance='no')
+        do i = 1, nel
+            write (io,'('//fmt1//')', advance='no') occ_list(i)
         end do
-        write (io,'(i4,")")', advance='no') occ_list(i)
+        write (io,'(1X,">")', advance='no')
         if (present(new_line)) then
             if (new_line) write (io,'()')
         end if

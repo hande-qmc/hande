@@ -26,7 +26,7 @@ contains
 
         integer :: i, j, k, ierr
         integer :: ksum(ndim)
-        character(10) :: fmt1
+        character(4) :: fmt1
 
         if (system_type == hub_real) then
 
@@ -71,7 +71,7 @@ contains
                     write (6,'(5X,i4)') inv_sym(i)
                 end do
                 write (6,'()')
-                write (6,'(1X,a82,/)') &
+                write (6,'(1X,a83,/)') &
                     "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
                 do i = 1, nsym
                     do j = 1, nsym

@@ -43,7 +43,7 @@ contains
         
         ! This does take i/o formatting to a slightly OCD level addmittedly...
 
-        character(2) :: fmt1
+        character(4) :: fmt1
         integer, intent(in) :: i
         integer, intent(in), optional :: padding
         integer :: p
