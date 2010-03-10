@@ -16,3 +16,18 @@ Test more efficient (but currently wrong) FCIQMC procedures with simple_fciqmc.
 a) Use stochastic_death rather than simple_death
 b) Use excitation generators to spawn
 c) Change shift update function
+
+OpenMP plan
+-----------
+
+a) Use local states for RNG.
+b) Test OpenMP with orphaned routines.
+c) Implement pragmas in spawning and death.  Use one thread for sorting.
+d) Threaded sort.
+
+Hybrid parallelisation
+----------------------
+
+a) OpenMP.
+b) Hashing to distribute walkers.
+c) Parallel sort.
