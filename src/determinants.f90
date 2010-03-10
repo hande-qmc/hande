@@ -140,8 +140,10 @@ contains
             end if
         end do
 
-        det_unit = get_free_unit()
-        open(det_unit, file=determinant_file, status='unknown')
+        if (write_determinants) then
+            det_unit = get_free_unit()
+            open(det_unit, file=determinant_file, status='unknown')
+        end if
 
     end subroutine init_determinants
 
@@ -156,7 +158,7 @@ contains
         deallocate(basis_lookup, stat=ierr)
         deallocate(sym_space_size, stat=ierr)
 
-        close(det_unit, status='keep')
+        if (write_determinants) close(det_unit, status='keep')
 
     end subroutine end_determinants
 
