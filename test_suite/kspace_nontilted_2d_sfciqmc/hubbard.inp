@@ -5,7 +5,7 @@ lattice
 electrons 2
 simple_fciqmc
 mc_cycles 50
-nreports 200
+nreports 220
 tau 0.05
 ms 0
 sym 1
