@@ -7,14 +7,22 @@ contains
 
     subroutine init_fciqmc()
 
+        use errors, only: stop_all
+        use parallel, only: nprocs
+        use utils, only: int_fmt
+
         use basis, only: basis_length
-        use determinants, only: encode_det, set_spin_polarisation
-        use hamiltonian, only: get_hmatel_k
+        use calc, only: sym_in, ms_in
+        use determinants, only: encode_det, set_spin_polarisation, write_det
+        use hamiltonian, only: get_hmatel_k, slater_condon0_hub_k
         use system, only: nel
-        use hamiltonian, only: slater_condon0_hub_k
 
         integer :: ierr
         integer :: i, occ_list(nel)
+
+        if (nprocs > 1) call stop_all('init_fciqmc','Not (yet!) a parallel algorithm.')
+
+        write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
         ! Allocate main walker lists.
         allocate(walker_dets(basis_length,walker_length), stat=ierr)
@@ -41,6 +49,11 @@ contains
 
         ! Energy of reference determinant.
         H00 = slater_condon0_hub_k(occ_list)
+
+        write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
+        call write_det(walker_dets(:,tot_walkers), new_line=.true.)
+        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+        write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
         
     end subroutine init_fciqmc
 
@@ -128,7 +141,8 @@ contains
 
         end do
 
-        write (6,*) 'DONE'
+        write (6,'(/,1X,a13,f22.12)') 'final_shift =',shift
+        write (6,'(1X,a12,1X,f22.12)') 'E0 + shift =',shift+H00
 
     end subroutine do_fciqmc
 

@@ -125,10 +125,10 @@ contains
             write (6,'(1X,a27)') 'Spin given in units of 1/2.'
             if (system_type == hub_real) then
                 write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
-                write (6,'(1X,a4,3X)', advance='no') 'site'
+                write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
             else
                 write (6,'(1X,a80,/)') 'k-points given in terms of the reciprocal lattice vectors of the primitive cell.'
-                write (6,'(1X,a7)', advance='no') 'k-point'
+                write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
             end if
             do i = 1, ndim
                 write (6,'(3X)', advance='no')
@@ -140,6 +140,7 @@ contains
                 write(6,'(5X,a14)') 'kinetic energy'
             end if
             do i = 1, nbasis
+                write (6,'(1X,i5,2X)',advance='no') i
                 call write_basis_fn(basis_fns(i), new_line=.true.)
             end do
             write (6,'()')
