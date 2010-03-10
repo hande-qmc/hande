@@ -153,28 +153,7 @@ contains
                         end do
                     end do spawning
 
-                    ! Simulate cloning/death.
-                    rate = abs(walker_population(iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
-                    nkill = int(rate)
-                    rate = rate - nkill
-                    call random_number(r)
-                    if (abs(rate) > r) then
-                        if (rate > 0.0_dp) then
-                            nkill = nkill + 1
-                        else
-                            nkill = nkill - 1
-                        end if
-                    end if
-                    if (nkill > abs(walker_population(iwalker))) then
-                        write (6,*) iwalker, walker_population(iwalker), &
-                        abs(walker_population(iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
-                        call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
-                    end if
-                    if (walker_population(iwalker) > 0) then
-                        walker_population(iwalker) = walker_population(iwalker) - nkill
-                    else
-                        walker_population(iwalker) = walker_population(iwalker) + nkill
-                    end if
+                    call simple_death(iwalker)
 
                 end do spawndie
 
@@ -201,6 +180,59 @@ contains
         write (6,'(1X,a12,1X,f22.12)') 'E0 + shift =',shift+H00
 
     end subroutine do_simple_fciqmc
+
+    subroutine simple_death(iwalker)
+
+        ! Simulate cloning/death part of FCIQMC algorithm.
+        ! In:
+        !    iwalker: walker whose particles attempt to clone/die.
+
+        integer, intent(in) :: iwalker
+
+        integer :: nkill
+        real(dp) :: rate
+        real(dp) :: r
+
+        ! A particle dies with probability, p_d, given by
+        !  p_d = tau(K_ii _ S)
+        ! where tau is the timestep, S is the shift and K_ii is
+        !  K_ii =  < D_i | H | D_i > - E_0
+        ! We store the Hamiltonian matrix rather than the K matrix.
+        ! It is efficient to allow all particles on a given determinant to
+        ! attempt to die in one go (like lemmings) in a stochastic process.
+        rate = abs(walker_population(iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
+        ! Number to definitely kill.
+        nkill = int(rate)
+        rate = rate - nkill
+
+        ! Additional stochasitic death?
+        call random_number(r)
+        if (abs(rate) > r) then
+            if (rate > 0.0_dp) then
+                nkill = nkill + 1
+            else
+                nkill = nkill - 1
+            end if
+        end if
+
+        ! Don't allow creation of anti-particles in simple_fciqmc.
+        if (nkill > abs(walker_population(iwalker))) then
+            write (6,*) iwalker, walker_population(iwalker), &
+            abs(walker_population(iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
+            call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
+        end if
+
+        ! Update walker populations.
+        ! Particle death takes the walker_population closer to 0...
+        ! (and similarly if cloning (ie nkill is negative) then the
+        ! walker_population should move away from 0...)
+        if (walker_population(iwalker) > 0) then
+            walker_population(iwalker) = walker_population(iwalker) - nkill
+        else
+            walker_population(iwalker) = walker_population(iwalker) + nkill
+        end if
+
+    end subroutine simple_death
 
     subroutine simple_annihilation()
 
