@@ -31,7 +31,7 @@ contains
 
         ! Set initial walker population.
         tot_walkers = 1
-        walker_population(tot_walkers) = 1
+        walker_population(tot_walkers) = 10
         ! Arbitrary choice initially just for testing!
         forall (i=1:nel) occ_list(i) = i
         walker_dets(:,tot_walkers) = encode_det(occ_list)
@@ -66,9 +66,10 @@ contains
         use determinants, only: det_info, decode_det_spinocc_spinunocc
         use spawning, only: spawn_hub_k
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
+        use simple_fciqmc, only: update_shift
 
         integer :: ierr
-        integer :: idet, ireport, icycle, iparticles
+        integer :: idet, ireport, icycle, iparticle, nparticles, nparticles_old
         type(det_info) :: cdet
 
         ! Allocate det_info components.
@@ -81,6 +82,8 @@ contains
 
         ! Main fciqmc loop.
 
+        write (6,'(1X,a12,7X,a13,2X,a11)') '# iterations','Instant shift','# particles'
+
         do ireport = 1, nreport
 
             do icycle = 1, ncycles
@@ -88,7 +91,6 @@ contains
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
                 spawning_head = 0
-                write (6,*) 'cycle',icycle+(ireport-1)*ncycles
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -96,7 +98,7 @@ contains
 
                     call decode_det_spinocc_spinunocc(cdet%f, cdet)
 
-                    do iparticles = 1, abs(walker_population(idet))
+                    do iparticle = 1, abs(walker_population(idet))
                         
                         ! spawn
                         call spawn_hub_k(cdet, walker_population(idet))
@@ -112,7 +114,17 @@ contains
 
             end do
 
-            ! report
+            ! Update the shift
+            nparticles = sum(abs(walker_population)) ! This can be done more efficiently by counting as we go...
+            if (vary_shift) then
+                call update_shift(nparticles_old, nparticles, ncycles)
+            end if
+            nparticles_old = nparticles
+            if (nparticles > target_particles) then
+                vary_shift = .true.
+            end if
+
+            write (6,'(5X,i8,f20.10,2X,i11)') ireport*ncycles, shift, nparticles
 
         end do
 

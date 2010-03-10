@@ -1,6 +1,6 @@
 module simple_fciqmc
 
-! This module contains a very simple, very dumb FCIQMC algorithm.
+! This module contains a very simple, very dumb, self-contained FCIQMC algorithm.
 ! This is a serial-only algorithm and uses lots of memory---in particular it
 ! requires that the Hamiltonian matrix and list of determinants are stored.
 
@@ -91,8 +91,6 @@ contains
 
     subroutine do_simple_fciqmc()
 
-        logical :: tVaryShift = .false.
-        integer :: target_particles = 10000
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
 
@@ -125,12 +123,12 @@ contains
 
             ! Update the shift
             nparticles = sum(abs(walker_population))
-            if (tVaryShift) then
-                call update_shift(nparticles_old, nparticles)
+            if (vary_shift) then
+                call update_shift(nparticles_old, nparticles, ncycles)
             end if
             nparticles_old = nparticles
             if (nparticles > target_particles) then
-                tVaryShift = .true.
+                vary_shift = .true.
             end if
             
             ! Output stats
@@ -262,25 +260,27 @@ contains
 
     end subroutine simple_annihilation
 
-    subroutine update_shift(nparticles_old, nparticles)
+    subroutine update_shift(nparticles_old, nparticles,nupdate_steps)
 
         ! Update the shift according to:
         !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
         ! where
-        !  shift(beta) is the shift at imaginary time beta,
-        !  A*tau is the amount of imaginary time between shift-updates (=ncycles),
-        !  xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations,
-        !  N_w(beta) is the total number of particles at imaginary time beta.
+        !  * shift(beta) is the shift at imaginary time beta;
+        !  * A*tau is the amount of imaginary time between shift-updates (=# of
+        !    Monte Carlo cycles between updating the shift);
+        !  * xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations;
+        !  * N_w(beta) is the total number of particles at imaginary time beta.
         ! In:
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
+        !    
 
-        integer, intent(in) :: nparticles_old, nparticles
+        integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
 
         ! This should be changed into an input option when necessary.
         real(dp) :: shift_damping = 0.050_dp
 
-        shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*ncycles)
+        shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*nupdate_steps)
 
     end subroutine update_shift
 

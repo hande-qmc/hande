@@ -26,6 +26,9 @@ integer :: spawned_walker_length
 ! Current number of walkers stored in the main list.
 integer :: tot_walkers
 
+! Number of particles before which varyshift mode is turned on.
+integer :: target_particles = 10000
+
 !--- Walker data ---
 
 ! Walker information: main list.
@@ -50,6 +53,11 @@ integer :: spawning_head
 
 ! Energy of reference determinant.
 real(dp) :: H00
+
+!--- Calculation modes ---
+
+! The shift is updated at the end of each report loop when vary_shift is true.
+logical :: vary_shift = .false.
 
 contains
 
