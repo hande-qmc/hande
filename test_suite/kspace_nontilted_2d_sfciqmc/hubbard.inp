@@ -1,0 +1,12 @@
+k_space
+lattice
+2 0
+0 2
+electrons 2
+simple_fciqmc
+mc_cycles 50
+nreports 200
+tau 0.05
+ms 0
+sym 1
+(Note that this is not a converged calculation, merely a quick test...)
