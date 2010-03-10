@@ -92,7 +92,6 @@ contains
     subroutine do_simple_fciqmc()
 
         logical :: tVaryShift = .false.
-        real(dp) :: shift_damping = 0.050_dp
         integer :: target_particles = 10000
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
@@ -107,18 +106,18 @@ contains
                 spawned_walker_population = 0
 
                 ! Consider all walkers.
-                spawndie: do iwalker = 1, ndets
+                do iwalker = 1, ndets
 
                     ! Simulate spawning.
-                    spawning: do ipart = 1, abs(walker_population(iwalker))
+                    do ipart = 1, abs(walker_population(iwalker))
                         ! Attempt to spawn from the current particle onto all
                         ! connected determinants.
                         call attempt_spawn(iwalker)
-                    end do spawning
+                    end do
 
                     call simple_death(iwalker)
 
-                end do spawndie
+                end do
 
                 call simple_annihilation()
 
@@ -127,7 +126,7 @@ contains
             ! Update the shift
             nparticles = sum(abs(walker_population))
             if (tVaryShift) then
-                shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*ncycles)
+                call update_shift(nparticles_old, nparticles)
             end if
             nparticles_old = nparticles
             if (nparticles > target_particles) then
@@ -262,5 +261,27 @@ contains
         walker_population = walker_population + spawned_walker_population
 
     end subroutine simple_annihilation
+
+    subroutine update_shift(nparticles_old, nparticles)
+
+        ! Update the shift according to:
+        !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
+        ! where
+        !  shift(beta) is the shift at imaginary time beta,
+        !  A*tau is the amount of imaginary time between shift-updates (=ncycles),
+        !  xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations,
+        !  N_w(beta) is the total number of particles at imaginary time beta.
+        ! In:
+        !    nparticles_old: N_w(beta-A*tau).
+        !    nparticles: N_w(beta).
+
+        integer, intent(in) :: nparticles_old, nparticles
+
+        ! This should be changed into an input option when necessary.
+        real(dp) :: shift_damping = 0.050_dp
+
+        shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*ncycles)
+
+    end subroutine update_shift
 
 end module simple_fciqmc
