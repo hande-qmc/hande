@@ -178,10 +178,7 @@ contains
 
                 end do spawndie
 
-                ! Annihilation: merge main and spawned lists.
-                forall (iwalker = 1:ndets)
-                    walker_population(iwalker) = walker_population(iwalker) + spawned_walker_population(iwalker)
-                end forall
+                call simple_annihilation()
 
             end do
 
@@ -204,5 +201,17 @@ contains
         write (6,'(1X,a12,1X,f22.12)') 'E0 + shift =',shift+H00
 
     end subroutine do_simple_fciqmc
+
+    subroutine simple_annihilation()
+
+        ! Annihilation: merge main and spawned lists.
+
+        ! This is especially easy as we store the walker populations for all
+        ! determinants for both the main and spawned lists so it just amounts to
+        ! adding the two arrays together,
+
+        walker_population = walker_population + spawned_walker_population
+
+    end subroutine simple_annihilation
 
 end module simple_fciqmc
