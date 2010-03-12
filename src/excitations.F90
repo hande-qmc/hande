@@ -165,21 +165,38 @@ contains
         integer, intent(in) :: occ_list(nel)
         type(excit), intent(inout) :: excitation
 
-        integer :: i, shift, perm
+        integer :: i, shift, perm, j, nholes
 
-        ! Adapt algorithm from get_excitation.
+        ! Adapt algorithm from get_excitation and find_excitation_permutation2.
+
+        ! As we only consider single excitations, this is much easier than
+        ! find_excitation_permutation2.
+
+        ! The comments in find_excitation_permutation2 apply here, except that
+        ! there only one slot is needed at the end of the occ_list to hold
+        ! orbitals involved in the excitation.
         
         shift = nel - excitation%nexcit 
 
         perm = 0
+        nholes = 0
         do i = 1, nel
-            if (occ_list(i)==excitation%from_orb(1)) then
+            j = occ_list(i)
+
+            ! Check for inserting excited orbital.
+            if (j > excitation%to_orb(1) .and. j1 < excitation%to_orb(1)) then
                 ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 1
-            else if (occ_list(i)==excitation%to_orb(1)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 1
+                perm = perm + shift - (i - nholes) + 1
             end if
+
+            ! Check for orbital exciting from.
+            if (j == excitation%from_orb(1)) then
+                ! Number of permutations to get to the end of the list.
+                perm = perm + shift - i + 1
+                nholes = 1
+            end if
+
+            j1 = j
         end do
 
         excitation%perm = mod(perm,2) == 1
@@ -198,6 +215,8 @@ contains
         !    occ_list: integer list of occupied orbitals in the Slater determinant.
         !    excitation: excit type specifying how the excited determinant is
         !        connected to the rdeterminant given in occ_list.
+        !        Note that we require the lists of orbitals excited from/into to
+        !        be ordered.
         ! Out:
         !    excitation: excit type with the parity of the permutation also
         !        specified.
@@ -207,26 +226,72 @@ contains
         integer, intent(in) :: occ_list(nel)
         type(excit), intent(inout) :: excitation
 
-        integer :: i, shift, perm
+        integer :: i, j, j1, shift, perm, nholes
+
+        shift = nel - excitation%nexcit 
 
         ! Adapt algorithm from get_excitation.
-        shift = nel - excitation%nexcit 
-        
+        ! The idea is to count the number of permutations involved in shifting
+        ! orbitals involved in the excitation to the end of the list (thus
+        ! giving the 2 determinants with maximum coincidence).
+
+        ! The last 2 positions in the list are for orbitals involved in the
+        ! excitation.
+        ! We count the number of permutations required to shift i and a into the
+        ! first slot and j and b into the second slot.
+
+        ! The number of permutations required is simply the number of orbitals
+        ! between a given orbital and the slot it's going into.
+        ! This is given by:
+        !   nel - 2 - position + slot_number
+        ! where 2 comes from the fact we're considering double excitations and 
+        ! slot_number is 1 or 2.
+
+        ! The position of the i and j orbitals is easy, as occ_list is ordered.
+        ! The position of the a and b orbitals is harder, as occ_list refers to
+        ! the determinant we're exciting from.  However, this is still more
+        ! efficient than generating the list for the excited determinant or
+        ! testing all spin orbitals (as in get_excitation).
+
+        ! The positions of a and b are given by:
+        !   k - nholes
+        ! where k is the position at which a/b is inserted and nholes is the
+        ! number of orbitals we've excited from *before* k (i.e. not including
+        ! k).
+
+        ! This is all a counting exercise: occ_list isn't actually altered.
+
         perm = 0
+        nholes = 0
+        j1 = 0
         do i = 1, nel
-            if (occ_list(i)==excitation%from_orb(1)) then
+            j = occ_list(i)
+
+            ! First check if we insert a new electron.
+            ! This works round the problem if we have to insert a
+            ! before j and then b replaces j.  This order keeps the number of
+            ! holes correct.
+            if (j > excitation%to_orb(1) .and. j1 < excitation%to_orb(1)) then
                 ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 1
-            else if (occ_list(i)==excitation%from_orb(2)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 2
-            else if (occ_list(i)==excitation%to_orb(1)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 1
-            else if (occ_list(i)==excitation%to_orb(2)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 2
+                perm = perm + shift - (i - nholes) + 1
+                nholes = nholes - 1
             end if
+            if (j > excitation%to_orb(2) .and. j1 < excitation%to_orb(2)) then
+                ! Number of permutations to get to the end of the list.
+                perm = perm + shift - (i - nholes) + 2
+            end if
+
+            if (j == excitation%from_orb(1)) then
+                ! Number of permutations to get to the end of the list.
+                perm = perm + shift - i + 1
+                nholes = nholes + 1
+            else if (j == excitation%from_orb(2)) then
+                ! Number of permutations to get to the end of the list.
+                perm = perm + shift - i + 2
+                nholes = nholes + 1
+            end if
+
+            j1 = j
         end do
 
         excitation%perm = mod(perm,2) == 1
@@ -298,7 +363,7 @@ contains
 
         use basis, only: basis_length, bit_lookup, nbasis
         use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
-        use symmetry, only: sym_table
+        use symmetry, only: sym_table, inv_sym
 
         real(dp) :: pgen
         integer, intent(in) :: ab_sym
@@ -358,7 +423,7 @@ contains
         ! b is a beta orbital.
         do a = 1, nvirt_alpha
             ka = (unocc_alpha(a)+1)/2
-            b = 2*sym_table(ab_sym, ka)
+            b = 2*sym_table(ab_sym, inv_sym(ka))
             b_pos = bit_lookup(1,b)
             b_el = bit_lookup(2,b)
             ! Are (a,b) both unoccupied?
@@ -366,7 +431,7 @@ contains
         end do
         do b = 1, nvirt_beta
             kb = unocc_beta(b)/2
-            a = 2*sym_table(ab_sym, kb) - 1
+            a = 2*sym_table(ab_sym, inv_sym(kb)) - 1
             a_pos = bit_lookup(1,a)
             a_el = bit_lookup(2,a)
             ! Are (a,b) both unoccupied?

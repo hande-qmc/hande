@@ -24,29 +24,25 @@ contains
         use excitations, only: calc_pgen_hub_k, excit, create_excited_det, find_excitation_permutation2
         use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population, spawning_head
         use system, only: hub_k_coulomb
-        use symmetry, only: inv_sym
         use basis, only: basis_length
+
+        ! for debug only.
+        use hamiltonian, only: get_hmatel_k
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
 
         real(dp) :: pgen, psuccess, pspawn
-        integer :: i, j, a, b, ij_sym, ab_sym, nparticles, s
-        integer :: ip, ap
+        integer :: i, j, a, b, ij_sym, nparticles, s, tmp
         integer(i0) :: f_new(basis_length)
         type(excit) :: connection
 
         ! 1. Select a random pair of spin orbitals to excite from.
         call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
 
-        ! The excitation i,j -> a,b is only allowed if k_i + k_j - k_a - k_b = 0
-        ! (up to a reciprocal lattice vector).  We store k_i + k_j as ij_sym, so
-        ! k_a + k_b must be the inverse of this.
-        ab_sym = inv_sym(ij_sym)
-
         ! 2. Calculate the generation probability of the excitation.
         ! For two-band systems this depends only upon the orbitals excited from.
-        pgen = calc_pgen_hub_k(ab_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
+        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
 
         ! The hubbard model in momentum space is a special case. Connected
         ! non-identical determinants have the following properties:
@@ -95,19 +91,37 @@ contains
         if (nparticles > 0) then
             ! 4. Well, I suppose we should find out which determinant we're spawning
             ! on...
-            call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta, ab_sym, a, b)
-
-            connection%nexcit = 2
-            connection%from_orb = (/ i,j /)
-            connection%to_orb = (/ a,b /)
+            call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta, ij_sym, a, b)
 
             ! 5. Is connecting matrix element positive (in which case we spawn with
             ! negative walkers) or negative (in which case we spawn with positive
             ! walkers)?
 
+            ! The permuting algorithm works by lining up the min(i,j) with
+            ! min(a,b) and max(i,j) with max(a,b) and hence we can find out
+            ! whether the Coulomb or exchange integral is non-zero.  
+            ! Thus (i,j) and (a,b) must be ordered.
+            if (i > j) then
+                ! Swap.
+                tmp = i
+                i = j
+                j = tmp
+            end if
+            if (a > b) then
+                ! Swap
+                tmp = a
+                a = b
+                b = tmp
+            end if
+
+            connection%nexcit = 2
+            connection%from_orb = (/ i,j /)
+            connection%to_orb = (/ a,b /)
+
+            call find_excitation_permutation2(cdet%occ_list, connection)
+
             ! a) Negative sign from permuting the determinants so that they line
             ! up?
-            call find_excitation_permutation2(cdet%occ_list, connection)
             s = 1
             if (connection%perm) then
                 ! Matrix element gets a -sign from rearranging determinants so
@@ -117,14 +131,9 @@ contains
 
             ! b) Because the only non-zero excitations are when i is alpha and
             ! j is beta or vice-versa, only the Coulomb integral or the exchange
-            ! integral is non-zero.  We need to find which.  The permuting
-            ! algorithm works by lining up the min(i,j) with min(a,b) and
-            ! max(i,j) with max(a,b) and hence we can find out whether the
-            ! Coulomb or exchange integral is non-zero.  If it's the exchange
+            ! integral is non-zero.  If it's the exchange
             ! integral, then we obtain an additional minus sign.
-            ip = min(i,j)
-            ap = min(a,b)
-            if (mod(ip-ap,2) /= 0) then
+            if (mod(i-a,2) /= 0) then
                 ! (i',a') are (alpha,beta) or (beta,alpha).
                 ! Thus it is the exchange integral which contributes to the
                 ! connecting matrix element.
@@ -148,6 +157,16 @@ contains
             call create_excited_det(cdet%f, connection, f_new)
             spawned_walker_dets(:,spawning_head) = f_new
             spawned_walker_population(spawning_head) = nparticles
+
+! Leave the following in for debug reasons...
+! Should be removed after more testing.
+            if (abs(get_hmatel_k(cdet%f,f_new)-s*hub_k_coulomb) > 1.e-10) then
+                write (6,*) 'huh?',get_hmatel_k(cdet%f,f_new), s*hub_k_coulomb,s
+                write (6,*) cdet%occ_list
+                write (6,*) i,j,a,b
+                write (6,*) connection%perm, mod(i-a,2) /= 0
+                stop
+            end if
 
         end if
         
@@ -297,7 +316,7 @@ contains
 
     end subroutine choose_ij_hub_k
 
-    subroutine choose_ab_hub_k(f, unocc_list_alpha, unocc_list_beta, ab_sym, a, b)
+    subroutine choose_ab_hub_k(f, unocc_list_alpha, unocc_list_beta, ij_sym, a, b)
 
         ! Choose a random pair of (a,b) unoccupied virtual spin-orbitals into
         ! which electrons are excited.
@@ -308,7 +327,7 @@ contains
         !        determinant.
         !    unocc_alpha, unocc_beta: integer list of the unoccupied alpha and
         !        beta (respectively) spin-orbitals.
-        !    ab_sym: symmetry spanned by the (a,b) combination of unoccupied
+        !    ij_sym: symmetry spanned by the (i,j) combination of unoccupied
         !        spin-orbitals into which electrons are excited.
         ! Returns:
         !    a,b: virtual spin orbitals involved in the excitation.
@@ -316,14 +335,29 @@ contains
         use basis, only: basis_length, bit_lookup, nbasis
         use dSFMT_interface, only:  genrand_real2
         use system, only: nvirt_alpha, nvirt_beta
-        use symmetry, only: sym_table
+        use symmetry, only: sym_table, inv_sym
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_list_alpha(nvirt_alpha), unocc_list_beta(nvirt_beta)
-        integer, intent(in) :: ab_sym
+        integer, intent(in) :: ij_sym
         integer, intent(out) :: a, b
 
-        integer :: r, b_pos, b_el, ka
+        integer :: r, b_pos, b_el, ka, tmp
+
+        ! The excitation i,j -> a,b is only allowed if k_i + k_j - k_a - k_b = 0
+        ! (up to a reciprocal lattice vector).  We store k_i + k_j as ij_sym, so
+        ! k_a + k_b must be identical to this.
+        ! If we view this in terms of the representations spanned by i,j,a,b
+        ! under translational symmetry (which forms an Abelian group) then
+        !   \Gamma_i* x \Gamma_j* x \Gamma_a x \Gamma_b = \Gamma_1
+        ! is equivalent to the conversation of crystal momentum (where \Gamma_1
+        ! is the totally symmetric representation).  
+        ! Further, as
+        !   \Gamma_i* x \Gamma_i = 1
+        ! and direct products in Abelian groups commute, it follows that:
+        !   \Gamma_b = \Gamma_i x \Gamma_j x \Gamma_a*
+        ! Thus k_b is defined by i,j and a.  As we only consider two-band
+        ! systems, b is thus defined by spin conservation.
 
         do
 
@@ -337,7 +371,7 @@ contains
                 ! Find corresponding beta orbital which satisfies conservation
                 ! of crystal momentum.
                 ka = (a+1)/2
-                b = 2*sym_table(ab_sym, ka)
+                b = 2*sym_table(ij_sym, inv_sym(ka))
 
             else
 
@@ -345,7 +379,7 @@ contains
                 ! Find corresponding alpha orbital which satisfies conservation
                 ! of crystal momentum.
                 ka = a/2
-                b = 2*sym_table(ab_sym, ka) - 1
+                b = 2*sym_table(ij_sym, inv_sym(ka)) - 1
 
             end if
 
