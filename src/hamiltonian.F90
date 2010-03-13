@@ -50,7 +50,6 @@ contains
 
         ! Used in the momentum space formulation of the Hubbard model only.
 
-        use hubbard_k, only: get_two_e_int_k
         use excitations, only: excit, get_excitation
 
         real(dp) :: hmatel
@@ -110,9 +109,8 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
-                hmatel = get_two_e_int_k(excitation%from_orb(1), excitation%from_orb(2), excitation%to_orb(1), excitation%to_orb(2))
-
-                if (excitation%perm) hmatel = -hmatel
+                hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
+                                            & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
 
             end select
         end if
@@ -213,6 +211,32 @@ contains
         end do
 
     end function slater_condon0_hub_k
+
+    pure function slater_condon2_hub_k(i, j, a, b, perm) result(hmatel)
+
+        ! In:
+        !    i,j:  index of the spin-orbital from which an electron is excited in
+        !          the reference determinant.
+        !    a,b:  index of the spin-orbital into which an electron is excited in
+        !          the excited determinant.
+        !    perm: true if D and D_i^a are connected by an odd number of
+        !          permutations.
+        ! Returns:
+        !    < D | H | D_ij^ab >, the Hamiltonian matrix element between a 
+        !    determinant and a double excitation of it in the momemtum space
+        !    formulation of the Hubbard model.
+
+        use hubbard_k, only: get_two_e_int_k
+
+        real(dp) :: hmatel
+        integer, intent(in) :: i, j, a, b
+        logical, intent(in) :: perm
+
+        hmatel = get_two_e_int_k(i, j, a, b)
+
+        if (perm) hmatel = -hmatel
+
+    end function slater_condon2_hub_k
 
     pure function slater_condon0_hub_real(f, occ_list) result(hmatel)
 
