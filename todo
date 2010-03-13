@@ -1,21 +1,22 @@
 1.  option to obtain eigenvalues (default) or eigenvectors as well.
 2.  timing
 3.  memory logging
-4.  document
-5.  checktest
-6.  block diagonalise hamiltonian matrix for k inversion and spin inversion.
-7.  parallel direct lanczos.
-8.  UEG.
-9.  FCIQMC.
+4.  checktest
+5.  block diagonalise hamiltonian matrix for k inversion and spin inversion.
+6.  parallel direct lanczos.
+7.  UEG.
 
 FCIQMC
 ------
 
-Test more efficient (but currently wrong) FCIQMC procedures with simple_fciqmc.
-
-a) Use stochastic_death rather than simple_death
-b) Use excitation generators to spawn
-c) Change shift update function
+a) real space
+b) different routine for last report?
+c) simple_fciqmc: projected energy and use report functions
+d) comments in new procedures
+e) new tests
+f) input options for controlling fciqmc
+g) document new options
+h) quicksort
 
 OpenMP plan
 -----------
