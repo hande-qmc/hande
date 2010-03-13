@@ -165,7 +165,7 @@ contains
         integer, intent(in) :: occ_list(nel)
         type(excit), intent(inout) :: excitation
 
-        integer :: i, shift, perm, j, nholes
+        integer :: i, shift, perm, j, j1, nholes
 
         ! Adapt algorithm from get_excitation and find_excitation_permutation2.
 
