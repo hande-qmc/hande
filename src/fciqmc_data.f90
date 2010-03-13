@@ -16,9 +16,6 @@ integer :: nreport
 ! timestep
 real(dp) :: tau
 
-! shift
-real(dp) :: shift = 0.0_dp
-
 ! Array sizes
 integer :: walker_length
 integer :: spawned_walker_length
@@ -28,6 +25,21 @@ integer :: tot_walkers
 
 ! Number of particles before which varyshift mode is turned on.
 integer :: target_particles = 10000
+
+!--- Energy data ---
+
+! shift
+real(dp) :: shift = 0.0_dp
+
+! projected energy
+! This stores during a FCIQMC cycle
+!   \sum_{i/=0} <D_0|H|D_i> N_i
+! where D_0 is the reference determinants and N_i is the walker population on
+! determinant D_i.
+! The projected energy is given as
+!   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
+! and so proj_energy must be converted accordingly.
+real(dp) :: proj_energy
 
 !--- Walker data ---
 
@@ -50,6 +62,12 @@ integer, allocatable :: spawned_walker_population(:) ! (spawned_walker_length)
 integer :: spawning_head
 
 !--- Reference determinant ---
+
+! Bit string of reference determinant
+integer(i0), allocatable :: f0(:)
+
+! population of walkers on reference determinant.
+integer :: D0_population
 
 ! Energy of reference determinant.
 real(dp) :: H00
@@ -137,5 +155,30 @@ contains
         end do
 
     end subroutine search_walker_list
+
+    !--- Output procedures ---
+
+    subroutine write_fciqmc_report_header()
+
+        write (6,'(1X,a12,7X,a13,10X,a12,2X,a11)') '# iterations','Instant shift','Proj. Energy','# particles'
+
+    end subroutine write_fciqmc_report_header
+
+    subroutine write_fciqmc_report(ireport, nparticles)
+
+        integer, intent(in) :: ireport, nparticles
+
+        write (6,'(5X,i8,2(f20.10,2X),i11)') ireport*ncycles, shift, proj_energy, nparticles
+
+    end subroutine write_fciqmc_report
+
+    subroutine write_fciqmc_final()
+
+        write (6,'(/,1X,a13,7X,f22.12)') 'final_shift =', shift
+        write (6,'(1X,a20,f22.12)') 'final proj. energy =', proj_energy
+        write (6,'(1X,a12,8X,f22.12)') 'E0 + shift =', shift+H00
+        write (6,'(1X,a19,1X,f22.12)') 'E0 + proj. energy =', proj_energy+H00
+
+    end subroutine write_fciqmc_final
 
 end module fciqmc_data

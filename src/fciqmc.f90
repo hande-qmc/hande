@@ -53,6 +53,9 @@ contains
 
         ! Energy of reference determinant.
         H00 = slater_condon0_hub_k(occ_list)
+        ! Reference det
+        allocate(f0(basis_length), stat=ierr)
+        f0 = walker_dets(:,tot_walkers)
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(walker_dets(:,tot_walkers), new_line=.true.)
@@ -81,6 +84,7 @@ contains
         use basis, only: basis_length
         use death, only: stochastic_death
         use determinants, only: det_info, decode_det_spinocc_spinunocc
+        use projected_energy, only: update_proj_energy_hub_k
         use spawning, only: spawn_hub_k
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
         use simple_fciqmc, only: update_shift
@@ -99,7 +103,7 @@ contains
 
         ! Main fciqmc loop.
 
-        write (6,'(1X,a12,7X,a13,2X,a11)') '# iterations','Instant shift','# particles'
+        call write_fciqmc_report_header()
 
         do ireport = 1, nreport
 
@@ -109,11 +113,18 @@ contains
                 ! slot preceding the first slot.
                 spawning_head = 0
 
+                ! Zero instantaneous projected energy.
+                proj_energy = 0.0_dp
+
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
                     cdet%f = walker_dets(:,idet)
 
                     call decode_det_spinocc_spinunocc(cdet%f, cdet)
+
+                    ! It is much easier to evaluate the projected energy at the
+                    ! start of the FCIQMC cycle than at the end.
+                    call update_proj_energy_hub_k(idet)
 
                     do iparticle = 1, abs(walker_population(idet))
                         
@@ -141,12 +152,14 @@ contains
                 vary_shift = .true.
             end if
 
-            write (6,'(5X,i8,f20.10,2X,i11)') ireport*ncycles, shift, nparticles
+            ! Normalise projected energy
+            proj_energy = proj_energy/D0_population
+
+            call write_fciqmc_report(ireport, nparticles)
 
         end do
 
-        write (6,'(/,1X,a13,f22.12)') 'final_shift =',shift
-        write (6,'(1X,a12,1X,f22.12)') 'E0 + shift =',shift+H00
+        call write_fciqmc_final()
 
     end subroutine do_fciqmc
 
