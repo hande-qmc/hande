@@ -145,6 +145,34 @@ contains
 
     end function get_excitation
 
+    function get_excitation_level(f1, f2) result(level)
+
+        ! In: 
+        !    f1(basis_length): bit string representation of the Slater
+        !        determinant.
+        !    f2(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Returns:
+        !    Excitation level connecting determinants f1 and f2.     
+
+        use basis, only: basis_length
+        use bit_utils, only: count_set_bits
+
+        integer :: level
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+
+#ifdef _PGI
+        ! Work round an *insane* bug in PGI where intrinsic bit operations
+        ! return an integer(4) if the arguments are of a kind smaller than
+        ! 4.  PGI gets it right if the kind is larger than 4, but that
+        ! doesn't help us always in this case...
+        level = sum(count_set_bits(int(ieor(f1,f2),i0)))/2
+#else
+        level = sum(count_set_bits(ieor(f1,f2)))/2
+#endif
+
+    end function get_excitation_level
+
     subroutine find_excitation_permutation1(occ_list, excitation)
 
         ! Find the parity of the permutation required to maximally line up
