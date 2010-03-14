@@ -72,6 +72,14 @@ integer :: D0_population
 ! Energy of reference determinant.
 real(dp) :: H00
 
+!--- Simple FCIQMC ---
+
+! Data used *only* in the simple_fciqmc algorithm.
+! Not set in the optimised algorithm.
+
+! Location of reference determinant in dets_list.
+integer :: ref_det
+
 !--- Calculation modes ---
 
 ! The shift is updated at the end of each report loop when vary_shift is true.

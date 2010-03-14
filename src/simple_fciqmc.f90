@@ -29,7 +29,7 @@ contains
         use diagonalisation, only: generate_hamil
 
         integer :: ierr
-        integer :: i, j, ref_det
+        integer :: i, j
 
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
 
@@ -79,7 +79,10 @@ contains
             end if
         end do
 
+        ! Reference det
         H00 = hamil(ref_det,ref_det)
+        allocate(f0(basis_length), stat=ierr)
+        f0 = dets_list(:,ref_det)
         walker_population(ref_det) = 1
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
@@ -94,7 +97,7 @@ contains
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
 
-        write (6,'(1X,a12,7X,a13,2X,a11)') '# iterations','Instant shift','# particles'
+        call write_fciqmc_report_header()
 
         do ireport = 1, nreport
 
@@ -103,8 +106,15 @@ contains
                 ! Zero spawning arrays.
                 spawned_walker_population = 0
 
+                ! Zero instantaneous projected energy.
+                proj_energy = 0.0_dp
+
                 ! Consider all walkers.
                 do iwalker = 1, ndets
+
+                    ! It is much easier to evaluate the projected energy at the
+                    ! start of the FCIQMC cycle than at the end.
+                    call simple_update_proj_energy(iwalker)
 
                     ! Simulate spawning.
                     do ipart = 1, abs(walker_population(iwalker))
@@ -130,14 +140,16 @@ contains
             if (nparticles > target_particles) then
                 vary_shift = .true.
             end if
+
+            ! Normalise projected energy
+            proj_energy = proj_energy/D0_population
             
             ! Output stats
-            write (6,'(5X,i8,f20.10,2X,i11)') ireport*ncycles, shift, nparticles
+            call write_fciqmc_report(ireport, nparticles)
 
         end do
 
-        write (6,'(/,1X,a13,f22.12)') 'final_shift =',shift
-        write (6,'(1X,a12,1X,f22.12)') 'E0 + shift =',shift+H00
+        call write_fciqmc_final()
 
     end subroutine do_simple_fciqmc
 
@@ -283,5 +295,18 @@ contains
         shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*nupdate_steps)
 
     end subroutine update_shift
+
+    subroutine simple_update_proj_energy(iwalker)
+
+        integer, intent(in) :: iwalker
+
+        if (iwalker == ref_det) then
+            ! Have reference determinant.
+            D0_population = walker_population(iwalker)
+        else
+            proj_energy = proj_energy + hamil(iwalker,ref_det)*walker_population(iwalker)
+        end if
+
+    end subroutine simple_update_proj_energy
 
 end module simple_fciqmc
