@@ -39,6 +39,10 @@ contains
         i = 1
         k = 0
 
+        ! Go through the sorted spawned_walker lists and compress it by adding
+        ! up the populations of duplicate walkers and removing the duplicate
+        ! determinants.
+
         ! Treat the first entry separately to make the subsequent removal of
         ! walkers with 0 population easy.
         if (spawning_head == 1) then
@@ -193,7 +197,6 @@ contains
         
         ! Update tot_walkers
         tot_walkers = tot_walkers + spawning_head
-
 
     end subroutine insert_new_walkers
 
