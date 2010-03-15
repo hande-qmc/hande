@@ -148,8 +148,7 @@ contains
         use system, only: nel
         use hamiltonian, only: slater_condon0_hub_k
 
-        integer :: i, istart, iend, j, k, pos, occ_list(nel)
-        integer(i0) :: f(basis_length)
+        integer :: i, istart, iend, j, k, pos
         logical :: hit
 
         ! Merge new walkers into the main list.
@@ -173,9 +172,8 @@ contains
         istart = 1
         iend = tot_walkers
         do i = spawning_head, 1, -1
-            f = spawned_walker_dets(:,i)
-            ! f is not in the main walker list
-            call search_walker_list(f, istart, iend, hit, pos)
+            ! spawned det is not in the main walker list
+            call search_walker_list(spawned_walker_dets(:,i), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
@@ -187,10 +185,9 @@ contains
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
-            walker_dets(:,k) = f
+            walker_dets(:,k) = spawned_walker_dets(:,i)
             walker_population(k) = spawned_walker_population(i)
-            occ_list = decode_det(f)
-            walker_energies(k) = slater_condon0_hub_k(occ_list) - H00
+            walker_energies(k) = slater_condon0_hub_k(walker_dets(:,k)) - H00
             ! Next walker will be inserted below this one.
             iend = pos - 1
         end do

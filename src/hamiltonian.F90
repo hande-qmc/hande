@@ -56,7 +56,6 @@ contains
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         logical :: non_zero
         type(excit) :: excitation
-        integer :: root_det(nel)
 
         hmatel = 0.0_dp
         non_zero = .false.
@@ -83,11 +82,8 @@ contains
             ! Apply Slater--Condon rules.
             case(0)
 
-                root_det = decode_det(f1)
-
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-
-                hmatel = slater_condon0_hub_k(root_det)
+                hmatel = slater_condon0_hub_k(f1)
 
 !            case(1)
 
@@ -181,9 +177,10 @@ contains
 
     end function get_hmatel_real
 
-    pure function slater_condon0_hub_k(occ_list) result(hmatel)
+    pure function slater_condon0_hub_k(f) result(hmatel)
         
         ! In:
+        !    f: bit string representation of the Slater determinant.
         !    occ_list: integer list of occupied spin-orbitals in a determinant, D_i.
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
@@ -192,8 +189,11 @@ contains
         use hubbard_k, only: get_one_e_int_k, get_two_e_int_k
 
         real(dp) :: hmatel
-        integer, intent(in) :: occ_list(nel)
+        integer, intent(in) :: f(basis_length)
+        integer :: occ_list(nel)
         integer :: i, j
+
+        occ_list = decode_det(f)
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         hmatel = 0.0_dp
