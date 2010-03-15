@@ -10,10 +10,8 @@ FCIQMC
 ------
 
 a) real space
-d*) new tests
-e*) input options for controlling fciqmc
-f*) document new options
-g) quicksort
+b) new tests
+c) quicksort
 
 OpenMP plan
 -----------
