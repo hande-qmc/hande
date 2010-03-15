@@ -128,7 +128,6 @@ contains
                 find_eigenvectors = .true.
 
             ! Calculation options: fciqmc.
-            ! Just for testing: needs to be made friendlier.
             case('MC_CYCLES')
                 call geti(ncycles)
             case('NREPORTS')
@@ -139,6 +138,10 @@ contains
                 call geti(spawned_walker_length)
             case('TAU')
                 call getf(tau)
+            case('INITIAL_SHIFT')
+                call getf(shift)
+            case('VARYSHIFT_TARGET')
+                call geti(target_particles)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')

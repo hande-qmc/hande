@@ -4,14 +4,15 @@ hubbard
 Introduction
 ------------
 
-hubbard can currently perform FCI calculations of the Hubbard model using
-either the real space or momentum space formulation.  Full and Lanczos
-diagonalisation methods are implemented using external libraries
-(lapack/scalapack and TRLan respectively) and can be performed in both serial
-and parallel.  Lanczos diagonalisation can be performed with or without
-precomputing the Hamiltonian matrix.
+hubbard can currently perform full configuration interaction (FCI) calculations
+of the Hubbard model using either the real space or momentum space formulation.
+Full and Lanczos diagonalisation methods are implemented using external
+libraries (lapack/scalapack and TRLan respectively) and can be performed in
+both serial and parallel.  Lanczos diagonalisation can be performed with or
+without precomputing the Hamiltonian matrix.
 
-The target is to implement an efficient FCIQMC algorithm for the Hubbard model.
+The target is to implement an efficient full configuration interaction quantum
+monte carlo (FCIQMC) algorithm for the Hubbard model.
 
 Directory structure
 --------------------
@@ -208,13 +209,13 @@ These options describe the system which is to be investigated.
 **nel** *nel*
     Synonym for **electrons**
 **T** *t*
-    Integer.
+    Real.
 
     Default: 1.
 
     Set the kinetic term in the Hamiltonian to be *t*.
 **U** *U*
-    Integer.
+    Real.
 
     Default: 1.
 
@@ -231,14 +232,20 @@ initialisation (mainly the enumeration of the basis) is performed.
     Perform an full diagonalisation of the Hamiltonian matrix.
 **fci**
     Synonym for **exact**.
+**simple_fciqmc**
+    Perform an FCIQMC calculation using an extremely simple (but wasteful, in
+    terms of CPU and memory resources) algorithm.  This should be used for testing only.
+**fciqmc**
+    Perform an FCIQMC calculation.  This is currently only implemented for the
+    momentum space formulation of the Hubbard model. 
 **lanczos**
     Perform a Lanczos diagonalisation of the Hamiltonian matrix.
 **lanczos_direct**
     Perform a Lanczos diagonalisation of the Hamiltonian matrix but calculate
     the required Hamiltonian matrix elements on the fly rather than
     pre-computing the entire Hamiltonian matrix (as is done with **lanczos**).
-    This is slower but requires much less memory.  Currently only implemented
-    in serial.
+    This is slower but requires much less memory.  This is currently only
+    implemented in serial.
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -249,6 +256,10 @@ Hamiltonian matrix to be considered a block at a time.  This results in
 a substantial reduction in CPU and memory demands.  The default behaviour is to
 diagonalise all blocks of the Hamiltonian matrix but this can be controlled by
 the following options.
+
+In contrast, an FCIQMC calculation can only consider a single block of the
+Hamiltonian matrix.  The spin polarisation must be specified and the symmetry
+of the determinant is currently hard-coded.
 
 **ms** *ms*
     Integer.
@@ -308,6 +319,85 @@ performed.
 **lanczos_solns** *nsolns*
     Synonym for **lanczos_solutions**.
 
+Calculation options: FCIQMC options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following options are valid for FCIQMC calculations.
+
+**mc_cycles** *mc_cycles*
+    Integer.
+
+    Number of Monte Carlo cycles to perform per "report loop".
+**nreports** *nreports*
+    Integer.
+
+    Number of "report loops" to perform.  Each report loop consists of 
+    *mc_cycles* cycles of the FCIQMC algorithm followed by updating the shift
+    and output of information on the current state of the walker populations, in
+    particular the instantaneous energy estimators.
+
+    The total number of Monte Carlo cycles performed in an FCIQMC calculation
+    is *nreports* x *mc_cycles*.
+**walker_length** *walker_length*
+    Integer.
+
+    Size of walker array.  This is allocated at the start of the calculation
+    and is used to store the population of walkers on determinants with
+    a non-zero population and the associated energy of the determinant.
+
+    Care: this needs to be large enough to hold the number of unique
+    determinants with a non-zero population of walkers in the simulation.  The
+    code does not currently check whether this size is exceeded and so setting
+    **walker_length** to be too small can lead to memory problems and
+    segmentation faults.  For large calculations this should be substantial
+    smaller than the full size of determinant space.
+
+    Not valid for simple_fciqmc calculations, where the population of walkers
+    on each determinant is stored.
+**spawned_walker_length** *spawned_walker_length*
+    Integer.
+
+    Size of the spawned walker array.  This is allocated at the start of the
+    calculation and is used to store the population of spawned walkers on child
+    determinants.
+
+    Care: this needs to be large enough to store all the particles which are spawned
+    during a Monte Carlo cycle and so needs to be a reasonable fraction of the 
+    targetted number of total number of walkers.  The code does not currently
+    check whether this size is exceeded and so setting
+    **spawned_walker_length** to be too small can lead to memory problems and
+    segmentation faults.
+
+    Not valid for simple_fciqmc calculations, where the population of spawned
+    walkers on each determinant is stored.
+**tau** *tau*
+    Real.
+
+    Set the timestep to be used.  Each Monte Carlo cycle amounts to propogating
+    the walker population by the *tau* in units of imaginary time.
+
+    A small timestep causes the walker population to evolve very slowly.  Too
+    large a timestep, on the other hand, leads to a rapid particle growth which
+    takes a long time to stabilise, even once the shift begins to vary, and
+    coarse population dynamics.
+**initial_shift** *initial_shift*
+    Real.
+
+    Default: 0.
+
+    Set the value of the shift to use during the period before the shift is
+    allowed to vary.  Positive values lead to faster growth in the number of
+    walkers due to cloning.  Using too large a value can lead to poor sampling
+    as large numbers of walkers reside on the same small number of determinants
+    rather than diffusing appropriately through the determinant space.
+**varyshift_target** *varyshift_target*
+    Integer.
+
+    Default: 10000.
+
+    Set the target number of particles to be reached before the shift is
+    allowed to vary.  This is only checked at the end of each report loop.
+
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -324,7 +414,7 @@ the result but can have a significant impact on performance.
     sub-matrices, where :math:`n` is the block size, which are the distributed
     over the processors in a cyclic fashion.
 
-Output options
+output options
 ^^^^^^^^^^^^^^
 
 These options increase the verbosity but can be useful for debugging.  Note that

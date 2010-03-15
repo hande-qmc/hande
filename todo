@@ -10,13 +10,10 @@ FCIQMC
 ------
 
 a) real space
-b) different routine for last report?
-c) simple_fciqmc: projected energy and use report functions
-d) comments in new procedures
-e) new tests
-f) input options for controlling fciqmc
-g) document new options
-h) quicksort
+d*) new tests
+e*) input options for controlling fciqmc
+f*) document new options
+g) quicksort
 
 OpenMP plan
 -----------
