@@ -2,6 +2,19 @@ module spawning
 
 ! Module for procedures involved in the spawning step of the FCIQMC algorithm.
 
+! We wish to spawn with probability
+!   tau |H_ij|,
+! where tau is the timestep of the simulation.
+! The probability of doing something is the probability of selecting to attempt
+! to do it multiplied by the probability of actually doing it, hence:
+!   p_spawn = p_select tau*|H_ij|/p_gen
+! and p_select = p_gen for normalised probabilities.
+! p_select is included intrinsically in the algorithm, as we choose a random
+! determinant, j, that is connected to the i-th determinant and attempt to spawn
+! from a particle on i-th determinant onto the j-th determinant.
+! Thus we compare to the probability tau*|H_ij|/p_gen in order to determine
+! whether the spawning attempt is successful.
+
 use const
 implicit none
 
@@ -9,7 +22,8 @@ contains
 
     subroutine spawn_hub_k(cdet, parent_sign)
 
-        ! Attempt to spawn a new particle on a connected determinant.
+        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! momentum space formulation of the Hubbard model.
         !
         ! If the spawning is successful, then the spawned particle is
         ! placed in the spawning arrays and the current position in the
@@ -37,6 +51,9 @@ contains
         integer(i0) :: f_new(basis_length)
         type(excit) :: connection
 
+        ! Single excitations are not connected determinants within the 
+        ! momentum space formulation of the Hubbard model.
+
         ! 1. Select a random pair of spin orbitals to excite from.
         call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
 
@@ -60,16 +77,6 @@ contains
         ! completing the excitation.
 
         ! 3. Test that whether the attempted spawning is successful.
-        ! We wish to spawn with probability
-        !   tau |H_ij|,
-        ! where tau is the timestep of the simulation.
-        ! The probability of doing something is the probability of selecting to
-        ! attempt to do it multiplied by the probability of actually doing it,
-        ! hence:
-        !   p_spawn = p_select tau*|H_ij|/p_gen
-        ! and p_select = p_gen for normalised probabilities.
-        ! p_select is included intrinsically in the algorithm, so we compare
-        ! to the probability tau*|H_ij|/p_gen.
         ! As we can only excite from (alpha,beta) or (beta,alpha),
         !   H_ij =  < ij | ab >  *or*
         !        = -< ij | ba >
@@ -171,6 +178,84 @@ contains
         end if
         
     end subroutine spawn_hub_k
+
+    subroutine spawn_hub_real(cdet, parent_sign)
+
+        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! real space formulation of the Hubbard model.
+        !
+        ! If the spawning is successful, then the spawned particle is
+        ! placed in the spawning arrays and the current position in the
+        ! spawning array is updated.
+        !
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+
+        use basis, only: basis_length
+        use determinants, only: det_info
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: calc_pgen_hub_real, excit, create_excited_det, find_excitation_permutation1
+        use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population, spawning_head
+        use hamiltonian, only: slater_condon1_hub_real
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+
+        real(dp) :: pgen, psuccess, pspawn, hmatel
+        integer :: i, a, nparticles
+        integer(i0) :: f_new(basis_length)
+        type(excit) :: connection
+
+        ! Double excitations are not connected determinants within the 
+        ! real space formulation of the Hubbard model.
+
+        ! 1. Chose a random spin orbital to excite from.
+        call choose_i_hub_real(cdet%occ_list, i)
+
+        ! 2. Choose a spin orbital to excite into.
+        call choose_a_hub_real(i,a)
+
+        ! 3. Find probability of generating this excited determinant.
+        pgen = calc_pgen_hub_real()
+
+        ! 4. Construct the excited determinant and find the connecting matrix
+        ! element.
+        connection%nexcit = 1
+        connection%from_orb(1) = i
+        connection%to_orb(1) = a
+
+        call find_excitation_permutation1(cdet%occ_list, connection)
+
+        hmatel = slater_condon1_hub_real(connection%from_orb(1), connection%to_orb(1), connection%perm)
+
+        ! 5. Attempt spawning.
+        pspawn = tau*hmatel/pgen
+        psuccess = genrand_real2()
+
+        ! Need to take into account the possibilty of a spawning attempt
+        ! producing multiple offspring...
+        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+        ! then spawn a particle with probability pspawn-floor(pspawn).
+        nparticles = int(pspawn)
+        pspawn = pspawn - nparticles
+
+        if (pspawn > psuccess) nparticles = nparticles + 1
+
+        if (nparticles > 0) then
+            ! Spawn!
+
+            ! 6. Move to the next position in the spawning array.
+            spawning_head = spawning_head + 1
+
+            ! 7. Set info in spawning array.
+            call create_excited_det(cdet%f, connection, f_new)
+            spawned_walker_dets(:,spawning_head) = f_new
+            spawned_walker_population(spawning_head) = nparticles
+
+        end if
+
+    end subroutine spawn_hub_real
 
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
 
@@ -392,5 +477,21 @@ contains
         end do
 
     end subroutine choose_ab_hub_k
+
+    subroutine choose_i_hub_real(occ_list, i)
+    
+        use system, only: nel
+
+        integer, intent(in) :: occ_list(nel)
+        integer, intent(out) :: i
+
+    end subroutine choose_i_hub_real
+
+    subroutine choose_a_hub_real(i, a)
+
+        integer, intent(in) :: i
+        integer, intent(out) :: a
+
+    end subroutine choose_a_hub_real
 
 end module spawning

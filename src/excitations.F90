@@ -470,4 +470,10 @@ contains
 
     end function calc_pgen_hub_k
 
+    function calc_pgen_hub_real() result(pgen)
+
+        real(dp) :: pgen
+
+    end function calc_pgen_hub_real
+
 end module excitations
