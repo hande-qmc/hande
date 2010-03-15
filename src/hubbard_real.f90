@@ -113,16 +113,14 @@ contains
 
         ! Need to check if i and j are on sites which are nearest neighbours
         ! either directly or due to periodic boundary conditions.
-        if (basis_fns(i)%ms == basis_fns(j)%ms) then
-            pos = bit_lookup(1,j)
-            ind = bit_lookup(2,j)
-            ! Test if i <-> j.  If so there's a kinetic interaction.
-            if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - hubt
-            pos = bit_lookup(1,i)
-            ind = bit_lookup(2,i)
-            ! Test if i <-> j.  If so there's a kinetic interaction.
-            if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - hubt
-        end if
+        pos = bit_lookup(1,j)
+        ind = bit_lookup(2,j)
+        ! Test if i <-> j.  If so there's a kinetic interaction.
+        if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - hubt
+        pos = bit_lookup(1,i)
+        ind = bit_lookup(2,i)
+        ! Test if i <-> j.  If so there's a kinetic interaction.
+        if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - hubt
 
     end function get_one_e_int_real
 
