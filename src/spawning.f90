@@ -241,6 +241,7 @@ contains
         if (pspawn > psuccess) nparticles = nparticles + 1
 
         if (nparticles > 0) then
+            write (6,*) 'spawning',i,a,pgen,1.0_dp/pgen,nparticles,hmatel
             ! Spawn!
 
             ! 5. Move to the next position in the spawning array.

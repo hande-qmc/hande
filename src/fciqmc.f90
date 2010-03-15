@@ -19,7 +19,7 @@ contains
         use basis, only: basis_length
         use calc, only: sym_in, ms_in
         use determinants, only: encode_det, set_spin_polarisation, write_det
-        use hamiltonian, only: get_hmatel_k, slater_condon0_hub_k
+        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real
         use system, only: nel, nalpha, nbeta
 
         integer :: ierr
@@ -56,11 +56,11 @@ contains
 
         walker_energies(tot_walkers) = 0.0_dp
 
-        ! Energy of reference determinant.
-        H00 = slater_condon0_hub_k(occ_list)
         ! Reference det
         allocate(f0(basis_length), stat=ierr)
         f0 = walker_dets(:,tot_walkers)
+        ! Energy of reference determinant.
+        H00 = slater_condon0_hub_real(f0)
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(walker_dets(:,tot_walkers), new_line=.true.)
@@ -78,8 +78,8 @@ contains
         use basis, only: basis_length
         use death, only: stochastic_death
         use determinants, only: det_info, decode_det_spinocc_spinunocc
-        use projected_energy, only: update_proj_energy_hub_k
-        use spawning, only: spawn_hub_k
+        use projected_energy, only: update_proj_energy_hub_real
+        use spawning, only: spawn_hub_real
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
         use simple_fciqmc, only: update_shift
 
@@ -118,12 +118,12 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call update_proj_energy_hub_k(idet)
+                    call update_proj_energy_hub_real(idet)
 
                     do iparticle = 1, abs(walker_population(idet))
                         
                         ! spawn
-                        call spawn_hub_k(cdet, walker_population(idet))
+                        call spawn_hub_real(cdet, walker_population(idet))
 
                     end do
 

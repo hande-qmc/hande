@@ -146,7 +146,7 @@ contains
         use basis, only: basis_length
         use determinants, only: decode_det
         use system, only: nel
-        use hamiltonian, only: slater_condon0_hub_k
+        use hamiltonian, only: slater_condon0_hub_real
 
         integer :: i, istart, iend, j, k, pos
         logical :: hit
@@ -187,7 +187,7 @@ contains
             k = pos + i - 1
             walker_dets(:,k) = spawned_walker_dets(:,i)
             walker_population(k) = spawned_walker_population(i)
-            walker_energies(k) = slater_condon0_hub_k(walker_dets(:,k)) - H00
+            walker_energies(k) = slater_condon0_hub_real(walker_dets(:,k)) - H00
             ! Next walker will be inserted below this one.
             iend = pos - 1
         end do
