@@ -206,20 +206,18 @@ contains
         integer :: i, a, nparticles
         integer(i0) :: f_new(basis_length)
         type(excit) :: connection
+        integer :: nvirt_avail
 
         ! Double excitations are not connected determinants within the 
         ! real space formulation of the Hubbard model.
 
-        ! 1. Chose a random spin orbital to excite from.
-        call choose_i_hub_real(cdet%occ_list, i)
+        ! 1. Chose a random connected excitation.
+        call choose_ia_hub_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
 
-        ! 2. Choose a spin orbital to excite into.
-        call choose_a_hub_real(i,a)
+        ! 2. Find probability of generating this excited determinant.
+        pgen = calc_pgen_hub_real(cdet%occ_list, cdet%f, nvirt_avail)
 
-        ! 3. Find probability of generating this excited determinant.
-        pgen = calc_pgen_hub_real()
-
-        ! 4. Construct the excited determinant and find the connecting matrix
+        ! 3. Construct the excited determinant and find the connecting matrix
         ! element.
         connection%nexcit = 1
         connection%from_orb(1) = i
@@ -229,7 +227,7 @@ contains
 
         hmatel = slater_condon1_hub_real(connection%from_orb(1), connection%to_orb(1), connection%perm)
 
-        ! 5. Attempt spawning.
+        ! 4. Attempt spawning.
         pspawn = tau*hmatel/pgen
         psuccess = genrand_real2()
 
@@ -245,10 +243,10 @@ contains
         if (nparticles > 0) then
             ! Spawn!
 
-            ! 6. Move to the next position in the spawning array.
+            ! 5. Move to the next position in the spawning array.
             spawning_head = spawning_head + 1
 
-            ! 7. Set info in spawning array.
+            ! 6. Set info in spawning array.
             call create_excited_det(cdet%f, connection, f_new)
             spawned_walker_dets(:,spawning_head) = f_new
             spawned_walker_population(spawning_head) = nparticles
@@ -478,20 +476,76 @@ contains
 
     end subroutine choose_ab_hub_k
 
-    subroutine choose_i_hub_real(occ_list, i)
+    subroutine choose_ia_hub_real(occ_list, f, i, a, nvirt_avail)
+
+        ! Find a random connected excitation from a Slater determinant for the
+        ! Hubbard model in the real space formulation.
+        ! In: 
+        !    f: bit string representation of the Slater determinant.
+        !    occ_list: integer list of the occupied spin-orbitals in 
+        !        the Slater determinant.
+        ! Returns:
+        !    i,a: spin orbitals excited from/to respectively.
+        !    nvirt_avail: the number of virtual orbitals which can be excited
+        !        into from the i-th orbital.
+
+        use basis, only: basis_length, bit_lookup, nbasis
     
+        use dSFMT_interface, only:  genrand_real2
+
+        use basis, only: basis_length, basis_lookup
+        use bit_utils, only: count_set_bits
+        use hubbard_real, only: connected_orbs
         use system, only: nel
 
         integer, intent(in) :: occ_list(nel)
-        integer, intent(out) :: i
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(out) :: i, a, nvirt_avail
+        integer(i0) :: virt_avail(basis_length)
+        integer :: ipos, iel, nfound
 
-    end subroutine choose_i_hub_real
+        do
+            ! Until we find an i orbital which has at least one allowed
+            ! excitation.
 
-    subroutine choose_a_hub_real(i, a)
+            ! Random selection of i.
+            i = int(genrand_real2()*nel) + 1
+            i = occ_list(i)
 
-        integer, intent(in) :: i
-        integer, intent(out) :: a
+            ! Does this have at least one allowed excitation?
+            ! connected_orbs(:,i) is a bit string with the bits corresponding to
+            ! orbials connected to i set.
+            ! Thus taking the exclusive or with the deteterminant bit string
+            ! gives the bit string containing the virtual orbitals which are
+            ! connected to i.  Neat, huh?
+            virt_avail = ieor(f, connected_orbs(:,i))
 
-    end subroutine choose_a_hub_real
+            if (any(virt_avail /= 0)) then
+                ! Have found an i with at least one available orbital we can
+                ! excite into.
+                exit
+            end if
+
+        end do
+
+        ! Find a.
+        nvirt_avail = sum(count_set_bits(virt_avail))
+        a = int(genrand_real2()*nvirt_avail) + 1
+        ! Now need to find out what orbital this corresponds to...
+        nfound = 0
+        finda: do iel = 1, basis_length
+            do ipos = 0, i0_end
+                if (btest(virt_avail(iel), ipos)) then
+                    nfound = nfound + 1
+                    if (nfound == a) then
+                        ! found the orbital.
+                        a = basis_lookup(ipos, iel)
+                        exit finda
+                    end if
+                end if
+            end do
+        end do finda
+
+    end subroutine choose_ia_hub_real
 
 end module spawning
