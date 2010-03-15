@@ -53,7 +53,7 @@ if [ -e $docs ]; then
     else
         undocumented_keywords=''
         for keyword in $all_keywords; do
-            undocumented_keywords="$undocumented_keywords $(grep -qwi $keyword $doc_files 2> /dev/null || echo $keyword)"
+            undocumented_keywords="$undocumented_keywords $(grep -qwi "\*\*$keyword\*\*" $doc_files 2> /dev/null || echo $keyword)"
         done
 
         # Remove trailing blanks
