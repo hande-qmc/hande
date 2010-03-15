@@ -24,6 +24,11 @@ implicit none
 ! where a site is connected to a different site and that site's periodic image.
 integer(i0), allocatable :: tmat(:,:) ! (basis_length, nbasis)
 
+! Identical to tmat but without a bit set for an site being its own
+! periodic image.  This is useful in FCIQMC for generating random
+! excitations.
+integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
+
 ! True if any site is its own periodic image.
 ! This is the case if one dimension (or more) has only one site per crystal
 ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
@@ -47,6 +52,7 @@ contains
         t_self_images = any(abs(box_length-1.0_dp) < depsilon)
 
         allocate(tmat(basis_length,nbasis), stat=ierr)
+        allocate(connected_orbs(basis_length,nbasis), stat=ierr)
 
         tmat = 0
 
@@ -80,6 +86,14 @@ contains
                     end if
                 end do
             end do
+        end do
+
+        ! Information for the random excitation generators.
+        connected_orbs = tmat
+        do i = 1, nbasis
+            pos = bit_lookup(1,i)
+            ind = bit_lookup(2,i)
+            connected_orbs(ind,i) = ibclr(connected_orbs(ind,i),pos)
         end do
 
     end subroutine init_real_space_hub
