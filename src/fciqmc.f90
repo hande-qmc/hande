@@ -7,6 +7,11 @@ contains
 
     subroutine init_fciqmc()
 
+        ! Initialisation for fciqmc calculations.
+        ! Setup the spin polarisation for the system, initialise the RNG,
+        ! allocate the required memory for the list of walkers and set the
+        ! initial walker.
+
         use errors, only: stop_all
         use parallel, only: nprocs
         use utils, only: int_fmt
@@ -64,21 +69,10 @@ contains
         
     end subroutine init_fciqmc
 
-    subroutine end_fciqmc()
-
-        ! Deallocate walker lists.
-        
-        integer :: ierr
-
-        deallocate(walker_dets, stat=ierr)
-        deallocate(walker_population, stat=ierr)
-        deallocate(walker_energies, stat=ierr)
-        deallocate(spawned_walker_dets, stat=ierr)
-        deallocate(spawned_walker_population, stat=ierr)
-
-    end subroutine end_fciqmc
-
     subroutine do_fciqmc()
+
+        ! Run the FCIQMC algorithm starting from the initial walker
+        ! distribution.
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length

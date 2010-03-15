@@ -106,8 +106,6 @@ contains
 
     subroutine write_basis_fn(b, iunit, new_line, print_full)
 
-        use system, only: system_type, hub_real
-
         ! Print out information stored in b.
         ! In:
         !    b: basis_fn variable.
@@ -120,6 +118,8 @@ contains
         !         spin and (for momentum space models) kinetic energy associated
         !         with the basis function are printed.  If false, only the
         !         quantum numbers are printed.
+
+        use system, only: system_type, hub_real
 
         type(basis_fn), intent(in) :: b
         integer, intent(in), optional :: iunit

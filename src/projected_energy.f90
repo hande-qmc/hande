@@ -10,7 +10,23 @@ contains
 
     subroutine update_proj_energy_hub_k(idet)
 
+        ! Add the contribution of the current determinant to the projected
+        ! energy.
+        ! The correlation energy given by the projected energy is:
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
+        ! where N_i is the population on the i-th determinant, D_i,
+        ! and 0 refers to the reference determinant.
+        ! During a MC cycle we store
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
+        ! If the current determinant is the reference determinant, then
+        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! efficient.
+        ! This procedure is for the Hubbard model in momentum space only.
+        ! In:
+        !    idet: index of current determinant in the main walker list.
+
         use hamiltonian, only: slater_condon2_hub_k
+
         integer, intent(in) :: idet
         type(excit) :: excitation
         real(dp) :: hmatel

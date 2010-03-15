@@ -11,6 +11,8 @@ implicit none
 ! number of monte carlo cycles/report loop
 integer :: ncycles
 ! number of report cycles
+! the shift is updated and the calculation information printed out
+! at the end of each report cycle.
 integer :: nreport
 
 ! timestep
@@ -174,6 +176,11 @@ contains
 
     subroutine write_fciqmc_report(ireport, nparticles)
 
+        ! Write the report line at the end of a report loop.
+        ! In:
+        !    ireport: index of the report loop.
+        !    nparticles: total number of particles in main walker list.
+
         integer, intent(in) :: ireport, nparticles
 
         write (6,'(5X,i8,2(f20.10,2X),i11)') ireport*ncycles, shift, proj_energy, nparticles
@@ -188,5 +195,20 @@ contains
         write (6,'(1X,a19,1X,f22.12)') 'E0 + proj. energy =', proj_energy+H00
 
     end subroutine write_fciqmc_final
+
+    subroutine end_fciqmc()
+
+        ! Deallocate fciqmc data arrays.
+
+        integer :: ierr
+
+        if (allocated(walker_dets)) deallocate(walker_dets, stat=ierr)
+        if (allocated(walker_population)) deallocate(walker_population, stat=ierr)
+        if (allocated(walker_energies)) deallocate(walker_energies, stat=ierr)
+        if (allocated(spawned_walker_dets)) deallocate(spawned_walker_dets, stat=ierr)
+        if (allocated(spawned_walker_population)) deallocate(spawned_walker_population, stat=ierr)
+        if (allocated(f0)) deallocate(f0, stat=ierr)
+
+    end subroutine end_fciqmc
 
 end module fciqmc_data

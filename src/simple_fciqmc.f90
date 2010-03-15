@@ -23,6 +23,12 @@ contains
 
     subroutine init_simple_fciqmc()
 
+        ! Initialisation for the simple fciqmc algorithm.
+        ! Setup the list of determinants in the space, calculate the relevant
+        ! symmetry block of the Hamiltonian matrix, initialise the RNG, allocate
+        ! the required memory for the list of walkers and set the initial
+        ! walker.
+
         use parallel, only: nprocs, parent
         use utils, only: int_fmt
 
@@ -94,6 +100,8 @@ contains
 
     subroutine do_simple_fciqmc()
 
+        ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
+
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
 
@@ -156,6 +164,10 @@ contains
     subroutine attempt_spawn(iwalker)
 
         ! Simulate spawning part of FCIQMC algorithm.
+        ! We attempt to spawn on all determinants connected to the current
+        ! determinant (given by iwalker) with probability tau|K_ij|.  Note this
+        ! is different from the optimised FCIQMC algorithm where each walker
+        ! only gets one opportunity per FCIQMC cycle to spawn.
         ! In:
         !    iwalker: walker whose particles attempt to clone/die.
 
@@ -297,6 +309,22 @@ contains
     end subroutine update_shift
 
     subroutine simple_update_proj_energy(iwalker)
+
+        ! Add the contribution of the current determinant to the projected
+        ! energy.
+        ! The correlation energy given by the projected energy is:
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
+        ! where N_i is the population on the i-th determinant, D_i,
+        ! and 0 refers to the reference determinant.
+        ! During a MC cycle we store
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
+        ! If the current determinant is the reference determinant, then
+        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! efficient.
+        ! This procedure is only for the simple fciqmc algorithm, where the
+        ! Hamiltonian matrix is explicitly stored.
+        ! In:
+        !    iwalker: index of current determinant in the main walker list.
 
         integer, intent(in) :: iwalker
 
