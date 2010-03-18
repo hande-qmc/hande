@@ -241,13 +241,21 @@ contains
         if (pspawn > psuccess) nparticles = nparticles + 1
 
         if (nparticles > 0) then
-            write (6,*) 'spawning',i,a,pgen,1.0_dp/pgen,nparticles,hmatel
             ! Spawn!
 
             ! 5. Move to the next position in the spawning array.
             spawning_head = spawning_head + 1
 
-            ! 6. Set info in spawning array.
+            ! 6. If H_ij is positive, then the spawned walker is of opposite
+            ! sign to the parent, otherwise the spawned walkers if of the same
+            ! sign as the parent.
+            if (hmatel > 0.0_dp) then
+                nparticles = -sign(nparticles, parent_sign)
+            else
+                nparticles = sign(nparticles, parent_sign)
+            end if
+
+            ! 7. Set info in spawning array.
             call create_excited_det(cdet%f, connection, f_new)
             spawned_walker_dets(:,spawning_head) = f_new
             spawned_walker_population(spawning_head) = nparticles
