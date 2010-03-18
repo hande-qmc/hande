@@ -228,7 +228,7 @@ contains
         hmatel = slater_condon1_hub_real(connection%from_orb(1), connection%to_orb(1), connection%perm)
 
         ! 4. Attempt spawning.
-        pspawn = tau*hmatel/pgen
+        pspawn = tau*abs(hmatel)/pgen
         psuccess = genrand_real2()
 
         ! Need to take into account the possibilty of a spawning attempt
