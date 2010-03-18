@@ -199,6 +199,9 @@ contains
         use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population, spawning_head
         use hamiltonian, only: slater_condon1_hub_real
 
+        ! for debug only
+        use hamiltonian, only: get_hmatel_real
+
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
 
@@ -259,6 +262,12 @@ contains
             call create_excited_det(cdet%f, connection, f_new)
             spawned_walker_dets(:,spawning_head) = f_new
             spawned_walker_population(spawning_head) = nparticles
+
+! Leave the following in for debug reasons...
+! Should be removed after more testing.
+            if (abs(get_hmatel_real(cdet%f, f_new)-hmatel) > 1.e-8) then
+                write (6,*) 'oops!', get_hmatel_real(cdet%f, f_new), hmatel
+            end if
 
         end if
 
