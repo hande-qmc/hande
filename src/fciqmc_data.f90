@@ -65,10 +65,13 @@ integer :: spawning_head
 
 !--- Reference determinant ---
 
-! Bit string of reference determinant
+! Bit string of reference determinant.
 integer(i0), allocatable :: f0(:)
 
-! population of walkers on reference determinant.
+! List of occupied orbitals in reference determinant.
+integer, allocatable :: occ_list0(:)
+
+! Population of walkers on reference determinant.
 integer :: D0_population
 
 ! Energy of reference determinant.

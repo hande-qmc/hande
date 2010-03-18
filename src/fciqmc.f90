@@ -23,7 +23,7 @@ contains
         use system, only: nel, nalpha, nbeta
 
         integer :: ierr
-        integer :: i, occ_list(nel)
+        integer :: i
 
         if (nprocs > 1) call stop_all('init_fciqmc','Not (yet!) a parallel algorithm.')
 
@@ -49,10 +49,13 @@ contains
         ! kinetic energy which satisfy the spin polarisation.
         ! Note: this is for testing only!  The symmetry input is currently
         ! ignored.
-        forall (i=1:nalpha) occ_list(i) = 2*i-1
-        forall (i=1:nbeta) occ_list(i+nalpha) = 2*i
+        if (.not.allocated(occ_list0)) then
+            allocate(occ_list0(nel), stat=ierr)
+            forall (i=1:nalpha) occ_list0(i) = 2*i-1
+            forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
+        end if
 
-        walker_dets(:,tot_walkers) = encode_det(occ_list)
+        walker_dets(:,tot_walkers) = encode_det(occ_list0)
 
         walker_energies(tot_walkers) = 0.0_dp
 
