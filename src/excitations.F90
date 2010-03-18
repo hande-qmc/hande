@@ -208,6 +208,7 @@ contains
 
         perm = 0
         nholes = 0
+        j1 = 0
         do i = 1, nel
             j = occ_list(i)
 
