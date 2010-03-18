@@ -24,7 +24,8 @@ implicit none
 ! where a site is connected to a different site and that site's periodic image.
 integer(i0), allocatable :: tmat(:,:) ! (basis_length, nbasis)
 
-! Identical to tmat but without a bit set for an site being its own
+! Orbitals i and j are connected if the j-th bit of connected_orbs(:,i) is
+! set.  This is a bit like tmat but without a bit set for a site being its own
 ! periodic image.  This is useful in FCIQMC for generating random
 ! excitations.
 integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
@@ -43,7 +44,7 @@ contains
         ! Initialise real space Hubbard model: find and store the matrix
         ! elements < i | T | j > where i and j are real space basis functions.
 
-        use basis, only: nbasis, bit_lookup, basis_length, basis_fns
+        use basis, only: nbasis, bit_lookup, basis_length, basis_fns, set_orb
         use system, only: lattice, ndim, box_length
 
         integer :: i, j, ierr, pos, ind, ivec
@@ -55,6 +56,7 @@ contains
         allocate(connected_orbs(basis_length,nbasis), stat=ierr)
 
         tmat = 0
+        connected_orbs = 0
 
         ! Construct how the lattice is connected.
         do i = 1, nbasis-1, 2
@@ -66,30 +68,29 @@ contains
                 r = abs(basis_fns(i)%l - basis_fns(j)%l)
                 if (sum(r) == 1) then
                     ! i and j are on sites which are nearest neighbours.
-                    pos = bit_lookup(1,j)
-                    ind = bit_lookup(2,j)
-                    tmat(ind,i) = ibset(tmat(ind,i),pos)
-                    pos = bit_lookup(1,j+1)
-                    ind = bit_lookup(2,j+1)
-                    tmat(ind,i+1) = ibset(tmat(ind,i+1),pos)
+                    call set_orb(tmat(:,i),j)
+                    call set_orb(tmat(:,i+1),j+1)
+                    call set_orb(connected_orbs(:,i),j)
+                    call set_orb(connected_orbs(:,j),i)
+                    call set_orb(connected_orbs(:,i+1),j+1)
+                    call set_orb(connected_orbs(:,j+1),i+1)
                 end if
                 do ivec = 1, ndim
                     if (abs(sum(r-lattice(:,ivec))) == 1) then
                         ! i and j are on sites which are nearest neighbour due
                         ! to periodic boundaries.
-                        pos = bit_lookup(1,i)
-                        ind = bit_lookup(2,i)
-                        tmat(ind,j) = ibset(tmat(ind,j),pos)
-                        pos = bit_lookup(1,i+1)
-                        ind = bit_lookup(2,i+1)
-                        tmat(ind,j+1) = ibset(tmat(ind,j+1),pos)
+                        call set_orb(tmat(:,j),i)
+                        call set_orb(tmat(:,j+1),i+1)
+                        call set_orb(connected_orbs(:,i),j)
+                        call set_orb(connected_orbs(:,j),i)
+                        call set_orb(connected_orbs(:,i+1),j+1)
+                        call set_orb(connected_orbs(:,j+1),i+1)
                     end if
                 end do
             end do
         end do
 
         ! Information for the random excitation generators.
-        connected_orbs = tmat
         do i = 1, nbasis
             pos = bit_lookup(1,i)
             ind = bit_lookup(2,i)
