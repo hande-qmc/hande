@@ -524,10 +524,12 @@ contains
             ! Does this have at least one allowed excitation?
             ! connected_orbs(:,i) is a bit string with the bits corresponding to
             ! orbials connected to i set.
-            ! Thus taking the exclusive or with the deteterminant bit string
-            ! gives the bit string containing the virtual orbitals which are
-            ! connected to i.  Neat, huh?
-            virt_avail = ieor(f, connected_orbs(:,i))
+            ! The complement of the determinant bit string gives the bit string
+            ! containing the virtual orbitals and thus taking the and of this
+            ! with the relevant connected_orbs element gives the bit string
+            ! containing the virtual orbitals which are connected to i.
+            ! Neat, huh?
+            virt_avail = iand(not(f), connected_orbs(:,i))
 
             if (any(virt_avail /= 0)) then
                 ! Have found an i with at least one available orbital we can
