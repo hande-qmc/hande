@@ -5,25 +5,26 @@
 5.  block diagonalise hamiltonian matrix for k inversion and spin inversion.
 6.  parallel direct lanczos.
 7.  UEG.
+8.  Mixed precision.
+9.  Compile time selection of bit string length.
+10. Improve selection of calculation: bit string store.
 
 FCIQMC
 ------
 
-a) real space
+a) average projected energy
 b) new tests
-c) quicksort
+c) input options for controlling fciqmc
+d) document new options
+e) quicksort
+f) blocking script
 
-OpenMP plan
------------
-
-a) Use local states for RNG.
-b) Test OpenMP with orphaned routines.
-c) Implement pragmas in spawning and death.  Use one thread for sorting.
-d) Threaded sort.
-
-Hybrid parallelisation
+FCIQMC parallelisation
 ----------------------
 
-a) OpenMP.
-b) Hashing to distribute walkers.
-c) Parallel sort.
+Have scrapped the idea of hybrid OpenMP-MPI parallelisation: there are no
+memory benefits for the hubbard code and NECI can be tackled using mmap.
+
+a) Hashing to distribute walkers.
+b) Parallel sort.
+c) Update shift and projected energy.
