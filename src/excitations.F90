@@ -208,6 +208,7 @@ contains
 
         perm = 0
         nholes = 0
+        j1 = 0
         do i = 1, nel
             j = occ_list(i)
 
@@ -469,5 +470,54 @@ contains
         pgen = 2.0_dp/(nalpha*nbeta*(nbasis-nel-forbidden_excitations))
 
     end function calc_pgen_hub_k
+
+    function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
+
+        use basis, only: basis_length
+        use system, only: nel
+        use hubbard_real, only: connected_orbs
+
+        real(dp) :: pgen
+        integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: nvirt_avail
+        integer :: i, no_excit
+
+        ! For single excitations
+        !   pgen = p(i) p(a|i) \chi_r
+        ! where
+        !   p(i) is the probability of choosing the i-th electron to excite
+        !   from.
+        !   p(i) = 1/nel
+        !
+        !   p(a|i) is the probability of choosing to excite into orbital a given
+        !   that the i-th electron has been chosen.
+        !   p(a|i) is the number of virtual orbitals connected to i and is
+        !   calculated when the random excitation is chosen.
+
+        !   \chi_r is a renormalisation to take into account the fact that not
+        !   all electrons may be excited from (e.g. no connected orbitals are
+        !   vacant).
+        !   \chi_r = nel/(nel - no_excit)
+        !   where no_excit is the number of occupied orbitals which have no
+        !   connected excitations.
+
+        ! \chi_r is a constant for a given determinant, so an optimisation is to
+        ! calculate this once per determinant rather than for each walker on the
+        ! same determinant.
+
+        no_excit = 0
+        do i = 1, nel
+            ! See if there are any allowed excitations from this electron.
+            ! (see notes in choose_ia_hub_real for how this works)
+            if (all(ieor(f, connected_orbs(:,occ_list(i))) == 0)) then
+                ! none allowed from this orbial
+                no_excit = no_excit + 1
+            end if
+        end do
+
+        pgen = 1.0_dp/(nvirt_avail * (nel - no_excit))
+
+    end function calc_pgen_hub_real
 
 end module excitations

@@ -24,6 +24,12 @@ implicit none
 ! where a site is connected to a different site and that site's periodic image.
 integer(i0), allocatable :: tmat(:,:) ! (basis_length, nbasis)
 
+! Orbitals i and j are connected if the j-th bit of connected_orbs(:,i) is
+! set.  This is a bit like tmat but without a bit set for a site being its own
+! periodic image.  This is useful in FCIQMC for generating random
+! excitations.
+integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
+
 ! True if any site is its own periodic image.
 ! This is the case if one dimension (or more) has only one site per crystal
 ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
@@ -38,7 +44,7 @@ contains
         ! Initialise real space Hubbard model: find and store the matrix
         ! elements < i | T | j > where i and j are real space basis functions.
 
-        use basis, only: nbasis, bit_lookup, basis_length, basis_fns
+        use basis, only: nbasis, bit_lookup, basis_length, basis_fns, set_orb
         use system, only: lattice, ndim, box_length
 
         integer :: i, j, ierr, pos, ind, ivec
@@ -47,8 +53,10 @@ contains
         t_self_images = any(abs(box_length-1.0_dp) < depsilon)
 
         allocate(tmat(basis_length,nbasis), stat=ierr)
+        allocate(connected_orbs(basis_length,nbasis), stat=ierr)
 
         tmat = 0
+        connected_orbs = 0
 
         ! Construct how the lattice is connected.
         do i = 1, nbasis-1, 2
@@ -60,26 +68,33 @@ contains
                 r = abs(basis_fns(i)%l - basis_fns(j)%l)
                 if (sum(r) == 1) then
                     ! i and j are on sites which are nearest neighbours.
-                    pos = bit_lookup(1,j)
-                    ind = bit_lookup(2,j)
-                    tmat(ind,i) = ibset(tmat(ind,i),pos)
-                    pos = bit_lookup(1,j+1)
-                    ind = bit_lookup(2,j+1)
-                    tmat(ind,i+1) = ibset(tmat(ind,i+1),pos)
+                    call set_orb(tmat(:,i),j)
+                    call set_orb(tmat(:,i+1),j+1)
+                    call set_orb(connected_orbs(:,i),j)
+                    call set_orb(connected_orbs(:,j),i)
+                    call set_orb(connected_orbs(:,i+1),j+1)
+                    call set_orb(connected_orbs(:,j+1),i+1)
                 end if
                 do ivec = 1, ndim
                     if (abs(sum(r-lattice(:,ivec))) == 1) then
                         ! i and j are on sites which are nearest neighbour due
                         ! to periodic boundaries.
-                        pos = bit_lookup(1,i)
-                        ind = bit_lookup(2,i)
-                        tmat(ind,j) = ibset(tmat(ind,j),pos)
-                        pos = bit_lookup(1,i+1)
-                        ind = bit_lookup(2,i+1)
-                        tmat(ind,j+1) = ibset(tmat(ind,j+1),pos)
+                        call set_orb(tmat(:,j),i)
+                        call set_orb(tmat(:,j+1),i+1)
+                        call set_orb(connected_orbs(:,i),j)
+                        call set_orb(connected_orbs(:,j),i)
+                        call set_orb(connected_orbs(:,i+1),j+1)
+                        call set_orb(connected_orbs(:,j+1),i+1)
                     end if
                 end do
             end do
+        end do
+
+        ! Information for the random excitation generators.
+        do i = 1, nbasis
+            pos = bit_lookup(1,i)
+            ind = bit_lookup(2,i)
+            connected_orbs(ind,i) = ibclr(connected_orbs(ind,i),pos)
         end do
 
     end subroutine init_real_space_hub
@@ -113,16 +128,14 @@ contains
 
         ! Need to check if i and j are on sites which are nearest neighbours
         ! either directly or due to periodic boundary conditions.
-        if (basis_fns(i)%ms == basis_fns(j)%ms) then
-            pos = bit_lookup(1,j)
-            ind = bit_lookup(2,j)
-            ! Test if i <-> j.  If so there's a kinetic interaction.
-            if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - hubt
-            pos = bit_lookup(1,i)
-            ind = bit_lookup(2,i)
-            ! Test if i <-> j.  If so there's a kinetic interaction.
-            if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - hubt
-        end if
+        pos = bit_lookup(1,j)
+        ind = bit_lookup(2,j)
+        ! Test if i <-> j.  If so there's a kinetic interaction.
+        if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - hubt
+        pos = bit_lookup(1,i)
+        ind = bit_lookup(2,i)
+        ! Test if i <-> j.  If so there's a kinetic interaction.
+        if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - hubt
 
     end function get_one_e_int_real
 

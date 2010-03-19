@@ -72,7 +72,7 @@ contains
 
         use calc, only: t_exact, t_lanczos, t_fciqmc, tsimple
         use diagonalisation, only: diagonalise
-        use fciqmc, only: do_fciqmc
+        use fciqmc, only: fciqmc_main
         use simple_fciqmc, only: do_simple_fciqmc
 
         if (t_exact .or. t_lanczos) call diagonalise()
@@ -81,7 +81,7 @@ contains
             if (tsimple) then
                 call do_simple_fciqmc()
             else
-                call do_fciqmc()
+                call fciqmc_main()
             end if
         end if
 

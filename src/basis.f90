@@ -171,4 +171,24 @@ contains
 
     end function spin_symmetry
 
+    subroutine set_orb(f,iorb)
+
+        ! In:
+        !    f: bit string of orbitals.
+        !    iorb: orbital index.
+        ! Out:
+        !    f: bit string of orbitals with the bit corresponding to iorb set. 
+        
+        ! Note that f must be zerod before first using this procedure.
+
+        integer, intent(in) :: iorb
+        integer, intent(inout) :: f(basis_length)
+        integer :: pos, ind
+
+        pos = bit_lookup(1,iorb)
+        ind = bit_lookup(2,iorb)
+        f(ind) = ibset(f(ind),pos)
+
+    end subroutine set_orb
+
 end module basis

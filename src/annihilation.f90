@@ -7,7 +7,17 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation()
+    subroutine direct_annihilation(sc0)
+
+        interface
+            function sc0(f) result(hmatel)
+                use basis, only: basis_length
+                use const, only: i0, dp
+                implicit none
+                real(dp) :: hmatel
+                integer(i0), intent(in) :: f(basis_length)
+            end function sc0
+        end interface
 
         ! 1. Sort spawned walkers list.
         call sort_spawned_lists()
@@ -20,7 +30,7 @@ contains
         call annihilate_main_list()
 
         ! 5. Insert new walkers into main walker list.
-        call insert_new_walkers()
+        call insert_new_walkers(sc0)
 
     end subroutine direct_annihilation
 
@@ -137,7 +147,7 @@ contains
 
     end subroutine annihilate_main_list
 
-    subroutine insert_new_walkers()
+    subroutine insert_new_walkers(sc0)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -146,10 +156,19 @@ contains
         use basis, only: basis_length
         use determinants, only: decode_det
         use system, only: nel
-        use hamiltonian, only: slater_condon0_hub_k
+        use hamiltonian, only: slater_condon0_hub_real
 
-        integer :: i, istart, iend, j, k, pos, occ_list(nel)
-        integer(i0) :: f(basis_length)
+        interface
+            function sc0(f) result(hmatel)
+                use basis, only: basis_length
+                use const, only: i0, dp
+                implicit none
+                real(dp) :: hmatel
+                integer(i0), intent(in) :: f(basis_length)
+            end function sc0
+        end interface
+
+        integer :: i, istart, iend, j, k, pos
         logical :: hit
 
         ! Merge new walkers into the main list.
@@ -173,9 +192,8 @@ contains
         istart = 1
         iend = tot_walkers
         do i = spawning_head, 1, -1
-            f = spawned_walker_dets(:,i)
-            ! f is not in the main walker list
-            call search_walker_list(f, istart, iend, hit, pos)
+            ! spawned det is not in the main walker list
+            call search_walker_list(spawned_walker_dets(:,i), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
@@ -187,10 +205,9 @@ contains
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
-            walker_dets(:,k) = f
+            walker_dets(:,k) = spawned_walker_dets(:,i)
             walker_population(k) = spawned_walker_population(i)
-            occ_list = decode_det(f)
-            walker_energies(k) = slater_condon0_hub_k(occ_list) - H00
+            walker_energies(k) = sc0(walker_dets(:,k)) - H00
             ! Next walker will be inserted below this one.
             iend = pos - 1
         end do

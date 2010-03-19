@@ -2,6 +2,19 @@ module spawning
 
 ! Module for procedures involved in the spawning step of the FCIQMC algorithm.
 
+! We wish to spawn with probability
+!   tau |H_ij|,
+! where tau is the timestep of the simulation.
+! The probability of doing something is the probability of selecting to attempt
+! to do it multiplied by the probability of actually doing it, hence:
+!   p_spawn = p_select tau*|H_ij|/p_gen
+! and p_select = p_gen for normalised probabilities.
+! p_select is included intrinsically in the algorithm, as we choose a random
+! determinant, j, that is connected to the i-th determinant and attempt to spawn
+! from a particle on i-th determinant onto the j-th determinant.
+! Thus we compare to the probability tau*|H_ij|/p_gen in order to determine
+! whether the spawning attempt is successful.
+
 use const
 implicit none
 
@@ -9,7 +22,8 @@ contains
 
     subroutine spawn_hub_k(cdet, parent_sign)
 
-        ! Attempt to spawn a new particle on a connected determinant.
+        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! momentum space formulation of the Hubbard model.
         !
         ! If the spawning is successful, then the spawned particle is
         ! placed in the spawning arrays and the current position in the
@@ -37,6 +51,9 @@ contains
         integer(i0) :: f_new(basis_length)
         type(excit) :: connection
 
+        ! Single excitations are not connected determinants within the 
+        ! momentum space formulation of the Hubbard model.
+
         ! 1. Select a random pair of spin orbitals to excite from.
         call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
 
@@ -60,16 +77,6 @@ contains
         ! completing the excitation.
 
         ! 3. Test that whether the attempted spawning is successful.
-        ! We wish to spawn with probability
-        !   tau |H_ij|,
-        ! where tau is the timestep of the simulation.
-        ! The probability of doing something is the probability of selecting to
-        ! attempt to do it multiplied by the probability of actually doing it,
-        ! hence:
-        !   p_spawn = p_select tau*|H_ij|/p_gen
-        ! and p_select = p_gen for normalised probabilities.
-        ! p_select is included intrinsically in the algorithm, so we compare
-        ! to the probability tau*|H_ij|/p_gen.
         ! As we can only excite from (alpha,beta) or (beta,alpha),
         !   H_ij =  < ij | ab >  *or*
         !        = -< ij | ba >
@@ -171,6 +178,100 @@ contains
         end if
         
     end subroutine spawn_hub_k
+
+    subroutine spawn_hub_real(cdet, parent_sign)
+
+        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! real space formulation of the Hubbard model.
+        !
+        ! If the spawning is successful, then the spawned particle is
+        ! placed in the spawning arrays and the current position in the
+        ! spawning array is updated.
+        !
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+
+        use basis, only: basis_length
+        use determinants, only: det_info
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: calc_pgen_hub_real, excit, create_excited_det, find_excitation_permutation1
+        use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population, spawning_head
+        use hamiltonian, only: slater_condon1_hub_real
+
+        ! for debug only
+        use hamiltonian, only: get_hmatel_real
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+
+        real(dp) :: pgen, psuccess, pspawn, hmatel
+        integer :: i, a, nparticles
+        integer(i0) :: f_new(basis_length)
+        type(excit) :: connection
+        integer :: nvirt_avail
+
+        ! Double excitations are not connected determinants within the 
+        ! real space formulation of the Hubbard model.
+
+        ! 1. Chose a random connected excitation.
+        call choose_ia_hub_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
+
+        ! 2. Find probability of generating this excited determinant.
+        pgen = calc_pgen_hub_real(cdet%occ_list, cdet%f, nvirt_avail)
+
+        ! 3. Construct the excited determinant and find the connecting matrix
+        ! element.
+        connection%nexcit = 1
+        connection%from_orb(1) = i
+        connection%to_orb(1) = a
+
+        call find_excitation_permutation1(cdet%occ_list, connection)
+
+        hmatel = slater_condon1_hub_real(connection%from_orb(1), connection%to_orb(1), connection%perm)
+
+        ! 4. Attempt spawning.
+        pspawn = tau*abs(hmatel)/pgen
+        psuccess = genrand_real2()
+
+        ! Need to take into account the possibilty of a spawning attempt
+        ! producing multiple offspring...
+        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+        ! then spawn a particle with probability pspawn-floor(pspawn).
+        nparticles = int(pspawn)
+        pspawn = pspawn - nparticles
+
+        if (pspawn > psuccess) nparticles = nparticles + 1
+
+        if (nparticles > 0) then
+            ! Spawn!
+
+            ! 5. Move to the next position in the spawning array.
+            spawning_head = spawning_head + 1
+
+            ! 6. If H_ij is positive, then the spawned walker is of opposite
+            ! sign to the parent, otherwise the spawned walkers if of the same
+            ! sign as the parent.
+            if (hmatel > 0.0_dp) then
+                nparticles = -sign(nparticles, parent_sign)
+            else
+                nparticles = sign(nparticles, parent_sign)
+            end if
+
+            ! 7. Set info in spawning array.
+            call create_excited_det(cdet%f, connection, f_new)
+            spawned_walker_dets(:,spawning_head) = f_new
+            spawned_walker_population(spawning_head) = nparticles
+
+! Leave the following in for debug reasons...
+! Should be removed after more testing.
+            if (abs(get_hmatel_real(cdet%f, f_new)-hmatel) > 1.e-8) then
+                write (6,*) 'oops!', get_hmatel_real(cdet%f, f_new), hmatel
+            end if
+
+        end if
+
+    end subroutine spawn_hub_real
 
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
 
@@ -392,5 +493,79 @@ contains
         end do
 
     end subroutine choose_ab_hub_k
+
+    subroutine choose_ia_hub_real(occ_list, f, i, a, nvirt_avail)
+
+        ! Find a random connected excitation from a Slater determinant for the
+        ! Hubbard model in the real space formulation.
+        ! In: 
+        !    f: bit string representation of the Slater determinant.
+        !    occ_list: integer list of the occupied spin-orbitals in 
+        !        the Slater determinant.
+        ! Returns:
+        !    i,a: spin orbitals excited from/to respectively.
+        !    nvirt_avail: the number of virtual orbitals which can be excited
+        !        into from the i-th orbital.
+
+        use basis, only: basis_length, bit_lookup, nbasis
+    
+        use dSFMT_interface, only:  genrand_real2
+
+        use basis, only: basis_length, basis_lookup
+        use bit_utils, only: count_set_bits
+        use hubbard_real, only: connected_orbs
+        use system, only: nel
+
+        integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(out) :: i, a, nvirt_avail
+        integer(i0) :: virt_avail(basis_length)
+        integer :: ipos, iel, nfound
+
+        do
+            ! Until we find an i orbital which has at least one allowed
+            ! excitation.
+
+            ! Random selection of i.
+            i = int(genrand_real2()*nel) + 1
+            i = occ_list(i)
+
+            ! Does this have at least one allowed excitation?
+            ! connected_orbs(:,i) is a bit string with the bits corresponding to
+            ! orbials connected to i set.
+            ! The complement of the determinant bit string gives the bit string
+            ! containing the virtual orbitals and thus taking the and of this
+            ! with the relevant connected_orbs element gives the bit string
+            ! containing the virtual orbitals which are connected to i.
+            ! Neat, huh?
+            virt_avail = iand(not(f), connected_orbs(:,i))
+
+            if (any(virt_avail /= 0)) then
+                ! Have found an i with at least one available orbital we can
+                ! excite into.
+                exit
+            end if
+
+        end do
+
+        ! Find a.
+        nvirt_avail = sum(count_set_bits(virt_avail))
+        a = int(genrand_real2()*nvirt_avail) + 1
+        ! Now need to find out what orbital this corresponds to...
+        nfound = 0
+        finda: do iel = 1, basis_length
+            do ipos = 0, i0_end
+                if (btest(virt_avail(iel), ipos)) then
+                    nfound = nfound + 1
+                    if (nfound == a) then
+                        ! found the orbital.
+                        a = basis_lookup(ipos, iel)
+                        exit finda
+                    end if
+                end if
+            end do
+        end do finda
+
+    end subroutine choose_ia_hub_real
 
 end module spawning

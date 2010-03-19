@@ -142,6 +142,11 @@ contains
                 call getf(shift)
             case('VARYSHIFT_TARGET')
                 call geti(target_particles)
+            case('REFERENCE_DET')
+                allocate(occ_list0(nitems-1), stat=ierr)
+                do i = 1, nitems-1
+                    call readi(occ_list0(i))
+                end do
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
