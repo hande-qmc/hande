@@ -238,7 +238,7 @@ contains
 
     end function slater_condon2_hub_k
 
-    pure function slater_condon0_hub_real(f, occ_list) result(hmatel)
+    pure function slater_condon0_hub_real(f) result(hmatel)
 
         ! In:
         !    f: bit string representation of the Slater determinant.
@@ -254,7 +254,6 @@ contains
 
         real(dp) :: hmatel
         integer, intent(in) :: f(basis_length)
-        integer, intent(in), optional :: occ_list(nel)
         integer :: root_det(nel)
         integer :: i
 
@@ -267,16 +266,10 @@ contains
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
         if (t_self_images) then
-            if (present(occ_list)) then
-                do i = 1, nel
-                    hmatel = hmatel + get_one_e_int_real(occ_list(i), occ_list(i))
-                end do
-            else
-                root_det = decode_det(f)
-                do i = 1, nel
-                    hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
-                end do
-            end if
+            root_det = decode_det(f)
+            do i = 1, nel
+                hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
+            end do
         end if
 
         ! Two electron operator

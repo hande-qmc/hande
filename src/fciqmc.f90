@@ -72,7 +72,29 @@ contains
         
     end subroutine init_fciqmc
 
-    subroutine do_fciqmc()
+    subroutine fciqmc_main()
+
+        ! Wrapper around do_fciqmc to set the appropriate procedures that are to
+        ! be called for the current fciqmc calculation.
+        ! This is a bit hacky, but avoids lots of branching due to if blocks
+        ! within the fciqmc algorithm.
+
+        use system, only: system_type, hub_k, hub_real
+        use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
+        use determinants, only: decode_det_spinocc_spinunocc
+        use projected_energy, only: update_proj_energy_hub_k, update_proj_energy_hub_real
+        use spawning, only: spawn_hub_k, spawn_hub_real
+
+        select case(system_type)
+        case(hub_k)
+            call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
+        case(hub_real)
+            call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
+        end select
+
+    end subroutine fciqmc_main
+
+    subroutine do_fciqmc(decoder, update_proj_energy, spawner, sc0)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution.
@@ -80,11 +102,40 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use death, only: stochastic_death
-        use determinants, only: det_info, decode_det_spinocc_spinunocc
-        use projected_energy, only: update_proj_energy_hub_real
-        use spawning, only: spawn_hub_real
+        use determinants, only: det_info
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
         use simple_fciqmc, only: update_shift
+
+        ! It seems this interface block cannot go in a module when we're passing
+        ! subroutines around as arguments.  Bummer.
+        ! If only procedure pointers were more commonly implemented...
+        interface
+            subroutine decoder(f,d)
+                use basis, only: basis_length
+                use const, only: i0
+                use determinants, only: det_info
+                implicit none
+                integer(i0), intent(in) :: f(basis_length)
+                type(det_info), intent(inout) :: d
+            end subroutine decoder
+            subroutine update_proj_energy(idet)
+                implicit none
+                integer, intent(in) :: idet
+            end subroutine update_proj_energy
+            subroutine spawner(d, parent_sign)
+                use determinants, only: det_info
+                implicit none
+                type(det_info), intent(in) :: d
+                integer :: parent_sign
+            end subroutine spawner
+            function sc0(f) result(hmatel)
+                use basis, only: basis_length
+                use const, only: i0, dp
+                implicit none
+                real(dp) :: hmatel
+                integer(i0), intent(in) :: f(basis_length)
+            end function sc0
+        end interface
 
         integer :: ierr
         integer :: idet, ireport, icycle, iparticle, nparticles, nparticles_old
@@ -117,16 +168,16 @@ contains
 
                     cdet%f = walker_dets(:,idet)
 
-                    call decode_det_spinocc_spinunocc(cdet%f, cdet)
+                    call decoder(cdet%f, cdet)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call update_proj_energy_hub_real(idet)
+                    call update_proj_energy(idet)
 
                     do iparticle = 1, abs(walker_population(idet))
                         
                         ! spawn
-                        call spawn_hub_real(cdet, walker_population(idet))
+                        call spawner(cdet, walker_population(idet))
 
                     end do
 
@@ -135,7 +186,7 @@ contains
 
                 end do
 
-                call direct_annihilation()
+                call direct_annihilation(sc0)
 
             end do
 
