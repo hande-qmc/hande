@@ -8,6 +8,10 @@
 
 [kspace_nontilted_2d_sfciqmc]
 
+[kspace_nontilted_2d_fciqmc]
+
+[rspace_1d_fciqmc]
+
 [rspace_nontilted_2d]
 
 [rspace_rectangle_2d_lanczos]
@@ -23,4 +27,5 @@ fci =  kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci rspace_nontilted_2
 lanczos = kspace_1d kspace_nontilted_2d_lanczos rspace_nontilted_2d rspace_rectangle_2d_lanczos
 
 sfciqmc = kspace_nontilted_2d_sfciqmc
+fciqmc = rspace_1d_fciqmc kspace_nontilted_2d_fciqmc
 fciqmc_all = kspace_nontilted_2d_sfciqmc

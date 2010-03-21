@@ -1,0 +1,21 @@
+real_space
+
+fciqmc
+u 50
+t 1
+
+lattice
+3
+electrons 3
+reference_det 2 3 5
+
+spawned_walker_length 500
+walker_length 10
+nreports 200
+mc_cycles 25
+
+tau 0.01
+varyshift_target 350
+
+ms 1
+sym 1

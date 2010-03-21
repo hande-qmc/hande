@@ -1,0 +1,20 @@
+k_space
+
+fciqmc
+
+lattice
+2 0
+0 2
+electrons 2
+
+initial_shift 0.01
+spawned_walker_length 500
+walker_length 10
+nreports 250
+mc_cycles 25
+
+tau 0.05
+varyshift_target 200
+
+ms 0
+sym 1
