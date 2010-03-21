@@ -19,8 +19,8 @@ contains
         use basis, only: basis_length
         use calc, only: sym_in, ms_in
         use determinants, only: encode_det, set_spin_polarisation, write_det
-        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real
-        use system, only: nel, nalpha, nbeta
+        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
+        use system, only: nel, nalpha, nbeta, system_type, hub_real, hub_k
 
         integer :: ierr
         integer :: i
@@ -63,7 +63,12 @@ contains
         allocate(f0(basis_length), stat=ierr)
         f0 = walker_dets(:,tot_walkers)
         ! Energy of reference determinant.
-        H00 = slater_condon0_hub_real(f0)
+        select case(system_type)
+        case(hub_k)
+            H00 = slater_condon0_hub_k(f0)
+        case(hub_real)
+            H00 = slater_condon0_hub_real(f0)
+        end select
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(walker_dets(:,tot_walkers), new_line=.true.)
