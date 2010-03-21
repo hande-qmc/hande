@@ -150,7 +150,7 @@ contains
         !    i0 bit string containing the lexicographically first permutation of n set bits.
 
         integer(i0) :: p
-        integer(i0), intent(in) :: n
+        integer, intent(in) :: n
         integer :: i
 
         p = 0

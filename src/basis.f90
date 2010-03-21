@@ -182,7 +182,7 @@ contains
         ! Note that f must be zerod before first using this procedure.
 
         integer, intent(in) :: iorb
-        integer, intent(inout) :: f(basis_length)
+        integer(i0), intent(inout) :: f(basis_length)
         integer :: pos, ind
 
         pos = bit_lookup(1,iorb)

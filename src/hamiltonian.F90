@@ -189,7 +189,7 @@ contains
         use hubbard_k, only: get_one_e_int_k, get_two_e_int_k
 
         real(dp) :: hmatel
-        integer, intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_length)
         integer :: occ_list(nel)
         integer :: i, j
 
@@ -253,7 +253,7 @@ contains
         use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
 
         real(dp) :: hmatel
-        integer, intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_length)
         integer :: root_det(nel)
         integer :: i
 

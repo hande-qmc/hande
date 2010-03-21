@@ -27,7 +27,7 @@ type det
     ! fortran numbers bits from 0...
     integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
     ! Total spin of the determinant in units of electron spin (1/2).   
-    integer(i0), pointer :: Ms => NULL()
+    integer, pointer :: Ms => NULL()
     ! Sum of wavevectors of the occupied orbitals in the Slater determinant.
     ! Refers to the wavevector of the i-th alpha spin-orbitals.
     integer, pointer :: ksum => NULL() 
