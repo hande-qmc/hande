@@ -12,12 +12,8 @@
 FCIQMC
 ------
 
-a) average projected energy
-b) new tests
-c) input options for controlling fciqmc
-d) document new options
-e) quicksort
-f) blocking script
+a) quicksort
+b) blocking script
 
 FCIQMC parallelisation
 ----------------------

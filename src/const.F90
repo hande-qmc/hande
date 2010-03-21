@@ -1,6 +1,8 @@
 module const
 ! Module containing precision of types and constant data.
 
+#include "cdefs.h"
+
 implicit none
 
 ! i0 gives the equivalent of a byte type (8 bits)
@@ -15,10 +17,15 @@ implicit none
 ! being a multiple of the number of bits in i0) can increase with the kind.
 ! However, the performance of intrinsic bit operations with 32 bit integers is
 ! far superior to that of 8 bit integers (tested on a 64-bit Xeon quad-core).
-! If this is changed then the count_set_bits function in the bit_utils module
-! must also be changed: code is provided (but commented out where appropriate)
-! for 8, 16, 32 and 64 bit integers.
-integer, parameter :: i0 = selected_int_kind(9)
+#if DET_SIZE == 8
+integer, parameter :: i0 = selected_int_kind(0)
+#elif DET_SIZE == 16
+integer, parameter :: i0 = selected_int_kind(3)
+#elif DET_SIZE == 32
+integer, parameter :: i0 = selected_int_kind(6)
+#elif DET_SIZE == 64
+integer, parameter :: i0 = selected_int_kind(10)
+#endif
 
 ! Number of bits in an integer of type i0.
 integer, parameter :: i0_length = bit_size(int(0,i0))

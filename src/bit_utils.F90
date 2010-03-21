@@ -1,5 +1,7 @@
 module bit_utils
 
+#include "cdefs.h"
+
 ! Module for bit utilities.
 
 ! Mainly mainipulate variables of type integer(i0) on a bit-wise basis
@@ -38,27 +40,32 @@ contains
         integer(i0) :: tmp
 
         ! For 8 bit integers:
-!        integer(i0), parameter :: m1 = Z'55'
-!        integer(i0), parameter :: m2 = Z'33'
-!        integer(i0), parameter :: m3 = Z'0F'
+#if DET_SIZE == 8
+        integer(i0), parameter :: m1 = Z'55'
+        integer(i0), parameter :: m2 = Z'33'
+        integer(i0), parameter :: m3 = Z'0F'
 
+#elif DET_SIZE == 16
         ! For 16 bit integers:
-!        integer(i0), parameter :: m1 = Z'5555'
-!        integer(i0), parameter :: m2 = Z'3333'
-!        integer(i0), parameter :: m3 = Z'0F0F'
-!        integer(i0), parameter :: m4 = Z'0101'
+        integer(i0), parameter :: m1 = Z'5555'
+        integer(i0), parameter :: m2 = Z'3333'
+        integer(i0), parameter :: m3 = Z'0F0F'
+        integer(i0), parameter :: m4 = Z'0101'
 
+#elif DET_SIZE == 32
         ! For 32 bit integers:
         integer(i0), parameter :: m1 = Z'55555555'
         integer(i0), parameter :: m2 = Z'33333333'
         integer(i0), parameter :: m3 = Z'0F0F0F0F'
         integer(i0), parameter :: m4 = Z'01010101'
 
+#elif DET_SIZE == 64
         ! For 64 bit integers:
-!        integer(i0), parameter :: m1 = Z'5555555555555555'
-!        integer(i0), parameter :: m2 = Z'3333333333333333'
-!        integer(i0), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
-!        integer(i0), parameter :: m4 = Z'0101010101010101'
+        integer(i0), parameter :: m1 = Z'5555555555555555'
+        integer(i0), parameter :: m2 = Z'3333333333333333'
+        integer(i0), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
+        integer(i0), parameter :: m4 = Z'0101010101010101'
+#endif
 
         ! This is quite cool.
 
@@ -95,28 +102,33 @@ contains
         !   followed by a right shift.
         ! Thus the following (extremely fast) algorithms.
 
+#if DET_SIZE == 8
         ! For 8 bit integers:
-!        tmp = tmp - iand(ishft(tmp,-1), m1)
-!        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
-!        nbits = iand(tmp + ishft(tmp,-4), m3)
+        tmp = tmp - iand(ishft(tmp,-1), m1)
+        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
+        nbits = iand(tmp + ishft(tmp,-4), m3)
 
+#elif DET_SIZE == 16
         ! For 16 bit integers:
-!        tmp = tmp - iand(ishft(tmp,-1), m1)
-!        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
-!        tmp = iand(tmp + ishft(tmp,-4), m3)*m4
-!        nbits = ishft(tmp, -8)
+        tmp = tmp - iand(ishft(tmp,-1), m1)
+        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
+        tmp = iand(tmp + ishft(tmp,-4), m3)*m4
+        nbits = ishft(tmp, -8)
 
+#elif DET_SIZE == 32
         ! For 32 bit integers:
         tmp = tmp - iand(ishft(tmp,-1), m1)
         tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
         tmp = iand((tmp + ishft(tmp,-4)), m3)*m4
         nbits = ishft(tmp, -24)
 
+#elif DET_SIZE == 64
         ! For 64 bit integers:
-!        tmp = tmp - iand(ishft(tmp,-1), m1)
-!        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
-!        tmp = iand(tmp, m3) + iand(ishft(tmp,-4), m3)
-!        nbits = ishft(tmp*m4, -56)
+        tmp = tmp - iand(ishft(tmp,-1), m1)
+        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
+        tmp = iand(tmp, m3) + iand(ishft(tmp,-4), m3)
+        nbits = ishft(tmp*m4, -56)
+#endif
 
     end function count_set_bits
 
