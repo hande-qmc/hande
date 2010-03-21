@@ -397,6 +397,20 @@ The following options are valid for FCIQMC calculations.
 
     Set the target number of particles to be reached before the shift is
     allowed to vary.  This is only checked at the end of each report loop.
+**reference_det** *electron_1 electron_2 ... electron_nel*
+    Integer list.
+
+    Default: use the first nalpha alpha spin-orbitals and first nbeta beta
+    spin-orbitals, where nalpha and nbeta are the number of alpha and beta
+    electrons respectively, as defined by the **ms** input option.  Note that
+    this can lead to using a 'bad' reference determinant which is a long way
+    from the ground state energy. This is particularly true when using the real
+    space formulation of the Hubbard model, as it causes as many sites as
+    possible to be doubly occupied.
+
+    Set the reference determinant to occupy the specified spin-orbitals.
+    The index of each spin-orbital is printed out in the basis functions
+    section of the output.
 
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
