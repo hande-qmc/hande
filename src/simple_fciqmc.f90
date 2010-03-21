@@ -104,25 +104,29 @@ contains
 
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
+        real(dp) :: inst_proj_energy
 
         call write_fciqmc_report_header()
 
         do ireport = 1, nreport
 
+            ! Zero averaged projected energy.
+            proj_energy = 0.0_dp
+
             do icycle = 1, ncycles
+
+                ! Zero instantaneous projected energy.
+                inst_proj_energy = 0.0_dp
 
                 ! Zero spawning arrays.
                 spawned_walker_population = 0
-
-                ! Zero instantaneous projected energy.
-                proj_energy = 0.0_dp
 
                 ! Consider all walkers.
                 do iwalker = 1, ndets
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(iwalker)
+                    call simple_update_proj_energy(iwalker, inst_proj_energy)
 
                     ! Simulate spawning.
                     do ipart = 1, abs(walker_population(iwalker))
@@ -134,6 +138,9 @@ contains
                     call simple_death(iwalker)
 
                 end do
+
+                ! Normalise and update running average projected energy.
+                proj_energy = proj_energy + inst_proj_energy/D0_population
 
                 call simple_annihilation()
 
@@ -149,8 +156,8 @@ contains
                 vary_shift = .true.
             end if
 
-            ! Normalise projected energy
-            proj_energy = proj_energy/D0_population
+            ! Average projected energy
+            proj_energy = proj_energy/ncycles
             
             ! Output stats
             call write_fciqmc_report(ireport, nparticles)
@@ -308,7 +315,7 @@ contains
 
     end subroutine update_shift
 
-    subroutine simple_update_proj_energy(iwalker)
+    subroutine simple_update_proj_energy(iwalker, inst_proj_energy)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -319,20 +326,24 @@ contains
         ! During a MC cycle we store
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i
         ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population.  This makes normalisation very
-        ! efficient.
+        ! N_0 is stored as D0_population (defined in fciqmc_data).  This makes
+        ! normalisation very efficient.
         ! This procedure is only for the simple fciqmc algorithm, where the
         ! Hamiltonian matrix is explicitly stored.
         ! In:
         !    iwalker: index of current determinant in the main walker list.
+        ! In/Out:
+        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
         integer, intent(in) :: iwalker
+        real(dp), intent(inout) :: inst_proj_energy
 
         if (iwalker == ref_det) then
             ! Have reference determinant.
             D0_population = walker_population(iwalker)
         else
-            proj_energy = proj_energy + hamil(iwalker,ref_det)*walker_population(iwalker)
+            inst_proj_energy = inst_proj_energy + hamil(iwalker,ref_det)*walker_population(iwalker)
         end if
 
     end subroutine simple_update_proj_energy

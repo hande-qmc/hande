@@ -118,9 +118,11 @@ contains
                 integer(i0), intent(in) :: f(basis_length)
                 type(det_info), intent(inout) :: d
             end subroutine decoder
-            subroutine update_proj_energy(idet)
+            subroutine update_proj_energy(idet, inst_proj_energy)
+                use const, only: dp
                 implicit none
                 integer, intent(in) :: idet
+                real(dp), intent(inout) :: inst_proj_energy
             end subroutine update_proj_energy
             subroutine spawner(d, parent_sign)
                 use determinants, only: det_info
@@ -140,6 +142,7 @@ contains
         integer :: ierr
         integer :: idet, ireport, icycle, iparticle, nparticles, nparticles_old
         type(det_info) :: cdet
+        real(dp) :: inst_proj_energy
 
         ! Allocate det_info components.
         allocate(cdet%f(basis_length), stat=ierr)
@@ -155,14 +158,17 @@ contains
 
         do ireport = 1, nreport
 
+            ! Zero averaged projected energy.
+            proj_energy = 0.0_dp
+
             do icycle = 1, ncycles
+
+                ! Zero instantaneous projected energy.
+                inst_proj_energy = 0.0_dp
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
                 spawning_head = 0
-
-                ! Zero instantaneous projected energy.
-                proj_energy = 0.0_dp
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -171,8 +177,9 @@ contains
                     call decoder(cdet%f, cdet)
 
                     ! It is much easier to evaluate the projected energy at the
-                    ! start of the FCIQMC cycle than at the end.
-                    call update_proj_energy(idet)
+                    ! start of the FCIQMC cycle than at the end, as we're
+                    ! already looping over the determinants.
+                    call update_proj_energy(idet, inst_proj_energy)
 
                     do iparticle = 1, abs(walker_population(idet))
                         
@@ -188,6 +195,9 @@ contains
 
                 call direct_annihilation(sc0)
 
+                ! normalise projected energy and add to running total.
+                proj_energy = proj_energy + inst_proj_energy/D0_population
+
             end do
 
             ! Update the shift
@@ -200,8 +210,8 @@ contains
                 vary_shift = .true.
             end if
 
-            ! Normalise projected energy
-            proj_energy = proj_energy/D0_population
+            ! average projected energy
+            proj_energy = proj_energy/ncycles
 
             call write_fciqmc_report(ireport, nparticles)
 

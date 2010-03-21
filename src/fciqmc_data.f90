@@ -34,13 +34,14 @@ integer :: target_particles = 10000
 real(dp) :: shift = 0.0_dp
 
 ! projected energy
-! This stores during a FCIQMC cycle
+! This stores during an FCIQMC report loop
 !   \sum_{i/=0} <D_0|H|D_i> N_i
 ! where D_0 is the reference determinants and N_i is the walker population on
 ! determinant D_i.
 ! The projected energy is given as
 !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
-! and so proj_energy must be converted accordingly.
+! and so proj_energy must be 'normalised' and averaged over the report loops
+! accordingly.
 real(dp) :: proj_energy
 
 !--- Walker data ---

@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine update_proj_energy_hub_k(idet)
+    subroutine update_proj_energy_hub_k(idet, inst_proj_energy)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -24,10 +24,14 @@ contains
         ! This procedure is for the Hubbard model in momentum space only.
         ! In:
         !    idet: index of current determinant in the main walker list.
+        ! In/Out:
+        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
         use hamiltonian, only: slater_condon2_hub_k
 
         integer, intent(in) :: idet
+        real(dp), intent(inout) :: inst_proj_energy
         type(excit) :: excitation
         real(dp) :: hmatel
 
@@ -41,12 +45,12 @@ contains
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            proj_energy = proj_energy + hmatel*walker_population(idet)
+            inst_proj_energy = inst_proj_energy + hmatel*walker_population(idet)
         end if
 
     end subroutine update_proj_energy_hub_k
 
-    subroutine update_proj_energy_hub_real(idet)
+    subroutine update_proj_energy_hub_real(idet, inst_proj_energy)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -62,10 +66,14 @@ contains
         ! This procedure is for the Hubbard model in real space only.
         ! In:
         !    idet: index of current determinant in the main walker list.
+        ! In/Out:
+        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
         use hamiltonian, only: slater_condon1_hub_real
 
         integer, intent(in) :: idet
+        real(dp), intent(inout) :: inst_proj_energy
         type(excit) :: excitation
         real(dp) :: hmatel
 
@@ -78,7 +86,7 @@ contains
             ! Have a determinant connected to the reference determinant: add to 
             ! projected energy.
             hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            proj_energy = proj_energy + hmatel*walker_population(idet)
+            inst_proj_energy = inst_proj_energy + hmatel*walker_population(idet)
         end if
 
     end subroutine update_proj_energy_hub_real
