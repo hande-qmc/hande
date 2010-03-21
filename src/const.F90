@@ -34,10 +34,19 @@ integer, parameter :: i0_length = bit_size(int(0,i0))
 ! (Bit indexing in fortran ranges from 0 to bit_size-1.)
 integer, parameter :: i0_end = bit_size(int(0,i0))-1
 
+! Single precision kind.
+integer, parameter :: sp = selected_real_kind(6,37)
 ! Double precision kind.
-! If this is changed then the lapack and scalapack calls must also be changed
-! accordingly.
 integer, parameter :: dp = selected_real_kind(15,307)
+
+! Compile time choice of precision level.
+! We use p for all real kinds unless double precision is *absolutely* required
+! by the algorithm (e.g. the Mersenne Twister RNG).
+#ifdef SINGLE_PRECISION
+integer, parameter :: p = sp
+# else
+integer, parameter :: p = dp
+#endif
 
 real(dp), parameter :: pi = 3.1415926535897931_dp
 
