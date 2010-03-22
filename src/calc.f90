@@ -28,7 +28,7 @@ integer :: sym_in = huge(1)
 ! size is horrendous.  We only store one symmetry block at a time though.
 ! Best contained within a module to allow easy access from the Lanczos
 ! matrix-vector multiplication routines.
-real(dp), allocatable :: hamil(:,:) ! (ndets, ndets)
+real(p), allocatable :: hamil(:,:) ! (ndets, ndets)
 
 ! If true, then the eigenvectors are found during exact diagonalisation as well
 ! as the eigenvalues.  Doing this is substantially more expensive.

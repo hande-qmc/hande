@@ -21,7 +21,7 @@ type basis_fn
     ! Spin of the electron (1 or -1).
     integer :: ms
     ! Kinetic energy.
-    real(dp) :: kinetic
+    real(p) :: kinetic
 end type basis_fn
 
 ! Store of information about the (spin) basis functions of the system.
@@ -96,7 +96,7 @@ contains
             if (system_type /= hub_real) then
                 b%kinetic = calc_kinetic(l)
             else
-                b%kinetic = 0.0_dp
+                b%kinetic = 0.0_p
             end if
         end if
 

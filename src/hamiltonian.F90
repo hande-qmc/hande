@@ -26,7 +26,7 @@ contains
         ! but enables us to use only one test for the system type.  A small
         ! efficiency for not much effort. :-)
 
-        real(dp) :: hmatel
+        real(p) :: hmatel
         integer, intent(in) :: d1, d2
 
         select case(system_type)
@@ -52,12 +52,12 @@ contains
 
         use excitations, only: excit, get_excitation
 
-        real(dp) :: hmatel
+        real(p) :: hmatel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         logical :: non_zero
         type(excit) :: excitation
 
-        hmatel = 0.0_dp
+        hmatel = 0.0_p
         non_zero = .false.
 
         ! Test to see if Hamiltonian matrix element is non-zero.
@@ -127,12 +127,12 @@ contains
 
         use excitations, only: excit, get_excitation
 
-        real(dp) :: hmatel
+        real(p) :: hmatel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         logical :: non_zero
         type(excit) :: excitation
 
-        hmatel = 0.0_dp
+        hmatel = 0.0_p
         non_zero = .false.
 
         ! Test to see if Hamiltonian matrix element is non-zero.
@@ -188,7 +188,7 @@ contains
 
         use hubbard_k, only: get_one_e_int_k, get_two_e_int_k
 
-        real(dp) :: hmatel
+        real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
         integer :: occ_list(nel)
         integer :: i, j
@@ -196,7 +196,7 @@ contains
         occ_list = decode_det(f)
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-        hmatel = 0.0_dp
+        hmatel = 0.0_p
 
         ! One electron operator
         do i = 1, nel
@@ -228,7 +228,7 @@ contains
 
         use hubbard_k, only: get_two_e_int_k
 
-        real(dp) :: hmatel
+        real(p) :: hmatel
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
@@ -252,13 +252,13 @@ contains
 
         use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
 
-        real(dp) :: hmatel
+        real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
         integer :: root_det(nel)
         integer :: i
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-        hmatel = 0.0_dp
+        hmatel = 0.0_p
 
         ! < i | T | i > = 0 within the real space formulation of the
         ! Hubbard model, unless site i is its own periodic image, in
@@ -292,7 +292,7 @@ contains
 
         use hubbard_real, only: get_one_e_int_real
 
-        real(dp) :: hmatel
+        real(p) :: hmatel
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 

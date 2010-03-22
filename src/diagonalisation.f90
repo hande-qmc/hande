@@ -29,7 +29,7 @@ contains
 
         type soln
             integer :: ms
-            real(dp) :: energy
+            real(p) :: energy
         end type soln
 
         integer :: ms, ms_min, ms_max, ierr, nlanczos, nexact, nfound, i, ind, state, isym, sym_min, sym_max
@@ -37,7 +37,8 @@ contains
         type(soln), allocatable :: lanczos_solns(:), exact_solns(:)
 
         ! For communication with Lanczos and exact diagonalisers.
-        real(dp), allocatable :: eigv(:)
+        real(dp), allocatable :: lanczos_eigv(:)
+        real(p), allocatable :: exact_eigv(:)
 
         ! For sorting the solutions by energy rather than by energy within each
         ! spin block.
@@ -130,34 +131,34 @@ contains
 
                 else
 
-                    allocate(eigv(ndets), stat=ierr)
-
                     if (nprocs == 1) call generate_hamil(distribute_off)
 
                     ! Lanczos.
                     if (t_lanczos) then
+                        allocate(lanczos_eigv(ndets), stat=ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
                         if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
-                        call lanczos_diagonalisation(nfound, eigv)
-                        lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = eigv(:nfound)
+                        call lanczos_diagonalisation(nfound, lanczos_eigv)
+                        lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = lanczos_eigv(:nfound)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
                         nlanczos = nlanczos + nfound
+                        deallocate(lanczos_eigv)
                     end if
 
                     ! Exact diagonalisation.
                     ! Warning: this destroys the Hamiltonian matrix...
                     if (t_exact) then
+                        allocate(exact_eigv(ndets), stat=ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
                         if (nprocs > 1) call generate_hamil(distribute_blocks)
-                        call exact_diagonalisation(eigv)
-                        exact_solns(nexact+1:nexact+ndets)%energy = eigv
+                        call exact_diagonalisation(exact_eigv)
+                        exact_solns(nexact+1:nexact+ndets)%energy = exact_eigv
                         exact_solns(nexact+1:nexact+ndets)%ms = ms 
                         nexact = nexact + ndets
+                        deallocate(exact_eigv)
                     end if
-
-                    deallocate(eigv)
 
                 end if
 

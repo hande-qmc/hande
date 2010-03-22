@@ -17,11 +17,11 @@ contains
         ! Returns:
         !    The kinetic energy associated with a given wavevector.
 
-        real(dp) :: kinetic
+        real(p) :: kinetic
 
         integer, intent(in) :: k(ndim)
         integer :: i
-        real(dp) :: kc(ndim)
+        real(p) :: kc(ndim)
 
         forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
 
@@ -43,7 +43,7 @@ contains
 
         logical :: t_rlv
         integer, intent(in) :: k(ndim)
-        real(dp) :: kc(ndim)
+        real(p) :: kc(ndim)
         integer :: i
 
         if (all(k == 0)) then

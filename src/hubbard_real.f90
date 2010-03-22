@@ -50,7 +50,7 @@ contains
         integer :: i, j, ierr, pos, ind, ivec
         integer :: r(ndim)
 
-        t_self_images = any(abs(box_length-1.0_dp) < depsilon)
+        t_self_images = any(abs(box_length-1.0_p) < depsilon)
 
         allocate(tmat(basis_length,nbasis), stat=ierr)
         allocate(connected_orbs(basis_length,nbasis), stat=ierr)
@@ -120,11 +120,11 @@ contains
         use basis, only: basis_fns, bit_lookup
         use system, only: hubt
 
-        real(dp) :: one_e_int
+        real(p) :: one_e_int
         Integer, intent(in) ::  i,j
         integer :: ind, pos
 
-        one_e_int = 0.0_dp
+        one_e_int = 0.0_p
 
         ! Need to check if i and j are on sites which are nearest neighbours
         ! either directly or due to periodic boundary conditions.
@@ -154,7 +154,7 @@ contains
         use bit_utils, only: count_set_bits
         use determinants, only: beta_mask
 
-        real(dp) :: umatel
+        real(p) :: umatel
         integer(i0), intent(in) :: f(basis_length)
         integer :: i
         integer(i0) :: b
@@ -168,7 +168,7 @@ contains
         ! 4. The non-zero bits represent a sites which have both alpha and beta
         !    orbitals occupied.
         ! 5. Hence < D | U | D >.
-        umatel = 0.0_dp
+        umatel = 0.0_p
         do i = 1, basis_length
             b = iand(f(i), beta_mask)
             umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))

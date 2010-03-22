@@ -31,9 +31,9 @@ contains
         use hamiltonian, only: slater_condon2_hub_k
 
         integer, intent(in) :: idet
-        real(dp), intent(inout) :: inst_proj_energy
+        real(p), intent(inout) :: inst_proj_energy
         type(excit) :: excitation
-        real(dp) :: hmatel
+        real(p) :: hmatel
 
         excitation = get_excitation(walker_dets(:,idet), f0)
 
@@ -73,9 +73,9 @@ contains
         use hamiltonian, only: slater_condon1_hub_real
 
         integer, intent(in) :: idet
-        real(dp), intent(inout) :: inst_proj_energy
+        real(p), intent(inout) :: inst_proj_energy
         type(excit) :: excitation
-        real(dp) :: hmatel
+        real(p) :: hmatel
 
         excitation = get_excitation(walker_dets(:,idet), f0)
 

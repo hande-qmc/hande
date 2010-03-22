@@ -394,7 +394,7 @@ contains
         use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
         use symmetry, only: sym_table, inv_sym
 
-        real(dp) :: pgen
+        real(p) :: pgen
         integer, intent(in) :: ab_sym
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_alpha(nvirt_alpha), unocc_beta(nvirt_beta)
@@ -467,7 +467,7 @@ contains
             if (btest(f(a_el), a_pos)) forbidden_excitations = forbidden_excitations + 1
         end do
 
-        pgen = 2.0_dp/(nalpha*nbeta*(nbasis-nel-forbidden_excitations))
+        pgen = 2.0_p/(nalpha*nbeta*(nbasis-nel-forbidden_excitations))
 
     end function calc_pgen_hub_k
 
@@ -477,7 +477,7 @@ contains
         use system, only: nel
         use hubbard_real, only: connected_orbs
 
-        real(dp) :: pgen
+        real(p) :: pgen
         integer, intent(in) :: occ_list(nel)
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: nvirt_avail
@@ -516,7 +516,7 @@ contains
             end if
         end do
 
-        pgen = 1.0_dp/(nvirt_avail * (nel - no_excit))
+        pgen = 1.0_p/(nvirt_avail * (nel - no_excit))
 
     end function calc_pgen_hub_real
 

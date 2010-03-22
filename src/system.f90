@@ -26,12 +26,12 @@ integer :: nsites
 integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
 ! Lengths of lattice vectors.
-real(dp), allocatable :: box_length(:) ! ndim.
+real(p), allocatable :: box_length(:) ! ndim.
 
 ! As we are working in an orthogonal space, the reciprocal lattice vectors are
 ! easily obtained:
 ! b_i = 2\pi/|a_i|^2 a_i
-real(dp), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
+real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
 ! # of electrons
 integer :: nel = 0 
@@ -45,11 +45,11 @@ integer :: nvirt_alpha, nvirt_beta
 
 ! Hubbard T and U parameters specifying the kinetic energy and Coulomb
 ! interaction respectively.
-real(dp) :: hubu = 1, hubt = 1
+real(p) :: hubu = 1, hubt = 1
 
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
 ! is constant, so it's convenient to store it.
-real(dp) :: hub_k_coulomb
+real(p) :: hub_k_coulomb
 
 contains
 
@@ -62,7 +62,7 @@ contains
         allocate(box_length(ndim), stat=ierr)
         allocate(rlattice(ndim,ndim), stat=ierr)
 
-        forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),dp))
+        forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),p))
         nsites = nint(product(box_length))
         forall (ivec=1:ndim) rlattice(:,ivec) = lattice(:,ivec)/box_length(ivec)**2
 
@@ -101,7 +101,7 @@ contains
         ! This test only works because the underlying lattice is orthogonal.
         ! The asymmetry of the boundary conditions prevent the acceptance of
         ! all wavevectors on the boundaries...
-        in_FBZ = all(kc<=(0.50_dp+depsilon)).and.all(kc>(-0.50_dp))
+        in_FBZ = all(kc<=(0.50_p+depsilon)).and.all(kc>(-0.50_p))
 
     end function in_FBZ
 

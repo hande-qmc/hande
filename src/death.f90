@@ -18,7 +18,8 @@ contains
         use dSFMT_interface, only: genrand_real2
 
         integer, intent(in) :: cpos
-        real(dp) :: pd, r
+        real(p) :: pd
+        real(dp) :: r
         integer :: current_pop, new_pop, kill
 
         ! Optimisation: the number of particles on a given determinant can die
@@ -39,7 +40,7 @@ contains
         pd = pd - kill ! Remaining chance...
         r = genrand_real2()
         if (abs(pd) > r) then
-            if (pd > 0.0_dp) then
+            if (pd > 0.0_p) then
                 ! die die die!
                 kill = kill + 1
             else

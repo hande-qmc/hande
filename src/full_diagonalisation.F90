@@ -24,8 +24,8 @@ contains
         use calc
         use determinants, only: ndets
 
-        real(dp), intent(out) :: eigv(ndets)
-        real(dp), allocatable :: work(:), eigvec(:,:)
+        real(p), intent(out) :: eigv(ndets)
+        real(p), allocatable :: work(:), eigvec(:,:)
         integer :: info, ierr, lwork
         integer :: i
         character(1) :: job
@@ -49,14 +49,24 @@ contains
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         if (nprocs == 1) then
+#ifdef SINGLE_PRECISION
+            call ssyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
+#else
             call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
+#endif
         else
 #ifdef _PARALLEL
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Part of matrix on this processor.
+#ifdef SINGLE_PRECISION
+                call pssyev(job, 'U', ndets, hamil, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, work, -1, info)
+#else
                 call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                             proc_blacs_info%desc_m, work, -1, info)
+#endif
             end if
 #endif
         end if
@@ -69,15 +79,25 @@ contains
 
         if (nprocs == 1) then
             ! Use lapack.
+#ifdef SINGLE_PRECISION
+            call ssyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+#else
             call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+#endif
         else
 #ifdef _PARALLEL
             ! Use scalapack to do the diagonalisation in parallel.
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Part of matrix on this processor.
+#ifdef SINGLE_PRECISION
+                call pssyev(job, 'U', ndets, hamil, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, work, lwork, info)
+#else
                 call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                             proc_blacs_info%desc_m, work, lwork, info)
+#endif
             end if
 #endif
         end if

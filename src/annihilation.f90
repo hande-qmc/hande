@@ -12,9 +12,9 @@ contains
         interface
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
-                use const, only: i0, dp
+                use const, only: i0, p
                 implicit none
-                real(dp) :: hmatel
+                real(p) :: hmatel
                 integer(i0), intent(in) :: f(basis_length)
             end function sc0
         end interface
@@ -161,9 +161,9 @@ contains
         interface
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
-                use const, only: i0, dp
+                use const, only: i0, p
                 implicit none
-                real(dp) :: hmatel
+                real(p) :: hmatel
                 integer(i0), intent(in) :: f(basis_length)
             end function sc0
         end interface

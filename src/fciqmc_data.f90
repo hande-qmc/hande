@@ -16,7 +16,7 @@ integer :: ncycles
 integer :: nreport
 
 ! timestep
-real(dp) :: tau
+real(p) :: tau
 
 ! Array sizes
 integer :: walker_length
@@ -31,7 +31,7 @@ integer :: target_particles = 10000
 !--- Energy data ---
 
 ! shift
-real(dp) :: shift = 0.0_dp
+real(p) :: shift = 0.0_p
 
 ! projected energy
 ! This stores during an FCIQMC report loop
@@ -42,7 +42,7 @@ real(dp) :: shift = 0.0_dp
 !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
 ! and so proj_energy must be 'normalised' and averaged over the report loops
 ! accordingly.
-real(dp) :: proj_energy
+real(p) :: proj_energy
 
 !--- Walker data ---
 
@@ -54,7 +54,7 @@ integer, allocatable :: walker_population(:) ! (walker_length)
 ! c) Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 ! K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
 ! reference determinant.
-real(dp), allocatable :: walker_energies(:)
+real(p), allocatable :: walker_energies(:)
 
 ! Walker information: spawned list.
 ! a) determinants.
@@ -76,7 +76,7 @@ integer, allocatable :: occ_list0(:)
 integer :: D0_population
 
 ! Energy of reference determinant.
-real(dp) :: H00
+real(p) :: H00
 
 !--- Simple FCIQMC ---
 

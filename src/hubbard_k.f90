@@ -18,14 +18,14 @@ contains
 
         use basis
 
-        real(dp) :: one_e_int
+        real(p) :: one_e_int
         integer, intent(in) :: phi1, phi2
 
         ! T is diagonal in the basis of momentum-space functions.
         if (phi1 == phi2) then
             one_e_int = basis_fns(phi1)%kinetic
         else
-            one_e_int = 0.0_dp
+            one_e_int = 0.0_p
         end if
 
     end function get_one_e_int_k
@@ -43,11 +43,11 @@ contains
         use basis
         use system
 
-        real(dp) :: two_e_int
+        real(p) :: two_e_int
         integer, intent(in) :: phi1, phi2, phi3, phi4
 
         ! <phi1 phi2 || phi3 phi4>
-        two_e_int = 0.0_dp
+        two_e_int = 0.0_p
 
         ! The integral < k_1 k_2 | U | k_3 k_4 > = U/N \delta_{k_1+k2,k_3+k_4}
         ! where the delta function requires crystal momentum is conserved up to

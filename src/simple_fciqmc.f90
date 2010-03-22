@@ -104,19 +104,19 @@ contains
 
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
-        real(dp) :: inst_proj_energy
+        real(p) :: inst_proj_energy
 
         call write_fciqmc_report_header()
 
         do ireport = 1, nreport
 
             ! Zero averaged projected energy.
-            proj_energy = 0.0_dp
+            proj_energy = 0.0_p
 
             do icycle = 1, ncycles
 
                 ! Zero instantaneous projected energy.
-                inst_proj_energy = 0.0_dp
+                inst_proj_energy = 0.0_p
 
                 ! Zero spawning arrays.
                 spawned_walker_population = 0
@@ -181,8 +181,8 @@ contains
         integer, intent(in) :: iwalker
 
         integer :: j, nspawn
-        real(dp) :: rate
-        real(dp) :: r
+        real(p) :: rate
+        real(p) :: r
 
         ! Simulate spawning by attempting to spawn on all
         ! connected determinants.
@@ -191,7 +191,7 @@ contains
             ! Can't spawn onto self.
             if (iwalker == j) cycle
             ! Can't spawn onto disconnected dets
-            if (hamil(iwalker,j) == 0.0_dp) cycle
+            if (hamil(iwalker,j) == 0.0_p) cycle
 
             ! Attempt spawning.
             ! Spawn with probability tau|K_ij|.
@@ -204,7 +204,7 @@ contains
             if (rate > r) nspawn = nspawn + 1
 
             ! Create particles.
-            if (hamil(iwalker,j) > 0.0_dp) then
+            if (hamil(iwalker,j) > 0.0_p) then
                 ! Flip child sign.
                 if (walker_population(iwalker) < 0) then
                     ! Positive offspring.
@@ -235,7 +235,7 @@ contains
         integer, intent(in) :: iwalker
 
         integer :: nkill
-        real(dp) :: rate
+        real(p) :: rate
         real(dp) :: r
 
         ! A particle dies with probability, p_d, given by
@@ -253,7 +253,7 @@ contains
         ! Additional stochasitic death?
         r = genrand_real2()
         if (abs(rate) > r) then
-            if (rate > 0.0_dp) then
+            if (rate > 0.0_p) then
                 nkill = nkill + 1
             else
                 nkill = nkill - 1
@@ -309,7 +309,7 @@ contains
         integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
 
         ! This should be changed into an input option when necessary.
-        real(dp) :: shift_damping = 0.050_dp
+        real(p) :: shift_damping = 0.050_p
 
         shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*nupdate_steps)
 
@@ -337,7 +337,7 @@ contains
         !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
         integer, intent(in) :: iwalker
-        real(dp), intent(inout) :: inst_proj_energy
+        real(p), intent(inout) :: inst_proj_energy
 
         if (iwalker == ref_det) then
             ! Have reference determinant.

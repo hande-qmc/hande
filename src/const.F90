@@ -48,9 +48,9 @@ integer, parameter :: p = sp
 integer, parameter :: p = dp
 #endif
 
-real(dp), parameter :: pi = 3.1415926535897931_dp
+real(p), parameter :: pi = 3.1415926535897931_p
 
 ! depsilon is the precision used to compare floating point numbers.
-real(dp), parameter :: depsilon = 1.e-8
+real(p), parameter :: depsilon = 1.e-8
 
 end module const

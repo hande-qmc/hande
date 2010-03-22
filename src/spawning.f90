@@ -46,7 +46,7 @@ contains
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
 
-        real(dp) :: pgen, psuccess, pspawn
+        real(p) :: pgen, psuccess, pspawn
         integer :: i, j, a, b, ij_sym, nparticles, s, tmp
         integer(i0) :: f_new(basis_length)
         type(excit) :: connection
@@ -205,7 +205,7 @@ contains
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
 
-        real(dp) :: pgen, psuccess, pspawn, hmatel
+        real(p) :: pgen, psuccess, pspawn, hmatel
         integer :: i, a, nparticles
         integer(i0) :: f_new(basis_length)
         type(excit) :: connection
@@ -252,7 +252,7 @@ contains
             ! 6. If H_ij is positive, then the spawned walker is of opposite
             ! sign to the parent, otherwise the spawned walkers if of the same
             ! sign as the parent.
-            if (hmatel > 0.0_dp) then
+            if (hmatel > 0.0_p) then
                 nparticles = -sign(nparticles, parent_sign)
             else
                 nparticles = sign(nparticles, parent_sign)
@@ -331,7 +331,7 @@ contains
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
-        i = int(1.50_dp + sqrt(2*ind-1.750_dp))
+        i = int(1.50_p + sqrt(2*ind-1.750_p))
         j = ind - ((i-1)*(i-2))/2
 
         ! i,j are the electrons we're exciting.  Find the occupied corresponding
@@ -404,7 +404,7 @@ contains
         ! rather than the spin-orbitals.
 
         ind = int(r*nalpha*nbeta) + 1
-        i = int( (ind-1.0_dp)/nbeta ) + 1
+        i = int( (ind-1.0_p)/nbeta ) + 1
         j = ind - (i-1)*nbeta
 
         ! i,j are the electrons we're exciting.  Find the occupied corresponding

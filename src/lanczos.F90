@@ -144,8 +144,22 @@ contains
         integer, intent(in) :: nrow, ncol, ldx, ldy
         real(dp), intent(in) :: xin(ldx,ncol)
         real(dp), intent(out) :: yout(ldy,ncol)
+#ifdef SINGLE_PRECISION
+        real(p) :: xin_p(ldx,ncol)
+        real(p) :: yout_p(ldy,ncol)
+#endif
         ! local variables
         integer :: i
+
+        ! TRLan requires an interface with xin and yout being double precision.
+        ! This is not conducive with running in single precision, where we only
+        ! store the Hamiltonian in single precision.  Calling BLAS with
+        ! arguments of the wrong kind really screws things up (as you can
+        ! imagine...) so we work round it by doing copies to/from the
+        ! single-precision equivalents of the input/output variables.
+#ifdef SINGLE_PRECISION
+        xin_p = xin
+#endif
 
         if (nprocs == 1) then
             ! Use blas to perform matrix-vector multiplication.
@@ -153,7 +167,11 @@ contains
                 ! y = H x,
                 ! where H is the Hamiltonian matrix, x is the input Lanczos vector
                 ! and y the output Lanczos vector.
+#ifdef SINGLE_PRECISION
+                call ssymv('U', nrow, 1.0_p, hamil, nrow, xin_p(:,i), 1, 0.0_p, yout_p(:,i), 1)
+#else
                 call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
+#endif
             end do
         else
 #ifdef _PARALLEL
@@ -164,16 +182,31 @@ contains
                     ! y = H x,
                     ! where H is the Hamiltonian matrix, x is the input Lanczos vector
                     ! and y the output Lanczos vector.
-                    call pdsymv('U', ndets, 1.0_8, hamil, 1, 1,                 &
-                                proc_blacs_info%desc_m, xin(:,i), 1, 1,         &
-                                proc_blacs_info%desc_v, 1, 0.0_8, yout(:,i), 1, &
+#ifdef SINGLE_PRECISION
+                    call pssymv('U', ndets, 1.0_p, hamil, 1, 1,                   &
+                                proc_blacs_info%desc_m, xin_p(:,i), 1, 1,         &
+                                proc_blacs_info%desc_v, 1, 0.0_p, yout_p(:,i), 1, &
                                 1, proc_blacs_info%desc_v, 1)
+#else
+                    call pdsymv('U', ndets, 1.0_dp, hamil, 1, 1,                 &
+                                proc_blacs_info%desc_m, xin(:,i), 1, 1,          &
+                                proc_blacs_info%desc_v, 1, 0.0_dp, yout(:,i), 1, &
+                                1, proc_blacs_info%desc_v, 1)
+#endif
                 end do
             else
+#ifdef SINGLE_PRECISION
+                yout_p = 0.0_p
+#else
                 yout = 0.0_dp
+#endif
             end if
 #endif
         end if
+
+#ifdef SINGLE_PRECISION
+        yout = yout_p
+#endif
  
     end subroutine HPsi
 

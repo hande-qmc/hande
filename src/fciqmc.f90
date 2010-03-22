@@ -57,7 +57,7 @@ contains
 
         walker_dets(:,tot_walkers) = encode_det(occ_list0)
 
-        walker_energies(tot_walkers) = 0.0_dp
+        walker_energies(tot_walkers) = 0.0_p
 
         ! Reference det
         allocate(f0(basis_length), stat=ierr)
@@ -124,10 +124,10 @@ contains
                 type(det_info), intent(inout) :: d
             end subroutine decoder
             subroutine update_proj_energy(idet, inst_proj_energy)
-                use const, only: dp
+                use const, only: p
                 implicit none
                 integer, intent(in) :: idet
-                real(dp), intent(inout) :: inst_proj_energy
+                real(p), intent(inout) :: inst_proj_energy
             end subroutine update_proj_energy
             subroutine spawner(d, parent_sign)
                 use determinants, only: det_info
@@ -137,9 +137,9 @@ contains
             end subroutine spawner
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
-                use const, only: i0, dp
+                use const, only: i0, p
                 implicit none
-                real(dp) :: hmatel
+                real(p) :: hmatel
                 integer(i0), intent(in) :: f(basis_length)
             end function sc0
         end interface
@@ -147,7 +147,7 @@ contains
         integer :: ierr
         integer :: idet, ireport, icycle, iparticle, nparticles, nparticles_old
         type(det_info) :: cdet
-        real(dp) :: inst_proj_energy
+        real(p) :: inst_proj_energy
 
         ! Allocate det_info components.
         allocate(cdet%f(basis_length), stat=ierr)
@@ -164,12 +164,12 @@ contains
         do ireport = 1, nreport
 
             ! Zero averaged projected energy.
-            proj_energy = 0.0_dp
+            proj_energy = 0.0_p
 
             do icycle = 1, ncycles
 
                 ! Zero instantaneous projected energy.
-                inst_proj_energy = 0.0_dp
+                inst_proj_energy = 0.0_p
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
