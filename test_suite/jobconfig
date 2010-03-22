@@ -28,4 +28,4 @@ lanczos = kspace_1d kspace_nontilted_2d_lanczos rspace_nontilted_2d rspace_recta
 
 sfciqmc = kspace_nontilted_2d_sfciqmc
 fciqmc = rspace_1d_fciqmc kspace_nontilted_2d_fciqmc
-fciqmc_all = kspace_nontilted_2d_sfciqmc
+fciqmc_all = kspace_nontilted_2d_sfciqmc fciqmc
