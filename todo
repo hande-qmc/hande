@@ -1,19 +1,20 @@
 1.  option to obtain eigenvalues (default) or eigenvectors as well.
-2.  timing
-3.  memory logging
-4.  checktest
+2.  timing.
+3.  memory logging.
+4.  checktest.
 5.  block diagonalise hamiltonian matrix for k inversion and spin inversion.
 6.  parallel direct lanczos.
 7.  UEG.
-8.  Mixed precision.
-9.  Compile time selection of bit string length.
-10. Improve selection of calculation: bit string store.
+8.  Improve selection of calculation: bit string variable rather than many logic flags.
+9.  Better name?
 
 FCIQMC
 ------
 
-a) quicksort
+a) quicksort (see iterative implementation in OMP library---compare to that of NR?)
 b) blocking script
+c) binary search
+d) restart
 
 FCIQMC parallelisation
 ----------------------
