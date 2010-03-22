@@ -717,4 +717,34 @@ contains
 
     end function det_gt
 
+    pure function det_compare(f1, f2) result(compare)
+
+        ! In:
+        !    f1(basis_length): bit string representation of the Slater
+        !        determinant.
+        !    f2(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Returns:
+        !    0 if f1 and f2 are identical;
+        !    1 if the first non-identical element in f1 is smaller than the
+        !    corresponding element in f2;
+        !    -1 if the first non-identical element in f1 is greater than the
+        !    corresponding element in f2;
+
+        integer :: compare
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+
+        integer :: i
+
+        compare = 0
+        do i = 1, basis_length
+            if (f1(i) < f2(i)) then
+                compare = 1
+            else if (f1(i) > f2(i)) then
+                compare = -1
+            end if
+        end do
+
+    end function det_compare
+
 end module determinants

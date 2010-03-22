@@ -123,14 +123,11 @@ contains
 
     end subroutine sort_spawned_lists
 
-    subroutine search_walker_list(f, istart, iend, hit, pos)
+    pure subroutine search_walker_list(f, istart, iend, hit, pos)
 
         ! Find where a determinant belongs in the main walker list.
         ! Only elements between istart and iend are examined (use the 
         ! array boundaries in the worst case).
-        !
-        ! This currently uses a linear search and should be changed to a binary
-        ! search algorithm for efficiency.
         !
         ! In:
         !    f: bit string representation of the Slater determinant.
@@ -144,29 +141,80 @@ contains
         !        this is where f should go to keep the main walker list sorted.
 
         use basis, only: basis_length
-        use determinants, only: det_gt
+        use determinants, only: det_compare
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: istart, iend
         logical, intent(out) :: hit
         integer, intent(out) :: pos
 
-        integer :: i
+        integer :: hi, lo, compare
 
-        ! Assume it should go at the end to start with...
-        pos = iend + 1
-        hit = .false.
-        do i = istart, iend
-            if (all(walker_dets(:,i) == f)) then
-                hit = .true.
-                pos = i
-                exit
-            else if (det_gt(walker_dets(:,i),f)) then
-                hit = .false.
-                pos = i
-                exit
+        if (istart > iend) then
+
+            ! Already know the element has to be appended to the list.
+            ! This should only occur if istart = iend + 1.
+            pos = istart
+            hit = .false.
+            
+        else
+
+            ! Search range.
+            lo = istart
+            hi = iend
+
+            ! Assume f doesn't exist in the main walkers list initially.
+            hit = .false.
+
+            do while (hi /= lo)
+                ! Narrow the search range down in steps.
+
+                ! Mid-point.
+                ! We shift one of the search limits to be the mid-point.
+                ! The successive dividing the search range by 2 gives a O[log N]
+                ! search algorithm.
+                pos = (hi+lo)/2
+
+                compare = det_compare(walker_dets(:,pos), f)
+                select case(compare)
+                case (0)
+                    ! hit!
+                    hit = .true.
+                    exit
+                case(1)
+                    ! walker_dets(:,pos) is "smaller" than f.
+                    lo = pos + 1
+                case(-1)
+                    ! walker_dets(:,pos) is "greater" than f.
+                    hi = pos
+                end select
+
+            end do
+
+            ! If hi == lo, then we have narrowed the search down to one position but
+            ! not checked if that position is the item we're hunting for.
+            ! Because walker_dets can expand (i.e. we might be searching for an
+            ! element which doesn't exist yet) the binary search can find either
+            ! the element before or after where f should be placed.
+            if (hi == lo) then
+                compare = det_compare(walker_dets(:,hi), f)
+                select case(compare)
+                case (0)
+                    ! hit!
+                    hit = .true.
+                    pos = hi
+                case(1)
+                    ! walker_dets(:,pos) is "smaller" than f.
+                    ! f should be placed in the next slot.
+                    pos = hi + 1
+                case(-1)
+                    ! walker_dets(:,pos) is "greater" than f.
+                    ! f should ber placed here.
+                    pos = hi
+                end select
             end if
-        end do
+
+        end if
 
     end subroutine search_walker_list
 
