@@ -218,14 +218,14 @@ contains
         end do
 
 ! DEBUG test only: verify
-        tmp_det = spawned_walker_dets(:,1)
-        do i = 2, spawning_head
-            if (tmp_det .detgt. spawned_walker_dets(:,i)) then
-                write (6,*) 'error sorting'
-                stop
-            end if
-            tmp_det = spawned_walker_dets(:,i)
-        end do
+!        tmp_det = spawned_walker_dets(:,1)
+!        do i = 2, spawning_head
+!            if (tmp_det .detgt. spawned_walker_dets(:,i)) then
+!                write (6,*) 'error sorting'
+!                stop
+!            end if
+!            tmp_det = spawned_walker_dets(:,i)
+!        end do
 
     contains
 

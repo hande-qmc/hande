@@ -41,7 +41,7 @@ contains
         use basis, only: basis_length
 
         ! for debug only.
-        use hamiltonian, only: get_hmatel_k
+!        use hamiltonian, only: get_hmatel_k
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -167,13 +167,13 @@ contains
 
 ! Leave the following in for debug reasons...
 ! Should be removed after more testing.
-            if (abs(get_hmatel_k(cdet%f,f_new)-s*hub_k_coulomb) > 1.e-10) then
-                write (6,*) 'huh?',get_hmatel_k(cdet%f,f_new), s*hub_k_coulomb,s
-                write (6,*) cdet%occ_list
-                write (6,*) i,j,a,b
-                write (6,*) connection%perm, mod(i-a,2) /= 0
-                stop
-            end if
+!            if (abs(get_hmatel_k(cdet%f,f_new)-s*hub_k_coulomb) > 1.e-10) then
+!                write (6,*) 'huh?',get_hmatel_k(cdet%f,f_new), s*hub_k_coulomb,s
+!                write (6,*) cdet%occ_list
+!                write (6,*) i,j,a,b
+!                write (6,*) connection%perm, mod(i-a,2) /= 0
+!                stop
+!            end if
 
         end if
         
@@ -200,7 +200,7 @@ contains
         use hamiltonian, only: slater_condon1_hub_real
 
         ! for debug only
-        use hamiltonian, only: get_hmatel_real
+!        use hamiltonian, only: get_hmatel_real
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -265,9 +265,9 @@ contains
 
 ! Leave the following in for debug reasons...
 ! Should be removed after more testing.
-            if (abs(get_hmatel_real(cdet%f, f_new)-hmatel) > 1.e-8) then
-                write (6,*) 'oops!', get_hmatel_real(cdet%f, f_new), hmatel
-            end if
+!            if (abs(get_hmatel_real(cdet%f, f_new)-hmatel) > 1.e-8) then
+!                write (6,*) 'oops!', get_hmatel_real(cdet%f, f_new), hmatel
+!            end if
 
         end if
 
