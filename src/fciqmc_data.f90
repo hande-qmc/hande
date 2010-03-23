@@ -365,16 +365,16 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(ireport, nparticles)
+    subroutine write_fciqmc_report(mc_cycles, nparticles)
 
         ! Write the report line at the end of a report loop.
         ! In:
-        !    ireport: index of the report loop.
+        !    mc_cycles: number of Monte Carlo cycles performed.
         !    nparticles: total number of particles in main walker list.
 
-        integer, intent(in) :: ireport, nparticles
+        integer, intent(in) :: mc_cycles, nparticles
 
-        write (6,'(5X,i8,2(f20.10,2X),i11)') ireport*ncycles, shift, proj_energy, nparticles
+        write (6,'(5X,i8,2(f20.10,2X),i11)') mc_cycles, shift, proj_energy, nparticles
 
     end subroutine write_fciqmc_report
 

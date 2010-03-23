@@ -229,7 +229,7 @@ contains
             ! average projected energy
             proj_energy = proj_energy/ncycles
 
-            call write_fciqmc_report(ireport, nparticles)
+            call write_fciqmc_report(ireport*ncycles, nparticles)
 
         end do
 

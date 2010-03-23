@@ -160,7 +160,7 @@ contains
             proj_energy = proj_energy/ncycles
             
             ! Output stats
-            call write_fciqmc_report(ireport, nparticles)
+            call write_fciqmc_report(ireport*ncycles, nparticles)
 
         end do
 
