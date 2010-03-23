@@ -203,7 +203,8 @@ contains
 
 ! DEBUG CHECK ONLY.
 !                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walker_population(:spawning_head))
-!                call direct_annihilation(sc0)
+                call direct_annihilation(sc0)
+! DEBUG CHECK ONLY.
 !                sum2 = sum(walker_population(:tot_walkers))
 !                if (sum1 /= sum2) then
 !                    write (6,*) 'huh?!', sum1, sum2
