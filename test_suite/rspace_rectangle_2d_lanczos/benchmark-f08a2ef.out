@@ -1,0 +1,112 @@
+
+ Hubbard
+
+ ================================================================
+ Compiled on Mar 23 2010 at 13:32:40
+ VCS BASE repository version:
+     f08a2efdb3af9bfabc9b208b7d6dd1424af7d921
+ Working directory: 
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/rspace_rectangle_2d_lanczos
+ Started running on 23/03/2010 at 13:32:52
+ Running on: tycpc19
+ ================================================================
+
+ Input options
+ -------------
+
+real_space
+lattice
+2 0
+0 1
+electrons 2
+lanczos
+lanczos_solns 6
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ Site positions given in terms of the primitive lattice vectors.
+
+ index   site         ms
+     1   ( 1, 0)      1
+     2   ( 1, 0)     -1
+     3   ( 0, 0)      1
+     4   ( 0, 0)     -1
+
+ Number of electrons: 2
+ Number of basis functions: 4
+ Total size of determinant space: 6
+
+ Diagonalisation
+ ===============
+
+ Considering determinants with spin:  0
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1                4
+
+ Diagonalising symmetry block 1 out of 1
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (
+           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/03/23 13:32:52.871 (-00:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       1.122E-07 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations         6
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+Restarting:             8.0000E-04 sec,  1.6000E+05 FLOP/S ( 1.2800E+02 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Considering determinants with spin:  2
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=2.
+
+ Symmetry index      # dets
+         1                1
+
+ Diagonalising symmetry block 1 out of 1
+
+ Performing trivial diagonalisation.
+
+ ---------------
+
+ Lanczos diagonalisation results
+ -------------------------------
+
+    State   Spin   Total energy
+      1       0    -7.531128874149
+      2       0    -4.000000000000
+      3       2    -4.000000000000
+      4      -2    -4.000000000000
+      5       0    -3.000000000000
+      6       0     0.531128874149
+
+ Lanczos ground state:   -7.531128874149
+
