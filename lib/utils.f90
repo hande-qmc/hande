@@ -72,4 +72,64 @@ contains
 
     end function int_fmt
 
+    subroutine append_ext(stem, n, s)
+
+        ! Returns stem.n in s.
+
+        character(*), intent(in) :: stem
+        integer, intent(in) :: n
+        character(*), intent(out) :: s
+        character(10) :: ext
+
+        write (ext,'('//int_fmt(n,0)//')') n
+        s = stem//'.'//ext
+
+    end subroutine append_ext
+
+   subroutine get_unique_filename(stem, tnext, istart, filename)
+
+        ! Find a filename which is either the "newest" or the next to be used.
+        ! The filename is assumed to be stem.x, where x is an integer.
+
+        ! In:
+        !    stem: stem of the filename.
+        !    tnext: the next unused filename is found if true, else the
+        !        filename is set to be stem.x where stem.x exists and stem.x+1
+        !        doesn't and x is greater than istart.
+        !    istart: the integer of the first x value to check.
+        !        If istart is negative, then the filename is set to be stem.x,
+        !        where x = |istart+1|.  This overrides everything else.
+        ! Out:
+        !    filename.
+
+        character(*), intent(in) :: stem
+        logical, intent(in) :: tnext
+        integer, intent(in) :: istart
+        character(*), intent(out) :: filename
+
+        integer :: i
+        logical :: exists
+
+        i = istart
+        exists = .true.
+        do while (exists)
+            call append_ext(stem, i, filename)
+            inquire(file=filename,exist=exists)
+            i = i + 1
+        end do
+
+        if (.not.tnext) then
+            ! actually want the last file which existed.
+            ! this will return stem.istart if stem.istart doesn't exist.
+            i = max(istart,i - 2)
+            call append_ext(stem, i, filename)
+        end if
+
+        ! Have been asked for a specific file.
+        if (istart < 0) then
+            call append_ext(stem, abs(i+1), filename)
+        end if
+
+    end subroutine get_unique_filename
+
 end module utils
