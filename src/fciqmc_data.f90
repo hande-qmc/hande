@@ -117,8 +117,6 @@ contains
         ! Stack.  This is the auxilliary memory required by quicksort.
         integer :: stack(2,stack_max), nstack
 
-        write (6,*) 'bsort',spawning_head
-
         nstack = 0
         lo = 1
         hi = spawning_head
@@ -219,7 +217,7 @@ contains
             end if
         end do
 
-        ! verify
+! DEBUG test only: verify
         tmp_det = spawned_walker_dets(:,1)
         do i = 2, spawning_head
             if (tmp_det .detgt. spawned_walker_dets(:,i)) then
@@ -228,8 +226,6 @@ contains
             end if
             tmp_det = spawned_walker_dets(:,i)
         end do
-
-        write (6,*) 'asort',spawning_head
 
     contains
 
