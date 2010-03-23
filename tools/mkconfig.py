@@ -200,7 +200,7 @@ $(DEST)/%%.o: %%.cpp
 #-----
 # Goals.
 
-.PHONY: clean test tests depend help $(PROG)
+.PHONY: clean qt qtests tests depend help $(PROG)
 
 # Compile program.
 $(PROG): $(EXE)/$(PROG_VERSION)
@@ -222,10 +222,12 @@ cleanall:
 new: clean $(PROG)
 
 # Run tests.
-test:
+tests:
 \tcd test_suite && testcode.py
+qtests:
+\tcd test_suite && testcode.py --quiet
 
-tests: test
+qt: qtests
 
 # Generate dependency file.
 $(DEPEND):
@@ -241,7 +243,7 @@ help:
 \t@echo "  ctags                Run ctags on the source files.  This is performed by default at the end of a successful compilation."
 \t@echo "  new                  Remove all previously compiled objects and re-compile."
 \t@echo "  tests                Run test suite."
-\t@echo "  test                 Run test suite."
+\t@echo "  qtests               Run test suite in quiet mode."
 \t@echo "  depend               Produce the .depend file containing the dependencies."
 \t@echo "                       Requires the makedepf90 tool to be installed."
 \t@echo "  help                 Print this help message."
