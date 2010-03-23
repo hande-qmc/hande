@@ -149,6 +149,9 @@ contains
         type(det_info) :: cdet
         real(p) :: inst_proj_energy
 
+! DEBUG CHECK ONLY.
+        integer :: sum1, sum2
+
         ! Allocate det_info components.
         allocate(cdet%f(basis_length), stat=ierr)
         allocate(cdet%occ_list(nel), stat=ierr)
@@ -198,7 +201,14 @@ contains
 
                 end do
 
+! DEBUG CHECK ONLY.
+                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walker_population(:spawning_head))
                 call direct_annihilation(sc0)
+                sum2 = sum(walker_population(:tot_walkers))
+                if (sum1 /= sum2) then
+                    write (6,*) 'huh?!', sum1, sum2
+                    stop
+                end if
 
                 ! normalise projected energy and add to running total.
                 proj_energy = proj_energy + inst_proj_energy/D0_population
