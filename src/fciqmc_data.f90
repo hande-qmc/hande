@@ -313,9 +313,18 @@ contains
                     exit
                 case(1)
                     ! walker_dets(:,pos) is "smaller" than f.
+                    ! The lowest position f can take is hence pos + 1 (i.e. if
+                    ! f is greater than pos by smaller than pos + 1).
                     lo = pos + 1
                 case(-1)
                     ! walker_dets(:,pos) is "greater" than f.
+                    ! The highest position f can take is hence pos (i.e. if f is
+                    ! smaller than pos but greater than pos - 1).  This is why
+                    ! we differ slightly from a standard binary search (where lo
+                    ! is set to be pos+1 and hi to be pos-1 accordingly), as
+                    ! a standard binary search assumes that the element you are
+                    ! searching for actually appears in the array being
+                    ! searched...
                     hi = pos
                 end select
 
