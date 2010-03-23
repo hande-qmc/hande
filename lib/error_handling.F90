@@ -13,7 +13,7 @@ contains
         !    sub_name:  calling subroutine name.
         !    error_msg: error message.
 
-#ifdef _PARALLEL
+#ifdef PARALLEL
         use mpi
 #endif
 
@@ -23,7 +23,7 @@ contains
         ! mpi_abort requires an integer though.
         integer, parameter :: error_code=999
         character(3), parameter :: error_str='999'
-#ifdef _PARALLEL
+#ifdef PARALLEL
         integer :: ierr
 #endif
 
@@ -36,7 +36,7 @@ contains
 
         ! Abort all processors.
         ! error code is given to mpi_abort which (apparently) returns it to the invoking environment.
-#if _PARALLEL
+#if PARALLEL
         call mpi_abort(mpi_comm_world, error_code, ierr)
 #endif
 
@@ -96,12 +96,12 @@ contains
         ! In:
         !    msg (optional) : Print msg before exiting if msg is present.
 
-#ifdef _PARALLEL
+#ifdef PARALLEL
         use mpi
 #endif
 
         character(*), intent(in), optional :: msg
-#ifdef _PARALLEL
+#ifdef PARALLEL
         integer :: ierr
 #endif
 
@@ -112,7 +112,7 @@ contains
 
         ! Abort all processors.
         ! error code is given to mpi_abort which (apparently) returns it to the invoking environment.
-#if _PARALLEL
+#if PARALLEL
         call mpi_abort(mpi_comm_world, 0, ierr)
 #endif
         stop

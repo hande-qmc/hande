@@ -174,7 +174,7 @@ contains
 #endif
             end do
         else
-#ifdef _PARALLEL
+#ifdef PARALLEL
             ! Use pblas to perform matrix-vector multiplication.
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Some of the matrix on this processor.

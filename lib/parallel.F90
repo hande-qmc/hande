@@ -5,7 +5,7 @@ module parallel
 ! serial and parallel cases and avoids the rest of the code being littered
 ! with preprocessing statements.
 
-#ifdef _PARALLEL
+#ifdef PARALLEL
 use mpi
 #endif
 
@@ -57,7 +57,7 @@ contains
 
         use errors
 
-#ifdef _PARALLEL
+#ifdef PARALLEL
         integer :: ierr
 
         call mpi_init(ierr)
@@ -92,7 +92,7 @@ contains
         ! This is just a empty procedure in serial mode.
         use errors
 
-#if _PARALLEL
+#if PARALLEL
         integer :: ierr
 
         call mpi_finalize(ierr)
@@ -122,7 +122,7 @@ contains
         integer :: i, j, k
         integer :: procy, procx, nrows, ncols
         integer :: desc_m(9), desc_v(9)
-#if _PARALLEL
+#if PARALLEL
         integer :: numroc ! scalapack function 
         integer :: ierr
         integer :: context
@@ -145,7 +145,7 @@ contains
             end do
         end if
 
-#ifdef _PARALLEL
+#ifdef PARALLEL
         ! Initialise a single BLACS context.
         call blacs_get(0, 0, context)
         ! Initialise processor grid, nproc_rows x nproc_cols

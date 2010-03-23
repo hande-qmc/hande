@@ -63,7 +63,7 @@ contains
             perm = 0
 
             ! Excitation level...
-#ifdef _PGI
+#ifdef PGI
             ! Work round an *insane* bug in PGI where intrinsic bit operations
             ! return an integer(4) if the arguments are of a kind smaller than
             ! 4.  PGI gets it right if the kind is larger than 4, but that
@@ -161,7 +161,7 @@ contains
         integer :: level
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
 
-#ifdef _PGI
+#ifdef PGI
         ! Work round an *insane* bug in PGI where intrinsic bit operations
         ! return an integer(4) if the arguments are of a kind smaller than
         ! 4.  PGI gets it right if the kind is larger than 4, but that

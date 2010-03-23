@@ -211,7 +211,7 @@ contains
         ! Completely empty (courtesy of C pre-processing) when compiled in
         ! serial.
 
-#ifdef _PARALLEL
+#ifdef PARALLEL
 
         use mpi
 

@@ -55,7 +55,7 @@ contains
             call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
 #endif
         else
-#ifdef _PARALLEL
+#ifdef PARALLEL
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Part of matrix on this processor.
 #ifdef SINGLE_PRECISION
@@ -85,7 +85,7 @@ contains
             call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
 #endif
         else
-#ifdef _PARALLEL
+#ifdef PARALLEL
             ! Use scalapack to do the diagonalisation in parallel.
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Part of matrix on this processor.
