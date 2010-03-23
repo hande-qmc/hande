@@ -128,6 +128,76 @@ There are various goals in the makefile.  Run
 
 to see the available goals.
 
+Compile-time settings
+^^^^^^^^^^^^^^^^^^^^^
+
+The behaviour of the program can be changed in various ways by some choices at
+compile-time by using C pre-processing.  These choices largely influence the
+speed, memory usage, inclusion of parallel code and workarounds for certain
+compilers.
+
+The pre-processing options which accept a value are set by::
+
+    -DOPTION=VAL
+
+which defines the pre-processing definition OPTION to have value VAL.
+Similarly, the options which just need to be defined to be used are set by::
+
+    -DOPTION
+
+These should be added to the cppflags or cppdefs lines in the configuration
+files or in the Makefile, as desired.
+
+DET_SIZE
+    Default: 32.
+
+    hubbard uses bit strings to store Slater determinants, where each bit
+    corresponds to an occupied spin-orbital if the bit is set and an unoccupied
+    spin orbital otherwise.  As fortran does not include a type for a single
+    bit, integers are used.  Note that this does lead to some wasted memory when
+    the number of spin-orbitals is not a multiple of the size of the integer used.
+    An array of integers is used to store the determinant bit string if
+    a single integer is not sufficient.
+
+    This option sets the integer length to be used.  Allowed values are 8, 16,
+    32 and 64, corresponding to using 8-bit, 16-bit, 32-bit and 64-bit integers
+    respectively.  Note that using 8-bit or 16-bit integers is much slower on
+    modern platforms.  The recommended value is 32 unless more than 32 basis
+    functions are used, in which case 64 is also a good choice.
+DSFMT_MEXP 
+    Default: 19937.
+
+    hubbard uses the dSFMT random number generator (RNG).  It is based on
+    a Mersenne Twister algorithm, is extremely fast and produces high quality
+    random numbers.  See http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/SFMT/index.html 
+    for more details. 
+
+    DSFMT_EXP sets the exponent of the period of the RNG.  Allowed values are
+    521, 1279, 2203, 4253, 11213, 19937, 44497, 86243,
+    132049 and 216091 and lead to, for example, random numbers with a period of
+    a Mersenne Prime such as 2^512-1.
+NAGF95  
+    Default: not defined.
+
+    If defined then code specific to, and necessary for compilation using, the
+    NAG Fortran compiler is included.
+PGI  
+    Default: not defined.
+
+    If defined then code required to work around a bug in the PGI compiler (only 
+    version 10.1 was tested) is included.  This is required for successful
+    compilation if DET_SIZE is set to be 8 or 16.
+PARALLEL  
+    Default: not defined.
+
+    Include source code required for running in parallel.
+SINGLE_PRECISION  
+    Default: not defined.
+
+    Set the precision (where possible) to be single precision.  The default is
+    double precision.  This is faster, but (of course) can change results
+    significantly.  Use with care.
+
 Usage
 -----
 
