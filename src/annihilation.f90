@@ -43,57 +43,38 @@ contains
         ! looping through the list and adding consective walker populations
         ! together if they're the same walker.
 
-        integer :: i, k, nremoved
+        integer :: islot, k, nremoved
 
+        ! islot is the current element in the spawned walkers lists.
+        islot = 1
+        ! k is the current element which is being compressed into islot (if
+        ! k and islot refer to the same determinants).
+        k = 1
         nremoved = 0
-        i = 1
-        k = 0
-
-        ! Go through the sorted spawned_walker lists and compress it by adding
-        ! up the populations of duplicate walkers and removing the duplicate
-        ! determinants.
-
-        ! Treat the first entry separately to make the subsequent removal of
-        ! walkers with 0 population easy.
-        if (spawning_head == 1) then
-            ! Nothing to do bar ensure spawning_head remains 1.
-            k = 1
-            i = i + 1
-        else if (spawning_head > 1) then
-            k = k + 1
-            ! Compress.
-            i = i + 1
-            do while (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,i)))
-                ! Annihilate.
-                spawned_walker_population(k) = spawned_walker_population(k) + spawned_walker_population(i)
-                nremoved = nremoved + 1
-                i = i + 1
-                if (i > spawning_head) exit
-            end do
-        end if
-
-        annihilate: do
-            if (i > spawning_head) exit annihilate
-            if (spawned_walker_population(k) /= 0) then
-                ! Go to the next slot.
+        self_annihilate: do
+            ! Set the current free slot to be the next unique spawned walker.
+            spawned_walker_dets(:,islot) = spawned_walker_dets(:,k) 
+            spawned_walker_population(islot) = spawned_walker_population(k) 
+            compress: do
                 k = k + 1
-            end if
-            ! Compress.
-            spawned_walker_dets(:,k) = spawned_walker_dets(:,i)
-            spawned_walker_population(k) = spawned_walker_population(i)
-            i = i + 1
-            do while (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,i)))
-                ! Annihilate.
-                spawned_walker_population(k) = spawned_walker_population(k) + spawned_walker_population(i)
-                nremoved = nremoved + 1
-                i = i + 1
-                if (i > spawning_head) exit annihilate
-            end do
-        end do annihilate
+                if (k > spawning_head) exit self_annihilate
+                if (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,islot))) then
+                    ! Add the populations of the subsequent identical walkers.
+                    spawned_walker_population(islot) = spawned_walker_population(islot) + spawned_walker_population(k)
+                    nremoved = nremoved + 1
+                else
+                    ! Found the next unique spawned walker.
+                    exit compress
+                end if
+            end do compress
+            ! go to the next slot.
+            islot = islot + 1
+            if (islot > spawning_head) exit self_annihilate
+        end do self_annihilate
 
-        ! The last element in the spawned list is now k.
-        spawning_head = k
-        
+        ! update spawning_head
+        spawning_head = spawning_head - nremoved
+
     end subroutine annihilate_spawned_list
 
     subroutine annihilate_main_list()
