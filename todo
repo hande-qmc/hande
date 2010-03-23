@@ -11,10 +11,8 @@
 FCIQMC
 ------
 
-a) quicksort (see iterative implementation in OMP library---compare to that of NR?)
-b) blocking script
-c) binary search
-d) restart
+a) blocking script
+b) restart
 
 FCIQMC parallelisation
 ----------------------
