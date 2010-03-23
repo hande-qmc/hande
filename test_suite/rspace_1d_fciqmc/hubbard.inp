@@ -15,7 +15,7 @@ nreports 200
 mc_cycles 25
 
 tau 0.01
-varyshift_target 350
+varyshift_target 550
 
 ms 1
 sym 1
