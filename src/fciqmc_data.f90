@@ -371,7 +371,7 @@ contains
 
     subroutine write_fciqmc_final()
 
-        write (6,'(/,1X,a13,7X,f22.12)') 'final_shift =', shift
+        write (6,'(/,1X,a13,7X,f22.12)') 'final shift =', shift
         write (6,'(1X,a20,f22.12)') 'final proj. energy =', proj_energy
         write (6,'(1X,a12,8X,f22.12)') 'E0 + shift =', shift+H00
         write (6,'(1X,a19,1X,f22.12)') 'E0 + proj. energy =', proj_energy+H00
