@@ -61,7 +61,8 @@ real(p), allocatable :: walker_energies(:)
 integer(i0), allocatable :: spawned_walker_dets(:,:) ! (basis_length, spawned_walker_length)
 ! b) walker population.
 integer, allocatable :: spawned_walker_population(:) ! (spawned_walker_length)
-! c) next empty slot in the spawning array.
+! c) current (filled) slot in the spawning arrays.
+!    if 0, then no elements are in the spawning arrays.
 integer :: spawning_head
 
 !--- Reference determinant ---
@@ -96,30 +97,163 @@ contains
     subroutine sort_spawned_lists()
 
         ! Sort spawned_walker_dets and spawned_walker_populations according to
-        ! the determinant list.
+        ! the determinant list using quicksort.
 
-        ! This is a simple insertion sort so should be modified to quicksort
-        ! for larger lists.
+        ! Uses the sample code in Numerical Recipies as a base.
 
         use basis, only: basis_length
-        use determinants, only: det_gt
+        use determinants
 
-        integer :: i, j
-        integer(i0) :: tmp_det(basis_length)
-        integer :: tmp_pop
+        ! Threshold.  When a sublist gets to this length, switch to using
+        ! insertion sort to sort the sublist.
+        integer, parameter :: switch_threshold = 7
 
-        do i = 2, spawning_head
-            j = i - 1
-            tmp_det = spawned_walker_dets(:,i)
-            tmp_pop = spawned_walker_population(i)
-            do while (j >= 1 .and. det_gt(spawned_walker_dets(:,j),tmp_det))
-                spawned_walker_dets(:,j+1) = spawned_walker_dets(:,j)
-                spawned_walker_population(j+1) = spawned_walker_population(j)
-                j = j - 1
-            end do
-            spawned_walker_dets(:,j+1) = tmp_det
-            spawned_walker_population(j+1) = tmp_pop
+        ! sort needs auxiliary storage of length 2*log_2(n).
+        integer, parameter :: stack_max = 50
+
+        integer :: pivot, lo, hi, i, j, tmp_pop
+        integer :: tmp_det(basis_length)
+
+        ! Stack.  This is the auxilliary memory required by quicksort.
+        integer :: stack(2,stack_max), nstack
+
+        write (6,*) 'bsort',spawning_head
+
+        nstack = 0
+        lo = 1
+        hi = spawning_head
+        do
+            ! If the section/partition we are looking at is smaller than
+            ! switch_threshold then perform an insertion sort.
+            if (hi - lo < switch_threshold) then
+                do j = lo + 1, hi
+                    tmp_det = spawned_walker_dets(:,j)
+                    tmp_pop = spawned_walker_population(j)
+                    do i = j - 1, 1, -1
+                        if (tmp_det .detgt. spawned_walker_dets(:,i)) exit
+                        spawned_walker_dets(:,i+1) = spawned_walker_dets(:,i)
+                        spawned_walker_population(i+1) = spawned_walker_population(i)
+                    end do
+                    spawned_walker_dets(:,i+1) = tmp_det
+                    spawned_walker_population(i+1) = tmp_pop
+                end do
+
+                if (nstack == 0) exit
+                hi = stack(2,nstack)
+                lo = stack(1,nstack)
+                nstack = nstack - 1
+
+            else
+                ! Otherwise start partitioning with quicksort.
+
+                ! Pick the pivot element to be the median of spawned_walker_dets(:,lo), spawned_walker_dets(:,hi)
+                ! and spawned_walker_dets(:,(lo+hi)/2).
+                ! This largely overcomes a major problem with quicksort, where it
+                ! degrades if the pivot is always the smallest element.
+                pivot = (lo + hi)/2
+                call swap_dets(spawned_walker_dets(:,pivot), spawned_walker_dets(:,lo + 1))
+                call swap_int(spawned_walker_population(pivot), spawned_walker_population(lo + 1))
+                if (spawned_walker_dets(:,lo) .detgt. spawned_walker_dets(:,hi)) then
+                    call swap_dets(spawned_walker_dets(:,lo), spawned_walker_dets(:,hi))
+                    call swap_int(spawned_walker_population(lo), spawned_walker_population(hi))
+                end if
+                if (spawned_walker_dets(:,lo+1) .detgt. spawned_walker_dets(:,hi)) then
+                    call swap_dets(spawned_walker_dets(:,lo+1), spawned_walker_dets(:,hi))
+                    call swap_int(spawned_walker_population(lo+1), spawned_walker_population(hi))
+                end if
+                if (spawned_walker_dets(:,lo) .detgt. spawned_walker_dets(:,lo+1)) then
+                    call swap_dets(spawned_walker_dets(:,lo), spawned_walker_dets(:,lo+1))
+                    call swap_int(spawned_walker_population(lo), spawned_walker_population(lo+1))
+                end if
+
+                i = lo + 1
+                j = hi
+                tmp_det = spawned_walker_dets(:,lo + 1) ! a is the pivot value
+                do while (.true.)
+                    ! Scan down list to find element > a.
+                    i = i + 1
+                    do while (tmp_det .detgt. spawned_walker_dets(:,i))
+                        i = i + 1
+                    end do
+
+                    ! Scan down list to find element < a.
+                    j = j - 1
+                    do while (spawned_walker_dets(:,j) .detgt. tmp_det)
+                        j = j - 1
+                    end do
+
+                    ! When the pointers crossed, partitioning is complete.
+                    if (j < i) exit
+
+                    ! Swap the elements, so that all elements < a end up
+                    ! in lower indexed variables.
+                    call swap_dets(spawned_walker_dets(:,i), spawned_walker_dets(:,j))
+                    call swap_int(spawned_walker_population(i), spawned_walker_population(j))
+                end do
+
+                ! Insert partitioning element
+                spawned_walker_dets(:,lo + 1) = spawned_walker_dets(:,j)
+                spawned_walker_dets(:,j) = tmp_det
+                call swap_int(spawned_walker_population(j), spawned_walker_population(lo + 1))
+
+                ! Push the larger of the partitioned sections onto the stack
+                ! of sections to look at later.
+                ! --> need fewest stack elements.
+                nstack = nstack + 1
+
+                ! With a stack_max of 50, we can sort arrays of length 
+                ! 1125899906842624.  It is safe to say this will never be
+                ! exceeded, and so this test can be skipped.
+!                if (nstack > stack_max) call stop_all('sort_spawned_lists', "parameter stack_max too small")
+
+                if (hi - i + 1 >= j - 1) then
+                    stack(2,nstack) = hi
+                    stack(1,nstack) = i
+                    hi = j - 1
+                else
+                    stack(2,nstack) = j - 1
+                    stack(1,nstack) = lo
+                    lo = i
+                end if
+
+            end if
         end do
+
+        ! verify
+        tmp_det = spawned_walker_dets(:,1)
+        do i = 2, spawning_head
+            if (tmp_det .detgt. spawned_walker_dets(:,i)) then
+                write (6,*) 'error sorting'
+                stop
+            end if
+            tmp_det = spawned_walker_dets(:,i)
+        end do
+
+        write (6,*) 'asort',spawning_head
+
+    contains
+
+        subroutine swap_int(i1, i2)
+
+            integer, intent(inout) :: i1, i2
+            integer :: tmp
+
+            tmp = i1
+            i1 = i2
+            i2 = tmp
+
+        end subroutine swap_int
+
+        subroutine swap_dets(f1,f2)
+
+            integer(i0), intent(inout) :: f1(basis_length), f2(basis_length)
+            integer(i0) :: tmp(basis_length)
+
+            tmp = f1
+            f1 = f2
+            f2 = tmp
+
+        end subroutine swap_dets
 
     end subroutine sort_spawned_lists
 

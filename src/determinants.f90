@@ -88,6 +88,10 @@ type det_info
     integer, pointer :: unocc_list_alpha(:), unocc_list_beta(:)
 end type det_info
 
+interface operator(.detgt.)
+    module procedure det_gt
+end interface
+
 contains
 
     subroutine init_determinants()
