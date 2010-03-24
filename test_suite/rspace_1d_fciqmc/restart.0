@@ -1,7 +1,7 @@
  # number of cycles
         2500
  # shift
-         222   0.0000000000000000     
+         222   0.0000000000000000     .false.
  # reference determinant
           22           2           3           5         113   0.0000000000000000     
  # number of unique walkers

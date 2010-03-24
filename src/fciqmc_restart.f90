@@ -41,7 +41,7 @@ contains
         write (io,*) '# number of cycles'
         write (io,*) nmc_cycles
         write (io,*) '# shift'
-        write (io,*) nparticles_old, shift
+        write (io,*) nparticles_old, shift, vary_shift
         write (io,*) '# reference determinant'
         write (io,*) f0, occ_list0, D0_population, H00
         write (io,*) '# number of unique walkers'
@@ -85,7 +85,7 @@ contains
         read (io,*) junk
         read (io,*) mc_cycles_done
         read (io,*) junk
-        read (io,*) nparticles_old_restart, shift
+        read (io,*) nparticles_old_restart, shift, vary_shift
         read (io,*) junk
         read (io,*) f0, occ_list0, D0_population, H00
         read (io,*) junk
