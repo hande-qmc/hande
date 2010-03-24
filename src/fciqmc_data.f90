@@ -417,10 +417,17 @@ contains
 
     subroutine write_fciqmc_final()
 
-        write (6,'(/,1X,a13,7X,f22.12)') 'final shift =', shift
-        write (6,'(1X,a20,f22.12)') 'final proj. energy =', proj_energy
-        write (6,'(1X,a12,8X,f22.12)') 'E0 + shift =', shift+H00
-        write (6,'(1X,a19,1X,f22.12)') 'E0 + proj. energy =', proj_energy+H00
+        av_shift = av_shift/(nreport - start_vary_shift)
+        av_proj_energy = av_proj_energy/(nreport*ncycles)
+
+        write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
+        write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy
+        write (6,'(1X,a11,12X,f22.12)') 'av. shift =', av_shift
+        write (6,'(1X,a18,5X,f22.12)') 'av. proj. energy =', av_proj_energy
+        write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift+H00
+        write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy+H00
+        write (6,'(1X,a16,7X,f22.12)') 'E0 + av. shift =', shift+H00
+        write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', proj_energy+H00
 
     end subroutine write_fciqmc_final
 
