@@ -131,8 +131,13 @@ This destroys the data stored in self.data'''
         '''Print out the blocking data and show a graph of the behaviour of the standard deviation with block size.'''
 
         # print blocking output
+        fmt = pretty_format('block size', self.stats[0].block_size, 1)
+        fmt += ' ' + pretty_format('mean', self.stats[0].mean, 1)
+        fmt += ' ' + pretty_format('standard deviation', self.stats[0].sd, 1)
+        fmt += ' ' + pretty_format('standard deviation error', self.stats[0].sd_error, 1)
+        print fmt % ('block size', 'mean', 'standard deviation', 'standard deviation error')
         for stat in self.stats:
-            print stat
+            print fmt % (stat.block_size, stat.mean, stat.sd, stat.sd_error)
 
         # plot standard deviation
         blocks = [stat.block_size for stat in self.stats]
@@ -159,6 +164,16 @@ def parse_options(args):
     (options, filenames) = parser.parse_args(args)
 
     return (options, filenames)
+
+def pretty_format(header, value, padding=0):
+    '''Return a format string which will hold both the name and value of the data item without truncation.
+
+padding (optional integer): amount of space to add to format string.
+'''
+    if value:
+        return '%%-%is' % (max(len(str(value)), len(str(header)))+padding)
+    else:
+        return '%%-%is' % (len(str(header))+padding)
 
 if __name__ == '__main__':
     (options, filenames) = parse_options(sys.argv[1:])
