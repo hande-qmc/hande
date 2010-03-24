@@ -127,7 +127,7 @@ contains
 
         ! Have been asked for a specific file.
         if (istart < 0) then
-            call append_ext(stem, abs(i+1), filename)
+            call append_ext(stem, abs(istart+1), filename)
         end if
 
     end subroutine get_unique_filename
