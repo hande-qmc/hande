@@ -34,8 +34,14 @@ real(p), allocatable :: hamil(:,:) ! (ndets, ndets)
 ! as the eigenvalues.  Doing this is substantially more expensive.
 logical :: find_eigenvectors = .false.
 
+! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
+logical :: write_hamiltonian = .false.
+character(255) :: hamiltonian_file = 'HAMIL'
+
 ! BLACS info for diagonalisation
 type(blacs_info) :: proc_blacs_info
+
+!--- Parallel info for FCI calculations ---
 
 ! Distribution of Hamiltonian matrix across the processors. 
 ! No distribution.
@@ -49,8 +55,9 @@ integer, parameter :: distribute_cols = 2
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
 
-! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
-logical :: write_hamiltonian = .false.
-character(255) :: hamiltonian_file = 'HAMIL'
+!--- Info for stocastic calculations ---
+
+! Seed used to initialise the dSFMT random number generator.
+integer :: seed = 7
 
 end module calc

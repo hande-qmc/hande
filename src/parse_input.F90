@@ -160,6 +160,8 @@ contains
                     call readi(write_restart_number)
                     write_restart_number = -write_restart_number-1
                 end if
+            case('SEED')
+                call readi(seed)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')

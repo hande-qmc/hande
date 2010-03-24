@@ -74,9 +74,6 @@ contains
         walker_population = 0
         spawned_walker_population = 0
 
-        ! Initialise random numbers.
-        call dSFMT_init(5234)
-
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then

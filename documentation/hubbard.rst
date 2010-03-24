@@ -506,6 +506,12 @@ The following options are valid for FCIQMC calculations.
     that the RNG is not restarted, so running two shorter calculations via the
     restart facility is not completely identical to running a single calculation
     for the same number of Monte Carlo cycles.
+**seed** *seed*
+    Integer.
+
+    Default: 7.
+
+    Set the seed used to initialise the dSFMT random number generator.
 
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

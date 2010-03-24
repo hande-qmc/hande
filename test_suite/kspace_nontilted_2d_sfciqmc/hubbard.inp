@@ -9,4 +9,5 @@ nreports 220
 tau 0.05
 ms 0
 sym 1
+seed 5234
 (Note that this is not a converged calculation, merely a quick test...)
