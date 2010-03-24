@@ -33,6 +33,7 @@ contains
         use utils, only: int_fmt
 
         use diagonalisation, only: generate_hamil
+        use fciqmc_restart, only: read_restart
 
         integer :: ierr
         integer :: i, j
@@ -78,18 +79,26 @@ contains
 
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
-        ref_det = 1
-        do i = 2, ndets
-            if (hamil(i,i) < hamil(ref_det, ref_det)) then
-                ref_det = i
-            end if
-        end do
+        if (restart) then
+            allocate(occ_list0(nel), stat=ierr)
+            allocate(f0(basis_length), stat=ierr)
+            call read_restart()
+        else
+            ref_det = 1
+            do i = 2, ndets
+                if (hamil(i,i) < hamil(ref_det, ref_det)) then
+                    ref_det = i
+                end if
+            end do
 
-        ! Reference det
-        H00 = hamil(ref_det,ref_det)
-        allocate(f0(basis_length), stat=ierr)
-        f0 = dets_list(:,ref_det)
-        walker_population(ref_det) = 1
+            ! Reference det
+            H00 = hamil(ref_det,ref_det)
+            allocate(f0(basis_length), stat=ierr)
+            allocate(occ_list0(nel), stat=ierr)
+            occ_list0 = decode_det(f0)
+            f0 = dets_list(:,ref_det)
+            walker_population(ref_det) = 1
+        end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(dets_list(:,ref_det), new_line=.true.)
@@ -102,9 +111,14 @@ contains
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
+        use fciqmc_restart, only: dump_restart
+
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
         real(p) :: inst_proj_energy
+
+        ! from restart
+        nparticles_old = nparticles_old_restart
 
         call write_fciqmc_report_header()
 
@@ -160,11 +174,14 @@ contains
             proj_energy = proj_energy/ncycles
             
             ! Output stats
-            call write_fciqmc_report(ireport*ncycles, nparticles)
+            call write_fciqmc_report(mc_cycles_done+ireport*ncycles, nparticles)
 
         end do
 
         call write_fciqmc_final()
+        write (6,'()')
+
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
 
     end subroutine do_simple_fciqmc
 

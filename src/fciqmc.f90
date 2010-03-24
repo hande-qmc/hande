@@ -20,6 +20,7 @@ contains
         use calc, only: sym_in, ms_in
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
+        use fciqmc_restart, only: read_restart
         use system, only: nel, nalpha, nbeta, system_type, hub_real, hub_k
 
         integer :: ierr
@@ -42,37 +43,44 @@ contains
         call set_spin_polarisation(ms_in)
 
         ! Set initial walker population.
-        tot_walkers = 1
-        walker_population(tot_walkers) = 10
-
-        ! Set the reference determinant to be the spin-orbitals with the lowest
-        ! kinetic energy which satisfy the spin polarisation.
-        ! Note: this is for testing only!  The symmetry input is currently
-        ! ignored.
-        if (.not.allocated(occ_list0)) then
-            allocate(occ_list0(nel), stat=ierr)
-            forall (i=1:nalpha) occ_list0(i) = 2*i-1
-            forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
-        end if
-
-        walker_dets(:,tot_walkers) = encode_det(occ_list0)
-
-        walker_energies(tot_walkers) = 0.0_p
-
-        ! Reference det
+        ! occ_list could be set and allocated in the input.
         allocate(f0(basis_length), stat=ierr)
-        f0 = walker_dets(:,tot_walkers)
-        ! Energy of reference determinant.
-        select case(system_type)
-        case(hub_k)
-            H00 = slater_condon0_hub_k(f0)
-        case(hub_real)
-            H00 = slater_condon0_hub_real(f0)
-        end select
+        if (restart) then
+            if (.not.allocated(occ_list0)) allocate(occ_list0(nel), stat=ierr)
+            call read_restart()
+        else
+            tot_walkers = 1
+            walker_population(tot_walkers) = 10
+
+            ! Set the reference determinant to be the spin-orbitals with the lowest
+            ! kinetic energy which satisfy the spin polarisation.
+            ! Note: this is for testing only!  The symmetry input is currently
+            ! ignored.
+            if (.not.allocated(occ_list0)) then
+                allocate(occ_list0(nel), stat=ierr)
+                forall (i=1:nalpha) occ_list0(i) = 2*i-1
+                forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
+            end if
+
+            walker_dets(:,tot_walkers) = encode_det(occ_list0)
+
+            walker_energies(tot_walkers) = 0.0_p
+
+            ! Reference det
+            f0 = walker_dets(:,tot_walkers)
+            ! Energy of reference determinant.
+            select case(system_type)
+            case(hub_k)
+                H00 = slater_condon0_hub_k(f0)
+            case(hub_real)
+                H00 = slater_condon0_hub_real(f0)
+            end select
+        end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(walker_dets(:,tot_walkers), new_line=.true.)
         write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+        write (6,'(1X,a44,'//int_fmt(walker_population(tot_walkers),1)//')') 'Initial population on reference determinant:',walker_population(tot_walkers)
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
         
     end subroutine init_fciqmc
@@ -108,6 +116,7 @@ contains
         use basis, only: basis_length
         use death, only: stochastic_death
         use determinants, only: det_info
+        use fciqmc_restart, only: dump_restart
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
         use simple_fciqmc, only: update_shift
 
@@ -159,6 +168,9 @@ contains
         allocate(cdet%occ_list_beta(nbeta), stat=ierr)
         allocate(cdet%unocc_list_alpha(nvirt_alpha), stat=ierr)
         allocate(cdet%unocc_list_beta(nvirt_beta), stat=ierr)
+
+        ! from restart
+        nparticles_old = nparticles_old_restart
 
         ! Main fciqmc loop.
 
@@ -229,11 +241,14 @@ contains
             ! average projected energy
             proj_energy = proj_energy/ncycles
 
-            call write_fciqmc_report(ireport*ncycles, nparticles)
+            call write_fciqmc_report(mc_cycles_done+ireport*ncycles, nparticles)
 
         end do
 
         call write_fciqmc_final()
+        write (6,'()')
+
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
 
     end subroutine do_fciqmc
 

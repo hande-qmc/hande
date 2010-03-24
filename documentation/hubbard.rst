@@ -4,15 +4,16 @@ hubbard
 Introduction
 ------------
 
-hubbard can currently perform full configuration interaction (FCI) calculations
+hubbard can currently perform Full Configuration Interaction (FCI) calculations
 of the Hubbard model using either the real space or momentum space formulation.
 Full and Lanczos diagonalisation methods are implemented using external
 libraries (lapack/scalapack and TRLan respectively) and can be performed in
 both serial and parallel.  Lanczos diagonalisation can be performed with or
 without precomputing the Hamiltonian matrix.
 
-The target is to implement an efficient full configuration interaction quantum
-monte carlo (FCIQMC) algorithm for the Hubbard model.
+Recently the Full Configuration Interaction Quantum Monte Carlo method has been
+implemented.  Currently this can only be performed in serial.
+
 
 Directory structure
 --------------------
@@ -481,6 +482,30 @@ The following options are valid for FCIQMC calculations.
     Set the reference determinant to occupy the specified spin-orbitals.
     The index of each spin-orbital is printed out in the basis functions
     section of the output.
+**dump_restart** [*id*]
+    Optional integer.
+
+    Write out information required for restarting an FCIQMC calculation to
+    a file called restart.x, where x is *id* if *id* is given.  Otherwise 
+    x is chosen to be the smallest integer possible such that restart.x does
+    not exist in the calculation directory.
+
+    Warning: these files can become very large, so care should be taken when
+    not re-using the same filenames.
+**restart** [*id*]
+    Optional integer.
+
+    Restart an FCIQMC calculation using a previous restart file, restart.x,
+    where x is a non-negative integer.  If *id* is given, then the file
+    restart.id is used, otherwise x is chosen to be the largest integer such
+    that restart.x exists and restart.x+1 does not.
+
+    The restart file does not contain system information such as the U and
+    T parameter, lattice vectors or number of electrons.  Thus it is important
+    use the same system parameters when restarting a calculation.  Please note
+    that the RNG is not restarted, so running two shorter calculations via the
+    restart facility is not completely identical to running a single calculation
+    for the same number of Monte Carlo cycles.
 
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

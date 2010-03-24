@@ -8,6 +8,7 @@ use calc
 use lanczos
 use determinants
 use fciqmc_data
+use fciqmc_restart, only: read_restart_number, write_restart_number 
 
 implicit none
 
@@ -147,6 +148,18 @@ contains
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
+            case('RESTART')
+                restart = .true.
+                if (item /= nitems) then
+                    call readi(read_restart_number)
+                    read_restart_number = -read_restart_number-1
+                end if
+            case('DUMP_RESTART')
+                dump_restart_file = .true.
+                if (item /= nitems) then
+                    call readi(write_restart_number)
+                    write_restart_number = -write_restart_number-1
+                end if
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')

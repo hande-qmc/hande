@@ -92,6 +92,17 @@ integer :: ref_det
 ! The shift is updated at the end of each report loop when vary_shift is true.
 logical :: vary_shift = .false.
 
+!--- Restart data ---
+
+! Restart calculation from file.
+logical :: restart = .false.
+
+! Print out restart file.
+logical :: dump_restart_file = .false.
+
+! Restart data.
+integer :: mc_cycles_done = 0, nparticles_old_restart = 0
+
 contains
 
     subroutine sort_spawned_lists()
