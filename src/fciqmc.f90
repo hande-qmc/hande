@@ -13,7 +13,7 @@ contains
         ! initial walker.
 
         use errors, only: stop_all
-        use parallel, only: nprocs
+        use parallel, only: nprocs, parent
         use utils, only: int_fmt
 
         use basis, only: basis_length
@@ -28,7 +28,7 @@ contains
 
         if (nprocs > 1) call stop_all('init_fciqmc','Not (yet!) a parallel algorithm.')
 
-        write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
+        if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
         ! Allocate main walker lists.
         allocate(walker_dets(basis_length,walker_length), stat=ierr)
@@ -77,12 +77,14 @@ contains
             end select
         end if
 
-        write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-        call write_det(walker_dets(:,tot_walkers), new_line=.true.)
-        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-        write (6,'(1X,a44,'//int_fmt(walker_population(tot_walkers),1)//')') &
-                          'Initial population on reference determinant:',walker_population(tot_walkers)
-        write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+        if (parent) then
+            write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
+            call write_det(walker_dets(:,tot_walkers), new_line=.true.)
+            write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+            write (6,'(1X,a44,'//int_fmt(walker_population(tot_walkers),1)//')') &
+                              'Initial population on reference determinant:',walker_population(tot_walkers)
+            write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+        end if
         
     end subroutine init_fciqmc
 
@@ -113,6 +115,8 @@ contains
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution.
 
+        use parallel, only: parent
+  
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use death, only: stochastic_death
@@ -175,7 +179,7 @@ contains
 
         ! Main fciqmc loop.
 
-        call write_fciqmc_report_header()
+        if (parent) call write_fciqmc_report_header()
 
         do ireport = 1, nreport
 
@@ -245,12 +249,14 @@ contains
             ! average projected energy over report loop.
             proj_energy = proj_energy/ncycles
 
-            call write_fciqmc_report(ireport, nparticles)
+            if (parent) call write_fciqmc_report(ireport, nparticles)
 
         end do
 
-        call write_fciqmc_final()
-        write (6,'()')
+        if (parent) then
+            call write_fciqmc_final()
+            write (6,'()')
+        end if
 
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
 
