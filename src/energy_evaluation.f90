@@ -1,12 +1,38 @@
-module projected_energy
+module energy_evaluation
+
+! This module contains procedure for evaluating and estimating the energy of
+! a system based upon the population dynamics of an FCIQMC calculation.
 
 use const
 
-use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
-use excitations, only: excit, get_excitation
 implicit none
 
 contains
+
+    subroutine update_shift(nparticles_old, nparticles,nupdate_steps)
+
+        ! Update the shift according to:
+        !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
+        ! where
+        !  * shift(beta) is the shift at imaginary time beta;
+        !  * A*tau is the amount of imaginary time between shift-updates (=# of
+        !    Monte Carlo cycles between updating the shift);
+        !  * xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations;
+        !  * N_w(beta) is the total number of particles at imaginary time beta.
+        ! In:
+        !    nparticles_old: N_w(beta-A*tau).
+        !    nparticles: N_w(beta).
+
+        use fciqmc_data, only: shift, tau
+
+        integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
+
+        ! This should be changed into an input option when necessary.
+        real(p) :: shift_damping = 0.050_p
+
+        shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*nupdate_steps)
+
+    end subroutine update_shift
 
     subroutine update_proj_energy_hub_k(idet, inst_proj_energy)
 
@@ -28,6 +54,8 @@ contains
         !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use excitations, only: excit, get_excitation
         use hamiltonian, only: slater_condon2_hub_k
 
         integer, intent(in) :: idet
@@ -70,6 +98,8 @@ contains
         !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use excitations, only: excit, get_excitation
         use hamiltonian, only: slater_condon1_hub_real
 
         integer, intent(in) :: idet
@@ -91,4 +121,4 @@ contains
 
     end subroutine update_proj_energy_hub_real
 
-end module projected_energy
+end module energy_evaluation

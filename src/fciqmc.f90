@@ -96,7 +96,7 @@ contains
         use system, only: system_type, hub_k, hub_real
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use determinants, only: decode_det_spinocc_spinunocc
-        use projected_energy, only: update_proj_energy_hub_k, update_proj_energy_hub_real
+        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
         select case(system_type)
@@ -119,7 +119,7 @@ contains
         use determinants, only: det_info
         use fciqmc_restart, only: dump_restart
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
-        use simple_fciqmc, only: update_shift
+        use energy_evaluation, only: update_shift
 
         ! It seems this interface block cannot go in a module when we're passing
         ! subroutines around as arguments.  Bummer.

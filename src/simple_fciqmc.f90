@@ -109,6 +109,7 @@ contains
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
         use fciqmc_restart, only: dump_restart
+        use energy_evaluation, only: update_shift
 
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
@@ -304,30 +305,6 @@ contains
         walker_population = walker_population + spawned_walker_population
 
     end subroutine simple_annihilation
-
-    subroutine update_shift(nparticles_old, nparticles,nupdate_steps)
-
-        ! Update the shift according to:
-        !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
-        ! where
-        !  * shift(beta) is the shift at imaginary time beta;
-        !  * A*tau is the amount of imaginary time between shift-updates (=# of
-        !    Monte Carlo cycles between updating the shift);
-        !  * xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations;
-        !  * N_w(beta) is the total number of particles at imaginary time beta.
-        ! In:
-        !    nparticles_old: N_w(beta-A*tau).
-        !    nparticles: N_w(beta).
-        !    
-
-        integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
-
-        ! This should be changed into an input option when necessary.
-        real(p) :: shift_damping = 0.050_p
-
-        shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*nupdate_steps)
-
-    end subroutine update_shift
 
     subroutine simple_update_proj_energy(iwalker, inst_proj_energy)
 
