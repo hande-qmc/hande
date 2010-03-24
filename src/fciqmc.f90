@@ -80,7 +80,8 @@ contains
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(walker_dets(:,tot_walkers), new_line=.true.)
         write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-        write (6,'(1X,a44,'//int_fmt(walker_population(tot_walkers),1)//')') 'Initial population on reference determinant:',walker_population(tot_walkers)
+        write (6,'(1X,a44,'//int_fmt(walker_population(tot_walkers),1)//')') &
+                          'Initial population on reference determinant:',walker_population(tot_walkers)
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
         
     end subroutine init_fciqmc
