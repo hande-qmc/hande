@@ -78,7 +78,8 @@ integer(i0), allocatable :: f0(:)
 integer, allocatable :: occ_list0(:)
 
 ! Population of walkers on reference determinant.
-integer :: D0_population
+! The initial value can be overridden by a restart file or input option.
+integer :: D0_population = 10
 
 ! Energy of reference determinant.
 real(p) :: H00

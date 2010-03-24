@@ -471,7 +471,14 @@ The following options are valid for FCIQMC calculations.
 
     Set the reference determinant to occupy the specified spin-orbitals.
     The index of each spin-orbital is printed out in the basis functions
-    section of the output.
+    section of the output.  This will be overridden by a restart file.
+**reference_det_population** *pop*
+    Integer.
+
+    Default: 10.
+
+    Set the initial walker population on the reference determinant.  This will
+    be overridden by a restart file.
 **walker_length** *walker_length*
     Integer.
 

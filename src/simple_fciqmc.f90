@@ -94,7 +94,7 @@ contains
             allocate(occ_list0(nel), stat=ierr)
             occ_list0 = decode_det(f0)
             f0 = dets_list(:,ref_det)
-            walker_population(ref_det) = 1
+            walker_population(ref_det) = D0_population
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='

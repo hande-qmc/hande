@@ -164,6 +164,8 @@ contains
                 call readi(seed)
             case('SHIFT_DAMPING')
                 call readf(shift_damping)
+            case('REFERENCE_DET_POPULATION')
+                call readi(D0_population)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')

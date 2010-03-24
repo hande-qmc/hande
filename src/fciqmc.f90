@@ -50,7 +50,7 @@ contains
             call read_restart()
         else
             tot_walkers = 1
-            walker_population(tot_walkers) = 10
+            walker_population(tot_walkers) = D0_population
 
             ! Set the reference determinant to be the spin-orbitals with the lowest
             ! kinetic energy which satisfy the spin polarisation.
