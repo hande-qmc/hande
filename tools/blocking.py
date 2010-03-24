@@ -104,6 +104,16 @@ start_index: block only data with an index greater than or equal to start_index.
     def calculate_sd(self, mean):
         '''Calculate the standard deviation and associated error of the current set of data.'''
 
+        # See "Error estimates on averages of correlated data" by Flyvbjerg and Petersen, JCP 91 461 (1989).
+        # They give the standard deviation and associated error in the standard deviation to be:
+        #   \sigma \approx \sqrt{c0/n-1} ( 1 \pm 1/(\sqrt(2(n-1))) )
+        # where
+        #   n is the number of items in the set of data;
+        #   c0 is given by:
+        #     c0 = 1/n \sum_k (x_k - \bar{x})^2
+        # where
+        #   x_k is the k-th data element;
+        #   \bar{x} is the mean of the set of data.
         c0 = 0
         for value in self.data:
             c0 += (value - mean)**2
@@ -117,6 +127,7 @@ start_index: block only data with an index greater than or equal to start_index.
         
 This destroys the data stored in self.data'''
 
+        # See "Error estimates on averages of correlated data" by Flyvbjerg and Petersen, JCP 91 461 (1989).
         block_size = len(self.data)
         while block_size >= 2:
 
