@@ -54,9 +54,12 @@ data_elements = [
         DataElement('lanczos_ground_state','^ *Lanczos ground state:', -1),
         DataElement('E0','^ *E0 = <D0|H|D0> =', -1),
         DataElement('final_shift','^ final shift =', -1),
+        DataElement('av_shift','^ av\. shift =', -1),
         DataElement('final_proj_E','^ final proj. energy =', -1),
+        DataElement('av_proj_E','^ av\. proj. energy =', -1),
         DataElement('E0+final_shift','^ E0 \+ shift =', -1),
-        DataElement('E0+final_proj_E','^ E0 \+ proj. energy =', -1),
+        DataElement('E0+av_shift','^ E0 \+ av\. shift =', -1),
+        DataElement('E0+final_proj_E','^ E0 \+ av\. proj\. energy =', -1),
     ]
 
 def extract(data_elements, filename):
