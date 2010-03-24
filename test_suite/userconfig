@@ -6,5 +6,5 @@ vcs = git
 extract = ../../tools/extract.py
 
 [user]
-benchfile = benchmark%(INPUTTAG)s-f08a2ef.out
+benchfile = benchmark%(INPUTTAG)s-26c745c.out
 
