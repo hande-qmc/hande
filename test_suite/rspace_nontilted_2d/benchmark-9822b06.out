@@ -1,0 +1,240 @@
+
+ Hubbard
+
+ ================================================================
+ Compiled on Mar 24 2010 at 14:08:16
+ VCS BASE repository version:
+     9822b06e33e4de878e6eb604f9de7cba19b937c8
+ Working directory: 
+     /home/james/work/src/hubbard_fciqmc/test_suite/rspace_nontilted_2d
+ Started running on 24/03/2010 at 14:08:36
+ Running on: mini-pintsize
+ ================================================================
+
+ Input options
+ -------------
+
+real_space
+lattice
+2 0
+0 2
+electrons 4
+fci
+lanczos_direct
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ Site positions given in terms of the primitive lattice vectors.
+
+ index   site         ms
+     1   ( 1, 0)      1
+     2   ( 1, 0)     -1
+     3   ( 0, 0)      1
+     4   ( 0, 0)     -1
+     5   ( 1, 1)      1
+     6   ( 1, 1)     -1
+     7   ( 0, 1)      1
+     8   ( 0, 1)     -1
+
+ Number of electrons: 4
+ Number of basis functions: 8
+ Total size of determinant space: 70
+
+ Diagonalisation
+ ===============
+
+ Considering determinants with spin:  0
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1               36
+
+ Diagonalising symmetry block 1 out of 1
+
+ Performing direct Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2010/03/24 14:08:36.801 (+00:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          8 (computed),          5 (wanted)
+Times the operator is applied:         28 (MAX:             1000 ).
+Problem size:                          36 (PE:   0),          36 (Global)
+Convergence tolerance:          1.490E-08 (rel),       1.386E-07 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations        21
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.1000E-02 sec,  6.9644E+06 FLOP/S ( 7.6608E+04 FLOP)
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  6.9101E-02 FLOP/S ( 1.4839E+05 FLOP)
+
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Considering determinants with spin:  2
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=2.
+
+ Symmetry index      # dets
+         1               16
+
+ Diagonalising symmetry block 1 out of 1
+
+ Performing direct Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2010/03/24 14:08:36.820 (+00:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         15 (computed),          5 (wanted)
+Times the operator is applied:         16 (MAX:             1000 ).
+Problem size:                          16 (PE:   0),          16 (Global)
+Convergence tolerance:          1.490E-08 (rel),       1.307E-07 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations        18
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.0000E-03 sec,  9.2160E+06 FLOP/S ( 9.2160E+03 FLOP)
+time in orth:                 0.00000E+00 sec
+Restarting:             1.0000E-03 sec,  7.6800E+06 FLOP/S ( 7.6800E+03 FLOP)
+TRLAN on this PE:       2.1475E+06 sec,  1.3872E-02 FLOP/S ( 2.9790E+04 FLOP)
+
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Considering determinants with spin:  4
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=4.
+
+ Symmetry index      # dets
+         1                1
+
+ Diagonalising symmetry block 1 out of 1
+
+ Performing trivial diagonalisation.
+
+ ---------------
+
+ Lanczos diagonalisation results
+ -------------------------------
+
+    State   Spin   Total energy
+      1       0    -7.297973443536
+      2       2    -7.270510361534
+      3      -2    -7.270510361534
+      4       0    -7.270510361534
+      5       0    -6.803809227414
+      6       0    -6.768564865582
+      7       2    -3.531128874149
+      8      -2    -3.531128874149
+      9       2    -3.531128874149
+     10      -2    -3.531128874149
+     11       0    -3.531128874149
+     12       2    -3.000000000000
+     13      -2    -3.000000000000
+     14       2    -3.000000000000
+     15      -2    -3.000000000000
+     16       4     0.000000000000
+     17      -4     0.000000000000
+
+ Lanczos ground state:   -7.297973443536
+
+ Exact diagonalisation results
+ -----------------------------
+
+    State   Spin   Total energy
+      1       0    -7.297973443536
+      2       0    -7.270510361534
+      3       2    -7.270510361534
+      4      -2    -7.270510361534
+      5       0    -6.803809227414
+      6       0    -6.768564865582
+      7       0    -3.531128874149
+      8       2    -3.531128874149
+      9      -2    -3.531128874149
+     10       2    -3.531128874149
+     11      -2    -3.531128874149
+     12       0    -3.531128874149
+     13       0    -3.000000000000
+     14       0    -3.000000000000
+     15       2    -3.000000000000
+     16      -2    -3.000000000000
+     17       0    -3.000000000000
+     18       2    -3.000000000000
+     19      -2    -3.000000000000
+     20       0    -3.000000000000
+     21       0    -2.531128874149
+     22       0    -2.531128874149
+     23       2    -0.000000000000
+     24      -2    -0.000000000000
+     25       0    -0.000000000000
+     26       4     0.000000000000
+     27      -4     0.000000000000
+     28       0     0.501945495952
+     29       2     0.501945495952
+     30      -2     0.501945495952
+     31       0     0.505835783878
+     32       0     1.000000000000
+     33       0     1.000000000000
+     34       0     1.000000000000
+     35       2     1.000000000000
+     36      -2     1.000000000000
+     37       2     1.000000000000
+     38      -2     1.000000000000
+     39       0     1.000000000000
+     40       2     1.000000000000
+     41      -2     1.000000000000
+     42       0     1.000000000000
+     43       2     1.000000000000
+     44      -2     1.000000000000
+     45       0     1.000000000000
+     46       0     1.494164216122
+     47       0     1.498054504048
+     48       0     2.000000000000
+     49       0     4.531128874149
+     50       2     4.531128874149
+     51      -2     4.531128874149
+     52       2     4.531128874149
+     53      -2     4.531128874149
+     54       0     4.531128874149
+     55       0     5.000000000000
+     56       0     5.000000000000
+     57       0     5.000000000000
+     58       2     5.000000000000
+     59      -2     5.000000000000
+     60       2     5.000000000000
+     61      -2     5.000000000000
+     62       0     5.000000000000
+     63       0     5.531128874149
+     64       0     5.531128874149
+     65       0     8.768564865582
+     66       2     8.768564865582
+     67      -2     8.768564865582
+     68       0     8.803809227414
+     69       0     9.270510361534
+     70       0     9.297973443536
+
+ Exact ground state:   -7.297973443536
+
