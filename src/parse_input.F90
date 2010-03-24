@@ -162,6 +162,8 @@ contains
                 end if
             case('SEED')
                 call readi(seed)
+            case('SHIFT_DAMPING')
+                call readf(shift_damping)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')

@@ -33,6 +33,10 @@ integer :: target_particles = 10000
 ! shift
 real(p) :: shift = 0.0_p
 
+! Factor by which the changes in the population are damped when updating the
+! shift.
+real(p) :: shift_damping = 0.050_dp
+
 ! projected energy
 ! This stores during an FCIQMC report loop
 !   \sum_{i/=0} <D_0|H|D_i> N_i

@@ -23,12 +23,9 @@ contains
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
 
-        use fciqmc_data, only: shift, tau
+        use fciqmc_data, only: shift, tau, shift_damping
 
         integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
-
-        ! This should be changed into an input option when necessary.
-        real(p) :: shift_damping = 0.050_p
 
         shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*nupdate_steps)
 

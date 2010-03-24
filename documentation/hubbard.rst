@@ -409,6 +409,69 @@ The following options are valid for FCIQMC calculations.
 
     The total number of Monte Carlo cycles performed in an FCIQMC calculation
     is *nreports* x *mc_cycles*.
+**seed** *seed*
+    Integer.
+
+    Default: 7.
+
+    Set the seed used to initialise the dSFMT random number generator.
+**tau** *tau*
+    Real.
+
+    Set the timestep to be used.  Each Monte Carlo cycle amounts to propogating
+    the walker population by the *tau* in units of imaginary time.
+
+    A small timestep causes the walker population to evolve very slowly.  Too
+    large a timestep, on the other hand, leads to a rapid particle growth which
+    takes a long time to stabilise, even once the shift begins to vary, and
+    coarse population dynamics.
+**initial_shift** *initial_shift*
+    Real.
+
+    Default: 0.
+
+    Set the value of the shift to use during the period before the shift is
+    allowed to vary.  Positive values lead to faster growth in the number of
+    walkers due to cloning.  Using too large a value can lead to poor sampling
+    as large numbers of walkers reside on the same small number of determinants
+    rather than diffusing appropriately through the determinant space.
+**varyshift_target** *varyshift_target*
+    Integer.
+
+    Default: 10000.
+
+    Set the target number of particles to be reached before the shift is
+    allowed to vary.  This is only checked at the end of each report loop.
+**shift_damping** *xi*
+    Real.
+
+    Default: 0.05.
+
+    Once the *varyshift_target* has been reached, the shift is updated according to:
+
+    .. math::
+
+        S(\beta) = S(\beta-A*\tau) - \xi*log(N_w(\tau)/N_w(\beta-A*\tau))/(A*\tau)
+
+    where :math:`\beta` is the current imaginary time, :math:`A\tau` is the
+    amount of imaginary time between shift updates, :math:`N_w` is the number of
+    walkers at the given time and :math:`xi` is a damping factor to prevent
+    wild fluctations in the population dynamics and can be set using the
+    **shift_damping** keyword.
+**reference_det** *electron_1 electron_2 ... electron_nel*
+    Integer list.
+
+    Default: use the first nalpha alpha spin-orbitals and first nbeta beta
+    spin-orbitals, where nalpha and nbeta are the number of alpha and beta
+    electrons respectively, as defined by the **ms** input option.  Note that
+    this can lead to using a 'bad' reference determinant which is a long way
+    from the ground state energy. This is particularly true when using the real
+    space formulation of the Hubbard model, as it causes as many sites as
+    possible to be doubly occupied.
+
+    Set the reference determinant to occupy the specified spin-orbitals.
+    The index of each spin-orbital is printed out in the basis functions
+    section of the output.
 **walker_length** *walker_length*
     Integer.
 
@@ -441,47 +504,6 @@ The following options are valid for FCIQMC calculations.
 
     Not valid for simple_fciqmc calculations, where the population of spawned
     walkers on each determinant is stored.
-**tau** *tau*
-    Real.
-
-    Set the timestep to be used.  Each Monte Carlo cycle amounts to propogating
-    the walker population by the *tau* in units of imaginary time.
-
-    A small timestep causes the walker population to evolve very slowly.  Too
-    large a timestep, on the other hand, leads to a rapid particle growth which
-    takes a long time to stabilise, even once the shift begins to vary, and
-    coarse population dynamics.
-**initial_shift** *initial_shift*
-    Real.
-
-    Default: 0.
-
-    Set the value of the shift to use during the period before the shift is
-    allowed to vary.  Positive values lead to faster growth in the number of
-    walkers due to cloning.  Using too large a value can lead to poor sampling
-    as large numbers of walkers reside on the same small number of determinants
-    rather than diffusing appropriately through the determinant space.
-**varyshift_target** *varyshift_target*
-    Integer.
-
-    Default: 10000.
-
-    Set the target number of particles to be reached before the shift is
-    allowed to vary.  This is only checked at the end of each report loop.
-**reference_det** *electron_1 electron_2 ... electron_nel*
-    Integer list.
-
-    Default: use the first nalpha alpha spin-orbitals and first nbeta beta
-    spin-orbitals, where nalpha and nbeta are the number of alpha and beta
-    electrons respectively, as defined by the **ms** input option.  Note that
-    this can lead to using a 'bad' reference determinant which is a long way
-    from the ground state energy. This is particularly true when using the real
-    space formulation of the Hubbard model, as it causes as many sites as
-    possible to be doubly occupied.
-
-    Set the reference determinant to occupy the specified spin-orbitals.
-    The index of each spin-orbital is printed out in the basis functions
-    section of the output.
 **dump_restart** [*id*]
     Optional integer.
 
@@ -506,12 +528,6 @@ The following options are valid for FCIQMC calculations.
     that the RNG is not restarted, so running two shorter calculations via the
     restart facility is not completely identical to running a single calculation
     for the same number of Monte Carlo cycles.
-**seed** *seed*
-    Integer.
-
-    Default: 7.
-
-    Set the seed used to initialise the dSFMT random number generator.
 
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
