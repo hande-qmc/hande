@@ -19,15 +19,17 @@ contains
         !    Monte Carlo cycles between updating the shift);
         !  * xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations;
         !  * N_w(beta) is the total number of particles at imaginary time beta.
+        ! The running average of the shift is also updated.
         ! In:
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
 
-        use fciqmc_data, only: shift, tau, shift_damping
+        use fciqmc_data, only: shift, tau, shift_damping, av_shift
 
         integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
 
         shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*nupdate_steps)
+        av_shift = av_shift + shift
 
     end subroutine update_shift
 

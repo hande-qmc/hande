@@ -33,6 +33,11 @@ integer :: target_particles = 10000
 ! shift
 real(p) :: shift = 0.0_p
 
+! shift averaged over the calculation, once varyshift mode has been entered.
+! This is really a running total: the average is only taken at output time (in
+! write_fciqmc_report).
+real(p) :: av_shift = 0.0_p
+
 ! Factor by which the changes in the population are damped when updating the
 ! shift.
 real(p) :: shift_damping = 0.050_dp
@@ -47,6 +52,11 @@ real(p) :: shift_damping = 0.050_dp
 ! and so proj_energy must be 'normalised' and averaged over the report loops
 ! accordingly.
 real(p) :: proj_energy
+
+! projected energy averaged over the calculation.
+! This is really a running total: the average is only taken at output time (in
+! write_fciqmc_report).
+real(p) :: av_proj_energy = 0.0_p
 
 !--- Walker data ---
 
@@ -96,6 +106,8 @@ integer :: ref_det
 
 ! The shift is updated at the end of each report loop when vary_shift is true.
 logical :: vary_shift = .false.
+! The number of report loops after which vary_shift mode was entered.
+integer :: start_vary_shift
 
 !--- Restart data ---
 
@@ -377,20 +389,29 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        write (6,'(1X,a12,7X,a13,10X,a12,2X,a11)') '# iterations','Instant shift','Proj. Energy','# particles'
+        write (6,'(1X,a12,7X,a13,13X,a9,10X,a12,11X,a11,2X,a11)') &
+          '# iterations','Instant shift','Av. shift','Proj. Energy','Av. Proj. E','# particles'
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(mc_cycles, nparticles)
+    subroutine write_fciqmc_report(ireport, nparticles)
 
         ! Write the report line at the end of a report loop.
         ! In:
-        !    mc_cycles: number of Monte Carlo cycles performed.
+        !    ireport: index of the report loop.
         !    nparticles: total number of particles in main walker list.
 
-        integer, intent(in) :: mc_cycles, nparticles
+        integer, intent(in) :: ireport, nparticles
+        integer :: mc_cycles, vary_shift_reports
 
-        write (6,'(5X,i8,2(f20.10,2X),i11)') mc_cycles, shift, proj_energy, nparticles
+        mc_cycles = ireport*ncycles
+
+        vary_shift_reports = ireport - start_vary_shift
+
+        write (6,'(5X,i8,4(f20.10,2X),i11)') mc_cycles_done+mc_cycles,               &
+                                             shift, av_shift/vary_shift_reports,     &
+                                             proj_energy, av_proj_energy/ mc_cycles, & 
+                                             nparticles
 
     end subroutine write_fciqmc_report
 

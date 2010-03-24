@@ -235,14 +235,17 @@ contains
                 call update_shift(nparticles_old, nparticles, ncycles)
             end if
             nparticles_old = nparticles
-            if (nparticles > target_particles) then
+            if (nparticles > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
+                start_vary_shift = ireport
             end if
 
-            ! average projected energy
+            ! Running average projected energy 
+            av_proj_energy = av_proj_energy + proj_energy
+            ! average projected energy over report loop.
             proj_energy = proj_energy/ncycles
 
-            call write_fciqmc_report(mc_cycles_done+ireport*ncycles, nparticles)
+            call write_fciqmc_report(ireport, nparticles)
 
         end do
 
