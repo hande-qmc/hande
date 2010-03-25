@@ -11,7 +11,12 @@ import operator
 import optparse
 import re
 import sys
-import pylab
+try:
+    import pylab
+    PYLAB = True
+except ImportError:
+    print "Can't import matplotlib.  Skipping graph production."
+    PYLAB = False
 
 __author__ = 'James Spencer'
 
@@ -151,16 +156,17 @@ This destroys the data stored in self.data'''
             print fmt % (stat.block_size, stat.mean, stat.sd, stat.sd_error)
 
         # plot standard deviation
-        blocks = [stat.block_size for stat in self.stats]
-        sd = [stat.sd for stat in self.stats]
-        sd_error = [stat.sd_error for stat in self.stats]
-        pylab.plot(blocks, sd)
-        pylab.errorbar(blocks, sd, yerr=sd_error)
-        pylab.xlim(blocks[0]+1, 1)
-        pylab.xlabel('Block size')
-        pylab.ylabel('Standard deviation')
-        pylab.draw()
-        pylab.show()
+        if PYLAB:
+            blocks = [stat.block_size for stat in self.stats]
+            sd = [stat.sd for stat in self.stats]
+            sd_error = [stat.sd_error for stat in self.stats]
+            pylab.plot(blocks, sd)
+            pylab.errorbar(blocks, sd, yerr=sd_error)
+            pylab.xlim(blocks[0]+1, 1)
+            pylab.xlabel('Block size')
+            pylab.ylabel('Standard deviation')
+            pylab.draw()
+            pylab.show()
 
 def parse_options(args):
     '''Parse command line options.'''
@@ -173,6 +179,10 @@ def parse_options(args):
     parser.add_option('-f', '--from', dest='start_index', type='int', default=0, help='Set the index from which the data is blocked.  Data with a smaller index is discarded.  Default: %default.')
 
     (options, filenames) = parser.parse_args(args)
+
+    if len(filenames) == 0:
+        parser.print_help()
+        sys.exit(1)
 
     return (options, filenames)
 
