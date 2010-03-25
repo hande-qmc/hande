@@ -159,9 +159,10 @@ This destroys the data stored in self.data'''
             blocks = [stat.block_size for stat in self.stats]
             sd = [stat.sd for stat in self.stats]
             sd_error = [stat.sd_error for stat in self.stats]
-            pylab.plot(blocks, sd)
+            pylab.semilogx(blocks, sd, basex=2)
             pylab.errorbar(blocks, sd, yerr=sd_error)
-            pylab.xlim(blocks[0]+1, 1)
+            xmax = 2**pylab.ceil(pylab.log2(blocks[0]+1))
+            pylab.xlim(xmax, 1)
             pylab.xlabel('Block size')
             pylab.ylabel('Standard deviation')
             pylab.draw()
