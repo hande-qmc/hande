@@ -118,7 +118,7 @@ start_index: block only data with an index greater than or equal to start_index.
         for value in self.data:
             c0 += (value - mean)**2
         size = len(self.data)
-        sd = sqrt(c0/(size-1))
+        sd = sqrt(c0/(size*(size-1)))
         sd_err = sd*1.0/(sqrt(2*(size-1)))
         return (sd, sd_err)
 
