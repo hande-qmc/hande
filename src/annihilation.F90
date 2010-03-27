@@ -19,6 +19,12 @@ contains
             end function sc0
         end interface
 
+#ifdef PARALLEL
+        ! 0. Send spawned walkers to the processor which "owns" them and receive
+        ! the walkers "owned" by this processor.
+        call distribute_walkers()
+#endif
+
         ! 1. Sort spawned walkers list.
         call sort_spawned_lists()
 
@@ -33,6 +39,26 @@ contains
         call insert_new_walkers(sc0)
 
     end subroutine direct_annihilation
+
+    subroutine distribute_walkers()
+
+        ! Send spawned walkers to the processor which "owns" them and receive
+        ! the walkers "owned" by this processor.
+
+        ! The walkers are already stored in the spawned walker arrays in blocks,
+        ! where each block corresponds to determinants owned by a given
+        ! processor.
+
+        ! Tests on cx2 indicate that there is not much difference between
+        ! sending messages of the same size using MPI_AlltoAll and
+        ! MPI_AlltoAllv (though MPI_AlltoAllv is very slightly slower, by a few
+        ! percent).  Therefore it is likely that using MPI_AlltoAllv will be
+        ! more efficient as it allows us to only send spawned walkers rather
+        ! than the entire spawned lists.  It does require an additional
+        ! communication to set up however, so for calculations with large
+        ! numbers of walkers maybe MPI_AlltoAll would be more efficient?
+
+    end subroutine distribute_walkers
 
     subroutine annihilate_spawned_list()
 
