@@ -1,5 +1,8 @@
 module fciqmc
 
+! Module for performing optimised (hopefully!) full configuration interaction
+! quantum monte carlo (FCIQMC) calculations.
+
 use fciqmc_data
 implicit none
 
@@ -38,6 +41,7 @@ contains
         ! Allocate spawned walker lists.
         allocate(spawned_walker_dets(basis_length,spawned_walker_length), stat=ierr)
         allocate(spawned_walker_population(spawned_walker_length), stat=ierr)
+        allocate(spawning_head(0:nprocs-1), stat=ierr)
 
         ! Set spin variables.
         call set_spin_polarisation(ms_in)

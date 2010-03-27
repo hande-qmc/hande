@@ -83,7 +83,7 @@ contains
             spawned_walker_population(islot) = spawned_walker_population(k) 
             compress: do
                 k = k + 1
-                if (k > spawning_head) exit self_annihilate
+                if (k > spawning_head(0)) exit self_annihilate
                 if (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,islot))) then
                     ! Add the populations of the subsequent identical walkers.
                     spawned_walker_population(islot) = spawned_walker_population(islot) + spawned_walker_population(k)
@@ -95,11 +95,11 @@ contains
             end do compress
             ! go to the next slot.
             islot = islot + 1
-            if (islot > spawning_head) exit self_annihilate
+            if (islot > spawning_head(0)) exit self_annihilate
         end do self_annihilate
 
-        ! update spawning_head
-        spawning_head = spawning_head - nremoved
+        ! update spawning_head(0)
+        spawning_head(0) = spawning_head(0) - nremoved
 
     end subroutine annihilate_spawned_list
 
@@ -117,7 +117,7 @@ contains
         nannihilate = 0
         istart = 1
         iend = tot_walkers
-        do i = 1, spawning_head
+        do i = 1, spawning_head(0)
             f = spawned_walker_dets(:,i)
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
@@ -135,7 +135,7 @@ contains
             end if
         end do
 
-        spawning_head = spawning_head - nannihilate
+        spawning_head(0) = spawning_head(0) - nannihilate
 
         ! Remove any determinants with 0 population.
         ! This can be done in a more efficient manner by doing it only when necessary...
@@ -198,7 +198,7 @@ contains
 
         istart = 1
         iend = tot_walkers
-        do i = spawning_head, 1, -1
+        do i = spawning_head(0), 1, -1
             ! spawned det is not in the main walker list
             call search_walker_list(spawned_walker_dets(:,i), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
@@ -220,7 +220,7 @@ contains
         end do
         
         ! Update tot_walkers
-        tot_walkers = tot_walkers + spawning_head
+        tot_walkers = tot_walkers + spawning_head(0)
 
     end subroutine insert_new_walkers
 

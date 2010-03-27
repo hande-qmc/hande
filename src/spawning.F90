@@ -161,8 +161,9 @@ contains
 
 ! Leave the following in for debug reasons...
 ! Should be removed after more testing.
-!            if (abs(get_hmatel_k(cdet%f,spawned_walker_dets(:,spawning_head))-s*hub_k_coulomb) > 1.e-10) then
-!                write (6,*) 'huh?',get_hmatel_k(cdet%f,spawned_walker_dets(:,spawning_head)), s*hub_k_coulomb,s
+! Will only work in serial.
+!            if (abs(get_hmatel_k(cdet%f,spawned_walker_dets(:,spawning_head(0)))-s*hub_k_coulomb) > 1.e-10) then
+!                write (6,*) 'huh?',get_hmatel_k(cdet%f,spawned_walker_dets(:,spawning_head(0))), s*hub_k_coulomb,s
 !                write (6,*) cdet%occ_list
 !                write (6,*) connection%from_orb, connection %to_orb
 !                write (6,*) connection%perm
@@ -252,8 +253,9 @@ contains
 
 ! Leave the following in for debug reasons...
 ! Should be removed after more testing.
-!            if (abs(get_hmatel_real(cdet%f, spawned_walker_dets(:,spawning_head))-hmatel) > 1.e-8) then
-!                write (6,*) 'oops!', get_hmatel_real(cdet%f, spawned_walker_dets(:,spawning_head)), hmatel
+! Will only work in serial.
+!            if (abs(get_hmatel_real(cdet%f, spawned_walker_dets(:,spawning_head(0)))-hmatel) > 1.e-8) then
+!                write (6,*) 'oops!', get_hmatel_real(cdet%f, spawned_walker_dets(:,spawning_head(0))), hmatel
 !            end if
 
         end if
@@ -567,6 +569,8 @@ contains
         !    nparticles: the (signed) number of particles to create on the
         !        spawned determinant.
 
+        use parallel, only: iproc
+
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
@@ -577,14 +581,23 @@ contains
         integer, intent(in) :: nparticles
 
         integer(i0) :: f_new(basis_length)
+#ifndef PARALLEL
+        integer, parameter :: iproc_spawn = 0
+#else
+        integer, parameter :: iproc_spawn 
+
+        ! 0. Need to determine which processor the spawned walker should be sent
+        ! to.  This communication is done during the annihilation process, after
+        ! all spawning and death has occured..
+#endif
 
         ! 1. Move to the next position in the spawning array.
-        spawning_head = spawning_head + 1
+        spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
 
         ! 2. Set info in spawning array.
         call create_excited_det(cdet%f, connection, f_new)
-        spawned_walker_dets(:,spawning_head) = f_new
-        spawned_walker_population(spawning_head) = nparticles
+        spawned_walker_dets(:,spawning_head(iproc_spawn)) = f_new
+        spawned_walker_population(spawning_head(iproc_spawn)) = nparticles
 
     end subroutine create_spawned_particle
 

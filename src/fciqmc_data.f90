@@ -76,8 +76,13 @@ integer(i0), allocatable :: spawned_walker_dets(:,:) ! (basis_length, spawned_wa
 ! b) walker population.
 integer, allocatable :: spawned_walker_population(:) ! (spawned_walker_length)
 ! c) current (filled) slot in the spawning arrays.
-!    if 0, then no elements are in the spawning arrays.
-integer :: spawning_head
+! In parallel we divide the spawning lists into blocks (one for each processor).
+! spawning_head(i) gives the current filled slot in the spawning arrays for the
+! block associated with the i-th processor.
+! After distribute_walkers is called in the annihilation algorithm,
+! spawning_head(0) is the number of spawned_walkers on the *current* processor
+! and all other elements are not meaningful.
+integer, allocatable :: spawning_head(:) ! (0:nprocs-1)
 
 !--- Reference determinant ---
 
@@ -147,7 +152,7 @@ contains
 
         nstack = 0
         lo = 1
-        hi = spawning_head
+        hi = spawning_head(0)
         do
             ! If the section/partition we are looking at is smaller than
             ! switch_threshold then perform an insertion sort.
@@ -247,7 +252,7 @@ contains
 
 ! DEBUG test only: verify
 !        tmp_det = spawned_walker_dets(:,1)
-!        do i = 2, spawning_head
+!        do i = 2, spawning_head(0)
 !            if (tmp_det .detgt. spawned_walker_dets(:,i)) then
 !                write (6,*) 'error sorting'
 !                stop
