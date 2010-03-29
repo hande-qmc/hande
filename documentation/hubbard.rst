@@ -164,7 +164,14 @@ DET_SIZE
     32 and 64, corresponding to using 8-bit, 16-bit, 32-bit and 64-bit integers
     respectively.  Note that using 8-bit or 16-bit integers is much slower on
     modern platforms.  The recommended value is 32 unless more than 32 basis
-    functions are used, in which case 64 is also a good choice.
+    functions are used, in which case 64 is also a good choice.  The parallel FCIQMC
+    algorithm requires the determinant bit-strings to be made up of either 32- or 64-bit
+    integers.
+32BIT
+    Default: not defined.
+
+    Must be defined if using 64-bit integers as the determinant bit-strings
+    with a 32-bit compiler for performing parallel FCIQMC calculations.
 DSFMT_MEXP 
     Default: 19937.
 
