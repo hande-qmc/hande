@@ -83,6 +83,9 @@ integer, allocatable :: spawned_walker_population(:) ! (spawned_walker_length)
 ! spawning_head(0) is the number of spawned_walkers on the *current* processor
 ! and all other elements are not meaningful.
 integer, allocatable :: spawning_head(:) ! (0:nprocs-1)
+! spawning_block_start(i) contains the first position to be used in the spawning
+! lists for storing a walker which is to be sent to the i-th processor.
+integer, allocatable :: spawning_block_start(:) ! (0:nprocs-1)
 
 !--- Reference determinant ---
 

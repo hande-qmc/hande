@@ -28,6 +28,7 @@ contains
 
         integer :: ierr
         integer :: i
+        integer :: step
 
         if (nprocs > 1) call stop_all('init_fciqmc','Not (yet!) a parallel algorithm.')
 
@@ -39,9 +40,23 @@ contains
         allocate(walker_energies(walker_length), stat=ierr)
 
         ! Allocate spawned walker lists.
+        if (mod(spawned_walker_length, nprocs) /= 0) then
+            write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
+            spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
+            write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',1X,a1,/)') &
+                                        'Increasing spawned_walker_length to',spawned_walker_length,'.'
+        end if
         allocate(spawned_walker_dets(basis_length,spawned_walker_length), stat=ierr)
         allocate(spawned_walker_population(spawned_walker_length), stat=ierr)
         allocate(spawning_head(0:nprocs-1), stat=ierr)
+
+        ! Find the start position within the spawned walker lists for each
+        ! processor.
+        allocate(spawning_block_start(0:nprocs-1), stat=ierr)
+        step = spawned_walker_length/nprocs
+        do i = 0, nprocs - 1
+            spawning_block_start(i) = i*step
+        end do
 
         ! Set spin variables.
         call set_spin_polarisation(ms_in)
@@ -197,7 +212,7 @@ contains
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
-                spawning_head = 0
+                spawning_head = spawning_block_start
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 

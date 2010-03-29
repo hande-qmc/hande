@@ -569,7 +569,8 @@ contains
         !    nparticles: the (signed) number of particles to create on the
         !        spawned determinant.
 
-        use parallel, only: iproc
+        use hashing
+        use parallel, only: iproc, nprocs
 
         use basis, only: basis_length
         use determinants, only: det_info
@@ -585,17 +586,23 @@ contains
         integer, parameter :: iproc_spawn = 0
 #else
         integer, parameter :: iproc_spawn 
-
-        ! 0. Need to determine which processor the spawned walker should be sent
-        ! to.  This communication is done during the annihilation process, after
-        ! all spawning and death has occured..
 #endif
 
-        ! 1. Move to the next position in the spawning array.
+        ! Create bit string of new determinant.
+        call create_excited_det(cdet%f, connection, f_new)
+
+#ifdef PARALLEL
+        ! (Extra credit for parallel calculations)
+        ! Need to determine which processor the spawned walker should be sent
+        ! to.  This communication is done during the annihilation process, after
+        ! all spawning and death has occured..
+        iproc_spawn = murmurhash_bit_string(f_new, basis_length)
+#endif
+
+        ! Move to the next position in the spawning array.
         spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
 
-        ! 2. Set info in spawning array.
-        call create_excited_det(cdet%f, connection, f_new)
+        ! Set info in spawning array.
         spawned_walker_dets(:,spawning_head(iproc_spawn)) = f_new
         spawned_walker_population(spawning_head(iproc_spawn)) = nparticles
 
