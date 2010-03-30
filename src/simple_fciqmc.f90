@@ -69,7 +69,8 @@ contains
 
         ! Allocate main and spawned lists to hold population of walkers.
         allocate(walker_population(ndets), stat=ierr)
-        allocate(spawned_walker_population(ndets), stat=ierr)
+        allocate(spawned_walker_population1(ndets), stat=ierr)
+        spawned_walker_population => spawned_walker_population1
         ! Zero these.
         walker_population = 0
         spawned_walker_population = 0

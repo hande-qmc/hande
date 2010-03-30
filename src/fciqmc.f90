@@ -46,8 +46,17 @@ contains
             write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',1X,a1,/)') &
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
-        allocate(spawned_walker_dets(basis_length,spawned_walker_length), stat=ierr)
-        allocate(spawned_walker_population(spawned_walker_length), stat=ierr)
+        allocate(spawned_walker_dets1(basis_length,spawned_walker_length), stat=ierr)
+        allocate(spawned_walker_population1(spawned_walker_length), stat=ierr)
+        spawned_walker_dets => spawned_walker_dets1
+        spawned_walker_population => spawned_walker_population1
+        if (nprocs > 1) then
+            ! Allocate scratch space for doing communication.
+            allocate(spawned_walker_dets2(basis_length,spawned_walker_length), stat=ierr)
+            allocate(spawned_walker_population2(spawned_walker_length), stat=ierr)
+            spawned_walker_dets_recvd => spawned_walker_dets2
+            spawned_walker_population_recvd => spawned_walker_population2
+        end if
         allocate(spawning_head(0:nprocs-1), stat=ierr)
 
         ! Find the start position within the spawned walker lists for each
