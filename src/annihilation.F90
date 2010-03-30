@@ -46,7 +46,9 @@ contains
 
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
-        integer :: i, step
+        integer :: i, step, ierr
+        integer(i0), pointer :: tmp_dets(:,:)
+        integer, pointer :: tmp_population(:)
 
         if (nprocs == 1) then
             ! No need to communicate!
@@ -73,8 +75,9 @@ contains
                 send_counts(i) = spawning_head(i) - spawning_block_start(i)
                 send_displacements(i) = i*step
             end forall
-            receive_counts = 0
-            !call MPI_AlltoAll(TODO)
+#ifdef PARALLEL
+            call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+#endif
 
             ! Want spawning data to be continuous after move, hence need to find the
             ! receive displacements.
@@ -83,12 +86,36 @@ contains
                 receive_displacements(i) = receive_displacements(i-1) + receive_counts(i-1)
             end do
 
+#ifdef PARALLEL
             ! Send spawning populations.
+            call MPI_AlltoAllv(spawned_walker_population, send_counts, send_displacements, MPI_INTEGER, &
+                               spawned_walker_population_recvd, receive_counts, receive_displacements, MPI_INTEGER, &
+                               MPI_COMM_WORLD, ierr)
             ! Send spawning determinants.
-            ! Swap pointers back...
+            ! Each element contains basis_length integers (of type
+            ! i0/mpi_det_integer) so we need to change the counts and
+            ! displacements accordingly:
+            send_counts = send_counts*basis_length
+            receive_counts = receive_counts*basis_length
+            send_displacements = send_displacements*basis_length
+            receive_displacements = receive_displacements*basis_length
+            call MPI_AlltoAllv(spawned_walker_dets, send_counts, send_displacements, mpi_det_integer, &
+                               spawned_walker_dets, receive_counts, receive_displacements, mpi_det_integer, &
+                               MPI_COMM_WORLD, ierr)
+#endif
+
+            ! Swap pointers so that spawned_walker_dets and
+            ! spawned_walker_population point to the received data.
+            tmp_dets => spawned_walker_dets
+            spawned_walker_dets => spawned_walker_dets_recvd
+            spawned_walker_dets_recvd => tmp_dets
+            tmp_population => spawned_walker_population
+            spawned_walker_population => spawned_walker_population_recvd
+            spawned_walker_population_recvd => tmp_population
 
             ! Set spawning_head(0) to be the number of walkers now on this
             ! processor.
+            spawning_head(0) = receive_displacements(nprocs-1) + receive_counts(nprocs-1)
         end if
 
     end subroutine distribute_walkers

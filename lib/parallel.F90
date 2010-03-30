@@ -47,6 +47,13 @@ type blacs_info
     integer :: desc_v(9)
 end type blacs_info
 
+! MPI data type for 32-bit or 64-bit integer used in determinant bit arrays.
+#if DET_SIZE == 32
+integer, parameter :: mpi_det_integer = MPI_INTEGER
+#elif DET_SIZE == 64
+integer, parameter :: mpi_det_integer = MPI_INTEGER
+#endif
+
 contains
 
     subroutine init_parallel()
