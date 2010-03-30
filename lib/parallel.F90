@@ -5,9 +5,13 @@ module parallel
 ! serial and parallel cases and avoids the rest of the code being littered
 ! with preprocessing statements.
 
+#include "../src/cdefs.h"
+
 #ifdef PARALLEL
 use mpi
 #endif
+
+use const
 
 implicit none
 
@@ -48,10 +52,20 @@ type blacs_info
 end type blacs_info
 
 ! MPI data type for 32-bit or 64-bit integer used in determinant bit arrays.
+#ifdef PARALLEL
 #if DET_SIZE == 32
 integer, parameter :: mpi_det_integer = MPI_INTEGER
 #elif DET_SIZE == 64
-integer, parameter :: mpi_det_integer = MPI_INTEGER
+integer, parameter :: mpi_det_integer = MPI_INTEGER8
+#endif
+
+! MPI data type for reals of single/double precision (as chosen at
+! compile-time).
+#ifdef SINGLE_PRECISION
+integer, parameter :: mpi_preal = MPI_REAL
+#else
+integer, parameter :: mpi_preal = MPI_REAL8
+#endif
 #endif
 
 contains
