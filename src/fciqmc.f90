@@ -239,6 +239,9 @@ contains
 
 ! DEBUG CHECK ONLY.
 !                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walker_population(:spawning_head))
+
+                ! D0_population is communicated in the direct_annihilation
+                ! algorithm for efficiency.
                 call direct_annihilation(sc0)
 ! DEBUG CHECK ONLY.
 !                sum2 = sum(walker_population(:tot_walkers))
