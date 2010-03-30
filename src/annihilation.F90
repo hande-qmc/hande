@@ -46,6 +46,8 @@ contains
 
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
+        integer :: s(2,0:nprocs-1)
+        integer :: r(2,0:nprocs-1)
         integer :: i, step, ierr
         integer(i0), pointer :: tmp_dets(:,:)
         integer, pointer :: tmp_population(:)
@@ -72,12 +74,16 @@ contains
             ! Find out how many walkers we are going to send and receive.
             step = spawning_block_start(1)
             forall (i=0:nprocs-1)
-                send_counts(i) = spawning_head(i) - spawning_block_start(i)
+                s(1,i) = spawning_head(i) - spawning_block_start(i)
+                s(2,i) = D0_population
                 send_displacements(i) = i*step
             end forall
 #ifdef PARALLEL
-            call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+            call MPI_AlltoAll(s, 1, MPI_INTEGER, r, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
 #endif
+            send_counts = s(1,:)
+            receive_counts = r(1,:)
+            D0_population = r(2, D0_proc)
 
             ! Want spawning data to be continuous after move, hence need to find the
             ! receive displacements.

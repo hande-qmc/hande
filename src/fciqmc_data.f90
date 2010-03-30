@@ -113,6 +113,9 @@ integer :: D0_population = 10
 ! Energy of reference determinant.
 real(p) :: H00
 
+! Processor on which the reference determinant is kept.
+integer :: D0_proc
+
 !--- Simple FCIQMC ---
 
 ! Data used *only* in the simple_fciqmc algorithm.

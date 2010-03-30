@@ -218,6 +218,7 @@ contains
 
                 ! Zero instantaneous projected energy.
                 inst_proj_energy = 0.0_p
+                D0_population = 0
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
