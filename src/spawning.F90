@@ -585,7 +585,7 @@ contains
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
-        integer, parameter :: iproc_spawn 
+        integer :: iproc_spawn 
 #endif
 
         ! Create bit string of new determinant.

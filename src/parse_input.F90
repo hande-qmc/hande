@@ -237,8 +237,6 @@ contains
         integer :: ierr
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(isym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)

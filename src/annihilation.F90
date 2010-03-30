@@ -42,7 +42,9 @@ contains
 
     subroutine distribute_walkers()
 
-        use parallel, only: nprocs
+        use parallel
+
+        use basis, only: basis_length
 
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
