@@ -152,7 +152,7 @@ contains
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution.
 
-        use parallel, only: parent
+        use parallel
   
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
@@ -199,6 +199,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, nparticles, nparticles_old
         type(det_info) :: cdet
         real(p) :: inst_proj_energy
+        real(dp) :: ir(2), ir_sum(2)
 
 ! DEBUG CHECK ONLY.
 !        integer :: sum1, sum2
@@ -276,6 +277,15 @@ contains
 
             ! Update the shift
             nparticles = sum(abs(walker_population(:tot_walkers))) ! This can be done more efficiently by counting as we go...
+#ifdef PARALLEL
+            ! Need to sum the number of particles and the projected energy over
+            ! all processors.
+            ir(1) = nparticles
+            ir(2) = proj_energy
+            call mpi_allreduce(ir, ir_sum, 2, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            nparticles = nint(ir_sum(1))
+            proj_energy = ir_sum(2)
+#endif
             if (vary_shift) then
                 call update_shift(nparticles_old, nparticles, ncycles)
             end if
