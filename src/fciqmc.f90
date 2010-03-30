@@ -16,7 +16,8 @@ contains
         ! initial walker.
 
         use errors, only: stop_all
-        use parallel, only: nprocs, parent
+        use hashing, only: murmurhash_bit_string
+        use parallel, only: iproc, nprocs, parent
         use utils, only: int_fmt
 
         use basis, only: basis_length
@@ -27,7 +28,7 @@ contains
         use system, only: nel, nalpha, nbeta, system_type, hub_real, hub_k
 
         integer :: ierr
-        integer :: i
+        integer :: i, iproc_ref
         integer :: step
 
         if (nprocs > 1) call stop_all('init_fciqmc','Not (yet!) a parallel algorithm.')
@@ -103,6 +104,14 @@ contains
             case(hub_real)
                 H00 = slater_condon0_hub_real(f0)
             end select
+
+            ! Finally, we need to check if the reference determinant actually
+            ! belongs on this processor.
+            ! If it doesn't, set the walkers array to be empty.
+            if (nprocs > 1) then
+                iproc_ref = murmurhash_bit_string(f0, basis_length)
+                if (iproc_ref /= iproc) tot_walkers = 0
+            end if
         end if
 
         if (parent) then
