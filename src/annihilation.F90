@@ -42,21 +42,54 @@ contains
 
     subroutine distribute_walkers()
 
-        ! Send spawned walkers to the processor which "owns" them and receive
-        ! the walkers "owned" by this processor.
+        use parallel, only: nprocs
 
-        ! The walkers are already stored in the spawned walker arrays in blocks,
-        ! where each block corresponds to determinants owned by a given
-        ! processor.
+        integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
+        integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
+        integer :: i, step
 
-        ! Tests on cx2 indicate that there is not much difference between
-        ! sending messages of the same size using MPI_AlltoAll and
-        ! MPI_AlltoAllv (though MPI_AlltoAllv is very slightly slower, by a few
-        ! percent).  Therefore it is likely that using MPI_AlltoAllv will be
-        ! more efficient as it allows us to only send spawned walkers rather
-        ! than the entire spawned lists.  It does require an additional
-        ! communication to set up however, so for calculations with large
-        ! numbers of walkers maybe MPI_AlltoAll would be more efficient?
+        if (nprocs == 1) then
+            ! No need to communicate!
+        else
+            ! Send spawned walkers to the processor which "owns" them and receive
+            ! the walkers "owned" by this processor.
+
+            ! The walkers are already stored in the spawned walker arrays in blocks,
+            ! where each block corresponds to determinants owned by a given
+            ! processor.
+
+            ! Tests on cx2 indicate that there is not much difference between
+            ! sending messages of the same size using MPI_AlltoAll and
+            ! MPI_AlltoAllv (though MPI_AlltoAllv is very slightly slower, by a few
+            ! percent).  Therefore it is likely that using MPI_AlltoAllv will be
+            ! more efficient as it allows us to only send spawned walkers rather
+            ! than the entire spawned lists.  It does require an additional
+            ! communication to set up however, so for calculations with large
+            ! numbers of walkers maybe MPI_AlltoAll would be more efficient?
+
+            ! Find out how many walkers we are going to send and receive.
+            step = spawning_block_start(1)
+            forall (i=0:nprocs-1)
+                send_counts(i) = spawning_head(i) - spawning_block_start(i)
+                send_displacements(i) = i*step
+            end forall
+            receive_counts = 0
+            !call MPI_AlltoAll(TODO)
+
+            ! Want spawning data to be continuous after move, hence need to find the
+            ! receive displacements.
+            receive_displacements(0) = 0
+            do i=1, nprocs-1
+                receive_displacements(i) = receive_displacements(i-1) + receive_counts(i-1)
+            end do
+
+            ! Send spawning populations.
+            ! Send spawning determinants.
+            ! Swap pointers back...
+
+            ! Set spawning_head(0) to be the number of walkers now on this
+            ! processor.
+        end if
 
     end subroutine distribute_walkers
 
