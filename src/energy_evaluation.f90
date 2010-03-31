@@ -28,7 +28,7 @@ contains
 
         integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
 
-        shift = shift - log(real(nparticles,8)/nparticles_old)*shift_damping/(tau*nupdate_steps)
+        shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(tau*nupdate_steps)
         av_shift = av_shift + shift
 
     end subroutine update_shift
