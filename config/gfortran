@@ -11,4 +11,4 @@ cxxflags = -O3
 
 [dbg]
 fflags = -g -fbounds-check
-cxxflags = -g -fbounds-check
+cxxflags = -g
