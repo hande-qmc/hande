@@ -95,6 +95,11 @@ contains
                 call readf(hubt)
             case('U')
                 call readf(hubu)
+            case('TWIST')
+                allocate(ktwist(nitems-item), stat=ierr)
+                do i = 1, nitems-item
+                    call readf(ktwist(i))
+                end do
 
             ! Select symmetry of wavefunction.
             case('MS')
@@ -236,7 +241,7 @@ contains
         use parallel
 
         integer :: ierr
-        logical :: set_reference_det
+        logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -247,6 +252,13 @@ contains
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
+        if (parent) option_set = allocated(ktwist)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            if (.not.parent) allocate(ktwist(ndim), stat=ierr)
+            call mpi_bcast(ktwist, ndim, mpi_preal, 0, mpi_comm_world, ierr)
+        end if
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -256,9 +268,10 @@ contains
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(tsimple, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(t_fciqmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        if (parent) set_reference_det = allocated(occ_list0)
-        call mpi_bcast(set_reference_det, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        if (set_reference_det) then
+
+        if (parent) option_set = allocated(occ_list0)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
             if (.not.parent) allocate(occ_list0(nel), stat=ierr)
             call mpi_bcast(occ_list0, nel, mpi_integer, 0, mpi_comm_world, ierr)
         end if

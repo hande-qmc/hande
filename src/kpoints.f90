@@ -23,7 +23,7 @@ contains
         integer :: i
         real(p) :: kc(ndim)
 
-        forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
+        forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:)) + ktwist(i)
 
         ! For a square lattice the kinetic energy of a wavevector is given by
         !    -2t \sum_i cos(k.x_i)

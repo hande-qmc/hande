@@ -127,7 +127,16 @@ contains
                 write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
                 write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
             else
-                write (6,'(1X,a78,/)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
+                write (6,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
+                if (any(abs(ktwist) > 0.0_p)) then
+                    write (6,'(1X,a26)', advance='no') 'Applying a twist angle of:'
+                    write (6,'(1X,"(",f6.4)', advance='no') ktwist(1)
+                    do i = 2, ndim
+                        write (6,'(",",f6.4)', advance='no') ktwist(i)
+                    end do
+                    write (6,'(").")')
+                end if
+                write (6,'()')
                 write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
             end if
             do i = 1, ndim

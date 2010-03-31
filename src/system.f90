@@ -33,6 +33,9 @@ real(p), allocatable :: box_length(:) ! ndim.
 ! b_i = 2\pi/|a_i|^2 a_i
 real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
+! Twist applied to wavevectors.
+real(p), allocatable :: ktwist(:)
+
 ! # of electrons
 integer :: nel = 0 
 
@@ -66,6 +69,11 @@ contains
         nsites = nint(product(box_length))
         forall (ivec=1:ndim) rlattice(:,ivec) = lattice(:,ivec)/box_length(ivec)**2
 
+        if (.not.allocated(ktwist)) then
+            allocate(ktwist(ndim), stat=ierr)
+            ktwist = 0.0_p
+        end if
+
         hub_k_coulomb = hubu/nsites
 
     end subroutine init_system
@@ -79,6 +87,7 @@ contains
         deallocate(box_length, stat=ierr)
         deallocate(rlattice, stat=ierr)
         deallocate(lattice, stat=ierr)
+        deallocate(ktwist, stat=ierr)
 
     end subroutine end_system
 

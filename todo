@@ -7,15 +7,17 @@
 7.  UEG.
 8.  Improve selection of calculation: bit string variable rather than many logic flags.
 9.  Better name?
+10. CuO2?
+11. Twist averaging.
 
 FCIQMC
 ------
 
+1. HPHF type work
+2. Initiator.
+
 FCIQMC parallelisation
 ----------------------
-
-Have scrapped the idea of hybrid OpenMP-MPI parallelisation: there are no
-memory benefits for the hubbard code and NECI can be tackled using mmap.
 
 a) Restart.
 b) Investigate load-balancing issues.
