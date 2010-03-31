@@ -108,7 +108,7 @@ contains
             send_displacements = send_displacements*basis_length
             receive_displacements = receive_displacements*basis_length
             call MPI_AlltoAllv(spawned_walker_dets, send_counts, send_displacements, mpi_det_integer, &
-                               spawned_walker_dets, receive_counts, receive_displacements, mpi_det_integer, &
+                               spawned_walker_dets_recvd, receive_counts, receive_displacements, mpi_det_integer, &
                                MPI_COMM_WORLD, ierr)
 #endif
 
