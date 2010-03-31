@@ -32,10 +32,10 @@ contains
         ! Compress the remaining spawned walkers list.
         call annihilate_spawned_list()
 
-        ! 4. Annilate main list.
+        ! 3. Annilate main list.
         call annihilate_main_list()
 
-        ! 5. Insert new walkers into main walker list.
+        ! 4. Insert new walkers into main walker list.
         call insert_new_walkers(sc0)
 
     end subroutine direct_annihilation
@@ -81,7 +81,7 @@ contains
                 send_displacements(i) = i*step
             end forall
 #ifdef PARALLEL
-            call MPI_AlltoAll(s, 1, MPI_INTEGER, r, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+            call MPI_AlltoAll(s, 2, MPI_INTEGER, r, 2, MPI_INTEGER, MPI_COMM_WORLD, ierr)
 #endif
             send_counts = s(1,:)
             receive_counts = r(1,:)
