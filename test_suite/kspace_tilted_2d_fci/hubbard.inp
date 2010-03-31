@@ -4,3 +4,4 @@ lattice
 electrons 4
 fci
 block_size 2
+twist 0.1 0.1

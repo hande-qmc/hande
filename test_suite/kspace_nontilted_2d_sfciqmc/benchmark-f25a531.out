@@ -2,13 +2,13 @@
  Hubbard
 
  ================================================================
- Compiled on Mar 24 2010 at 14:08:16
+ Compiled on Mar 31 2010 at 20:29:42
  VCS BASE repository version:
-     9822b06e33e4de878e6eb604f9de7cba19b937c8
+     f25a5315927144d25e0a7ab4e496f4a3b38faa7c
  Working directory: 
-     /home/james/work/src/hubbard_fciqmc/test_suite/kspace_nontilted_2d_sfciqmc
- Started running on 24/03/2010 at 14:08:25
- Running on: mini-pintsize
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/kspace_nontilted_2d_sfciqmc
+ Started running on 31/03/2010 at 20:30:10
+ Running on: tycpc19
  ================================================================
 
  Input options
@@ -35,15 +35,15 @@ seed 5234
  ---------------
 
  Spin given in units of 1/2.
- k-points given in terms of the reciprocal lattice vectors of the primitive cell.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
 
  index   k-point      ms     kinetic energy
      1   ( 0, 0)      1     -4.00000000
      2   ( 0, 0)     -1     -4.00000000
-     3   ( 1, 0)      1     -0.00000000
-     4   ( 1, 0)     -1     -0.00000000
-     5   ( 0, 1)      1     -0.00000000
-     6   ( 0, 1)     -1     -0.00000000
+     3   ( 1, 0)      1      0.00000000
+     4   ( 1, 0)     -1      0.00000000
+     5   ( 0, 1)      1      0.00000000
+     6   ( 0, 1)     -1      0.00000000
      7   ( 1, 1)      1      4.00000000
      8   ( 1, 1)     -1      4.00000000
 

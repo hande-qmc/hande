@@ -2,13 +2,13 @@
  Hubbard
 
  ================================================================
- Compiled on Mar 24 2010 at 14:08:16
+ Compiled on Mar 31 2010 at 20:29:42
  VCS BASE repository version:
-     9822b06e33e4de878e6eb604f9de7cba19b937c8
+     f25a5315927144d25e0a7ab4e496f4a3b38faa7c
  Working directory: 
-     /home/james/work/src/hubbard_fciqmc/test_suite/rspace_1d_fciqmc
- Started running on 24/03/2010 at 14:08:33
- Running on: mini-pintsize
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/rspace_1d_fciqmc
+ Started running on 31/03/2010 at 20:30:14
+ Running on: tycpc19
  ================================================================
 
  Input options
@@ -67,7 +67,7 @@ sym 1
 
  Reference determinant, |D0> = | 3 5 6 >
  E0 = <D0|H|D0> =      0.000000000000
- Initial population on reference determinant: 4
+ Initial population on reference determinant: 113
 
  Note that FCIQMC calculates the correlation energy relative to |D0>.
 
