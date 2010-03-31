@@ -22,7 +22,7 @@ contains
         use system, only: init_system, system_type, hub_real
         use hubbard, only: init_basis_fns
         use determinants, only: init_determinants
-        use parallel, only: init_parallel, parallel_report, nprocs, parent
+        use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
         use hubbard_real, only: init_real_space_hub
         use symmetry, only: init_symmetry
         use calc, only: t_fciqmc, tsimple, seed
@@ -56,7 +56,7 @@ contains
         if (system_type == hub_real) call init_real_space_hub()
 
         if (t_fciqmc) then
-            call dSFMT_init(seed)
+            call dSFMT_init(seed + iproc)
             if (tsimple) then
                 call init_simple_fciqmc()
             else

@@ -233,27 +233,59 @@ contains
 #ifdef PARALLEL
 
         use mpi
+        use parallel
 
         integer :: ierr
+        logical :: set_reference_det
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(isym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
+        call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
         call mpi_bcast(t_exact, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(t_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(tsimple, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(t_fciqmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (parent) set_reference_det = allocated(occ_list0)
+        call mpi_bcast(set_reference_det, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (set_reference_det) then
+            if (.not.parent) allocate(occ_list0(nel), stat=ierr)
+            call mpi_bcast(occ_list0, nel, mpi_integer, 0, mpi_comm_world, ierr)
+        end if
+
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
         call mpi_bcast(find_eigenvectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+
+        call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(target_particles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(read_restart_number, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(write_restart_number, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(D0_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
+
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
 #endif

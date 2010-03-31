@@ -1,5 +1,8 @@
 module fciqmc
 
+! Module for performing optimised (hopefully!) full configuration interaction
+! quantum monte carlo (FCIQMC) calculations.
+
 use fciqmc_data
 implicit none
 
@@ -13,7 +16,8 @@ contains
         ! initial walker.
 
         use errors, only: stop_all
-        use parallel, only: nprocs, parent
+        use hashing, only: murmurhash_bit_string
+        use parallel, only: iproc, nprocs, parent
         use utils, only: int_fmt
 
         use basis, only: basis_length
@@ -24,9 +28,8 @@ contains
         use system, only: nel, nalpha, nbeta, system_type, hub_real, hub_k
 
         integer :: ierr
-        integer :: i
-
-        if (nprocs > 1) call stop_all('init_fciqmc','Not (yet!) a parallel algorithm.')
+        integer :: i, iproc_ref
+        integer :: step
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -36,8 +39,32 @@ contains
         allocate(walker_energies(walker_length), stat=ierr)
 
         ! Allocate spawned walker lists.
-        allocate(spawned_walker_dets(basis_length,spawned_walker_length), stat=ierr)
-        allocate(spawned_walker_population(spawned_walker_length), stat=ierr)
+        if (mod(spawned_walker_length, nprocs) /= 0) then
+            write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
+            spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
+            write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',1X,a1,/)') &
+                                        'Increasing spawned_walker_length to',spawned_walker_length,'.'
+        end if
+        allocate(spawned_walker_dets1(basis_length,spawned_walker_length), stat=ierr)
+        allocate(spawned_walker_population1(spawned_walker_length), stat=ierr)
+        spawned_walker_dets => spawned_walker_dets1
+        spawned_walker_population => spawned_walker_population1
+        if (nprocs > 1) then
+            ! Allocate scratch space for doing communication.
+            allocate(spawned_walker_dets2(basis_length,spawned_walker_length), stat=ierr)
+            allocate(spawned_walker_population2(spawned_walker_length), stat=ierr)
+            spawned_walker_dets_recvd => spawned_walker_dets2
+            spawned_walker_population_recvd => spawned_walker_population2
+        end if
+        allocate(spawning_head(0:nprocs-1), stat=ierr)
+
+        ! Find the start position within the spawned walker lists for each
+        ! processor.
+        allocate(spawning_block_start(0:nprocs-1), stat=ierr)
+        step = spawned_walker_length/nprocs
+        do i = 0, nprocs - 1
+            spawning_block_start(i) = i*step
+        end do
 
         ! Set spin variables.
         call set_spin_polarisation(ms_in)
@@ -75,14 +102,25 @@ contains
             case(hub_real)
                 H00 = slater_condon0_hub_real(f0)
             end select
+
+            ! Finally, we need to check if the reference determinant actually
+            ! belongs on this processor.
+            ! If it doesn't, set the walkers array to be empty.
+            if (nprocs > 1) then
+                iproc_ref = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+                if (iproc_ref /= iproc) tot_walkers = 0
+                D0_proc = iproc_ref
+            else
+                D0_proc = iproc
+            end if
         end if
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(walker_dets(:,tot_walkers), new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-            write (6,'(1X,a44,'//int_fmt(walker_population(tot_walkers),1)//')') &
-                              'Initial population on reference determinant:',walker_population(tot_walkers)
+            write (6,'(1X,a44,'//int_fmt(D0_population,1)//')') &
+                              'Initial population on reference determinant:',D0_population
             write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
         end if
         
@@ -115,7 +153,7 @@ contains
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution.
 
-        use parallel, only: parent
+        use parallel
   
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
@@ -162,6 +200,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, nparticles, nparticles_old
         type(det_info) :: cdet
         real(p) :: inst_proj_energy
+        real(dp) :: ir(2), ir_sum(2)
 
 ! DEBUG CHECK ONLY.
 !        integer :: sum1, sum2
@@ -190,10 +229,11 @@ contains
 
                 ! Zero instantaneous projected energy.
                 inst_proj_energy = 0.0_p
+                D0_population = 0
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
-                spawning_head = 0
+                spawning_head = spawning_block_start
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -220,6 +260,9 @@ contains
 
 ! DEBUG CHECK ONLY.
 !                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walker_population(:spawning_head))
+
+                ! D0_population is communicated in the direct_annihilation
+                ! algorithm for efficiency.
                 call direct_annihilation(sc0)
 ! DEBUG CHECK ONLY.
 !                sum2 = sum(walker_population(:tot_walkers))
@@ -235,6 +278,15 @@ contains
 
             ! Update the shift
             nparticles = sum(abs(walker_population(:tot_walkers))) ! This can be done more efficiently by counting as we go...
+#ifdef PARALLEL
+            ! Need to sum the number of particles and the projected energy over
+            ! all processors.
+            ir(1) = nparticles
+            ir(2) = proj_energy
+            call mpi_allreduce(ir, ir_sum, 2, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            nparticles = nint(ir_sum(1))
+            proj_energy = ir_sum(2)
+#endif
             if (vary_shift) then
                 call update_shift(nparticles_old, nparticles, ncycles)
             end if

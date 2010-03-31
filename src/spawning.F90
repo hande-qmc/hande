@@ -35,20 +35,19 @@ contains
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_k, excit, create_excited_det, find_excitation_permutation2
-        use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population, spawning_head
+        use excitations, only: calc_pgen_hub_k, excit, find_excitation_permutation2
+        use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
-        use basis, only: basis_length
 
-        ! for debug only.
+! for debug only.
 !        use hamiltonian, only: get_hmatel_k
+!        use fciqmc_data, only: spawned_walker_dets, spawned_walker_population, spawning_head
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
 
         real(p) :: pgen, psuccess, pspawn
         integer :: i, j, a, b, ij_sym, nparticles, s, tmp
-        integer(i0) :: f_new(basis_length)
         type(excit) :: connection
 
         ! Single excitations are not connected determinants within the 
@@ -157,21 +156,17 @@ contains
                 nparticles = sign(nparticles, parent_sign)
             end if
 
-            ! 6. Move to the next position in the spawning array.
-            spawning_head = spawning_head + 1
-
-            ! 7. Set info in spawning array.
-            call create_excited_det(cdet%f, connection, f_new)
-            spawned_walker_dets(:,spawning_head) = f_new
-            spawned_walker_population(spawning_head) = nparticles
+            ! 6. Spawn.
+            call create_spawned_particle(cdet, connection, nparticles)
 
 ! Leave the following in for debug reasons...
 ! Should be removed after more testing.
-!            if (abs(get_hmatel_k(cdet%f,f_new)-s*hub_k_coulomb) > 1.e-10) then
-!                write (6,*) 'huh?',get_hmatel_k(cdet%f,f_new), s*hub_k_coulomb,s
+! Will only work in serial.
+!            if (abs(get_hmatel_k(cdet%f,spawned_walker_dets(:,spawning_head(0)))-s*hub_k_coulomb) > 1.e-10) then
+!                write (6,*) 'huh?',get_hmatel_k(cdet%f,spawned_walker_dets(:,spawning_head(0))), s*hub_k_coulomb,s
 !                write (6,*) cdet%occ_list
-!                write (6,*) i,j,a,b
-!                write (6,*) connection%perm, mod(i-a,2) /= 0
+!                write (6,*) connection%from_orb, connection %to_orb
+!                write (6,*) connection%perm
 !                stop
 !            end if
 
@@ -192,22 +187,21 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
 
-        use basis, only: basis_length
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_real, excit, create_excited_det, find_excitation_permutation1
-        use fciqmc_data, only: tau, spawned_walker_dets, spawned_walker_population, spawning_head
+        use excitations, only: calc_pgen_hub_real, excit, find_excitation_permutation1
+        use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real
 
-        ! for debug only
+! for debug only.
 !        use hamiltonian, only: get_hmatel_real
+!        use fciqmc_data, only: spawned_walker_dets, spawned_walker_population, spawning_head
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
 
         real(p) :: pgen, psuccess, pspawn, hmatel
         integer :: i, a, nparticles
-        integer(i0) :: f_new(basis_length)
         type(excit) :: connection
         integer :: nvirt_avail
 
@@ -244,12 +238,8 @@ contains
         if (pspawn > psuccess) nparticles = nparticles + 1
 
         if (nparticles > 0) then
-            ! Spawn!
 
-            ! 5. Move to the next position in the spawning array.
-            spawning_head = spawning_head + 1
-
-            ! 6. If H_ij is positive, then the spawned walker is of opposite
+            ! 5. If H_ij is positive, then the spawned walker is of opposite
             ! sign to the parent, otherwise the spawned walkers if of the same
             ! sign as the parent.
             if (hmatel > 0.0_p) then
@@ -258,15 +248,14 @@ contains
                 nparticles = sign(nparticles, parent_sign)
             end if
 
-            ! 7. Set info in spawning array.
-            call create_excited_det(cdet%f, connection, f_new)
-            spawned_walker_dets(:,spawning_head) = f_new
-            spawned_walker_population(spawning_head) = nparticles
+            ! 6. Spawn.
+            call create_spawned_particle(cdet, connection, nparticles)
 
 ! Leave the following in for debug reasons...
 ! Should be removed after more testing.
-!            if (abs(get_hmatel_real(cdet%f, f_new)-hmatel) > 1.e-8) then
-!                write (6,*) 'oops!', get_hmatel_real(cdet%f, f_new), hmatel
+! Will only work in serial.
+!            if (abs(get_hmatel_real(cdet%f, spawned_walker_dets(:,spawning_head(0)))-hmatel) > 1.e-8) then
+!                write (6,*) 'oops!', get_hmatel_real(cdet%f, spawned_walker_dets(:,spawning_head(0))), hmatel
 !            end if
 
         end if
@@ -567,5 +556,56 @@ contains
         end do finda
 
     end subroutine choose_ia_hub_real
+
+    subroutine create_spawned_particle(cdet, connection, nparticles)
+
+        ! Create a spawned walker.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connecting the current determinant to its
+        !        offspring.  Note that the perm field is not used.
+        !    nparticles: the (signed) number of particles to create on the
+        !        spawned determinant.
+
+        use hashing
+        use parallel, only: iproc, nprocs
+
+        use basis, only: basis_length
+        use determinants, only: det_info
+        use excitations, only: excit, create_excited_det
+        use fciqmc_data, only: spawned_walker_dets, spawned_walker_population, spawning_head
+
+        type(det_info), intent(in) :: cdet
+        type(excit), intent(in) :: connection
+        integer, intent(in) :: nparticles
+
+        integer(i0) :: f_new(basis_length)
+#ifndef PARALLEL
+        integer, parameter :: iproc_spawn = 0
+#else
+        integer :: iproc_spawn 
+#endif
+
+        ! Create bit string of new determinant.
+        call create_excited_det(cdet%f, connection, f_new)
+
+#ifdef PARALLEL
+        ! (Extra credit for parallel calculations)
+        ! Need to determine which processor the spawned walker should be sent
+        ! to.  This communication is done during the annihilation process, after
+        ! all spawning and death has occured..
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
+#endif
+
+        ! Move to the next position in the spawning array.
+        spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+
+        ! Set info in spawning array.
+        spawned_walker_dets(:,spawning_head(iproc_spawn)) = f_new
+        spawned_walker_population(spawning_head(iproc_spawn)) = nparticles
+
+    end subroutine create_spawned_particle
 
 end module spawning

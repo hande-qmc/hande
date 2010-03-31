@@ -11,15 +11,10 @@
 FCIQMC
 ------
 
-a) blocking script
-b) restart
-
 FCIQMC parallelisation
 ----------------------
 
 Have scrapped the idea of hybrid OpenMP-MPI parallelisation: there are no
 memory benefits for the hubbard code and NECI can be tackled using mmap.
 
-a) Hashing to distribute walkers.
-b) Parallel sort.
-c) Update shift and projected energy.
+a) Restart.

@@ -12,8 +12,7 @@ both serial and parallel.  Lanczos diagonalisation can be performed with or
 without precomputing the Hamiltonian matrix.
 
 Recently the Full Configuration Interaction Quantum Monte Carlo method has been
-implemented.  Currently this can only be performed in serial.
-
+implemented.
 
 Directory structure
 --------------------
@@ -314,8 +313,7 @@ initialisation (mainly the enumeration of the basis) is performed.
     Perform an FCIQMC calculation using an extremely simple (but wasteful, in
     terms of CPU and memory resources) algorithm.  This should be used for testing only.
 **fciqmc**
-    Perform an FCIQMC calculation.  This is currently only implemented for the
-    momentum space formulation of the Hubbard model. 
+    Perform an FCIQMC calculation.
 **lanczos**
     Perform a Lanczos diagonalisation of the Hamiltonian matrix.
 **lanczos_direct**
@@ -422,6 +420,8 @@ The following options are valid for FCIQMC calculations.
     Default: 7.
 
     Set the seed used to initialise the dSFMT random number generator.
+    In parallel the seed on each processor is *seed* + iproc, where iproc is
+    the processor index (as supplied by MPI) and ranges from 0 to nprocs-1.
 **tau** *tau*
     Real.
 
@@ -526,6 +526,8 @@ The following options are valid for FCIQMC calculations.
     x is chosen to be the smallest integer possible such that restart.x does
     not exist in the calculation directory.
 
+    Restart is currently only implemented in serial.
+
     Warning: these files can become very large, so care should be taken when
     not re-using the same filenames.
 **restart** [*id*]
@@ -542,6 +544,8 @@ The following options are valid for FCIQMC calculations.
     that the RNG is not restarted, so running two shorter calculations via the
     restart facility is not completely identical to running a single calculation
     for the same number of Monte Carlo cycles.
+
+    Restart is currently only implemented in serial.
 
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

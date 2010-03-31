@@ -72,12 +72,31 @@ real(p), allocatable :: walker_energies(:)
 
 ! Walker information: spawned list.
 ! a) determinants.
-integer(i0), allocatable :: spawned_walker_dets(:,:) ! (basis_length, spawned_walker_length)
+integer(i0), allocatable, target :: spawned_walker_dets1(:,:) ! (basis_length, spawned_walker_length)
+integer(i0), allocatable, target :: spawned_walker_dets2(:,:) ! (basis_length, spawned_walker_length)
 ! b) walker population.
-integer, allocatable :: spawned_walker_population(:) ! (spawned_walker_length)
-! c) current (filled) slot in the spawning arrays.
-!    if 0, then no elements are in the spawning arrays.
-integer :: spawning_head
+integer, allocatable, target :: spawned_walker_population1(:) ! (spawned_walker_length)
+integer, allocatable, target :: spawned_walker_population2(:) ! (spawned_walker_length)
+! c) pointers.
+! In serial we only use spawned_walker_*1.  In parallel it is useful to have two
+! arrays (one for receiving data and one for sending data when we need to
+! communicate).  To avoid copying, we use pointers.
+! spawned_walker_dets and spawned_walker_population point at the current data,
+! spawned_walker_dets_recvd and spawned_walker_population_recvd are only used in
+! data communication (see distribute_walkers in the annihilation module).
+integer(i0), pointer :: spawned_walker_dets(:,:), spawned_walker_dets_recvd(:,:)
+integer, pointer :: spawned_walker_population(:), spawned_walker_population_recvd(:)
+! d) current (filled) slot in the spawning arrays.
+! In parallel we divide the spawning lists into blocks (one for each processor).
+! spawning_head(i) gives the current filled slot in the spawning arrays for the
+! block associated with the i-th processor.
+! After distribute_walkers is called in the annihilation algorithm,
+! spawning_head(0) is the number of spawned_walkers on the *current* processor
+! and all other elements are not meaningful.
+integer, allocatable :: spawning_head(:) ! (0:nprocs-1)
+! spawning_block_start(i) contains the first position to be used in the spawning
+! lists for storing a walker which is to be sent to the i-th processor.
+integer, allocatable :: spawning_block_start(:) ! (0:nprocs-1)
 
 !--- Reference determinant ---
 
@@ -93,6 +112,9 @@ integer :: D0_population = 10
 
 ! Energy of reference determinant.
 real(p) :: H00
+
+! Processor on which the reference determinant is kept.
+integer :: D0_proc
 
 !--- Simple FCIQMC ---
 
@@ -147,7 +169,7 @@ contains
 
         nstack = 0
         lo = 1
-        hi = spawning_head
+        hi = spawning_head(0)
         do
             ! If the section/partition we are looking at is smaller than
             ! switch_threshold then perform an insertion sort.
@@ -247,7 +269,7 @@ contains
 
 ! DEBUG test only: verify
 !        tmp_det = spawned_walker_dets(:,1)
-!        do i = 2, spawning_head
+!        do i = 2, spawning_head(0)
 !            if (tmp_det .detgt. spawned_walker_dets(:,i)) then
 !                write (6,*) 'error sorting'
 !                stop
@@ -440,8 +462,10 @@ contains
         if (allocated(walker_dets)) deallocate(walker_dets, stat=ierr)
         if (allocated(walker_population)) deallocate(walker_population, stat=ierr)
         if (allocated(walker_energies)) deallocate(walker_energies, stat=ierr)
-        if (allocated(spawned_walker_dets)) deallocate(spawned_walker_dets, stat=ierr)
-        if (allocated(spawned_walker_population)) deallocate(spawned_walker_population, stat=ierr)
+        if (allocated(spawned_walker_dets1)) deallocate(spawned_walker_dets1, stat=ierr)
+        if (allocated(spawned_walker_population1)) deallocate(spawned_walker_population1, stat=ierr)
+        if (allocated(spawned_walker_dets2)) deallocate(spawned_walker_dets2, stat=ierr)
+        if (allocated(spawned_walker_population2)) deallocate(spawned_walker_population2, stat=ierr)
         if (allocated(f0)) deallocate(f0, stat=ierr)
 
     end subroutine end_fciqmc
