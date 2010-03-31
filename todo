@@ -18,3 +18,4 @@ Have scrapped the idea of hybrid OpenMP-MPI parallelisation: there are no
 memory benefits for the hubbard code and NECI can be tackled using mmap.
 
 a) Restart.
+b) Investigate load-balancing issues.
