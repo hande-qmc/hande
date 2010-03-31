@@ -284,19 +284,35 @@ These options describe the system which is to be investigated.
     one lattice vector per line).  1D, 2D and 3D systems can be specified using
     vectors of the appropriate dimensionality.
 **nel** *nel*
-    Synonym for **electrons**
+    Synonym for **electrons**.
 **T** *t*
     Real.
 
     Default: 1.
 
-    Set the kinetic term in the Hamiltonian to be *t*.
+    Set the kinetic term in the Hamiltonian to be *t*, i.e. the kinetic operator is:
+
+    .. math::
+
+        T = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dagger} a_{j\sigma}
+
 **U** *U*
     Real.
 
     Default: 1.
 
     Set the Coulomb term in the Hamiltonian to be *U*.
+**twist** *t1 [t2 [t3]]*
+    Real.
+
+    Default: 0.0.
+
+    Apply a twist to the wavevector grid.  The twist is an *ndim*-dimensional
+    vector in units of :math:`2\pi`.  The twist angle should be within the
+    first Brillouin zone, and hence the components should be between -0.5 and
+    +0.5.
+
+    Applicable only in the momentum space formulation of the Hubbard model.
 
 Calculation type
 ^^^^^^^^^^^^^^^^
