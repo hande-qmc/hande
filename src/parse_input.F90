@@ -245,8 +245,8 @@ contains
         if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(hubt, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(hubu, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
