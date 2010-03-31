@@ -31,8 +31,6 @@ contains
         integer :: i, iproc_ref
         integer :: step
 
-        if (nprocs > 1) call stop_all('init_fciqmc','Not (yet!) a parallel algorithm.')
-
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
         ! Allocate main walker lists.
@@ -109,12 +107,13 @@ contains
             ! belongs on this processor.
             ! If it doesn't, set the walkers array to be empty.
             if (nprocs > 1) then
-                iproc_ref = murmurhash_bit_string(f0, basis_length)
+                iproc_ref = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
                 if (iproc_ref /= iproc) tot_walkers = 0
+                D0_proc = iproc_ref
             end if
         end if
 
-        if (parent) then
+        if (iproc_ref == iproc) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(walker_dets(:,tot_walkers), new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00

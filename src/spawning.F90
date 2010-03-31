@@ -596,7 +596,7 @@ contains
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = mod(murmurhash_bit_string(f_new, basis_length), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
