@@ -127,7 +127,7 @@ contains
                 write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
                 write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
             else
-                write (6,'(1X,a80,/)') 'k-points given in terms of the reciprocal lattice vectors of the primitive cell.'
+                write (6,'(1X,a78,/)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
                 write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
             end if
             do i = 1, ndim
