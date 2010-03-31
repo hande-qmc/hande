@@ -178,7 +178,7 @@ contains
 
         use basis, only: basis_length
 
-        integer :: i, pos, k, nannihilate, nzero, istart, iend
+        integer :: i, pos, k, nannihilate, nzero, istart, iend, old_pop
         integer(i0) :: f(basis_length)
         logical :: hit
 
@@ -190,8 +190,16 @@ contains
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
+                old_pop = walker_population(pos)
                 walker_population(pos) = walker_population(pos) + spawned_walker_population(i)
                 nannihilate = nannihilate + 1
+                ! The change in the number of particles is a bit subtle.
+                ! We need to take into account:
+                !   i) annihilation enhancing the population on a determinant.
+                !  ii) annihilation diminishing the population on a determinant.
+                ! iii) annihilation changing the sign of the population (i.e.
+                !      killing the population and then some).
+                nparticles = nparticles + abs(walker_population(pos)) - abs(old_pop)
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -282,6 +290,7 @@ contains
             k = pos + i - 1
             walker_dets(:,k) = spawned_walker_dets(:,i)
             walker_population(k) = spawned_walker_population(i)
+            nparticles = nparticles + abs(spawned_walker_population(i))
             walker_energies(k) = sc0(walker_dets(:,k)) - H00
             ! Next walker will be inserted below this one.
             iend = pos - 1

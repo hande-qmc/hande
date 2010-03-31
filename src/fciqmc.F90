@@ -115,6 +115,11 @@ contains
             end if
         end if
 
+        ! Total number of particles on processor.
+        ! Probably should be handled more simply by setting it to be either 0 or
+        ! D0_population or obtaining it from the restart file, as appropriate.
+        nparticles = sum(abs(walker_population(:tot_walkers)))
+
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(walker_dets(:,tot_walkers), new_line=.true.)
@@ -197,7 +202,7 @@ contains
         end interface
 
         integer :: ierr
-        integer :: idet, ireport, icycle, iparticle, nparticles, nparticles_old
+        integer :: idet, ireport, icycle, iparticle, ntot_particles, nparticles_old
         type(det_info) :: cdet
         real(p) :: inst_proj_energy
         real(dp) :: ir(2), ir_sum(2)
@@ -277,16 +282,30 @@ contains
             end do
 
             ! Update the shift
-            nparticles = sum(abs(walker_population(:tot_walkers))) ! This can be done more efficiently by counting as we go...
+            if (nparticles /= sum(abs(walker_population(:tot_walkers)))) then
+                write (6,*) 'huh', iproc
+                write (6,*) nparticles, sum(abs(walker_population(:tot_walkers)))
+                stop
+            end if
+
 #ifdef PARALLEL
             ! Need to sum the number of particles and the projected energy over
             ! all processors.
             ir(1) = nparticles
             ir(2) = proj_energy
             call mpi_allreduce(ir, ir_sum, 2, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            nparticles = nint(ir_sum(1))
+            ntot_particles = nint(ir_sum(1))
             proj_energy = ir_sum(2)
-#endif
+            
+            if (vary_shift) then
+                call update_shift(nparticles_old, ntot_particles, ncycles)
+            end if
+            nparticles_old = ntot_particles
+            if (ntot_particles > target_particles .and. .not.vary_shift) then
+                vary_shift = .true.
+                start_vary_shift = ireport
+            end if
+#else
             if (vary_shift) then
                 call update_shift(nparticles_old, nparticles, ncycles)
             end if
@@ -295,6 +314,7 @@ contains
                 vary_shift = .true.
                 start_vary_shift = ireport
             end if
+#endif
 
             ! Running average projected energy 
             av_proj_energy = av_proj_energy + proj_energy

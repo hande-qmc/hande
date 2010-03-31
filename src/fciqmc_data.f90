@@ -22,9 +22,6 @@ real(p) :: tau
 integer :: walker_length
 integer :: spawned_walker_length
 
-! Current number of walkers stored in the main list.
-integer :: tot_walkers
-
 ! Number of particles before which varyshift mode is turned on.
 integer :: target_particles = 10000
 
@@ -59,6 +56,15 @@ real(p) :: proj_energy
 real(p) :: av_proj_energy = 0.0_p
 
 !--- Walker data ---
+
+! Current number of walkers stored in the main list (processor dependent).
+! This is updated during annihilation and merging of the spawned walkers into
+! the main list.
+integer :: tot_walkers
+
+! Total number of particles on all walkers/determinants (processor dependent)
+! Updated during death and annihilation and merging.
+integer :: nparticles
 
 ! Walker information: main list.
 ! a) determinants

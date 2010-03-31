@@ -52,11 +52,13 @@ contains
         ! Find the new total of particles.
         ! If kill is positive then particles are killed (i.e. the population
         ! should move towards zero).
+        ! Also update the number of particles on the processor.
         if (current_pop < 0) then
             new_pop = current_pop + kill
         else
             new_pop = current_pop - kill
         end if
+        nparticles = nparticles - kill
 
         walker_population(cpos) = new_pop
 
