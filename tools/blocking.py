@@ -50,8 +50,9 @@ index_col: index (starting from 0) of the column containing the index of the
            initially sort the data;
 data_col: index (starting from 0) of the column containing the data;
 start_index: block only data with an index greater than or equal to start_index.
+block_all: assume all lines contain data apart from comment lines.  The regular expressions are ignored if this is true.
 '''
-    def __init__(self, datafiles, start_regex, end_regex, index_col, data_col, start_index):
+    def __init__(self, datafiles, start_regex, end_regex, index_col, data_col, start_index, block_all=False):
 
         self.datafiles = datafiles
         self.start_regex = re.compile(start_regex)
@@ -60,6 +61,7 @@ start_index: block only data with an index greater than or equal to start_index.
         self.index_col = index_col
         self.data_col = data_col
         self.start_index = start_index
+        self.block_all = block_all
 
         # Initialise some null values we'll use during the analysis.
         self.data = []
@@ -78,7 +80,7 @@ start_index: block only data with an index greater than or equal to start_index.
                 if re.match(self.end_regex, line):
                     have_data = False
                 # do we have data to extract?
-                if have_data and not re.match(self.comment_regex, line):
+                if (have_data or self.block_all) and not re.match(self.comment_regex, line):
                     d = line.split()
                     (index, value) = (float(d[self.index_col]), float(d[self.data_col]))
                     if index >= self.start_index:
@@ -174,6 +176,7 @@ def parse_options(args):
     parser = optparse.OptionParser(usage = __doc__)
     parser.add_option('-s', '--start', dest='start_regex', default='^ # iterations', help='Set the regular expression indicating the start of a data block.  Default: %default.')
     parser.add_option('-e', '--end', dest='end_regex', type='string', default=r'^ *$', help='Set the regular expression indicating the end of a data block.  Default: %default.')
+    parser.add_option('-a', '--all', action='store_true', default=False, help='Assume all lines in the files contains data apart from comment lines. Regular expression options are ignored if --all is used.  Default: %default.')
     parser.add_option('-i', '--index', dest='index_col', type='int', default=0, help='Set the column (starting from 0) containing the index labelling each data item (e.g. number of Monte Carlo cycles). Default: %default.')
     parser.add_option('-d', '--data', dest='data_col', type='int', default=1, help='Set the column (starting from 0) containing the data items. Default: %default.')
     parser.add_option('-f', '--from', dest='start_index', type='int', default=0, help='Set the index from which the data is blocked.  Data with a smaller index is discarded.  Default: %default.')
@@ -189,7 +192,7 @@ def parse_options(args):
 if __name__ == '__main__':
     (options, filenames) = parse_options(sys.argv[1:])
 
-    my_data = DataBlocker(filenames, options.start_regex, options.end_regex, options.index_col, options.data_col, options.start_index)
+    my_data = DataBlocker(filenames, options.start_regex, options.end_regex, options.index_col, options.data_col, options.start_index, options.all)
 
     my_data.get_data()
     my_data.blocking()
