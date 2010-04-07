@@ -413,18 +413,18 @@ contains
     
     end function point_to_det
 
-    pure function encode_det(occ_list) result(bit_list)
+    pure subroutine encode_det(occ_list, bit_list)
 
         ! In:
         !    occ_list(nel): integer list of occupied orbitals in the Slater determinant.
-        ! Returns:
+        ! Out:
         !    bit_list(basis_length): a bit string representation of the occupied
         !        orbitals.   The first element contains the first i0_length basis
         !        functions, the second element the next i0_length and so on.  A basis
         !        function is occupied if the relevant bit is set.
 
-        integer(i0) :: bit_list(basis_length)
         integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(out) :: bit_list(basis_length)
         integer :: i, orb, bit_pos, bit_element
 
         bit_list = 0
@@ -435,18 +435,18 @@ contains
             bit_list(bit_element) = ibset(bit_list(bit_element), bit_pos)
         end do
         
-    end function encode_det
+    end subroutine encode_det
 
-    pure function decode_det(f) result(occ_list)
+    pure subroutine decode_det(f, occ_list)
 
         ! In:
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
-        ! Returns:
+        ! Out:
         !    occ_list(nel): integer list of occupied orbitals in the Slater determinant.
 
-        integer :: occ_list(nel)
         integer(i0), intent(in) :: f(basis_length)
+        integer, intent(out) :: occ_list(nel)
         integer :: i, j, iorb
 
         iorb = 1
@@ -460,7 +460,7 @@ contains
             end do
         end do outer
 
-    end function decode_det
+    end subroutine decode_det
 
     pure subroutine decode_det_occ_spinunocc(f, d)
 
@@ -651,7 +651,7 @@ contains
             io = 6
         end if
 
-        occ_list = decode_det(f)
+        call decode_det(f, occ_list)
         fmt1 = int_fmt(nbasis,1)
 
         write (io,'("|")', advance='no')

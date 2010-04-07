@@ -89,7 +89,7 @@ contains
                 forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
             end if
 
-            walker_dets(:,tot_walkers) = encode_det(occ_list0)
+            call encode_det(occ_list0, walker_dets(:,tot_walkers))
 
             walker_energies(tot_walkers) = 0.0_p
 
