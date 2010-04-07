@@ -41,7 +41,7 @@ contains
 
 ! for debug only.
 !        use hamiltonian, only: get_hmatel_k
-!        use fciqmc_data, only: spawned_walker_dets, spawned_walker_population, spawning_head
+!        use fciqmc_data, only: spawned_walker_dets, spawned_walker_info, spawning_head
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -195,7 +195,7 @@ contains
 
 ! for debug only.
 !        use hamiltonian, only: get_hmatel_real
-!        use fciqmc_data, only: spawned_walker_dets, spawned_walker_population, spawning_head
+!        use fciqmc_data, only: spawned_walker_dets, spawned_walker_info, spawning_head
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -575,7 +575,7 @@ contains
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walker_dets, spawned_walker_population, spawning_head
+        use fciqmc_data, only: spawned_walker_dets, spawned_walker_info, spawning_head
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
@@ -604,7 +604,7 @@ contains
 
         ! Set info in spawning array.
         spawned_walker_dets(:,spawning_head(iproc_spawn)) = f_new
-        spawned_walker_population(spawning_head(iproc_spawn)) = nparticles
+        spawned_walker_info(1,spawning_head(iproc_spawn)) = nparticles
 
     end subroutine create_spawned_particle
 

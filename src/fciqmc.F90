@@ -39,6 +39,7 @@ contains
         allocate(walker_energies(walker_length), stat=ierr)
 
         ! Allocate spawned walker lists.
+        spawned_info_size = 1
         if (mod(spawned_walker_length, nprocs) /= 0) then
             write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
             spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
@@ -46,15 +47,15 @@ contains
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
         allocate(spawned_walker_dets1(basis_length,spawned_walker_length), stat=ierr)
-        allocate(spawned_walker_population1(spawned_walker_length), stat=ierr)
+        allocate(spawned_walker_info1(spawned_info_size,spawned_walker_length), stat=ierr)
         spawned_walker_dets => spawned_walker_dets1
-        spawned_walker_population => spawned_walker_population1
+        spawned_walker_info => spawned_walker_info1
         if (nprocs > 1) then
             ! Allocate scratch space for doing communication.
             allocate(spawned_walker_dets2(basis_length,spawned_walker_length), stat=ierr)
-            allocate(spawned_walker_population2(spawned_walker_length), stat=ierr)
+            allocate(spawned_walker_info2(spawned_info_size,spawned_walker_length), stat=ierr)
             spawned_walker_dets_recvd => spawned_walker_dets2
-            spawned_walker_population_recvd => spawned_walker_population2
+            spawned_walker_info_recvd => spawned_walker_info2
         end if
         allocate(spawning_head(0:nprocs-1), stat=ierr)
 
@@ -265,7 +266,7 @@ contains
                 end do
 
 ! DEBUG CHECK ONLY.
-!                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walker_population(:spawning_head))
+!                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walker_info(1,:spawning_head))
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
