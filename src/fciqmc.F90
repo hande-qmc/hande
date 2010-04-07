@@ -165,9 +165,11 @@ contains
         use basis, only: basis_length
         use death, only: stochastic_death
         use determinants, only: det_info
+        use energy_evaluation, only: update_shift
+        use excitations, only: excit
         use fciqmc_restart, only: dump_restart
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
-        use energy_evaluation, only: update_shift
+        use spawning, only: create_spawned_particle
 
         ! It seems this interface block cannot go in a module when we're passing
         ! subroutines around as arguments.  Bummer.
@@ -187,11 +189,14 @@ contains
                 integer, intent(in) :: idet
                 real(p), intent(inout) :: inst_proj_energy
             end subroutine update_proj_energy
-            subroutine spawner(d, parent_sign)
+            subroutine spawner(d, parent_sign, nspawned, connection)
                 use determinants, only: det_info
+                use excitations, only: excit
                 implicit none
                 type(det_info), intent(in) :: d
-                integer :: parent_sign
+                integer, intent(in) :: parent_sign
+                integer, intent(out) :: nspawned
+                type(excit), intent(out) :: connection
             end subroutine spawner
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
@@ -205,6 +210,10 @@ contains
         integer :: ierr
         integer :: idet, ireport, icycle, iparticle, ntot_particles, nparticles_old
         type(det_info) :: cdet
+
+        integer :: nspawned
+        type(excit) :: connection
+
         real(p) :: inst_proj_energy
         real(dp) :: ir(2), ir_sum(2)
         integer :: load_data(nprocs)
@@ -255,8 +264,10 @@ contains
 
                     do iparticle = 1, abs(walker_population(idet))
                         
-                        ! spawn
-                        call spawner(cdet, walker_population(idet))
+                        ! Attempt to spawn.
+                        call spawner(cdet, walker_population(idet), nspawned, connection)
+                        ! Spawn if attempt was successful.
+                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned)
 
                     end do
 

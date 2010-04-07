@@ -20,18 +20,21 @@ implicit none
 
 contains
 
-    subroutine spawn_hub_k(cdet, parent_sign)
+    subroutine spawn_hub_k(cdet, parent_sign, nparticles, connection)
 
         ! Attempt to spawn a new particle on a connected determinant for the 
         ! momentum space formulation of the Hubbard model.
         !
-        ! If the spawning is successful, then the spawned particle is
-        ! placed in the spawning arrays and the current position in the
-        ! spawning array is updated.
-        !
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nparticles: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
@@ -41,14 +44,16 @@ contains
 
 ! for debug only.
 !        use hamiltonian, only: get_hmatel_k
-!        use fciqmc_data, only: spawned_walker_dets, spawned_walker_info, spawning_head
+!        use excitations, only: create_excited_det
+!        integer(i0) :: f_new(basis_length)
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        integer, intent(out) :: nparticles
+        type(excit), intent(out) :: connection
 
         real(p) :: pgen, psuccess, pspawn
-        integer :: i, j, a, b, ij_sym, nparticles, s, tmp
-        type(excit) :: connection
+        integer :: i, j, a, b, ij_sym, s, tmp
 
         ! Single excitations are not connected determinants within the 
         ! momentum space formulation of the Hubbard model.
@@ -156,14 +161,12 @@ contains
                 nparticles = sign(nparticles, parent_sign)
             end if
 
-            ! 6. Spawn.
-            call create_spawned_particle(cdet, connection, nparticles)
-
 ! Leave the following in for debug reasons...
 ! Should be removed after more testing.
 ! Will only work in serial.
-!            if (abs(get_hmatel_k(cdet%f,spawned_walker_dets(:,spawning_head(0)))-s*hub_k_coulomb) > 1.e-10) then
-!                write (6,*) 'huh?',get_hmatel_k(cdet%f,spawned_walker_dets(:,spawning_head(0))), s*hub_k_coulomb,s
+!            call create_excited_det(cdet%f, connection, f_new)
+!            if (abs(get_hmatel_k(cdet%f,f_new)-s*hub_k_coulomb) > 1.e-10) then
+!                write (6,*) 'huh?',get_hmatel_k(cdet%f,f_new), s*hub_k_coulomb,s
 !                write (6,*) cdet%occ_list
 !                write (6,*) connection%from_orb, connection %to_orb
 !                write (6,*) connection%perm
@@ -174,18 +177,21 @@ contains
         
     end subroutine spawn_hub_k
 
-    subroutine spawn_hub_real(cdet, parent_sign)
+    subroutine spawn_hub_real(cdet, parent_sign, nparticles, connection)
 
         ! Attempt to spawn a new particle on a connected determinant for the 
         ! real space formulation of the Hubbard model.
         !
-        ! If the spawning is successful, then the spawned particle is
-        ! placed in the spawning arrays and the current position in the
-        ! spawning array is updated.
-        !
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nparticles: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
@@ -195,14 +201,16 @@ contains
 
 ! for debug only.
 !        use hamiltonian, only: get_hmatel_real
-!        use fciqmc_data, only: spawned_walker_dets, spawned_walker_info, spawning_head
+!        use excitations, only: create_excited_det
+!        integer(i0) :: f_new(basis_length)
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        integer, intent(out) :: nparticles
+        type(excit), intent(out) :: connection
 
         real(p) :: pgen, psuccess, pspawn, hmatel
-        integer :: i, a, nparticles
-        type(excit) :: connection
+        integer :: i, a
         integer :: nvirt_avail
 
         ! Double excitations are not connected determinants within the 
@@ -248,14 +256,12 @@ contains
                 nparticles = sign(nparticles, parent_sign)
             end if
 
-            ! 6. Spawn.
-            call create_spawned_particle(cdet, connection, nparticles)
-
 ! Leave the following in for debug reasons...
 ! Should be removed after more testing.
 ! Will only work in serial.
-!            if (abs(get_hmatel_real(cdet%f, spawned_walker_dets(:,spawning_head(0)))-hmatel) > 1.e-8) then
-!                write (6,*) 'oops!', get_hmatel_real(cdet%f, spawned_walker_dets(:,spawning_head(0))), hmatel
+!            call create_excited_det(cdet%f, connection, f_new)
+!            if (abs(get_hmatel_real(cdet%f, f_new)-hmatel) > 1.e-8) then
+!                write (6,*) 'oops!', get_hmatel_real(cdet%f, f_new), hmatel
 !            end if
 
         end if
@@ -559,7 +565,8 @@ contains
 
     subroutine create_spawned_particle(cdet, connection, nparticles)
 
-        ! Create a spawned walker.
+        ! Create a spawned walker in the spawned walkers lists.
+        ! The current position in the spawning array is updated.
 
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
