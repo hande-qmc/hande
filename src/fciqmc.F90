@@ -140,7 +140,7 @@ contains
 
         use system, only: system_type, hub_k, hub_real
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
-        use determinants, only: decode_det_spinocc_spinunocc
+        use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
@@ -148,7 +148,7 @@ contains
         case(hub_k)
             call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
         case(hub_real)
-            call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
+            call do_fciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
         end select
 
     end subroutine fciqmc_main

@@ -462,6 +462,38 @@ contains
 
     end subroutine decode_det
 
+    pure subroutine decode_det_occ(f, d)
+
+        ! Decode determinant bit string into integer list containing the
+        ! occupied orbitals.
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Out:
+        !    d: det_info variable.  The following components are set:
+        !        occ_list(nel): integer list of occupied spin-orbitals in the
+        !            Slater determinant.
+
+        integer(i0), intent(in) :: f(basis_length)
+        type(det_info), intent(inout) :: d
+        integer :: i, j, iocc, iunocc_a, iunocc_b
+
+        iocc = 0
+        iunocc_a = 0
+        iunocc_b = 0
+
+        do i = 1, basis_length
+            do j = 0, i0_end
+                if (btest(f(i), j)) then
+                    iocc = iocc + 1
+                    d%occ_list(iocc) = basis_lookup(j, i)
+                end if
+                if (iocc == nel) exit
+            end do
+        end do
+
+    end subroutine decode_det_occ
+
     pure subroutine decode_det_occ_spinunocc(f, d)
 
         ! Decode determinant bit string into integer lists containing the
