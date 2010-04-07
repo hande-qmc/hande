@@ -216,7 +216,6 @@ contains
 
         real(p) :: inst_proj_energy
         real(dp) :: ir(2), ir_sum(2)
-        integer :: load_data(nprocs)
 
 ! DEBUG CHECK ONLY.
 !        integer :: sum1, sum2
@@ -295,11 +294,13 @@ contains
             end do
 
             ! Update the shift
-            if (nparticles /= sum(abs(walker_population(:tot_walkers)))) then
-                write (6,*) 'huh', iproc
-                write (6,*) nparticles, sum(abs(walker_population(:tot_walkers)))
-                stop
-            end if
+
+! DEBUG CHECK ONLY.            
+!            if (nparticles /= sum(abs(walker_population(:tot_walkers)))) then
+!                write (6,*) 'huh', iproc
+!                write (6,*) nparticles, sum(abs(walker_population(:tot_walkers)))
+!                stop
+!            end if
 
 #ifdef PARALLEL
             ! Need to sum the number of particles and the projected energy over
@@ -343,6 +344,21 @@ contains
             write (6,'()')
         end if
 
+        call load_balancing_report()
+
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+
+    end subroutine do_fciqmc
+
+    subroutine load_balancing_report()
+
+        ! Print out a load-balancing report when run in parallel showing how
+        ! determinants and walkers/particles are distributed over the processors.
+
+        use parallel
+
+        integer :: load_data(nprocs), ierr
+
 #ifdef PARALLEL
         if (nprocs > 1) then
             if (parent) then
@@ -365,8 +381,6 @@ contains
         end if
 #endif
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
-
-    end subroutine do_fciqmc
+    end subroutine load_balancing_report
 
 end module fciqmc
