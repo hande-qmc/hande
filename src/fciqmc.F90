@@ -122,7 +122,7 @@ contains
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-            call write_det(walker_dets(:,tot_walkers), new_line=.true.)
+            call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
             write (6,'(1X,a44,'//int_fmt(D0_population,1)//')') &
                               'Initial population on reference determinant:',D0_population
@@ -322,7 +322,11 @@ contains
             ! average projected energy over report loop.
             proj_energy = proj_energy/ncycles
 
+#ifdef PARALLEL
+            if (parent) call write_fciqmc_report(ireport, ntot_particles)
+#else
             if (parent) call write_fciqmc_report(ireport, nparticles)
+#endif
 
         end do
 
