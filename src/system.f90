@@ -38,6 +38,8 @@ real(p), allocatable :: ktwist(:)
 
 ! # of electrons
 integer :: nel = 0 
+! # number of virtual orbitals
+integer :: nvirt
 
 ! Spin polarisation is set in set_spin_polarisation in the determinants module.
 ! # number of alpha, beta electrons
@@ -75,6 +77,8 @@ contains
         end if
 
         hub_k_coulomb = hubu/nsites
+
+        nvirt = 2*nsites - nel
 
     end subroutine init_system
 

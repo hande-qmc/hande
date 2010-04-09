@@ -391,7 +391,7 @@ contains
         !        spawning.
 
         use basis, only: basis_length, bit_lookup, nbasis
-        use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
+        use system, only: nvirt, nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
         use symmetry, only: sym_table, inv_sym
 
         real(p) :: pgen
@@ -467,7 +467,7 @@ contains
             if (btest(f(a_el), a_pos)) forbidden_excitations = forbidden_excitations + 1
         end do
 
-        pgen = 2.0_p/(nalpha*nbeta*(nbasis-nel-forbidden_excitations))
+        pgen = 2.0_p/(nalpha*nbeta*(nvirt - forbidden_excitations))
 
     end function calc_pgen_hub_k
 
