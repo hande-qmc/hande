@@ -172,6 +172,13 @@ contains
             case('REFERENCE_DET_POPULATION')
                 call readi(D0_population)
 
+            ! Calculation options: initiator-fciqmc.
+            case('CAS')
+                call readi(CAS(1))
+                call readi(CAS(2))
+            case('INITIATOR_POPULATION')
+                call readi(initiator_population)
+
             ! Output information.
             case('HAMIL','HAMILTONIAN')
                 write_hamiltonian = .true.
@@ -269,13 +276,6 @@ contains
         call mpi_bcast(tsimple, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(t_fciqmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
-        if (parent) option_set = allocated(occ_list0)
-        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        if (option_set) then
-            if (.not.parent) allocate(occ_list0(nel), stat=ierr)
-            call mpi_bcast(occ_list0, nel, mpi_integer, 0, mpi_comm_world, ierr)
-        end if
-
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
@@ -288,6 +288,12 @@ contains
         call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        if (parent) option_set = allocated(occ_list0)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            if (.not.parent) allocate(occ_list0(nel), stat=ierr)
+            call mpi_bcast(occ_list0, nel, mpi_integer, 0, mpi_comm_world, ierr)
+        end if
         call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(read_restart_number, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -295,6 +301,9 @@ contains
         call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
+        call mpi_bcast(CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)

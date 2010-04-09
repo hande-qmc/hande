@@ -6,7 +6,7 @@ module fciqmc_data
 use const
 implicit none
 
-!--- Input data ---
+!--- Input data: FCIQMC ---
 
 ! number of monte carlo cycles/report loop
 integer :: ncycles
@@ -24,6 +24,12 @@ integer :: spawned_walker_length
 
 ! Number of particles before which varyshift mode is turned on.
 integer :: target_particles = 10000
+
+!--- Input data: initiator-FCIQMC ---
+
+integer :: CAS(2) = (/ 0,0 /)
+
+integer :: initiator_population = 3
 
 !--- Energy data ---
 
