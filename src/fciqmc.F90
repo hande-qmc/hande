@@ -350,6 +350,227 @@ contains
 
     end subroutine do_fciqmc
 
+    subroutine do_ifciqmc(decoder, update_proj_energy, spawner, sc0)
+
+        ! Run the initiator-FCIQMC algorithm starting from the initial walker
+        ! distribution.
+
+        use parallel
+  
+        use annihilation, only: direct_annihilation
+        use basis, only: basis_length, bit_lookup, nbasis
+        use death, only: stochastic_death
+        use determinants, only: det_info
+        use energy_evaluation, only: update_shift
+        use excitations, only: excit
+        use fciqmc_restart, only: dump_restart
+        use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
+        use spawning, only: create_spawned_particle_initiator
+
+        ! It seems this interface block cannot go in a module when we're passing
+        ! subroutines around as arguments.  Bummer.
+        ! If only procedure pointers were more commonly implemented...
+        interface
+            subroutine decoder(f,d)
+                use basis, only: basis_length
+                use const, only: i0
+                use determinants, only: det_info
+                implicit none
+                integer(i0), intent(in) :: f(basis_length)
+                type(det_info), intent(inout) :: d
+            end subroutine decoder
+            subroutine update_proj_energy(idet, inst_proj_energy)
+                use const, only: p
+                implicit none
+                integer, intent(in) :: idet
+                real(p), intent(inout) :: inst_proj_energy
+            end subroutine update_proj_energy
+            subroutine spawner(d, parent_sign, nspawned, connection)
+                use determinants, only: det_info
+                use excitations, only: excit
+                implicit none
+                type(det_info), intent(in) :: d
+                integer, intent(in) :: parent_sign
+                integer, intent(out) :: nspawned
+                type(excit), intent(out) :: connection
+            end subroutine spawner
+            function sc0(f) result(hmatel)
+                use basis, only: basis_length
+                use const, only: i0, p
+                implicit none
+                real(p) :: hmatel
+                integer(i0), intent(in) :: f(basis_length)
+            end function sc0
+        end interface
+
+        integer :: ierr
+        integer :: i, idet, ireport, icycle, iparticle, ntot_particles, nparticles_old
+        type(det_info) :: cdet
+
+        integer :: nspawned
+        type(excit) :: connection
+
+        real(p) :: inst_proj_energy
+        real(dp) :: ir(2), ir_sum(2)
+
+        integer :: parent_flag
+        integer(i0) :: cas_mask(basis_length), cas_core(basis_length)
+        integer :: bit_pos, bit_element
+
+        ! Allocate det_info components.
+        allocate(cdet%f(basis_length), stat=ierr)
+        allocate(cdet%occ_list(nel), stat=ierr)
+        allocate(cdet%occ_list_alpha(nalpha), stat=ierr)
+        allocate(cdet%occ_list_beta(nbeta), stat=ierr)
+        allocate(cdet%unocc_list_alpha(nvirt_alpha), stat=ierr)
+        allocate(cdet%unocc_list_beta(nvirt_beta), stat=ierr)
+
+        ! The complete active space (CAS) is given as (N_cas,N_active), where
+        ! N_cas is the number of electrons in the N_active orbitals.
+        ! The N-N_cas electrons occupy the lowest energy orbitals ("core"
+        ! orbitals) for all determinants within the CAS.
+        ! The 2M-N_core-N_active highest energy orbitals are inactive and are
+        ! not occupied in any determinants within the CAS.
+        ! Create a mask which has bits set for all core electrons and a mask
+        ! which has bits set for all inactive orbitals.
+        cas_mask = 0
+        cas_core = 0
+        ! Set core obitals.
+        do i = 1, nel - CAS(1)
+            bit_pos = bit_lookup(1,i)
+            bit_element = bit_lookup(2,i)
+            cas_mask = ibset(cas_mask(bit_element), bit_pos)
+            cas_core = ibset(cas_core(bit_element), bit_pos)
+        end do
+        ! Set inactive obitals.
+        do i = nel - CAS(1) + 2*CAS(2) + 1, nbasis
+            bit_pos = bit_lookup(1,i)
+            bit_element = bit_lookup(2,i)
+            cas_mask = ibset(cas_mask(bit_element), bit_pos)
+        end do
+        ! Thus ANDing a determinant with cas_mask gives the electrons in the
+        ! core or inactive orbitals.  The determinant is only in the CAS if the
+        ! result is identical to the cas_core mask (i.e. all the core orbitals
+        ! are filled and no electrons are in the inactive orbitals).
+
+        ! from restart
+        nparticles_old = nparticles_old_restart
+
+        ! Main fciqmc loop.
+
+        if (parent) call write_fciqmc_report_header()
+
+        do ireport = 1, nreport
+
+            ! Zero averaged projected energy.
+            proj_energy = 0.0_p
+
+            do icycle = 1, ncycles
+
+                ! Zero instantaneous projected energy.
+                inst_proj_energy = 0.0_p
+                D0_population = 0
+
+                ! Reset the current position in the spawning array to be the
+                ! slot preceding the first slot.
+                spawning_head = spawning_block_start
+
+                do idet = 1, tot_walkers ! loop over walkers/dets
+
+                    cdet%f = walker_dets(:,idet)
+
+                    call decoder(cdet%f, cdet)
+
+                    ! It is much easier to evaluate the projected energy at the
+                    ! start of the i-FCIQMC cycle than at the end, as we're
+                    ! already looping over the determinants.
+                    call update_proj_energy(idet, inst_proj_energy)
+
+                    ! Is this determinant an initiator?
+                    if (walker_population(idet) > initiator_population) then
+                        ! Has a high enough population to be an initiator.
+                        parent_flag = 0
+                    else if (all(iand(cdet%f,cas_mask) == cas_core)) then
+                        ! Is in the complete active space.
+                        parent_flag = 0
+                    else
+                        ! Isn't an initiator.
+                        parent_flag = 1
+                    end if
+
+                    do iparticle = 1, abs(walker_population(idet))
+                        
+                        ! Attempt to spawn.
+                        call spawner(cdet, walker_population(idet), nspawned, connection)
+                        ! Spawn if attempt was successful.
+                        if (nspawned /= 0) call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned)
+
+                    end do
+
+                    ! Clone or die.
+                    call stochastic_death(idet)
+
+                end do
+
+                ! D0_population is communicated in the direct_annihilation
+                ! algorithm for efficiency.
+!                call direct_annihilation_initiator(sc0)
+
+                ! normalise projected energy and add to running total.
+                proj_energy = proj_energy + inst_proj_energy/D0_population
+
+            end do
+
+            ! Update the shift
+
+#ifdef PARALLEL
+            ! Need to sum the number of particles and the projected energy over
+            ! all processors.
+            ir(1) = nparticles
+            ir(2) = proj_energy
+            call mpi_allreduce(ir, ir_sum, 2, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            ntot_particles = nint(ir_sum(1))
+            proj_energy = ir_sum(2)
+            
+            if (vary_shift) then
+                call update_shift(nparticles_old, ntot_particles, ncycles)
+            end if
+            nparticles_old = ntot_particles
+            if (ntot_particles > target_particles .and. .not.vary_shift) then
+                vary_shift = .true.
+                start_vary_shift = ireport
+            end if
+#else
+            if (vary_shift) then
+                call update_shift(nparticles_old, nparticles, ncycles)
+            end if
+            nparticles_old = nparticles
+            if (nparticles > target_particles .and. .not.vary_shift) then
+                vary_shift = .true.
+                start_vary_shift = ireport
+            end if
+#endif
+
+            ! Running average projected energy 
+            av_proj_energy = av_proj_energy + proj_energy
+            ! average projected energy over report loop.
+            proj_energy = proj_energy/ncycles
+
+            if (parent) call write_fciqmc_report(ireport, nparticles)
+
+        end do
+
+        if (parent) then
+            call write_fciqmc_final()
+            write (6,'()')
+        end if
+
+        call load_balancing_report()
+
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+
+    end subroutine do_ifciqmc
+
     subroutine load_balancing_report()
 
         ! Print out a load-balancing report when run in parallel showing how
