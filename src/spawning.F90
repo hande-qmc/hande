@@ -615,4 +615,61 @@ contains
 
     end subroutine create_spawned_particle
 
+    subroutine create_spawned_particle_initiator(cdet, parent_flag, connection, nparticles)
+
+        ! Create a spawned walker in the spawned walkers lists.
+        ! The current position in the spawning array is updated.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_flag: flag indicating the staturs of the parent determinant.
+        !        parent_flag = 0 indicates the parent is an initiator.
+        !        parent_flag = 1 indicates the parent is not an initiator.
+        !    connection: excitation connecting the current determinant to its
+        !        offspring.  Note that the perm field is not used.
+        !    nparticles: the (signed) number of particles to create on the
+        !        spawned determinant.
+
+        use hashing
+        use parallel, only: iproc, nprocs
+
+        use basis, only: basis_length
+        use determinants, only: det_info
+        use excitations, only: excit, create_excited_det
+        use fciqmc_data, only: spawned_walker_dets, spawned_walker_info, spawning_head
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_flag
+        type(excit), intent(in) :: connection
+        integer, intent(in) :: nparticles
+
+        integer(i0) :: f_new(basis_length)
+#ifndef PARALLEL
+        integer, parameter :: iproc_spawn = 0
+#else
+        integer :: iproc_spawn 
+#endif
+
+        ! Create bit string of new determinant.
+        call create_excited_det(cdet%f, connection, f_new)
+
+#ifdef PARALLEL
+        ! (Extra credit for parallel calculations)
+        ! Need to determine which processor the spawned walker should be sent
+        ! to.  This communication is done during the annihilation process, after
+        ! all spawning and death has occured..
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
+#endif
+
+        ! Move to the next position in the spawning array.
+        spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+
+        ! Set info in spawning array.
+        spawned_walker_dets(:,spawning_head(iproc_spawn)) = f_new
+        spawned_walker_info(1,spawning_head(iproc_spawn)) = nparticles
+        spawned_walker_info(2,spawning_head(iproc_spawn)) = parent_flag
+
+    end subroutine create_spawned_particle_initiator
+
 end module spawning
