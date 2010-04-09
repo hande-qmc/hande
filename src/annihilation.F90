@@ -161,13 +161,15 @@ contains
                     exit compress
                 end if
             end do compress
-            ! go to the next slot.
-            islot = islot + 1
-            if (islot > spawning_head(0)) exit self_annihilate
+            ! All done?
+            if (islot == spawning_head(0)) exit self_annihilate
+            ! go to the next slot if the current determinant wasn't completed
+            ! annihilated.
+            if (spawned_walker_population(islot) /= 0) islot = islot + 1
         end do self_annihilate
 
         ! update spawning_head(0)
-        spawning_head(0) = spawning_head(0) - nremoved
+        spawning_head(0) = islot
 
     end subroutine annihilate_spawned_list
 
