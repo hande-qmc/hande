@@ -548,7 +548,7 @@ contains
         ! Decode determinant bit string into integer lists containing the
         ! occupied and unoccupied orbitals.  
         !
-        ! We also return the lists for alpha and beta electrons separately.
+        ! We return the lists for alpha and beta electrons separately.
         !
         ! In:
         !    f(basis_length): bit string representation of the Slater
@@ -575,32 +575,33 @@ contains
         iocc_b = 0
         iunocc_a = 0
         iunocc_b = 0
+        orb = 0
 
         do i = 1, basis_length
-            do j = 0, i0_end
+            ! Manual unrolling allows us to avoid 2 mod statements
+            ! and some branching.
+            do j = 0, i0_end, 2
+                ! Test alpha orbital.
+                orb = orb + 1
                 if (btest(f(i), j)) then
-                    orb = basis_lookup(j, i)
                     iocc = iocc + 1
+                    iocc_a = iocc_a + 1
                     d%occ_list(iocc) = orb
-                    if (mod(j,2)==0) then
-                        ! alpha state
-                        iocc_a = iocc_a + 1
-                        d%occ_list_alpha(iocc_a) = orb
-                    else
-                        ! beta state
-                        iocc_b = iocc_b +1
-                        d%occ_list_beta(iocc_b) = orb
-                    end if
+                    d%occ_list_alpha(iocc_a) = orb
                 else
-                    if (mod(j,2)==0) then
-                        ! alpha state
-                        iunocc_a = iunocc_a + 1
-                        d%unocc_list_alpha(iunocc_a) = basis_lookup(j, i)
-                    else
-                        ! beta state 
-                        iunocc_b = iunocc_b + 1
-                        d%unocc_list_beta(iunocc_b) = basis_lookup(j, i)
-                    end if
+                    iunocc_a = iunocc_a + 1
+                    d%unocc_list_alpha(iunocc_a) = orb
+                end if
+                ! Test beta orbital.
+                orb = orb + 1
+                if (btest(f(i), j+1)) then
+                    iocc = iocc + 1
+                    iocc_b = iocc_b + 1
+                    d%occ_list(iocc) = orb
+                    d%occ_list_beta(iocc_b) = orb
+                else
+                    iunocc_b = iunocc_b + 1
+                    d%unocc_list_beta(iunocc_b) = orb
                 end if
                 ! Have we covered all basis functions?
                 ! This avoids examining any "padding" at the end of f.
