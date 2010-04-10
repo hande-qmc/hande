@@ -777,8 +777,10 @@ contains
         do i = 1, basis_length
             if (f1(i) < f2(i)) then
                 compare = 1
+                exit
             else if (f1(i) > f2(i)) then
                 compare = -1
+                exit
             end if
         end do
 
