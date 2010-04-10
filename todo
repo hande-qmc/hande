@@ -26,5 +26,4 @@ Optimisations
 -------------
 
 a) decode: inner loop only over actual basis functions
-b) choose_ab_hub_k: can use r just to select a, as b then follows.
-c) sym_table in terms of basis functions
+b) sym_table in terms of basis functions
