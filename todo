@@ -21,3 +21,10 @@ FCIQMC parallelisation
 
 a) Restart.
 b) Investigate load-balancing issues.
+
+Optimisations
+-------------
+
+a) decode: inner loop only over actual basis functions
+b) choose_ab_hub_k: can use r just to select a, as b then follows.
+c) sym_table in terms of basis functions
