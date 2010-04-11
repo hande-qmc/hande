@@ -90,7 +90,7 @@ contains
                 forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
             end if
 
-            walker_dets(:,tot_walkers) = encode_det(occ_list0)
+            call encode_det(occ_list0, walker_dets(:,tot_walkers))
 
             walker_energies(tot_walkers) = 0.0_p
 
@@ -123,7 +123,7 @@ contains
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-            call write_det(walker_dets(:,tot_walkers), new_line=.true.)
+            call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
             write (6,'(1X,a44,'//int_fmt(D0_population,1)//')') &
                               'Initial population on reference determinant:',D0_population
@@ -141,7 +141,7 @@ contains
 
         use system, only: system_type, hub_k, hub_real
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
-        use determinants, only: decode_det_spinocc_spinunocc
+        use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
@@ -149,7 +149,7 @@ contains
         case(hub_k)
             call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
         case(hub_real)
-            call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
+            call do_fciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
         end select
 
     end subroutine fciqmc_main
@@ -556,7 +556,11 @@ contains
             ! average projected energy over report loop.
             proj_energy = proj_energy/ncycles
 
+#ifdef PARALLEL
+            if (parent) call write_fciqmc_report(ireport, ntot_particles)
+#else
             if (parent) call write_fciqmc_report(ireport, nparticles)
+#endif
 
         end do
 

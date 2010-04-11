@@ -94,7 +94,7 @@ contains
             H00 = hamil(ref_det,ref_det)
             allocate(f0(basis_length), stat=ierr)
             allocate(occ_list0(nel), stat=ierr)
-            occ_list0 = decode_det(f0)
+            call decode_det(f0, occ_list0)
             f0 = dets_list(:,ref_det)
             walker_population(ref_det) = D0_population
         end if

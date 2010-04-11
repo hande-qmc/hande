@@ -111,6 +111,7 @@ contains
         ! See note in basis.
         basis_length = nbasis/i0_length
         if (mod(nbasis,i0_length) /= 0) basis_length = basis_length + 1
+        last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
 
         if (parent) then
             fmt1 = int_fmt((/nel, nbasis, tot_ndets/), padding=1)
@@ -413,18 +414,18 @@ contains
     
     end function point_to_det
 
-    pure function encode_det(occ_list) result(bit_list)
+    pure subroutine encode_det(occ_list, bit_list)
 
         ! In:
         !    occ_list(nel): integer list of occupied orbitals in the Slater determinant.
-        ! Returns:
+        ! Out:
         !    bit_list(basis_length): a bit string representation of the occupied
         !        orbitals.   The first element contains the first i0_length basis
         !        functions, the second element the next i0_length and so on.  A basis
         !        function is occupied if the relevant bit is set.
 
-        integer(i0) :: bit_list(basis_length)
         integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(out) :: bit_list(basis_length)
         integer :: i, orb, bit_pos, bit_element
 
         bit_list = 0
@@ -435,18 +436,18 @@ contains
             bit_list(bit_element) = ibset(bit_list(bit_element), bit_pos)
         end do
         
-    end function encode_det
+    end subroutine encode_det
 
-    pure function decode_det(f) result(occ_list)
+    pure subroutine decode_det(f, occ_list)
 
         ! In:
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
-        ! Returns:
+        ! Out:
         !    occ_list(nel): integer list of occupied orbitals in the Slater determinant.
 
-        integer :: occ_list(nel)
         integer(i0), intent(in) :: f(basis_length)
+        integer, intent(out) :: occ_list(nel)
         integer :: i, j, iorb
 
         iorb = 1
@@ -460,7 +461,39 @@ contains
             end do
         end do outer
 
-    end function decode_det
+    end subroutine decode_det
+
+    pure subroutine decode_det_occ(f, d)
+
+        ! Decode determinant bit string into integer list containing the
+        ! occupied orbitals.
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Out:
+        !    d: det_info variable.  The following components are set:
+        !        occ_list(nel): integer list of occupied spin-orbitals in the
+        !            Slater determinant.
+
+        integer(i0), intent(in) :: f(basis_length)
+        type(det_info), intent(inout) :: d
+        integer :: i, j, iocc, iunocc_a, iunocc_b
+
+        iocc = 0
+        iunocc_a = 0
+        iunocc_b = 0
+
+        do i = 1, basis_length
+            do j = 0, i0_end
+                if (btest(f(i), j)) then
+                    iocc = iocc + 1
+                    d%occ_list(iocc) = basis_lookup(j, i)
+                end if
+                if (iocc == nel) exit
+            end do
+        end do
+
+    end subroutine decode_det_occ
 
     pure subroutine decode_det_occ_spinunocc(f, d)
 
@@ -516,7 +549,7 @@ contains
         ! Decode determinant bit string into integer lists containing the
         ! occupied and unoccupied orbitals.  
         !
-        ! We also return the lists for alpha and beta electrons separately.
+        ! We return the lists for alpha and beta electrons separately.
         !
         ! In:
         !    f(basis_length): bit string representation of the Slater
@@ -543,38 +576,66 @@ contains
         iocc_b = 0
         iunocc_a = 0
         iunocc_b = 0
+        orb = 0
 
-        do i = 1, basis_length
-            do j = 0, i0_end
+        do i = 1, basis_length - 1
+            ! Manual unrolling allows us to avoid 2 mod statements
+            ! and some branching.
+            do j = 0, i0_end, 2
+                ! Test alpha orbital.
+                orb = orb + 1
                 if (btest(f(i), j)) then
-                    orb = basis_lookup(j, i)
                     iocc = iocc + 1
+                    iocc_a = iocc_a + 1
                     d%occ_list(iocc) = orb
-                    if (mod(j,2)==0) then
-                        ! alpha state
-                        iocc_a = iocc_a + 1
-                        d%occ_list_alpha(iocc_a) = orb
-                    else
-                        ! beta state
-                        iocc_b = iocc_b +1
-                        d%occ_list_beta(iocc_b) = orb
-                    end if
+                    d%occ_list_alpha(iocc_a) = orb
                 else
-                    if (mod(j,2)==0) then
-                        ! alpha state
-                        iunocc_a = iunocc_a + 1
-                        d%unocc_list_alpha(iunocc_a) = basis_lookup(j, i)
-                    else
-                        ! beta state 
-                        iunocc_b = iunocc_b + 1
-                        d%unocc_list_beta(iunocc_b) = basis_lookup(j, i)
-                    end if
+                    iunocc_a = iunocc_a + 1
+                    d%unocc_list_alpha(iunocc_a) = orb
                 end if
-                ! Have we covered all basis functions?
-                ! This avoids examining any "padding" at the end of f.
-                ! Possibly inefficient: is it better to leave the test out?
-                if (iocc_a+iocc_b+iunocc_a+iunocc_b == nbasis) exit
+                ! Test beta orbital.
+                orb = orb + 1
+                if (btest(f(i), j+1)) then
+                    iocc = iocc + 1
+                    iocc_b = iocc_b + 1
+                    d%occ_list(iocc) = orb
+                    d%occ_list_beta(iocc_b) = orb
+                else
+                    iunocc_b = iunocc_b + 1
+                    d%unocc_list_beta(iunocc_b) = orb
+                end if
             end do
+        end do
+
+        ! Deal with the last element in the determinant bit array separately.
+        ! Note that decoding a bit string is surprisingly slow (or, more
+        ! importantly, adds up when doing billions of times).
+        ! Treating the last element as a special case rather than having an if
+        ! statement in the above loop results a speedup of the Hubbard k-space
+        ! FCIQMC calculations of 1.5%.
+        do j = 0, last_basis_ind, 2
+            ! Test alpha orbital.
+            orb = orb + 1
+            if (btest(f(i), j)) then
+                iocc = iocc + 1
+                iocc_a = iocc_a + 1
+                d%occ_list(iocc) = orb
+                d%occ_list_alpha(iocc_a) = orb
+            else
+                iunocc_a = iunocc_a + 1
+                d%unocc_list_alpha(iunocc_a) = orb
+            end if
+            ! Test beta orbital.
+            orb = orb + 1
+            if (btest(f(i), j+1)) then
+                iocc = iocc + 1
+                iocc_b = iocc_b + 1
+                d%occ_list(iocc) = orb
+                d%occ_list_beta(iocc_b) = orb
+            else
+                iunocc_b = iunocc_b + 1
+                d%unocc_list_beta(iunocc_b) = orb
+            end if
         end do
 
     end subroutine decode_det_spinocc_spinunocc
@@ -651,7 +712,7 @@ contains
             io = 6
         end if
 
-        occ_list = decode_det(f)
+        call decode_det(f, occ_list)
         fmt1 = int_fmt(nbasis,1)
 
         write (io,'("|")', advance='no')
@@ -744,8 +805,10 @@ contains
         do i = 1, basis_length
             if (f1(i) < f2(i)) then
                 compare = 1
+                exit
             else if (f1(i) > f2(i)) then
                 compare = -1
+                exit
             end if
         end do
 

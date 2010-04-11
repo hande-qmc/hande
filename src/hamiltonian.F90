@@ -193,7 +193,7 @@ contains
         integer :: occ_list(nel)
         integer :: i, j
 
-        occ_list = decode_det(f)
+        call decode_det(f, occ_list)
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         hmatel = 0.0_p
@@ -266,7 +266,7 @@ contains
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
         if (t_self_images) then
-            root_det = decode_det(f)
+            call decode_det(f, root_det)
             do i = 1, nel
                 hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
             end do

@@ -21,3 +21,8 @@ FCIQMC parallelisation
 
 a) Restart.
 b) Investigate load-balancing issues.
+
+Optimisations
+-------------
+
+a) sym_table in terms of basis functions

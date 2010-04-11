@@ -102,7 +102,7 @@ contains
         if (nparticles > 0) then
             ! 4. Well, I suppose we should find out which determinant we're spawning
             ! on...
-            call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta, ij_sym, a, b)
+            call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b)
 
             ! 5. Is connecting matrix element positive (in which case we spawn with
             ! negative walkers) or negative (in which case we spawn with positive
@@ -412,7 +412,7 @@ contains
 
     end subroutine choose_ij_hub_k
 
-    subroutine choose_ab_hub_k(f, unocc_list_alpha, unocc_list_beta, ij_sym, a, b)
+    subroutine choose_ab_hub_k(f, unocc_list_alpha, ij_sym, a, b)
 
         ! Choose a random pair of (a,b) unoccupied virtual spin-orbitals into
         ! which electrons are excited.
@@ -421,8 +421,7 @@ contains
         ! In: 
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
-        !    unocc_alpha, unocc_beta: integer list of the unoccupied alpha and
-        !        beta (respectively) spin-orbitals.
+        !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
         !    ij_sym: symmetry spanned by the (i,j) combination of unoccupied
         !        spin-orbitals into which electrons are excited.
         ! Returns:
@@ -430,11 +429,11 @@ contains
 
         use basis, only: basis_length, bit_lookup, nbasis
         use dSFMT_interface, only:  genrand_real2
-        use system, only: nvirt_alpha, nvirt_beta
+        use system, only: nvirt_alpha
         use symmetry, only: sym_table, inv_sym
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_list_alpha(nvirt_alpha), unocc_list_beta(nvirt_beta)
+        integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
         integer, intent(in) :: ij_sym
         integer, intent(out) :: a, b
 
@@ -459,25 +458,17 @@ contains
 
             ! Until we find an allowed excitation.
 
-            r = int(genrand_real2()*(nvirt_alpha+nvirt_beta)) + 1
+            ! One electron must be in unocc_list_alpha, so we can use the
+            ! random number just to find which unoccupied alpha orbital is in
+            ! the excitation.
 
-            if (r <= nvirt_alpha) then
+            r = int(genrand_real2()*(nvirt_alpha)) + 1
 
-                a = unocc_list_alpha(r)
-                ! Find corresponding beta orbital which satisfies conservation
-                ! of crystal momentum.
-                ka = (a+1)/2
-                b = 2*sym_table(ij_sym, inv_sym(ka))
-
-            else
-
-                a = unocc_list_beta(r-nvirt_alpha)
-                ! Find corresponding alpha orbital which satisfies conservation
-                ! of crystal momentum.
-                ka = a/2
-                b = 2*sym_table(ij_sym, inv_sym(ka)) - 1
-
-            end if
+            a = unocc_list_alpha(r)
+            ! Find corresponding beta orbital which satisfies conservation
+            ! of crystal momentum.
+            ka = (a+1)/2
+            b = 2*sym_table(ij_sym, inv_sym(ka))
 
             b_pos = bit_lookup(1,b)
             b_el = bit_lookup(2,b)

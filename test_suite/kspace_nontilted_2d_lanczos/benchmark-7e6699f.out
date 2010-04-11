@@ -2,12 +2,12 @@
  Hubbard
 
  ================================================================
- Compiled on Mar 31 2010 at 20:29:42
+ Compiled on Apr 10 2010 at 23:33:17
  VCS BASE repository version:
-     f25a5315927144d25e0a7ab4e496f4a3b38faa7c
+     7e6699fe5e8a4d5d2cd107706f4ade49af696859
  Working directory: 
      /home/jspencer/projects/hubbard_fciqmc/test_suite/kspace_nontilted_2d_lanczos
- Started running on 31/03/2010 at 20:30:09
+ Started running on 10/04/2010 at 23:33:42
  Running on: tycpc19
  ================================================================
 
@@ -88,7 +88,7 @@ block_size 8
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/03/31 20:30:09.031 (+01:00)
+                                        2010/04/10 23:33:42.368 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -100,10 +100,10 @@ Number of re-orthogonalizations         6
 Number of (re)start loops:              1
 Number of random vectors used:          1
 Number of eigenpairs locked:            0
-OP(MATVEC):             1.6000E-03 sec,  1.2000E+05 FLOP/S ( 1.9200E+02 FLOP)
-Re-Orthogonalization:   1.0000E-04 sec,  3.0400E+06 FLOP/S ( 3.0400E+02 FLOP)
-Restarting:             9.0000E-04 sec,  1.4222E+05 FLOP/S ( 1.2800E+02 FLOP)
-TRLAN on this PE:       2.7000E-03 sec,  2.6889E+05 FLOP/S ( 7.2600E+02 FLOP)
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+Restarting:             1.4000E-03 sec,  9.1429E+04 FLOP/S ( 1.2800E+02 FLOP)
+TRLAN on this PE:       1.5000E-03 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -116,7 +116,7 @@ TRLAN on this PE:       2.7000E-03 sec,  2.6889E+05 FLOP/S ( 7.2600E+02 FLOP)
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/03/31 20:30:09.032 (+01:00)
+                                        2010/04/10 23:33:42.368 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -130,8 +130,8 @@ Number of random vectors used:          1
 Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
-time in restarting:           0.00000E+00 sec
-TRLAN on this PE:       1.0000E-04 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+Restarting:             1.0000E-04 sec,  1.2800E+06 FLOP/S ( 1.2800E+02 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -144,7 +144,7 @@ TRLAN on this PE:       1.0000E-04 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/03/31 20:30:09.032 (+01:00)
+                                        2010/04/10 23:33:42.368 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -172,7 +172,7 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/03/31 20:30:09.032 (+01:00)
+                                        2010/04/10 23:33:42.369 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -180,13 +180,13 @@ Problem size:                           4 (PE:   0),           4 (Global)
 Convergence tolerance:          1.490E-08 (rel),       1.490E-08 (abs)
 Maximum basis size:                    20
 Restarting scheme:                      0
-Number of re-orthogonalizations        10
+Number of re-orthogonalizations        12
 Number of (re)start loops:              1
-Number of random vectors used:          2
+Number of random vectors used:          3
 Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
-Restarting:             1.0000E-04 sec,  1.2800E+06 FLOP/S ( 1.2800E+02 FLOP)
+time in restarting:           0.00000E+00 sec
 TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
@@ -217,7 +217,7 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/03/31 20:30:09.033 (+01:00)
+                                        2010/04/10 23:33:42.369 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
 Times the operator is applied:          2 (MAX:             1000 ).
@@ -244,7 +244,7 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/03/31 20:30:09.033 (+01:00)
+                                        2010/04/10 23:33:42.369 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
 Times the operator is applied:          2 (MAX:             1000 ).
@@ -271,7 +271,7 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/03/31 20:30:09.033 (+01:00)
+                                        2010/04/10 23:33:42.369 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
 Times the operator is applied:          2 (MAX:             1000 ).
@@ -279,14 +279,14 @@ Problem size:                           2 (PE:   0),           2 (Global)
 Convergence tolerance:          1.490E-08 (rel),       0.000E+00 (abs)
 Maximum basis size:                    20
 Restarting scheme:                      0
-Number of re-orthogonalizations         9
+Number of re-orthogonalizations         7
 Number of (re)start loops:              1
-Number of random vectors used:          3
+Number of random vectors used:          2
 Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
 time in restarting:           0.00000E+00 sec
-TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+TRLAN on this PE:       1.0000E-04 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -305,11 +305,11 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
       9       0    -3.531128874149
      10       0     0.000000000000
      11       0     0.000000000000
-     12       2     0.000000000000
-     13      -2     0.000000000000
-     14       2     0.000000000000
-     15      -2     0.000000000000
-     16       0     0.000000000000
+     12       0     0.000000000000
+     13       2     0.000000000000
+     14      -2     0.000000000000
+     15       2     0.000000000000
+     16      -2     0.000000000000
      17       0     0.000000000000
      18       0     0.498054504048
      19       0     1.000000000000
