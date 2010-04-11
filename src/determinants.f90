@@ -111,6 +111,7 @@ contains
         ! See note in basis.
         basis_length = nbasis/i0_length
         if (mod(nbasis,i0_length) /= 0) basis_length = basis_length + 1
+        last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
 
         if (parent) then
             fmt1 = int_fmt((/nel, nbasis, tot_ndets/), padding=1)
@@ -577,7 +578,7 @@ contains
         iunocc_b = 0
         orb = 0
 
-        do i = 1, basis_length
+        do i = 1, basis_length - 1
             ! Manual unrolling allows us to avoid 2 mod statements
             ! and some branching.
             do j = 0, i0_end, 2
@@ -603,11 +604,38 @@ contains
                     iunocc_b = iunocc_b + 1
                     d%unocc_list_beta(iunocc_b) = orb
                 end if
-                ! Have we covered all basis functions?
-                ! This avoids examining any "padding" at the end of f.
-                ! Possibly inefficient: is it better to leave the test out?
-                if (iocc_a+iocc_b+iunocc_a+iunocc_b == nbasis) exit
             end do
+        end do
+
+        ! Deal with the last element in the determinant bit array separately.
+        ! Note that decoding a bit string is surprisingly slow (or, more
+        ! importantly, adds up when doing billions of times).
+        ! Treating the last element as a special case rather than having an if
+        ! statement in the above loop results a speedup of the Hubbard k-space
+        ! FCIQMC calculations of 1.5%.
+        do j = 0, last_basis_ind, 2
+            ! Test alpha orbital.
+            orb = orb + 1
+            if (btest(f(i), j)) then
+                iocc = iocc + 1
+                iocc_a = iocc_a + 1
+                d%occ_list(iocc) = orb
+                d%occ_list_alpha(iocc_a) = orb
+            else
+                iunocc_a = iunocc_a + 1
+                d%unocc_list_alpha(iunocc_a) = orb
+            end if
+            ! Test beta orbital.
+            orb = orb + 1
+            if (btest(f(i), j+1)) then
+                iocc = iocc + 1
+                iocc_b = iocc_b + 1
+                d%occ_list(iocc) = orb
+                d%occ_list_beta(iocc_b) = orb
+            else
+                iunocc_b = iunocc_b + 1
+                d%unocc_list_beta(iunocc_b) = orb
+            end if
         end do
 
     end subroutine decode_det_spinocc_spinunocc

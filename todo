@@ -25,5 +25,4 @@ b) Investigate load-balancing issues.
 Optimisations
 -------------
 
-a) decode: inner loop only over actual basis functions
-b) sym_table in terms of basis functions
+a) sym_table in terms of basis functions
