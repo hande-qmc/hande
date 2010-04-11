@@ -176,7 +176,7 @@ contains
             if (islot == spawning_head(0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (spawned_walker_population(islot) /= 0) islot = islot + 1
+            if (spawned_walker_info(1,islot) /= 0) islot = islot + 1
         end do self_annihilate
 
         ! update spawning_head(0)
