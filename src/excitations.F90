@@ -473,6 +473,27 @@ contains
 
     function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
 
+        ! Calculate the generation probability of a given excitation for the
+        ! Hubbard model in real space.
+        !
+        ! Note that all the information required for input should be available
+        ! during the FCIQMC algorithm and should not be needed to be calculated.
+        !
+        ! Further, we assume only allowed excitations are generated.
+        !
+        ! In:
+        !    occ_list: integer list of occupied orbitals in the Slater determinant.
+        !    f: bit string representation of the determinant we're exciting
+        !        from.
+        !    nvirt_avail: the number of available orbitals into which an
+        !        electron can be excited, given the choice of the orbital which 
+        !        is being excited from (i.e. having chosen i, how many
+        !        possibilities are there for a, where i is occupied and
+        !        a occupied and D_i^a is connected to D.
+        ! Returns:
+        !    pgen: the generation probability of the excitation.  See notes in
+        !        spawning.
+
         use basis, only: basis_length
         use system, only: nel
         use hubbard_real, only: connected_orbs

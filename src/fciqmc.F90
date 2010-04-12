@@ -158,6 +158,27 @@ contains
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution.
 
+        ! This is implemented by abusing fortran's ability to pass procedures as
+        ! arguments (if only function pointers (F2003) were implemented in more
+        ! compilers!).  This allows us to avoid many system dependent if blocks,
+        ! which are constant for a given calculation.  Avoiding such branching
+        ! is worth the extra verbosity (especially if procedures are written to
+        ! be sufficiently modular that implementing a new system can reuse many
+        ! existing routines) as it leads to much faster code.
+
+        ! (This idea is now being "borrowed" for use in neci.  Bah...)
+
+        ! In:
+        !    decoder: relevant subroutine to decode/extract the necessary
+        !        information from the determinant bit string.  See the
+        !        determinants module.
+        !    update_proj_energy: relevant subroutine to update the projected
+        !        energy.  See the energy_evaluation module.
+        !    spawner: relevant subroutine to attempt to spawn a walker from an
+        !        existing walker.  See the spawning module.
+        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
+        !    elements, <D|H|D>.  See the hamiltonian module.
+
         use parallel
   
         use annihilation, only: direct_annihilation

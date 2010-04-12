@@ -9,6 +9,11 @@ contains
 
     subroutine direct_annihilation(sc0)
 
+        ! Annihilation algorithm.
+        ! Spawned walkers are added to the main list, by which new walkers are
+        ! introduced to the main list and existing walkers can have their
+        ! populations either enhanced or diminished.
+
         interface
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
