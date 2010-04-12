@@ -45,6 +45,47 @@ contains
 
     end subroutine direct_annihilation
 
+    subroutine direct_annihilation_initiator(sc0)
+
+        interface
+            function sc0(f) result(hmatel)
+                use basis, only: basis_length
+                use const, only: i0, p
+                implicit none
+                real(p) :: hmatel
+                integer(i0), intent(in) :: f(basis_length)
+            end function sc0
+        end interface
+
+#ifdef PARALLEL
+        ! 0. Send spawned walkers to the processor which "owns" them and receive
+        ! the walkers "owned" by this processor.
+        call distribute_walkers()
+#endif
+
+        if (spawning_head(0) > 0) then
+            ! Have spawned walkers.
+
+            ! 1. Sort spawned walkers list.
+            call sort_spawned_lists()
+
+            ! 2. Annihilate within spawned walkers list.
+            ! Compress the remaining spawned walkers list and update the parent
+            ! flag.
+            call annihilate_spawned_list_initiator()
+
+            ! 3. Annilate main list.
+            ! Compress the spawned walker list and remove spawned walkers that
+            ! don't come from initiators or sign-coherent events.
+            call annihilate_main_list_initiator()
+
+            ! 4. Insert new walkers into main walker list.
+            call insert_new_walkers(sc0)
+
+        end if
+
+    end subroutine direct_annihilation_initiator
+
     subroutine distribute_walkers()
 
         use parallel
@@ -184,6 +225,64 @@ contains
 
     end subroutine annihilate_spawned_list
 
+    subroutine annihilate_spawned_list_initiator()
+
+        ! Annihilate the spawned walker list and compress the remaining
+        ! elements.
+
+        ! The spawned walker list is already sorted, so annihilation amounts to
+        ! looping through the list and adding consective walker populations
+        ! together if they're the same walker.
+
+        integer :: islot, k, nremoved, pop_sign
+
+        ! islot is the current element in the spawned walkers lists.
+        islot = 1
+        ! k is the current element which is being compressed into islot (if
+        ! k and islot refer to the same determinants).
+        k = 1
+        nremoved = 0
+        self_annihilate: do
+            ! Set the current free slot to be the next unique spawned walker.
+            spawned_walker_dets(:,islot) = spawned_walker_dets(:,k) 
+            spawned_walker_info(:,islot) = spawned_walker_info(:,k) 
+            compress: do
+                k = k + 1
+                if (k > spawning_head(0)) exit self_annihilate
+                if (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,islot))) then
+                    ! Update the parent flag.
+                    pop_sign = spawned_walker_info(1,islot)*spawned_walker_info(1,k)
+                    if (pop_sign > 0) then
+                        ! Sign coherent event.
+                        ! Set parent_flag to 2 (indicating multiple
+                        ! sign-coherent spawning events).
+                        spawned_walker_info(2,islot) = 2
+                    else
+                        ! Keep the parent_flag of the largest spawning event.
+                        if (spawned_walker_info(1,k) > spawned_walker_info(1,islot)) then
+                            spawned_walker_info(2,islot) = spawned_walker_info(2,k)
+                        end if
+                    end if
+                    ! Add the populations of the subsequent identical walkers.
+                    spawned_walker_info(1,islot) = spawned_walker_info(1,islot) + spawned_walker_info(1,k)
+                    nremoved = nremoved + 1
+                else
+                    ! Found the next unique spawned walker.
+                    exit compress
+                end if
+            end do compress
+            ! All done?
+            if (islot == spawning_head(0)) exit self_annihilate
+            ! go to the next slot if the current determinant wasn't completed
+            ! annihilated.
+            if (spawned_walker_info(1,islot) /= 0) islot = islot + 1
+        end do self_annihilate
+
+        ! update spawning_head(0)
+        spawning_head(0) = islot
+
+    end subroutine annihilate_spawned_list_initiator
+
     subroutine annihilate_main_list()
 
         ! Annihilate particles in the main walker list with those in the spawned
@@ -242,6 +341,76 @@ contains
         tot_walkers = tot_walkers - nzero
 
     end subroutine annihilate_main_list
+
+    subroutine annihilate_main_list_initiator()
+
+        ! Annihilate particles in the main walker list with those in the spawned
+        ! walker list.
+
+        use basis, only: basis_length
+
+        integer :: i, pos, k, nannihilate, nzero, istart, iend, old_pop
+        integer(i0) :: f(basis_length)
+        logical :: hit
+
+        nannihilate = 0
+        istart = 1
+        iend = tot_walkers
+        do i = 1, spawning_head(0)
+            f = spawned_walker_dets(:,i)
+            call search_walker_list(f, istart, iend, hit, pos)
+            if (hit) then
+                ! Annihilate!
+                old_pop = walker_population(pos)
+                walker_population(pos) = walker_population(pos) + spawned_walker_info(1,i)
+                nannihilate = nannihilate + 1
+                ! The change in the number of particles is a bit subtle.
+                ! We need to take into account:
+                !   i) annihilation enhancing the population on a determinant.
+                !  ii) annihilation diminishing the population on a determinant.
+                ! iii) annihilation changing the sign of the population (i.e.
+                !      killing the population and then some).
+                nparticles = nparticles + abs(walker_population(pos)) - abs(old_pop)
+                ! Next spawned walker cannot annihilate any determinant prior to
+                ! this one as the lists are sorted.
+                istart = pos + 1
+            else
+                ! Compress spawned list.
+                ! Keep only progeny spawned by initiator determinants
+                ! (parent_flag=0) or multiple sign-coherent events
+                ! (parent_flag=2).
+                if (spawned_walker_info(2,i) == 1) then
+                    ! discard attempting spawnings from non-initiator walkers
+                    ! onto unoccupied determinants.
+                    nannihilate = nannihilate + 1
+                    nparticles = nparticles - abs(spawned_walker_info(1,i))
+                else
+                    ! keep!
+                    k = i - nannihilate
+                    spawned_walker_dets(:,k) = spawned_walker_dets(:,i)
+                    spawned_walker_info(:,k) = spawned_walker_info(:,i)
+                end if
+            end if
+        end do
+
+        spawning_head(0) = spawning_head(0) - nannihilate
+
+        ! Remove any determinants with 0 population.
+        ! This can be done in a more efficient manner by doing it only when necessary...
+        nzero = 0
+        do i = 1, tot_walkers
+            if (walker_population(i) == 0) then
+                nzero = nzero + 1
+            else if (nzero > 0) then
+                k = i - nzero
+                walker_dets(:,k) = walker_dets(:,i)
+                walker_population(k) = walker_population(i)
+                walker_energies(k) = walker_energies(i)
+            end if
+        end do
+        tot_walkers = tot_walkers - nzero
+
+    end subroutine annihilate_main_list_initiator
 
     subroutine insert_new_walkers(sc0)
 
