@@ -134,8 +134,8 @@ contains
 
     subroutine fciqmc_main()
 
-        ! Wrapper around do_fciqmc to set the appropriate procedures that are to
-        ! be called for the current fciqmc calculation.
+        ! Wrapper around do_fciqmc and do_ifciqmc to set the appropriate procedures
+        ! that are to be called for the current fciqmc calculation.
         ! This is a bit hacky, but avoids lots of branching due to if blocks
         ! within the fciqmc algorithm.
 
@@ -145,12 +145,21 @@ contains
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
-        select case(system_type)
-        case(hub_k)
-            call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
-        case(hub_real)
-            call do_fciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
-        end select
+        if (initiator) then
+            select case(system_type)
+            case(hub_k)
+                call do_ifciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
+            case(hub_real)
+                call do_ifciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
+            end select
+        else
+            select case(system_type)
+            case(hub_k)
+                call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
+            case(hub_real)
+                call do_fciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
+            end select
+        end if
 
     end subroutine fciqmc_main
 
@@ -357,7 +366,7 @@ contains
 
         use parallel
   
-        use annihilation, only: direct_annihilation
+        use annihilation, only: direct_annihilation_initiator
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
         use determinants, only: det_info
@@ -457,6 +466,10 @@ contains
         nparticles_old = nparticles_old_restart
 
         ! Main fciqmc loop.
+        write (6,'(B32.32)') cas_mask
+        write (6,'(B32.32)') cas_core
+        write (6,*) iand(walker_dets(:,1),cas_mask) == cas_core
+        write (6,*) nel-CAS(1), nel - CAS(1) + 2*CAS(2) + 1, nbasis
 
         if (parent) call write_fciqmc_report_header()
 
@@ -490,13 +503,16 @@ contains
                     if (walker_population(idet) > initiator_population) then
                         ! Has a high enough population to be an initiator.
                         parent_flag = 0
+                        write (6,*) 'pop initiator'
                     else if (all(iand(cdet%f,cas_mask) == cas_core)) then
                         ! Is in the complete active space.
                         parent_flag = 0
+                        write (6,*) 'cas initiator'
                     else
                         ! Isn't an initiator.
                         parent_flag = 1
                     end if
+                    stop
 
                     do iparticle = 1, abs(walker_population(idet))
                         
@@ -514,7 +530,7 @@ contains
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
-!                call direct_annihilation_initiator(sc0)
+                call direct_annihilation_initiator(sc0)
 
                 ! normalise projected energy and add to running total.
                 proj_energy = proj_energy + inst_proj_energy/D0_population

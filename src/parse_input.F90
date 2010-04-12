@@ -120,6 +120,9 @@ contains
                 t_fciqmc = .true.
             case('FCIQMC')
                 t_fciqmc = .true.
+            case('IFCIQMC')
+                t_fciqmc = .true.
+                initiator = .true.
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
