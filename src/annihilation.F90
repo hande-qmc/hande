@@ -126,6 +126,9 @@ contains
 
     subroutine distribute_walkers()
 
+        ! Send spawned walkers to the pre-designated processor which hosts the
+        ! determinant upon which the walker has been spawned.
+
         use parallel
 
         use basis, only: basis_length

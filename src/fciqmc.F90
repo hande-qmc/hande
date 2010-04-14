@@ -389,6 +389,20 @@ contains
         ! Run the initiator-FCIQMC algorithm starting from the initial walker
         ! distribution.
 
+        ! See notes about the implementation of this using function pointers
+        ! (F77 style rather than F2003, sadly!) in do_fciqmc.
+
+        ! In:
+        !    decoder: relevant subroutine to decode/extract the necessary
+        !        information from the determinant bit string.  See the
+        !        determinants module.
+        !    update_proj_energy: relevant subroutine to update the projected
+        !        energy.  See the energy_evaluation module.
+        !    spawner: relevant subroutine to attempt to spawn a walker from an
+        !        existing walker.  See the spawning module.
+        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
+        !    elements, <D|H|D>.  See the hamiltonian module.
+
         use parallel
   
         use annihilation, only: direct_annihilation_initiator
