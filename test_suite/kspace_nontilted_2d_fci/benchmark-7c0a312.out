@@ -1,0 +1,252 @@
+
+ Hubbard
+
+ ================================================================
+ Compiled on Apr 14 2010 at 20:23:17
+ VCS BASE repository version:
+     7c0a31235b55a1f488d19ff62df5b427f98bea29
+ Working directory: 
+     /home/james/work/src/hubbard_fciqmc/test_suite/kspace_nontilted_2d_fci
+ Started running on 14/04/2010 at 20:24:07
+ Running on: mini-pintsize
+ ================================================================
+
+ Input options
+ -------------
+
+k_space
+lattice
+2 0
+0 2
+electrons 4
+block_size 1
+fci
+eigenvalues
+hamil
+det
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point      ms     kinetic energy
+     1   ( 0, 0)      1     -4.00000000
+     2   ( 0, 0)     -1     -4.00000000
+     3   ( 1, 0)      1     -0.00000000
+     4   ( 1, 0)     -1     -0.00000000
+     5   ( 0, 1)      1     -0.00000000
+     6   ( 0, 1)     -1     -0.00000000
+     7   ( 1, 1)      1      4.00000000
+     8   ( 1, 1)     -1      4.00000000
+
+ Number of electrons: 4
+ Number of basis functions: 8
+ Total size of determinant space: 70
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point      Inverse
+   1      ( 0, 0)        1
+   2      ( 1, 0)        2
+   3      ( 0, 1)        3
+   4      ( 1, 1)        4
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3  4
+  2  1  4  3
+  3  4  1  2
+  4  3  2  1
+
+ Diagonalisation
+ ===============
+
+ Considering determinants with spin:  0
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1               12
+         2                8
+         3                8
+         4                8
+
+ Diagonalising symmetry block 1 out of 4
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Diagonalising symmetry block 2 out of 4
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Diagonalising symmetry block 3 out of 4
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Diagonalising symmetry block 4 out of 4
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Considering determinants with spin:  2
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=2.
+
+ Symmetry index      # dets
+         1                4
+         2                4
+         3                4
+         4                4
+
+ Diagonalising symmetry block 1 out of 4
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Diagonalising symmetry block 2 out of 4
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Diagonalising symmetry block 3 out of 4
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Diagonalising symmetry block 4 out of 4
+
+ Performing exact diagonalisation...
+
+ ---------------
+
+ Considering determinants with spin:  4
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=4.
+
+ Symmetry index      # dets
+         1                1
+         2                0
+         3                0
+         4                0
+
+ Diagonalising symmetry block 1 out of 4
+
+ Performing trivial diagonalisation.
+
+ ---------------
+
+ No determinants with spin 4 in symmetry block 2 out of 4
+
+ ---------------
+
+ No determinants with spin 4 in symmetry block 3 out of 4
+
+ ---------------
+
+ No determinants with spin 4 in symmetry block 4 out of 4
+
+ ---------------
+
+ Exact diagonalisation results
+ -----------------------------
+
+    State   Spin   Total energy
+      1       0    -7.297973443536
+      2       0    -7.270510361534
+      3       2    -7.270510361534
+      4      -2    -7.270510361534
+      5       0    -6.803809227414
+      6       0    -6.768564865582
+      7       0    -3.531128874149
+      8       2    -3.531128874149
+      9      -2    -3.531128874149
+     10       0    -3.531128874149
+     11       2    -3.531128874149
+     12      -2    -3.531128874149
+     13       0    -3.000000000000
+     14       0    -3.000000000000
+     15       0    -3.000000000000
+     16       2    -3.000000000000
+     17      -2    -3.000000000000
+     18       2    -3.000000000000
+     19      -2    -3.000000000000
+     20       0    -3.000000000000
+     21       0    -2.531128874149
+     22       0    -2.531128874149
+     23       2    -0.000000000000
+     24      -2    -0.000000000000
+     25       4     0.000000000000
+     26      -4     0.000000000000
+     27       0     0.000000000000
+     28       0     0.501945495952
+     29       2     0.501945495952
+     30      -2     0.501945495952
+     31       0     0.505835783878
+     32       0     1.000000000000
+     33       0     1.000000000000
+     34       0     1.000000000000
+     35       2     1.000000000000
+     36      -2     1.000000000000
+     37       2     1.000000000000
+     38      -2     1.000000000000
+     39       2     1.000000000000
+     40      -2     1.000000000000
+     41       0     1.000000000000
+     42       0     1.000000000000
+     43       2     1.000000000000
+     44      -2     1.000000000000
+     45       0     1.000000000000
+     46       0     1.494164216122
+     47       0     1.498054504048
+     48       0     2.000000000000
+     49       0     4.531128874149
+     50       0     4.531128874149
+     51       2     4.531128874149
+     52      -2     4.531128874149
+     53       2     4.531128874149
+     54      -2     4.531128874149
+     55       0     5.000000000000
+     56       0     5.000000000000
+     57       0     5.000000000000
+     58       2     5.000000000000
+     59      -2     5.000000000000
+     60       0     5.000000000000
+     61       2     5.000000000000
+     62      -2     5.000000000000
+     63       0     5.531128874149
+     64       0     5.531128874149
+     65       0     8.768564865582
+     66       2     8.768564865582
+     67      -2     8.768564865582
+     68       0     8.803809227414
+     69       0     9.270510361534
+     70       0     9.297973443536
+
+ Exact ground state:   -7.297973443536
+
