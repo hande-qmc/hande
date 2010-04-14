@@ -82,8 +82,8 @@ main, opt and dbg.  For instance::
     cflags = -g
 
 Any option not specified in the 'opt' and 'dbg' sections is inherited from the
-'main' section.  The settings in 'opt' are used by default; the debug options
-can be selected by passing the -g option to mkconfig.py.
+'main' section.  The optimised settings in 'opt' are used by default; the debug
+options can be selected by passing the -g option to mkconfig.py.
 
 Available options are:
 
@@ -330,6 +330,8 @@ initialisation (mainly the enumeration of the basis) is performed.
     terms of CPU and memory resources) algorithm.  This should be used for testing only.
 **fciqmc**
     Perform an FCIQMC calculation.
+**ifciqmc**
+    Perform an initiator-FCIQMC calculation.
 **lanczos**
     Perform a Lanczos diagonalisation of the Hamiltonian matrix.
 **lanczos_direct**
@@ -563,6 +565,42 @@ The following options are valid for FCIQMC calculations.
 
     Restart is currently only implemented in serial.
 
+Calculation options: initiator-FCIQMC options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In addition to the options for general FCIQMC calculations, the following
+options are also valid in initiator-FCIQMC calculations:
+
+**initiator_population** *population*
+    Integer.
+
+    Default: 3.
+
+    Set the population at which a determinant is considered to be an initiator
+    determinant.  Setting this value to 0 retrieves the FCIQMC result.
+**cas** *N* *M*
+    Integers.
+
+    Default: 0 0.
+
+    Set the complete active space (CAS) to be (*N*, *M*), which defines the CAS
+    such that the lowest *nel* - *N* spin-orbitals are core (occupied)
+    spin-orbitals; precisely *N* electrons occupy the next 2 *M* "active"
+    spin-orbitals and the remaining spin-orbitals form the "external" space and
+    are unoccupied.  Any determinant within the CAS is considered to be an
+    initiator determinant, no matter what the population of walkers on that
+    determinant.
+
+    A CAS of (0,0) contains only the determinant with the *nel* lowest energy
+    spin-orbitals occupied and a CAS of (*nel*, *norbs*) contains the full
+    space of determinants, where *norbs* is the number of spin-orbitals used in
+    the simulation (i.e. twice the number of sites in the crystal cell in the
+    case of the Hubbard model).
+
+    Note that the CAS is somewhat meaningless when using the real space
+    formulation of the Hubbard model (as the spin-orbitals used as the basis do
+    not have an associated energy) and so great care should be used.
+
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -577,7 +615,8 @@ the result but can have a significant impact on performance.
     Set the block size used to distribute the Hamiltonian matrix across the
     processors.  The Hamiltonian matrix is divided into :math:`n \times n`
     sub-matrices, where :math:`n` is the block size, which are the distributed
-    over the processors in a cyclic fashion.
+    over the processors in a cyclic fashion.  Applicable only to FCI
+    calculations.
 
 output options
 ^^^^^^^^^^^^^^
