@@ -16,10 +16,16 @@
 
 [rspace_rectangle_2d_lanczos]
 
+[kspace_1d_ifciqmc]
+
+[kspace_1d_ifciqmc_cas]
+
+[kspace_nontilted_2d_ifciqmc]
+
 # Form job categories.
 [categories]
 
-kspace = kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci kspace_nontilted_2d_lanczos kspace_nontilted_2d_sfciqmc
+kspace = kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci kspace_nontilted_2d_lanczos kspace_nontilted_2d_sfciqmc kspace_1d_ifciqmc kspace_1d_ifciqmc_cas kspace_nontilted_2d_ifciqmc
 
 rspace = rspace_nontilted_2d rspace_rectangle_2d_lanczos
 
@@ -28,4 +34,5 @@ lanczos = kspace_1d kspace_nontilted_2d_lanczos rspace_nontilted_2d rspace_recta
 
 sfciqmc = kspace_nontilted_2d_sfciqmc
 fciqmc = rspace_1d_fciqmc kspace_nontilted_2d_fciqmc
-fciqmc_all = kspace_nontilted_2d_sfciqmc fciqmc
+ifciqmc = kspace_1d_ifciqmc kspace_1d_ifciqmc_cas kspace_nontilted_2d_ifciqmc
+fciqmc_all = kspace_nontilted_2d_sfciqmc fciqmc ifciqmc
