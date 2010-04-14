@@ -39,7 +39,11 @@ contains
         allocate(walker_energies(walker_length), stat=ierr)
 
         ! Allocate spawned walker lists.
-        spawned_info_size = 1
+        if (initiator) then
+            spawned_info_size = 2
+        else
+            spawned_info_size = 1
+        end if
         if (mod(spawned_walker_length, nprocs) /= 0) then
             write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
             spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
