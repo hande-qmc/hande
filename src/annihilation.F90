@@ -14,6 +14,9 @@ contains
         ! introduced to the main list and existing walkers can have their
         ! populations either enhanced or diminished.
 
+        ! This is a wrapper around various utility functions which perform the
+        ! different parts of the annihilation process.
+
         interface
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
@@ -31,7 +34,7 @@ contains
 #endif
 
         if (spawning_head(0) > 0) then
-            ! Have spawned walkers.
+            ! Have spawned walkers on this processor.
 
             ! 1. Sort spawned walkers list.
             call sort_spawned_lists()
@@ -62,6 +65,16 @@ contains
 
     subroutine direct_annihilation_initiator(sc0)
 
+        ! Annihilation algorithm.
+        ! Spawned walkers are added to the main list, by which new walkers are
+        ! introduced to the main list and existing walkers can have their
+        ! populations either enhanced or diminished.
+
+        ! This is a wrapper around various utility functions which perform the
+        ! different parts of the annihilation process.
+
+        ! This version is for use with the initiator-FCIQMC algorithm.
+
         interface
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
@@ -79,7 +92,7 @@ contains
 #endif
 
         if (spawning_head(0) > 0) then
-            ! Have spawned walkers.
+            ! Have spawned walkers on this processor.
 
             ! 1. Sort spawned walkers list.
             call sort_spawned_lists()
@@ -263,6 +276,10 @@ contains
         ! looping through the list and adding consective walker populations
         ! together if they're the same walker.
 
+        ! This version is for the initiator algorithm, whereby we also need to
+        ! take care of the parent flag (ie handle the origin of the spawned
+        ! walkers).
+
         integer :: islot, k, nremoved, pop_sign
 
         ! islot is the current element in the spawned walkers lists.
@@ -280,6 +297,10 @@ contains
                 if (k > spawning_head(0)) exit self_annihilate
                 if (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,islot))) then
                     ! Update the parent flag.
+                    ! Note we ignore the possibility of multiple spawning events
+                    ! onto the same unoccupied determinant.  Such events become
+                    ! vanishingly unlikely with the size of the determinant
+                    ! space (according to Ali at least!).
                     pop_sign = spawned_walker_info(1,islot)*spawned_walker_info(1,k)
                     if (pop_sign > 0) then
                         ! Sign coherent event.
@@ -364,6 +385,10 @@ contains
 
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.
+
+        ! This version is for the initiator algorithm, where we also need to
+        ! discard spawned walkers which are on previously unoccupied determinants
+        ! and which are from non-initiator or non-sign-coherent events.
 
         use basis, only: basis_length
 
