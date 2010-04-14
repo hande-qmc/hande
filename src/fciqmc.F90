@@ -504,7 +504,7 @@ contains
                     call update_proj_energy(idet, inst_proj_energy)
 
                     ! Is this determinant an initiator?
-                    if (walker_population(idet) > initiator_population) then
+                    if (abs(walker_population(idet)) > initiator_population) then
                         ! Has a high enough population to be an initiator.
                         parent_flag = 0
                         write (6,*) 'pop initiator'
