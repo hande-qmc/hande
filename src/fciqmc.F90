@@ -470,10 +470,6 @@ contains
         nparticles_old = nparticles_old_restart
 
         ! Main fciqmc loop.
-        write (6,'(B32.32)') cas_mask
-        write (6,'(B32.32)') cas_core
-        write (6,*) iand(walker_dets(:,1),cas_mask) == cas_core
-        write (6,*) nel-CAS(1), nel - CAS(1) + 2*CAS(2) + 1, nbasis
 
         if (parent) call write_fciqmc_report_header()
 
@@ -507,16 +503,13 @@ contains
                     if (abs(walker_population(idet)) > initiator_population) then
                         ! Has a high enough population to be an initiator.
                         parent_flag = 0
-                        write (6,*) 'pop initiator'
                     else if (all(iand(cdet%f,cas_mask) == cas_core)) then
                         ! Is in the complete active space.
                         parent_flag = 0
-                        write (6,*) 'cas initiator'
                     else
                         ! Isn't an initiator.
                         parent_flag = 1
                     end if
-                    stop
 
                     do iparticle = 1, abs(walker_population(idet))
                         
