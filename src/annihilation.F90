@@ -35,11 +35,21 @@ contains
             ! Compress the remaining spawned walkers list.
             call annihilate_spawned_list()
 
-            ! 3. Annilate main list.
+            ! 3. Annihilate main list.
             call annihilate_main_list()
 
-            ! 4. Insert new walkers into main walker list.
+            ! 4. Remove determinants with zero walkers on them from the main
+            ! walker list.
+            call remove_unoccupied_dets()
+
+            ! 5. Insert new walkers into main walker list.
             call insert_new_walkers(sc0)
+
+        else
+
+            ! No spawned walkers so we only have to check to see if death has
+            ! killed the entire population on a determinant.
+            call remove_unoccupied_dets()
 
         end if
 
@@ -74,13 +84,23 @@ contains
             ! flag.
             call annihilate_spawned_list_initiator()
 
-            ! 3. Annilate main list.
-            ! Compress the spawned walker list and remove spawned walkers that
-            ! don't come from initiators or sign-coherent events.
+            ! 3. Annihilate main list.
+            ! This also removes spawned walkers that don't come from initiators
+            ! or sign-coherent events and are on unoccupied determinants.
             call annihilate_main_list_initiator()
 
-            ! 4. Insert new walkers into main walker list.
+            ! 4. Remove determinants with zero walkers on them from the main
+            ! walker list.
+            call remove_unoccupied_dets()
+
+            ! 5. Insert new walkers into main walker list.
             call insert_new_walkers(sc0)
+
+        else
+
+            ! No spawned walkers so we only have to check to see if death has
+            ! killed the entire population on a determinant.
+            call remove_unoccupied_dets()
 
         end if
 
@@ -220,6 +240,10 @@ contains
             if (spawned_walker_info(1,islot) /= 0) islot = islot + 1
         end do self_annihilate
 
+        ! We didn't check if the population on the last determinant is
+        ! completely annihilated or not.
+        if (spawned_walker_info(1, islot) == 0) islot = islot - 1
+
         ! update spawning_head(0)
         spawning_head(0) = islot
 
@@ -278,6 +302,10 @@ contains
             if (spawned_walker_info(1,islot) /= 0) islot = islot + 1
         end do self_annihilate
 
+        ! We didn't check if the population on the last determinant is
+        ! completely annihilated or not.
+        if (spawned_walker_info(1, islot) == 0) islot = islot - 1
+
         ! update spawning_head(0)
         spawning_head(0) = islot
 
@@ -290,7 +318,7 @@ contains
 
         use basis, only: basis_length
 
-        integer :: i, pos, k, nannihilate, nzero, istart, iend, old_pop
+        integer :: i, pos, k, nannihilate, istart, iend, old_pop
         integer(i0) :: f(basis_length)
         logical :: hit
 
@@ -325,21 +353,6 @@ contains
 
         spawning_head(0) = spawning_head(0) - nannihilate
 
-        ! Remove any determinants with 0 population.
-        ! This can be done in a more efficient manner by doing it only when necessary...
-        nzero = 0
-        do i = 1, tot_walkers
-            if (walker_population(i) == 0) then
-                nzero = nzero + 1
-            else if (nzero > 0) then
-                k = i - nzero
-                walker_dets(:,k) = walker_dets(:,i)
-                walker_population(k) = walker_population(i)
-                walker_energies(k) = walker_energies(i)
-            end if
-        end do
-        tot_walkers = tot_walkers - nzero
-
     end subroutine annihilate_main_list
 
     subroutine annihilate_main_list_initiator()
@@ -349,7 +362,7 @@ contains
 
         use basis, only: basis_length
 
-        integer :: i, pos, k, nannihilate, nzero, istart, iend, old_pop
+        integer :: i, pos, k, nannihilate, istart, iend, old_pop
         integer(i0) :: f(basis_length)
         logical :: hit
 
@@ -395,8 +408,15 @@ contains
 
         spawning_head(0) = spawning_head(0) - nannihilate
 
+    end subroutine annihilate_main_list_initiator
+
+    subroutine remove_unoccupied_dets()
+
         ! Remove any determinants with 0 population.
         ! This can be done in a more efficient manner by doing it only when necessary...
+
+        integer :: nzero, i, k
+
         nzero = 0
         do i = 1, tot_walkers
             if (walker_population(i) == 0) then
@@ -410,7 +430,7 @@ contains
         end do
         tot_walkers = tot_walkers - nzero
 
-    end subroutine annihilate_main_list_initiator
+    end subroutine remove_unoccupied_dets
 
     subroutine insert_new_walkers(sc0)
 
