@@ -227,14 +227,13 @@ contains
         ! looping through the list and adding consective walker populations
         ! together if they're the same walker.
 
-        integer :: islot, k, nremoved
+        integer :: islot, k
 
         ! islot is the current element in the spawned walkers lists.
         islot = 1
         ! k is the current element which is being compressed into islot (if
         ! k and islot refer to the same determinants).
         k = 1
-        nremoved = 0
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned walker.
             spawned_walker_dets(:,islot) = spawned_walker_dets(:,k) 
@@ -245,7 +244,6 @@ contains
                 if (all(spawned_walker_dets(:,k) == spawned_walker_dets(:,islot))) then
                     ! Add the populations of the subsequent identical walkers.
                     spawned_walker_info(1,islot) = spawned_walker_info(1,islot) + spawned_walker_info(1,k)
-                    nremoved = nremoved + 1
                 else
                     ! Found the next unique spawned walker.
                     exit compress
@@ -280,14 +278,13 @@ contains
         ! take care of the parent flag (ie handle the origin of the spawned
         ! walkers).
 
-        integer :: islot, k, nremoved, pop_sign
+        integer :: islot, k, pop_sign
 
         ! islot is the current element in the spawned walkers lists.
         islot = 1
         ! k is the current element which is being compressed into islot (if
         ! k and islot refer to the same determinants).
         k = 1
-        nremoved = 0
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned walker.
             spawned_walker_dets(:,islot) = spawned_walker_dets(:,k) 
@@ -315,7 +312,6 @@ contains
                     end if
                     ! Add the populations of the subsequent identical walkers.
                     spawned_walker_info(1,islot) = spawned_walker_info(1,islot) + spawned_walker_info(1,k)
-                    nremoved = nremoved + 1
                 else
                     ! Found the next unique spawned walker.
                     exit compress
