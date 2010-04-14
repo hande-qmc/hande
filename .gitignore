@@ -12,3 +12,5 @@ fort.*
 .*.swp
 tags
 restart.*
+fort.*
+/config/.default
