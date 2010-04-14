@@ -628,11 +628,11 @@ contains
         ! Print out a load-balancing report when run in parallel showing how
         ! determinants and walkers/particles are distributed over the processors.
 
+#ifdef PARALLEL
         use parallel
 
         integer :: load_data(nprocs), ierr
 
-#ifdef PARALLEL
         if (nprocs > 1) then
             if (parent) then
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'

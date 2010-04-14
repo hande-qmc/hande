@@ -21,9 +21,9 @@ contains
 
         ! It seems that giving STOP a string is far more portable.
         ! mpi_abort requires an integer though.
-        integer, parameter :: error_code=999
         character(3), parameter :: error_str='999'
 #ifdef PARALLEL
+        integer, parameter :: error_code=999
         integer :: ierr
 #endif
 

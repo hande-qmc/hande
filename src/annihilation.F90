@@ -129,6 +129,8 @@ contains
         ! Send spawned walkers to the pre-designated processor which hosts the
         ! determinant upon which the walker has been spawned.
 
+#ifdef PARALLEL
+
         use parallel
 
         use basis, only: basis_length
@@ -143,81 +145,77 @@ contains
         integer(i0), pointer :: tmp_dets(:,:)
         integer, pointer :: tmp_info(:,:)
 
-        if (nprocs == 1) then
-            ! No need to communicate!
-        else
-            ! Send spawned walkers to the processor which "owns" them and receive
-            ! the walkers "owned" by this processor.
+        ! Send spawned walkers to the processor which "owns" them and receive
+        ! the walkers "owned" by this processor.
 
-            ! The walkers are already stored in the spawned walker arrays in blocks,
-            ! where each block corresponds to determinants owned by a given
-            ! processor.
+        ! The walkers are already stored in the spawned walker arrays in blocks,
+        ! where each block corresponds to determinants owned by a given
+        ! processor.
 
-            ! Tests on cx2 indicate that there is not much difference between
-            ! sending messages of the same size using MPI_AlltoAll and
-            ! MPI_AlltoAllv (though MPI_AlltoAllv is very slightly slower, by a few
-            ! percent).  Therefore it is likely that using MPI_AlltoAllv will be
-            ! more efficient as it allows us to only send spawned walkers rather
-            ! than the entire spawned lists.  It does require an additional
-            ! communication to set up however, so for calculations with large
-            ! numbers of walkers maybe MPI_AlltoAll would be more efficient?
+        ! Tests on cx2 indicate that there is not much difference between
+        ! sending messages of the same size using MPI_AlltoAll and
+        ! MPI_AlltoAllv (though MPI_AlltoAllv is very slightly slower, by a few
+        ! percent).  Therefore it is likely that using MPI_AlltoAllv will be
+        ! more efficient as it allows us to only send spawned walkers rather
+        ! than the entire spawned lists.  It does require an additional
+        ! communication to set up however, so for calculations with large
+        ! numbers of walkers maybe MPI_AlltoAll would be more efficient?
 
-            ! Find out how many walkers we are going to send and receive.
-            step = spawning_block_start(1)
-            forall (i=0:nprocs-1)
-                s(1,i) = spawning_head(i) - spawning_block_start(i)
-                s(2,i) = D0_population
-                send_displacements(i) = i*step
-            end forall
-#ifdef PARALLEL
-            call MPI_AlltoAll(s, 2, MPI_INTEGER, r, 2, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+        ! Find out how many walkers we are going to send and receive.
+        step = spawning_block_start(1)
+        forall (i=0:nprocs-1)
+            s(1,i) = spawning_head(i) - spawning_block_start(i)
+            s(2,i) = D0_population
+            send_displacements(i) = i*step
+        end forall
+
+        call MPI_AlltoAll(s, 2, MPI_INTEGER, r, 2, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+
+        send_counts = s(1,:)
+        receive_counts = r(1,:)
+        D0_population = r(2, D0_proc)
+
+        ! Want spawning data to be continuous after move, hence need to find the
+        ! receive displacements.
+        receive_displacements(0) = 0
+        do i=1, nprocs-1
+            receive_displacements(i) = receive_displacements(i-1) + receive_counts(i-1)
+        end do
+
+        ! Send spawning populations.
+        send_counts_info = send_counts*spawned_info_size
+        receive_counts_info = receive_counts*spawned_info_size
+        send_displacements_info = send_displacements*spawned_info_size
+        receive_displacements_info = receive_displacements*spawned_info_size
+        call MPI_AlltoAllv(spawned_walker_info, send_counts_info, send_displacements_info, MPI_INTEGER, &
+                           spawned_walker_info_recvd, receive_counts_info, receive_displacements_info, MPI_INTEGER, &
+                           MPI_COMM_WORLD, ierr)
+        ! Send spawning determinants.
+        ! Each element contains basis_length integers (of type
+        ! i0/mpi_det_integer) so we need to change the counts and
+        ! displacements accordingly:
+        send_counts = send_counts*basis_length
+        receive_counts = receive_counts*basis_length
+        send_displacements = send_displacements*basis_length
+        receive_displacements = receive_displacements*basis_length
+        call MPI_AlltoAllv(spawned_walker_dets, send_counts, send_displacements, mpi_det_integer, &
+                           spawned_walker_dets_recvd, receive_counts, receive_displacements, mpi_det_integer, &
+                           MPI_COMM_WORLD, ierr)
+
+        ! Swap pointers so that spawned_walker_dets and
+        ! spawned_walker_info point to the received data.
+        tmp_dets => spawned_walker_dets
+        spawned_walker_dets => spawned_walker_dets_recvd
+        spawned_walker_dets_recvd => tmp_dets
+        tmp_info => spawned_walker_info
+        spawned_walker_info => spawned_walker_info_recvd
+        spawned_walker_info_recvd => tmp_info
+
+        ! Set spawning_head(0) to be the number of walkers now on this
+        ! processor.
+        spawning_head(0) = receive_displacements(nprocs-1) + receive_counts(nprocs-1)
+
 #endif
-            send_counts = s(1,:)
-            receive_counts = r(1,:)
-            D0_population = r(2, D0_proc)
-
-            ! Want spawning data to be continuous after move, hence need to find the
-            ! receive displacements.
-            receive_displacements(0) = 0
-            do i=1, nprocs-1
-                receive_displacements(i) = receive_displacements(i-1) + receive_counts(i-1)
-            end do
-
-#ifdef PARALLEL
-            ! Send spawning populations.
-            send_counts_info = send_counts*spawned_info_size
-            receive_counts_info = receive_counts*spawned_info_size
-            send_displacements_info = send_displacements*spawned_info_size
-            receive_displacements_info = receive_displacements*spawned_info_size
-            call MPI_AlltoAllv(spawned_walker_info, send_counts_info, send_displacements_info, MPI_INTEGER, &
-                               spawned_walker_info_recvd, receive_counts_info, receive_displacements_info, MPI_INTEGER, &
-                               MPI_COMM_WORLD, ierr)
-            ! Send spawning determinants.
-            ! Each element contains basis_length integers (of type
-            ! i0/mpi_det_integer) so we need to change the counts and
-            ! displacements accordingly:
-            send_counts = send_counts*basis_length
-            receive_counts = receive_counts*basis_length
-            send_displacements = send_displacements*basis_length
-            receive_displacements = receive_displacements*basis_length
-            call MPI_AlltoAllv(spawned_walker_dets, send_counts, send_displacements, mpi_det_integer, &
-                               spawned_walker_dets_recvd, receive_counts, receive_displacements, mpi_det_integer, &
-                               MPI_COMM_WORLD, ierr)
-#endif
-
-            ! Swap pointers so that spawned_walker_dets and
-            ! spawned_walker_info point to the received data.
-            tmp_dets => spawned_walker_dets
-            spawned_walker_dets => spawned_walker_dets_recvd
-            spawned_walker_dets_recvd => tmp_dets
-            tmp_info => spawned_walker_info
-            spawned_walker_info => spawned_walker_info_recvd
-            spawned_walker_info_recvd => tmp_info
-
-            ! Set spawning_head(0) to be the number of walkers now on this
-            ! processor.
-            spawning_head(0) = receive_displacements(nprocs-1) + receive_counts(nprocs-1)
-        end if
 
     end subroutine distribute_walkers
 

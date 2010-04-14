@@ -100,7 +100,7 @@ contains
 
         use utils, only: int_fmt
 
-        character(2) :: fmt1
+        character(4) :: fmt1
 
         fmt1 = int_fmt(nprocs)
         write (6,'(1X,"Running on"'//fmt1//'" processors.",/)') nprocs

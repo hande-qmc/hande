@@ -243,7 +243,7 @@ contains
             ! and y the output Lanczos vector.
             ! Borrowing from ideas in dsymv, we can perform this only using one
             ! triangle of the Hamiltonian matrix.
-            do j = 1, ndets
+            do j = 1, nrow ! Identical to ndets in serial.
                 tmp = 0.0_dp
                 do i = 1, j-1
                     hmatel = get_hmatel(i,j) 

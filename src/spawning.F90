@@ -437,7 +437,7 @@ contains
         integer, intent(in) :: ij_sym
         integer, intent(out) :: a, b
 
-        integer :: r, b_pos, b_el, ka, tmp
+        integer :: r, b_pos, b_el, ka
 
         ! The excitation i,j -> a,b is only allowed if k_i + k_j - k_a - k_b = 0
         ! (up to a reciprocal lattice vector).  We store k_i + k_j as ij_sym, so
