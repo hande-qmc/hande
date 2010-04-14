@@ -199,7 +199,7 @@ contains
         use basis, only: basis_length
         use death, only: stochastic_death
         use determinants, only: det_info
-        use energy_evaluation, only: update_shift
+        use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use fciqmc_restart, only: dump_restart
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
@@ -242,14 +242,13 @@ contains
         end interface
 
         integer :: ierr
-        integer :: idet, ireport, icycle, iparticle, ntot_particles, nparticles_old
+        integer :: idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
         integer :: nspawned
         type(excit) :: connection
 
         real(p) :: inst_proj_energy
-        real(dp) :: ir(2), ir_sum(2)
 
 ! DEBUG CHECK ONLY.
 !        integer :: sum1, sum2
@@ -327,8 +326,6 @@ contains
 
             end do
 
-            ! Update the shift
-
 ! DEBUG CHECK ONLY.            
 !            if (nparticles /= sum(abs(walker_population(:tot_walkers)))) then
 !                write (6,*) 'huh', iproc
@@ -336,40 +333,10 @@ contains
 !                stop
 !            end if
 
-#ifdef PARALLEL
-            ! Need to sum the number of particles and the projected energy over
-            ! all processors.
-            ir(1) = nparticles
-            ir(2) = proj_energy
-            call mpi_allreduce(ir, ir_sum, 2, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            ntot_particles = nint(ir_sum(1))
-            proj_energy = ir_sum(2)
-            
-            if (vary_shift) then
-                call update_shift(nparticles_old, ntot_particles, ncycles)
-            end if
-            nparticles_old = ntot_particles
-            if (ntot_particles > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
-                start_vary_shift = ireport
-            end if
-#else
-            if (vary_shift) then
-                call update_shift(nparticles_old, nparticles, ncycles)
-            end if
-            nparticles_old = nparticles
-            if (nparticles > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
-                start_vary_shift = ireport
-            end if
-#endif
+            ! Update the energy estimators (shift & projected energy).
+            call update_energy_estimators(ireport, nparticles_old)
 
-            ! Running average projected energy 
-            av_proj_energy = av_proj_energy + proj_energy
-            ! average projected energy over report loop.
-            proj_energy = proj_energy/ncycles
-
-            if (parent) call write_fciqmc_report(ireport, nparticles)
+            if (parent) call write_fciqmc_report(ireport, nparticles_old)
 
         end do
 
@@ -409,7 +376,7 @@ contains
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
         use determinants, only: det_info
-        use energy_evaluation, only: update_shift
+        use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use fciqmc_restart, only: dump_restart
         use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
@@ -452,14 +419,13 @@ contains
         end interface
 
         integer :: ierr
-        integer :: i, idet, ireport, icycle, iparticle, ntot_particles, nparticles_old
+        integer :: i, idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
         integer :: nspawned
         type(excit) :: connection
 
         real(p) :: inst_proj_energy
-        real(dp) :: ir(2), ir_sum(2)
 
         integer :: parent_flag
         integer(i0) :: cas_mask(basis_length), cas_core(basis_length)
@@ -569,46 +535,10 @@ contains
 
             end do
 
-            ! Update the shift
+            ! Update the energy estimators (shift & projected energy).
+            call update_energy_estimators(ireport, nparticles_old)
 
-#ifdef PARALLEL
-            ! Need to sum the number of particles and the projected energy over
-            ! all processors.
-            ir(1) = nparticles
-            ir(2) = proj_energy
-            call mpi_allreduce(ir, ir_sum, 2, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            ntot_particles = nint(ir_sum(1))
-            proj_energy = ir_sum(2)
-            
-            if (vary_shift) then
-                call update_shift(nparticles_old, ntot_particles, ncycles)
-            end if
-            nparticles_old = ntot_particles
-            if (ntot_particles > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
-                start_vary_shift = ireport
-            end if
-#else
-            if (vary_shift) then
-                call update_shift(nparticles_old, nparticles, ncycles)
-            end if
-            nparticles_old = nparticles
-            if (nparticles > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
-                start_vary_shift = ireport
-            end if
-#endif
-
-            ! Running average projected energy 
-            av_proj_energy = av_proj_energy + proj_energy
-            ! average projected energy over report loop.
-            proj_energy = proj_energy/ncycles
-
-#ifdef PARALLEL
-            if (parent) call write_fciqmc_report(ireport, ntot_particles)
-#else
-            if (parent) call write_fciqmc_report(ireport, nparticles)
-#endif
+            if (parent) call write_fciqmc_report(ireport, nparticles_old)
 
         end do
 
