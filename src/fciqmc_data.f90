@@ -86,25 +86,27 @@ integer, allocatable :: walker_population(:) ! (walker_length)
 real(p), allocatable :: walker_energies(:)
 
 ! Walker information: spawned list.
-! a) determinants.
-integer(i0), allocatable, target :: spawned_walker_dets1(:,:) ! (basis_length, spawned_walker_length)
-integer(i0), allocatable, target :: spawned_walker_dets2(:,:) ! (basis_length, spawned_walker_length)
-! b) walker information.
-! spawned_info_size is 1 for FCIQMC and 2 for initiator-FCIQMC.
-! spawned_walker_info*(1,i) gives the population of the spawned walker.
-! spawned_walker_info*(2,i) gives information about the parent of the spawned walker (initiator-FCIQMC only).
-integer :: spawned_info_size
-integer, allocatable, target :: spawned_walker_info1(:,:) ! (spawned_info_size, spawned_walker_length)
-integer, allocatable, target :: spawned_walker_info2(:,:) ! (spawned_info_size, spawned_walker_length)
+! a) array size.
+! spawned_size is basis_length+1 for FCIQMC and basis_length+2 for initiator-FCIQMC.
+! spawned_walkers*(:basis_length,i) gives the determinant of the spawned walker.
+! spawned_walkers*(basis_length+1,i) gives the population of the spawned walker.
+! spawned_walkers*(basis_length+2,i) gives information about the parent of the spawned walker (initiator-FCIQMC only).
+! By combining the info in with the determinant, we can reduce the number of MPI
+! communication calls during annihilation.
+! In simple_fciqmc we only need to store the walker populations, so spawned_size
+! is 1.
+integer :: spawned_size
+! b) determinants.
+integer(i0), allocatable, target :: spawned_walkers1(:,:) ! (spawned_size, spawned_walker_length)
+integer(i0), allocatable, target :: spawned_walkers2(:,:) ! (spawned_size, spawned_walker_length)
 ! c) pointers.
 ! In serial we only use spawned_walker_*1.  In parallel it is useful to have two
 ! arrays (one for receiving data and one for sending data when we need to
 ! communicate).  To avoid copying, we use pointers.
-! spawned_walker_dets and spawned_walker_info point at the current data,
-! spawned_walker_dets_recvd and spawned_walker_info_recvd are only used in
-! data communication (see distribute_walkers in the annihilation module).
-integer(i0), pointer :: spawned_walker_dets(:,:), spawned_walker_dets_recvd(:,:)
-integer, pointer :: spawned_walker_info(:,:), spawned_walker_info_recvd(:,:)
+! spawned_walkers points at the current data,
+! spawned_walkers_recvd is only used in data communication (see
+! distribute_walkers in the annihilation module).
+integer(i0), pointer :: spawned_walkers(:,:), spawned_walkers_recvd(:,:)
 ! d) current (filled) slot in the spawning arrays.
 ! In parallel we divide the spawning lists into blocks (one for each processor).
 ! spawning_head(i) gives the current filled slot in the spawning arrays for the
@@ -165,8 +167,8 @@ contains
 
     subroutine sort_spawned_lists()
 
-        ! Sort spawned_walker_dets and spawned_walker_infos according to
-        ! the determinant list using quicksort.
+        ! Sort spawned_walkers according to the determinant list using
+        ! quicksort.
 
         ! Uses the sample code in Numerical Recipies as a base.
 
@@ -180,8 +182,8 @@ contains
         ! sort needs auxiliary storage of length 2*log_2(n).
         integer, parameter :: stack_max = 50
 
-        integer :: pivot, lo, hi, i, j, tmp_pop(spawned_info_size)
-        integer(i0) :: tmp_det(basis_length)
+        integer :: pivot, lo, hi, i, j
+        integer(i0) :: tmp_spawned(spawned_size)
 
         ! Stack.  This is the auxilliary memory required by quicksort.
         integer :: stack(2,stack_max), nstack
@@ -194,15 +196,12 @@ contains
             ! switch_threshold then perform an insertion sort.
             if (hi - lo < switch_threshold) then
                 do j = lo + 1, hi
-                    tmp_det = spawned_walker_dets(:,j)
-                    tmp_pop = spawned_walker_info(:,j)
+                    tmp_spawned = spawned_walkers(:,j)
                     do i = j - 1, 1, -1
-                        if (tmp_det .detgt. spawned_walker_dets(:,i)) exit
-                        spawned_walker_dets(:,i+1) = spawned_walker_dets(:,i)
-                        spawned_walker_info(:,i+1) = spawned_walker_info(:,i)
+                        if (tmp_spawned(:basis_length) .detgt. spawned_walkers(:basis_length,i)) exit
+                        spawned_walkers(:,i+1) = spawned_walkers(:,i)
                     end do
-                    spawned_walker_dets(:,i+1) = tmp_det
-                    spawned_walker_info(:,i+1) = tmp_pop
+                    spawned_walkers(:,i+1) = tmp_spawned
                 end do
 
                 if (nstack == 0) exit
@@ -213,39 +212,35 @@ contains
             else
                 ! Otherwise start partitioning with quicksort.
 
-                ! Pick the pivot element to be the median of spawned_walker_dets(:,lo), spawned_walker_dets(:,hi)
-                ! and spawned_walker_dets(:,(lo+hi)/2).
+                ! Pick the pivot element to be the median of spawned_walkers(:,lo), spawned_walkers(:,hi)
+                ! and spawned_walkers(:,(lo+hi)/2).
                 ! This largely overcomes a major problem with quicksort, where it
                 ! degrades if the pivot is always the smallest element.
                 pivot = (lo + hi)/2
-                call swap_dets(spawned_walker_dets(:,pivot), spawned_walker_dets(:,lo + 1))
-                call swap_info(spawned_walker_info(:,pivot), spawned_walker_info(:,lo + 1))
-                if (spawned_walker_dets(:,lo) .detgt. spawned_walker_dets(:,hi)) then
-                    call swap_dets(spawned_walker_dets(:,lo), spawned_walker_dets(:,hi))
-                    call swap_info(spawned_walker_info(:,lo), spawned_walker_info(:,hi))
+                call swap_spawned(spawned_walkers(:,pivot), spawned_walkers(:,lo + 1))
+                if (spawned_walkers(:basis_length,lo) .detgt. spawned_walkers(:basis_length,hi)) then
+                    call swap_spawned(spawned_walkers(:,lo), spawned_walkers(:,hi))
                 end if
-                if (spawned_walker_dets(:,lo+1) .detgt. spawned_walker_dets(:,hi)) then
-                    call swap_dets(spawned_walker_dets(:,lo+1), spawned_walker_dets(:,hi))
-                    call swap_info(spawned_walker_info(:,lo+1), spawned_walker_info(:,hi))
+                if (spawned_walkers(:basis_length,lo+1) .detgt. spawned_walkers(:basis_length,hi)) then
+                    call swap_spawned(spawned_walkers(:,lo+1), spawned_walkers(:,hi))
                 end if
-                if (spawned_walker_dets(:,lo) .detgt. spawned_walker_dets(:,lo+1)) then
-                    call swap_dets(spawned_walker_dets(:,lo), spawned_walker_dets(:,lo+1))
-                    call swap_info(spawned_walker_info(:,lo), spawned_walker_info(:,lo+1))
+                if (spawned_walkers(:basis_length,lo) .detgt. spawned_walkers(:basis_length,lo+1)) then
+                    call swap_spawned(spawned_walkers(:,lo), spawned_walkers(:,lo+1))
                 end if
 
                 i = lo + 1
                 j = hi
-                tmp_det = spawned_walker_dets(:,lo + 1) ! a is the pivot value
+                tmp_spawned = spawned_walkers(:,lo + 1) ! a is the pivot value
                 do while (.true.)
                     ! Scan down list to find element > a.
                     i = i + 1
-                    do while (tmp_det .detgt. spawned_walker_dets(:,i))
+                    do while (tmp_spawned(:basis_length) .detgt. spawned_walkers(:basis_length,i))
                         i = i + 1
                     end do
 
                     ! Scan down list to find element < a.
                     j = j - 1
-                    do while (spawned_walker_dets(:,j) .detgt. tmp_det)
+                    do while (spawned_walkers(:basis_length,j) .detgt.  tmp_spawned(:basis_length))
                         j = j - 1
                     end do
 
@@ -254,14 +249,12 @@ contains
 
                     ! Swap the elements, so that all elements < a end up
                     ! in lower indexed variables.
-                    call swap_dets(spawned_walker_dets(:,i), spawned_walker_dets(:,j))
-                    call swap_info(spawned_walker_info(:,i), spawned_walker_info(:,j))
+                    call swap_spawned(spawned_walkers(:,i), spawned_walkers(:,j))
                 end do
 
                 ! Insert partitioning element
-                spawned_walker_dets(:,lo + 1) = spawned_walker_dets(:,j)
-                spawned_walker_dets(:,j) = tmp_det
-                call swap_info(spawned_walker_info(:,j), spawned_walker_info(:,lo + 1))
+                spawned_walkers(:,lo + 1) = spawned_walkers(:,j)
+                spawned_walkers(:,j) = tmp_spawned
 
                 ! Push the larger of the partitioned sections onto the stack
                 ! of sections to look at later.
@@ -287,38 +280,27 @@ contains
         end do
 
 ! DEBUG test only: verify
-!        tmp_det = spawned_walker_dets(:,1)
+!        tmp_spawned = spawned_walkers(:,1)
 !        do i = 2, spawning_head(0)
-!            if (tmp_det .detgt. spawned_walker_dets(:,i)) then
+!            if (tmp_spawned(:basis_length) .detgt. spawned_walkers(:,i)) then
 !                write (6,*) 'error sorting'
 !                stop
 !            end if
-!            tmp_det = spawned_walker_dets(:,i)
+!            tmp_spawned = spawned_walkers(:,i)
 !        end do
 
     contains
 
-        subroutine swap_info(i1, i2)
+        subroutine swap_spawned(s1,s2)
 
-            integer, intent(inout) :: i1(spawned_info_size), i2(spawned_info_size)
-            integer :: tmp(spawned_info_size)
+            integer(i0), intent(inout) :: s1(spawned_size), s2(spawned_size)
+            integer(i0) :: tmp(spawned_size)
 
-            tmp = i1
-            i1 = i2
-            i2 = tmp
+            tmp = s1
+            s1 = s2
+            s2 = tmp
 
-        end subroutine swap_info
-
-        subroutine swap_dets(f1,f2)
-
-            integer(i0), intent(inout) :: f1(basis_length), f2(basis_length)
-            integer(i0) :: tmp(basis_length)
-
-            tmp = f1
-            f1 = f2
-            f2 = tmp
-
-        end subroutine swap_dets
+        end subroutine swap_spawned
 
     end subroutine sort_spawned_lists
 
@@ -481,10 +463,8 @@ contains
         if (allocated(walker_dets)) deallocate(walker_dets, stat=ierr)
         if (allocated(walker_population)) deallocate(walker_population, stat=ierr)
         if (allocated(walker_energies)) deallocate(walker_energies, stat=ierr)
-        if (allocated(spawned_walker_dets1)) deallocate(spawned_walker_dets1, stat=ierr)
-        if (allocated(spawned_walker_info1)) deallocate(spawned_walker_info1, stat=ierr)
-        if (allocated(spawned_walker_dets2)) deallocate(spawned_walker_dets2, stat=ierr)
-        if (allocated(spawned_walker_info2)) deallocate(spawned_walker_info2, stat=ierr)
+        if (allocated(spawned_walkers1)) deallocate(spawned_walkers1, stat=ierr)
+        if (allocated(spawned_walkers2)) deallocate(spawned_walkers2, stat=ierr)
         if (allocated(f0)) deallocate(f0, stat=ierr)
 
     end subroutine end_fciqmc

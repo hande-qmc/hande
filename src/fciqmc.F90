@@ -40,9 +40,9 @@ contains
 
         ! Allocate spawned walker lists.
         if (initiator) then
-            spawned_info_size = 2
+            spawned_size = basis_length + 2
         else
-            spawned_info_size = 1
+            spawned_size = basis_length + 1
         end if
         if (mod(spawned_walker_length, nprocs) /= 0) then
             write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
@@ -50,16 +50,16 @@ contains
             write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',1X,a1,/)') &
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
-        allocate(spawned_walker_dets1(basis_length,spawned_walker_length), stat=ierr)
-        allocate(spawned_walker_info1(spawned_info_size,spawned_walker_length), stat=ierr)
-        spawned_walker_dets => spawned_walker_dets1
-        spawned_walker_info => spawned_walker_info1
+        allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
+        allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
+        spawned_walkers => spawned_walkers1
+        spawned_walkers => spawned_walkers1
         if (nprocs > 1) then
             ! Allocate scratch space for doing communication.
-            allocate(spawned_walker_dets2(basis_length,spawned_walker_length), stat=ierr)
-            allocate(spawned_walker_info2(spawned_info_size,spawned_walker_length), stat=ierr)
-            spawned_walker_dets_recvd => spawned_walker_dets2
-            spawned_walker_info_recvd => spawned_walker_info2
+            allocate(spawned_walkers2(basis_length,spawned_walker_length), stat=ierr)
+            allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
+            spawned_walkers_recvd => spawned_walkers2
+            spawned_walkers_recvd => spawned_walkers2
         end if
         allocate(spawning_head(0:nprocs-1), stat=ierr)
 
@@ -309,7 +309,7 @@ contains
                 end do
 
 ! DEBUG CHECK ONLY.
-!                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walker_info(1,:spawning_head))
+!                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walkers(basis_length+1,:spawning_head))
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.

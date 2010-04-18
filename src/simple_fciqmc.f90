@@ -68,13 +68,14 @@ contains
             'Considering determinants belonging to symmetry',sym_in,'with spin',ms_in,"."
 
         ! Allocate main and spawned lists to hold population of walkers.
-        spawned_info_size = 1
+        ! Don't need to hold determinants, so can just set spawned_size to be 1.
+        spawned_size = 1
         allocate(walker_population(ndets), stat=ierr)
-        allocate(spawned_walker_info1(spawned_info_size,ndets), stat=ierr)
-        spawned_walker_info => spawned_walker_info1
+        allocate(spawned_walkers1(spawned_size,ndets), stat=ierr)
+        spawned_walkers => spawned_walkers1
         ! Zero these.
         walker_population = 0
-        spawned_walker_info = 0
+        spawned_walkers = 0
 
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
@@ -133,7 +134,7 @@ contains
                 inst_proj_energy = 0.0_p
 
                 ! Zero spawning arrays.
-                spawned_walker_info = 0
+                spawned_walkers = 0
 
                 ! Consider all walkers.
                 do iwalker = 1, ndets
@@ -228,17 +229,17 @@ contains
                 ! Flip child sign.
                 if (walker_population(iwalker) < 0) then
                     ! Positive offspring.
-                    spawned_walker_info(1,j) = spawned_walker_info(1,j) + nspawn
+                    spawned_walkers(1,j) = spawned_walkers(1,j) + nspawn
                 else
-                    spawned_walker_info(1,j) = spawned_walker_info(1,j) - nspawn
+                    spawned_walkers(1,j) = spawned_walkers(1,j) - nspawn
                 end if
             else
                 ! Same sign as parent.
                 if (walker_population(iwalker) > 0) then
                     ! Positive offspring.
-                    spawned_walker_info(1,j) = spawned_walker_info(1,j) + nspawn
+                    spawned_walkers(1,j) = spawned_walkers(1,j) + nspawn
                 else
-                    spawned_walker_info(1,j) = spawned_walker_info(1,j) - nspawn
+                    spawned_walkers(1,j) = spawned_walkers(1,j) - nspawn
                 end if
             end if
 
@@ -307,7 +308,7 @@ contains
         ! determinants for both the main and spawned lists so it just amounts to
         ! adding the two arrays together,
 
-        walker_population = walker_population + spawned_walker_info(1,:)
+        walker_population = walker_population + spawned_walkers(1,:)
 
     end subroutine simple_annihilation
 
