@@ -137,8 +137,6 @@ contains
 
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
-        integer :: send_counts_info(0:nprocs-1), send_displacements_info(0:nprocs-1)
-        integer :: receive_counts_info(0:nprocs-1), receive_displacements_info(0:nprocs-1)
         integer :: s(2,0:nprocs-1)
         integer :: r(2,0:nprocs-1)
         integer :: i, step, ierr
@@ -183,6 +181,13 @@ contains
             receive_displacements(i) = receive_displacements(i-1) + receive_counts(i-1)
         end do
 
+        ! Set spawning_head(0) to be the number of walkers now on this
+        ! processor.
+        ! This is given by the number of items sent by the last processor plus
+        ! the displacement used by the last processor (which is the number of
+        ! items sent by all other processors).
+        spawning_head(0) = receive_displacements(nprocs-1) + receive_counts(nprocs-1)
+
         ! Send spawned_walkers.
         ! Each element contains spawned_size integers (of type
         ! i0/mpi_det_integer) so we need to change the counts and
@@ -197,16 +202,9 @@ contains
 
         ! Swap pointers so that spawned_walkers and
         ! spawned_walker_info point to the received data.
-        tmp_dets => spawned_walkers
+        tmp_walkers => spawned_walkers
         spawned_walkers => spawned_walkers_recvd
         spawned_walkers_recvd => tmp_walkers
-
-        ! Set spawning_head(0) to be the number of walkers now on this
-        ! processor.
-        ! This is given by the number of items sent by the last processor plus
-        ! the displacement used by the last processor (which is the number of
-        ! items sent by all other processors).
-        spawning_head(0) = receive_displacements(nprocs-1) + receive_counts(nprocs-1)
 
 #endif
 
