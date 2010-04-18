@@ -28,12 +28,14 @@ contains
         use fciqmc_data, only: proj_energy, av_proj_energy, shift, av_shift
         use fciqmc_data, only: vary_shift, start_vary_shift
 
+        use parallel
+
         integer, intent(in) :: ireport
         integer, intent(inout) :: ntot_particles_old
 
 #ifdef PARALLEL
         real(dp) :: ir(2), ir_sum(2)
-        integer :: ntot_particles
+        integer :: ntot_particles, ierr
 
             ! Need to sum the number of particles and the projected energy over
             ! all processors.
@@ -44,9 +46,9 @@ contains
             proj_energy = ir_sum(2)
             
             if (vary_shift) then
-                call update_shift(nparticles_old, ntot_particles, ncycles)
+                call update_shift(ntot_particles_old, ntot_particles, ncycles)
             end if
-            nparticles_old = ntot_particles
+            ntot_particles_old = ntot_particles
             if (ntot_particles > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
                 start_vary_shift = ireport
