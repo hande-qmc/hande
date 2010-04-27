@@ -51,13 +51,9 @@ contains
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
         allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
-        allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
-        spawned_walkers => spawned_walkers1
         spawned_walkers => spawned_walkers1
         ! Allocate scratch space for doing communication.
         allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
-        allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
-        spawned_walkers_recvd => spawned_walkers2
         spawned_walkers_recvd => spawned_walkers2
         allocate(spawning_head(0:nprocs-1), stat=ierr)
 
