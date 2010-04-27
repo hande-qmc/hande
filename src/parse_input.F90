@@ -278,6 +278,7 @@ contains
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(tsimple, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(t_fciqmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initiator, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
