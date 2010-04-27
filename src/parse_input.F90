@@ -58,7 +58,7 @@ contains
         if (parent) write (6,'(a14,/,1X,13("-"),/)') 'Input options'
         call input_options(echo_lines=parent, skip_blank_lines=.true.)
 
-        do
+        do ! loop over lines in input file.
             call read_line(eof)
             if (eof) exit
             call readu(w)
@@ -199,7 +199,7 @@ contains
             case default
                 call report('Keyword '//trim(w)//' not recognized.', .true.)
             end select
-        end do
+        end do ! end reading of input.
 
         if (ios.gt.0) then
             if (parent) write (6,*) 'Problem reading input.'
