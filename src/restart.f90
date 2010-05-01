@@ -27,6 +27,7 @@ contains
         integer, intent(in) :: nmc_cycles, nparticles_old
         character(255) :: restart_file
         integer :: io, i
+        integer, parameter :: restart_version = 1
 
         if (parent) then
             io = get_free_unit()
@@ -40,6 +41,8 @@ contains
 
             open(io, file=restart_file)
 
+            write (io,*) 'Restart version'
+            write (io,*) restart_version
             write (io,*) '# number of cycles'
             write (io,*) nmc_cycles
             write (io,*) '# shift'
@@ -68,6 +71,7 @@ contains
         character(255) :: restart_file, junk
         integer :: io, i
         logical :: exists
+        integer :: restart_version
 
         if (parent) then
             io = get_free_unit()
@@ -87,6 +91,8 @@ contains
 
             open(io, file=restart_file)
 
+            read (io,*) junk
+            read (io,*) restart_version
             read (io,*) junk
             read (io,*) mc_cycles_done
             read (io,*) junk
