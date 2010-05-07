@@ -236,7 +236,8 @@ contains
                 if (k > spawning_head(0)) exit self_annihilate
                 if (all(spawned_walkers(:basis_length,k) == spawned_walkers(:basis_length,islot))) then
                     ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(basis_length+1,islot) = spawned_walkers(basis_length+1,islot) + spawned_walkers(basis_length+1,k)
+                    spawned_walkers(basis_length+1,islot) = spawned_walkers(basis_length+1,islot)  &
+                                                            + spawned_walkers(basis_length+1,k)
                 else
                     ! Found the next unique spawned walker.
                     exit compress
@@ -305,7 +306,8 @@ contains
                         end if
                     end if
                     ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(basis_length+1,islot) = spawned_walkers(basis_length+1,islot) + spawned_walkers(basis_length+1,k)
+                    spawned_walkers(basis_length+1,islot) = spawned_walkers(basis_length+1,islot) &
+                                                            + spawned_walkers(basis_length+1,k)
                 else
                     ! Found the next unique spawned walker.
                     exit compress
