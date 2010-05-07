@@ -7,10 +7,16 @@ implicit none
 
 !--- Calculation info ---
 
+! A calculation type is performed if the relevant bit (defined by the subsequent
+! parameters) is set in calc_type.
+! This can be easily tested using the doing_calc function.
+integer :: calc_type = 0
 ! Flags for doing exact and/or Lanczos diagonalisation.
-logical :: t_exact = .false., t_lanczos = .false., t_fciqmc = .false.
-! Use the incredibly simple and naive FCIQMC implementation?
-logical :: tsimple = .false.
+integer, parameter :: exact_diag = 2**0
+integer, parameter :: lanczos_diag = 2**1
+! Use the incredibly simple and naive FCIQMC or the optimised implementation?
+integer, parameter :: fciqmc_calc = 2**2
+integer, parameter :: simple_fciqmc_calc = 2**3
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
@@ -59,5 +65,25 @@ integer :: distribute = distribute_off
 
 ! Seed used to initialise the dSFMT random number generator.
 integer :: seed = 7
+
+contains
+
+    function doing_calc(calc_param) result(doing)
+
+        ! In:
+        !    calc_param: integer corresponding to a type of calculation, e.g.
+        !      lanczos diagonalisation or FCIQMC.
+        !      It is possible to test to see if one or more out of a group of
+        !      calculation types are being performed by setting calc_param to be
+        !      the sum of the group of calculation types.
+        ! Returns:
+        !    true if the supplied calculation type is specifed in calc_type.
+        
+        logical :: doing
+        integer, intent(in) :: calc_param
+
+        doing = iand(calc_param, calc_type) /= 0
+
+    end function doing_calc
 
 end module calc

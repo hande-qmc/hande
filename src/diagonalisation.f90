@@ -75,8 +75,8 @@ contains
             sym_max = sym_in
         end if
 
-        if (t_lanczos) allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
-        if (t_exact) allocate(exact_solns(tot_ndets), stat=ierr)
+        if (doing_calc(lanczos_diag)) allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
+        if (doing_calc(exact_diag)) allocate(exact_solns(tot_ndets), stat=ierr)
 
         ! Number of lanczos and exact solutions found.
         nlanczos = 0
@@ -118,12 +118,12 @@ contains
 
                     ! The trivial case seems to trip up TRLan and scalapack in
                     ! parallel.
-                    if (t_lanczos) then
+                    if (doing_calc(lanczos_diag)) then
                         lanczos_solns(nlanczos+1)%energy = get_hmatel(1,1)
                         lanczos_solns(nlanczos+1)%ms = ms 
                         nlanczos = nlanczos + 1
                     end if
-                    if (t_exact) then
+                    if (doing_calc(exact_diag)) then
                         exact_solns(nexact+1)%energy = get_hmatel(1,1)
                         exact_solns(nexact+1)%ms = ms 
                         nexact = nexact + 1
@@ -134,7 +134,7 @@ contains
                     if (nprocs == 1) call generate_hamil(distribute_off)
 
                     ! Lanczos.
-                    if (t_lanczos) then
+                    if (doing_calc(lanczos_diag)) then
                         allocate(lanczos_eigv(ndets), stat=ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
@@ -148,7 +148,7 @@ contains
 
                     ! Exact diagonalisation.
                     ! Warning: this destroys the Hamiltonian matrix...
-                    if (t_exact) then
+                    if (doing_calc(exact_diag)) then
                         allocate(exact_eigv(ndets), stat=ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
@@ -169,7 +169,7 @@ contains
         end do
 
         ! Output results.
-        if (t_lanczos .and. parent) then
+        if (doing_calc(lanczos_diag) .and. parent) then
             write (6,'(1X,a31,/,1X,31("-"),/)') 'Lanczos diagonalisation results'
             allocate(ranking(nlanczos), stat=ierr)
             call mrgref(lanczos_solns(:nlanczos)%energy, ranking)
@@ -189,7 +189,7 @@ contains
             deallocate(ranking, stat=ierr)
         end if
 
-        if (t_exact .and. parent) then
+        if (doing_calc(exact_diag) .and. parent) then
             write (6,'(1X,a29,/,1X,29("-"),/)') 'Exact diagonalisation results'
             allocate(ranking(nexact), stat=ierr)
             call mrgref(exact_solns(:nexact)%energy, ranking)
@@ -209,8 +209,8 @@ contains
             deallocate(ranking, stat=ierr)
         end if
 
-        if (t_lanczos) deallocate(lanczos_solns, stat=ierr)
-        if (t_exact) deallocate(exact_solns, stat=ierr)
+        if (doing_calc(lanczos_diag)) deallocate(lanczos_solns, stat=ierr)
+        if (doing_calc(exact_diag)) deallocate(exact_solns, stat=ierr)
 
     end subroutine diagonalise
 
