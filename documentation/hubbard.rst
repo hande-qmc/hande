@@ -557,11 +557,15 @@ The following options are valid for FCIQMC calculations.
     that restart.x exists and restart.x+1 does not.
 
     The restart file does not contain system information such as the U and
-    T parameter, lattice vectors or number of electrons.  Thus it is important
-    use the same system parameters when restarting a calculation.  Please note
-    that the RNG is not restarted, so running two shorter calculations via the
-    restart facility is not completely identical to running a single calculation
-    for the same number of Monte Carlo cycles.
+    T parameter, lattice vectors, number of electrons or if the walker
+    population were evolved using standard FCIQMC or initiator-FCIQMC. Thus it
+    is important use the same system parameters when restarting a calculation.
+    The consistency of the restart file with the input options supplied is not
+    checked.
+    
+    Please note that the RNG is not stored in the restart file, so running two
+    shorter calculations via the restart facility is not completely identical
+    to running a single calculation for the same number of Monte Carlo cycles.
 
     Restart is currently only implemented in serial.
 
