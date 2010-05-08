@@ -197,11 +197,10 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use death, only: stochastic_death
-        use determinants, only: det_info
+        use determinants, only:det_info, alloc_det_info 
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use fciqmc_restart, only: dump_restart
-        use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
         use spawning, only: create_spawned_particle
 
         ! It seems this interface block cannot go in a module when we're passing
@@ -240,7 +239,6 @@ contains
             end function sc0
         end interface
 
-        integer :: ierr
         integer :: idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
@@ -250,12 +248,7 @@ contains
         real(p) :: inst_proj_energy
 
         ! Allocate det_info components.
-        allocate(cdet%f(basis_length), stat=ierr)
-        allocate(cdet%occ_list(nel), stat=ierr)
-        allocate(cdet%occ_list_alpha(nalpha), stat=ierr)
-        allocate(cdet%occ_list_beta(nbeta), stat=ierr)
-        allocate(cdet%unocc_list_alpha(nvirt_alpha), stat=ierr)
-        allocate(cdet%unocc_list_beta(nvirt_beta), stat=ierr)
+        call alloc_det_info(cdet)
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -353,11 +346,11 @@ contains
         use annihilation, only: direct_annihilation_initiator
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
-        use determinants, only: det_info
+        use determinants, only: det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use fciqmc_restart, only: dump_restart
-        use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
+        use system, only: nel
         use spawning, only: create_spawned_particle_initiator
 
         ! It seems this interface block cannot go in a module when we're passing
@@ -396,7 +389,6 @@ contains
             end function sc0
         end interface
 
-        integer :: ierr
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
@@ -410,12 +402,7 @@ contains
         integer :: bit_pos, bit_element
 
         ! Allocate det_info components.
-        allocate(cdet%f(basis_length), stat=ierr)
-        allocate(cdet%occ_list(nel), stat=ierr)
-        allocate(cdet%occ_list_alpha(nalpha), stat=ierr)
-        allocate(cdet%occ_list_beta(nbeta), stat=ierr)
-        allocate(cdet%unocc_list_alpha(nvirt_alpha), stat=ierr)
-        allocate(cdet%unocc_list_beta(nvirt_beta), stat=ierr)
+        call alloc_det_info(cdet)
 
         ! The complete active space (CAS) is given as (N_cas,N_active), where
         ! N_cas is the number of electrons in the N_active orbitals.

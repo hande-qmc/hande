@@ -167,6 +167,25 @@ contains
 
     end subroutine end_determinants
 
+    subroutine alloc_det_info(det_info_t)
+
+        ! Allocate the components of a det_info variable.
+        ! Out:
+        !    det_info_t: det_info variable with components allocated to the
+        !    appropriate sizes.
+
+        type(det_info), intent(inout) :: det_info_t
+        integer :: ierr
+
+        allocate(det_info_t%f(basis_length), stat=ierr)
+        allocate(det_info_t%occ_list(nel), stat=ierr)
+        allocate(det_info_t%occ_list_alpha(nalpha), stat=ierr)
+        allocate(det_info_t%occ_list_beta(nbeta), stat=ierr)
+        allocate(det_info_t%unocc_list_alpha(nvirt_alpha), stat=ierr)
+        allocate(det_info_t%unocc_list_beta(nvirt_beta), stat=ierr)
+
+    end subroutine alloc_det_info
+
     subroutine set_spin_polarisation(Ms)
 
         ! Set the spin polarisation information stored in module-level
