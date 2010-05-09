@@ -114,10 +114,12 @@ integer(i0), pointer :: spawned_walkers(:,:), spawned_walkers_recvd(:,:)
 ! After distribute_walkers is called in the annihilation algorithm,
 ! spawning_head(0) is the number of spawned_walkers on the *current* processor
 ! and all other elements are not meaningful.
-integer, allocatable :: spawning_head(:) ! (0:nprocs-1)
+! It is convenient if the minimum size of spawning_head and spawning_block_start
+! are both 0:1.
+integer, allocatable :: spawning_head(:) ! (0:(max(1,nprocs-1))
 ! spawning_block_start(i) contains the first position to be used in the spawning
 ! lists for storing a walker which is to be sent to the i-th processor.
-integer, allocatable :: spawning_block_start(:) ! (0:nprocs-1)
+integer, allocatable :: spawning_block_start(:) ! (0:max(1,nprocs-1))
 
 !--- Reference determinant ---
 
@@ -278,16 +280,6 @@ contains
 
             end if
         end do
-
-! DEBUG test only: verify
-!        tmp_spawned = spawned_walkers(:,1)
-!        do i = 2, spawning_head(0)
-!            if (tmp_spawned(:basis_length) .detgt. spawned_walkers(:,i)) then
-!                write (6,*) 'error sorting'
-!                stop
-!            end if
-!            tmp_spawned = spawned_walkers(:,i)
-!        end do
 
     contains
 

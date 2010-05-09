@@ -109,19 +109,18 @@ contains
 
             ! Calculation type.
             case('EXACT','FCI')
-                t_exact = .true.
+                calc_type = calc_type + exact_diag
             case('LANCZOS_DIRECT')
-                t_lanczos = .true.
+                calc_type = calc_type + lanczos_diag
                 direct_lanczos = .true.
             case('LANCZOS')
-                t_lanczos = .true.
+                calc_type = calc_type + lanczos_diag
             case('SIMPLE_FCIQMC')
-                tsimple = .true.
-                t_fciqmc = .true.
+                calc_type = calc_type + fciqmc_calc + simple_fciqmc_calc
             case('FCIQMC')
-                t_fciqmc = .true.
+                calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
-                t_fciqmc = .true.
+                calc_type = calc_type + fciqmc_calc
                 initiator = .true.
 
             ! Calculation options: lanczos.
@@ -273,11 +272,8 @@ contains
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(t_exact, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(t_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(tsimple, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(t_fciqmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)

@@ -7,7 +7,7 @@
 [kspace_nontilted_2d_lanczos]
 
 [kspace_nontilted_2d_sfciqmc]
-processors = 1
+processors = -1
 override_core_option = True
 
 [kspace_nontilted_2d_fciqmc]

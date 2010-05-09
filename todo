@@ -2,19 +2,17 @@
 2.  timing.
 3.  memory logging.
 4.  checktest.
-5.  block diagonalise hamiltonian matrix for k inversion and spin inversion.
-6.  parallel direct lanczos.
-7.  UEG.
-8.  Improve selection of calculation: bit string variable rather than many logic flags.
-9.  Better name?
-10. CuO2?
-11. Twist averaging.
+5.  parallel direct lanczos.
+6.  UEG.
+7.  Improve selection of calculation: bit string variable rather than many logic flags.
+8.  Better name?
+9.  CuO2? t-J?
 
 FCIQMC
 ------
 
 1. HPHF type work
-2. Initiator.
+2. Hellmann--Feynmann
 
 FCIQMC parallelisation
 ----------------------
@@ -22,7 +20,13 @@ FCIQMC parallelisation
 a) Restart.
 b) Investigate load-balancing issues.
 
+Initiator
+---------
+
+a) Restart.
+
 Optimisations
 -------------
 
 a) sym_table in terms of basis functions
+b) Macros to force inlining?
