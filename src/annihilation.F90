@@ -161,11 +161,9 @@ contains
         ! Find out how many walkers we are going to send and receive.
         ! Cheekily also hide the communication of the population on the
         ! reference determinant.
-        step = spawning_block_start(1)
         forall (i=0:nprocs-1)
             s(1,i) = spawning_head(i) - spawning_block_start(i)
             s(2,i) = D0_population
-            send_displacements(i) = i*step
         end forall
 
         call MPI_AlltoAll(s, 2, MPI_INTEGER, r, 2, MPI_INTEGER, MPI_COMM_WORLD, ierr)
@@ -194,14 +192,13 @@ contains
         ! displacements accordingly:
         send_counts = send_counts*spawned_size
         receive_counts = receive_counts*spawned_size
-        send_displacements = send_displacements*spawned_size
+        send_displacements = spawning_block_start*spawned_size
         receive_displacements = receive_displacements*spawned_size
         call MPI_AlltoAllv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
                            spawned_walkers_recvd, receive_counts, receive_displacements, mpi_det_integer, &
                            MPI_COMM_WORLD, ierr)
 
-        ! Swap pointers so that spawned_walkers and
-        ! spawned_walker_info point to the received data.
+        ! Swap pointers so that spawned_walkers points to the received data.
         tmp_walkers => spawned_walkers
         spawned_walkers => spawned_walkers_recvd
         spawned_walkers_recvd => tmp_walkers
