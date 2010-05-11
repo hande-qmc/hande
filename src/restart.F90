@@ -89,7 +89,7 @@ contains
             ! The next tot_walkers lines contain the walker info that came
             ! from the root processor.
             do i = 1, tot_walkers
-                read (io, *) walker_dets(:,i), walker_population(i), walker_energies(i)
+                read (io, *) walker_dets(:,i), walker_population(1,i), walker_energies(1,i)
             end do
 #else
             write (io,*) tot_walkers
@@ -115,7 +115,7 @@ contains
                 integer :: iwalker
 
                 do iwalker = 1, my_nwalkers
-                    write (iunit,*) walker_dets(:,iwalker), walker_population(iwalker), walker_energies(iwalker)
+                    write (iunit,*) walker_dets(:,iwalker), walker_population(1,iwalker), walker_energies(1,iwalker)
                 end do
 
             end subroutine write_walkers
@@ -218,8 +218,8 @@ contains
             send_displacements = spawning_block_start(:nprocs-1)
             call mpi_scatter(send_counts, 1, mpi_integer, nread, 1, mpi_integer, root, mpi_comm_world, ierr)
             ! send walkers to their appropriate processor.
-            call mpi_scatterv(scratch_energies, send_counts, send_displacements, mpi_preal, &
-                              walker_energies(tot_walkers+1:), nread, mpi_preal, root,      &
+            call mpi_scatterv(scratch_energies, send_counts, send_displacements, mpi_preal,   &
+                              walker_energies(:,tot_walkers+1:), nread, mpi_preal, root,      &
                               mpi_comm_world, ierr)
             send_counts = send_counts*spawned_size
             send_displacements = send_displacements*spawned_size
@@ -233,7 +233,7 @@ contains
             ! Transfer from spawned arrays to main walker arrays.
             do i = 1, nread
                 walker_dets(:,i+tot_walkers) = spawned_walkers(:basis_length,i)
-                walker_population(i+tot_walkers) = spawned_walkers(spawned_pop,i)
+                walker_population(1,i+tot_walkers) = spawned_walkers(spawned_pop,i)
             end do
             tot_walkers = tot_walkers + nread
 
@@ -253,7 +253,7 @@ contains
         call mpi_bcast(H00, 1, mpi_preal, root, mpi_comm_world, ierr)
 #else
         do i = 1, tot_walkers
-            read (io,*) walker_dets(:,i), walker_population(i), walker_energies(i)
+            read (io,*) walker_dets(:,i), walker_population(1,i), walker_energies(i)
         end do
 #endif
 

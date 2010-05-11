@@ -345,8 +345,8 @@ contains
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
-                old_pop = walker_population(pos)
-                walker_population(pos) = walker_population(pos) + spawned_walkers(spawned_pop,i)
+                old_pop = walker_population(1,pos)
+                walker_population(1,pos) = walker_population(1,pos) + spawned_walkers(spawned_pop,i)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -354,7 +354,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + abs(walker_population(pos)) - abs(old_pop)
+                nparticles = nparticles + abs(walker_population(1,pos)) - abs(old_pop)
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -392,8 +392,8 @@ contains
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
-                old_pop = walker_population(pos)
-                walker_population(pos) = walker_population(pos) + spawned_walkers(spawned_pop,i)
+                old_pop = walker_population(1,pos)
+                walker_population(1,pos) = walker_population(1,pos) + spawned_walkers(spawned_pop,i)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -401,7 +401,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + abs(walker_population(pos)) - abs(old_pop)
+                nparticles = nparticles + abs(walker_population(1,pos)) - abs(old_pop)
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -436,13 +436,13 @@ contains
 
         nzero = 0
         do i = 1, tot_walkers
-            if (walker_population(i) == 0) then
+            if (walker_population(1,i) == 0) then
                 nzero = nzero + 1
             else if (nzero > 0) then
                 k = i - nzero
                 walker_dets(:,k) = walker_dets(:,i)
-                walker_population(k) = walker_population(i)
-                walker_energies(k) = walker_energies(i)
+                walker_population(1,k) = walker_population(1,i)
+                walker_energies(:,k) = walker_energies(:,i)
             end if
         end do
         tot_walkers = tot_walkers - nzero
@@ -501,16 +501,16 @@ contains
                 ! i is the number of determinants that will be inserted below j.
                 k = j + i
                 walker_dets(:,k) = walker_dets(:,j)
-                walker_population(k) = walker_population(j)
-                walker_energies(k) = walker_energies(j)
+                walker_population(1,k) = walker_population(1,j)
+                walker_energies(:,k) = walker_energies(:,j)
             end do
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
             walker_dets(:,k) = spawned_walkers(:basis_length,i)
-            walker_population(k) = spawned_walkers(spawned_pop,i)
+            walker_population(1,k) = spawned_walkers(spawned_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop,i))
-            walker_energies(k) = sc0(walker_dets(:,k)) - H00
+            walker_energies(1,k) = sc0(walker_dets(:,k)) - H00
             ! Next walker will be inserted below this one.
             iend = pos - 1
         end do

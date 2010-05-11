@@ -79,14 +79,17 @@ integer :: tot_walkers
 integer :: nparticles
 
 ! Walker information: main list.
+! sampling_size is one for each quantity sampled (i.e. 1 for standard
+! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynmann sampling).
+integer :: sampling_size
 ! a) determinants
 integer(i0), allocatable :: walker_dets(:,:) ! (basis_length, walker_length)
 ! b) walker population
-integer, allocatable :: walker_population(:) ! (walker_length)
+integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
 ! c) Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 ! K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
 ! reference determinant.
-real(p), allocatable :: walker_energies(:)
+real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
 
 ! Walker information: spawned list.
 ! By combining the info in with the determinant, we can reduce the number of MPI

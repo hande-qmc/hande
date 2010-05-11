@@ -8,32 +8,39 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(cpos)
+    subroutine stochastic_death(Mii, population)
 
         ! Particles will attempt to die with probability
-        !  p_d = tau(K_ii - S)
-        ! where tau is the timestep, S is the shift and K_ii is
-        !  K_ii =  < D_i | H | D_i > - E_0
+        !  p_d = tau*M_ii
+        ! where tau is the timestep and M_ii is the appropriate diagonal
+        ! matrix element.
+        ! For FCIQMC M_ii = K_ii - S where S is the shift and K_ii is
+        !  K_ii =  < D_i | H | D_i > - E_0.
+        ! For Hellmann--Feynmann sampling M_ii = < D_i | O | D_i >, where O is
+        ! the operator being sampled.
+
         ! In:
-        !    cpos: current position within the main walkers array.
 
         use dSFMT_interface, only: genrand_real2
 
-        integer, intent(in) :: cpos
+        real(p), intent(in) :: Mii
+        integer, intent(inout) :: population
+
         real(p) :: pd
         real(dp) :: r
-        integer :: current_pop, new_pop, kill
+        integer :: kill
 
         ! Optimisation: the number of particles on a given determinant can die
         ! stochastically...
+        ! This amounts to multplying p_d by the population.  int(p_d) is thus
+        ! the number that definitely die and the fractional part of p_d is the
+        ! probability of an additional death.
 
-        pd = tau*(walker_energies(cpos)-shift)
-
-        current_pop = walker_population(cpos)
+        pd = tau*Mii
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.
-        pd = pd*abs(current_pop)
+        pd = pd*abs(population)
 
         ! Number that definitely die...
         kill = int(pd)
@@ -51,18 +58,16 @@ contains
             end if
         end if
 
-        ! Find the new total of particles.
+        ! Find the new number of particles.
         ! If kill is positive then particles are killed (i.e. the population
         ! should move towards zero).
-        ! Also update the number of particles on the processor.
-        if (current_pop < 0) then
-            new_pop = current_pop + kill
+        ! Also update the total number of particles on the processor.
+        if (population < 0) then
+            population = population + kill
         else
-            new_pop = current_pop - kill
+            population = population - kill
         end if
         nparticles = nparticles - kill
-
-        walker_population(cpos) = new_pop
 
     end subroutine stochastic_death
 

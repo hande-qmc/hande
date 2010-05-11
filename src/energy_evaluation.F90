@@ -128,13 +128,13 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = walker_population(idet)
+            D0_population = walker_population(1,idet)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to 
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            inst_proj_energy = inst_proj_energy + hmatel*walker_population(idet)
+            inst_proj_energy = inst_proj_energy + hmatel*walker_population(1,idet)
         end if
 
     end subroutine update_proj_energy_hub_k
@@ -172,12 +172,12 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = walker_population(idet)
+            D0_population = walker_population(1,idet)
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to 
             ! projected energy.
             hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            inst_proj_energy = inst_proj_energy + hmatel*walker_population(idet)
+            inst_proj_energy = inst_proj_energy + hmatel*walker_population(1,idet)
         end if
 
     end subroutine update_proj_energy_hub_real

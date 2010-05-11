@@ -33,12 +33,8 @@ contains
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
-        ! Allocate main walker lists.
-        allocate(walker_dets(basis_length,walker_length), stat=ierr)
-        allocate(walker_population(walker_length), stat=ierr)
-        allocate(walker_energies(walker_length), stat=ierr)
-
-        ! Allocate spawned walker lists.
+        ! Array sizes depending upon FCIQMC algorithm.
+        sampling_size = 1
         spawned_size = basis_length + 1
         spawned_pop = spawned_size
         if (initiator) then
@@ -48,7 +44,15 @@ contains
         if (hfs) then
             spawned_size = spawned_size + 1
             spawned_hf_pop = spawned_size
+            sampling_size = sampling_size + 1
         end if
+
+        ! Allocate main walker lists.
+        allocate(walker_dets(basis_length,walker_length), stat=ierr)
+        allocate(walker_population(sampling_size,walker_length), stat=ierr)
+        allocate(walker_energies(sampling_size,walker_length), stat=ierr)
+
+        ! Allocate spawned walker lists.
         if (mod(spawned_walker_length, nprocs) /= 0) then
             write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
             spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
@@ -84,7 +88,7 @@ contains
             call read_restart()
         else
             tot_walkers = 1
-            walker_population(tot_walkers) = D0_population
+            walker_population(1,tot_walkers) = D0_population
 
             ! Set the reference determinant to be the spin-orbitals with the lowest
             ! kinetic energy which satisfy the spin polarisation.
@@ -98,8 +102,6 @@ contains
 
             call encode_det(occ_list0, walker_dets(:,tot_walkers))
 
-            walker_energies(tot_walkers) = 0.0_p
-
             ! Reference det
             f0 = walker_dets(:,tot_walkers)
             ! Energy of reference determinant.
@@ -109,6 +111,8 @@ contains
             case(hub_real)
                 H00 = slater_condon0_hub_real(f0)
             end select
+            ! By definition:
+            walker_energies(1,tot_walkers) = 0.0_p
 
             ! Finally, we need to check if the reference determinant actually
             ! belongs on this processor.
@@ -125,7 +129,7 @@ contains
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
-        nparticles = sum(abs(walker_population(:tot_walkers)))
+        nparticles = sum(abs(walker_population(1,:tot_walkers)))
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
@@ -287,17 +291,17 @@ contains
                     ! already looping over the determinants.
                     call update_proj_energy(idet, inst_proj_energy)
 
-                    do iparticle = 1, abs(walker_population(idet))
+                    do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn.
-                        call spawner(cdet, walker_population(idet), nspawned, connection)
+                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned)
 
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(idet)
+                    call stochastic_death(walker_energies(1,idet)-shift, walker_population(1,idet))
 
                 end do
 
@@ -471,7 +475,7 @@ contains
                     call update_proj_energy(idet, inst_proj_energy)
 
                     ! Is this determinant an initiator?
-                    if (abs(walker_population(idet)) > initiator_population) then
+                    if (abs(walker_population(1,idet)) > initiator_population) then
                         ! Has a high enough population to be an initiator.
                         parent_flag = 0
                     else if (all(iand(cdet%f,cas_mask) == cas_core)) then
@@ -482,17 +486,17 @@ contains
                         parent_flag = 1
                     end if
 
-                    do iparticle = 1, abs(walker_population(idet))
+                    do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn.
-                        call spawner(cdet, walker_population(idet), nspawned, connection)
+                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned)
 
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(idet)
+                    call stochastic_death(walker_energies(1,idet)-shift, walker_population(1,idet))
 
                 end do
 
