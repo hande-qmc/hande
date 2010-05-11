@@ -106,9 +106,11 @@ real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
 
 ! spawned_walkers*(:basis_length,i) gives the determinant of the spawned walker.
 ! spawned_walkers*(spawned_pop,i) gives the population of the spawned walker.
-! spawned_walkers*(spawned_parent,i) gives information about the parent of the spawned walker (initiator-FCIQMC only).
 ! spawned_walkers*(spawned_hf_pop,i) gives the population of the spawned walker
 ! (Hellmann--Feynmann sampling only).
+! spawned_walkers*(spawned_parent,i) gives information about the parent of the
+! spawned walker (initiator-FCIQMC only).
+! spawned_hf_pop (if it exists) will always be equal to spawned_pop+1.
 
 ! In simple_fciqmc we only need to store the walker populations, so spawned_size
 ! is 1.

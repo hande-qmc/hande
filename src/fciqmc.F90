@@ -37,14 +37,14 @@ contains
         sampling_size = 1
         spawned_size = basis_length + 1
         spawned_pop = spawned_size
-        if (initiator) then
-            spawned_size = spawned_size + 1
-            spawned_parent = spawned_size
-        end if
         if (hfs) then
             spawned_size = spawned_size + 1
             spawned_hf_pop = spawned_size
             sampling_size = sampling_size + 1
+        end if
+        if (initiator) then
+            spawned_size = spawned_size + 1
+            spawned_parent = spawned_size
         end if
 
         ! Allocate main walker lists.
