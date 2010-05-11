@@ -51,7 +51,7 @@ contains
 
             open(io, file=restart_file)
 
-            write (io,*) 'Restart version'
+            write (io,*) '# restart version'
             write (io,*) restart_version
             write (io,*) '# number of cycles'
             write (io,*) nmc_cycles
