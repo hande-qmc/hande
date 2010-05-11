@@ -409,24 +409,25 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(ireport, nparticles)
+    subroutine write_fciqmc_report(ireport, ntot_particles)
 
         ! Write the report line at the end of a report loop.
         ! In:
         !    ireport: index of the report loop.
-        !    nparticles: total number of particles in main walker list.
+        !    ntot_particles: total number of particles in main walker list.
 
-        integer, intent(in) :: ireport, nparticles
+        integer, intent(in) :: ireport, ntot_particles
         integer :: mc_cycles, vary_shift_reports
 
         mc_cycles = ireport*ncycles
 
         vary_shift_reports = ireport - start_vary_shift
 
+        ! See also the format used in inital_fciqmc_status if this is changed.
         write (6,'(5X,i8,4(f20.10,2X),i11)') mc_cycles_done+mc_cycles,               &
                                              shift, av_shift/vary_shift_reports,     &
                                              proj_energy, av_proj_energy/ mc_cycles, & 
-                                             nparticles
+                                             ntot_particles
 
     end subroutine write_fciqmc_report
 
