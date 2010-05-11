@@ -138,11 +138,12 @@ contains
         logical :: exists
         integer :: restart_version
 #ifdef PARALLEL
-        integer :: global_tot_walkers, pop, iread, ierr, dest
+        integer :: global_tot_walkers, pop, iread, nread, ierr, dest
         real(p), allocatable :: scratch_energies(:)
+        integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         real(p) :: energy
         integer(i0) :: det(basis_length)
-        integer :: spawn_max(0:nprocs)
+        integer :: spawn_max(0:nprocs-1)
         logical :: done
 #endif
 
@@ -179,7 +180,7 @@ contains
 
         ! Just need to read in the walker information now.
 #ifdef PARALLEL
-        if (parent) global_tot_walkers = tot_walkers
+        global_tot_walkers = tot_walkers
         tot_walkers = 0
         ! Read in walkers to spawning
         ! Restart file might have been produced with a different number of
@@ -205,15 +206,36 @@ contains
                     spawned_walkers(basis_length+1, spawning_head(dest)) = pop
                     scratch_energies(spawning_head(dest)) = energy
                     ! Filled up spawning/scratch arrays?
-                    if (any(spawning_head-spawn_max == 0)) exit
+                    if (any(spawning_head(:nprocs-1)-spawn_max == 0)) exit
                 end do
-                done = iread == global_tot_walkers
+                iread = i
+                done = iread == global_tot_walkers + 1
             end if
 
-            ! send walkers to their appropriate processor.
-!            call mpi_scatterv(...)
             ! update the number of walkers on this processor from the number of
-            ! walkers just received.
+            ! walkers just read in.
+            send_counts = spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1)
+            send_displacements = spawning_block_start(:nprocs-1)
+            call mpi_scatter(send_counts, 1, mpi_integer, nread, 1, mpi_integer, root, mpi_comm_world, ierr)
+            ! send walkers to their appropriate processor.
+            call mpi_scatterv(scratch_energies, send_counts, send_displacements, mpi_preal, &
+                              walker_energies(tot_walkers+1:), nread, mpi_preal, root,      &
+                              mpi_comm_world, ierr)
+            send_counts = send_counts*spawned_size
+            send_displacements = send_displacements*spawned_size
+            if (parent) then
+                call mpi_scatterv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
+                                  MPI_IN_PLACE, nread, mpi_preal, root, mpi_comm_world, ierr) 
+            else
+                call mpi_scatterv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
+                                  spawned_walkers, nread, mpi_preal, root, mpi_comm_world, ierr) 
+            end if
+            ! Transfer from spawned arrays to main walker arrays.
+            do i = 1, nread
+                walker_dets(:,i+tot_walkers) = spawned_walkers(:basis_length,i)
+                walker_population(i+tot_walkers) = spawned_walkers(basis_length+1,i)
+            end do
+            tot_walkers = tot_walkers + nread
 
             call mpi_bcast(done, 1, mpi_logical, root, mpi_comm_world, ierr)
             if (done) exit
