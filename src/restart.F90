@@ -2,7 +2,11 @@ module fciqmc_restart
 
 ! Module for dumping out and restarting FCIQMC files.
 
+use parallel
+use utils, only: get_unique_filename, get_free_unit
+
 use fciqmc_data
+
 implicit none
 
 character(*), parameter :: restart_file_stem = 'restart'
@@ -21,13 +25,19 @@ contains
 
         ! Write out the main walker list to file.
 
-        use parallel, only: parent
-        use utils, only: get_unique_filename, get_free_unit
-
         integer, intent(in) :: nmc_cycles, nparticles_old
         character(255) :: restart_file
         integer :: io, i
         integer, parameter :: restart_version = 1
+#ifdef PARALLEL
+        integer :: nwalkers(0:nprocs-1), ierr, stat(MPI_STATUS_SIZE)
+        integer, parameter :: comm_tag = 123
+        character(255) :: junk
+
+        ! Total number of walkers on each processor.
+        call mpi_gather(tot_walkers, 1, mpi_integer, nwalkers, 1, mpi_integer, root, mpi_comm_world, ierr)
+
+#endif
 
         if (parent) then
             io = get_free_unit()
@@ -50,13 +60,65 @@ contains
             write (io,*) '# reference determinant'
             write (io,*) f0, occ_list0, D0_population, H00
             write (io,*) '# number of unique walkers'
-            write (io,*) tot_walkers
-            write (io,*) '# walkers'
-            do i = 1, tot_walkers
-                write (io,*) walker_dets(:,i), walker_population(i), walker_energies(i)
+#ifdef PARALLEL
+            write (io,*) sum(nwalkers)
+            ! Write out walkers on parent processor to restart file.
+            write (io,*) '# walker info'
+            call write_walkers(tot_walkers, io)
+
+            ! Communicate with all other processors.
+            do i = 1, nprocs-1
+                ! Receive walker infor from all other processors.
+                call mpi_recv(walker_population, nwalkers(i), mpi_integer, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_dets, nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_energies, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
+                ! Write out walkers from all other processors.
+                call write_walkers(nwalkers(i), io)
             end do
+
+            ! Read "self" info back in.
+            call flush(io)
+            rewind(io)
+            do
+                ! Read restart file until we've found the start of the
+                ! walker information.
+                read (io,'(a255)') junk
+                call flush(6)
+                if (index(junk,'walker info') /= 0) exit
+            end do
+            ! The next tot_walkers lines contain the walker info that came
+            ! from the root processor.
+            do i = 1, tot_walkers
+                read (io, *) walker_dets(:,i), walker_population(i), walker_energies(i)
+            end do
+#else
+            write (io,*) tot_walkers
+            write (io,*) '# walker info'
+            call write_walkers(tot_walkers, io)
+#endif
             close(io)
+
+        else
+#ifdef PARALLEL
+            ! Send walker info to root processor.
+            call mpi_send(walker_population, tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, stat, ierr)
+            call mpi_send(walker_dets, tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, stat, ierr)
+            call mpi_send(walker_energies, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, stat, ierr)
+#endif
         end if
+
+        contains
+
+            subroutine write_walkers(my_nwalkers, iunit)
+
+                integer, intent(in) :: my_nwalkers, iunit
+                integer :: iwalker
+
+                do iwalker = 1, my_nwalkers
+                    write (iunit,*) walker_dets(:,iwalker), walker_population(iwalker), walker_energies(iwalker)
+                end do
+
+            end subroutine write_walkers
 
     end subroutine dump_restart
 
@@ -66,12 +128,23 @@ contains
 
         use errors, only: stop_all
         use parallel, only: parent
-        use utils, only: get_unique_filename, get_free_unit
+        use hashing, only: murmurhash_bit_string
+
+        use basis, only: basis_length
+        use system, only: nel
 
         character(255) :: restart_file, junk
         integer :: io, i
         logical :: exists
         integer :: restart_version
+#ifdef PARALLEL
+        integer :: global_tot_walkers, pop, iread, ierr, dest
+        real(p), allocatable :: scratch_energies(:)
+        real(p) :: energy
+        integer(i0) :: det(basis_length)
+        integer :: spawn_max(0:nprocs)
+        logical :: done
+#endif
 
         if (parent) then
             io = get_free_unit()
@@ -102,11 +175,67 @@ contains
             read (io,*) junk
             read (io,*) tot_walkers
             read (io,*) junk
-            do i = 1, tot_walkers
-                read (io,*) walker_dets(:,i), walker_population(i), walker_energies(i)
-            end do
-            close(io)
         end if
+
+        ! Just need to read in the walker information now.
+#ifdef PARALLEL
+        if (parent) global_tot_walkers = tot_walkers
+        tot_walkers = 0
+        ! Read in walkers to spawning
+        ! Restart file might have been produced with a different number of
+        ! processors, thus need to hash walkers again to choose which
+        ! processor to send each determinant to.
+        ! Use the spawning arrays as scratch space.
+        allocate(scratch_energies(spawned_walker_length), stat=ierr)
+        ! spawning_head_start gives the first slot in the spawning array for
+        ! each processor.  Also want the last slot in the spawning array for
+        ! each processor.
+        forall (i=0:nprocs-2) spawn_max(i) = spawning_head(i+1) - 1
+        spawn_max(nprocs-1) = spawned_walker_length
+        iread = 1
+        do
+            ! read in a "block" of walkers.
+            if (parent) then
+                spawning_head = spawning_block_start
+                do i = iread, global_tot_walkers
+                    read (io,*) det, pop, energy
+                    dest = modulo(murmurhash_bit_string(det, basis_length), nprocs)
+                    spawning_head(dest) = spawning_head(dest) + 1
+                    spawned_walkers(:basis_length, spawning_head(dest)) = det
+                    spawned_walkers(basis_length+1, spawning_head(dest)) = pop
+                    scratch_energies(spawning_head(dest)) = energy
+                    ! Filled up spawning/scratch arrays?
+                    if (any(spawning_head-spawn_max == 0)) exit
+                end do
+                done = iread == global_tot_walkers
+            end if
+
+            ! send walkers to their appropriate processor.
+!            call mpi_scatterv(...)
+            ! update the number of walkers on this processor from the number of
+            ! walkers just received.
+
+            call mpi_bcast(done, 1, mpi_logical, root, mpi_comm_world, ierr)
+            if (done) exit
+        end do
+        deallocate(scratch_energies, stat=ierr)
+        ! Finally, need to broadcast the other information read in.
+        call mpi_bcast(restart_version, 1, mpi_integer, root, mpi_comm_world, ierr)
+        call mpi_bcast(mc_cycles_done, 1, mpi_integer, root, mpi_comm_world, ierr)
+        call mpi_bcast(nparticles_old_restart, 1, mpi_integer, root, mpi_comm_world, ierr)
+        call mpi_bcast(shift, 1, mpi_preal, root, mpi_comm_world, ierr)
+        call mpi_bcast(vary_shift, 1, mpi_logical, root, mpi_comm_world, ierr)
+        call mpi_bcast(f0, basis_length, mpi_det_integer, root, mpi_comm_world, ierr)
+        call mpi_bcast(occ_list0, nel, mpi_integer, root, mpi_comm_world, ierr)
+        call mpi_bcast(D0_population, 1, mpi_integer, root, mpi_comm_world, ierr)
+        call mpi_bcast(H00, 1, mpi_preal, root, mpi_comm_world, ierr)
+#else
+        do i = 1, tot_walkers
+            read (io,*) walker_dets(:,i), walker_population(i), walker_energies(i)
+        end do
+#endif
+
+        if (parent) close(io)
 
     end subroutine read_restart
 
