@@ -192,7 +192,7 @@ contains
         ! displacements accordingly:
         send_counts = send_counts*spawned_size
         receive_counts = receive_counts*spawned_size
-        send_displacements = spawning_block_start*spawned_size
+        send_displacements = spawning_block_start(:nprocs-1)*spawned_size
         receive_displacements = receive_displacements*spawned_size
         call MPI_AlltoAllv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
                            spawned_walkers_recvd, receive_counts, receive_displacements, mpi_det_integer, &
