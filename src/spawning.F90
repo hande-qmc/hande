@@ -543,7 +543,7 @@ contains
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head
+        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
@@ -572,7 +572,7 @@ contains
 
         ! Set info in spawning array.
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(basis_length+1,spawning_head(iproc_spawn)) = nparticles
+        spawned_walkers(spawned_pop,spawning_head(iproc_spawn)) = nparticles
 
     end subroutine create_spawned_particle
 
@@ -598,7 +598,7 @@ contains
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head
+        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, spawned_parent
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_flag
@@ -628,8 +628,8 @@ contains
 
         ! Set info in spawning array.
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(basis_length+1,spawning_head(iproc_spawn)) = nparticles
-        spawned_walkers(basis_length+2,spawning_head(iproc_spawn)) = parent_flag
+        spawned_walkers(spawned_pop,spawning_head(iproc_spawn)) = nparticles
+        spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = parent_flag
 
     end subroutine create_spawned_particle_initiator
 

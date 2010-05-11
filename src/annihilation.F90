@@ -233,8 +233,8 @@ contains
                 if (k > spawning_head(0)) exit self_annihilate
                 if (all(spawned_walkers(:basis_length,k) == spawned_walkers(:basis_length,islot))) then
                     ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(basis_length+1,islot) =  &
-                               spawned_walkers(basis_length+1,islot) + spawned_walkers(basis_length+1,k)
+                    spawned_walkers(spawned_pop,islot) =  &
+                               spawned_walkers(spawned_pop,islot) + spawned_walkers(spawned_pop,k)
                 else
                     ! Found the next unique spawned walker.
                     exit compress
@@ -244,12 +244,12 @@ contains
             if (islot == spawning_head(0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (spawned_walkers(basis_length+1,islot) /= 0) islot = islot + 1
+            if (spawned_walkers(spawned_pop,islot) /= 0) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (spawned_walkers(basis_length+1, islot) == 0) islot = islot - 1
+        if (spawned_walkers(spawned_pop, islot) == 0) islot = islot - 1
 
         ! update spawning_head(0)
         spawning_head(0) = islot
@@ -290,21 +290,21 @@ contains
                     ! onto the same unoccupied determinant.  Such events become
                     ! vanishingly unlikely with the size of the determinant
                     ! space (according to Ali at least!).
-                    pop_sign = spawned_walkers(basis_length+1,islot)*spawned_walkers(basis_length+1,k)
+                    pop_sign = spawned_walkers(spawned_pop,islot)*spawned_walkers(spawned_pop,k)
                     if (pop_sign > 0) then
                         ! Sign coherent event.
                         ! Set parent_flag to 2 (indicating multiple
                         ! sign-coherent spawning events).
-                        spawned_walkers(basis_length+2,islot) = 2
+                        spawned_walkers(spawned_parent,islot) = 2
                     else
                         ! Keep the parent_flag of the largest spawning event.
-                        if (spawned_walkers(basis_length+1,k) > spawned_walkers(basis_length+1,islot)) then
-                            spawned_walkers(basis_length+2,islot) = spawned_walkers(basis_length+2,k)
+                        if (spawned_walkers(spawned_pop,k) > spawned_walkers(spawned_pop,islot)) then
+                            spawned_walkers(spawned_parent,islot) = spawned_walkers(spawned_parent,k)
                         end if
                     end if
                     ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(basis_length+1,islot) = &
-                                   spawned_walkers(basis_length+1,islot) + spawned_walkers(basis_length+1,k)
+                    spawned_walkers(spawned_pop,islot) = &
+                                   spawned_walkers(spawned_pop,islot) + spawned_walkers(spawned_pop,k)
                 else
                     ! Found the next unique spawned walker.
                     exit compress
@@ -314,12 +314,12 @@ contains
             if (islot == spawning_head(0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (spawned_walkers(basis_length+1,islot) /= 0) islot = islot + 1
+            if (spawned_walkers(spawned_pop,islot) /= 0) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (spawned_walkers(basis_length+1, islot) == 0) islot = islot - 1
+        if (spawned_walkers(spawned_pop, islot) == 0) islot = islot - 1
 
         ! update spawning_head(0)
         spawning_head(0) = islot
@@ -346,7 +346,7 @@ contains
             if (hit) then
                 ! Annihilate!
                 old_pop = walker_population(pos)
-                walker_population(pos) = walker_population(pos) + spawned_walkers(basis_length+1,i)
+                walker_population(pos) = walker_population(pos) + spawned_walkers(spawned_pop,i)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -393,7 +393,7 @@ contains
             if (hit) then
                 ! Annihilate!
                 old_pop = walker_population(pos)
-                walker_population(pos) = walker_population(pos) + spawned_walkers(basis_length+1,i)
+                walker_population(pos) = walker_population(pos) + spawned_walkers(spawned_pop,i)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -410,11 +410,11 @@ contains
                 ! Keep only progeny spawned by initiator determinants
                 ! (parent_flag=0) or multiple sign-coherent events
                 ! (parent_flag=2).
-                if (spawned_walkers(basis_length+2,i) == 1) then
+                if (spawned_walkers(spawned_parent,i) == 1) then
                     ! discard attempting spawnings from non-initiator walkers
                     ! onto unoccupied determinants.
                     nannihilate = nannihilate + 1
-                    nparticles = nparticles - abs(spawned_walkers(basis_length+1,i))
+                    nparticles = nparticles - abs(spawned_walkers(spawned_pop,i))
                 else
                     ! keep!
                     k = i - nannihilate
@@ -508,8 +508,8 @@ contains
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
             walker_dets(:,k) = spawned_walkers(:basis_length,i)
-            walker_population(k) = spawned_walkers(basis_length+1,i)
-            nparticles = nparticles + abs(spawned_walkers(basis_length+1,i))
+            walker_population(k) = spawned_walkers(spawned_pop,i)
+            nparticles = nparticles + abs(spawned_walkers(spawned_pop,i))
             walker_energies(k) = sc0(walker_dets(:,k)) - H00
             ! Next walker will be inserted below this one.
             iend = pos - 1

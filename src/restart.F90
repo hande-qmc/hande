@@ -203,7 +203,7 @@ contains
                     dest = modulo(murmurhash_bit_string(det, basis_length), nprocs)
                     spawning_head(dest) = spawning_head(dest) + 1
                     spawned_walkers(:basis_length, spawning_head(dest)) = det
-                    spawned_walkers(basis_length+1, spawning_head(dest)) = pop
+                    spawned_walkers(spawned_pop, spawning_head(dest)) = pop
                     scratch_energies(spawning_head(dest)) = energy
                     ! Filled up spawning/scratch arrays?
                     if (any(spawning_head(:nprocs-1)-spawn_max == 0)) exit
@@ -233,7 +233,7 @@ contains
             ! Transfer from spawned arrays to main walker arrays.
             do i = 1, nread
                 walker_dets(:,i+tot_walkers) = spawned_walkers(:basis_length,i)
-                walker_population(i+tot_walkers) = spawned_walkers(basis_length+1,i)
+                walker_population(i+tot_walkers) = spawned_walkers(spawned_pop,i)
             end do
             tot_walkers = tot_walkers + nread
 
