@@ -567,7 +567,9 @@ The following options are valid for FCIQMC calculations.
     shorter calculations via the restart facility is not completely identical
     to running a single calculation for the same number of Monte Carlo cycles.
 
-    Restart is currently only implemented in serial.
+    Furthermore, the current implementation does not allow restart files
+    produced with one value of DET_SIZE to be used with binaries produced with
+    a different value of DET_SIZE.  However, this is not checked!
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
