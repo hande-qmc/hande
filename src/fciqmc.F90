@@ -66,9 +66,7 @@ contains
         ! of processors is 1.
         allocate(spawning_block_start(0:max(1,nprocs-1)), stat=ierr)
         step = spawned_walker_length/nprocs
-        do i = 0, nprocs - 1
-            spawning_block_start(i) = i*step
-        end do
+        forall (i=0:nprocs-1) spawning_block_start(i) = i*step
 
         ! Set spin variables.
         call set_spin_polarisation(ms_in)
