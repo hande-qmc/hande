@@ -104,7 +104,8 @@ contains
         use utils, only: get_free_unit, int_fmt
 
         integer :: i, bit_pos, bit_element, ierr
-        character(4) :: fmt1(3)
+        character(4) :: fmt1(4)
+        integer(i0) :: test
 
         tot_ndets = binom(nbasis, nel)
 
@@ -114,10 +115,11 @@ contains
         last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
 
         if (parent) then
-            fmt1 = int_fmt((/nel, nbasis, tot_ndets/), padding=1)
+            fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length/), padding=1)
             write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
-            write (6,'(1X,a32,'//fmt1(3)//',/)') 'Total size of determinant space:', tot_ndets
+            write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
+            write (6,'(1X,a61,'//fmt1(4)//',/)') 'Bit-length of integers used to store determinant bit-strings:', i0_length
         end if
 
         ! Lookup arrays.
