@@ -12,18 +12,24 @@ FCIQMC
 ------
 
 1. HPHF type work
-2. Hellmann--Feynmann
+
+Hellmann--Feynmann
+------------------
+
+1. Variables to refer to pop, hfpop etc in spawning list, main lists.
+   Possibility to expand pop lists.
+2. Changes to annihilation.
+3. Changes to restart.
+4. Input options.
+5. fciqmc routine.
+5. output routine.
+6. test with hamiltonian operator.
+7. test with kinetic energy.
 
 FCIQMC parallelisation
 ----------------------
 
-a) Restart.
-b) Investigate load-balancing issues.
-
-Initiator
----------
-
-a) Restart.
+a) Investigate load-balancing issues.
 
 Optimisations
 -------------
