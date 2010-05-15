@@ -24,6 +24,8 @@ contains
         ! This enables the blocking script to ignore these lines whilst doing
         ! data analysis.
 
+        soft_exit = .false.
+
         inquire(file='FCIQMC.COMM', exist=comms_exists)
 
 #ifdef PARALLEL
