@@ -1,4 +1,8 @@
+#include <stdint.h> 
+#include <iostream>
 #include "../src/cdefs.h"
+
+using namespace std;
 
 // murmurhash2 has a consistent interface:
 //  murmurhash2_( const void * key, int &len, unsigned int &seed )
@@ -9,7 +13,7 @@
 extern "C"
 {
 
-    #ifdef DET_SIZE == 32
+    #if DET_SIZE == 32
 
     // 32-bit integers used as bit strings for storing determinants.
 
@@ -88,9 +92,7 @@ extern "C"
     // The same caveats as 32-bit murmurhash2 apply here - beware of alignment 
     // and endian-ness issues if used across multiple platforms.
 
-    typedef unsigned __int64 uint64_t;
-
-    #ifdef 32BIT
+    #ifdef BIT32
 
     // 64-bit hash for 32-bit platforms
 
