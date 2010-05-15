@@ -1,0 +1,15 @@
+[main]
+fc = mpif90 -m64
+cxx = mpic++ -m64
+ld = mpif90 -m64
+cppdefs = -DPARALLEL
+libs = -ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -framework Accelerate -lstdc++
+module_flag = -J
+
+[opt]
+fflags = -O3
+cxxflags = -O3
+
+[dbg]
+fflags = -g -fbounds-check
+cxxflags = -g -fbounds-check
