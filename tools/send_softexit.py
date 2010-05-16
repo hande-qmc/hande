@@ -13,13 +13,13 @@
 # does, however, listen out for the interrupt signal.  Recommended use in a
 # script is:
 #     
-# send_softexit.py [options] $PBS_JOBID &
+# send_softexit.py [options] walltime &
 # [Job commands]
 # killall -2 send_softexit.py
 # 
 # or
 # 
-# send_softexit.py [options] $PBS_JOBID &
+# send_softexit.py [options] walltime &
 # send_softexit_ps=$!
 # [Job commands]
 # kill -2 $send_softexit_ps
