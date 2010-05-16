@@ -311,7 +311,7 @@ contains
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old)
 
-            call fciqmc_interact(soft_exit)
+            call fciqmc_interact(ireport, nparticles_old, soft_exit)
             if (soft_exit) exit
 
         end do
@@ -514,7 +514,7 @@ contains
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old)
 
-            call fciqmc_interact(soft_exit)
+            call fciqmc_interact(ireport, nparticles_old, soft_exit)
             if (soft_exit) exit
 
         end do
