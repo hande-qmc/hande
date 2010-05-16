@@ -17,6 +17,10 @@ contains
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process.
 
+        ! In:
+        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
+        !    elements, <D|H|D>.  See the hamiltonian module.
+
         interface
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
@@ -74,6 +78,10 @@ contains
         ! different parts of the annihilation process.
 
         ! This version is for use with the initiator-FCIQMC algorithm.
+
+        ! In:
+        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
+        !    elements, <D|H|D>.  See the hamiltonian module.
 
         interface
             function sc0(f) result(hmatel)
@@ -454,6 +462,10 @@ contains
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
+
+        ! In:
+        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
+        !    elements, <D|H|D>.  See the hamiltonian module.
 
         use basis, only: basis_length
         use determinants, only: decode_det

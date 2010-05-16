@@ -25,6 +25,7 @@ contains
 #endif
     
         use input
+        use utils, only: get_free_unit
 
 #ifdef NAGF95
         use f90_unix_env, ONLY: getarg,iargc
@@ -41,14 +42,14 @@ contains
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
-            ir = 1
+            ir = get_free_unit()
             call GetArg(1, cInp)
             inquire(file=cInp, exist=t_exists)
             if (.not.t_exists) then
                 write (6,'(a21,1X,a)') 'File does not exist:',trim(cInp)
                 stop
             end if
-            open(1, file=cInp, status='old', form='formatted', iostat=ios)
+            open(ir, file=cInp, status='old', form='formatted', iostat=ios)
         else
             if (parent) write (6,'(a19)') 'Reading from STDIN'
             ir = 5

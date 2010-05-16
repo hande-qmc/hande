@@ -207,6 +207,7 @@ contains
         use determinants, only:det_info, alloc_det_info 
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart
         use spawning, only: create_spawned_particle
 
@@ -253,6 +254,8 @@ contains
         type(excit) :: connection
 
         real(p) :: inst_proj_energy
+
+        logical :: soft_exit
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
@@ -317,6 +320,9 @@ contains
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old)
 
+            call fciqmc_interact(ireport, nparticles_old, soft_exit)
+            if (soft_exit) exit
+
         end do
 
         if (parent) then
@@ -357,6 +363,7 @@ contains
         use determinants, only: det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart
         use system, only: nel
         use spawning, only: create_spawned_particle_initiator
@@ -408,6 +415,8 @@ contains
         integer :: parent_flag
         integer(i0) :: cas_mask(basis_length), cas_core(basis_length)
         integer :: bit_pos, bit_element
+
+        logical :: soft_exit
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
@@ -513,6 +522,9 @@ contains
             call update_energy_estimators(ireport, nparticles_old)
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old)
+
+            call fciqmc_interact(ireport, nparticles_old, soft_exit)
+            if (soft_exit) exit
 
         end do
 
