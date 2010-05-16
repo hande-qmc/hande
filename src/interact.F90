@@ -66,7 +66,7 @@ contains
                     ! Will do our own echoing as want to prepend lines with '#'
                     call input_options(echo_lines=.false., skip_blank_lines=.true.)
 
-                    do
+                    do ! loop over lines in FCIQMC.COMM.
                         call read_line(eof)
                         if (eof) exit
                         write (6,'(1X,"#",1X,a)') trim(line)
@@ -79,7 +79,7 @@ contains
                             write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
                         end select
 
-                    end do
+                    end do ! end reading of FCIQMC.COMM.
 
                     ! Don't want to keep FCIQMC.COMM around to be detected
                     ! again on the next FCIQMC iteration.
