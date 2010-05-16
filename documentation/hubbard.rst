@@ -582,8 +582,9 @@ options are also valid in initiator-FCIQMC calculations:
 
     Default: 3.
 
-    Set the population at which a determinant is considered to be an initiator
-    determinant.  Setting this value to 0 retrieves the FCIQMC result.
+    Set the (unsigned) population at which a determinant is considered to be an
+    initiator determinant.  Setting this value to 0 retrieves the FCIQMC
+    result.
 **cas** *N* *M*
     Integers.
 
@@ -657,3 +658,41 @@ other options
 **end**
     End of input.  Any subsequent lines in an input file are ignored.  It is
     only strictly required if the input is given via STDIN.
+
+Interacting with FCIQMC calculations
+------------------------------------
+
+It is possible to interact with running FCIQMC calculations.
+
+After each FCIQMC update cycle, hubbard checks for the existence of the file
+FCIQMC.COMM in the current working directory for all processors. If FCIQMC.COMM
+exists, then the file is read and any modified parameters are then used for the
+rest of the calculation.  FCIQMC.COMM is deleted after it is read in to prevent
+it from being detected on subsequent update cycles and to enable multiple
+interactions with a running calculation.
+
+FCIQMC.COMM has the same syntax as the input file.  Available options are:
+
+**softexit**
+    End the FCIQMC calculation immediately but still perform any
+    post-processing (e.g. dumping out a restart file).  This is useful for
+    cleanly terminating a converged calculation or cleanly stopping
+    a calculation before the walltime is reached to allow it to be restarted.
+
+    The watchdog.py (for PBS queue systems) and send_softexit.py (for other
+    queue systems) scripts in the tools subdirectory are useful for running
+    hubbard on a queuing system as they write **softexit** to FCIQMC.COMM a
+    certain amount of time before the walltime is reached.
+**varyshift_target** *varyshift_target*
+    Integer.
+
+    Change the number of particles to be reached before the calculation starts
+    varying the shift.  Meaningless if the calculation has already started
+    varying the shift.  If *varyshift_target* is negative then the shift is
+    immediately allowed to vary.
+**tau** *tau*
+    Real.
+
+    Change the timestep to be used.
+**zero_means**
+    Reset the running averages of the shift and projected energy to 0.
