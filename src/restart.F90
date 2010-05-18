@@ -250,6 +250,12 @@ contains
         call mpi_bcast(occ_list0, nel, mpi_integer, root, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_integer, root, mpi_comm_world, ierr)
         call mpi_bcast(H00, 1, mpi_preal, root, mpi_comm_world, ierr)
+        ! Evaluate quantities based upon data read from restart file.
+        if (nprocs > 1) then
+            D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+        else
+            D0_proc = iproc
+        end if
 #else
         do i = 1, tot_walkers
             read (io,*) walker_dets(:,i), walker_population(i), walker_energies(i)
