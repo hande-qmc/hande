@@ -127,7 +127,6 @@ contains
         ! Read in the main walker list from file.
 
         use errors, only: stop_all
-        use parallel, only: parent
         use hashing, only: murmurhash_bit_string
 
         use basis, only: basis_length
