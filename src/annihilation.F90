@@ -147,7 +147,7 @@ contains
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
         integer :: s(2,0:nprocs-1)
         integer :: r(2,0:nprocs-1)
-        integer :: i, step, ierr
+        integer :: i, ierr
         integer(i0), pointer :: tmp_walkers(:,:)
 
         ! Send spawned walkers to the processor which "owns" them and receive

@@ -105,7 +105,6 @@ contains
 
         integer :: i, bit_pos, bit_element, ierr
         character(4) :: fmt1(4)
-        integer(i0) :: test
 
         tot_ndets = binom(nbasis, nel)
 
