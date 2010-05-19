@@ -64,6 +64,9 @@ real(p) :: proj_energy
 ! write_fciqmc_report).
 real(p) :: av_proj_energy = 0.0_p
 
+! Report loop at which the averages are set to 0.
+integer :: start_averaging_from = 0
+
 !--- Walker data ---
 
 ! Current number of walkers stored in the main list (processor dependent).
@@ -114,10 +117,12 @@ integer(i0), pointer :: spawned_walkers(:,:), spawned_walkers_recvd(:,:)
 ! After distribute_walkers is called in the annihilation algorithm,
 ! spawning_head(0) is the number of spawned_walkers on the *current* processor
 ! and all other elements are not meaningful.
-integer, allocatable :: spawning_head(:) ! (0:nprocs-1)
+! It is convenient if the minimum size of spawning_head and spawning_block_start
+! are both 0:1.
+integer, allocatable :: spawning_head(:) ! (0:(max(1,nprocs-1))
 ! spawning_block_start(i) contains the first position to be used in the spawning
 ! lists for storing a walker which is to be sent to the i-th processor.
-integer, allocatable :: spawning_block_start(:) ! (0:nprocs-1)
+integer, allocatable :: spawning_block_start(:) ! (0:max(1,nprocs-1))
 
 !--- Reference determinant ---
 
@@ -279,16 +284,6 @@ contains
             end if
         end do
 
-! DEBUG test only: verify
-!        tmp_spawned = spawned_walkers(:,1)
-!        do i = 2, spawning_head(0)
-!            if (tmp_spawned(:basis_length) .detgt. spawned_walkers(:,i)) then
-!                write (6,*) 'error sorting'
-!                stop
-!            end if
-!            tmp_spawned = spawned_walkers(:,i)
-!        end do
-
     contains
 
         subroutine swap_spawned(s1,s2)
@@ -417,31 +412,33 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(ireport, nparticles)
+    subroutine write_fciqmc_report(ireport, ntot_particles)
 
         ! Write the report line at the end of a report loop.
         ! In:
         !    ireport: index of the report loop.
-        !    nparticles: total number of particles in main walker list.
+        !    ntot_particles: total number of particles in main walker list.
 
-        integer, intent(in) :: ireport, nparticles
-        integer :: mc_cycles, vary_shift_reports
+        integer, intent(in) :: ireport, ntot_particles
+        integer :: mc_cycles, vary_shift_reports, proj_energy_cycles
 
         mc_cycles = ireport*ncycles
 
-        vary_shift_reports = ireport - start_vary_shift
+        proj_energy_cycles = (ireport - start_averaging_from)*ncycles
+        vary_shift_reports = ireport - start_vary_shift - start_averaging_from
 
+        ! See also the format used in inital_fciqmc_status if this is changed.
         write (6,'(5X,i8,4(f20.10,2X),i11)') mc_cycles_done+mc_cycles,               &
                                              shift, av_shift/vary_shift_reports,     &
-                                             proj_energy, av_proj_energy/ mc_cycles, & 
-                                             nparticles
+                                             proj_energy, av_proj_energy/proj_energy_cycles, & 
+                                             ntot_particles
 
     end subroutine write_fciqmc_report
 
     subroutine write_fciqmc_final()
 
-        av_shift = av_shift/(nreport - start_vary_shift)
-        av_proj_energy = av_proj_energy/(nreport*ncycles)
+        av_shift = av_shift/(nreport - start_vary_shift - start_averaging_from)
+        av_proj_energy = av_proj_energy/((nreport-start_averaging_from)*ncycles)
 
         write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
         write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy

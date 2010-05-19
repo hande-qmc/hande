@@ -14,19 +14,19 @@ contains
 
         use errors, only: stop_all
 
-        integer, parameter :: max_unit = 200
+        integer, parameter :: max_unit = 100
         integer :: free_unit
         integer :: i
-        logical :: t_open
+        logical :: t_open, t_exist
 
         do i = 10, max_unit
-            inquire(unit=i, opened=t_open)
-            if (.not.t_open) then
+            inquire(unit=i, opened=t_open, exist=t_exist)
+            if (.not.t_open .and. t_exist) then
                 free_unit = i
                 exit
             end if
         end do
-        if (i == max_unit+1) call stop_all('get_free_unit','Cannot find a free unit below 200')
+        if (i == max_unit+1) call stop_all('get_free_unit','Cannot find a free unit below max_unit.')
 
     end function get_free_unit
 

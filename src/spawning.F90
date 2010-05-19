@@ -42,11 +42,6 @@ contains
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
 
-! for debug only.
-!        use hamiltonian, only: get_hmatel_k
-!        use excitations, only: create_excited_det
-!        integer(i0) :: f_new(basis_length)
-
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         integer, intent(out) :: nparticles
@@ -161,18 +156,6 @@ contains
                 nparticles = sign(nparticles, parent_sign)
             end if
 
-! Leave the following in for debug reasons...
-! Should be removed after more testing.
-! Will only work in serial.
-!            call create_excited_det(cdet%f, connection, f_new)
-!            if (abs(get_hmatel_k(cdet%f,f_new)-s*hub_k_coulomb) > 1.e-10) then
-!                write (6,*) 'huh?',get_hmatel_k(cdet%f,f_new), s*hub_k_coulomb,s
-!                write (6,*) cdet%occ_list
-!                write (6,*) connection%from_orb, connection %to_orb
-!                write (6,*) connection%perm
-!                stop
-!            end if
-
         end if
         
     end subroutine spawn_hub_k
@@ -198,11 +181,6 @@ contains
         use excitations, only: calc_pgen_hub_real, excit, find_excitation_permutation1
         use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real
-
-! for debug only.
-!        use hamiltonian, only: get_hmatel_real
-!        use excitations, only: create_excited_det
-!        integer(i0) :: f_new(basis_length)
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -255,14 +233,6 @@ contains
             else
                 nparticles = sign(nparticles, parent_sign)
             end if
-
-! Leave the following in for debug reasons...
-! Should be removed after more testing.
-! Will only work in serial.
-!            call create_excited_det(cdet%f, connection, f_new)
-!            if (abs(get_hmatel_real(cdet%f, f_new)-hmatel) > 1.e-8) then
-!                write (6,*) 'oops!', get_hmatel_real(cdet%f, f_new), hmatel
-!            end if
 
         end if
 

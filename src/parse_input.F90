@@ -25,6 +25,7 @@ contains
 #endif
     
         use input
+        use utils, only: get_free_unit
 
 #ifdef NAGF95
         use f90_unix_env, ONLY: getarg,iargc
@@ -41,14 +42,14 @@ contains
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
-            ir = 1
+            ir = get_free_unit()
             call GetArg(1, cInp)
             inquire(file=cInp, exist=t_exists)
             if (.not.t_exists) then
                 write (6,'(a21,1X,a)') 'File does not exist:',trim(cInp)
                 stop
             end if
-            open(1, file=cInp, status='old', form='formatted', iostat=ios)
+            open(ir, file=cInp, status='old', form='formatted', iostat=ios)
         else
             if (parent) write (6,'(a19)') 'Reading from STDIN'
             ir = 5
@@ -58,7 +59,7 @@ contains
         if (parent) write (6,'(a14,/,1X,13("-"),/)') 'Input options'
         call input_options(echo_lines=parent, skip_blank_lines=.true.)
 
-        do
+        do ! loop over lines in input file.
             call read_line(eof)
             if (eof) exit
             call readu(w)
@@ -109,19 +110,18 @@ contains
 
             ! Calculation type.
             case('EXACT','FCI')
-                t_exact = .true.
+                calc_type = calc_type + exact_diag
             case('LANCZOS_DIRECT')
-                t_lanczos = .true.
+                calc_type = calc_type + lanczos_diag
                 direct_lanczos = .true.
             case('LANCZOS')
-                t_lanczos = .true.
+                calc_type = calc_type + lanczos_diag
             case('SIMPLE_FCIQMC')
-                tsimple = .true.
-                t_fciqmc = .true.
+                calc_type = calc_type + fciqmc_calc + simple_fciqmc_calc
             case('FCIQMC')
-                t_fciqmc = .true.
+                calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
-                t_fciqmc = .true.
+                calc_type = calc_type + fciqmc_calc
                 initiator = .true.
 
             ! Calculation options: lanczos.
@@ -199,7 +199,7 @@ contains
             case default
                 call report('Keyword '//trim(w)//' not recognized.', .true.)
             end select
-        end do
+        end do ! end reading of input.
 
         if (ios.gt.0) then
             if (parent) write (6,*) 'Problem reading input.'
@@ -273,11 +273,9 @@ contains
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(t_exact, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(t_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(tsimple, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(t_fciqmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initiator, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)

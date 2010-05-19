@@ -17,6 +17,10 @@ contains
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process.
 
+        ! In:
+        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
+        !    elements, <D|H|D>.  See the hamiltonian module.
+
         interface
             function sc0(f) result(hmatel)
                 use basis, only: basis_length
@@ -74,6 +78,10 @@ contains
         ! different parts of the annihilation process.
 
         ! This version is for use with the initiator-FCIQMC algorithm.
+
+        ! In:
+        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
+        !    elements, <D|H|D>.  See the hamiltonian module.
 
         interface
             function sc0(f) result(hmatel)
@@ -139,7 +147,7 @@ contains
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
         integer :: s(2,0:nprocs-1)
         integer :: r(2,0:nprocs-1)
-        integer :: i, step, ierr
+        integer :: i, ierr
         integer(i0), pointer :: tmp_walkers(:,:)
 
         ! Send spawned walkers to the processor which "owns" them and receive
@@ -161,11 +169,9 @@ contains
         ! Find out how many walkers we are going to send and receive.
         ! Cheekily also hide the communication of the population on the
         ! reference determinant.
-        step = spawning_block_start(1)
         forall (i=0:nprocs-1)
             s(1,i) = spawning_head(i) - spawning_block_start(i)
             s(2,i) = D0_population
-            send_displacements(i) = i*step
         end forall
 
         call MPI_AlltoAll(s, 2, MPI_INTEGER, r, 2, MPI_INTEGER, MPI_COMM_WORLD, ierr)
@@ -194,14 +200,13 @@ contains
         ! displacements accordingly:
         send_counts = send_counts*spawned_size
         receive_counts = receive_counts*spawned_size
-        send_displacements = send_displacements*spawned_size
+        send_displacements = spawning_block_start(:nprocs-1)*spawned_size
         receive_displacements = receive_displacements*spawned_size
         call MPI_AlltoAllv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
                            spawned_walkers_recvd, receive_counts, receive_displacements, mpi_det_integer, &
                            MPI_COMM_WORLD, ierr)
 
-        ! Swap pointers so that spawned_walkers and
-        ! spawned_walker_info point to the received data.
+        ! Swap pointers so that spawned_walkers points to the received data.
         tmp_walkers => spawned_walkers
         spawned_walkers => spawned_walkers_recvd
         spawned_walkers_recvd => tmp_walkers
@@ -236,7 +241,8 @@ contains
                 if (k > spawning_head(0)) exit self_annihilate
                 if (all(spawned_walkers(:basis_length,k) == spawned_walkers(:basis_length,islot))) then
                     ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(basis_length+1,islot) = spawned_walkers(basis_length+1,islot) + spawned_walkers(basis_length+1,k)
+                    spawned_walkers(basis_length+1,islot) =  &
+                               spawned_walkers(basis_length+1,islot) + spawned_walkers(basis_length+1,k)
                 else
                     ! Found the next unique spawned walker.
                     exit compress
@@ -305,7 +311,8 @@ contains
                         end if
                     end if
                     ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(basis_length+1,islot) = spawned_walkers(basis_length+1,islot) + spawned_walkers(basis_length+1,k)
+                    spawned_walkers(basis_length+1,islot) = &
+                                   spawned_walkers(basis_length+1,islot) + spawned_walkers(basis_length+1,k)
                 else
                     ! Found the next unique spawned walker.
                     exit compress
@@ -455,6 +462,10 @@ contains
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
+
+        ! In:
+        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
+        !    elements, <D|H|D>.  See the hamiltonian module.
 
         use basis, only: basis_length
         use determinants, only: decode_det

@@ -1,5 +1,8 @@
 #include <stdint.h> 
+#include <iostream> 
 #include "../src/cdefs.h"
+
+using namespace std;
 
 // Implement the FNV-1 and FNV-1a hash for 32-bit and 64-bit integers.
 // See http://www.isthe.com/chongo/tech/comp/fnv/index.html.

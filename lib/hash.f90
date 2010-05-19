@@ -16,32 +16,32 @@ interface
     function MurmurHash2(key, N, seed) result(hash)
         use const
         integer(i0) :: hash
-        integer(i0), intent(in) :: key(N)
+        integer(i0), intent(in) :: key(:)
         integer, intent(inout) :: N
         integer, intent(in) :: seed
     end function MurmurHash2
     function fnv1_hash(key, N) result(hash)
         use const
         integer(i0) :: hash
-        integer(i0), intent(in) :: key(N)
+        integer(i0), intent(in) :: key(:)
         integer, intent(in) :: N
     end function fnv1_hash
     function fnv1a_hash(key, N) result(hash)
         use const
         integer(i0) :: hash
-        integer(i0), intent(in) :: key(N)
+        integer(i0), intent(in) :: key(:)
         integer, intent(in) :: N
     end function fnv1a_hash
     function fnv1_hash32(key, N) result(hash)
         use const
         integer :: hash
-        integer, intent(in) :: key(N)
+        integer, intent(in) :: key(:)
         integer, intent(in) :: N
     end function fnv1_hash32
     function fnv1a_hash32(key, N) result(hash)
         use const
         integer :: hash
-        integer, intent(in) :: key(N)
+        integer, intent(in) :: key(:)
         integer, intent(in) :: N
     end function fnv1a_hash32
 end interface

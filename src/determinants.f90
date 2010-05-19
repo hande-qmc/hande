@@ -104,7 +104,7 @@ contains
         use utils, only: get_free_unit, int_fmt
 
         integer :: i, bit_pos, bit_element, ierr
-        character(4) :: fmt1(3)
+        character(4) :: fmt1(4)
 
         tot_ndets = binom(nbasis, nel)
 
@@ -114,10 +114,11 @@ contains
         last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
 
         if (parent) then
-            fmt1 = int_fmt((/nel, nbasis, tot_ndets/), padding=1)
+            fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length/), padding=1)
             write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
-            write (6,'(1X,a32,'//fmt1(3)//',/)') 'Total size of determinant space:', tot_ndets
+            write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
+            write (6,'(1X,a61,'//fmt1(4)//',/)') 'Bit-length of integers used to store determinant bit-strings:', i0_length
         end if
 
         ! Lookup arrays.
@@ -166,6 +167,25 @@ contains
         if (write_determinants) close(det_unit, status='keep')
 
     end subroutine end_determinants
+
+    subroutine alloc_det_info(det_info_t)
+
+        ! Allocate the components of a det_info variable.
+        ! Out:
+        !    det_info_t: det_info variable with components allocated to the
+        !    appropriate sizes.
+
+        type(det_info), intent(inout) :: det_info_t
+        integer :: ierr
+
+        allocate(det_info_t%f(basis_length), stat=ierr)
+        allocate(det_info_t%occ_list(nel), stat=ierr)
+        allocate(det_info_t%occ_list_alpha(nalpha), stat=ierr)
+        allocate(det_info_t%occ_list_beta(nbeta), stat=ierr)
+        allocate(det_info_t%unocc_list_alpha(nvirt_alpha), stat=ierr)
+        allocate(det_info_t%unocc_list_beta(nvirt_beta), stat=ierr)
+
+    end subroutine alloc_det_info
 
     subroutine set_spin_polarisation(Ms)
 

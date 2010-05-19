@@ -51,15 +51,13 @@ contains
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
         allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
-        allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
-        spawned_walkers => spawned_walkers1
         spawned_walkers => spawned_walkers1
         ! Allocate scratch space for doing communication.
         allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
-        allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
         spawned_walkers_recvd => spawned_walkers2
-        spawned_walkers_recvd => spawned_walkers2
-        allocate(spawning_head(0:nprocs-1), stat=ierr)
+
+        ! Set spawning_head to be the same size as spawning_block_start.
+        allocate(spawning_head(0:max(1,nprocs-1)), stat=ierr)
 
         ! Find the start position within the spawned walker lists for each
         ! processor.
@@ -68,9 +66,7 @@ contains
         ! of processors is 1.
         allocate(spawning_block_start(0:max(1,nprocs-1)), stat=ierr)
         step = spawned_walker_length/nprocs
-        do i = 0, nprocs - 1
-            spawning_block_start(i) = i*step
-        end do
+        forall (i=0:nprocs-1) spawning_block_start(i) = i*step
 
         ! Set spin variables.
         call set_spin_polarisation(ms_in)
@@ -199,11 +195,11 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use death, only: stochastic_death
-        use determinants, only: det_info
+        use determinants, only:det_info, alloc_det_info 
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart
-        use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
         use spawning, only: create_spawned_particle
 
         ! It seems this interface block cannot go in a module when we're passing
@@ -242,7 +238,6 @@ contains
             end function sc0
         end interface
 
-        integer :: ierr
         integer :: idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
@@ -251,16 +246,10 @@ contains
 
         real(p) :: inst_proj_energy
 
-! DEBUG CHECK ONLY.
-!        integer :: sum1, sum2
+        logical :: soft_exit
 
         ! Allocate det_info components.
-        allocate(cdet%f(basis_length), stat=ierr)
-        allocate(cdet%occ_list(nel), stat=ierr)
-        allocate(cdet%occ_list_alpha(nalpha), stat=ierr)
-        allocate(cdet%occ_list_beta(nbeta), stat=ierr)
-        allocate(cdet%unocc_list_alpha(nvirt_alpha), stat=ierr)
-        allocate(cdet%unocc_list_beta(nvirt_beta), stat=ierr)
+        call alloc_det_info(cdet)
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -268,6 +257,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
+        call initial_fciqmc_status(update_proj_energy)
 
         do ireport = 1, nreport
 
@@ -309,35 +299,20 @@ contains
 
                 end do
 
-! DEBUG CHECK ONLY.
-!                sum1 = sum(walker_population(:tot_walkers)) + sum(spawned_walkers(basis_length+1,:spawning_head))
-
-                ! D0_population is communicated in the direct_annihilation
-                ! algorithm for efficiency.
                 call direct_annihilation(sc0)
-! DEBUG CHECK ONLY.
-!                sum2 = sum(walker_population(:tot_walkers))
-!                if (sum1 /= sum2) then
-!                    write (6,*) 'huh?!', sum1, sum2
-!                    stop
-!                end if
 
                 ! normalise projected energy and add to running total.
                 proj_energy = proj_energy + inst_proj_energy/D0_population
 
             end do
 
-! DEBUG CHECK ONLY.            
-!            if (nparticles /= sum(abs(walker_population(:tot_walkers)))) then
-!                write (6,*) 'huh', iproc
-!                write (6,*) nparticles, sum(abs(walker_population(:tot_walkers)))
-!                stop
-!            end if
-
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old)
+
+            call fciqmc_interact(ireport, soft_exit)
+            if (soft_exit) exit
 
         end do
 
@@ -376,11 +351,12 @@ contains
         use annihilation, only: direct_annihilation_initiator
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
-        use determinants, only: det_info
+        use determinants, only: det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart
-        use system, only: nel, nalpha, nbeta, nvirt_alpha, nvirt_beta
+        use system, only: nel
         use spawning, only: create_spawned_particle_initiator
 
         ! It seems this interface block cannot go in a module when we're passing
@@ -419,7 +395,6 @@ contains
             end function sc0
         end interface
 
-        integer :: ierr
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
@@ -432,13 +407,10 @@ contains
         integer(i0) :: cas_mask(basis_length), cas_core(basis_length)
         integer :: bit_pos, bit_element
 
+        logical :: soft_exit
+
         ! Allocate det_info components.
-        allocate(cdet%f(basis_length), stat=ierr)
-        allocate(cdet%occ_list(nel), stat=ierr)
-        allocate(cdet%occ_list_alpha(nalpha), stat=ierr)
-        allocate(cdet%occ_list_beta(nbeta), stat=ierr)
-        allocate(cdet%unocc_list_alpha(nvirt_alpha), stat=ierr)
-        allocate(cdet%unocc_list_beta(nvirt_beta), stat=ierr)
+        call alloc_det_info(cdet)
 
         ! The complete active space (CAS) is given as (N_cas,N_active), where
         ! N_cas is the number of electrons in the N_active orbitals.
@@ -474,6 +446,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
+        call initial_fciqmc_status(update_proj_energy)
 
         do ireport = 1, nreport
 
@@ -541,6 +514,9 @@ contains
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old)
 
+            call fciqmc_interact(ireport, soft_exit)
+            if (soft_exit) exit
+
         end do
 
         if (parent) then
@@ -553,6 +529,58 @@ contains
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
 
     end subroutine do_ifciqmc
+
+    subroutine initial_fciqmc_status(update_proj_energy)
+
+        ! Calculate the projected energy based upon the initial walker
+        ! distribution (either via a restart or as set during initialisation)
+        ! and print out.
+
+        ! In:
+        !    update_proj_energy: relevant subroutine to update the projected
+        !        energy.  See the energy_evaluation module.
+
+        use parallel
+
+        interface
+            subroutine update_proj_energy(idet, inst_proj_energy)
+                use const, only: p
+                implicit none
+                integer, intent(in) :: idet
+                real(p), intent(inout) :: inst_proj_energy
+            end subroutine update_proj_energy
+        end interface
+
+        integer :: idet, ierr
+        integer :: ntot_particles
+        real(p) :: inst_proj_energy
+
+        ! Calculate the projected energy based upon the initial walker
+        ! distribution.
+        inst_proj_energy = 0.0_p
+        do idet = 1, tot_walkers 
+            call update_proj_energy(idet, inst_proj_energy)
+        end do 
+
+#ifdef PARALLEL
+        call mpi_allreduce(inst_proj_energy, proj_energy, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+#else
+        proj_energy = inst_proj_energy
+        ntot_particles = nparticles
+#endif 
+        
+        proj_energy = proj_energy/D0_population
+
+        if (parent) then
+            ! See also the format used in write_fciqmc_report if this is changed.
+            ! We prepend a # to make it easy to skip this point when do data
+            ! analysis.
+            write (6,'(1X,"#",3X,i8,4(f20.10,2X),i11)') &
+                    mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, ntot_particles
+        end if
+
+    end subroutine initial_fciqmc_status
 
     subroutine load_balancing_report()
 

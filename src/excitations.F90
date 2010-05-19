@@ -145,7 +145,7 @@ contains
 
     end function get_excitation
 
-    function get_excitation_level(f1, f2) result(level)
+    pure function get_excitation_level(f1, f2) result(level)
 
         ! In: 
         !    f1(basis_length): bit string representation of the Slater
@@ -173,7 +173,7 @@ contains
 
     end function get_excitation_level
 
-    subroutine find_excitation_permutation1(occ_list, excitation)
+    pure subroutine find_excitation_permutation1(occ_list, excitation)
 
         ! Find the parity of the permutation required to maximally line up
         ! a determinant with an excitation of it, as needed for use with the
@@ -232,7 +232,7 @@ contains
 
     end subroutine find_excitation_permutation1
 
-    subroutine find_excitation_permutation2(occ_list, excitation)
+    pure subroutine find_excitation_permutation2(occ_list, excitation)
 
         ! Find the parity of the permutation required to maximally line up
         ! a determinant with an excitation of it, as needed for use with the
@@ -327,7 +327,7 @@ contains
 
     end subroutine find_excitation_permutation2
 
-    subroutine create_excited_det(f_in, connection, f_out)
+    pure subroutine create_excited_det(f_in, connection, f_out)
 
         ! Generate a determinant from another determinant and the excitation
         ! information connecting the two determinants.
@@ -471,7 +471,7 @@ contains
 
     end function calc_pgen_hub_k
 
-    function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
+    pure function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
         ! Hubbard model in real space.

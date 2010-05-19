@@ -61,7 +61,7 @@ contains
             call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
         end if
 
-        if (.not.t_exact .and. direct_lanczos) then
+        if (.not.doing_calc(exact_diag) .and. direct_lanczos) then
             ! Didn't execute generate_hamil so need to set up
             ! the processor grid.
             proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
