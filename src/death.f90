@@ -60,7 +60,7 @@ contains
         else
             new_pop = current_pop - kill
         end if
-        nparticles = nparticles - kill
+        nparticles = nparticles - abs(current_pop) + abs(new_pop)
 
         walker_population(cpos) = new_pop
 

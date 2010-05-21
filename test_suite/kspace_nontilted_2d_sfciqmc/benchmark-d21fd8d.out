@@ -2,13 +2,13 @@
  Hubbard
 
  ================================================================
- Compiled on Apr 14 2010 at 22:13:38
+ Compiled on May 20 2010 at 17:49:33
  VCS BASE repository version:
-     7cdbd9ec04b16d24850fed50ef3f9809b21a54bd
+     d21fd8d2276465e87aebe49d4e5ec2cceeec22b7
  Working directory: 
-     /home/james/work/src/hubbard_fciqmc/test_suite/kspace_nontilted_2d_sfciqmc
- Started running on 14/04/2010 at 22:13:47
- Running on: mini-pintsize
+     /home/jss43/projects/hubbard_fciqmc/test_suite/kspace_nontilted_2d_sfciqmc
+ Started running on 20/05/2010 at 17:49:53
+ Running on: bea
  ================================================================
 
  Input options
@@ -40,16 +40,17 @@ seed 5234
  index   k-point      ms     kinetic energy
      1   ( 0, 0)      1     -4.00000000
      2   ( 0, 0)     -1     -4.00000000
-     3   ( 1, 0)      1     -0.00000000
-     4   ( 1, 0)     -1     -0.00000000
-     5   ( 0, 1)      1     -0.00000000
-     6   ( 0, 1)     -1     -0.00000000
+     3   ( 1, 0)      1      0.00000000
+     4   ( 1, 0)     -1      0.00000000
+     5   ( 0, 1)      1      0.00000000
+     6   ( 0, 1)     -1      0.00000000
      7   ( 1, 1)      1      4.00000000
      8   ( 1, 1)     -1      4.00000000
 
  Number of electrons: 2
  Number of basis functions: 8
  Total size of determinant space: 28
+ Bit-length of integers used to store determinant bit-strings: 32
 
  Symmetry information
  --------------------

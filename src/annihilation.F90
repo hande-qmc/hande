@@ -421,8 +421,9 @@ contains
                 if (spawned_walkers(basis_length+2,i) == 1) then
                     ! discard attempting spawnings from non-initiator walkers
                     ! onto unoccupied determinants.
+                    ! note that the number of particles (nparticles) was not
+                    ! updated at the time of spawning, so doesn't change.
                     nannihilate = nannihilate + 1
-                    nparticles = nparticles - abs(spawned_walkers(basis_length+1,i))
                 else
                     ! keep!
                     k = i - nannihilate
