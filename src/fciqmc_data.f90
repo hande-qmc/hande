@@ -271,7 +271,7 @@ contains
                 ! exceeded, and so this test can be skipped.
 !                if (nstack > stack_max) call stop_all('sort_spawned_lists', "parameter stack_max too small")
 
-                if (hi - i + 1 >= j - 1) then
+                if (hi - i + 1 >= j - lo) then
                     stack(2,nstack) = hi
                     stack(1,nstack) = i
                     hi = j - 1
