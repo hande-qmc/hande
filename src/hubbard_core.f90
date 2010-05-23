@@ -2,6 +2,8 @@ program hubbard_fciqmc
 
 implicit none
 
+real :: start_time
+
 call init_calc()
 
 call run_calc()
@@ -32,6 +34,8 @@ contains
         use utils, only: int_fmt
 
         call init_parallel()
+
+        call cpu_time(start_time)
 
         if (parent) then
             write (6,'(/,a8,/)') 'Hubbard'
@@ -100,15 +104,22 @@ contains
         use hubbard, only: end_basis_fns
         use determinants, only: end_determinants
         use diagonalisation, only: end_hamil
-        use parallel, only: end_parallel
+        use parallel, only: parent, end_parallel
         use hubbard_real, only: end_real_space_hub
         use symmetry, only: end_symmetry
+        use report, only: end_report
+
+        real :: end_time
 
         call end_system()
         call end_basis_fns()
         call end_symmetry()
         call end_determinants()
         call end_hamil()
+
+        call cpu_time(end_time)
+
+        if (parent) call end_report(end_time-start_time)
 
         if (system_type == hub_real) call end_real_space_hub()
 

@@ -151,13 +151,34 @@ contains
     write (6,'(1X,a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                "Started running on", date_values(3:1:-1), "at", date_values(5:7)
 
-    if (stat.eq.0) then
-        write (io_unit,'(a13,a)') 'Running on: ',trim(host)
-    end if
     write (io_unit,'(1X,64("="),/)')
 
     return 
 
     end subroutine environment_report
+
+    subroutine end_report(elapsed_time, io)
+
+    real, intent(in) :: elapsed_time
+    integer, intent(in), optional :: io
+    integer :: date_values(8)
+
+    if (present(io)) then
+        io_unit = io
+    else
+        io_unit = 6
+    end if
+
+    write (io_unit,'(1X,64("="))')
+
+    call date_and_time(VALUES=date_values)
+
+    write (io_unit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+               "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
+    write (io_unit,'(1X,a17,10X,f14.2,a1)') "Calculation took:", elapsed_time, "s"
+
+    write (io_unit,'(1X,64("="),/)')
+
+    end subroutine end_report
 
 end module report
