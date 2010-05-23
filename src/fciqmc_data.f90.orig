@@ -179,7 +179,7 @@ contains
 
     function spawning_rate(nattempts) result(rate)
 
-        use parallel!, only: nprocs
+        use parallel, only: nprocs
 
         ! Calculate the rate of spawning on the current processor.
         ! In:
@@ -193,14 +193,13 @@ contains
         real(p) :: rate
         integer, intent(in) :: nattempts
         integer :: nspawn
-        integer :: ierr
 
+<<<<<<< Updated upstream
         nspawn = sum(spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1))
-        if (nspawn /= 0) then
-            rate = real(nspawn,p)/nattempts
-        else
-            rate = 0.0_p
-        end if
+=======
+        nspawn = sum(spawning_head(:nprocs) - spawning_block_start(:nprocs))
+>>>>>>> Stashed changes
+        rate = real(nspawn,p)/nattempts
 
     end function spawning_rate
 

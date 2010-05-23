@@ -241,7 +241,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
-        integer :: nspawned
+        integer :: nspawned, nattempts
         type(excit) :: connection
 
         real(p) :: inst_proj_energy
@@ -261,18 +261,22 @@ contains
 
         do ireport = 1, nreport
 
-            ! Zero averaged projected energy.
+            ! Zero report cycle quantities.
             proj_energy = 0.0_p
+            rspawn = 0.0_p
 
             do icycle = 1, ncycles
 
-                ! Zero instantaneous projected energy.
+                ! Zero MC cycle quantities.
                 inst_proj_energy = 0.0_p
                 D0_population = 0
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
                 spawning_head = spawning_block_start
+
+                ! Number of spawning attempts that will be made.
+                nattempts = nparticles
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -299,6 +303,12 @@ contains
 
                 end do
 
+                ! Add the spawning rate (for the processor) to the running
+                ! total.
+                rspawn = rspawn + spawning_rate(nattempts)
+
+                ! D0_population is communicated in the direct_annihilation
+                ! algorithm for efficiency.
                 call direct_annihilation(sc0)
 
                 ! normalise projected energy and add to running total.
@@ -398,7 +408,7 @@ contains
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
-        integer :: nspawned
+        integer :: nspawned, nattempts
         type(excit) :: connection
 
         real(p) :: inst_proj_energy
@@ -450,18 +460,22 @@ contains
 
         do ireport = 1, nreport
 
-            ! Zero averaged projected energy.
+            ! Zero report cycle quantities.
             proj_energy = 0.0_p
+            rspawn = 0.0_p
 
             do icycle = 1, ncycles
 
-                ! Zero instantaneous projected energy.
+                ! Zero MC cycle quantities.
                 inst_proj_energy = 0.0_p
                 D0_population = 0
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
                 spawning_head = spawning_block_start
+
+                ! Number of spawning attempts that will be made.
+                nattempts = nparticles
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -499,6 +513,10 @@ contains
                     call stochastic_death(idet)
 
                 end do
+
+                ! Add the spawning rate (for the processor) to the running
+                ! total.
+                rspawn = rspawn + spawning_rate(nattempts)
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
