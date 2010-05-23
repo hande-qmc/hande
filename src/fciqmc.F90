@@ -126,9 +126,25 @@ contains
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-            write (6,'(1X,a44,'//int_fmt(D0_population,1)//')') &
+            write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
                               'Initial population on reference determinant:',D0_population
-            write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+            write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+            if (initiator) then
+                write (6,'(1X,a24)') 'Initiator method in use.'
+                write (6,'(1X,a36,1X,"(",'//int_fmt(CAS(1),0)//',",",'//int_fmt(CAS(2),0)//'")")')  &
+                    'CAS space of initiator determinants:',CAS
+                write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
+                    'Population for a determinant outside CAS space to be an initiator:', initiator_population
+            end if
+            write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
+            write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
+            write (6,'(1X,a88)') 'Average shift: the running average of the shift from when the shift was allowed to vary.'
+            write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
+                                 &Calculated at the end of each cycle.'
+            write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
+            write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+            write (6,'(1X,a49)') '# particles: current total population of walkers.'
+            write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
         end if
         
     end subroutine init_fciqmc
