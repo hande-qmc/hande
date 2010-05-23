@@ -201,6 +201,8 @@ contains
             end select
         end do ! end reading of input.
 
+        close(ir, status='keep')
+
         if (ios.gt.0) then
             if (parent) write (6,*) 'Problem reading input.'
             stop
