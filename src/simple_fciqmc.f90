@@ -117,11 +117,14 @@ contains
         integer :: ireport, icycle, iwalker, ipart
         integer :: nparticles, nparticles_old
         real(p) :: inst_proj_energy
+        real :: t1, t2
 
         ! from restart
         nparticles_old = nparticles_old_restart
 
         call write_fciqmc_report_header()
+
+        call cpu_time(t1)
 
         do ireport = 1, nreport
 
@@ -176,9 +179,13 @@ contains
             av_proj_energy = av_proj_energy + proj_energy
             ! Average projected energy
             proj_energy = proj_energy/ncycles
+
+            call cpu_time(t2)
             
             ! Output stats
-            call write_fciqmc_report(ireport, nparticles)
+            call write_fciqmc_report(ireport, nparticles, t2-t1)
+
+            t1 = t2
 
         end do
 

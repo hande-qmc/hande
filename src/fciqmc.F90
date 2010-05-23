@@ -264,6 +264,8 @@ contains
 
         logical :: soft_exit
 
+        real :: t1, t2
+
         ! Allocate det_info components.
         call alloc_det_info(cdet)
 
@@ -274,6 +276,9 @@ contains
 
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(update_proj_energy)
+
+        ! Initialise timer.
+        call cpu_time(t1)
 
         do ireport = 1, nreport
 
@@ -335,7 +340,14 @@ contains
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 
-            if (parent) call write_fciqmc_report(ireport, nparticles_old)
+            call cpu_time(t2)
+
+            ! t1 was the time at the previous iteration, t2 the current time.
+            ! t2-t1 is thus the time taken by this report loop.
+            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1)
+
+            ! cpu_time outputs an elapsed time, so update the reference timer.
+            t1 = t2
 
             call fciqmc_interact(ireport, soft_exit)
             if (soft_exit) exit
@@ -435,6 +447,8 @@ contains
 
         logical :: soft_exit
 
+        real :: t1, t2
+
         ! Allocate det_info components.
         call alloc_det_info(cdet)
 
@@ -473,6 +487,9 @@ contains
 
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(update_proj_energy)
+
+        ! Initialise timer.
+        call cpu_time(t1)
 
         do ireport = 1, nreport
 
@@ -546,7 +563,14 @@ contains
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 
-            if (parent) call write_fciqmc_report(ireport, nparticles_old)
+            call cpu_time(t2)
+
+            ! t1 was the time at the previous iteration, t2 the current time.
+            ! t2-t1 is thus the time taken by this report loop.
+            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1)
+
+            ! cpu_time outputs an elapsed time, so update the reference timer.
+            t1 = t2
 
             call fciqmc_interact(ireport, soft_exit)
             if (soft_exit) exit

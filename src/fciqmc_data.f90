@@ -443,19 +443,21 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        write (6,'(1X,a12,7X,a13,13X,a9,10X,a12,11X,a11,9X,a4,2X,a11,2X,a7)') &
-          '# iterations','Instant shift','Av. shift','Proj. Energy','Av. Proj. E','# D0','# particles','R_spawn'
+        write (6,'(1X,a12,7X,a13,13X,a9,10X,a12,11X,a11,9X,a4,2X,a11,2X,a7,2X,a4)') &
+          '# iterations','Instant shift','Av. shift','Proj. Energy','Av. Proj. E','# D0','# particles','R_spawn','time'
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(ireport, ntot_particles)
+    subroutine write_fciqmc_report(ireport, ntot_particles, elapsed_time)
 
         ! Write the report line at the end of a report loop.
         ! In:
         !    ireport: index of the report loop.
         !    ntot_particles: total number of particles in main walker list.
+        !    elapsed_time: time taken for the report loop.
 
         integer, intent(in) :: ireport, ntot_particles
+        real, intent(in) :: elapsed_time
         integer :: mc_cycles, vary_shift_reports, proj_energy_cycles
 
         mc_cycles = ireport*ncycles
@@ -464,10 +466,11 @@ contains
         vary_shift_reports = ireport - start_vary_shift - start_averaging_from
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,4(f20.10,2X),i11,2X,i11,3X,f6.4)') mc_cycles_done+mc_cycles, shift,   &
+        write (6,'(5X,i8,4(f20.10,2X),i11,2X,i11,3X,f6.4,2X,f4.2)') &
+                                             mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, proj_energy,         &
                                              av_proj_energy/proj_energy_cycles, D0_population, & 
-                                             ntot_particles, rspawn
+                                             ntot_particles, rspawn, elapsed_time/ncycles
 
     end subroutine write_fciqmc_report
 
