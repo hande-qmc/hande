@@ -443,7 +443,7 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        write (6,'(1X,a12,7X,a13,13X,a9,10X,a12,11X,a11,9X,a4,2X,a11,2X,a7,2X,a4)') &
+        write (6,'(1X,a12,3X,a13,4X,a9,7X,a12,5X,a11,9X,a4,2X,a11,2X,a7,2X,a4)') &
           '# iterations','Instant shift','Av. shift','Proj. Energy','Av. Proj. E','# D0','# particles','R_spawn','time'
 
     end subroutine write_fciqmc_report_header
@@ -466,7 +466,7 @@ contains
         vary_shift_reports = ireport - start_vary_shift - start_averaging_from
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,4(f20.10,2X),i11,2X,i11,3X,f6.4,2X,f4.2)') &
+        write (6,'(5X,i8,2X,4(f14.10,2X),i11,2X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, proj_energy,         &
                                              av_proj_energy/proj_energy_cycles, D0_population, & 

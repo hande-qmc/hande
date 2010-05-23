@@ -634,8 +634,8 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            write (6,'(1X,"#",3X,i8,4(f20.10,2X),i11)') &
-                    mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, ntot_particles
+            write (6,'(1X,"#",3X,i8,2X,4(f14.10,2X),i11,2X,i11,6X,a3,3X,a3)') &
+                    mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, D0_population, ntot_particles,'n/a','n/a'
         end if
 
     end subroutine initial_fciqmc_status
