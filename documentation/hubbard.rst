@@ -496,7 +496,9 @@ The following options are valid for FCIQMC calculations.
 
     Set the reference determinant to occupy the specified spin-orbitals.
     The index of each spin-orbital is printed out in the basis functions
-    section of the output.  This will be overridden by a restart file.
+    section of the output.  This will be overridden by a restart file and
+    in a simple_fciqmc calculation, where the determinant with the lowest
+    energy is set to the reference determinant.
 **reference_det_population** *pop*
     Integer.
 
