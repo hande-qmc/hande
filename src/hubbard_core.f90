@@ -28,10 +28,6 @@ contains
         use hubbard_real, only: init_real_space_hub
         use symmetry, only: init_symmetry
         use calc
-        use fciqmc, only: init_fciqmc
-        use simple_fciqmc, only: init_simple_fciqmc
-        use dSFMT_interface, only: dSFMT_init
-        use utils, only: int_fmt
 
         call init_parallel()
 
@@ -60,19 +56,6 @@ contains
 
         if (system_type == hub_real) call init_real_space_hub()
 
-        if (doing_calc(fciqmc_calc)) then
-            if (parent) then
-                write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
-                write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
-            end if
-            call dSFMT_init(seed + iproc)
-            if (doing_calc(simple_fciqmc_calc)) then
-                call init_simple_fciqmc()
-            else
-                call init_fciqmc()
-            end if
-        end if
-
     end subroutine init_calc
 
     subroutine run_calc()
@@ -81,15 +64,35 @@ contains
 
         use calc
         use diagonalisation, only: diagonalise
-        use fciqmc, only: fciqmc_main
-        use simple_fciqmc, only: do_simple_fciqmc
+        use dSFMT_interface, only: dSFMT_init
+        use fciqmc, only: init_fciqmc, fciqmc_main
+        use hilbert_space, only: estimate_hilbert_space
+        use parallel, only: iproc, parent
+        use simple_fciqmc, only: do_simple_fciqmc, init_simple_fciqmc
+        use utils, only: int_fmt
 
         if (doing_calc(exact_diag+lanczos_diag)) call diagonalise()
 
+        if (doing_calc(mc_hilbert_space)) then
+            if (parent) then
+                write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
+                write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
+            end if
+            call dSFMT_init(seed + iproc)
+            call estimate_hilbert_space()
+        end if
+
         if (doing_calc(fciqmc_calc)) then
+            if (parent) then
+                write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
+                write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
+            end if
+            call dSFMT_init(seed + iproc)
             if (doing_calc(simple_fciqmc_calc)) then
+                call init_simple_fciqmc()
                 call do_simple_fciqmc()
             else
+                call init_fciqmc()
                 call fciqmc_main()
             end if
         end if

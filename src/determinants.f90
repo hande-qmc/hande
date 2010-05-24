@@ -159,10 +159,10 @@ contains
 
         integer :: ierr
 
-        deallocate(dets_list, stat=ierr)
+        if (allocated(dets_list) deallocate(dets_list, stat=ierr)
         deallocate(bit_lookup, stat=ierr)
         deallocate(basis_lookup, stat=ierr)
-        deallocate(sym_space_size, stat=ierr)
+        if (allocated(sym_space_size) deallocate(sym_space_size, stat=ierr)
 
         if (write_determinants) close(det_unit, status='keep')
 
@@ -225,6 +225,10 @@ contains
         ! set_spin_polarisation).
         ! find_sym_space_size must be called first for each value of Ms before
         ! enumerating the determinant list.
+
+        ! This finds the exact size of the space.  See estimate_hilbert_space
+        ! for a Monte Carlo approach to estimating the size of the space (better
+        ! for large systems where we can't do FCI).
 
         use utils, only: binom_i
         use utils, only: int_fmt

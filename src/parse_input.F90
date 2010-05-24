@@ -3,6 +3,7 @@ module parse_input
 
 use parallel, only: parent
 use errors
+use hilbert_space
 use system
 use calc
 use lanczos
@@ -123,6 +124,9 @@ contains
             case('IFCIQMC')
                 calc_type = calc_type + fciqmc_calc
                 initiator = .true.
+            case('ESTIMATE_HILBERT_SPACE')
+                calc_type = calc_type + mc_hilbert_space
+                call readi(nhilbert_cycles)
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -299,6 +303,7 @@ contains
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)

@@ -17,6 +17,8 @@ integer, parameter :: lanczos_diag = 2**1
 ! Use the incredibly simple and naive FCIQMC or the optimised implementation?
 integer, parameter :: fciqmc_calc = 2**2
 integer, parameter :: simple_fciqmc_calc = 2**3
+! Estimate the size of the Hilbert space using Monte Carlo?
+integer, parameter :: mc_hilbert_space = 2**4
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
