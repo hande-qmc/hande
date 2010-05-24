@@ -227,6 +227,7 @@ contains
         if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
 
         if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
+        if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
 
         do ivec = 1, ndim
             do jvec = ivec+1, ndim
@@ -236,20 +237,24 @@ contains
             end do
         end do
 
-        if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
-        if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
-
-        if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
-
-        if (walker_length <= 0) call stop_all(this,'Walker length not positive.')
-        if (spawned_walker_length <= 0) call stop_all(this,'Spawned walker length not positive.')
-        if (tau <= 0) call stop_all(this,'Tau not positive.')
-        if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
-        if (allocated(occ_list0)) then
-            if (size(occ_list0) /= nel) call stop_all(this,'Number of electrons specified is different from &
-                                                           &number of electrons used in the reference determinant.')
+        if (doing_calc(lanczos_diag)) then
+            if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
+            if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
-        if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
+
+        if (doing_calc(fciqmc_calc)) then
+            if (.not.doing_calc(simple_fciqmc_calc)) then
+                if (walker_length <= 0) call stop_all(this,'Walker length not positive.')
+                if (spawned_walker_length <= 0) call stop_all(this,'Spawned walker length not positive.')
+            end if
+            if (tau <= 0) call stop_all(this,'Tau not positive.')
+            if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
+            if (allocated(occ_list0)) then
+                if (size(occ_list0) /= nel) call stop_all(this,'Number of electrons specified is different from &
+                                                           &number of electrons used in the reference determinant.')
+            end if
+            if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
+        end if
 
         if (parent) write (6,'(/,1X,13("-"),/)') 
 
