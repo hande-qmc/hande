@@ -159,10 +159,10 @@ contains
 
         integer :: ierr
 
-        if (allocated(dets_list) deallocate(dets_list, stat=ierr)
+        if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
         deallocate(bit_lookup, stat=ierr)
         deallocate(basis_lookup, stat=ierr)
-        if (allocated(sym_space_size) deallocate(sym_space_size, stat=ierr)
+        if (allocated(sym_space_size)) deallocate(sym_space_size, stat=ierr)
 
         if (write_determinants) close(det_unit, status='keep')
 
