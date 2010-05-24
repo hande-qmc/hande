@@ -93,8 +93,8 @@ contains
 
             ! Reference det
             H00 = hamil(ref_det,ref_det)
-            allocate(f0(basis_length), stat=ierr)
-            allocate(occ_list0(nel), stat=ierr)
+            if (.not.allocated(f0)) allocate(f0(basis_length), stat=ierr)
+            if (.not.allocated(occ_list0)) allocate(occ_list0(nel), stat=ierr)
             call decode_det(f0, occ_list0)
             f0 = dets_list(:,ref_det)
             walker_population(ref_det) = D0_population
