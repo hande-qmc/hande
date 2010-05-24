@@ -175,6 +175,34 @@ integer :: mc_cycles_done = 0, nparticles_old_restart = 0
 
 contains
 
+    !--- Initialisation. ---
+
+    subroutine set_reference_det()
+
+        ! Set the list of occupied orbitals in the reference determinant to be
+        ! the spin-orbitals with the lowest kinetic energy which satisfy the
+        ! spin polarisation.
+
+        ! Note: this is for testing only!  The symmetry input is currently
+        ! ignored.
+
+        ! This should be used as a last resort if the user doesn't specify
+        ! a reference determinant.
+
+        use system, only: nalpha, nbeta, nel
+        
+        integer :: i, ierr
+
+        ! Leave the reference determinant unchanged if it's already been
+        ! allocated (and presumably set).
+        if (.not.allocated(occ_list0)) then
+            allocate(occ_list0(nel), stat=ierr)
+            forall (i=1:nalpha) occ_list0(i) = 2*i-1
+            forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
+        end if
+
+    end subroutine set_reference_det
+
     !--- Statistics. ---
 
     function spawning_rate(nattempts) result(rate)

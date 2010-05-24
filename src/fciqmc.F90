@@ -25,7 +25,7 @@ contains
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use fciqmc_restart, only: read_restart
-        use system, only: nel, nalpha, nbeta, system_type, hub_real, hub_k
+        use system, only: nel, system_type, hub_real, hub_k
 
         integer :: ierr
         integer :: i, iproc_ref
@@ -81,21 +81,17 @@ contains
             tot_walkers = 1
             walker_population(tot_walkers) = D0_population
 
+            ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
             ! kinetic energy which satisfy the spin polarisation.
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
-            if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(nel), stat=ierr)
-                forall (i=1:nalpha) occ_list0(i) = 2*i-1
-                forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
-            end if
+            call set_reference_det()
 
             call encode_det(occ_list0, walker_dets(:,tot_walkers))
 
             walker_energies(tot_walkers) = 0.0_p
 
-            ! Reference det
             f0 = walker_dets(:,tot_walkers)
             ! Energy of reference determinant.
             select case(system_type)
