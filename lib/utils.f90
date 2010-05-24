@@ -12,8 +12,6 @@ contains
         ! Returns the binomial coefficient ^mC_n: the number of
         ! combinations of m things taken n at a time.
 
-        use const, only: dp
-
         integer :: binom
         integer, intent(in) :: m, n
         integer :: p,i, n1
@@ -31,6 +29,32 @@ contains
         end do
 
     end function binom_i
+
+    elemental function binom_r(m, n) result(binom)
+
+        ! ACM Algorithm 160 translated to Fortran.
+        ! Returns the binomial coefficient ^mC_n: the number of
+        ! combinations of m things taken n at a time.
+
+        use const, only: dp
+
+        real(dp) :: binom
+        integer, intent(in) :: m, n
+        integer :: p,i, n1
+
+        n1 = n
+        p = m - n1
+        if (n1 < p) then
+            p = n1
+            n1 = m - p
+        end if
+        binom = n1 + 1
+        if (p == 0) binom = 1
+        do i = 2, p
+            binom = (binom*(n1+i))/i
+        end do
+
+    end function binom_r
 
     function get_free_unit() result(free_unit)
 
