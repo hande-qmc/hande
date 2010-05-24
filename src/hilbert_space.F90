@@ -18,7 +18,7 @@ contains
         ! See find_sym_space_size for a dumb but exact enumeration of the size
         ! of the space (which is needed for FCI calculations).
 
-        use basis, only: basis_length, bit_lookup
+        use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns
         use calc, only: ms_in
         use const, only: dp
         use determinants, only: decode_det, set_spin_polarisation
@@ -60,6 +60,11 @@ contains
             do iel = 1, nel
                 ref_sym = sym_table((occ_list0(iel)+1)/2, ref_sym)
             end do
+
+            if (parent) then
+                write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+                call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+            end if
 
             naccept = 0
 
@@ -113,8 +118,14 @@ contains
             call mpi_gather(space_size, 1, mpi_real8, proc_space_size, 1, mpi_real8, root, mpi_comm_world, ierr)
             space_size = sum(proc_space_size)/nprocs
             sd_space_size = sqrt(sum((proc_space_size-space_size)**2))/(nprocs-1)
-            if (parent) write (6,'(1X,a41,1X,es10.4,1X,a3,1X,es10.4)') &
-                                 'Monte-Carlo estimate of size of space is:', space_size, '+/-', sd_space_size
+            if (parent) then
+                write (6,'(1X,a41,1X,es10.4)',advance='no') 'Monte-Carlo estimate of size of space is:', space_size
+                if (nprocs > 1) then
+                    write (6,'(1X,a3,1X,es10.4)') '+/-', sd_space_size
+                else
+                    write (6,'()')
+                end if
+            end if
 #else
             if (parent) write (6,'(1X,a41,1X,es10.4)') 'Monte-Carlo estimate of size of space is:', space_size
 #endif
