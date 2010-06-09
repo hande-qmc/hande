@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(Mii, population)
+    subroutine stochastic_death(Mii, population, tot_population)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -24,11 +24,11 @@ contains
         use dSFMT_interface, only: genrand_real2
 
         real(p), intent(in) :: Mii
-        integer, intent(inout) :: population
+        integer, intent(inout) :: population, tot_population
 
         real(p) :: pd
         real(dp) :: r
-        integer :: kill
+        integer :: kill, old_population
 
         ! Optimisation: the number of particles on a given determinant can die
         ! stochastically...
@@ -62,12 +62,13 @@ contains
         ! If kill is positive then particles are killed (i.e. the population
         ! should move towards zero).
         ! Also update the total number of particles on the processor.
+        old_population = population
         if (population < 0) then
             population = population + kill
         else
             population = population - kill
         end if
-        nparticles = nparticles - kill
+        tot_population = tot_population - abs(old_population) + abs(population)
 
     end subroutine stochastic_death
 

@@ -2,6 +2,8 @@ program hubbard_fciqmc
 
 implicit none
 
+real :: start_time
+
 call init_calc()
 
 call run_calc()
@@ -26,11 +28,10 @@ contains
         use hubbard_real, only: init_real_space_hub
         use symmetry, only: init_symmetry
         use calc
-        use fciqmc, only: init_fciqmc
-        use simple_fciqmc, only: init_simple_fciqmc
-        use dSFMT_interface, only: dSFMT_init
 
         call init_parallel()
+
+        call cpu_time(start_time)
 
         if (parent) then
             write (6,'(/,a8,/)') 'Hubbard'
@@ -55,15 +56,6 @@ contains
 
         if (system_type == hub_real) call init_real_space_hub()
 
-        if (doing_calc(fciqmc_calc)) then
-            call dSFMT_init(seed + iproc)
-            if (doing_calc(simple_fciqmc_calc)) then
-                call init_simple_fciqmc()
-            else
-                call init_fciqmc()
-            end if
-        end if
-
     end subroutine init_calc
 
     subroutine run_calc()
@@ -72,15 +64,35 @@ contains
 
         use calc
         use diagonalisation, only: diagonalise
-        use fciqmc, only: fciqmc_main
-        use simple_fciqmc, only: do_simple_fciqmc
+        use dSFMT_interface, only: dSFMT_init
+        use fciqmc, only: init_fciqmc, fciqmc_main
+        use hilbert_space, only: estimate_hilbert_space
+        use parallel, only: iproc, parent
+        use simple_fciqmc, only: do_simple_fciqmc, init_simple_fciqmc
+        use utils, only: int_fmt
 
         if (doing_calc(exact_diag+lanczos_diag)) call diagonalise()
 
+        if (doing_calc(mc_hilbert_space)) then
+            if (parent) then
+                write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
+                write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
+            end if
+            call dSFMT_init(seed + iproc)
+            call estimate_hilbert_space()
+        end if
+
         if (doing_calc(fciqmc_calc)) then
+            if (parent) then
+                write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
+                write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
+            end if
+            call dSFMT_init(seed + iproc)
             if (doing_calc(simple_fciqmc_calc)) then
+                call init_simple_fciqmc()
                 call do_simple_fciqmc()
             else
+                call init_fciqmc()
                 call fciqmc_main()
             end if
         end if
@@ -95,15 +107,22 @@ contains
         use hubbard, only: end_basis_fns
         use determinants, only: end_determinants
         use diagonalisation, only: end_hamil
-        use parallel, only: end_parallel
+        use parallel, only: parent, end_parallel
         use hubbard_real, only: end_real_space_hub
         use symmetry, only: end_symmetry
+        use report, only: end_report
+
+        real :: end_time
 
         call end_system()
         call end_basis_fns()
         call end_symmetry()
         call end_determinants()
         call end_hamil()
+
+        call cpu_time(end_time)
+
+        if (parent) call end_report(end_time-start_time)
 
         if (system_type == hub_real) call end_real_space_hub()
 

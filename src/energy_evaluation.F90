@@ -24,7 +24,7 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
 
-        use fciqmc_data, only: nparticles, target_particles, ncycles
+        use fciqmc_data, only: nparticles, target_particles, ncycles, rspawn
         use fciqmc_data, only: proj_energy, av_proj_energy, shift, av_shift
         use fciqmc_data, only: vary_shift, start_vary_shift
 
@@ -34,16 +34,19 @@ contains
         integer, intent(inout) :: ntot_particles_old
 
 #ifdef PARALLEL
-        real(dp) :: ir(2), ir_sum(2)
+        integer, parameter :: n = 3
+        real(dp) :: ir(n), ir_sum(n)
         integer :: ntot_particles, ierr
 
             ! Need to sum the number of particles and the projected energy over
             ! all processors.
             ir(1) = nparticles
             ir(2) = proj_energy
-            call mpi_allreduce(ir, ir_sum, 2, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            ir(3) = rspawn
+            call mpi_allreduce(ir, ir_sum, n, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1))
             proj_energy = ir_sum(2)
+            rspawn = ir_sum(3)
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old, ntot_particles, ncycles)
@@ -68,6 +71,8 @@ contains
             av_proj_energy = av_proj_energy + proj_energy
             ! average projected energy over report loop.
             proj_energy = proj_energy/ncycles
+            ! average spawning rate over report loop and processor.
+            rspawn = rspawn/(ncycles*nprocs)
 
     end subroutine update_energy_estimators
 

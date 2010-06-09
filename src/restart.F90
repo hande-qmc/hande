@@ -127,7 +127,6 @@ contains
         ! Read in the main walker list from file.
 
         use errors, only: stop_all
-        use parallel, only: parent
         use hashing, only: murmurhash_bit_string
 
         use basis, only: basis_length
@@ -182,7 +181,7 @@ contains
 #ifdef PARALLEL
         global_tot_walkers = tot_walkers
         tot_walkers = 0
-        ! Read in walkers to spawning
+        ! Read in walkers to spawning arrays.
         ! Restart file might have been produced with a different number of
         ! processors, thus need to hash walkers again to choose which
         ! processor to send each determinant to.
@@ -223,17 +222,15 @@ contains
                               mpi_comm_world, ierr)
             send_counts = send_counts*spawned_size
             send_displacements = send_displacements*spawned_size
-            if (parent) then
-                call mpi_scatterv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
-                                  MPI_IN_PLACE, nread, mpi_preal, root, mpi_comm_world, ierr) 
-            else
-                call mpi_scatterv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
-                                  spawned_walkers, nread, mpi_preal, root, mpi_comm_world, ierr) 
-            end if
+            ! Easy to scatter into a different array.  Helpfully we already need
+            ! spawned_walkers_recvd to be allocated for parallel calculations.
+            ! :-)
+            call mpi_scatterv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
+                              spawned_walkers_recvd, spawned_size*nread, mpi_det_integer, root, mpi_comm_world, ierr) 
             ! Transfer from spawned arrays to main walker arrays.
             do i = 1, nread
-                walker_dets(:,i+tot_walkers) = spawned_walkers(:basis_length,i)
-                walker_population(1,i+tot_walkers) = spawned_walkers(spawned_pop,i)
+                walker_dets(:,i+tot_walkers) = spawned_walkers_recvd(:basis_length,i)
+                walker_population(1,i+tot_walkers) = spawned_walkers_recvd(basis_length+1,i)
             end do
             tot_walkers = tot_walkers + nread
 
@@ -251,6 +248,12 @@ contains
         call mpi_bcast(occ_list0, nel, mpi_integer, root, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_integer, root, mpi_comm_world, ierr)
         call mpi_bcast(H00, 1, mpi_preal, root, mpi_comm_world, ierr)
+        ! Evaluate quantities based upon data read from restart file.
+        if (nprocs > 1) then
+            D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+        else
+            D0_proc = iproc
+        end if
 #else
         do i = 1, tot_walkers
             read (io,*) walker_dets(:,i), walker_population(1,i), walker_energies(i)

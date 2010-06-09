@@ -492,11 +492,14 @@ The following options are valid for FCIQMC calculations.
     this can lead to using a 'bad' reference determinant which is a long way
     from the ground state energy. This is particularly true when using the real
     space formulation of the Hubbard model, as it causes as many sites as
-    possible to be doubly occupied.
+    possible to be doubly occupied.  Further, the default ignores any value of
+    the symmetry as defined by the **sym** input option.
 
     Set the reference determinant to occupy the specified spin-orbitals.
     The index of each spin-orbital is printed out in the basis functions
-    section of the output.  This will be overridden by a restart file.
+    section of the output.  This will be overridden by a restart file and
+    in a simple_fciqmc calculation, where the determinant with the lowest
+    energy is set to the reference determinant.
 **reference_det_population** *pop*
     Integer.
 

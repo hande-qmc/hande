@@ -100,14 +100,13 @@ contains
         ! they are stored as bit strings, lookup arrays for converting from
         ! integer list of orbitals to bit strings and vice versa.
 
-        use comb_m, only: binom
+        use utils, only: binom_i
         use utils, only: get_free_unit, int_fmt
 
         integer :: i, bit_pos, bit_element, ierr
         character(4) :: fmt1(4)
-        integer(i0) :: test
 
-        tot_ndets = binom(nbasis, nel)
+        tot_ndets = binom_i(nbasis, nel)
 
         ! See note in basis.
         basis_length = nbasis/i0_length
@@ -160,10 +159,10 @@ contains
 
         integer :: ierr
 
-        deallocate(dets_list, stat=ierr)
+        if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
         deallocate(bit_lookup, stat=ierr)
         deallocate(basis_lookup, stat=ierr)
-        deallocate(sym_space_size, stat=ierr)
+        if (allocated(sym_space_size)) deallocate(sym_space_size, stat=ierr)
 
         if (write_determinants) close(det_unit, status='keep')
 
@@ -227,7 +226,11 @@ contains
         ! find_sym_space_size must be called first for each value of Ms before
         ! enumerating the determinant list.
 
-        use comb_m, only: binom
+        ! This finds the exact size of the space.  See estimate_hilbert_space
+        ! for a Monte Carlo approach to estimating the size of the space (better
+        ! for large systems where we can't do FCI).
+
+        use utils, only: binom_i
         use utils, only: int_fmt
         use bit_utils, only: first_perm, bit_permutation
         use symmetry, only: nsym, sym_table
@@ -239,8 +242,8 @@ contains
 
         allocate(sym_space_size(nsym), stat=ierr)
 
-        nbeta_combinations = binom(nbasis/2, nbeta)
-        nalpha_combinations = binom(nbasis/2, nalpha)
+        nbeta_combinations = binom_i(nbasis/2, nbeta)
+        nalpha_combinations = binom_i(nbasis/2, nalpha)
 
         if (system_type == hub_real) then
 
@@ -318,7 +321,7 @@ contains
         !         wavevector (up to a reciprocal lattice vector) are stored.
         !         Ignored for the real space formulation of the Hubbard model.
 
-        use comb_m, only: binom
+        use utils, only: binom_i
         use errors, only: stop_all
         use utils, only: get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation
@@ -334,8 +337,8 @@ contains
 
         if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
 
-        nbeta_combinations = binom(nbasis/2, nbeta)
-        nalpha_combinations = binom(nbasis/2, nalpha)
+        nbeta_combinations = binom_i(nbasis/2, nbeta)
+        nalpha_combinations = binom_i(nbasis/2, nalpha)
 
         ndets = sym_space_size(ksum)
 

@@ -2,13 +2,13 @@
  Hubbard
 
  ================================================================
- Compiled on Apr 14 2010 at 22:13:38
+ Compiled on May 20 2010 at 17:49:33
  VCS BASE repository version:
-     7cdbd9ec04b16d24850fed50ef3f9809b21a54bd
+     d21fd8d2276465e87aebe49d4e5ec2cceeec22b7
  Working directory: 
-     /home/james/work/src/hubbard_fciqmc/test_suite/rspace_rectangle_2d_lanczos
- Started running on 14/04/2010 at 22:13:40
- Running on: mini-pintsize
+     /home/jss43/projects/hubbard_fciqmc/test_suite/rspace_rectangle_2d_lanczos
+ Started running on 20/05/2010 at 17:49:53
+ Running on: bea
  ================================================================
 
  Input options
@@ -39,6 +39,7 @@ lanczos_solns 6
  Number of electrons: 2
  Number of basis functions: 4
  Total size of determinant space: 6
+ Bit-length of integers used to store determinant bit-strings: 32
 
  Diagonalisation
  ===============
@@ -57,11 +58,12 @@ lanczos_solns 6
 
  Performing Lanczos diagonalisation...
 
- TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (
+           4 )
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/04/14 22:13:40.600 (+01:00)
+                                        2010/05/20 17:49:53.065 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -69,13 +71,14 @@ Problem size:                           4 (PE:   0),           4 (Global)
 Convergence tolerance:          1.490E-08 (rel),       1.122E-07 (abs)
 Maximum basis size:                    40
 Restarting scheme:                      0
-Number of re-orthogonalizations         4
+Number of re-orthogonalizations         6
 Number of (re)start loops:              1
+Number of random vectors used:          1
 Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
-Restarting:             4.0000E-03 sec,  3.2000E+04 FLOP/S ( 1.2800E+02 FLOP)
-TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+Restarting:             1.0000E-04 sec,  1.2800E+06 FLOP/S ( 1.2800E+02 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 

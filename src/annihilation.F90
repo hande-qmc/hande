@@ -147,7 +147,7 @@ contains
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
         integer :: s(2,0:nprocs-1)
         integer :: r(2,0:nprocs-1)
-        integer :: i, step, ierr
+        integer :: i, ierr
         integer(i0), pointer :: tmp_walkers(:,:)
 
         ! Send spawned walkers to the processor which "owns" them and receive
@@ -421,8 +421,9 @@ contains
                 if (spawned_walkers(spawned_parent,i) == 1) then
                     ! discard attempting spawnings from non-initiator walkers
                     ! onto unoccupied determinants.
+                    ! note that the number of particles (nparticles) was not
+                    ! updated at the time of spawning, so doesn't change.
                     nannihilate = nannihilate + 1
-                    nparticles = nparticles - abs(spawned_walkers(spawned_pop,i))
                 else
                     ! keep!
                     k = i - nannihilate

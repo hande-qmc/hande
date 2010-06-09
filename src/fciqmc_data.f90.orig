@@ -28,9 +28,6 @@ integer :: target_particles = 10000
 ! True if doing initiator-FCIQMC rather than standard FCIQMC.
 logical :: initiator = .false.
 
-! True if doing Hellmann--Feynmann sampling.
-logical :: hfs = .false.
-
 !--- Input data: initiator-FCIQMC ---
 
 integer :: CAS(2) = (/ 0,0 /)
@@ -82,43 +79,26 @@ integer :: tot_walkers
 integer :: nparticles
 
 ! Walker information: main list.
-! sampling_size is one for each quantity sampled (i.e. 1 for standard
-! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynmann sampling).
-integer :: sampling_size
 ! a) determinants
 integer(i0), allocatable :: walker_dets(:,:) ! (basis_length, walker_length)
 ! b) walker population
-integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
+integer, allocatable :: walker_population(:) ! (walker_length)
 ! c) Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 ! K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
 ! reference determinant.
-real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
+real(p), allocatable :: walker_energies(:)
 
 ! Walker information: spawned list.
+! a) array size.
+! spawned_size is basis_length+1 for FCIQMC and basis_length+2 for initiator-FCIQMC.
+! spawned_walkers*(:basis_length,i) gives the determinant of the spawned walker.
+! spawned_walkers*(basis_length+1,i) gives the population of the spawned walker.
+! spawned_walkers*(basis_length+2,i) gives information about the parent of the spawned walker (initiator-FCIQMC only).
 ! By combining the info in with the determinant, we can reduce the number of MPI
 ! communication calls during annihilation.
-! a) array size.
-! The size of each element in the spawned_walkers arrays depend upon what
-! calculation is being done.  Each element has at least basis_length elements.
-! * FCIQMC requires an additional element to store the population of the spawned
-! walker.
-! * initiator-FCIQMC requires a further additional element for information
-! about the parent of the spawned walker.
-! * Hellmann--Feynmann sampling requires a further additional element for the
-! population of the spawned Hellmann--Feynmann walkers.
-
-! spawned_walkers*(:basis_length,i) gives the determinant of the spawned walker.
-! spawned_walkers*(spawned_pop,i) gives the population of the spawned walker.
-! spawned_walkers*(spawned_hf_pop,i) gives the population of the spawned walker
-! (Hellmann--Feynmann sampling only).
-! spawned_walkers*(spawned_parent,i) gives information about the parent of the
-! spawned walker (initiator-FCIQMC only).
-! spawned_hf_pop (if it exists) will always be equal to spawned_pop+1.
-
 ! In simple_fciqmc we only need to store the walker populations, so spawned_size
 ! is 1.
 integer :: spawned_size
-integer :: spawned_pop, spawned_parent, spawned_hf_pop
 ! b) determinants.
 integer(i0), allocatable, target :: spawned_walkers1(:,:) ! (spawned_size, spawned_walker_length)
 integer(i0), allocatable, target :: spawned_walkers2(:,:) ! (spawned_size, spawned_walker_length)
@@ -195,39 +175,11 @@ integer :: mc_cycles_done = 0, nparticles_old_restart = 0
 
 contains
 
-    !--- Initialisation. ---
-
-    subroutine set_reference_det()
-
-        ! Set the list of occupied orbitals in the reference determinant to be
-        ! the spin-orbitals with the lowest kinetic energy which satisfy the
-        ! spin polarisation.
-
-        ! Note: this is for testing only!  The symmetry input is currently
-        ! ignored.
-
-        ! This should be used as a last resort if the user doesn't specify
-        ! a reference determinant.
-
-        use system, only: nalpha, nbeta, nel
-        
-        integer :: i, ierr
-
-        ! Leave the reference determinant unchanged if it's already been
-        ! allocated (and presumably set).
-        if (.not.allocated(occ_list0)) then
-            allocate(occ_list0(nel), stat=ierr)
-            forall (i=1:nalpha) occ_list0(i) = 2*i-1
-            forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
-        end if
-
-    end subroutine set_reference_det
-
     !--- Statistics. ---
 
     function spawning_rate(nattempts) result(rate)
 
-        use parallel!, only: nprocs
+        use parallel, only: nprocs
 
         ! Calculate the rate of spawning on the current processor.
         ! In:
@@ -241,14 +193,13 @@ contains
         real(p) :: rate
         integer, intent(in) :: nattempts
         integer :: nspawn
-        integer :: ierr
 
+<<<<<<< Updated upstream
         nspawn = sum(spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1))
-        if (nspawn /= 0) then
-            rate = real(nspawn,p)/nattempts
-        else
-            rate = 0.0_p
-        end if
+=======
+        nspawn = sum(spawning_head(:nprocs) - spawning_block_start(:nprocs))
+>>>>>>> Stashed changes
+        rate = real(nspawn,p)/nattempts
 
     end function spawning_rate
 
@@ -491,21 +442,19 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        write (6,'(1X,a12,3X,a13,4X,a9,7X,a12,5X,a11,9X,a4,2X,a11,2X,a7,2X,a4)') &
-          '# iterations','Instant shift','Av. shift','Proj. Energy','Av. Proj. E','# D0','# particles','R_spawn','time'
+        write (6,'(1X,a12,7X,a13,13X,a9,10X,a12,11X,a11,9X,a4,2X,a11,2X,a7)') &
+          '# iterations','Instant shift','Av. shift','Proj. Energy','Av. Proj. E','# D0','# particles','R_spawn'
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(ireport, ntot_particles, elapsed_time)
+    subroutine write_fciqmc_report(ireport, ntot_particles)
 
         ! Write the report line at the end of a report loop.
         ! In:
         !    ireport: index of the report loop.
         !    ntot_particles: total number of particles in main walker list.
-        !    elapsed_time: time taken for the report loop.
 
         integer, intent(in) :: ireport, ntot_particles
-        real, intent(in) :: elapsed_time
         integer :: mc_cycles, vary_shift_reports, proj_energy_cycles
 
         mc_cycles = ireport*ncycles
@@ -514,11 +463,10 @@ contains
         vary_shift_reports = ireport - start_vary_shift - start_averaging_from
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,2X,4(f14.10,2X),i11,2X,i11,3X,f6.4,2X,f4.2)') &
-                                             mc_cycles_done+mc_cycles, shift,   &
+        write (6,'(5X,i8,4(f20.10,2X),i11,2X,i11,3X,f6.4)') mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, proj_energy,         &
                                              av_proj_energy/proj_energy_cycles, D0_population, & 
-                                             ntot_particles, rspawn, elapsed_time/ncycles
+                                             ntot_particles, rspawn
 
     end subroutine write_fciqmc_report
 
