@@ -197,4 +197,33 @@ contains
 
     end subroutine set_orb
 
+    subroutine set_orb_mask(lmag2, orb_mask)
+
+        ! Set a mask with bits set for symmetry-related orbitals.
+
+        ! In:
+        !    lmag2: magnitude squared of the l quantum vector (component of the
+        !      basis_fn type) which corresponds to the desired set of
+        !      symmetry-related orbitals.
+        ! Out:
+        !    orb_mask: bit-string where only bits are set that correspond to the
+        !      set of symmetry-related orbitals with input value of lmag2.
+
+        integer, intent(in) :: lmag2
+        integer(i0), intent(out) :: orb_mask(basis_length)
+
+        integer :: i, ipos, iel
+
+        orb_mask = 0
+
+        do i = 1, nbasis
+            if (dot_product(basis_fns(i)%l,basis_fns(i)%l) == lmag2) then
+                ipos = bit_lookup(1,i)
+                iel = bit_lookup(2,i)
+                orb_mask(iel) = ibset(orb_mask(iel), ipos)
+            end if
+        end do
+
+    end subroutine set_orb_mask
+
 end module basis
