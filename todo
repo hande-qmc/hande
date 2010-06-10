@@ -4,9 +4,8 @@
 4.  checktest.
 5.  parallel direct lanczos.
 6.  UEG.
-7.  Improve selection of calculation: bit string variable rather than many logic flags.
-8.  Better name?
-9.  CuO2? t-J?
+7.  Better name?
+8.  CuO2? t-J?
 
 FCIQMC
 ------
