@@ -2,13 +2,13 @@
  Hubbard
 
  ================================================================
- Compiled on Apr 14 2010 at 22:13:38
+ Compiled on May 20 2010 at 17:49:33
  VCS BASE repository version:
-     7cdbd9ec04b16d24850fed50ef3f9809b21a54bd
+     d21fd8d2276465e87aebe49d4e5ec2cceeec22b7
  Working directory: 
-     /home/james/work/src/hubbard_fciqmc/test_suite/rspace_1d_fciqmc
- Started running on 14/04/2010 at 22:14:08
- Running on: mini-pintsize
+     /home/jss43/projects/hubbard_fciqmc/test_suite/rspace_1d_fciqmc
+ Started running on 20/05/2010 at 17:49:55
+ Running on: bea
  ================================================================
 
  Input options
@@ -59,6 +59,7 @@ sym 1
  Number of electrons: 3
  Number of basis functions: 6
  Total size of determinant space: 20
+ Bit-length of integers used to store determinant bit-strings: 32
 
  FCIQMC
  ------
@@ -72,6 +73,7 @@ sym 1
  Note that FCIQMC calculates the correlation energy relative to |D0>.
 
  # iterations       Instant shift             Av. shift          Proj. Energy           Av. Proj. E  # particles
+ #       2500        0.0000000000          0.0000000000         -0.1327433628          0.0000000000          222
          2525        0.0000000000          0.0000000000         -0.1141027183         -0.1141027183          226
          2550        0.0000000000          0.0000000000         -0.1056830759         -0.1098928971          233
          2575        0.0000000000          0.0000000000         -0.1153231269         -0.1117029737          244

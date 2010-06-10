@@ -3,6 +3,7 @@ module parse_input
 
 use parallel, only: parent
 use errors
+use hilbert_space
 use system
 use calc
 use lanczos
@@ -25,6 +26,7 @@ contains
 #endif
     
         use input
+        use utils, only: get_free_unit
 
 #ifdef NAGF95
         use f90_unix_env, ONLY: getarg,iargc
@@ -41,14 +43,14 @@ contains
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
-            ir = 1
+            ir = get_free_unit()
             call GetArg(1, cInp)
             inquire(file=cInp, exist=t_exists)
             if (.not.t_exists) then
                 write (6,'(a21,1X,a)') 'File does not exist:',trim(cInp)
                 stop
             end if
-            open(1, file=cInp, status='old', form='formatted', iostat=ios)
+            open(ir, file=cInp, status='old', form='formatted', iostat=ios)
         else
             if (parent) write (6,'(a19)') 'Reading from STDIN'
             ir = 5
@@ -122,6 +124,9 @@ contains
             case('IFCIQMC')
                 calc_type = calc_type + fciqmc_calc
                 initiator = .true.
+            case('ESTIMATE_HILBERT_SPACE')
+                calc_type = calc_type + mc_hilbert_space
+                call readi(nhilbert_cycles)
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -155,6 +160,8 @@ contains
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
+            ! use a negative number to indicate that the restart numbers have
+            ! been fixed.
             case('RESTART')
                 restart = .true.
                 if (item /= nitems) then
@@ -200,6 +207,8 @@ contains
             end select
         end do ! end reading of input.
 
+        close(ir, status='keep')
+
         if (ios.gt.0) then
             if (parent) write (6,*) 'Problem reading input.'
             stop
@@ -215,22 +224,41 @@ contains
         use const
 
         integer :: ivec, jvec
+        character(*), parameter :: this='check_input'
 
-        if (.not.(allocated(lattice))) call stop_all('check_input', 'Lattice vectors not provided')
+        if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
 
-        if (ndim > 3) call stop_all('check_input', 'Limited to 1,  2 or 3 dimensions')
+        if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
 
-        if (nel <= 0) call stop_all('check_input','Number of electrons must be positive.')
+        if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
+        if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
 
         do ivec = 1, ndim
             do jvec = ivec+1, ndim
                 if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
-                    call stop_all('check_input', 'Lattice vectors are not orthogonal.')
+                    call stop_all(this, 'Lattice vectors are not orthogonal.')
                 end if
             end do
         end do
 
-        if (nel > 2*nsites) call stop_all('check_input', 'More than two electrons per site.')
+        if (doing_calc(lanczos_diag)) then
+            if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
+            if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
+        end if
+
+        if (doing_calc(fciqmc_calc)) then
+            if (.not.doing_calc(simple_fciqmc_calc)) then
+                if (walker_length <= 0) call stop_all(this,'Walker length not positive.')
+                if (spawned_walker_length <= 0) call stop_all(this,'Spawned walker length not positive.')
+            end if
+            if (tau <= 0) call stop_all(this,'Tau not positive.')
+            if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
+            if (allocated(occ_list0)) then
+                if (size(occ_list0) /= nel) call stop_all(this,'Number of electrons specified is different from &
+                                                           &number of electrons used in the reference determinant.')
+            end if
+            if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
+        end if
 
         if (parent) write (6,'(/,1X,13("-"),/)') 
 
@@ -275,6 +303,7 @@ contains
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)

@@ -2,13 +2,13 @@
  Hubbard
 
  ================================================================
- Compiled on Apr 14 2010 at 22:13:38
+ Compiled on May 20 2010 at 17:49:33
  VCS BASE repository version:
-     7cdbd9ec04b16d24850fed50ef3f9809b21a54bd
+     d21fd8d2276465e87aebe49d4e5ec2cceeec22b7
  Working directory: 
-     /home/james/work/src/hubbard_fciqmc/test_suite/kspace_nontilted_2d_ifciqmc
- Started running on 14/04/2010 at 22:14:15
- Running on: mini-pintsize
+     /home/jss43/projects/hubbard_fciqmc/test_suite/kspace_nontilted_2d_fciqmc
+ Started running on 20/05/2010 at 17:49:53
+ Running on: bea
  ================================================================
 
  Input options
@@ -16,11 +16,7 @@
 
 k_space
 
-ifciqmc
-( By setting the initiator population to 0, i.e. the population at which we )
-( consider a determinant to be an initiator, we should recapture the fciqmc )
-( result. )
-initiator_population 0
+fciqmc
 
 lattice
 2 0
@@ -50,16 +46,17 @@ sym 1
  index   k-point      ms     kinetic energy
      1   ( 0, 0)      1     -4.00000000
      2   ( 0, 0)     -1     -4.00000000
-     3   ( 1, 0)      1     -0.00000000
-     4   ( 1, 0)     -1     -0.00000000
-     5   ( 0, 1)      1     -0.00000000
-     6   ( 0, 1)     -1     -0.00000000
+     3   ( 1, 0)      1      0.00000000
+     4   ( 1, 0)     -1      0.00000000
+     5   ( 0, 1)      1      0.00000000
+     6   ( 0, 1)     -1      0.00000000
      7   ( 1, 1)      1      4.00000000
      8   ( 1, 1)     -1      4.00000000
 
  Number of electrons: 2
  Number of basis functions: 8
  Total size of determinant space: 28
+ Bit-length of integers used to store determinant bit-strings: 32
 
  Symmetry information
  --------------------
@@ -89,6 +86,7 @@ sym 1
  Note that FCIQMC calculates the correlation energy relative to |D0>.
 
  # iterations       Instant shift             Av. shift          Proj. Energy           Av. Proj. E  # particles
+ #          0        0.0100000000          0.0000000000          0.0000000000          0.0000000000           10
            25        0.0100000000          0.0000000000         -0.0080000000         -0.0080000000           10
            50        0.0100000000          0.0000000000         -0.0130000000         -0.0105000000           11
            75        0.0100000000          0.0000000000         -0.0280000000         -0.0163333333           11

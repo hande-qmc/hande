@@ -24,7 +24,10 @@ integer :: nprocs
 ! Processor grid dimensions (for use with scalapack and blacs)
 integer :: nproc_cols, nproc_rows
 
-! True if the processor is the root (i.e. iproc==0) processor.
+! Choose root processor to have rank 0.
+integer, parameter :: root = 0
+
+! True if the processor is the root (i.e. iproc==root) processor.
 ! In particular, output should only be performed on the parent processor.
 logical :: parent
 
@@ -90,7 +93,7 @@ contains
         nprocs = 1
 #endif
 
-        parent = iproc == 0 
+        parent = iproc == root
 
     end subroutine init_parallel
 

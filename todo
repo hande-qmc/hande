@@ -16,8 +16,7 @@ FCIQMC
 FCIQMC parallelisation
 ----------------------
 
-a) Restart.
-b) Investigate load-balancing issues.
+a) Investigate load-balancing issues.
 
 Optimisations
 -------------

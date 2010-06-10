@@ -228,6 +228,12 @@ tests:
 qtests:
 \tcd test_suite && testcode.py --quiet
 
+# Perform sanity tests on the source code.
+check:
+\ttools/check_keywords.sh
+\t@echo
+\ttools/check_distribute.py
+
 qt: qtests
 
 # Generate dependency file.
@@ -245,6 +251,7 @@ help:
 \t@echo "  new                  Remove all previously compiled objects and re-compile."
 \t@echo "  tests                Run test suite."
 \t@echo "  qtests               Run test suite in quiet mode."
+\t@echo "  check                Run check_keywords.sh and check_distribute.py scripts."
 \t@echo "  depend               Produce the .depend file containing the dependencies."
 \t@echo "                       Requires the makedepf90 tool to be installed."
 \t@echo "  help                 Print this help message."

@@ -25,7 +25,7 @@ contains
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use fciqmc_restart, only: read_restart
-        use system, only: nel, nalpha, nbeta, system_type, hub_real, hub_k
+        use system, only: nel, system_type, hub_real, hub_k
 
         integer :: ierr
         integer :: i, iproc_ref
@@ -66,9 +66,7 @@ contains
         ! of processors is 1.
         allocate(spawning_block_start(0:max(1,nprocs-1)), stat=ierr)
         step = spawned_walker_length/nprocs
-        do i = 0, nprocs - 1
-            spawning_block_start(i) = i*step
-        end do
+        forall (i=0:nprocs-1) spawning_block_start(i) = i*step
 
         ! Set spin variables.
         call set_spin_polarisation(ms_in)
@@ -83,21 +81,17 @@ contains
             tot_walkers = 1
             walker_population(tot_walkers) = D0_population
 
+            ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
             ! kinetic energy which satisfy the spin polarisation.
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
-            if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(nel), stat=ierr)
-                forall (i=1:nalpha) occ_list0(i) = 2*i-1
-                forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
-            end if
+            call set_reference_det()
 
             call encode_det(occ_list0, walker_dets(:,tot_walkers))
 
             walker_energies(tot_walkers) = 0.0_p
 
-            ! Reference det
             f0 = walker_dets(:,tot_walkers)
             ! Energy of reference determinant.
             select case(system_type)
@@ -128,9 +122,25 @@ contains
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-            write (6,'(1X,a44,'//int_fmt(D0_population,1)//')') &
+            write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
                               'Initial population on reference determinant:',D0_population
-            write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+            write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+            if (initiator) then
+                write (6,'(1X,a24)') 'Initiator method in use.'
+                write (6,'(1X,a36,1X,"(",'//int_fmt(CAS(1),0)//',",",'//int_fmt(CAS(2),0)//'")")')  &
+                    'CAS space of initiator determinants:',CAS
+                write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
+                    'Population for a determinant outside CAS space to be an initiator:', initiator_population
+            end if
+            write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
+            write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
+            write (6,'(1X,a88)') 'Average shift: the running average of the shift from when the shift was allowed to vary.'
+            write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
+                                 &Calculated at the end of each cycle.'
+            write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
+            write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+            write (6,'(1X,a49)') '# particles: current total population of walkers.'
+            write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
         end if
         
     end subroutine init_fciqmc
@@ -200,9 +210,10 @@ contains
         use determinants, only:det_info, alloc_det_info 
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart
         use spawning, only: create_spawned_particle
-        use fciqmc_common, only: load_balancing_report
+        use fciqmc_common
 
         ! It seems this interface block cannot go in a module when we're passing
         ! subroutines around as arguments.  Bummer.
@@ -243,10 +254,14 @@ contains
         integer :: idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
-        integer :: nspawned
+        integer :: nspawned, nattempts
         type(excit) :: connection
 
         real(p) :: inst_proj_energy
+
+        logical :: soft_exit
+
+        real :: t1, t2
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
@@ -257,21 +272,29 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
+        call initial_fciqmc_status(update_proj_energy)
+
+        ! Initialise timer.
+        call cpu_time(t1)
 
         do ireport = 1, nreport
 
-            ! Zero averaged projected energy.
+            ! Zero report cycle quantities.
             proj_energy = 0.0_p
+            rspawn = 0.0_p
 
             do icycle = 1, ncycles
 
-                ! Zero instantaneous projected energy.
+                ! Zero MC cycle quantities.
                 inst_proj_energy = 0.0_p
                 D0_population = 0
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
                 spawning_head = spawning_block_start
+
+                ! Number of spawning attempts that will be made.
+                nattempts = nparticles
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -298,6 +321,12 @@ contains
 
                 end do
 
+                ! Add the spawning rate (for the processor) to the running
+                ! total.
+                rspawn = rspawn + spawning_rate(nattempts)
+
+                ! D0_population is communicated in the direct_annihilation
+                ! algorithm for efficiency.
                 call direct_annihilation(sc0)
 
                 ! normalise projected energy and add to running total.
@@ -308,7 +337,17 @@ contains
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 
-            if (parent) call write_fciqmc_report(ireport, nparticles_old)
+            call cpu_time(t2)
+
+            ! t1 was the time at the previous iteration, t2 the current time.
+            ! t2-t1 is thus the time taken by this report loop.
+            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1)
+
+            ! cpu_time outputs an elapsed time, so update the reference timer.
+            t1 = t2
+
+            call fciqmc_interact(ireport, soft_exit)
+            if (soft_exit) exit
 
         end do
 
@@ -350,10 +389,11 @@ contains
         use determinants, only: det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart
         use system, only: nel
         use spawning, only: create_spawned_particle_initiator
-        use fciqmc_common, only: load_balancing_report
+        use fciqmc_common
 
         ! It seems this interface block cannot go in a module when we're passing
         ! subroutines around as arguments.  Bummer.
@@ -394,7 +434,7 @@ contains
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old
         type(det_info) :: cdet
 
-        integer :: nspawned
+        integer :: nspawned, nattempts
         type(excit) :: connection
 
         real(p) :: inst_proj_energy
@@ -402,6 +442,10 @@ contains
         integer :: parent_flag
         integer(i0) :: cas_mask(basis_length), cas_core(basis_length)
         integer :: bit_pos, bit_element
+
+        logical :: soft_exit
+
+        real :: t1, t2
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
@@ -440,21 +484,29 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
+        call initial_fciqmc_status(update_proj_energy)
+
+        ! Initialise timer.
+        call cpu_time(t1)
 
         do ireport = 1, nreport
 
-            ! Zero averaged projected energy.
+            ! Zero report cycle quantities.
             proj_energy = 0.0_p
+            rspawn = 0.0_p
 
             do icycle = 1, ncycles
 
-                ! Zero instantaneous projected energy.
+                ! Zero MC cycle quantities.
                 inst_proj_energy = 0.0_p
                 D0_population = 0
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
                 spawning_head = spawning_block_start
+
+                ! Number of spawning attempts that will be made.
+                nattempts = nparticles
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -493,6 +545,10 @@ contains
 
                 end do
 
+                ! Add the spawning rate (for the processor) to the running
+                ! total.
+                rspawn = rspawn + spawning_rate(nattempts)
+
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
                 call direct_annihilation_initiator(sc0)
@@ -505,7 +561,17 @@ contains
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 
-            if (parent) call write_fciqmc_report(ireport, nparticles_old)
+            call cpu_time(t2)
+
+            ! t1 was the time at the previous iteration, t2 the current time.
+            ! t2-t1 is thus the time taken by this report loop.
+            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1)
+
+            ! cpu_time outputs an elapsed time, so update the reference timer.
+            t1 = t2
+
+            call fciqmc_interact(ireport, soft_exit)
+            if (soft_exit) exit
 
         end do
 

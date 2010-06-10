@@ -29,11 +29,12 @@ integer, parameter :: i0 = selected_int_kind(10)
 #endif
 
 ! Number of bits in an integer of type i0.
-integer, parameter :: i0_length = bit_size(int(0,i0))
+! Note that pgi 10.3 has a bug are returns 32 if bit_size(int(0,i0)) is used.
+integer, parameter :: i0_length = bit_size(0_i0)
 
 ! Index of the last bit in an integer of type i0.
 ! (Bit indexing in fortran ranges from 0 to bit_size-1.)
-integer, parameter :: i0_end = bit_size(int(0,i0))-1
+integer, parameter :: i0_end = i0_length - 1
 
 ! Single precision kind.
 integer, parameter :: sp = selected_real_kind(6,37)
