@@ -24,6 +24,8 @@ contains
         use calc
         use determinants, only: ndets
 
+        use operators
+
         real(p), intent(out) :: eigv(ndets)
         real(p), allocatable :: work(:), eigvec(:,:)
         integer :: info, ierr, lwork
@@ -103,13 +105,22 @@ contains
         end if
 
         deallocate(work, stat=ierr)
-        deallocate(eigvec, stat=ierr)
 
         if (find_eigenvectors) then
-            do i = 1,ndets
-                write (6,*) i,'=',hamil(:,i)
-            end do
+do i = 1, 2
+#ifdef PARALLEL
+            if (nprocs == 1) then
+                call analyse_wavefunction(hamil(:,i))
+            else
+                call analyse_wavefunction(eigvec(:,i))
+            end if
+#else
+            call analyse_wavefunction(hamil(:,i))
+#endif
+end do
         end if
+
+        deallocate(eigvec, stat=ierr)
 
     end subroutine exact_diagonalisation
 
