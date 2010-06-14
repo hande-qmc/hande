@@ -209,7 +209,6 @@ $(PROG): $(EXE)/$(PROG_VERSION)
 
 $(EXE)/$(PROG_VERSION): $(OBJECTS)
 \trm -f $(DEST)/environment_report.o && $(my_make) $(DEST)/environment_report.o
-\ttest -e `dirname $@` || mkdir -p `dirname $@`
 \t$(FC) -o $@ $(FFLAGS) $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
 
 # Remove compiled objects and executable.
