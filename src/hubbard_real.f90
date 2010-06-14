@@ -46,9 +46,13 @@ contains
 
         use basis, only: nbasis, bit_lookup, basis_length, basis_fns, set_orb
         use system, only: lattice, ndim, box_length
+        use bit_utils
+        use errors, only: stop_all
 
-        integer :: i, j, ierr, pos, ind, ivec
+        integer :: i, j, k, ierr, pos, ind, ivec
         integer :: r(ndim)
+
+        integer :: lvecs(ndim, 3**ndim)
 
         t_self_images = any(abs(box_length-1.0_p) < depsilon)
 
@@ -58,6 +62,28 @@ contains
         tmat = 0
         connected_orbs = 0
 
+        ! Form all lattice vectors
+        select case(ndim)
+        case(1)
+            do i = -1, 1
+                lvecs(:,i+2) = i*lattice(:,1)
+            end do
+        case(2)
+            do i = -1, 1
+                do j = -1, 1
+                    lvecs(:,j+2+3*(i+1)) = i*lattice(:,1) + j*lattice(:,2)
+                end do
+            end do
+        case(3)
+            do i = -1, 1
+                do j = -1, 1
+                    do k = -1, 1
+                        lvecs(:,k+2+3*(j+1)+9*(i+1)) = i*lattice(:,1) + j*lattice(:,2) + k*lattice(:,3)
+                    end do
+                end do
+            end do
+        end select
+
         ! Construct how the lattice is connected.
         do i = 1, nbasis-1, 2
             do j = i, nbasis-1, 2
@@ -65,22 +91,19 @@ contains
                 ! filled in automatically.
                 ! All matrix elements between different spins are zero
                 ! Allow j=i in case i is its own periodic image.
-                r = abs(basis_fns(i)%l - basis_fns(j)%l)
-                if (sum(r) == 1) then
-                    ! i and j are on sites which are nearest neighbours.
-                    call set_orb(tmat(:,i),j)
-                    call set_orb(tmat(:,i+1),j+1)
-                    call set_orb(connected_orbs(:,i),j)
-                    call set_orb(connected_orbs(:,j),i)
-                    call set_orb(connected_orbs(:,i+1),j+1)
-                    call set_orb(connected_orbs(:,j+1),i+1)
-                end if
-                do ivec = 1, ndim
-                    if (abs(sum(r-lattice(:,ivec))) == 1) then
-                        ! i and j are on sites which are nearest neighbour due
-                        ! to periodic boundaries.
-                        call set_orb(tmat(:,j),i)
-                        call set_orb(tmat(:,j+1),i+1)
+                r = basis_fns(i)%l - basis_fns(j)%l
+                do ivec = 1, 3**ndim
+                    if (sum(abs(r-lvecs(:,ivec))) == 1) then
+                        ! i and j are on sites which are nearest neighbours 
+                        if (all(lvecs(:,ivec) == 0)) then
+                            ! Nearest neighbours within unit cell.
+                            call set_orb(tmat(:,i),j)
+                            call set_orb(tmat(:,i+1),j+1)
+                        else
+                            ! Nearest neighbours due to periodic boundaries.
+                            call set_orb(tmat(:,j),i)
+                            call set_orb(tmat(:,j+1),i+1)
+                        end if
                         call set_orb(connected_orbs(:,i),j)
                         call set_orb(connected_orbs(:,j),i)
                         call set_orb(connected_orbs(:,i+1),j+1)

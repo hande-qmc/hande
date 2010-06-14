@@ -471,7 +471,7 @@ contains
 
     end function calc_pgen_hub_k
 
-    pure function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
+    function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
         ! Hubbard model in real space.
@@ -497,6 +497,8 @@ contains
         use basis, only: basis_length
         use system, only: nel
         use hubbard_real, only: connected_orbs
+
+        use errors
 
         real(p) :: pgen
         integer, intent(in) :: occ_list(nel)
@@ -531,7 +533,7 @@ contains
         do i = 1, nel
             ! See if there are any allowed excitations from this electron.
             ! (see notes in choose_ia_hub_real for how this works)
-            if (all(ieor(f, connected_orbs(:,occ_list(i))) == 0)) then
+            if (all(iand(not(f), connected_orbs(:,occ_list(i))) == 0)) then
                 ! none allowed from this orbial
                 no_excit = no_excit + 1
             end if
