@@ -502,10 +502,28 @@ contains
 
     end subroutine write_fciqmc_report
 
-    subroutine write_fciqmc_final()
+    subroutine write_fciqmc_final(ireport)
 
-        av_shift = av_shift/(nreport - start_vary_shift - start_averaging_from)
-        av_proj_energy = av_proj_energy/((nreport-start_averaging_from)*ncycles)
+        ! Write out the energies (shift and projected energy) at the end of an
+        ! FCIQMC calculation.
+        ! In:
+        !    ireport: index of the report loop after the report loop has been
+        !    exited.
+
+        integer, intent(in) :: ireport
+        integer :: report_cycles_done
+
+        if (ireport /= nreport+1) then
+            ! exited calculation early via softexit.
+            ! number of report loops done that actually were done is ireport.
+            report_cycles_done = ireport
+        else
+            ! terminated the report loop cycle after reaching the last index.
+            report_cycles_done = nreport
+        end if
+
+        av_shift = av_shift/(report_cycles_done - start_vary_shift - start_averaging_from)
+        av_proj_energy = av_proj_energy/((report_cycles_done - start_averaging_from)*ncycles)
 
         write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
         write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy
@@ -513,8 +531,8 @@ contains
         write (6,'(1X,a18,5X,f22.12)') 'av. proj. energy =', av_proj_energy
         write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift+H00
         write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy+H00
-        write (6,'(1X,a16,7X,f22.12)') 'E0 + av. shift =', shift+H00
-        write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', proj_energy+H00
+        write (6,'(1X,a16,7X,f22.12)') 'E0 + av. shift =', av_shift+H00
+        write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', av_proj_energy+H00
 
     end subroutine write_fciqmc_final
 

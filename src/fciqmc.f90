@@ -352,7 +352,7 @@ contains
         end do
 
         if (parent) then
-            call write_fciqmc_final()
+            call write_fciqmc_final(ireport)
             write (6,'()')
         end if
 
@@ -576,7 +576,7 @@ contains
         end do
 
         if (parent) then
-            call write_fciqmc_final()
+            call write_fciqmc_final(ireport)
             write (6,'()')
         end if
 
