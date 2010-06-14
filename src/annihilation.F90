@@ -241,8 +241,9 @@ contains
                 if (k > spawning_head(0)) exit self_annihilate
                 if (all(spawned_walkers(:basis_length,k) == spawned_walkers(:basis_length,islot))) then
                     ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(spawned_pop,islot) =  &
-                               spawned_walkers(spawned_pop,islot) + spawned_walkers(spawned_pop,k)
+                    spawned_walkers(spawned_pop:spawned_hf_pop,islot) =    &
+                         spawned_walkers(spawned_pop:spawned_hf_pop,islot) &
+                       + spawned_walkers(spawned_pop:spawned_hf_pop,k)
                 else
                     ! Found the next unique spawned walker.
                     exit compress
@@ -252,12 +253,12 @@ contains
             if (islot == spawning_head(0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (spawned_walkers(spawned_pop,islot) /= 0) islot = islot + 1
+            if (any(spawned_walkers(spawned_pop:spawned_hf_pop,islot) /= 0)) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (spawned_walkers(spawned_pop, islot) == 0) islot = islot - 1
+        if (all(spawned_walkers(spawned_pop:spawned_hf_pop, islot) == 0)) islot = islot - 1
 
         ! update spawning_head(0)
         spawning_head(0) = islot
@@ -341,7 +342,7 @@ contains
 
         use basis, only: basis_length
 
-        integer :: i, pos, k, nannihilate, istart, iend, old_pop
+        integer :: i, pos, k, nannihilate, istart, iend, old_pop(sampling_size)
         integer(i0) :: f(basis_length)
         logical :: hit
 
@@ -353,8 +354,8 @@ contains
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
-                old_pop = walker_population(1,pos)
-                walker_population(1,pos) = walker_population(1,pos) + spawned_walkers(spawned_pop,i)
+                old_pop = walker_population(:,pos)
+                walker_population(:,pos) = walker_population(:,pos) + spawned_walkers(spawned_pop:spawned_hf_pop,i)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -362,7 +363,8 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + abs(walker_population(1,pos)) - abs(old_pop)
+                nparticles = nparticles + abs(walker_population(1,pos)) - abs(old_pop(1))
+                ! TODO: Update # HF particles.
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -445,12 +447,12 @@ contains
 
         nzero = 0
         do i = 1, tot_walkers
-            if (walker_population(1,i) == 0) then
+            if (all(walker_population(:,i) == 0)) then
                 nzero = nzero + 1
             else if (nzero > 0) then
                 k = i - nzero
                 walker_dets(:,k) = walker_dets(:,i)
-                walker_population(1,k) = walker_population(1,i)
+                walker_population(:,k) = walker_population(:,i)
                 walker_energies(:,k) = walker_energies(:,i)
             end if
         end do
@@ -514,22 +516,24 @@ contains
                 ! i is the number of determinants that will be inserted below j.
                 k = j + i
                 walker_dets(:,k) = walker_dets(:,j)
-                walker_population(1,k) = walker_population(1,j)
+                walker_population(:,k) = walker_population(:,j)
                 walker_energies(:,k) = walker_energies(:,j)
             end do
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
             walker_dets(:,k) = spawned_walkers(:basis_length,i)
-            walker_population(1,k) = spawned_walkers(spawned_pop,i)
+            walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop,i))
             walker_energies(1,k) = sc0(walker_dets(:,k)) - H00
+            ! TODO: set walker_energies(2,k) = <D_i|O|D_i>.
             ! Next walker will be inserted below this one.
             iend = pos - 1
         end do
         
         ! Update tot_walkers
         tot_walkers = tot_walkers + spawning_head(0)
+        ! TODO: Update tot_walkers_hf
 
     end subroutine insert_new_walkers
 

@@ -41,6 +41,8 @@ contains
             spawned_size = spawned_size + 1
             spawned_hf_pop = spawned_size
             sampling_size = sampling_size + 1
+        else
+            spawned_hf_pop = spawned_size
         end if
         if (initiator) then
             spawned_size = spawned_size + 1
