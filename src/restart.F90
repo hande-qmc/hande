@@ -256,7 +256,7 @@ contains
         end if
 #else
         do i = 1, tot_walkers
-            read (io,*) walker_dets(:,i), walker_population(1,i), walker_energies(i)
+            read (io,*) walker_dets(:,i), walker_population(1,i), walker_energies(1,i)
         end do
 #endif
 
