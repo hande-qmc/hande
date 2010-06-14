@@ -20,7 +20,7 @@ implicit none
 integer, parameter :: random_store_size=5*10**4
 real(dp), save :: random_store(random_store_size)
 
-integer, save :: current_element=1
+integer, save :: current_element
 
 contains
 
@@ -37,6 +37,8 @@ contains
         call init_gen_rand(seed)
 
         call fill_array_close_open(random_store, random_store_size)
+
+        current_element = 1
 
     end subroutine dSFMT_init
 
