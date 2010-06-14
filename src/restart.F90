@@ -101,9 +101,9 @@ contains
         else
 #ifdef PARALLEL
             ! Send walker info to root processor.
-            call mpi_send(walker_population, tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, stat, ierr)
-            call mpi_send(walker_dets, tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, stat, ierr)
-            call mpi_send(walker_energies, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, stat, ierr)
+            call mpi_send(walker_population, tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_dets, tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_energies, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
 

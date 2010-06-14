@@ -471,7 +471,7 @@ contains
 
     end function calc_pgen_hub_k
 
-    function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
+    pure function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
         ! Hubbard model in real space.

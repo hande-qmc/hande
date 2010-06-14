@@ -54,9 +54,9 @@ contains
 
         ! Allocate spawned walker lists.
         if (mod(spawned_walker_length, nprocs) /= 0) then
-            write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
+            if (parent) write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
             spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
-            write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',1X,a1,/)') &
+            if (parent) write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',a1,/)') &
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
         allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
