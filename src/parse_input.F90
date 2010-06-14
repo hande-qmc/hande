@@ -122,8 +122,7 @@ contains
             case('FCIQMC')
                 calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
-                calc_type = calc_type + fciqmc_calc
-                initiator = .true.
+                calc_type = calc_type + initiator_fciqmc
             case('ESTIMATE_HILBERT_SPACE')
                 calc_type = calc_type + mc_hilbert_space
                 call readi(nhilbert_cycles)
@@ -302,7 +301,6 @@ contains
 
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)

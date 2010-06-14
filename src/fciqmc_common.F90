@@ -20,7 +20,7 @@ contains
         use utils, only: int_fmt
 
         use basis, only: basis_length
-        use calc, only: sym_in, ms_in
+        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use fciqmc_restart, only: read_restart
@@ -36,14 +36,14 @@ contains
         sampling_size = 1
         spawned_size = basis_length + 1
         spawned_pop = spawned_size
-        if (hfs) then
+        if (doing_calc(hfs_fciqmc_calc)) then
             spawned_size = spawned_size + 1
             spawned_hf_pop = spawned_size
             sampling_size = sampling_size + 1
         else
             spawned_hf_pop = spawned_size
         end if
-        if (initiator) then
+        if (doing_calc(initiator_fciqmc)) then
             spawned_size = spawned_size + 1
             spawned_parent = spawned_size
         end if
@@ -136,7 +136,7 @@ contains
             write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
                               'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
-            if (initiator) then
+            if (doing_calc(initiator_fciqmc)) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
                 write (6,'(1X,a36,1X,"(",'//int_fmt(CAS(1),0)//',",",'//int_fmt(CAS(2),0)//'")")')  &
                     'CAS space of initiator determinants:',CAS

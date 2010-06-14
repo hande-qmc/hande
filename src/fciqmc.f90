@@ -21,7 +21,9 @@ contains
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
-        if (initiator) then
+        use calc, only: initiator_fciqmc, doing_calc
+
+        if (doing_calc(initiator_fciqmc)) then
             select case(system_type)
             case(hub_k)
                 call do_ifciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)

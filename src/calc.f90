@@ -17,8 +17,12 @@ integer, parameter :: lanczos_diag = 2**1
 ! Use the incredibly simple and naive FCIQMC or the optimised implementation?
 integer, parameter :: fciqmc_calc = 2**2
 integer, parameter :: simple_fciqmc_calc = 2**3
+! Doing initiator-FCIQMC?
+integer, parameter :: initiator_fciqmc = 2**4
+! Doing Hellmann--Feynmann sampling?
+integer, parameter :: hfs_fciqmc_calc = 2**5
 ! Estimate the size of the Hilbert space using Monte Carlo?
-integer, parameter :: mc_hilbert_space = 2**4
+integer, parameter :: mc_hilbert_space = 2**6
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.

@@ -25,12 +25,6 @@ integer :: spawned_walker_length
 ! Number of particles before which varyshift mode is turned on.
 integer :: target_particles = 10000
 
-! True if doing initiator-FCIQMC rather than standard FCIQMC.
-logical :: initiator = .false.
-
-! True if doing Hellmann--Feynmann sampling.
-logical :: hfs = .false.
-
 !--- Input data: initiator-FCIQMC ---
 
 integer :: CAS(2) = (/ 0,0 /)
