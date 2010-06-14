@@ -15,15 +15,14 @@ FCIQMC
 Hellmann--Feynmann
 ------------------
 
-1. Variables to refer to pop, hfpop etc in spawning list, main lists.
+1. Variables to refer to pop, hfpop etc in main lists.
    Possibility to expand pop lists.
-2. Changes to annihilation.
+2. Changes to annihilation. MOSTLY DONE FOR FCIQMC, NOT FOR i-FCIQMC.
 3. Changes to restart.
-4. Input options.
-5. fciqmc routine.
-5. output routine.
-6. test with hamiltonian operator.
-7. test with kinetic energy.
+4. fciqmc routine.
+5. test with hamiltonian operator.
+6. test with kinetic energy.
+7. w/ initiator?
 
 FCIQMC parallelisation
 ----------------------
