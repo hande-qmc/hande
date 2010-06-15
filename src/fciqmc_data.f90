@@ -73,7 +73,9 @@ integer :: tot_walkers
 
 ! Total number of particles on all walkers/determinants (processor dependent)
 ! Updated during death and annihilation and merging.
-integer :: nparticles
+! The first element is the number of normal (Hamiltonian) particles.
+! Subsequent elements are the number of Hellmann--Feynamnn particles.
+integer, allocatable :: nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -556,6 +558,7 @@ contains
 
         integer :: ierr
 
+        if (allocated(nparticles)) deallocate(nparticles, stat=ierr)
         if (allocated(walker_dets)) deallocate(walker_dets, stat=ierr)
         if (allocated(walker_population)) deallocate(walker_population, stat=ierr)
         if (allocated(walker_energies)) deallocate(walker_energies, stat=ierr)

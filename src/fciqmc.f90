@@ -116,7 +116,7 @@ contains
             end function sc0
         end interface
 
-        integer :: idet, ireport, icycle, iparticle, nparticles_old
+        integer :: idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, nattempts
@@ -159,7 +159,7 @@ contains
                 spawning_head = spawning_block_start
 
                 ! Number of spawning attempts that will be made.
-                nattempts = nparticles
+                nattempts = nparticles(1)
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -182,7 +182,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet)-shift, walker_population(1,idet), nparticles)
+                    call stochastic_death(walker_energies(1,idet)-shift, walker_population(1,idet), nparticles(1))
 
                 end do
 
@@ -206,7 +206,7 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1)
+            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
@@ -223,7 +223,7 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
     end subroutine do_fciqmc
 
@@ -296,7 +296,7 @@ contains
             end function sc0
         end interface
 
-        integer :: i, idet, ireport, icycle, iparticle, nparticles_old
+        integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, nattempts
@@ -371,7 +371,7 @@ contains
                 spawning_head = spawning_block_start
 
                 ! Number of spawning attempts that will be made.
-                nattempts = nparticles
+                nattempts = nparticles(1)
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -406,7 +406,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet)-shift, walker_population(1,idet), nparticles)
+                    call stochastic_death(walker_energies(1,idet)-shift, walker_population(1,idet), nparticles(1))
 
                 end do
 
@@ -430,7 +430,7 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1)
+            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
@@ -447,7 +447,7 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
     end subroutine do_ifciqmc
 

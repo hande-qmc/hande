@@ -363,8 +363,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + abs(walker_population(1,pos)) - abs(old_pop(1))
-                ! TODO: Update # HF particles.
+                nparticles = nparticles + abs(walker_population(:,pos)) - abs(old_pop(:))
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -524,7 +523,7 @@ contains
             k = pos + i - 1
             walker_dets(:,k) = spawned_walkers(:basis_length,i)
             walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
-            nparticles = nparticles + abs(spawned_walkers(spawned_pop,i))
+            nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
             walker_energies(1,k) = sc0(walker_dets(:,k)) - H00
             ! TODO: set walker_energies(2,k) = <D_i|O|D_i>.
             ! Next walker will be inserted below this one.
@@ -533,7 +532,6 @@ contains
         
         ! Update tot_walkers
         tot_walkers = tot_walkers + spawning_head(0)
-        ! TODO: Update tot_walkers_hf
 
     end subroutine insert_new_walkers
 

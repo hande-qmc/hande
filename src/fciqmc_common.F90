@@ -49,6 +49,7 @@ contains
         end if
 
         ! Allocate main walker lists.
+        allocate(nparticles(sampling_size), stat=ierr)
         allocate(walker_dets(basis_length,walker_length), stat=ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
         allocate(walker_energies(sampling_size,walker_length), stat=ierr)
@@ -127,7 +128,7 @@ contains
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
-        nparticles = sum(abs(walker_population(1,:tot_walkers)))
+        nparticles = sum(abs(walker_population(:,:tot_walkers)))
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
@@ -190,10 +191,10 @@ contains
 
 #ifdef PARALLEL
         call mpi_allreduce(inst_proj_energy, proj_energy, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
         proj_energy = inst_proj_energy
-        ntot_particles = nparticles
+        ntot_particles = nparticles(1)
 #endif 
         
         proj_energy = proj_energy/D0_population

@@ -24,32 +24,31 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
 
-        use fciqmc_data, only: nparticles, target_particles, ncycles, rspawn
+        use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn
         use fciqmc_data, only: proj_energy, av_proj_energy, shift, av_shift
         use fciqmc_data, only: vary_shift, start_vary_shift
 
         use parallel
 
         integer, intent(in) :: ireport
-        integer, intent(inout) :: ntot_particles_old
+        integer, intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
-        integer, parameter :: n = 3
-        real(dp) :: ir(n), ir_sum(n)
+        real(dp) :: ir(2*sampling_size+1), ir_sum(2*sampling_size+1)
         integer :: ntot_particles, ierr
 
             ! Need to sum the number of particles and the projected energy over
             ! all processors.
-            ir(1) = nparticles
-            ir(2) = proj_energy
-            ir(3) = rspawn
+            ir(1:sampling_size) = nparticles
+            ir(sampling_size+1:2*sampling_size) = proj_energy
+            ir(2*sampling_size+1) = rspawn
             call mpi_allreduce(ir, ir_sum, n, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            ntot_particles = nint(ir_sum(1))
-            proj_energy = ir_sum(2)
-            rspawn = ir_sum(3)
+            ntot_particles = nint(ir_sum(1:sampling_size))
+            proj_energy = ir_sum(sampling_size+1:2*sampling_size)
+            rspawn = ir_sum(2*sampling_size+1)
             
             if (vary_shift) then
-                call update_shift(ntot_particles_old, ntot_particles, ncycles)
+                call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
             end if
             ntot_particles_old = ntot_particles
             if (ntot_particles > target_particles .and. .not.vary_shift) then
@@ -58,10 +57,10 @@ contains
             end if
 #else
             if (vary_shift) then
-                call update_shift(ntot_particles_old, nparticles, ncycles)
+                call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
             end if
             ntot_particles_old = nparticles
-            if (nparticles > target_particles .and. .not.vary_shift) then
+            if (nparticles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
                 start_vary_shift = ireport
             end if
