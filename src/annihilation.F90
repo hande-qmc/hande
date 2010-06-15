@@ -470,9 +470,12 @@ contains
         !    elements, <D|H|D>.  See the hamiltonian module.
 
         use basis, only: basis_length
+        use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det
         use system, only: nel
         use hamiltonian, only: slater_condon0_hub_real
+        use hellmann_feynmann_sampling, only: lmask
+        use operators, only: calc_orb_occ
 
         interface
             function sc0(f) result(hmatel)
@@ -525,7 +528,10 @@ contains
             walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
             walker_energies(1,k) = sc0(walker_dets(:,k)) - H00
-            ! TODO: set walker_energies(2,k) = <D_i|O|D_i>.
+            if (doing_calc(hfs_fciqmc_calc)) then
+                ! Set walker_energies(2:,k) = <D_i|O|D_i>.
+                walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask)
+            end if
             ! Next walker will be inserted below this one.
             iend = pos - 1
         end do
