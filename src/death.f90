@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(Mii, population, tot_population)
+    subroutine stochastic_death(Kii, population, tot_population)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -16,14 +16,21 @@ contains
         ! matrix element.
         ! For FCIQMC M_ii = K_ii - S where S is the shift and K_ii is
         !  K_ii =  < D_i | H | D_i > - E_0.
-        ! For Hellmann--Feynmann sampling M_ii = < D_i | O | D_i >, where O is
-        ! the operator being sampled.
 
         ! In:
+        !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
+        !         which the particles reside.
+        ! In/Out:
+        !    population: number of particles on determinant D_i.
+        !    tot_population: total number of particles.
+        
+        ! Note that population and tot_population refer to a single 'type' of
+        ! population, i.e. either a set of Hamiltonian walkers or a set of
+        ! Hellmann--Feynmann walkers.
 
         use dSFMT_interface, only: genrand_real2
 
-        real(p), intent(in) :: Mii
+        real(p), intent(in) :: Kii
         integer, intent(inout) :: population, tot_population
 
         real(p) :: pd
@@ -36,7 +43,7 @@ contains
         ! the number that definitely die and the fractional part of p_d is the
         ! probability of an additional death.
 
-        pd = tau*Mii
+        pd = tau*(Kii-shift)
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.

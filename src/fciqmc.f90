@@ -182,7 +182,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet)-shift, walker_population(1,idet), nparticles(1))
+                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1))
 
                 end do
 
@@ -406,7 +406,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet)-shift, walker_population(1,idet), nparticles(1))
+                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1))
 
                 end do
 
