@@ -474,7 +474,7 @@ contains
         use determinants, only: decode_det
         use system, only: nel
         use hamiltonian, only: slater_condon0_hub_real
-        use hellmann_feynmann_sampling, only: lmask
+        use hfs_data, only: lmask
         use operators, only: calc_orb_occ
 
         interface
