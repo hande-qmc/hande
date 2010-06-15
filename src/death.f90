@@ -79,4 +79,62 @@ contains
 
     end subroutine stochastic_death
 
+    subroutine stochastic_hf_cloning(Oii, hamiltonian_pop, hf_pop, tot_hf_pop)
+
+        ! Clone Hellmann--Feynmann particles from Hamiltonian particles.
+        ! HF particles are created from Hamiltonian particles on the same
+        ! determinant with probability 
+        !   tau(O_ii - \tilde{S})
+        ! where
+        !   O_ii = < D_i | O | D_i >
+        !   \tilde{S} is the HF shift.
+
+        ! In:
+        !    Oii: < D_i | O | D_i > (stored in the appropriate element of
+        !        walker_enegies).
+        !    hamiltonian_pop: number of Hamiltonian particles on determinant
+        !        D_i.
+        ! In/Out:
+        !    hf_pop: number of Hellmann--Feynmann particles on determinant D_i.
+        !    tot_hf_pop: total number of Hellmann--Feynmann particles.
+
+        use dSFMT_interface, only: genrand_real2
+
+        use hfs_data, only: hf_shift
+
+        real(p), intent(in) :: Oii
+        integer, intent(in) :: hamiltonian_pop
+        integer, intent(inout) :: hf_pop, tot_hf_pop
+
+        real(p) :: pd, matel
+        real(dp) :: r
+        integer :: clone, old_pop
+
+        ! Attempt to clone with a Hellmann--Feynmann walker with probability
+        !  p = tau*(Oii-shift)
+        ! This will be the same for all particles on the determinant, so we can
+        ! attempt all cloning in one shot.
+        matel = Oii-hf_shift
+        pd = tau*abs(matel*hamiltonian_pop)
+
+        ! Number that are definitely cloned...
+        clone = int(pd)
+
+        ! In addition, stochastic cloning.
+        pd = pd - clone
+        r = genrand_real2()
+        if (pd > r) clone = clone + 1
+
+        ! Hellmann--Feynmann offsping have the same sign as the Hamiltonian
+        ! parents if Oii-hf_shift is negative, otherwise they have the opposite sign.
+        old_pop = hf_pop
+        if (matel > 0.0_p) then
+            hf_pop = hf_pop - sign(clone, hamiltonian_pop)
+        else
+            hf_pop = hf_pop + sign(clone, hamiltonian_pop)
+        end if
+        tot_hf_pop = tot_hf_pop - abs(old_pop) + abs(hf_pop)
+
+    end subroutine stochastic_hf_cloning
+
 end module death
