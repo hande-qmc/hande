@@ -524,7 +524,7 @@ contains
 
     end subroutine choose_ia_hub_real
 
-    subroutine create_spawned_particle(cdet, connection, nspawn)
+    subroutine create_spawned_particle(cdet, connection, nspawn, particle_type)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -536,6 +536,10 @@ contains
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
+        !    particle_type: the type of particle created.  Must correspond to
+        !        the desired element in the spawning array (i.e. be spawned_pop
+        !        for Hamiltonian particles and spawned_hf_pop for
+        !        Hellmann--Feynmann particles).
 
         use hashing
         use parallel, only: iproc, nprocs
@@ -548,6 +552,7 @@ contains
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
+        integer, intent(in) :: particle_type
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -572,11 +577,11 @@ contains
 
         ! Set info in spawning array.
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(spawned_pop,spawning_head(iproc_spawn)) = nspawn
+        spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(cdet, parent_flag, connection, nspawn)
+    subroutine create_spawned_particle_initiator(cdet, parent_flag, connection, nspawn, particle_type)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -591,6 +596,10 @@ contains
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
+        !    particle_type: the type of particle created.  Must correspond to
+        !        the desired element in the spawning array (i.e. be spawned_pop
+        !        for Hamiltonian particles and spawned_hf_pop for
+        !        Hellmann--Feynmann particles).
 
         use hashing
         use parallel, only: iproc, nprocs
@@ -604,6 +613,7 @@ contains
         integer, intent(in) :: parent_flag
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
+        integer, intent(in) :: particle_type
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -628,7 +638,7 @@ contains
 
         ! Set info in spawning array.
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(spawned_pop,spawning_head(iproc_spawn)) = nspawn
+        spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
         spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = parent_flag
 
     end subroutine create_spawned_particle_initiator

@@ -177,7 +177,7 @@ contains
                         ! Attempt to spawn.
                         call spawner(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned)
+                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
 
                     end do
 
@@ -401,7 +401,9 @@ contains
                         ! Attempt to spawn.
                         call spawner(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned)
+                        if (nspawned /= 0) then
+                            call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned, spawned_pop)
+                        end if
 
                     end do
 
