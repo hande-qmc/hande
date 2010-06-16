@@ -22,5 +22,7 @@ integer(i0), allocatable :: lmask(:)
 
 real(p) :: hf_shift = 0.0_p
 real(p) :: av_hf_shift = 0.0_p
+real(p) :: proj_hf_expectation = 0.0_p
+real(p) :: av_proj_hf_expectation = 0.0_p
 
 end module hfs_data
