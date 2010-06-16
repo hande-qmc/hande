@@ -75,7 +75,7 @@ contains
 
     end subroutine update_energy_estimators
 
-    subroutine update_shift(nparticles_old, nparticles,nupdate_steps)
+    subroutine update_shift(nparticles_old, nparticles, nupdate_steps)
 
         ! Update the shift according to:
         !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
@@ -98,6 +98,20 @@ contains
         av_shift = av_shift + shift
 
     end subroutine update_shift
+
+    subroutine update_hf_shift(nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
+
+        use fciqmc_data, only: tau, shift_damping
+        use hfs_data, only: hf_shift, av_hf_shift
+
+        integer, intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps
+
+        hf_shift = hf_shift + &
+                 (shift_damping/(tau*nupdate_steps)) &
+                 *(real(nhf_particles,p)/nparticles - real(nhf_particles_old,p)/nparticles_old)
+        av_hf_shift = av_hf_shift + hf_shift
+
+    end subroutine update_hf_shift
 
     subroutine update_proj_energy_hub_k(idet, inst_proj_energy)
 

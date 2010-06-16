@@ -20,6 +20,7 @@ integer(i0), allocatable :: lmask(:)
 
 !--- HFS-specific variables. ---
 
-real(p) :: hf_shift
+real(p) :: hf_shift = 0.0_p
+real(p) :: av_hf_shift = 0.0_p
 
 end module hfs_data
