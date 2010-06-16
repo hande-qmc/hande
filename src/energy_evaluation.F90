@@ -27,6 +27,8 @@ contains
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn
         use fciqmc_data, only: proj_energy, av_proj_energy, shift, av_shift
         use fciqmc_data, only: vary_shift, start_vary_shift
+        use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
+        use calc, only: doing_calc, hfs_fciqmc_calc
 
         use parallel
 
@@ -40,7 +42,8 @@ contains
             ! Need to sum the number of particles and the projected energy over
             ! all processors.
             ir(1:sampling_size) = nparticles
-            ir(sampling_size+1:2*sampling_size) = proj_energy
+            ir(sampling_size+1) = proj_energy
+            ir(sampling_size+2) = proj_hf_expectation
             ir(2*sampling_size+1) = rspawn
             call mpi_allreduce(ir, ir_sum, n, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
@@ -49,6 +52,9 @@ contains
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call update_hf_shift(ntot_particles_old(1), ntot_particles(1), ntot_particles_old(2), ntot_particles(2), ncycles)
+                end if
             end if
             ntot_particles_old = ntot_particles
             if (ntot_particles > target_particles .and. .not.vary_shift) then
@@ -58,6 +64,9 @@ contains
 #else
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call update_hf_shift(ntot_particles_old(1), nparticles(1), ntot_particles_old(2), nparticles(2), ncycles)
+                end if
             end if
             ntot_particles_old = nparticles
             if (nparticles(1) > target_particles .and. .not.vary_shift) then
@@ -70,6 +79,9 @@ contains
             av_proj_energy = av_proj_energy + proj_energy
             ! average projected energy over report loop.
             proj_energy = proj_energy/ncycles
+            ! Similarly for the HFS estimator
+            av_proj_hf_expectation = av_proj_hf_expectation + proj_hf_expectation
+            proj_hf_expectation = proj_hf_expectation/ncycles
             ! average spawning rate over report loop and processor.
             rspawn = rspawn/(ncycles*nprocs)
 
