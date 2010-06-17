@@ -21,6 +21,9 @@ contains
 
         allocate(lmask(basis_length), stat=ierr)
 
+        lmag2 = 1
+        write (6,*) 'lmag2 = ', lmag2
+
         call set_orb_mask(lmag2, lmask)
 
     end subroutine init_hellmann_feynmann_sampling
@@ -166,15 +169,19 @@ contains
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
 
                         ! Attempt to spawn Hellmann--Feynmann walkers from
+                        ! Hamiltonian walkers.
+                        ! Currently only using operators diagonal in the basis,
+                        ! so this isn't possible.
+
+                    end do
+
+                    do iparticle = 1, abs(walker_population(2,idet))
+
+                        ! Attempt to spawn Hellmann--Feynmann walkers from
                         ! Hellmann--Feynmann walkers.
                         call spawner(cdet, walker_population(2,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
-
-                        ! Attempt to spawn Hellmann--Feynmann walkers from
-                        ! Hamiltonian walkers.
-                        ! Currently only using operators diagonal in the basis,
-                        ! so this isn't possible.
 
                     end do
 
