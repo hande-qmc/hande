@@ -212,4 +212,47 @@ contains
 
     end subroutine update_proj_energy_hub_real
 
+    subroutine update_proj_hfs_hub_k(idet, inst_proj_energy, inst_proj_hf_t1)
+
+        ! Add the contribution of the current determinant to the projected
+        ! energy in an identical way to update_proj_energy_hub_k.
+
+        ! Also add the contribution of the current determinant to the running
+        ! total of the projected Hellmann--Feynmann estimator.
+
+        ! This procedure is for the Hubbard model in momentum space only.
+
+        ! In:
+        !    idet: index of current determinant in the main walker list.
+        ! In/Out:
+        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !    This is updated if D_i is connected to D_0 (and isn't D_0).
+
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use excitations, only: excit, get_excitation
+        use hamiltonian, only: slater_condon2_hub_k
+        use hfs_data, only: D0_hf_population
+
+        integer, intent(in) :: idet
+        real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
+        type(excit) :: excitation
+        real(p) :: hmatel
+
+        excitation = get_excitation(walker_dets(:,idet), f0)
+
+        if (excitation%nexcit == 0) then
+            ! Have reference determinant.
+            D0_population = walker_population(1,idet)
+            D0_hf_population = walker_population(2,idet)
+        else if (excitation%nexcit == 2) then
+            ! Have a determinant connected to the reference determinant: add to 
+            ! projected energy.
+            hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
+                                       & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
+            inst_proj_energy = inst_proj_energy + hmatel*walker_population(1,idet)
+            inst_proj_hf_t1 = inst_proj_hf_t1 + hmatel*walker_population(2,idet)
+        end if
+
+    end subroutine update_proj_hfs_hub_k
+
 end module energy_evaluation

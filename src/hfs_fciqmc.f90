@@ -75,11 +75,11 @@ contains
                 integer(i0), intent(in) :: f(basis_length)
                 type(det_info), intent(inout) :: d
             end subroutine decoder
-            subroutine update_proj_energy(idet, inst_proj_energy)
+            subroutine update_proj_energy(idet, inst_proj_energy, inst_proj_hf_t1)
                 use const, only: p
                 implicit none
                 integer, intent(in) :: idet
-                real(p), intent(inout) :: inst_proj_energy
+                real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
             end subroutine update_proj_energy
             subroutine spawner(d, parent_sign, nspawned, connection)
                 use determinants, only: det_info
@@ -105,7 +105,8 @@ contains
         integer :: nspawned, nattempts
         type(excit) :: connection
 
-        real(p) :: inst_proj_energy
+        real(p) :: inst_proj_energy, inst_proj_expectations(sampling_size)
+        real(p) :: inst_proj_hf_t1
 
         logical :: soft_exit
 
@@ -120,7 +121,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(update_proj_energy)
+        call initial_fciqmc_status()
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -129,6 +130,7 @@ contains
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
+            proj_hf_expectation = 0.0_p
             rspawn = 0.0_p
 
             do icycle = 1, ncycles
@@ -136,6 +138,7 @@ contains
                 ! Zero MC cycle quantities.
                 inst_proj_energy = 0.0_p
                 D0_population = 0
+                inst_proj_hf_t1 = 0.0_p
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
@@ -150,11 +153,10 @@ contains
 
                     call decoder(cdet%f, cdet)
 
-                    ! It is much easier to evaluate the projected energy at the
+                    ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    ! TODO: Update HF projected eigenvalue.
-                    call update_proj_energy(idet, inst_proj_energy)
+                    call update_proj_energy(idet, inst_proj_energy, inst_proj_hf_t1)
 
                     do iparticle = 1, abs(walker_population(1,idet))
                         
@@ -199,12 +201,14 @@ contains
                 ! normalise projected energy and add to running total.
                 proj_energy = proj_energy + inst_proj_energy/D0_population
 
-                ! TODO: HF projected expectation value
+                ! Form HF projected expectation value and add to running
+                ! total.
+                proj_hf_expectation = proj_hf_expectation + &
+                     inst_proj_hf_t1/D0_population - (inst_proj_energy*D0_hf_population)/D0_population**2
 
             end do
 
             ! Update the energy estimators (shift & projected energy).
-            ! TODO: update HF shift.
             call update_energy_estimators(ireport, nparticles_old)
 
             call cpu_time(t2)
