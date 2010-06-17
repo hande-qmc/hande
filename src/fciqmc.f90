@@ -16,12 +16,14 @@ contains
         ! within the fciqmc algorithm.
 
         use system, only: system_type, hub_k, hub_real
+        use hellmann_feynmann_sampling
+
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
-        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_energy_hub_real
+        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
-        use calc, only: initiator_fciqmc, doing_calc
+        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, doing_calc
 
         if (doing_calc(initiator_fciqmc)) then
             select case(system_type)
@@ -33,7 +35,12 @@ contains
         else
             select case(system_type)
             case(hub_k)
-                call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call init_hellmann_feynmann_sampling()
+                    call do_hfs_fciqmc(decode_det_spinocc_spinunocc, update_proj_hfs_hub_k, spawn_hub_k, slater_condon0_hub_k)
+                else
+                    call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
+                end if
             case(hub_real)
                 call do_fciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
             end select
