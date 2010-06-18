@@ -34,6 +34,7 @@ contains
 
         use calc
         use determinants, only: ndets
+        use operators
 
         integer, intent(out) :: nfound
         real(dp), intent(out) :: eigv(ndets)
@@ -44,6 +45,7 @@ contains
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         type(trl_info_t) :: info
         integer :: ierr, nrows
+        integer :: i
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
@@ -115,6 +117,12 @@ contains
 
         nfound = min(nlanczos_eigv,ndets)
         eigv(1:nfound) = eval(1:nfound)
+
+        if (find_eigenvectors) then
+            do i = 1, 1
+                call analyse_wavefunction(evec(:,i))
+            end do
+        end if
 
         deallocate(eval, stat=ierr)
         deallocate(evec, stat=ierr)
