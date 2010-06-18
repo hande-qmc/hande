@@ -576,6 +576,8 @@ contains
         spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
 
         ! Set info in spawning array.
+        ! Zero it as not all fields are set.
+        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
         spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
 
@@ -637,6 +639,8 @@ contains
         spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
 
         ! Set info in spawning array.
+        ! Zero it as not all fields are set.
+        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
         spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
         spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = parent_flag
