@@ -59,7 +59,7 @@ contains
         
         if (ms_in == huge(1)) then
             ms_min = mod(nel,2)
-            ms_max = nel
+            ms_max = min(nel, nbasis-nel)
         else
             ! ms was set in input
             ms_min = ms_in
