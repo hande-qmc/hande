@@ -192,6 +192,7 @@ contains
                     call stochastic_death(walker_energies(1,idet), walker_population(2,idet), nparticles(2))
 
                     ! Clone Hellmann--Feynmann walkers from Hamiltonian walkers.
+                    ! CHECK
                     call stochastic_hf_cloning(walker_energies(2,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
@@ -223,6 +224,8 @@ contains
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
+            write (17,*) ireport, proj_hf_expectation, hf_shift, nparticles_old
+            call flush(17)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
