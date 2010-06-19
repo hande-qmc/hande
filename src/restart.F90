@@ -27,10 +27,10 @@ contains
 
         integer, intent(in) :: nmc_cycles, nparticles_old
         character(255) :: restart_file
-        integer :: io, i
+        integer :: io
         integer, parameter :: restart_version = 1
 #ifdef PARALLEL
-        integer :: nwalkers(0:nprocs-1), ierr, stat(MPI_STATUS_SIZE)
+        integer :: nwalkers(0:nprocs-1), ierr, stat(MPI_STATUS_SIZE), i
         integer, parameter :: comm_tag = 123
         character(255) :: junk
 

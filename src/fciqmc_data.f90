@@ -221,7 +221,6 @@ contains
         real(p) :: rate
         integer, intent(in) :: nattempts
         integer :: nspawn
-        integer :: ierr
 
         nspawn = sum(spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1))
         if (nspawn /= 0) then
