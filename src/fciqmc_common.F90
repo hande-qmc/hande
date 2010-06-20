@@ -90,6 +90,9 @@ contains
             call read_restart()
         else
             tot_walkers = 1
+            ! Zero all populations...
+            walker_population(:,tot_walkers) = 0
+            ! Set initial population of Hamiltonian walkers.
             walker_population(1,tot_walkers) = D0_population
 
             ! Reference det
