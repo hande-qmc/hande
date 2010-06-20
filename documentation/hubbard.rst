@@ -71,15 +71,15 @@ A platform is defined using a simple ini file, consisting of three sections:
 main, opt and dbg.  For instance::
 
     [main]
-    cc = gfortran
+    fc = gfortran
     ld = gfortran
     libs = -llapack -lblas
 
     [opt]
-    cflags = -O3
+    fflags = -O3
 
     [dbg]
-    cflags = -g
+    fflags = -g
 
 Any option not specified in the 'opt' and 'dbg' sections is inherited from the
 'main' section.  The optimised settings in 'opt' are used by default; the debug
@@ -91,6 +91,10 @@ fc
     Set the fortran compiler.
 fflags
     Set flags to be passed to the fortran compiler during compilation.
+cxx
+    Set the C++ compiler.
+cxxflags
+    Set flags to be passed to the C++ compiler during compilation.
 cppdefs
     Set definitions to be used in the C pre-processing step.
 cppflags
@@ -340,6 +344,14 @@ initialisation (mainly the enumeration of the basis) is performed.
     pre-computing the entire Hamiltonian matrix (as is done with **lanczos**).
     This is slower but requires much less memory.  This is currently only
     implemented in serial.
+**estimate_hilbert_space** *ncycles*
+    Integer.
+
+    Estimate the size of the Hilbert space within the desired symmetry block of
+    the Hamiltonian by performing *ncycles* cycles of a Monte Carlo algorithm.
+    The overall spin must be set using **ms**.  Currently symmetry is only
+    available for the momentum formulation of the Hubbard model.  The symmetry
+    can be selected by specifying a reference determinant.
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
