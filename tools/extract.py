@@ -62,6 +62,7 @@ ALL_DATA_ELEMENTS = [
         DataElement('E0+final_shift','^ E0 \+ shift =', -1, verbose=True),
         DataElement('E0+av_shift','^ E0 \+ av\. shift =', -1, verbose=True),
         DataElement('E0+final_proj_E','^ E0 \+ av\. proj\. energy =', -1, verbose=True),
+        DataElement('hilbert_space_size','^ Monte-Carlo estimate of size of space is:', -1),
     ]
 
 def parse_options(args):
