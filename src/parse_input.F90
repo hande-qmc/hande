@@ -47,8 +47,7 @@ contains
             call GetArg(1, cInp)
             inquire(file=cInp, exist=t_exists)
             if (.not.t_exists) then
-                write (6,'(a21,1X,a)') 'File does not exist:',trim(cInp)
-                stop
+                call stop_all('read_input','File does not exist:'//trim(cInp))
             end if
             open(ir, file=cInp, status='old', form='formatted', iostat=ios)
         else
@@ -209,10 +208,7 @@ contains
 
         close(ir, status='keep')
 
-        if (ios.gt.0) then
-            if (parent) write (6,*) 'Problem reading input.'
-            stop
-        end if
+        if (ios.gt.0) call stop_all('read_input','Problem reading input.')
 
     end subroutine read_input
 
