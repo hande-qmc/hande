@@ -131,7 +131,7 @@ contains
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
-        nparticles = sum(abs(walker_population(:,:tot_walkers)))
+        forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
