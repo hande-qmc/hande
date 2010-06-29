@@ -16,6 +16,10 @@ contains
         ! sampled.
 
         use basis, only: basis_length, set_orb_mask
+        use fciqmc_data, only: D0_proc, f0, walker_energies, tot_walkers
+        use hfs_data, only: lmask
+        use operators, only: calc_orb_occ
+        use parallel, only: iproc
 
         integer :: ierr
 
@@ -25,6 +29,10 @@ contains
         write (6,*) 'lmag2 = ', lmag2
 
         call set_orb_mask(lmag2, lmask)
+
+        if (iproc == D0_proc) then
+            walker_energies(2,tot_walkers) = calc_orb_occ(f0, lmask)
+        end if
 
     end subroutine init_hellmann_feynmann_sampling
 
