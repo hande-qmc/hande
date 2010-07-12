@@ -233,7 +233,7 @@ contains
         use utils, only: binom_i
         use utils, only: int_fmt
         use bit_utils, only: first_perm, bit_permutation
-        use symmetry, only: nsym, sym_table
+        use symmetry, only: nsym, gamma_sym, sym_table
 
         integer :: i, j, ierr, ibit
         integer :: nalpha_combinations, nbeta_combinations
@@ -269,7 +269,7 @@ contains
                     f_beta = bit_permutation(f_beta)
                 end if
 
-                k_beta = 1
+                k_beta = gamma_sym
                 do ibit = 0, i0_end
                     if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
                 end do
@@ -325,7 +325,7 @@ contains
         use errors, only: stop_all
         use utils, only: get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation
-        use symmetry, only: nsym, sym_table
+        use symmetry, only: nsym, gamma_sym, sym_table
 
         integer, intent(in) :: ksum
 
@@ -362,7 +362,7 @@ contains
 
             ! Symmetry of the beta orbitals.
             if (system_type /= hub_real) then
-                k_beta = 1
+                k_beta = gamma_sym
                 do ibit = 0, i0_end
                     if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
                 end do

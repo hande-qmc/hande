@@ -24,7 +24,7 @@ contains
         use determinants, only: decode_det, set_spin_polarisation
         use dSFMT_interface, only: genrand_real2
         use fciqmc_data, only: occ_list0, set_reference_det
-        use symmetry, only: sym_table
+        use symmetry, only: sym_table, gamma_sym
         use system
         use parallel
         use utils, only: binom_r
@@ -56,7 +56,7 @@ contains
             call set_reference_det()
 
             ! Symmetry of the reference determinant.
-            ref_sym = 1
+            ref_sym = gamma_sym
             do iel = 1, nel
                 ref_sym = sym_table((occ_list0(iel)+1)/2, ref_sym)
             end do
@@ -99,7 +99,7 @@ contains
                 end do
                 ! Find the symmetry of the determinant.
                 call decode_det(f, occ_list)
-                det_sym = 1
+                det_sym = gamma_sym
                 do iel = 1, nel
                     det_sym = sym_table((occ_list(iel)+1)/2, det_sym)
                 end do

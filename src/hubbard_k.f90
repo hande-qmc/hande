@@ -92,7 +92,7 @@ contains
         delta_k = sym_table(delta_k,inv_sym((k+1)/2))
         delta_k = sym_table(delta_k,inv_sym((l+1)/2))
 
-        conserved = delta_k == 1
+        conserved = delta_k == gamma_sym
 
     end function momentum_conserved
 

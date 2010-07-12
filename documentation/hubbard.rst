@@ -375,11 +375,13 @@ of the determinant is currently hard-coded.
 **symmetry** *isym*
     Integer.
 
-    Only relevant for the momentum space formulation.  Diagonalise only blocks containing
-    determinants of the same symmetry as the specified symmetry block *isym*.  *isym* refers
-    to a wavevector label (as given in the output).  To see the symmetry labels for a specific
-    crystal cell, run the calculation without any calculation type specified.  The :math:`\Gamma`
-    wavevector is always given by *isym*:math:`=1`.
+    Only relevant for the momentum space formulation.  Diagonalise only blocks
+    containing determinants of the same symmetry as the specified symmetry
+    block *isym*.  *isym* refers to a wavevector label (as given in the
+    output).  To see the symmetry labels for a specific crystal cell, run the
+    calculation without any calculation type specified.  The :math:`\Gamma`
+    wavevector is always given by *isym*:math:`=1` if *t* is positive and by
+    the number of sites in the cell if *t* is negative.
 **sym** *isym*
     Synonmym for **symmetry**.
 
