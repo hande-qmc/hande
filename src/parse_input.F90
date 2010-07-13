@@ -280,7 +280,7 @@ contains
             ! input handling previously used (i.e. unrecognised keyword: see
             ! default case in read_input)
             call report('FINITE_CLUSTER keyword only valid for hubbard&
-                        calculations in real-space: ignoring keyword', .true.)
+                        & calculations in real-space: ignoring keyword', .false.)
         end if
         ! END CONTRIB
         
