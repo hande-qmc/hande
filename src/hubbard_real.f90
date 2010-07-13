@@ -116,7 +116,7 @@ contains
                         else
                             ! START CONTRIB - Joseph Weston 13/07/2010 
                             ! Nearest neighbours due to periodic boundaries.
-                            if(.not.finite_cluster) ! if we want inf. lattice
+                            if(.not. finite_cluster) then ! if we want inf. lattice
                                 call set_orb(tmat(:,j),i)
                                 call set_orb(tmat(:,j+1),i+1)
                             end if   
@@ -129,7 +129,7 @@ contains
                         call set_orb(connected_orbs(:,i+1),j+1)
                         ! START CONTRIB - Joseph Weston 13/07/2010
                         ! same reasoning as above
-                        if(.not.finite_cluster)
+                        if(.not. finite_cluster) then
                             call set_orb(connected_orbs(:,j),i)
                             call set_orb(connected_orbs(:,j+1),i+1)
                         end if
