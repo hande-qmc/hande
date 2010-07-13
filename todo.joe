@@ -1,0 +1,11 @@
+DONE make sure pbc connection matrix elements are set to 0
+     IN TMAT AS WLL AS IN THE OTHER ARRAY!! (note they default
+     to 0 so this amounts to *NOT* calling a subroutine
+
+DONE add in an extra keyword FINITE_CLUSTER to the 
+     parse_input subroutine, and have it check that we are
+     running a hubbard_real calculation, then if we are
+     set the finite cluster variable to .true.
+
+DONE add in keyword and description to the documentation       
+

@@ -11,6 +11,9 @@ use determinants
 use fciqmc_data
 use fciqmc_restart, only: read_restart_number, write_restart_number 
 
+! START CONTRIB - Joseph Weston 13/07/2010
+use hubbard_real, only finite_cluster
+! END CONTRIB
 implicit none
 
 contains
@@ -38,8 +41,11 @@ contains
         character(100) :: w
         integer :: ios
         logical :: eof, t_exists
-
         integer :: ivec, i, ierr
+
+        ! START CONTRIB - Joseph Weston 13/07/2010
+        logical :: set_finite_cluster = .false.
+        ! END CONTRIB
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
@@ -198,6 +204,11 @@ contains
             ! Parameters for parallel calculations.
             case('BLOCK_SIZE')
                 call readi(block_size)
+            
+            ! START CONTRIB - Joseph Weston 13/07/2010
+            case('FINITE_CLUSTER')
+                    finite_cluster = .true.
+            ! END CONTRIB
 
             case('END')
                 exit
@@ -205,9 +216,8 @@ contains
                 call report('Keyword '//trim(w)//' not recognized.', .true.)
             end select
         end do ! end reading of input.
-
+        
         close(ir, status='keep')
-
         if (ios.gt.0) call stop_all('read_input','Problem reading input.')
 
     end subroutine read_input
@@ -255,7 +265,21 @@ contains
             end if
             if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
         end if
-
+        
+        ! START CONTRIB - Joseph Weston 13/07/2010
+        ! If the FINITE_CLUSTER keyword was detected then make sure that 
+        ! we are doing a calculation in real-space. If we're not then
+        ! tell the user and carry on
+        if(set_finite_cluster) then
+            if(system_type .eq. hub_real) then
+                finite_cluster = .true.
+            else 
+                call report('FINITE_CLUSTER keyword only valid for hubbard&
+                            calculations in real-space', .true.)
+            end if
+        end if
+        ! END CONTRIB
+        
         if (parent) write (6,'(/,1X,13("-"),/)') 
 
     end subroutine check_input

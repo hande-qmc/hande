@@ -37,6 +37,20 @@ integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 ! function centred on a lattice site, can be non-zero.
 logical :: t_self_images
 
+
+!START CONTRIB - Joseph Weston 13/07/2010
+
+! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
+! False if we are modelling an infinite lattice
+! The code is set up to model inifinite lattices by default, however in order
+! to model only a finite "cluster" of sites, all one need do is set the 
+! connection matrix elements corresponding to connections accross cell 
+! boundaries (i.e. periodic boundary conditions) to 0
+logical :: finite_cluster = .false. ! default to infinite crystals
+
+!END CONTRIB
+
+
 contains
 
     subroutine init_real_space_hub()
@@ -100,14 +114,27 @@ contains
                             call set_orb(tmat(:,i),j)
                             call set_orb(tmat(:,i+1),j+1)
                         else
+                            ! START CONTRIB - Joseph Weston 13/07/2010 
                             ! Nearest neighbours due to periodic boundaries.
-                            call set_orb(tmat(:,j),i)
-                            call set_orb(tmat(:,j+1),i+1)
-                        end if
+                            if(.not.finite_cluster) ! if we want inf. lattice
+                                call set_orb(tmat(:,j),i)
+                                call set_orb(tmat(:,j+1),i+1)
+                            end if   
+                            ! else we just want connections to other cells to
+                            ! stay as 0
+                            ! END CONTRIB
+                        end if        
+                        
                         call set_orb(connected_orbs(:,i),j)
-                        call set_orb(connected_orbs(:,j),i)
                         call set_orb(connected_orbs(:,i+1),j+1)
-                        call set_orb(connected_orbs(:,j+1),i+1)
+                        ! START CONTRIB - Joseph Weston 13/07/2010
+                        ! same reasoning as above
+                        if(.not.finite_cluster)
+                            call set_orb(connected_orbs(:,j),i)
+                            call set_orb(connected_orbs(:,j+1),i+1)
+                        end if
+                        ! END CONTRIB
+
                     end if
                 end do
             end do
