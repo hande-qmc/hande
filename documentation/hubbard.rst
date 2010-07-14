@@ -318,7 +318,6 @@ These options describe the system which is to be investigated.
 
     Applicable only in the momentum space formulation of the Hubbard model.
 
-.. START CONTRIB - Joseph Weston 13/07/2010    
 **finite_cluster**
 
     This keyword may only be given if the calculations are being carried out
@@ -330,7 +329,6 @@ These options describe the system which is to be investigated.
     the periodic continuation which would give us a lattice.
 
     This option is introduced so that Hubbard can now work on single molecules.
-.. END CONTRIB
 
 Calculation type
 ^^^^^^^^^^^^^^^^

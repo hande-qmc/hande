@@ -10,10 +10,8 @@ use lanczos
 use determinants
 use fciqmc_data
 use fciqmc_restart, only: read_restart_number, write_restart_number 
-
-! START CONTRIB - Joseph Weston 13/07/2010
 use hubbard_real, only: finite_cluster
-! END CONTRIB
+
 implicit none
 
 contains
@@ -200,14 +198,12 @@ contains
             ! Parameters for parallel calculations.
             case('BLOCK_SIZE')
                 call readi(block_size)
-            
-            ! START CONTRIB - Joseph Weston 13/07/2010
+             
             case('FINITE_CLUSTER')
                 ! this will be checked in check_input to ensure that it 
                 ! is only used when we are formulating the calculation
                 ! in real-space
-                finite_cluster = .true.
-            ! END CONTRIB
+                finite_cluster = .true.   
 
             case('END')
                 exit
@@ -228,11 +224,6 @@ contains
 
         use const
         
-        !START CONTRIB - Joseph Weston 13/07/2010
-        ! need to call report() to warn user
-        use input
-        ! END CONTRIB
-
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
 
@@ -269,20 +260,15 @@ contains
             end if
             if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
         end if
-        
-        ! START CONTRIB - Joseph Weston 13/07/2010
+         
         ! If the FINITE_CLUSTER keyword was detected then make sure that 
         ! we are doing a calculation in real-space. If we're not then
         ! unset finite cluster,tell the user and carry on
         if(finite_cluster .and. (system_type .ne. hub_real)) then
             finite_cluster = .false.    
-            ! report used instead of warning to be consistent with invalid
-            ! input handling previously used (i.e. unrecognised keyword: see
-            ! default case in read_input)
-            call report('FINITE_CLUSTER keyword only valid for hubbard&
-                        & calculations in real-space: ignoring keyword', .false.)
+            if (parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
+                                      & calculations in real-space: ignoring keyword')
         end if
-        ! END CONTRIB
         
         if (parent) write (6,'(/,1X,13("-"),/)') 
 
@@ -310,6 +296,7 @@ contains
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)

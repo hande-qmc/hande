@@ -37,9 +37,6 @@ integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 ! function centred on a lattice site, can be non-zero.
 logical :: t_self_images
 
-
-!START CONTRIB - Joseph Weston 13/07/2010
-
 ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
 ! False if we are modelling an infinite lattice
 ! The code is set up to model inifinite lattices by default, however in order
@@ -47,8 +44,6 @@ logical :: t_self_images
 ! connection matrix elements corresponding to connections accross cell 
 ! boundaries (i.e. periodic boundary conditions) to 0
 logical :: finite_cluster = .false. ! default to infinite crystals
-
-!END CONTRIB
 
 
 contains
@@ -113,28 +108,28 @@ contains
                             ! Nearest neighbours within unit cell.
                             call set_orb(tmat(:,i),j)
                             call set_orb(tmat(:,i+1),j+1)
-                        else
-                            ! START CONTRIB - Joseph Weston 13/07/2010 
                             ! Nearest neighbours due to periodic boundaries.
-                            if(.not. finite_cluster) then ! if we want inf. lattice
-                                call set_orb(tmat(:,j),i)
-                                call set_orb(tmat(:,j+1),i+1)
-                            end if   
+                        else if(.not. finite_cluster) then ! if we want inf. lattice
+                            call set_orb(tmat(:,j),i)
+                            call set_orb(tmat(:,j+1),i+1) 
                             ! else we just want connections to other cells to
-                            ! stay as 0
-                            ! END CONTRIB
+                            ! stay as 0 
                         end if        
-                        
-                        call set_orb(connected_orbs(:,i),j)
-                        call set_orb(connected_orbs(:,i+1),j+1)
-                        ! START CONTRIB - Joseph Weston 13/07/2010
-                        ! same reasoning as above
-                        if(.not. finite_cluster) then
+                       
+                        ! if we only want a discrete molecule and the lattice
+                        ! vector connecting the 2 sites is the 0-vector then the
+                        ! 2 sites are connected in a unit cell and thus are
+                        ! actually connected. (If they "connect" accross cell
+                        ! boundaries then they are not connected for a single
+                        ! molecule).
+                        if( (finite_cluster .and. all(lvecs(:,ivec) == 0)) .or. &
+                             .not. finite_cluster) then
+                            call set_orb(connected_orbs(:,i),j)
+                            call set_orb(connected_orbs(:,i+1),j+1)                      
                             call set_orb(connected_orbs(:,j),i)
                             call set_orb(connected_orbs(:,j+1),i+1)
                         end if
-                        ! END CONTRIB
-
+ 
                     end if
                 end do
             end do
