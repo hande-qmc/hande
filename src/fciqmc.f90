@@ -28,7 +28,7 @@ contains
         use system, only: nel, system_type, hub_real, hub_k
 
         integer :: ierr
-        integer :: i, iproc_ref
+        integer :: i
         integer :: step
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
@@ -105,9 +105,8 @@ contains
             ! belongs on this processor.
             ! If it doesn't, set the walkers array to be empty.
             if (nprocs > 1) then
-                iproc_ref = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
-                if (iproc_ref /= iproc) tot_walkers = 0
-                D0_proc = iproc_ref
+                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+                if (D0_proc /= iproc) tot_walkers = 0
             else
                 D0_proc = iproc
             end if
