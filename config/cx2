@@ -1,0 +1,15 @@
+[main]
+fc = mpif90
+cxx = mpic++
+ld = mpif90
+cppdefs = -DHAVE_SSE2 -DPARALLEL
+libs = -L $(HOME)/local/lib -ltrlan_mpi -L $(MKL_HOME)/lib/64 -lmkl_scalapack_lp64 -lmkl_solver_lp64_sequential -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_sgimpt_lp64 -Wl,--end-group -lpthread -lm -cxxlib
+module_flag = -module
+
+[opt]
+fflags = -O3
+cxxflags = -O3
+
+[dbg]
+fflags = -g -traceback -CB
+cxxflags = -g -traceback 
