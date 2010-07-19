@@ -6,6 +6,9 @@ implicit none
 ! Currently only crystal momentum is implemented.
 integer :: nsym
 
+! Index of the symmetry corresponding to the Gamma-point.
+integer :: gamma_sym
+
 ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
 integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
 
@@ -23,6 +26,7 @@ contains
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
+        use errors, only: stop_all
 
         integer :: i, j, k, ierr
         integer :: ksum(ndim)
@@ -40,6 +44,12 @@ contains
 
             fmt1 = int_fmt(nsym)
 
+            gamma_sym = 0
+            do i = 1, nsym
+                if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
+            end do
+            if (gamma_sym == 0) call stop_all('init_symmetry', 'Gamma-point symmetry not found.')
+
             do i = 1, nsym
                 do j = i, nsym
                     ksum = basis_fns(i*2)%l + basis_fns(j*2)%l
@@ -47,7 +57,7 @@ contains
                         if (is_reciprocal_lattice_vector(ksum - basis_fns(k*2)%l)) then
                             sym_table(i,j) = k
                             sym_table(j,i) = k
-                            if (k==1) then
+                            if (k == gamma_sym) then
                                 inv_sym(i) = j
                                 inv_sym(j) = i
                             end if

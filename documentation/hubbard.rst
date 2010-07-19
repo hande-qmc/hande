@@ -46,7 +46,7 @@ Compilation
 
 hubbard requires the lapack (http://www.netlib.org/lapack/), blas
 (http://www.netlib.org/blas) and TRLan
-(http://crd.lbl.gov/~kewu/ps/trlan_.html) libaries.
+(http://crd.lbl.gov/~kewu/ps/trlan\_.html) libaries.
 
 After meeting these requirements, produce a makefile by running the mkconfig.py
 (residing in the tools subdirectory) script in the root directory:
@@ -298,7 +298,7 @@ These options describe the system which is to be investigated.
 
     .. math::
 
-        T = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dagger} a_{j\sigma}
+        T = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dag} a_{j\sigma}
 
 **U** *U*
     Real.
@@ -375,11 +375,13 @@ of the determinant is currently hard-coded.
 **symmetry** *isym*
     Integer.
 
-    Only relevant for the momentum space formulation.  Diagonalise only blocks containing
-    determinants of the same symmetry as the specified symmetry block *isym*.  *isym* refers
-    to a wavevector label (as given in the output).  To see the symmetry labels for a specific
-    crystal cell, run the calculation without any calculation type specified.  The :math:`\Gamma`
-    wavevector is always given by *isym*:math:`=1`.
+    Only relevant for the momentum space formulation.  Diagonalise only blocks
+    containing determinants of the same symmetry as the specified symmetry
+    block *isym*.  *isym* refers to a wavevector label (as given in the
+    output).  To see the symmetry labels for a specific crystal cell, run the
+    calculation without any calculation type specified.  The :math:`\Gamma`
+    wavevector is always given by *isym*:math:`=1` if *t* is positive and by
+    the number of sites in the cell if *t* is negative.
 **sym** *isym*
     Synonmym for **symmetry**.
 
@@ -412,7 +414,7 @@ performed.
     memory requirements of the Lanczos routine.  The size of the basis can have
     an impact on the performance of the Lanczos diagonalisation and which
     excited eigensolutions are found.  See the TRLan documentation,
-    http://crd.lbl.gov/~kewu/ps/trlan_.html, for more details.
+    http://crd.lbl.gov/~kewu/ps/trlan\_.html, for more details.
 **lanczos_solutions** *nsolns*
     Integer.
 
@@ -488,7 +490,7 @@ The following options are valid for FCIQMC calculations.
 
     .. math::
 
-        S(\beta) = S(\beta-A*\tau) - \xi*log(N_w(\tau)/N_w(\beta-A*\tau))/(A*\tau)
+        S(\beta) = S(\beta-A\tau) - \xi log(N_w(\tau)/N_w(\beta-A\tau))/(A\tau)
 
     where :math:`\beta` is the current imaginary time, :math:`A\tau` is the
     amount of imaginary time between shift updates, :math:`N_w` is the number of
