@@ -489,8 +489,8 @@ contains
 
         mc_cycles = ireport*ncycles
 
-        proj_energy_cycles = (ireport - start_averaging_from)*ncycles
-        vary_shift_reports = ireport - start_vary_shift - start_averaging_from
+        proj_energy_cycles = ireport - start_averaging_from
+        vary_shift_reports = proj_energy_cycles - start_vary_shift
 
         ! See also the format used in inital_fciqmc_status if this is changed.
         write (6,'(5X,i8,2X,4(f14.10,2X),f11.4,2X,i11,3X,f6.4,2X,f4.2)') &

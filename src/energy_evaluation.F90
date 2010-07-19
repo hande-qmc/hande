@@ -70,6 +70,14 @@ contains
 #endif
 
             ! Running average projected energy 
+            ! Note that as proj_energy and D0_population are accumulated over
+            ! the report loop, proj_energy/D0_population is 
+            !   \sum_j <D_j|H|D_0> <N_j>/<N_0>,
+            ! where <N_j> is the mean of the population on determinant j over
+            ! the report loop.
+            ! As a result, the running accumulation of the projected energy
+            ! need only be divided by the the number of report loops in order to
+            ! get an estimate of the average projected energy.
             av_proj_energy = av_proj_energy + proj_energy/D0_population
             ! average energy quantities over report loop.
             proj_energy = proj_energy/ncycles
