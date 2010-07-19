@@ -145,8 +145,6 @@ contains
 
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
-        integer :: s(2,0:nprocs-1)
-        integer :: r(2,0:nprocs-1)
         integer :: i, ierr
         integer(i0), pointer :: tmp_walkers(:,:)
 
@@ -167,18 +165,11 @@ contains
         ! numbers of walkers maybe MPI_AlltoAll would be more efficient?
 
         ! Find out how many walkers we are going to send and receive.
-        ! Cheekily also hide the communication of the population on the
-        ! reference determinant.
         forall (i=0:nprocs-1)
-            s(1,i) = spawning_head(i) - spawning_block_start(i)
-            s(2,i) = D0_population
+            send_counts(i) = spawning_head(i) - spawning_block_start(i)
         end forall
 
-        call MPI_AlltoAll(s, 2, MPI_INTEGER, r, 2, MPI_INTEGER, MPI_COMM_WORLD, ierr)
-
-        send_counts = s(1,:)
-        receive_counts = r(1,:)
-        D0_population = r(2, D0_proc)
+        call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
 
         ! Want spawning data to be continuous after move, hence need to find the
         ! receive displacements.

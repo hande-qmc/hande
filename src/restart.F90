@@ -246,7 +246,7 @@ contains
         call mpi_bcast(vary_shift, 1, mpi_logical, root, mpi_comm_world, ierr)
         call mpi_bcast(f0, basis_length, mpi_det_integer, root, mpi_comm_world, ierr)
         call mpi_bcast(occ_list0, nel, mpi_integer, root, mpi_comm_world, ierr)
-        call mpi_bcast(D0_population, 1, mpi_integer, root, mpi_comm_world, ierr)
+        call mpi_bcast(D0_population, 1, mpi_preal, root, mpi_comm_world, ierr)
         call mpi_bcast(H00, 1, mpi_preal, root, mpi_comm_world, ierr)
         ! Evaluate quantities based upon data read from restart file.
         if (nprocs > 1) then

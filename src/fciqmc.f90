@@ -79,7 +79,7 @@ contains
             call read_restart()
         else
             tot_walkers = 1
-            walker_population(tot_walkers) = D0_population
+            walker_population(tot_walkers) = nint(D0_population)
 
             ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
@@ -121,8 +121,8 @@ contains
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-            write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
-                              'Initial population on reference determinant:',D0_population
+            write (6,'(1X,a44,'//int_fmt(nint(D0_population),1)//',/)') &
+                              'Initial population on reference determinant:',nint(D0_population)
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
             if (initiator) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
@@ -226,11 +226,10 @@ contains
                 integer(i0), intent(in) :: f(basis_length)
                 type(det_info), intent(inout) :: d
             end subroutine decoder
-            subroutine update_proj_energy(idet, inst_proj_energy)
+            subroutine update_proj_energy(idet)
                 use const, only: p
                 implicit none
                 integer, intent(in) :: idet
-                real(p), intent(inout) :: inst_proj_energy
             end subroutine update_proj_energy
             subroutine spawner(d, parent_sign, nspawned, connection)
                 use determinants, only: det_info
@@ -256,7 +255,6 @@ contains
         integer :: nspawned, nattempts
         type(excit) :: connection
 
-        real(p) :: inst_proj_energy
 
         logical :: soft_exit
 
@@ -281,12 +279,9 @@ contains
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
             rspawn = 0.0_p
+            D0_population = 0.0_p
 
             do icycle = 1, ncycles
-
-                ! Zero MC cycle quantities.
-                inst_proj_energy = 0.0_p
-                D0_population = 0
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
@@ -304,7 +299,7 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy(idet, inst_proj_energy)
+                    call update_proj_energy(idet)
 
                     do iparticle = 1, abs(walker_population(idet))
                         
@@ -327,9 +322,6 @@ contains
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
                 call direct_annihilation(sc0)
-
-                ! normalise projected energy and add to running total.
-                proj_energy = proj_energy + inst_proj_energy/D0_population
 
             end do
 
@@ -406,11 +398,10 @@ contains
                 integer(i0), intent(in) :: f(basis_length)
                 type(det_info), intent(inout) :: d
             end subroutine decoder
-            subroutine update_proj_energy(idet, inst_proj_energy)
+            subroutine update_proj_energy(idet)
                 use const, only: p
                 implicit none
                 integer, intent(in) :: idet
-                real(p), intent(inout) :: inst_proj_energy
             end subroutine update_proj_energy
             subroutine spawner(d, parent_sign, nspawned, connection)
                 use determinants, only: det_info
@@ -435,8 +426,6 @@ contains
 
         integer :: nspawned, nattempts
         type(excit) :: connection
-
-        real(p) :: inst_proj_energy
 
         integer :: parent_flag
         integer(i0) :: cas_mask(basis_length), cas_core(basis_length)
@@ -493,12 +482,9 @@ contains
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
             rspawn = 0.0_p
+            D0_population = 0.0_p
 
             do icycle = 1, ncycles
-
-                ! Zero MC cycle quantities.
-                inst_proj_energy = 0.0_p
-                D0_population = 0
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
@@ -516,7 +502,7 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy(idet, inst_proj_energy)
+                    call update_proj_energy(idet)
 
                     ! Is this determinant an initiator?
                     if (abs(walker_population(idet)) > initiator_population) then
@@ -551,9 +537,6 @@ contains
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
                 call direct_annihilation_initiator(sc0)
-
-                ! normalise projected energy and add to running total.
-                proj_energy = proj_energy + inst_proj_energy/D0_population
 
             end do
 

@@ -178,7 +178,7 @@ contains
             case('SHIFT_DAMPING')
                 call readf(shift_damping)
             case('REFERENCE_DET_POPULATION')
-                call readi(D0_population)
+                call readf(D0_population)
 
             ! Calculation options: initiator-fciqmc.
             case('CAS')
@@ -325,7 +325,7 @@ contains
         call mpi_bcast(write_restart_number, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(D0_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
