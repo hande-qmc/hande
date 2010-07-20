@@ -20,17 +20,19 @@ contains
         use parallel, only: iproc, nprocs, parent
         use utils, only: int_fmt
 
-        use basis, only: basis_length
+        use basis, only: basis_length, write_basis_fn, basis_fns
         use calc, only: sym_in, ms_in
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use fciqmc_restart, only: read_restart
+        use fciqmc_data, only: occ_list0
         use system, only: nel, system_type, hub_real, hub_k
+        use symmetry, only: gamma_sym, sym_table
 
         integer :: ierr
         integer :: i, iproc_ref
         integer :: step
-
+        integer :: ref_sym ! the symmetry of the reference determinant
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
         ! Allocate main walker lists.
@@ -118,10 +120,22 @@ contains
         ! D0_population or obtaining it from the restart file, as appropriate.
         nparticles = sum(abs(walker_population(:tot_walkers)))
 
+        ! calculate the reference determinant symmetry
+        ! Brought outside if block for clarity.
+        ! Only if we are working in k-space.
+        if(system_type == hub_k) then
+            ref_sym = gamma_sym
+            do i=1,nel
+                ref_sym = sym_table((occ_list0(i)+1)/2,ref_sym)
+            end do
+        end if
+
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+            write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+            call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
             write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
                               'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
