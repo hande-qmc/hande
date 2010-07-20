@@ -134,8 +134,10 @@ contains
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-            write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
-            call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+            if(system_type == hub_k) then
+                write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+                call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+            end if
             write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
                               'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
