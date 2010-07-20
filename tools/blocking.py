@@ -146,8 +146,8 @@ This destroys the data stored in self.data'''
             block_size /= 2
             self.data = [0.5*(self.data[2*i]+self.data[2*i+1]) for i in range(block_size)]
 
-    def show_blocking(self):
-        '''Print out the blocking data and show a graph of the behaviour of the standard deviation with block size.'''
+    def show_blocking(self, plotfile=''):
+        '''Print out the blocking data and show a graph of the behaviour of the standard deviation with block size.  If plotfile is given, then the graph is saved to the specifed file rather than being shown on screen.'''
 
         # print blocking output
         fmt = '%-10s   %-16s  %-18s   %-24s'
@@ -167,8 +167,11 @@ This destroys the data stored in self.data'''
             pylab.xlim(xmax, 1)
             pylab.xlabel('Block size')
             pylab.ylabel('Standard deviation')
-            pylab.draw()
-            pylab.show()
+            if plotfile:
+                pylab.savefig(plotfile)
+            else:
+                pylab.draw()
+                pylab.show()
 
 def parse_options(args):
     '''Parse command line options.'''
@@ -180,6 +183,7 @@ def parse_options(args):
     parser.add_option('-i', '--index', dest='index_col', type='int', default=0, help='Set the column (starting from 0) containing the index labelling each data item (e.g. number of Monte Carlo cycles). Default: %default.')
     parser.add_option('-d', '--data', dest='data_col', type='int', default=1, help='Set the column (starting from 0) containing the data items. Default: %default.')
     parser.add_option('-f', '--from', dest='start_index', type='int', default=0, help='Set the index from which the data is blocked.  Data with a smaller index is discarded.  Default: %default.')
+    parser.add_option('-p', '--plotfile', help='Save a plot of the blocking analysis to PLOTFILE rather than showing the plot on screen (default behaviour).')
 
     (options, filenames) = parser.parse_args(args)
 
@@ -196,4 +200,4 @@ if __name__ == '__main__':
 
     my_data.get_data()
     my_data.blocking()
-    my_data.show_blocking()
+    my_data.show_blocking(options.plotfile)
