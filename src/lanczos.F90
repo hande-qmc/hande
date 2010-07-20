@@ -47,7 +47,7 @@ contains
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
-        mev = max(2*nlanczos_eigv, ndets)
+        mev = min(2*nlanczos_eigv, ndets)
        
         if (parent) then
             if (direct_lanczos) then

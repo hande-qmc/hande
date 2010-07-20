@@ -131,7 +131,7 @@ contains
 
                 else
 
-                    if (nprocs == 1) call generate_hamil(distribute_off)
+                    if (nprocs == 1 .and. .not.direct_lanczos) call generate_hamil(distribute_off)
 
                     ! Lanczos.
                     if (doing_calc(lanczos_diag)) then
