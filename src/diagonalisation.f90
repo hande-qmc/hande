@@ -15,6 +15,7 @@ contains
         ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
         ! exact diagonalisation.
 
+        use checking, only: check_allocate
         use basis, only: nbasis
         use system, only: nel
         use determinants, only: enumerate_determinants, find_sym_space_size, set_spin_polarisation
@@ -75,8 +76,14 @@ contains
             sym_max = sym_in
         end if
 
-        if (doing_calc(lanczos_diag)) allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
-        if (doing_calc(exact_diag)) allocate(exact_solns(tot_ndets), stat=ierr)
+        if (doing_calc(lanczos_diag)) then
+            allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
+            call check_allocate('lanczos_solns',nlanczos_eigv*(nel/2+1)*nbasis/2,ierr)
+        end if
+        if (doing_calc(exact_diag)) then
+            allocate(exact_solns(tot_ndets), stat=ierr)
+            call check_allocate('exact_solns',tot_ndets,ierr)
+        end if
 
         ! Number of lanczos and exact solutions found.
         nlanczos = 0
@@ -136,6 +143,7 @@ contains
                     ! Lanczos.
                     if (doing_calc(lanczos_diag)) then
                         allocate(lanczos_eigv(ndets), stat=ierr)
+                        call check_allocate('lanczos_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
                         if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
@@ -150,6 +158,7 @@ contains
                     ! Warning: this destroys the Hamiltonian matrix...
                     if (doing_calc(exact_diag)) then
                         allocate(exact_eigv(ndets), stat=ierr)
+                        call check_allocate('exact_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
                         if (nprocs > 1) call generate_hamil(distribute_blocks)
@@ -172,6 +181,7 @@ contains
         if (doing_calc(lanczos_diag) .and. parent) then
             write (6,'(1X,a31,/,1X,31("-"),/)') 'Lanczos diagonalisation results'
             allocate(ranking(nlanczos), stat=ierr)
+            call check_allocate('ranking',nlanczos,ierr)
             call mrgref(lanczos_solns(:nlanczos)%energy, ranking)
             write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
             state = 0
@@ -192,6 +202,7 @@ contains
         if (doing_calc(exact_diag) .and. parent) then
             write (6,'(1X,a29,/,1X,29("-"),/)') 'Exact diagonalisation results'
             allocate(ranking(nexact), stat=ierr)
+            call check_allocate('ranking',nexact,ierr)
             call mrgref(exact_solns(:nexact)%energy, ranking)
             write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
             state = 0
@@ -229,6 +240,7 @@ contains
         !        distribute_blocks and distribute_cols parameters.  See above
         !        for descriptions of the different behaviours.
 
+        use checking, only: check_allocate
         use utils, only: get_free_unit
         use errors
         use parallel
@@ -291,6 +303,7 @@ contains
         end select
 
         allocate(hamil(n1,n2), stat=ierr)
+        call check_allocate('hamil',n1*n2,ierr)
 
         ! index offset for the symmetry block compared to the index of the
         ! determinant list.

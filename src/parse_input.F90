@@ -28,6 +28,7 @@ contains
     
         use input
         use utils, only: get_free_unit
+        use checking, only: check_allocate
 
 #ifdef NAGF95
         use f90_unix_env, ONLY: getarg,iargc
@@ -80,6 +81,7 @@ contains
                 ! of dimensions...
                 ndim = nitems
                 allocate(lattice(ndim,ndim), stat=ierr)
+                call check_allocate('lattice',ndim*ndim,ierr)
                 do ivec = 1, ndim
                     if (nitems /= ndim) call stop_all('read_input', 'Do not understand lattice vector.')
                     do i = 1, ndim
@@ -98,6 +100,7 @@ contains
                 call readf(hubu)
             case('TWIST')
                 allocate(ktwist(nitems-item), stat=ierr)
+                call check_allocate('ktwist',nitems-item,ierr)
                 do i = 1, nitems-item
                     call readf(ktwist(i))
                 end do
@@ -156,6 +159,7 @@ contains
                 call readi(target_particles)
             case('REFERENCE_DET')
                 allocate(occ_list0(nitems-1), stat=ierr)
+                call check_allocate('occ_list0',nitems-1,ierr)
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
@@ -286,6 +290,7 @@ contains
 
         use mpi
         use parallel
+        use checking, only: check_allocate
 
         integer :: ierr
         logical :: option_set
@@ -294,17 +299,26 @@ contains
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
+        if (.not.parent) then
+            allocate(lattice(ndim,ndim), stat=ierr)
+            call check_allocate('lattice',ndim*ndim,ierr)
+        end if
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
+        if (.not.parent) then
+            allocate(lattice(ndim,ndim), stat=ierr)
+            call check_allocate('lattice',ndim*ndim,ierr)
+        end if
         if (parent) option_set = allocated(ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            if (.not.parent) allocate(ktwist(ndim), stat=ierr)
+            if (.not.parent) then
+                allocate(ktwist(ndim), stat=ierr)
+                call check_allocate('ktwist',ndim,ierr)
+            end if
             call mpi_bcast(ktwist, ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
 
@@ -331,7 +345,10 @@ contains
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            if (.not.parent) allocate(occ_list0(nel), stat=ierr)
+            if (.not.parent) then
+                allocate(occ_list0(nel), stat=ierr)
+                call check_allocate('occ_list0',nel,ierr)
+            end if
             call mpi_bcast(occ_list0, nel, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)

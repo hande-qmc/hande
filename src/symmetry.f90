@@ -26,6 +26,7 @@ contains
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
+        use checking, only: check_allocate
         use errors, only: stop_all
 
         integer :: i, j, k, ierr
@@ -40,7 +41,9 @@ contains
 
             nsym = nbasis/2
             allocate(sym_table(nsym, nsym), stat=ierr)
+            call check_allocate('sym_table',nsym*nsym,ierr)
             allocate(inv_sym(nsym), stat=ierr)
+            call check_allocate('inv_sym',nsym,ierr)
 
             fmt1 = int_fmt(nsym)
 

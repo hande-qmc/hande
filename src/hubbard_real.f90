@@ -56,6 +56,7 @@ contains
         use basis, only: nbasis, bit_lookup, basis_length, basis_fns, set_orb
         use system, only: lattice, ndim, box_length
         use bit_utils
+        use checking, only: check_allocate
         use errors, only: stop_all
 
         integer :: i, j, k, ierr, pos, ind, ivec
@@ -66,7 +67,9 @@ contains
         t_self_images = any(abs(box_length-1.0_p) < depsilon)
 
         allocate(tmat(basis_length,nbasis), stat=ierr)
+        call check_allocate('tmat',basis_length*nbasis,ierr)
         allocate(connected_orbs(basis_length,nbasis), stat=ierr)
+        call check_allocate('connected_orbs',basis_length*nbasis,ierr)
 
         tmat = 0
         connected_orbs = 0

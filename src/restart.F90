@@ -126,6 +126,7 @@ contains
 
         ! Read in the main walker list from file.
 
+        use checking, only: check_allocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
 
@@ -187,6 +188,7 @@ contains
         ! processor to send each determinant to.
         ! Use the spawning arrays as scratch space.
         allocate(scratch_energies(spawned_walker_length), stat=ierr)
+        call check_allocate('scratch_energies',spawned_walker_length,ierr)
         ! spawning_head_start gives the first slot in the spawning array for
         ! each processor.  Also want the last slot in the spawning array for
         ! each processor.

@@ -15,6 +15,7 @@ contains
         ! allocate the required memory for the list of walkers and set the
         ! initial walker.
 
+        use checking, only: check_allocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs, parent
@@ -37,8 +38,11 @@ contains
 
         ! Allocate main walker lists.
         allocate(walker_dets(basis_length,walker_length), stat=ierr)
+        call check_allocate('walker_dets',basis_length*walker_length,ierr)
         allocate(walker_population(walker_length), stat=ierr)
+        call check_allocate('walker_population',walker_length,ierr)
         allocate(walker_energies(walker_length), stat=ierr)
+        call check_allocate('walker_energies',walker_length,ierr)
 
         ! Allocate spawned walker lists.
         if (initiator) then
@@ -53,13 +57,16 @@ contains
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
         allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
+        call check_allocate('spawned_walkers1',spawned_size*spawned_walker_length,ierr)
         spawned_walkers => spawned_walkers1
         ! Allocate scratch space for doing communication.
         allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
+        call check_allocate('spawned_walkers2',spawned_size*spawned_walker_length,ierr)
         spawned_walkers_recvd => spawned_walkers2
 
         ! Set spawning_head to be the same size as spawning_block_start.
         allocate(spawning_head(0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('spawning_head',max(2,nprocs),ierr)
 
         ! Find the start position within the spawned walker lists for each
         ! processor.
@@ -67,6 +74,7 @@ contains
         ! for each processor so we allow it to be accessible even if the number
         ! of processors is 1.
         allocate(spawning_block_start(0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('spawning_block_start',max(2,nprocs),ierr)
         step = spawned_walker_length/nprocs
         forall (i=0:nprocs-1) spawning_block_start(i) = i*step
 
@@ -76,8 +84,12 @@ contains
         ! Set initial walker population.
         ! occ_list could be set and allocated in the input.
         allocate(f0(basis_length), stat=ierr)
+        call check_allocate('f0',basis_length,ierr)
         if (restart) then
-            if (.not.allocated(occ_list0)) allocate(occ_list0(nel), stat=ierr)
+            if (.not.allocated(occ_list0)) then
+                allocate(occ_list0(nel), stat=ierr)
+                call check_allocate('occ_list0',nel,ierr)
+            end if
             call read_restart()
         else
             tot_walkers = 1

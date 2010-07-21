@@ -29,6 +29,7 @@ contains
 
         use trl_info
         use trl_interface
+        use checking, only: check_allocate
         use errors, only: stop_all
         use parallel, only: parent, nprocs, get_blacs_info
 
@@ -83,8 +84,10 @@ contains
         call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,ndets))
        
         allocate(eval(mev), stat=ierr)
+        call check_allocate('eval',mev,ierr)
 
         allocate(evec(nrows,mev), stat=ierr)
+        call check_allocate('evec',nrows*mev,ierr)
        
         ! Call Lanczos diagonalizer.
         ! hamil_vector: matrix-vector multiplication routine.

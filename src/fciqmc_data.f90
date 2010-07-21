@@ -189,6 +189,7 @@ contains
         ! This should be used as a last resort if the user doesn't specify
         ! a reference determinant.
 
+        use checking, only: check_allocate
         use system, only: nalpha, nbeta, nel
         
         integer :: i, ierr
@@ -197,6 +198,7 @@ contains
         ! allocated (and presumably set).
         if (.not.allocated(occ_list0)) then
             allocate(occ_list0(nel), stat=ierr)
+            call check_allocate('occ_list0',nel,ierr)
             forall (i=1:nalpha) occ_list0(i) = 2*i-1
             forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
         end if

@@ -18,6 +18,7 @@ contains
         ! the list of wavevectors and hence the kinetic energy associated
         ! with each basis function (two per wavevector to account for spin).
 
+        use checking, only: check_allocate
         use system
         use m_mrgref, only: mrgref
         use errors, only: stop_all
@@ -77,8 +78,11 @@ contains
         end forall
 
         allocate(basis_fns(nbasis), stat=ierr)
+        call check_allocate('basis_fns',nbasis,ierr)
         allocate(tmp_basis_fns(nbasis/2), stat=ierr)
+        call check_allocate('tmp_basis_fns',nbasis/2,ierr)
         allocate(basis_fns_ranking(nbasis/2), stat=ierr)
+        call check_allocate('basis_fns_ranking',nbasis/2,ierr)
 
         ! Find all alpha spin orbitals.
         ibasis = 0

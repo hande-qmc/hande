@@ -62,10 +62,14 @@ contains
 
         ! Initialise system based upon input parameters.
 
+        use checking, only: check_allocate
+
         integer :: ivec, ierr
 
         allocate(box_length(ndim), stat=ierr)
+        call check_allocate('box_length',ndim,ierr)
         allocate(rlattice(ndim,ndim), stat=ierr)
+        call check_allocate('rlattice',ndim*ndim,ierr)
 
         forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),p))
         nsites = nint(product(box_length))
@@ -73,6 +77,7 @@ contains
 
         if (.not.allocated(ktwist)) then
             allocate(ktwist(ndim), stat=ierr)
+            call check_allocate('ktwist',ndim,ierr)
             ktwist = 0.0_p
         end if
 
