@@ -151,9 +151,14 @@ contains
 
         ! Clean up hubbard_real specific allocations.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
-        if (allocated(tmat)) deallocate(tmat, stat=ierr)
+        if (allocated(tmat)) then
+            deallocate(tmat, stat=ierr)
+            call check_deallocate('tmat',ierr)
+        end if
 
     end subroutine end_real_space_hub
 

@@ -29,7 +29,7 @@ contains
 
         use trl_info
         use trl_interface
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use parallel, only: parent, nprocs, get_blacs_info
 
@@ -120,7 +120,9 @@ contains
         eigv(1:nfound) = eval(1:nfound)
 
         deallocate(eval, stat=ierr)
+        call check_deallocate('eval',ierr)
         deallocate(evec, stat=ierr)
+        call check_deallocate('evec',ierr)
 
     end subroutine lanczos_diagonalisation
        

@@ -91,12 +91,18 @@ contains
 
         ! Clean up system allocations.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
         deallocate(box_length, stat=ierr)
+        call check_deallocate('box_length',ierr)
         deallocate(rlattice, stat=ierr)
+        call check_deallocate('rlattice',ierr)
         deallocate(lattice, stat=ierr)
+        call check_deallocate('lattice',ierr)
         deallocate(ktwist, stat=ierr)
+        call check_deallocate('ktwist',ierr)
 
     end subroutine end_system
 

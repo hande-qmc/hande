@@ -240,6 +240,7 @@ contains
             if (done) exit
         end do
         deallocate(scratch_energies, stat=ierr)
+        call check_deallocate('scratch_energies',ierr)
         ! Finally, need to broadcast the other information read in.
         call mpi_bcast(restart_version, 1, mpi_integer, root, mpi_comm_world, ierr)
         call mpi_bcast(mc_cycles_done, 1, mpi_integer, root, mpi_comm_world, ierr)

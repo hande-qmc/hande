@@ -18,7 +18,7 @@ contains
         !    eigv(ndets): Lanczos eigenvalues of the current block of the
         !        Hamiltonian matrix.
 
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use parallel, only: parent, nprocs
 
@@ -76,6 +76,7 @@ contains
 
         lwork = work(1)
         deallocate(work)
+        call check_deallocate('work',ierr)
 
         ! Now perform the diagonalisation.
         allocate(work(lwork), stat=ierr)
@@ -107,7 +108,9 @@ contains
         end if
 
         deallocate(work, stat=ierr)
+        call check_deallocate('work',ierr)
         deallocate(eigvec, stat=ierr)
+        call check_deallocate('eigvec',ierr)
 
         if (find_eigenvectors) then
             do i = 1,ndets

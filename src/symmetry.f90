@@ -103,10 +103,18 @@ contains
 
         ! Clean up after symmetry.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
-        if (allocated(sym_table)) deallocate(sym_table, stat=ierr)
-        if (allocated(inv_sym)) deallocate(inv_sym, stat=ierr)
+        if (allocated(sym_table)) then
+            deallocate(sym_table, stat=ierr)
+            call check_deallocate('sym_table',ierr)
+        end if
+        if (allocated(inv_sym)) then
+            deallocate(inv_sym, stat=ierr)
+            call check_deallocate('inv_sym',ierr)
+        end if
 
     end subroutine end_symmetry
 

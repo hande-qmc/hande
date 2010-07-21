@@ -15,7 +15,7 @@ contains
         ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
         ! exact diagonalisation.
 
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use system, only: nel
         use determinants, only: enumerate_determinants, find_sym_space_size, set_spin_polarisation
@@ -152,6 +152,7 @@ contains
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
                         nlanczos = nlanczos + nfound
                         deallocate(lanczos_eigv)
+                        call check_deallocate('lanczos_eigv',ierr)
                     end if
 
                     ! Exact diagonalisation.
@@ -167,6 +168,7 @@ contains
                         exact_solns(nexact+1:nexact+ndets)%ms = ms 
                         nexact = nexact + ndets
                         deallocate(exact_eigv)
+                        call check_deallocate('exact_eigv',ierr)
                     end if
 
                 end if
@@ -197,6 +199,7 @@ contains
             end do
             write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', lanczos_solns(ranking(1))%energy
             deallocate(ranking, stat=ierr)
+            call check_deallocate('ranking',ierr)
         end if
 
         if (doing_calc(exact_diag) .and. parent) then
@@ -218,10 +221,17 @@ contains
             end do
             write (6,'(/,1X,a19,f18.12,/)') 'Exact ground state:', exact_solns(ranking(1))%energy
             deallocate(ranking, stat=ierr)
+            call check_deallocate('ranking',ierr)
         end if
 
-        if (doing_calc(lanczos_diag)) deallocate(lanczos_solns, stat=ierr)
-        if (doing_calc(exact_diag)) deallocate(exact_solns, stat=ierr)
+        if (doing_calc(lanczos_diag)) then
+            deallocate(lanczos_solns, stat=ierr)
+            call check_deallocate('lanczos_solns',ierr)
+        end if
+        if (doing_calc(exact_diag)) then
+            deallocate(exact_solns, stat=ierr)
+            call check_deallocate('exact_solns',ierr)
+        end if
 
     end subroutine diagonalise
 
@@ -240,7 +250,7 @@ contains
         !        distribute_blocks and distribute_cols parameters.  See above
         !        for descriptions of the different behaviours.
 
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use utils, only: get_free_unit
         use errors
         use parallel
@@ -260,6 +270,7 @@ contains
 
         if (allocated(hamil)) then
             deallocate(hamil, stat=ierr)
+            call check_deallocate('hamil',ierr)
         end if
 
         if (present(distribute_mode)) then
@@ -369,9 +380,14 @@ contains
 
         ! Clean up hamiltonian module.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
-        if (allocated(hamil)) deallocate(hamil, stat=ierr)
+        if (allocated(hamil)) then
+            deallocate(hamil, stat=ierr)
+            call check_deallocate('hamil',ierr)
+        end if
 
     end subroutine end_hamil
 

@@ -160,12 +160,22 @@ contains
 
         ! Clean up after determinants.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
-        if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
+        if (allocated(dets_list)) then
+            deallocate(dets_list, stat=ierr)
+            call check_deallocate('dets_list',ierr)
+        end if
         deallocate(bit_lookup, stat=ierr)
+        call check_deallocate('bit_lookup',ierr)
         deallocate(basis_lookup, stat=ierr)
-        if (allocated(sym_space_size)) deallocate(sym_space_size, stat=ierr)
+        call check_deallocate('basis_lookup',ierr)
+        if (allocated(sym_space_size)) then
+            deallocate(sym_space_size, stat=ierr)
+            call check_deallocate('sym_space_size',ierr)
+        end if
 
         if (write_determinants) close(det_unit, status='keep')
 
@@ -241,7 +251,7 @@ contains
         ! for a Monte Carlo approach to estimating the size of the space (better
         ! for large systems where we can't do FCI).
 
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i
         use utils, only: int_fmt
         use bit_utils, only: first_perm, bit_permutation
@@ -252,7 +262,10 @@ contains
         integer :: k_beta, k
         integer(i0) :: f_alpha, f_beta
 
-        if (allocated(sym_space_size)) deallocate(sym_space_size, stat=ierr)
+        if (allocated(sym_space_size)) then
+            deallocate(sym_space_size, stat=ierr)
+            call check_deallocate('sym_space_size',ierr)
+        end if
         allocate(sym_space_size(nsym), stat=ierr)
         call check_allocate('sym_space_size',nsym,ierr)
 
@@ -335,7 +348,7 @@ contains
         !         wavevector (up to a reciprocal lattice vector) are stored.
         !         Ignored for the real space formulation of the Hubbard model.
 
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i
         use errors, only: stop_all
         use utils, only: get_free_unit, int_fmt
@@ -350,7 +363,10 @@ contains
         character(4) :: fmt1
         integer(i0) :: f_alpha, f_beta
 
-        if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
+        if (allocated(dets_list)) then
+            deallocate(dets_list, stat=ierr)
+            call check_deallocate('dets_list',ierr)
+        end if
 
         nbeta_combinations = binom_i(nbasis/2, nbeta)
         nalpha_combinations = binom_i(nbasis/2, nalpha)
