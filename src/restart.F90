@@ -126,7 +126,7 @@ contains
 
         ! Read in the main walker list from file.
 
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
 
