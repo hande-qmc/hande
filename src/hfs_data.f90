@@ -1,6 +1,6 @@
 module hfs_data
 
-! Module for storing data specific to Hellmann--Feynmann sampling.
+! Module for storing data specific to Hellmann--Feynman sampling.
 
 use const, only: p, i0
 

@@ -19,7 +19,7 @@ integer, parameter :: fciqmc_calc = 2**2
 integer, parameter :: simple_fciqmc_calc = 2**3
 ! Doing initiator-FCIQMC?
 integer, parameter :: initiator_fciqmc = 2**4
-! Doing Hellmann--Feynmann sampling?
+! Doing Hellmann--Feynman sampling?
 integer, parameter :: hfs_fciqmc_calc = 2**5
 ! Estimate the size of the Hilbert space using Monte Carlo?
 integer, parameter :: mc_hilbert_space = 2**6

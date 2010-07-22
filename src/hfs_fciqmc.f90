@@ -1,6 +1,6 @@
-module hellmann_feynmann_sampling
+module hellmann_feynman_sampling
 
-! Module for performing Hellmann--Feynmann sampling in FCIQMC.
+! Module for performing Hellmann--Feynman sampling in FCIQMC.
 
 use const
 
@@ -10,7 +10,7 @@ implicit none
 
 contains
 
-    subroutine init_hellmann_feynmann_sampling()
+    subroutine init_hellmann_feynman_sampling()
 
         ! Initialisation of HF sampling: setup parameters for the operators being
         ! sampled.
@@ -34,12 +34,12 @@ contains
             walker_energies(2,tot_walkers) = calc_orb_occ(f0, lmask)
         end if
 
-    end subroutine init_hellmann_feynmann_sampling
+    end subroutine init_hellmann_feynman_sampling
 
     subroutine do_hfs_fciqmc(decoder, update_proj_energy, spawner, sc0)
 
         ! Run the FCIQMC algorithm starting from the initial walker
-        ! distribution and perform Hellmann--Feynmann sampling in conjunction on
+        ! distribution and perform Hellmann--Feynman sampling in conjunction on
         ! the instantaneous wavefunction.
 
         ! This is implemented by abusing fortran's ability to pass procedures as
@@ -176,7 +176,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
 
-                        ! Attempt to spawn Hellmann--Feynmann walkers from
+                        ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         ! Currently only using operators diagonal in the basis,
                         ! so this isn't possible.
@@ -185,8 +185,8 @@ contains
 
                     do iparticle = 1, abs(walker_population(2,idet))
 
-                        ! Attempt to spawn Hellmann--Feynmann walkers from
-                        ! Hellmann--Feynmann walkers.
+                        ! Attempt to spawn Hellmann--Feynman walkers from
+                        ! Hellmann--Feynman walkers.
                         call spawner(cdet, walker_population(2,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
@@ -196,10 +196,10 @@ contains
                     ! Clone or die: Hamiltonian walkers.
                     call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1))
 
-                    ! Clone or die: Hellmann--Feynmann walkers.
+                    ! Clone or die: Hellmann--Feynman walkers.
                     call stochastic_death(walker_energies(1,idet), walker_population(2,idet), nparticles(2))
 
-                    ! Clone Hellmann--Feynmann walkers from Hamiltonian walkers.
+                    ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! CHECK
                     call stochastic_hf_cloning(walker_energies(2,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
@@ -254,4 +254,4 @@ contains
 
     end subroutine do_hfs_fciqmc
 
-end module hellmann_feynmann_sampling
+end module hellmann_feynman_sampling

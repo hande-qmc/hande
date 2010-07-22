@@ -123,7 +123,7 @@ contains
                 calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
                 calc_type = calc_type + initiator_fciqmc
-            case('HELLMANN-FEYNMANN')
+            case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
                 calc_type = calc_type + mc_hilbert_space
