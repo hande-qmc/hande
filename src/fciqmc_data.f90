@@ -493,7 +493,7 @@ contains
         vary_shift_reports = proj_energy_cycles - start_vary_shift
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,2X,4(f14.10,2X),f11.4,2X,i11,3X,f6.4,2X,f4.2)') &
+        write (6,'(5X,i8,2X,4(f18.10,2X),f11.4,2X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, proj_energy,         &
                                              av_proj_energy/proj_energy_cycles, D0_population, & 
