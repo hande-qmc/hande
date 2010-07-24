@@ -47,8 +47,10 @@ contains
             call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
         end if
         
-        allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
-        call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
+        if (nprocs > 1) then
+            allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+            call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
+        end if
 
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
@@ -113,19 +115,17 @@ contains
         call check_deallocate('work',ierr)
 
         if (find_eigenvectors) then
-#ifdef PARALLEL
             if (nprocs == 1) then
                 call analyse_wavefunction(hamil(:,1))
             else
                 call analyse_wavefunction(eigvec(:,1))
             end if
-#else
-            call analyse_wavefunction(hamil(:,1))
-#endif
         end if
 
-        deallocate(eigvec, stat=ierr)
-        call check_deallocate('eigvec',ierr)
+        if (nprocs > 1) then
+            deallocate(eigvec, stat=ierr)
+            call check_deallocate('eigvec',ierr)
+        end if
 
     end subroutine exact_diagonalisation
 
