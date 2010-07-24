@@ -82,7 +82,7 @@ contains
         ! so
         !   |H_ij| = U/\Omega
         ! for allowed excitations.
-        pspawn = tau*hub_k_coulomb/pgen
+        pspawn = tau*abs(hub_k_coulomb)/pgen
         psuccess = genrand_real2()
 
         ! Need to take into account the possibilty of a spawning attempt
@@ -145,6 +145,8 @@ contains
                 ! connecting matrix element.
                 s = -s
             end if
+            ! Sign from value of U as well---U can be negative!
+            if (hub_k_coulomb < 0) s = -s
 
             ! If H_ij is positive, then the spawned walker is of opposite sign
             ! to the parent.

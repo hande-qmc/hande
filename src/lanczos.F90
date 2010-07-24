@@ -29,6 +29,7 @@ contains
 
         use trl_info
         use trl_interface
+        use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use parallel, only: parent, nprocs, get_blacs_info
 
@@ -49,7 +50,7 @@ contains
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
-        mev = max(2*nlanczos_eigv, ndets)
+        mev = min(2*nlanczos_eigv, ndets)
        
         if (parent) then
             if (direct_lanczos) then
@@ -85,8 +86,10 @@ contains
         call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,ndets))
        
         allocate(eval(mev), stat=ierr)
+        call check_allocate('eval',mev,ierr)
 
         allocate(evec(nrows,mev), stat=ierr)
+        call check_allocate('evec',nrows*mev,ierr)
        
         ! Call Lanczos diagonalizer.
         ! hamil_vector: matrix-vector multiplication routine.
@@ -125,7 +128,9 @@ contains
         end if
 
         deallocate(eval, stat=ierr)
+        call check_deallocate('eval',ierr)
         deallocate(evec, stat=ierr)
+        call check_deallocate('evec',ierr)
 
     end subroutine lanczos_diagonalisation
        

@@ -24,6 +24,8 @@ override_core_option = True
 
 [kspace_nontilted_2d_ifciqmc]
 
+[kspace_tilted_2d_mchilbert]
+
 # Form job categories.
 [categories]
 
@@ -38,3 +40,5 @@ sfciqmc = kspace_nontilted_2d_sfciqmc
 fciqmc = rspace_1d_fciqmc kspace_nontilted_2d_fciqmc
 ifciqmc = kspace_1d_ifciqmc kspace_1d_ifciqmc_cas kspace_nontilted_2d_ifciqmc
 fciqmc_all = kspace_nontilted_2d_sfciqmc fciqmc ifciqmc
+
+hilbert = kspace_tilted_2d_mchilbert

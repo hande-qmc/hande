@@ -205,6 +205,7 @@ contains
         ! This should be used as a last resort if the user doesn't specify
         ! a reference determinant.
 
+        use checking, only: check_allocate
         use system, only: nalpha, nbeta, nel
         
         integer :: i, ierr
@@ -213,6 +214,7 @@ contains
         ! allocated (and presumably set).
         if (.not.allocated(occ_list0)) then
             allocate(occ_list0(nel), stat=ierr)
+            call check_allocate('occ_list0',nel,ierr)
             forall (i=1:nalpha) occ_list0(i) = 2*i-1
             forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
         end if
@@ -237,7 +239,6 @@ contains
         real(p) :: rate
         integer, intent(in) :: nattempts
         integer :: nspawn
-        integer :: ierr
 
         nspawn = sum(spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1))
         if (nspawn /= 0) then
@@ -556,15 +557,38 @@ contains
 
         ! Deallocate fciqmc data arrays.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
-        if (allocated(nparticles)) deallocate(nparticles, stat=ierr)
-        if (allocated(walker_dets)) deallocate(walker_dets, stat=ierr)
-        if (allocated(walker_population)) deallocate(walker_population, stat=ierr)
-        if (allocated(walker_energies)) deallocate(walker_energies, stat=ierr)
-        if (allocated(spawned_walkers1)) deallocate(spawned_walkers1, stat=ierr)
-        if (allocated(spawned_walkers2)) deallocate(spawned_walkers2, stat=ierr)
-        if (allocated(f0)) deallocate(f0, stat=ierr)
+        if (allocated(nparticles)) then
+            deallocate(nparticles, stat=ierr)
+            call check_deallocate('nparticles',ierr)
+        end if
+        if (allocated(walker_dets)) then
+            deallocate(walker_dets, stat=ierr)
+            call check_deallocate('walker_dets',ierr)
+        end if
+        if (allocated(walker_population)) then
+            deallocate(walker_population, stat=ierr)
+            call check_deallocate('walker_population',ierr)
+        end if
+        if (allocated(walker_energies)) then
+            deallocate(walker_energies, stat=ierr)
+            call check_deallocate('walker_energies',ierr)
+        end if
+        if (allocated(spawned_walkers1)) then
+            deallocate(spawned_walkers1, stat=ierr)
+            call check_deallocate('spawned_walkers1',ierr)
+        end if
+        if (allocated(spawned_walkers2)) then
+            deallocate(spawned_walkers2, stat=ierr)
+            call check_deallocate('spawned_walkers2',ierr)
+        end if
+        if (allocated(f0)) then
+            deallocate(f0, stat=ierr)
+            call check_deallocate('f0',ierr)
+        end if
 
     end subroutine end_fciqmc
 

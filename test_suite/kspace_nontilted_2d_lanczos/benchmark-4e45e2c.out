@@ -2,13 +2,12 @@
  Hubbard
 
  ================================================================
- Compiled on May 20 2010 at 17:49:33
+ Compiled on Jun 20 2010 at 19:06:28
  VCS BASE repository version:
-     d21fd8d2276465e87aebe49d4e5ec2cceeec22b7
+     4e45e2c7ad88815b33de566c998cb08a00edaa22
  Working directory: 
-     /home/jss43/projects/hubbard_fciqmc/test_suite/kspace_nontilted_2d_lanczos
- Started running on 20/05/2010 at 17:49:52
- Running on: bea
+     /home/james/work/src/hubbard_fciqmc/test_suite/kspace_nontilted_2d_lanczos
+ Started running on 20/06/2010 at 19:08:59
  ================================================================
 
  Input options
@@ -34,10 +33,10 @@ block_size 8
  index   k-point      ms     kinetic energy
      1   ( 0, 0)      1     -4.00000000
      2   ( 0, 0)     -1     -4.00000000
-     3   ( 1, 0)      1      0.00000000
-     4   ( 1, 0)     -1      0.00000000
-     5   ( 0, 1)      1      0.00000000
-     6   ( 0, 1)     -1      0.00000000
+     3   ( 1, 0)      1     -0.00000000
+     4   ( 1, 0)     -1     -0.00000000
+     5   ( 0, 1)      1     -0.00000000
+     6   ( 0, 1)     -1     -0.00000000
      7   ( 1, 1)      1      4.00000000
      8   ( 1, 1)     -1      4.00000000
 
@@ -84,12 +83,11 @@ block_size 8
 
  Performing Lanczos diagonalisation...
 
- TRLAN: info%ned (           4 ) is large relative to the matrix dimension (
-           4 )
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/05/20 17:49:52.935 (+01:00)
+                                        2010/06/20 19:08:59.729 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -103,8 +101,8 @@ Number of random vectors used:          1
 Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
-Restarting:             2.0000E-04 sec,  6.4000E+05 FLOP/S ( 1.2800E+02 FLOP)
-TRLAN on this PE:       3.0000E-04 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+Restarting:             8.0000E-03 sec,  1.6000E+04 FLOP/S ( 1.2800E+02 FLOP)
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -112,12 +110,11 @@ TRLAN on this PE:       3.0000E-04 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  Performing Lanczos diagonalisation...
 
- TRLAN: info%ned (           4 ) is large relative to the matrix dimension (
-           4 )
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/05/20 17:49:52.936 (+01:00)
+                                        2010/06/20 19:08:59.730 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -132,7 +129,7 @@ Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
 time in restarting:           0.00000E+00 sec
-TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -140,12 +137,11 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  Performing Lanczos diagonalisation...
 
- TRLAN: info%ned (           4 ) is large relative to the matrix dimension (
-           4 )
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/05/20 17:49:52.936 (+01:00)
+                                        2010/06/20 19:08:59.730 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -160,7 +156,7 @@ Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
 time in restarting:           0.00000E+00 sec
-TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -168,12 +164,11 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  Performing Lanczos diagonalisation...
 
- TRLAN: info%ned (           4 ) is large relative to the matrix dimension (
-           4 )
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/05/20 17:49:52.936 (+01:00)
+                                        2010/06/20 19:08:59.731 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
 Times the operator is applied:          4 (MAX:             1000 ).
@@ -181,14 +176,14 @@ Problem size:                           4 (PE:   0),           4 (Global)
 Convergence tolerance:          1.490E-08 (rel),       1.490E-08 (abs)
 Maximum basis size:                    20
 Restarting scheme:                      0
-Number of re-orthogonalizations        10
+Number of re-orthogonalizations        14
 Number of (re)start loops:              1
-Number of random vectors used:          2
+Number of random vectors used:          4
 Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
-Restarting:             1.0000E-04 sec,  1.2800E+06 FLOP/S ( 1.2800E+02 FLOP)
-TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -213,12 +208,11 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  Performing Lanczos diagonalisation...
 
- TRLAN: info%ned (           2 ) is large relative to the matrix dimension (
-           2 )
+ TRLAN: info%ned (           2 ) is large relative to the matrix dimension (           2 )
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/05/20 17:49:52.936 (+01:00)
+                                        2010/06/20 19:08:59.739 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
 Times the operator is applied:          2 (MAX:             1000 ).
@@ -232,7 +226,7 @@ Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
 time in restarting:           0.00000E+00 sec
-TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -240,12 +234,11 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  Performing Lanczos diagonalisation...
 
- TRLAN: info%ned (           2 ) is large relative to the matrix dimension (
-           2 )
+ TRLAN: info%ned (           2 ) is large relative to the matrix dimension (           2 )
         it might be more appropriate to use LAPACK dsyev/ssyev
  TRLan (Lanczos) information:
 
-                                        2010/05/20 17:49:52.936 (+01:00)
+                                        2010/06/20 19:08:59.740 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
 Times the operator is applied:          2 (MAX:             1000 ).
@@ -259,7 +252,7 @@ Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
 time in restarting:           0.00000E+00 sec
-TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -267,27 +260,28 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  Performing Lanczos diagonalisation...
 
- TRLAN: info%ned (           2 ) is large relative to the matrix dimension (
-           2 )
+ TRLAN: info%ned (           2 ) is large relative to the matrix dimension (           2 )
         it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLanczos returned with error         -203
+ Contents of most variables are dumped to IO unit #           99
  TRLan (Lanczos) information:
 
-                                        2010/05/20 17:49:52.936 (+01:00)
- TRLAN execution summary (exit status =           0 )
-Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
-Times the operator is applied:          2 (MAX:             1000 ).
+                                        2010/06/20 19:08:59.741 (+01:00)
+ TRLAN execution summary (exit status =        -203 )
+Number of SMALLEST eigenpairs:          0 (computed),          2 (wanted)
+Times the operator is applied:          1 (MAX:             1000 ).
 Problem size:                           2 (PE:   0),           2 (Global)
 Convergence tolerance:          1.490E-08 (rel),       0.000E+00 (abs)
 Maximum basis size:                    20
 Restarting scheme:                      0
-Number of re-orthogonalizations         9
-Number of (re)start loops:              1
-Number of random vectors used:          3
+Number of re-orthogonalizations        16
+Number of (re)start loops:              0
+Number of random vectors used:          5
 Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
-Restarting:             1.0000E-04 sec,  1.6000E+05 FLOP/S ( 1.6000E+01 FLOP)
-TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -304,7 +298,7 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
       7      -2    -4.000000000000
       8       0    -3.531128874149
       9       0    -3.531128874149
-     10       0     0.000000000000
+     10       0    -0.000000000000
      11       0     0.000000000000
      12       2     0.000000000000
      13      -2     0.000000000000
@@ -325,4 +319,9 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
      28       0     8.270510361534
 
  Lanczos ground state:   -7.768564865582
+
+ ================================================================
+ Finished running on 20/06/2010 at 19:08:59
+ Calculation took:                    0.01s
+ ================================================================
 

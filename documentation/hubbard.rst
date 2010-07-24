@@ -46,7 +46,7 @@ Compilation
 
 hubbard requires the lapack (http://www.netlib.org/lapack/), blas
 (http://www.netlib.org/blas) and TRLan
-(http://crd.lbl.gov/~kewu/ps/trlan_.html) libaries.
+(http://crd.lbl.gov/~kewu/ps/trlan\_.html) libaries.
 
 After meeting these requirements, produce a makefile by running the mkconfig.py
 (residing in the tools subdirectory) script in the root directory:
@@ -71,15 +71,15 @@ A platform is defined using a simple ini file, consisting of three sections:
 main, opt and dbg.  For instance::
 
     [main]
-    cc = gfortran
+    fc = gfortran
     ld = gfortran
     libs = -llapack -lblas
 
     [opt]
-    cflags = -O3
+    fflags = -O3
 
     [dbg]
-    cflags = -g
+    fflags = -g
 
 Any option not specified in the 'opt' and 'dbg' sections is inherited from the
 'main' section.  The optimised settings in 'opt' are used by default; the debug
@@ -91,6 +91,10 @@ fc
     Set the fortran compiler.
 fflags
     Set flags to be passed to the fortran compiler during compilation.
+cxx
+    Set the C++ compiler.
+cxxflags
+    Set flags to be passed to the C++ compiler during compilation.
 cppdefs
     Set definitions to be used in the C pre-processing step.
 cppflags
@@ -294,7 +298,7 @@ These options describe the system which is to be investigated.
 
     .. math::
 
-        T = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dagger} a_{j\sigma}
+        T = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dag} a_{j\sigma}
 
 **U** *U*
     Real.
@@ -314,6 +318,18 @@ These options describe the system which is to be investigated.
 
     Applicable only in the momentum space formulation of the Hubbard model.
 
+**finite_cluster**
+
+    This keyword may only be given if the calculations are being carried out
+    in real-space, otherwise the user is notified and the keyword is ignored.
+
+    The default behaviour for Hubbard is to work on an infinite lattice 
+    contructed out of repeating the user-specified unit cell. If finite_cluster is 
+    specified then Hubbard will only work on the single unit cell and *not*
+    the periodic continuation which would give us a lattice.
+
+    This option is introduced so that Hubbard can now work on single molecules.
+
 Calculation type
 ^^^^^^^^^^^^^^^^
 
@@ -322,7 +338,7 @@ chosen system.  If no calculation type is given, then only the calculation
 initialisation (mainly the enumeration of the basis) is performed.
 
 **exact**
-    Perform an full diagonalisation of the Hamiltonian matrix.
+    Perform a full diagonalisation of the Hamiltonian matrix.
 **fci**
     Synonym for **exact**.
 **simple_fciqmc**
@@ -340,6 +356,14 @@ initialisation (mainly the enumeration of the basis) is performed.
     pre-computing the entire Hamiltonian matrix (as is done with **lanczos**).
     This is slower but requires much less memory.  This is currently only
     implemented in serial.
+**estimate_hilbert_space** *ncycles*
+    Integer.
+
+    Estimate the size of the Hilbert space within the desired symmetry block of
+    the Hamiltonian by performing *ncycles* cycles of a Monte Carlo algorithm.
+    The overall spin must be set using **ms**.  Currently symmetry is only
+    available for the momentum formulation of the Hubbard model.  The symmetry
+    can be selected by specifying a reference determinant.
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -363,11 +387,13 @@ of the determinant is currently hard-coded.
 **symmetry** *isym*
     Integer.
 
-    Only relevant for the momentum space formulation.  Diagonalise only blocks containing
-    determinants of the same symmetry as the specified symmetry block *isym*.  *isym* refers
-    to a wavevector label (as given in the output).  To see the symmetry labels for a specific
-    crystal cell, run the calculation without any calculation type specified.  The :math:`\Gamma`
-    wavevector is always given by *isym*:math:`=1`.
+    Only relevant for the momentum space formulation.  Diagonalise only blocks
+    containing determinants of the same symmetry as the specified symmetry
+    block *isym*.  *isym* refers to a wavevector label (as given in the
+    output).  To see the symmetry labels for a specific crystal cell, run the
+    calculation without any calculation type specified.  The :math:`\Gamma`
+    wavevector is always given by *isym*:math:`=1` if *t* is positive and by
+    the number of sites in the cell if *t* is negative.
 **sym** *isym*
     Synonmym for **symmetry**.
 
@@ -400,7 +426,7 @@ performed.
     memory requirements of the Lanczos routine.  The size of the basis can have
     an impact on the performance of the Lanczos diagonalisation and which
     excited eigensolutions are found.  See the TRLan documentation,
-    http://crd.lbl.gov/~kewu/ps/trlan_.html, for more details.
+    http://crd.lbl.gov/~kewu/ps/trlan\_.html, for more details.
 **lanczos_solutions** *nsolns*
     Integer.
 
@@ -476,7 +502,7 @@ The following options are valid for FCIQMC calculations.
 
     .. math::
 
-        S(\beta) = S(\beta-A*\tau) - \xi*log(N_w(\tau)/N_w(\beta-A*\tau))/(A*\tau)
+        S(\beta) = S(\beta-A\tau) - \xi log(N_w(\tau)/N_w(\beta-A\tau))/(A\tau)
 
     where :math:`\beta` is the current imaginary time, :math:`A\tau` is the
     amount of imaginary time between shift updates, :math:`N_w` is the number of

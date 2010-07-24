@@ -27,10 +27,10 @@ contains
 
         integer, intent(in) :: nmc_cycles, nparticles_old
         character(255) :: restart_file
-        integer :: io, i
+        integer :: io
         integer, parameter :: restart_version = 1
 #ifdef PARALLEL
-        integer :: nwalkers(0:nprocs-1), ierr, stat(MPI_STATUS_SIZE)
+        integer :: nwalkers(0:nprocs-1), ierr, stat(MPI_STATUS_SIZE), i
         integer, parameter :: comm_tag = 123
         character(255) :: junk
 
@@ -126,6 +126,7 @@ contains
 
         ! Read in the main walker list from file.
 
+        use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
 
@@ -187,6 +188,7 @@ contains
         ! processor to send each determinant to.
         ! Use the spawning arrays as scratch space.
         allocate(scratch_energies(spawned_walker_length), stat=ierr)
+        call check_allocate('scratch_energies',spawned_walker_length,ierr)
         ! spawning_head_start gives the first slot in the spawning array for
         ! each processor.  Also want the last slot in the spawning array for
         ! each processor.
@@ -238,6 +240,7 @@ contains
             if (done) exit
         end do
         deallocate(scratch_energies, stat=ierr)
+        call check_deallocate('scratch_energies',ierr)
         ! Finally, need to broadcast the other information read in.
         call mpi_bcast(restart_version, 1, mpi_integer, root, mpi_comm_world, ierr)
         call mpi_bcast(mc_cycles_done, 1, mpi_integer, root, mpi_comm_world, ierr)

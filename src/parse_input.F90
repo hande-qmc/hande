@@ -10,6 +10,7 @@ use lanczos
 use determinants
 use fciqmc_data
 use fciqmc_restart, only: read_restart_number, write_restart_number 
+use hubbard_real, only: finite_cluster
 
 implicit none
 
@@ -27,6 +28,7 @@ contains
     
         use input
         use utils, only: get_free_unit
+        use checking, only: check_allocate
 
 #ifdef NAGF95
         use f90_unix_env, ONLY: getarg,iargc
@@ -38,7 +40,6 @@ contains
         character(100) :: w
         integer :: ios
         logical :: eof, t_exists
-
         integer :: ivec, i, ierr
 
         if (iargc() > 0) then
@@ -47,8 +48,7 @@ contains
             call GetArg(1, cInp)
             inquire(file=cInp, exist=t_exists)
             if (.not.t_exists) then
-                write (6,'(a21,1X,a)') 'File does not exist:',trim(cInp)
-                stop
+                call stop_all('read_input','File does not exist:'//trim(cInp))
             end if
             open(ir, file=cInp, status='old', form='formatted', iostat=ios)
         else
@@ -81,6 +81,7 @@ contains
                 ! of dimensions...
                 ndim = nitems
                 allocate(lattice(ndim,ndim), stat=ierr)
+                call check_allocate('lattice',ndim*ndim,ierr)
                 do ivec = 1, ndim
                     if (nitems /= ndim) call stop_all('read_input', 'Do not understand lattice vector.')
                     do i = 1, ndim
@@ -99,6 +100,7 @@ contains
                 call readf(hubu)
             case('TWIST')
                 allocate(ktwist(nitems-item), stat=ierr)
+                call check_allocate('ktwist',nitems-item,ierr)
                 do i = 1, nitems-item
                     call readf(ktwist(i))
                 end do
@@ -158,6 +160,7 @@ contains
                 call readi(target_particles)
             case('REFERENCE_DET')
                 allocate(occ_list0(nitems-1), stat=ierr)
+                call check_allocate('occ_list0',nitems-1,ierr)
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
@@ -200,6 +203,12 @@ contains
             ! Parameters for parallel calculations.
             case('BLOCK_SIZE')
                 call readi(block_size)
+             
+            case('FINITE_CLUSTER')
+                ! this will be checked in check_input to ensure that it 
+                ! is only used when we are formulating the calculation
+                ! in real-space
+                finite_cluster = .true.   
 
             case('END')
                 exit
@@ -207,13 +216,9 @@ contains
                 call report('Keyword '//trim(w)//' not recognized.', .true.)
             end select
         end do ! end reading of input.
-
+        
         close(ir, status='keep')
-
-        if (ios.gt.0) then
-            if (parent) write (6,*) 'Problem reading input.'
-            stop
-        end if
+        if (ios.gt.0) call stop_all('read_input','Problem reading input.')
 
     end subroutine read_input
 
@@ -223,7 +228,7 @@ contains
         ! make sure a few things are not completely insane.
 
         use const
-
+        
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
 
@@ -260,7 +265,16 @@ contains
             end if
             if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
         end if
-
+         
+        ! If the FINITE_CLUSTER keyword was detected then make sure that 
+        ! we are doing a calculation in real-space. If we're not then
+        ! unset finite cluster,tell the user and carry on
+        if(finite_cluster .and. (system_type .ne. hub_real)) then
+            finite_cluster = .false.    
+            if (parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
+                                      & calculations in real-space: ignoring keyword')
+        end if
+        
         if (parent) write (6,'(/,1X,13("-"),/)') 
 
     end subroutine check_input
@@ -277,6 +291,7 @@ contains
 
         use mpi
         use parallel
+        use checking, only: check_allocate
 
         integer :: ierr
         logical :: option_set
@@ -285,16 +300,26 @@ contains
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
+        if (.not.parent) then
+            allocate(lattice(ndim,ndim), stat=ierr)
+            call check_allocate('lattice',ndim*ndim,ierr)
+        end if
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        if (.not.parent) allocate(lattice(ndim,ndim), stat=ierr)
+        if (.not.parent) then
+            allocate(lattice(ndim,ndim), stat=ierr)
+            call check_allocate('lattice',ndim*ndim,ierr)
+        end if
         if (parent) option_set = allocated(ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            if (.not.parent) allocate(ktwist(ndim), stat=ierr)
+            if (.not.parent) then
+                allocate(ktwist(ndim), stat=ierr)
+                call check_allocate('ktwist',ndim,ierr)
+            end if
             call mpi_bcast(ktwist, ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
 
@@ -320,7 +345,10 @@ contains
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            if (.not.parent) allocate(occ_list0(nel), stat=ierr)
+            if (.not.parent) then
+                allocate(occ_list0(nel), stat=ierr)
+                call check_allocate('occ_list0',nel,ierr)
+            end if
             call mpi_bcast(occ_list0, nel, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)

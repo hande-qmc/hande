@@ -18,6 +18,7 @@ contains
         !    eigv(ndets): Lanczos eigenvalues of the current block of the
         !        Hamiltonian matrix.
 
+        use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use parallel, only: parent, nprocs
 
@@ -47,9 +48,11 @@ contains
         end if
         
         allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+        call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
 
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
+        call check_allocate('work',1,ierr)
         if (nprocs == 1) then
 #ifdef SINGLE_PRECISION
             call ssyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
@@ -75,9 +78,11 @@ contains
 
         lwork = work(1)
         deallocate(work)
+        call check_deallocate('work',ierr)
 
         ! Now perform the diagonalisation.
         allocate(work(lwork), stat=ierr)
+        call check_allocate('work',lwork,ierr)
 
         if (nprocs == 1) then
             ! Use lapack.
@@ -105,22 +110,22 @@ contains
         end if
 
         deallocate(work, stat=ierr)
+        call check_deallocate('work',ierr)
 
         if (find_eigenvectors) then
-do i = 1, 2
 #ifdef PARALLEL
             if (nprocs == 1) then
-                call analyse_wavefunction(hamil(:,i))
+                call analyse_wavefunction(hamil(:,1))
             else
-                call analyse_wavefunction(eigvec(:,i))
+                call analyse_wavefunction(eigvec(:,1))
             end if
 #else
-            call analyse_wavefunction(hamil(:,i))
+            call analyse_wavefunction(hamil(:,1))
 #endif
-end do
         end if
 
         deallocate(eigvec, stat=ierr)
+        call check_deallocate('eigvec',ierr)
 
     end subroutine exact_diagonalisation
 

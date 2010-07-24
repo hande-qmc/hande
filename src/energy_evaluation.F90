@@ -37,7 +37,7 @@ contains
 
 #ifdef PARALLEL
         real(dp) :: ir(2*sampling_size+1), ir_sum(2*sampling_size+1)
-        integer :: ntot_particles, ierr
+        integer :: ntot_particles(sampling_size), ierr
 
             ! Need to sum the number of particles and the projected energy over
             ! all processors.
@@ -45,19 +45,21 @@ contains
             ir(sampling_size+1) = proj_energy
             ir(sampling_size+2) = proj_hf_expectation
             ir(2*sampling_size+1) = rspawn
-            call mpi_allreduce(ir, ir_sum, n, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(ir, ir_sum, 2*sampling_size+1, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
-            proj_energy = ir_sum(sampling_size+1:2*sampling_size)
+            proj_energy = ir_sum(sampling_size+1)
+            proj_hf_expectation = ir_sum(sampling_size+2)
             rspawn = ir_sum(2*sampling_size+1)
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
                 if (doing_calc(hfs_fciqmc_calc)) then
-                    call update_hf_shift(ntot_particles_old(1), ntot_particles(1), ntot_particles_old(2), ntot_particles(2), ncycles)
+                    call update_hf_shift(ntot_particles_old(1), ntot_particles(1), ntot_particles_old(2), &
+                                         ntot_particles(2), ncycles)
                 end if
             end if
             ntot_particles_old = ntot_particles
-            if (ntot_particles > target_particles .and. .not.vary_shift) then
+            if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
                 start_vary_shift = ireport
             end if

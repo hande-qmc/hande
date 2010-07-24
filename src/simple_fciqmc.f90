@@ -30,6 +30,7 @@ contains
         ! walker.
 
         use parallel, only: nprocs, parent
+        use checking, only: check_allocate
         use utils, only: int_fmt
 
         use diagonalisation, only: generate_hamil
@@ -71,7 +72,9 @@ contains
         ! Don't need to hold determinants, so can just set spawned_size to be 1.
         spawned_size = 1
         allocate(walker_population(1,ndets), stat=ierr)
+        call check_allocate('walker_population',ndets,ierr)
         allocate(spawned_walkers1(spawned_size,ndets), stat=ierr)
+        call check_allocate('spawned_walkers1',spawned_size*ndets,ierr)
         spawned_walkers => spawned_walkers1
         ! Zero these.
         walker_population = 0
@@ -81,7 +84,9 @@ contains
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then
             allocate(occ_list0(nel), stat=ierr)
+            call check_allocate('occ_list0',nel,ierr)
             allocate(f0(basis_length), stat=ierr)
+            call check_allocate('f0',basis_length,ierr)
             call read_restart()
         else
             ref_det = 1
@@ -93,8 +98,14 @@ contains
 
             ! Reference det
             H00 = hamil(ref_det,ref_det)
-            if (.not.allocated(f0)) allocate(f0(basis_length), stat=ierr)
-            if (.not.allocated(occ_list0)) allocate(occ_list0(nel), stat=ierr)
+            if (.not.allocated(f0)) then
+                allocate(f0(basis_length), stat=ierr)
+                call check_allocate('f0',basis_length,ierr)
+            end if
+            if (.not.allocated(occ_list0)) then
+                allocate(occ_list0(nel), stat=ierr)
+                call check_allocate('occ_list0',nel,ierr)
+            end if
             call decode_det(f0, occ_list0)
             f0 = dets_list(:,ref_det)
             walker_population(1,ref_det) = D0_population

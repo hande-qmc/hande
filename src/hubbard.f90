@@ -18,6 +18,7 @@ contains
         ! the list of wavevectors and hence the kinetic energy associated
         ! with each basis function (two per wavevector to account for spin).
 
+        use checking, only: check_allocate, check_deallocate
         use system
         use m_mrgref, only: mrgref
         use errors, only: stop_all
@@ -77,8 +78,11 @@ contains
         end forall
 
         allocate(basis_fns(nbasis), stat=ierr)
+        call check_allocate('basis_fns',nbasis,ierr)
         allocate(tmp_basis_fns(nbasis/2), stat=ierr)
+        call check_allocate('tmp_basis_fns',nbasis/2,ierr)
         allocate(basis_fns_ranking(nbasis/2), stat=ierr)
+        call check_allocate('basis_fns_ranking',nbasis/2,ierr)
 
         ! Find all alpha spin orbitals.
         ibasis = 0
@@ -116,9 +120,12 @@ contains
             call init_basis_fn(basis_fns(2*i-1), basis_fn_p%l, basis_fn_p%ms)
             call init_basis_fn(basis_fns(2*i), basis_fn_p%l, -basis_fn_p%ms)
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
+            call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
         end do
         deallocate(tmp_basis_fns, stat=ierr)
+        call check_deallocate('tmp_basis_fns',ierr)
         deallocate(basis_fns_ranking, stat=ierr)
+        call check_deallocate('basis_fns_ranking',ierr)
 
         if (parent) then
             write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
@@ -161,12 +168,16 @@ contains
 
         ! Clean up basis functions.
 
+        use checking, only: check_deallocate
+
         integer :: ierr, i
 
         do i = 1, nbasis
             deallocate(basis_fns(i)%l, stat=ierr)
+            call check_deallocate('basis_fns(i',ierr)
         end do
         deallocate(basis_fns, stat=ierr)
+        call check_deallocate('basis_fns',ierr)
 
     end subroutine end_basis_fns
 

@@ -100,6 +100,7 @@ contains
         ! they are stored as bit strings, lookup arrays for converting from
         ! integer list of orbitals to bit strings and vice versa.
 
+        use checking, only: check_allocate
         use utils, only: binom_i
         use utils, only: get_free_unit, int_fmt
 
@@ -123,7 +124,9 @@ contains
 
         ! Lookup arrays.
         allocate(bit_lookup(2,nbasis), stat=ierr)
+        call check_allocate('bit_lookup',2*nbasis,ierr)
         allocate(basis_lookup(0:i0_end,basis_length), stat=ierr)
+        call check_allocate('basis_lookup',i0_length*basis_length,ierr)
         basis_lookup = 0
 
         do i = 1, nbasis
@@ -157,12 +160,22 @@ contains
 
         ! Clean up after determinants.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
-        if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
+        if (allocated(dets_list)) then
+            deallocate(dets_list, stat=ierr)
+            call check_deallocate('dets_list',ierr)
+        end if
         deallocate(bit_lookup, stat=ierr)
+        call check_deallocate('bit_lookup',ierr)
         deallocate(basis_lookup, stat=ierr)
-        if (allocated(sym_space_size)) deallocate(sym_space_size, stat=ierr)
+        call check_deallocate('basis_lookup',ierr)
+        if (allocated(sym_space_size)) then
+            deallocate(sym_space_size, stat=ierr)
+            call check_deallocate('sym_space_size',ierr)
+        end if
 
         if (write_determinants) close(det_unit, status='keep')
 
@@ -175,15 +188,23 @@ contains
         !    det_info_t: det_info variable with components allocated to the
         !    appropriate sizes.
 
+        use checking, only: check_allocate
+
         type(det_info), intent(inout) :: det_info_t
         integer :: ierr
 
         allocate(det_info_t%f(basis_length), stat=ierr)
+        call check_allocate('det_info_t%f',basis_length,ierr)
         allocate(det_info_t%occ_list(nel), stat=ierr)
+        call check_allocate('det_info_t%occ_list',nel,ierr)
         allocate(det_info_t%occ_list_alpha(nalpha), stat=ierr)
+        call check_allocate('det_info_t%occ_list_alpha',nalpha,ierr)
         allocate(det_info_t%occ_list_beta(nbeta), stat=ierr)
+        call check_allocate('det_info_t%occ_list_beta',nbeta,ierr)
         allocate(det_info_t%unocc_list_alpha(nvirt_alpha), stat=ierr)
+        call check_allocate('det_info_t%unocc_list_alpha',nvirt_alpha,ierr)
         allocate(det_info_t%unocc_list_beta(nvirt_beta), stat=ierr)
+        call check_allocate('det_info_t%unocc_list_beta',nvirt_beta,ierr)
 
     end subroutine alloc_det_info
 
@@ -230,17 +251,23 @@ contains
         ! for a Monte Carlo approach to estimating the size of the space (better
         ! for large systems where we can't do FCI).
 
+        use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i
         use utils, only: int_fmt
         use bit_utils, only: first_perm, bit_permutation
-        use symmetry, only: nsym, sym_table
+        use symmetry, only: nsym, gamma_sym, sym_table
 
         integer :: i, j, ierr, ibit
         integer :: nalpha_combinations, nbeta_combinations
         integer :: k_beta, k
         integer(i0) :: f_alpha, f_beta
 
+        if (allocated(sym_space_size)) then
+            deallocate(sym_space_size, stat=ierr)
+            call check_deallocate('sym_space_size',ierr)
+        end if
         allocate(sym_space_size(nsym), stat=ierr)
+        call check_allocate('sym_space_size',nsym,ierr)
 
         nbeta_combinations = binom_i(nbasis/2, nbeta)
         nalpha_combinations = binom_i(nbasis/2, nalpha)
@@ -269,7 +296,7 @@ contains
                     f_beta = bit_permutation(f_beta)
                 end if
 
-                k_beta = 1
+                k_beta = gamma_sym
                 do ibit = 0, i0_end
                     if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
                 end do
@@ -321,11 +348,12 @@ contains
         !         wavevector (up to a reciprocal lattice vector) are stored.
         !         Ignored for the real space formulation of the Hubbard model.
 
+        use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i
         use errors, only: stop_all
         use utils, only: get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation
-        use symmetry, only: nsym, sym_table
+        use symmetry, only: nsym, gamma_sym, sym_table
 
         integer, intent(in) :: ksum
 
@@ -335,7 +363,10 @@ contains
         character(4) :: fmt1
         integer(i0) :: f_alpha, f_beta
 
-        if (allocated(dets_list)) deallocate(dets_list, stat=ierr)
+        if (allocated(dets_list)) then
+            deallocate(dets_list, stat=ierr)
+            call check_deallocate('dets_list',ierr)
+        end if
 
         nbeta_combinations = binom_i(nbasis/2, nbeta)
         nalpha_combinations = binom_i(nbasis/2, nalpha)
@@ -343,6 +374,7 @@ contains
         ndets = sym_space_size(ksum)
 
         allocate(dets_list(basis_length, ndets), stat=ierr)
+        call check_allocate('dets_list',basis_length*ndets,ierr)
 
         ! Assume that we're not attempting to do FCI for more than
         ! a 2*i0_length spin orbitals, which is quite large... ;-)
@@ -362,7 +394,7 @@ contains
 
             ! Symmetry of the beta orbitals.
             if (system_type /= hub_real) then
-                k_beta = 1
+                k_beta = gamma_sym
                 do ibit = 0, i0_end
                     if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
                 end do

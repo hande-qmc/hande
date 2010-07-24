@@ -110,14 +110,15 @@ contains
         else
             r = log10(real(abs(i)+1))
         end if
+        p = ceiling(r+p)
 
-        if (r < 10) then
-            write (fmt1,'("i",i1)') ceiling(r+p)
-        else if (r < 100) then
-            write (fmt1,'("i",i2)') ceiling(r+p)
+        if (p < 10) then
+            write (fmt1,'("i",i1)') p
+        else if (p < 100) then
+            write (fmt1,'("i",i2)') p
         else
             ! By this point we'll have hit integer overflow anyway...
-            write (fmt1,'("i",i3)') ceiling(r+p)
+            write (fmt1,'("i",i3)') p
         end if
 
     end function int_fmt

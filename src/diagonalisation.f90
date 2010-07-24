@@ -15,6 +15,7 @@ contains
         ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
         ! exact diagonalisation.
 
+        use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use system, only: nel
         use determinants, only: enumerate_determinants, find_sym_space_size, set_spin_polarisation
@@ -59,7 +60,7 @@ contains
         
         if (ms_in == huge(1)) then
             ms_min = mod(nel,2)
-            ms_max = nel
+            ms_max = min(nel, nbasis-nel)
         else
             ! ms was set in input
             ms_min = ms_in
@@ -75,8 +76,14 @@ contains
             sym_max = sym_in
         end if
 
-        if (doing_calc(lanczos_diag)) allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
-        if (doing_calc(exact_diag)) allocate(exact_solns(tot_ndets), stat=ierr)
+        if (doing_calc(lanczos_diag)) then
+            allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
+            call check_allocate('lanczos_solns',nlanczos_eigv*(nel/2+1)*nbasis/2,ierr)
+        end if
+        if (doing_calc(exact_diag)) then
+            allocate(exact_solns(tot_ndets), stat=ierr)
+            call check_allocate('exact_solns',tot_ndets,ierr)
+        end if
 
         ! Number of lanczos and exact solutions found.
         nlanczos = 0
@@ -131,11 +138,12 @@ contains
 
                 else
 
-                    if (nprocs == 1) call generate_hamil(distribute_off)
+                    if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) call generate_hamil(distribute_off)
 
                     ! Lanczos.
                     if (doing_calc(lanczos_diag)) then
                         allocate(lanczos_eigv(ndets), stat=ierr)
+                        call check_allocate('lanczos_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
                         if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
@@ -144,12 +152,14 @@ contains
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
                         nlanczos = nlanczos + nfound
                         deallocate(lanczos_eigv)
+                        call check_deallocate('lanczos_eigv',ierr)
                     end if
 
                     ! Exact diagonalisation.
                     ! Warning: this destroys the Hamiltonian matrix...
                     if (doing_calc(exact_diag)) then
                         allocate(exact_eigv(ndets), stat=ierr)
+                        call check_allocate('exact_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
                         if (nprocs > 1) call generate_hamil(distribute_blocks)
@@ -158,6 +168,7 @@ contains
                         exact_solns(nexact+1:nexact+ndets)%ms = ms 
                         nexact = nexact + ndets
                         deallocate(exact_eigv)
+                        call check_deallocate('exact_eigv',ierr)
                     end if
 
                 end if
@@ -172,6 +183,7 @@ contains
         if (doing_calc(lanczos_diag) .and. parent) then
             write (6,'(1X,a31,/,1X,31("-"),/)') 'Lanczos diagonalisation results'
             allocate(ranking(nlanczos), stat=ierr)
+            call check_allocate('ranking',nlanczos,ierr)
             call mrgref(lanczos_solns(:nlanczos)%energy, ranking)
             write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
             state = 0
@@ -187,11 +199,13 @@ contains
             end do
             write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', lanczos_solns(ranking(1))%energy
             deallocate(ranking, stat=ierr)
+            call check_deallocate('ranking',ierr)
         end if
 
         if (doing_calc(exact_diag) .and. parent) then
             write (6,'(1X,a29,/,1X,29("-"),/)') 'Exact diagonalisation results'
             allocate(ranking(nexact), stat=ierr)
+            call check_allocate('ranking',nexact,ierr)
             call mrgref(exact_solns(:nexact)%energy, ranking)
             write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
             state = 0
@@ -207,10 +221,17 @@ contains
             end do
             write (6,'(/,1X,a19,f18.12,/)') 'Exact ground state:', exact_solns(ranking(1))%energy
             deallocate(ranking, stat=ierr)
+            call check_deallocate('ranking',ierr)
         end if
 
-        if (doing_calc(lanczos_diag)) deallocate(lanczos_solns, stat=ierr)
-        if (doing_calc(exact_diag)) deallocate(exact_solns, stat=ierr)
+        if (doing_calc(lanczos_diag)) then
+            deallocate(lanczos_solns, stat=ierr)
+            call check_deallocate('lanczos_solns',ierr)
+        end if
+        if (doing_calc(exact_diag)) then
+            deallocate(exact_solns, stat=ierr)
+            call check_deallocate('exact_solns',ierr)
+        end if
 
     end subroutine diagonalise
 
@@ -229,6 +250,7 @@ contains
         !        distribute_blocks and distribute_cols parameters.  See above
         !        for descriptions of the different behaviours.
 
+        use checking, only: check_allocate, check_deallocate
         use utils, only: get_free_unit
         use errors
         use parallel
@@ -248,6 +270,7 @@ contains
 
         if (allocated(hamil)) then
             deallocate(hamil, stat=ierr)
+            call check_deallocate('hamil',ierr)
         end if
 
         if (present(distribute_mode)) then
@@ -291,6 +314,7 @@ contains
         end select
 
         allocate(hamil(n1,n2), stat=ierr)
+        call check_allocate('hamil',n1*n2,ierr)
 
         ! index offset for the symmetry block compared to the index of the
         ! determinant list.
@@ -356,9 +380,14 @@ contains
 
         ! Clean up hamiltonian module.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
-        if (allocated(hamil)) deallocate(hamil, stat=ierr)
+        if (allocated(hamil)) then
+            deallocate(hamil, stat=ierr)
+            call check_deallocate('hamil',ierr)
+        end if
 
     end subroutine end_hamil
 
