@@ -145,13 +145,10 @@ contains
             ! processors.
             info = (/proc_blacs_info%nrows, proc_blacs_info%procx/)
             call mpi_gather(info, 2, mpi_integer, proc_info, 2, &
-                             mpi_integer, root, mpi_comm_world)
+                             mpi_integer, root, mpi_comm_world, ierr)
             if (parent) then
                 allocate(wfn_recv(maxval(proc_info(1,:))), stat=ierr)
                 call check_allocate('wfn_local', maxval(proc_info(1,:)), ierr)
-                write (6,*) proc_info
-                write (6,*) size(wfn_recv)
-                write (6,*) nprocs
             end if
 
             if (parent) then
