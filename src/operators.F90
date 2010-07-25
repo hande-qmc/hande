@@ -164,7 +164,7 @@ contains
             end if
 
             ! Send data from from other processors.
-            call mpi_send(wfn, proc_blacs_info%nrows, mpi_preal, root, comm_tag, mpi_comm_world, stat, ierr)
+            call mpi_send(wfn, proc_blacs_info%nrows, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
 
