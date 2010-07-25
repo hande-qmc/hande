@@ -103,4 +103,91 @@ contains
 
     end subroutine analyse_wavefunction
 
+    subroutine print_wavefunction(filename, wfn)
+
+        ! Print out an exact wavefunction.
+
+        ! In:
+        !    filename: file to be printed to.
+        !    wfn: exact wavefunction to be printed out.  wfn(i) = c_i, where
+        !    |\Psi> = \sum_i c_i|D_i>.
+
+        use const, only: i0, p
+        use basis, only: nbasis, basis_fns, basis_length, set_orb_mask
+        use calc, only: proc_blacs_info, distribute, distribute_off
+        use determinants, only: dets_list, ndets
+
+        use checking, only: check_allocate, check_deallocate
+        use parallel
+
+        character(*), intent(in) :: filename
+        real(p), intent(in) :: wfn(proc_blacs_info%nrows)
+
+        integer :: idet, iorb, i, ii, ilocal
+
+#ifdef PARALLEL
+        integer :: ierr
+        integer :: proc_info(2, 0:nprocs-1), info(2), proc
+        real(p), allocatable :: wfn_recv(:)
+        integer :: stat(MPI_STATUS_SIZE)
+        integer, parameter :: comm_tag = 123
+#endif
+
+        open(12,file=filename,status='unknown')
+
+        if (nprocs == 1) then
+            do idet = 1, size(wfn)
+                write (12,*) dets_list(:,idet), wfn(idet)
+            end do
+        else
+#ifdef PARALLEL
+            ! Set up for receiving parts of the wavefunction from other
+            ! processors.
+            info = (/proc_blacs_info%nrows, proc_blacs_info%procx/)
+            call mpi_gather(info, 2, mpi_integer, proc_info, 2, &
+                             mpi_integer, root, mpi_comm_world)
+            if (parent) then
+                allocate(wfn_recv(maxval(proc_info(1,:))), stat=ierr)
+                call check_allocate('wfn_local', maxval(proc_info(1,:)), ierr)
+                write (6,*) proc_info
+                write (6,*) size(wfn_recv)
+                write (6,*) nprocs
+            end if
+
+            if (parent) then
+                ! Write out from root.
+                call write_wavefunction_parallel(proc_blacs_info%nrows, proc_blacs_info%procx, wfn)
+                ! Write out from other processors.
+                do proc = 1, nprocs-1
+                    call mpi_recv(wfn_recv, proc_info(1,proc), mpi_preal, proc, comm_tag, mpi_comm_world, stat, ierr)
+                    call write_wavefunction_parallel(proc_info(1,proc), proc_info(2,proc), wfn_recv)
+                end do
+                deallocate(wfn_recv, stat=ierr)
+                call check_deallocate('wfn_local', ierr)
+            end if
+
+            ! Send data from from other processors.
+            call mpi_send(wfn, proc_blacs_info%nrows, mpi_preal, root, comm_tag, mpi_comm_world, stat, ierr)
+#endif
+        end if
+
+        contains
+
+            subroutine write_wavefunction_parallel(nrows, procx, wfn_curr)
+
+                integer, intent(in) :: nrows, procx
+                real(p), intent(in) :: wfn_curr(nrows)
+
+                do i = 1, nrows, block_size
+                    do ii = 1, min(block_size, nrows - i + 1)
+                        ilocal = i - 1 + ii
+                        idet =  (i-1)*nproc_rows + procx* block_size + ii
+                        write (12,*) dets_list(:,idet), wfn_curr(ilocal)
+                    end do
+                end do
+
+            end subroutine write_wavefunction_parallel
+
+    end subroutine print_wavefunction
+
 end module operators

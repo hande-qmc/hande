@@ -138,10 +138,10 @@ contains
                 call readi(nlanczos_eigv)
 
             ! Calculation options: lanczos/exact diagonalisation.
-            case('EIGENVALUES')
-                find_eigenvectors = .false.
-            case('EIGENVECTORS')
-                find_eigenvectors = .true.
+            case('PRINT_GROUND_STATE')
+                print_ground_state = .true.
+            case('ANALYSE_GROUND_STATE')
+                analyse_ground_state = .true.
 
             ! Calculation options: fciqmc.
             case('MC_CYCLES')
@@ -329,7 +329,8 @@ contains
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(find_eigenvectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(print_ground_state, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(analyse_ground_state, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)

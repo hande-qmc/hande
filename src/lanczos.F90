@@ -121,10 +121,10 @@ contains
         nfound = min(nlanczos_eigv,ndets)
         eigv(1:nfound) = eval(1:nfound)
 
-        if (find_eigenvectors) then
-            do i = 1, 1
-                call analyse_wavefunction(evec(:,i))
-            end do
+        if (analyse_ground_state) then
+            call analyse_wavefunction(evec(:,1))
+        else if (print_ground_state) then
+            call print_wavefunction('GROUND_STATE_WFN', evec(:,1))
         end if
 
         deallocate(eval, stat=ierr)

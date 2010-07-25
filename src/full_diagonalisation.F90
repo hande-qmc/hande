@@ -37,7 +37,7 @@ contains
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
-        if (find_eigenvectors) then
+        if (analyse_ground_state .or. print_ground_state) then
             job = 'V'
         else
             job = 'N'
@@ -114,11 +114,17 @@ contains
         deallocate(work, stat=ierr)
         call check_deallocate('work',ierr)
 
-        if (find_eigenvectors) then
+        if (analyse_ground_state) then
             if (nprocs == 1) then
                 call analyse_wavefunction(hamil(:,1))
             else
                 call analyse_wavefunction(eigvec(:,1))
+            end if
+        else if (print_ground_state) then
+            if (nprocs == 1) then
+                call print_wavefunction('GROUND_STATE_WFN', hamil(:,1))
+            else
+                call print_wavefunction('GROUND_STATE_WFN', eigvec(:,1))
             end if
         end if
 

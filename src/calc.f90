@@ -42,9 +42,15 @@ integer :: sym_in = huge(1)
 ! matrix-vector multiplication routines.
 real(p), allocatable :: hamil(:,:) ! (ndets, ndets)
 
-! If true, then the eigenvectors are found during exact diagonalisation as well
-! as the eigenvalues.  Doing this is substantially more expensive.
-logical :: find_eigenvectors = .false.
+! If either of the following options are true, then the eigenvectors are found
+! during exact diagonalisation as well as the eigenvalues.  Doing this is
+! substantially more expensive.
+
+! Print out the ground state wavefunction.
+logical :: print_ground_state = .false.
+
+! Analyse the ground state wavefunction.
+logical :: analyse_ground_state = .false.
 
 ! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
 logical :: write_hamiltonian = .false.
