@@ -26,7 +26,7 @@ contains
         
         ! Note that population and tot_population refer to a single 'type' of
         ! population, i.e. either a set of Hamiltonian walkers or a set of
-        ! Hellmann--Feynmann walkers.
+        ! Hellmann--Feynman walkers.
 
         use dSFMT_interface, only: genrand_real2
 
@@ -81,7 +81,7 @@ contains
 
     subroutine stochastic_hf_cloning(Oii, hamiltonian_pop, hf_pop, tot_hf_pop)
 
-        ! Clone Hellmann--Feynmann particles from Hamiltonian particles.
+        ! Clone Hellmann--Feynman particles from Hamiltonian particles.
         ! HF particles are created from Hamiltonian particles on the same
         ! determinant with probability 
         !   tau(O_ii - \tilde{S})
@@ -95,8 +95,8 @@ contains
         !    hamiltonian_pop: number of Hamiltonian particles on determinant
         !        D_i.
         ! In/Out:
-        !    hf_pop: number of Hellmann--Feynmann particles on determinant D_i.
-        !    tot_hf_pop: total number of Hellmann--Feynmann particles.
+        !    hf_pop: number of Hellmann--Feynman particles on determinant D_i.
+        !    tot_hf_pop: total number of Hellmann--Feynman particles.
 
         use dSFMT_interface, only: genrand_real2
 
@@ -110,7 +110,7 @@ contains
         real(dp) :: r
         integer :: clone, old_pop
 
-        ! Attempt to clone with a Hellmann--Feynmann walker with probability
+        ! Attempt to clone with a Hellmann--Feynman walker with probability
         !  p = tau*(Oii-shift)
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all cloning in one shot.
@@ -125,7 +125,7 @@ contains
         r = genrand_real2()
         if (pd > r) clone = clone + 1
 
-        ! Hellmann--Feynmann offsping have the same sign as the Hamiltonian
+        ! Hellmann--Feynman offsping have the same sign as the Hamiltonian
         ! parents if Oii-hf_shift is negative, otherwise they have the opposite sign.
         old_pop = hf_pop
         if (matel > 0.0_p) then

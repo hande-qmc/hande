@@ -79,7 +79,7 @@ integer, allocatable :: nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
-! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynmann sampling).
+! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
 integer :: sampling_size
 ! a) determinants
 integer(i0), allocatable :: walker_dets(:,:) ! (basis_length, walker_length)
@@ -100,13 +100,13 @@ real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
 ! walker.
 ! * initiator-FCIQMC requires a further additional element for information
 ! about the parent of the spawned walker.
-! * Hellmann--Feynmann sampling requires a further additional element for the
-! population of the spawned Hellmann--Feynmann walkers.
+! * Hellmann--Feynman sampling requires a further additional element for the
+! population of the spawned Hellmann--Feynman walkers.
 
 ! spawned_walkers*(:basis_length,i) gives the determinant of the spawned walker.
 ! spawned_walkers*(spawned_pop,i) gives the population of the spawned walker.
 ! spawned_walkers*(spawned_hf_pop,i) gives the population of the spawned walker
-! (Hellmann--Feynmann sampling only).
+! (Hellmann--Feynman sampling only).
 ! spawned_walkers*(spawned_parent,i) gives information about the parent of the
 ! spawned walker (initiator-FCIQMC only).
 ! spawned_hf_pop (if it exists) will always be equal to spawned_pop+1.

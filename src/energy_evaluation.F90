@@ -220,7 +220,7 @@ contains
         ! energy in an identical way to update_proj_energy_hub_k.
 
         ! Also add the contribution of the current determinant to the running
-        ! total of the projected Hellmann--Feynmann estimator.
+        ! total of the projected Hellmann--Feynman estimator.
 
         ! This procedure is for the Hubbard model in momentum space only.
 

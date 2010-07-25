@@ -541,7 +541,7 @@ contains
         !    particle_type: the type of particle created.  Must correspond to
         !        the desired element in the spawning array (i.e. be spawned_pop
         !        for Hamiltonian particles and spawned_hf_pop for
-        !        Hellmann--Feynmann particles).
+        !        Hellmann--Feynman particles).
 
         use hashing
         use parallel, only: iproc, nprocs
@@ -603,7 +603,7 @@ contains
         !    particle_type: the type of particle created.  Must correspond to
         !        the desired element in the spawning array (i.e. be spawned_pop
         !        for Hamiltonian particles and spawned_hf_pop for
-        !        Hellmann--Feynmann particles).
+        !        Hellmann--Feynman particles).
 
         use hashing
         use parallel, only: iproc, nprocs
