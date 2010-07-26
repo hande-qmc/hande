@@ -47,7 +47,7 @@ contains
                 call get_unique_filename(restart_file_stem, .true., 0, restart_file)
             end if
 
-            write (6,'(1X,a23,1X,a,a1,/)') 'Writing restart file to',trim(restart_file),'.'
+            write (6,'(1X,"#",1X,a23,1X,a,a1)') 'Writing restart file to',trim(restart_file),'.'
 
             open(io, file=restart_file)
 
