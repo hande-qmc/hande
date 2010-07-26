@@ -123,11 +123,11 @@ end_regex: regular expression indicating that the end of a block of data
 index_col: index (starting from 0) of the column containing the index of the
            data (e.g. Monte Carlo cycle) to be blocked.  The index is only used to
            initially sort the data;
-data_col: index (starting from 0) of the column containing the data;
+data_cols: list of indices (starting from 0) of the columns containing the data;
 start_index: block only data with an index greater than or equal to start_index.
 block_all: assume all lines contain data apart from comment lines.  The regular expressions are ignored if this is true.
 '''
-    def __init__(self, datafiles, start_regex, end_regex, index_col, data_col, start_index, block_all=False):
+    def __init__(self, datafiles, start_regex, end_regex, index_col, data_cols, start_index, block_all=False):
 
         self.datafiles = datafiles
         self.start_regex = re.compile(start_regex)
@@ -137,7 +137,7 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
         self.start_index = start_index
         self.block_all = block_all
 
-        self.data = [Data(data_col)]
+        self.data = [Data(data_col) for data_col in data_cols]
 
     def get_data(self):
         '''Extract the relevant data from the datafiles.'''
@@ -184,15 +184,28 @@ This destroys the data stored in self.data.data'''
 
                 data.reblock()
 
+            if len(self.data) > 1:
+                # Bonus: also calculate the covariance.
+                pass
+
     def show_blocking(self, plotfile=''):
         '''Print out the blocking data and show a graph of the behaviour of the standard deviation with block size.  If plotfile is given, then the graph is saved to the specifed file rather than being shown on screen.'''
 
         # print blocking output
-        fmt = '%-11s   %-16s  %-18s   %-24s'
-        print fmt % ('# of blocks', 'mean', 'standard deviation', 'standard deviation error')
-        fmt = '%-11i  %-16.12g   %-18.12g   %-24.12g'
-        for stat in self.data[0].stats:
-            print fmt % (stat.block_size, stat.mean, stat.sd, stat.sd_error)
+        print '%-11s   ' % ('# of blocks'),
+        fmt = '%-16s   %-18s   %-24s'
+        header = ('mean (X_%i)', 'std.dev. (X_%i)', 'std.dev.err. (X_%i)')
+        for data in self.data:
+            data_header = tuple(x % (data.data_col) for x in header)
+            print fmt % data_header,
+        print
+        fmt = '%-#16.12g   %-#18.12g   %-#24.12g'
+        block_fmt = '%-11i  '
+        for s in range(len(self.data[0].stats)):
+            print block_fmt % (self.data[0].stats[s].block_size),
+            for data in self.data:
+                print fmt % (data.stats[s].mean, data.stats[s].sd, data.stats[s].sd_error),
+            print
 
         # plot standard deviation
         if PYLAB:
@@ -203,11 +216,16 @@ This destroys the data stored in self.data.data'''
                 blocks = [stat.block_size for stat in data.stats]
                 sd = [stat.sd for stat in data.stats]
                 sd_error = [stat.sd_error for stat in data.stats]
-                pylab.semilogx(blocks, sd, basex=2)
-                pylab.errorbar(blocks, sd, yerr=sd_error)
+                pylab.semilogx(blocks, sd, 'g-', basex=2, label=r'$\sigma(X_%s)$' % (data.data_col))
+                pylab.errorbar(blocks, sd, yerr=sd_error, fmt=None, ecolor='g')
                 xmax = 2**pylab.ceil(pylab.log2(blocks[0]+1))
                 pylab.xlim(xmax, 1)
                 pylab.ylabel('Standard deviation')
+                pylab.legend(loc=2)
+                if i != nplots - 1:
+                    # Don't label x axis points.
+                    ax = pylab.gca()
+                    ax.set_xticklabels([])
             pylab.xlabel('# of blocks')
             if plotfile:
                 pylab.savefig(plotfile)
@@ -223,11 +241,15 @@ def parse_options(args):
     parser.add_option('-e', '--end', dest='end_regex', type='string', default=r'^ *$', help='Set the regular expression indicating the end of a data block.  Default: %default.')
     parser.add_option('-a', '--all', action='store_true', default=False, help='Assume all lines in the files contains data apart from comment lines. Regular expression options are ignored if --all is used.  Default: %default.')
     parser.add_option('-i', '--index', dest='index_col', type='int', default=0, help='Set the column (starting from 0) containing the index labelling each data item (e.g. number of Monte Carlo cycles). Default: %default.')
-    parser.add_option('-d', '--data', dest='data_col', type='int', default=1, help='Set the column (starting from 0) containing the data items. Default: %default.')
+    parser.add_option('-d', '--data', dest='data_cols', type='int', default=[], action='append', help='Set the column (starting from 0) containing the data items. Default: 1.')
     parser.add_option('-f', '--from', dest='start_index', type='int', default=0, help='Set the index from which the data is blocked.  Data with a smaller index is discarded.  Default: %default.')
     parser.add_option('-p', '--plotfile', help='Save a plot of the blocking analysis to PLOTFILE rather than showing the plot on screen (default behaviour).')
 
     (options, filenames) = parser.parse_args(args)
+
+    # Set additional defaults.
+    if not options.data_cols:
+        options.data_cols = [1]
 
     if len(filenames) == 0:
         parser.print_help()
@@ -238,7 +260,7 @@ def parse_options(args):
 if __name__ == '__main__':
     (options, filenames) = parse_options(sys.argv[1:])
 
-    my_data = DataBlocker(filenames, options.start_regex, options.end_regex, options.index_col, options.data_col, options.start_index, options.all)
+    my_data = DataBlocker(filenames, options.start_regex, options.end_regex, options.index_col, options.data_cols, options.start_index, options.all)
 
     my_data.get_data()
     my_data.blocking()
