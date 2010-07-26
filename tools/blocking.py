@@ -39,59 +39,42 @@ sd_error: the estimate of the error associated with the standard deviation.
 
         return (self.block_size, self.mean, self.sd, self.sd_error).__repr__()
 
-class DataBlocker(object):
-    '''Class for performing a blocking analysis.
-datafiles: list of datafiles containing the data to be extracted and blocked;
-start_regex: regular expression indicating that subsequent lines contain the data;
-end_regex: regular expression indicating that the end of a block of data
-           (multiple data blocks can occur within one file);
-index_col: index (starting from 0) of the column containing the index of the
-           data (e.g. Monte Carlo cycle) to be blocked.  The index is only used to
-           initially sort the data;
-data_col: index (starting from 0) of the column containing the data;
-start_index: block only data with an index greater than or equal to start_index.
-block_all: assume all lines contain data apart from comment lines.  The regular expressions are ignored if this is true.
-'''
-    def __init__(self, datafiles, start_regex, end_regex, index_col, data_col, start_index, block_all=False):
 
-        self.datafiles = datafiles
-        self.start_regex = re.compile(start_regex)
-        self.end_regex = re.compile(end_regex)
-        self.comment_regex = re.compile('^ *#')
-        self.index_col = index_col
+class Data(object):
+    '''Class for holding the data during the blocking process.
+
+data_col: index (starting from 0) of the column containing the data.'''
+
+    def __init__(self, data_col):
+
         self.data_col = data_col
-        self.start_index = start_index
-        self.block_all = block_all
 
         # Initialise some null values we'll use during the analysis.
         self.data = []
         self.stats = []
-        self.nblocks = 0
 
-    def get_data(self):
-        '''Extract the relevant data from the datafiles.'''
+    def add_to_data(self, value):
+        '''Add value to the list of data.'''
 
-        data_items = []
-        for file in self.datafiles:
-            f = open(file, 'r')
-            have_data = False
-            for line in f:
-                # have we hit the end of the data?
-                if re.match(self.end_regex, line):
-                    have_data = False
-                # do we have data to extract?
-                if (have_data or self.block_all) and not re.match(self.comment_regex, line):
-                    d = line.split()
-                    (index, value) = (float(d[self.index_col]), float(d[self.data_col]))
-                    if index >= self.start_index:
-                        data_items.append((index, value))
-                # are we about to start receiving the data?
-                if re.match(self.start_regex, line):
-                    have_data = True
-        # Now we sort the data according to the index.
-        data_items.sort()
-        # Don't care about the index of the item for blocking, just need the raw data.
-        self.data = [d[1] for d in data_items]
+        self.data.append(value)
+
+    def sort_by_index(self, indices):
+        '''Sort data according to the (unsorted) list of indices.'''
+
+        combined = zip(indices, self.data)
+        combined.sort()
+        (sorted_indices, self.data) = zip(*combined)
+
+    def reblock(self):
+        '''Reblock the data by successively taking the mean of adjacent data points.'''
+
+        block_size = len(self.data)/2
+        self.data = [0.5*(self.data[2*i]+self.data[2*i+1]) for i in range(block_size)]
+
+    def add_stats(self):
+        '''Calculate the statistics of the current set of data and append to the stats list.'''
+
+        self.stats.append(self.calculate_stats())
 
     def calculate_stats(self):
         '''Calculate the statistics of the current set of data and return the corresponding Stats object.'''
@@ -130,43 +113,102 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
         sd_err = sd*1.0/(sqrt(2*(size-1)))
         return (sd, sd_err)
 
+
+class DataBlocker(object):
+    '''Class for performing a blocking analysis.
+datafiles: list of datafiles containing the data to be extracted and blocked;
+start_regex: regular expression indicating that subsequent lines contain the data;
+end_regex: regular expression indicating that the end of a block of data
+           (multiple data blocks can occur within one file);
+index_col: index (starting from 0) of the column containing the index of the
+           data (e.g. Monte Carlo cycle) to be blocked.  The index is only used to
+           initially sort the data;
+data_col: index (starting from 0) of the column containing the data;
+start_index: block only data with an index greater than or equal to start_index.
+block_all: assume all lines contain data apart from comment lines.  The regular expressions are ignored if this is true.
+'''
+    def __init__(self, datafiles, start_regex, end_regex, index_col, data_col, start_index, block_all=False):
+
+        self.datafiles = datafiles
+        self.start_regex = re.compile(start_regex)
+        self.end_regex = re.compile(end_regex)
+        self.comment_regex = re.compile('^ *#')
+        self.index_col = index_col
+        self.start_index = start_index
+        self.block_all = block_all
+
+        self.data = [Data(data_col)]
+
+    def get_data(self):
+        '''Extract the relevant data from the datafiles.'''
+
+        indices = []
+        for file in self.datafiles:
+            f = open(file, 'r')
+            have_data = False
+            for line in f:
+                # have we hit the end of the data?
+                if re.match(self.end_regex, line):
+                    have_data = False
+                # do we have data to extract?
+                if (have_data or self.block_all) and not re.match(self.comment_regex, line):
+                    d = line.split()
+                    index = float(d[self.index_col])
+                    if index >= self.start_index:
+                        indices.append(index)
+                        for data in self.data:
+                            data.add_to_data(float(d[data.data_col]))
+                # are we about to start receiving the data?
+                if re.match(self.start_regex, line):
+                    have_data = True
+        # Now we sort the data according to the index.
+        for data in self.data:
+            data.sort_by_index(indices)
+
     def blocking(self):
         '''Perform a blocking analysis on the data.
         
-This destroys the data stored in self.data'''
+This destroys the data stored in self.data.data'''
 
         # See "Error estimates on averages of correlated data" by Flyvbjerg and Petersen, JCP 91 461 (1989).
-        block_size = len(self.data)
+        block_size = len(self.data[0].data)
         while block_size >= 2:
 
-            # calculate stats for this data set
-            self.stats.append(self.calculate_stats())
+            for (i, data) in enumerate(self.data):
+                # calculate stats for this data set
+                data.add_stats()
 
-            # reblock
-            block_size /= 2
-            self.data = [0.5*(self.data[2*i]+self.data[2*i+1]) for i in range(block_size)]
+                # Update length of block size after this reblocking cycle.
+                if i == 0:
+                    block_size /= 2
+
+                data.reblock()
 
     def show_blocking(self, plotfile=''):
         '''Print out the blocking data and show a graph of the behaviour of the standard deviation with block size.  If plotfile is given, then the graph is saved to the specifed file rather than being shown on screen.'''
 
         # print blocking output
-        fmt = '%-10s   %-16s  %-18s   %-24s'
-        print fmt % ('block size', 'mean', 'standard deviation', 'standard deviation error')
-        fmt = '%-10i  %-16.12g   %-18.12g   %-24.12g'
-        for stat in self.stats:
+        fmt = '%-11s   %-16s  %-18s   %-24s'
+        print fmt % ('# of blocks', 'mean', 'standard deviation', 'standard deviation error')
+        fmt = '%-11i  %-16.12g   %-18.12g   %-24.12g'
+        for stat in self.data[0].stats:
             print fmt % (stat.block_size, stat.mean, stat.sd, stat.sd_error)
 
         # plot standard deviation
         if PYLAB:
-            blocks = [stat.block_size for stat in self.stats]
-            sd = [stat.sd for stat in self.stats]
-            sd_error = [stat.sd_error for stat in self.stats]
-            pylab.semilogx(blocks, sd, basex=2)
-            pylab.errorbar(blocks, sd, yerr=sd_error)
-            xmax = 2**pylab.ceil(pylab.log2(blocks[0]+1))
-            pylab.xlim(xmax, 1)
-            pylab.xlabel('Block size')
-            pylab.ylabel('Standard deviation')
+            # one sub plot per data set.
+            nplots = len(self.data)
+            for (i, data) in enumerate(self.data):
+                pylab.subplot(nplots, 1, i+1)
+                blocks = [stat.block_size for stat in data.stats]
+                sd = [stat.sd for stat in data.stats]
+                sd_error = [stat.sd_error for stat in data.stats]
+                pylab.semilogx(blocks, sd, basex=2)
+                pylab.errorbar(blocks, sd, yerr=sd_error)
+                xmax = 2**pylab.ceil(pylab.log2(blocks[0]+1))
+                pylab.xlim(xmax, 1)
+                pylab.ylabel('Standard deviation')
+            pylab.xlabel('# of blocks')
             if plotfile:
                 pylab.savefig(plotfile)
             else:
