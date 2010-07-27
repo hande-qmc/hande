@@ -230,8 +230,9 @@ that of the current set of data.'''
             print block_fmt % (self.data[0].stats[s].block_size),
             for data in self.data:
                 print fmt % (data.stats[s].mean, data.stats[s].sd, data.stats[s].sd_error),
-            for cov in self.covariance[s]:
-                print '%-#12.6g' % (cov),
+            if len(self.data) > 1:
+                for cov in self.covariance[s]:
+                    print '%-#12.6g' % (cov),
             print
 
         # plot standard deviation
