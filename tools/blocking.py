@@ -180,12 +180,6 @@ This destroys the data stored in self.data.data'''
                 # calculate stats for this data set
                 data.add_stats()
 
-                # Update length of block size after this reblocking cycle.
-                if i == 0:
-                    block_size /= 2
-
-                data.reblock()
-
             if len(self.data) > 1:
                 # Bonus: also calculate the covariance.
                 cov = []
@@ -193,6 +187,13 @@ This destroys the data stored in self.data.data'''
                     for j in range(i+1, len(self.data)):
                         cov.append(self.calculate_covariance(i, j))
                 self.covariance.append(cov)
+
+            for (i, data) in enumerate(self.data):
+                # Update length of block size after this reblocking cycle.
+                if i == 0:
+                    block_size /= 2
+
+                data.reblock()
 
     def calculate_covariance(self, i, j):
         '''Calculate the covariance between the i-th data item and the j-th data item.
