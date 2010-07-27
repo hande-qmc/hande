@@ -139,6 +139,8 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
 
         self.data = [Data(data_col) for data_col in data_cols]
 
+        self.covariance = []
+
     def get_data(self):
         '''Extract the relevant data from the datafiles.'''
 
@@ -186,7 +188,25 @@ This destroys the data stored in self.data.data'''
 
             if len(self.data) > 1:
                 # Bonus: also calculate the covariance.
-                pass
+                cov = []
+                for i in range(len(self.data)):
+                    for j in range(i+1, len(self.data)):
+                        cov.append(self.calculate_covariance(i, j))
+                self.covariance.append(cov)
+
+    def calculate_covariance(self, i, j):
+        '''Calculate the covariance between the i-th data item and the j-th data item.
+        
+Note that this assumes that the mean stored in the Data class corresponds to
+that of the current set of data.'''
+
+        # cov(X,Y) = E[(X-\mu_X)(Y-\mu_Y)]
+        #          = 1/N \sum_i=1^N (X_i - \mu_X)(Y_i -\mu_Y)
+
+        cov = 0
+        for x in range(len(self.data[i].data)):
+            cov += (self.data[i].data[x] - self.data[i].stats[-1].mean)*(self.data[j].data[x] - self.data[j].stats[-1].mean)
+        return cov/len(self.data[i].data)
 
     def show_blocking(self, plotfile=''):
         '''Print out the blocking data and show a graph of the behaviour of the standard deviation with block size.  If plotfile is given, then the graph is saved to the specifed file rather than being shown on screen.'''
@@ -198,6 +218,10 @@ This destroys the data stored in self.data.data'''
         for data in self.data:
             data_header = tuple(x % (data.data_col) for x in header)
             print fmt % data_header,
+        for i in range(len(self.data)):
+            for j in range(i+1, len(self.data)):
+                str = 'cov(X_%i,X_%i)' % (self.data[i].data_col, self.data[j].data_col)
+                print '%-12s' % (str),
         print
         fmt = '%-#16.12g   %-#18.12g   %-#24.12g'
         block_fmt = '%-11i  '
@@ -205,6 +229,8 @@ This destroys the data stored in self.data.data'''
             print block_fmt % (self.data[0].stats[s].block_size),
             for data in self.data:
                 print fmt % (data.stats[s].mean, data.stats[s].sd, data.stats[s].sd_error),
+            for cov in self.covariance[s]:
+                print '%-#12.6g' % (cov),
             print
 
         # plot standard deviation
