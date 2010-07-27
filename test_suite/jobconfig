@@ -14,6 +14,8 @@ override_core_option = True
 
 [rspace_1d_fciqmc]
 
+[rspace_1d_fciqmc_finite_cluster]
+
 [rspace_nontilted_2d]
 
 [rspace_rectangle_2d_lanczos]
@@ -37,7 +39,7 @@ fci =  kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci rspace_nontilted_2
 lanczos = kspace_1d kspace_nontilted_2d_lanczos rspace_nontilted_2d rspace_rectangle_2d_lanczos
 
 sfciqmc = kspace_nontilted_2d_sfciqmc
-fciqmc = rspace_1d_fciqmc kspace_nontilted_2d_fciqmc
+fciqmc = rspace_1d_fciqmc rspace_1d_fciqmc_finite_cluster kspace_nontilted_2d_fciqmc
 ifciqmc = kspace_1d_ifciqmc kspace_1d_ifciqmc_cas kspace_nontilted_2d_ifciqmc
 fciqmc_all = kspace_nontilted_2d_sfciqmc fciqmc ifciqmc
 
