@@ -26,18 +26,18 @@ class Stats(object):
 
 block_size: the number of points in a set of data; 
 mean: the mean of the data;
-sd: the standard deviation of the data;
-sd_error: the estimate of the error associated with the standard deviation.
+se: the standard error of the data (=std. dev./sqrt(block_size));
+se_error: the estimate of the error associated with the standard error.
 '''
-    def __init__(self, block_size, mean, sd, sd_error):
+    def __init__(self, block_size, mean, se, se_error):
 
         self.block_size = block_size
         self.mean = mean
-        self.sd = sd
-        self.sd_error = sd_error
+        self.se = se
+        self.se_error = se_error
     def __repr__(self):
 
-        return (self.block_size, self.mean, self.sd, self.sd_error).__repr__()
+        return (self.block_size, self.mean, self.se, self.se_error).__repr__()
 
 
 class Data(object):
@@ -80,9 +80,9 @@ data_col: index (starting from 0) of the column containing the data.'''
         '''Calculate the statistics of the current set of data and return the corresponding Stats object.'''
 
         mean = self.calculate_mean()
-        (sd, sd_err) = self.calculate_sd(mean)
+        (se, se_err) = self.calculate_se(mean)
         block_size = len(self.data)
-        return Stats(block_size, mean, sd, sd_err)
+        return Stats(block_size, mean, se, se_err)
 
     def calculate_mean(self):
         '''Calculate the mean of the current set of data.'''
@@ -92,11 +92,11 @@ data_col: index (starting from 0) of the column containing the data.'''
             sum += value
         return sum/len(self.data)
 
-    def calculate_sd(self, mean):
-        '''Calculate the standard deviation and associated error of the current set of data.'''
+    def calculate_se(self, mean):
+        '''Calculate the standard error and estimate associated error of the current set of data.'''
 
         # See "Error estimates on averages of correlated data" by Flyvbjerg and Petersen, JCP 91 461 (1989).
-        # They give the standard deviation and associated error in the standard deviation to be:
+        # They give the standard error and associated error in the standard error to be:
         #   \sigma \approx \sqrt{c0/n-1} ( 1 \pm 1/(\sqrt(2(n-1))) )
         # where
         #   n is the number of items in the set of data;
@@ -109,13 +109,14 @@ data_col: index (starting from 0) of the column containing the data.'''
         for value in self.data:
             c0 += (value - mean)**2
         size = len(self.data)
-        sd = sqrt(c0/(size*(size-1)))
-        sd_err = sd*1.0/(sqrt(2*(size-1)))
-        return (sd, sd_err)
+        se = sqrt(c0/(size*(size-1)))
+        se_err = se*1.0/(sqrt(2*(size-1)))
+        return (se, se_err)
 
 
 class DataBlocker(object):
     '''Class for performing a blocking analysis.
+
 datafiles: list of datafiles containing the data to be extracted and blocked;
 start_regex: regular expression indicating that subsequent lines contain the data;
 end_regex: regular expression indicating that the end of a block of data
@@ -210,12 +211,14 @@ that of the current set of data.'''
         return cov/len(self.data[i].data)
 
     def show_blocking(self, plotfile=''):
-        '''Print out the blocking data and show a graph of the behaviour of the standard deviation with block size.  If plotfile is given, then the graph is saved to the specifed file rather than being shown on screen.'''
+        '''Print out the blocking data and show a graph of the behaviour of the standard error with block size.
+        
+If plotfile is given, then the graph is saved to the specifed file rather than being shown on screen.'''
 
         # print blocking output
         print '%-11s   ' % ('# of blocks'),
         fmt = '%-16s   %-18s   %-24s'
-        header = ('mean (X_%i)', 'std.dev. (X_%i)', 'std.dev.err. (X_%i)')
+        header = ('mean (X_%i)', 'std.err. (X_%i)', 'std.err.err. (X_%i)')
         for data in self.data:
             data_header = tuple(x % (data.data_col) for x in header)
             print fmt % data_header,
@@ -229,26 +232,26 @@ that of the current set of data.'''
         for s in range(len(self.data[0].stats)):
             print block_fmt % (self.data[0].stats[s].block_size),
             for data in self.data:
-                print fmt % (data.stats[s].mean, data.stats[s].sd, data.stats[s].sd_error),
+                print fmt % (data.stats[s].mean, data.stats[s].se, data.stats[s].se_error),
             if len(self.data) > 1:
                 for cov in self.covariance[s]:
                     print '%-#12.6g' % (cov),
             print
 
-        # plot standard deviation
+        # plot standard error 
         if PYLAB:
             # one sub plot per data set.
             nplots = len(self.data)
             for (i, data) in enumerate(self.data):
                 pylab.subplot(nplots, 1, i+1)
                 blocks = [stat.block_size for stat in data.stats]
-                sd = [stat.sd for stat in data.stats]
-                sd_error = [stat.sd_error for stat in data.stats]
-                pylab.semilogx(blocks, sd, 'g-', basex=2, label=r'$\sigma(X_%s)$' % (data.data_col))
-                pylab.errorbar(blocks, sd, yerr=sd_error, fmt=None, ecolor='g')
+                se = [stat.se for stat in data.stats]
+                se_error = [stat.se_error for stat in data.stats]
+                pylab.semilogx(blocks, se, 'g-', basex=2, label=r'$\sigma(X_%s)$' % (data.data_col))
+                pylab.errorbar(blocks, se, yerr=se_error, fmt=None, ecolor='g')
                 xmax = 2**pylab.ceil(pylab.log2(blocks[0]+1))
                 pylab.xlim(xmax, 1)
-                pylab.ylabel('Standard deviation')
+                pylab.ylabel('Standard error')
                 pylab.legend(loc=2)
                 if i != nplots - 1:
                     # Don't label x axis points.
