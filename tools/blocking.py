@@ -240,7 +240,7 @@ where N is the number of elements in the data set.'''
 If plotfile is given, then the graph is saved to the specifed file rather than being shown on screen.'''
 
         # print blocking output
-        print '%-11s   ' % ('# of blocks'),
+        print '%-11s  ' % ('# of blocks'),
         fmt = '%-16s   %-18s   %-24s'
         header = ('mean (X_%i)', 'std.err. (X_%i)', 'std.err.err. (X_%i)')
         for data in self.data:
