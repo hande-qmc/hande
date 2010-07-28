@@ -274,8 +274,8 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
 
         # print blocking output
         # header...
-        print '%-11s  ' % ('# of blocks'),
-        fmt = '%-16s   %-18s   %-24s'
+        print '%-11s' % ('# of blocks'),
+        fmt = '%-14s %-12s %-18s '
         header = ('mean (X_%i)', 'std.err. (X_%i)', 'std.err.err. (X_%i)')
         for data in self.data:
             data_header = tuple(x % (data.data_col) for x in header)
@@ -284,21 +284,21 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
             str = 'cov(X_%s,X_%s)' % tuple(key.split(','))
             print '%-12s' % (str),
         for key in self.combination_stats:
-            fmt = 'mean (X_%s'+self.combination+'X_%s)'  
-            str = fmt % tuple(key.split(','))
-            print '%-16s' % (str),
+            fmt = ['mean (X_%s'+self.combination+'X_%s)', 'std.err. (X_%s'+self.combination+'X_%s)']
+            strs = tuple([s % tuple(key.split(',')) for s in fmt])
+            print '%-16s %-18s' % strs,
         print
         # data
-        fmt = '%-#16.12g   %-#18.12g   %-#24.12g'
-        block_fmt = '%-11i  '
+        block_fmt = '%-11i'
+        fmt = '%-#14.12g %-#12.8e %-#18.8e '
         for s in range(len(self.data[0].stats)):
             print block_fmt % (self.data[0].stats[s].block_size),
             for data in self.data:
                 print fmt % (data.stats[s].mean, data.stats[s].se, data.stats[s].se_error),
             for cov in self.covariance.itervalues():
-                print '%-#12.6g' % (cov[s]),
+                print '%-#12.9g' % (cov[s]),
             for comb in self.combination_stats.itervalues():
-                print '%-#16.12g  %-#18.12g' % (comb[s].mean, comb[s].se)
+                print '%-#16.12g %-#18.12g' % (comb[s].mean, comb[s].se),
             print
 
         # plot standard error 
