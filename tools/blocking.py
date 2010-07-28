@@ -140,12 +140,12 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
 
         self.data = [Data(data_col) for data_col in data_cols]
 
-        self.covariance = []
+        self.covariance = {}
 
         self.combination = combination
-        if self.combination = '/':
+        if self.combination == '/':
             self.combination_fn = self.calculate_combination_division
-        else:
+        elif self.combination:
             raise Exception, 'Unimplemented combination: %s.' % (self.combination)
         self.combination_stats = []
 
@@ -190,12 +190,12 @@ This destroys the data stored in self.data.data'''
 
             if len(self.data) > 1:
                 # Bonus: also calculate the covariance.
-                # FIX: use string '%s%s' % (i,j) as a dictionary key.
-                cov = []
                 for i in range(len(self.data)):
                     for j in range(i+1, len(self.data)):
-                        cov.append(self.calculate_covariance(i, j))
-                self.covariance.append(cov)
+                        key = '%s,%s' % (self.data[i].data_col, self.data[j].data_col)
+                        if key not in self.covariance:
+                            self.covariance[key] = []
+                        self.covariance[key].append(self.calculate_covariance(i, j))
 
             for (i, data) in enumerate(self.data):
                 # Update length of block size after this reblocking cycle.
@@ -246,10 +246,9 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
         for data in self.data:
             data_header = tuple(x % (data.data_col) for x in header)
             print fmt % data_header,
-        for i in range(len(self.data)):
-            for j in range(i+1, len(self.data)):
-                str = 'cov(X_%i,X_%i)' % (self.data[i].data_col, self.data[j].data_col)
-                print '%-12s' % (str),
+        for key in self.covariance:
+            str = 'cov(X_%s,X_%s)' % tuple(key.split(','))
+            print '%-12s' % (str),
         print
         fmt = '%-#16.12g   %-#18.12g   %-#24.12g'
         block_fmt = '%-11i  '
@@ -257,9 +256,8 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
             print block_fmt % (self.data[0].stats[s].block_size),
             for data in self.data:
                 print fmt % (data.stats[s].mean, data.stats[s].se, data.stats[s].se_error),
-            if len(self.data) > 1:
-                for cov in self.covariance[s]:
-                    print '%-#12.6g' % (cov),
+            for cov in self.covariance.itervalues():
+                print '%-#12.6g' % (cov[s]),
             print
 
         # plot standard error 
