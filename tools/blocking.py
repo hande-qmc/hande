@@ -338,7 +338,7 @@ def parse_options(args):
     parser.add_option('-d', '--data', dest='data_cols', type='int', default=[], action='append', help='Set the column(s) (starting from 0) containing the data items. If more than one column is given, the covariance between the sets of data is also calculated.  Default: 1.')
     parser.add_option('-f', '--from', dest='start_index', type='int', default=0, help='Set the index from which the data is blocked.  Data with a smaller index is discarded.  Default: %default.')
     parser.add_option('-p', '--plotfile', help='Save a plot of the blocking analysis to PLOTFILE rather than showing the plot on screen (default behaviour).')
-    parser.add_option('-o','--operation', help='')
+    parser.add_option('-o','--operation', help='Set the operation used to combine pairs of data columns.  The mean and standard error of the resultant quantity are found.  Currently only division (\'/\') is implemented.')
 
     (options, filenames) = parser.parse_args(args)
 
