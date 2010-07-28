@@ -140,14 +140,19 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
 
         self.data = [Data(data_col) for data_col in data_cols]
 
-        self.covariance = {}
-
         self.combination = combination
         if self.combination == '/':
             self.combination_fn = self.calculate_combination_division
         elif self.combination:
             raise Exception, 'Unimplemented combination: %s.' % (self.combination)
-        self.combination_stats = []
+
+        # Dictionaries for storing the covariance and combination stats between
+        # two different data sets at each given block size.
+        # The key i,j is used to distinguish different combinations, where
+        # i and j correspond to values in data_cols.
+        # These are symmetric and thus we choose to work using i<j.
+        self.covariance = {}
+        self.combination_stats = {}
 
     def get_data(self):
         '''Extract the relevant data from the datafiles.'''
@@ -196,6 +201,11 @@ This destroys the data stored in self.data.data'''
                         if key not in self.covariance:
                             self.covariance[key] = []
                         self.covariance[key].append(self.calculate_covariance(i, j))
+                        # Added bonus: calculate combination if desired.
+                        if self.combination == '/':
+                            if key not in self.combination_stats:
+                                self.combination_stats[key] = []
+                            self.combination_stats[key].append(self.calculate_combination_division(i,j))
 
             for (i, data) in enumerate(self.data):
                 # Update length of block size after this reblocking cycle.
@@ -219,20 +229,43 @@ that of the current set of data.'''
         return cov/len(self.data[i].data)
 
     def calculate_combination_division(self, i, j):
-        '''Find the standard error of f, where f = X_i/X_j, where X_i is the i-th data set and similarly for X_j.
+        '''Find the mean and standard error of f, where f = X_i/X_j, where X_i is the i-th data set and similarly for X_j.
 
-i,j: indices of elements in the data array.
+i,j: elements in the data array corresponding to X_i and X_j.
+
+NOTE: we assume that the statistical values in data[i].stats are consistent
+with the data in data[i].data and similarly for data[j].data and the covaraince
+data (ie this must be called after add_stats and calculate_covariance for each
+blocking cycle).
+
+The mean of f, <f>, can simply be found from <X_i>/<X_j>.
 
 Denoting the standard deviation of the data set X as s(X) and the standard error of data set X as se(X),
 the standard deviation of f can be evaluated using:
 
-    (s(f)/f)^2 = (s(X_i)/X_i)^2 + (s(X_i)/X_i)^2 - 2 cov(X_i,X_j)/(X_i X_j)
+    (s(f)/f)^2 = (s(X_i)/<X_i>)^2 + (s(X_i)/<X_i>)^2 - 2 cov(X_i,X_j)/(<X_i> <X_j>)
 
 where cov(X_i,X_j) is the covariance between the two data sets.  The standard error then follows:
     
     se(f) = s(f)/\sqrt(N)
     
-where N is the number of elements in the data set.'''
+where N is the number of elements in the data set and hence we obtain:
+    
+    se(f) = f [ (se(X_i)/<X_i>)^2 + (se(X_j)/<X_j>)^2 - 2 cov(X_i,X_j)/(N <X_i> <X_j>) ]^1/2.'''
+
+        meani = self.data[i].stats[-1].mean
+        meanj = self.data[j].stats[-1].mean
+        sei = self.data[i].stats[-1].se
+        sej = self.data[j].stats[-1].se
+        cov_key = '%s,%s' % tuple(sorted((self.data[i].data_col,self.data[j].data_col)))
+        cov = self.covariance[cov_key][-1]
+        nblocks = self.data[j].stats[-1].block_size
+
+        meanf = meani/meanj
+
+        sef = abs(meanf*sqrt( (sei/meani)**2 + (sej/meanj)**2 - 2*cov/(nblocks*meani*meanj) ))
+
+        return Stats(nblocks, meanf, sef, 0)
 
     def show_blocking(self, plotfile=''):
         '''Print out the blocking data and show a graph of the behaviour of the standard error with block size.
@@ -240,6 +273,7 @@ where N is the number of elements in the data set.'''
 If plotfile is given, then the graph is saved to the specifed file rather than being shown on screen.'''
 
         # print blocking output
+        # header...
         print '%-11s  ' % ('# of blocks'),
         fmt = '%-16s   %-18s   %-24s'
         header = ('mean (X_%i)', 'std.err. (X_%i)', 'std.err.err. (X_%i)')
@@ -249,7 +283,12 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
         for key in self.covariance:
             str = 'cov(X_%s,X_%s)' % tuple(key.split(','))
             print '%-12s' % (str),
+        for key in self.combination_stats:
+            fmt = 'mean (X_%s'+self.combination+'X_%s)'  
+            str = fmt % tuple(key.split(','))
+            print '%-16s' % (str),
         print
+        # data
         fmt = '%-#16.12g   %-#18.12g   %-#24.12g'
         block_fmt = '%-11i  '
         for s in range(len(self.data[0].stats)):
@@ -258,6 +297,8 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
                 print fmt % (data.stats[s].mean, data.stats[s].se, data.stats[s].se_error),
             for cov in self.covariance.itervalues():
                 print '%-#12.6g' % (cov[s]),
+            for comb in self.combination_stats.itervalues():
+                print '%-#16.12g  %-#18.12g' % (comb[s].mean, comb[s].se)
             print
 
         # plot standard error 
@@ -314,7 +355,7 @@ def parse_options(args):
 if __name__ == '__main__':
     (options, filenames) = parse_options(sys.argv[1:])
 
-    my_data = DataBlocker(filenames, options.start_regex, options.end_regex, options.index_col, options.data_cols, options.start_index, options.all)
+    my_data = DataBlocker(filenames, options.start_regex, options.end_regex, options.index_col, options.data_cols, options.start_index, options.all, options.operation)
 
     my_data.get_data()
     my_data.blocking()
