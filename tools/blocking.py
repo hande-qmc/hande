@@ -128,7 +128,7 @@ data_cols: list of indices (starting from 0) of the columns containing the data;
 start_index: block only data with an index greater than or equal to start_index.
 block_all: assume all lines contain data apart from comment lines.  The regular expressions are ignored if this is true.
 '''
-    def __init__(self, datafiles, start_regex, end_regex, index_col, data_cols, start_index, block_all=False):
+    def __init__(self, datafiles, start_regex, end_regex, index_col, data_cols, start_index, block_all=False, combination=False):
 
         self.datafiles = datafiles
         self.start_regex = re.compile(start_regex)
@@ -141,6 +141,13 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
         self.data = [Data(data_col) for data_col in data_cols]
 
         self.covariance = []
+
+        self.combination = combination
+        if self.combination = '/':
+            self.combination_fn = self.calculate_combination_division
+        else:
+            raise Exception, 'Unimplemented combination: %s.' % (self.combination)
+        self.combination_stats = []
 
     def get_data(self):
         '''Extract the relevant data from the datafiles.'''
@@ -183,6 +190,7 @@ This destroys the data stored in self.data.data'''
 
             if len(self.data) > 1:
                 # Bonus: also calculate the covariance.
+                # FIX: use string '%s%s' % (i,j) as a dictionary key.
                 cov = []
                 for i in range(len(self.data)):
                     for j in range(i+1, len(self.data)):
@@ -209,6 +217,22 @@ that of the current set of data.'''
         for x in range(len(self.data[i].data)):
             cov += (self.data[i].data[x] - self.data[i].stats[-1].mean)*(self.data[j].data[x] - self.data[j].stats[-1].mean)
         return cov/len(self.data[i].data)
+
+    def calculate_combination_division(self, i, j):
+        '''Find the standard error of f, where f = X_i/X_j, where X_i is the i-th data set and similarly for X_j.
+
+i,j: indices of elements in the data array.
+
+Denoting the standard deviation of the data set X as s(X) and the standard error of data set X as se(X),
+the standard deviation of f can be evaluated using:
+
+    (s(f)/f)^2 = (s(X_i)/X_i)^2 + (s(X_i)/X_i)^2 - 2 cov(X_i,X_j)/(X_i X_j)
+
+where cov(X_i,X_j) is the covariance between the two data sets.  The standard error then follows:
+    
+    se(f) = s(f)/\sqrt(N)
+    
+where N is the number of elements in the data set.'''
 
     def show_blocking(self, plotfile=''):
         '''Print out the blocking data and show a graph of the behaviour of the standard error with block size.
@@ -272,9 +296,10 @@ def parse_options(args):
     parser.add_option('-e', '--end', dest='end_regex', type='string', default=r'^ *$', help='Set the regular expression indicating the end of a data block.  Default: %default.')
     parser.add_option('-a', '--all', action='store_true', default=False, help='Assume all lines in the files contains data apart from comment lines. Regular expression options are ignored if --all is used.  Default: %default.')
     parser.add_option('-i', '--index', dest='index_col', type='int', default=0, help='Set the column (starting from 0) containing the index labelling each data item (e.g. number of Monte Carlo cycles). Default: %default.')
-    parser.add_option('-d', '--data', dest='data_cols', type='int', default=[], action='append', help='Set the column (starting from 0) containing the data items. Default: 1.')
+    parser.add_option('-d', '--data', dest='data_cols', type='int', default=[], action='append', help='Set the column(s) (starting from 0) containing the data items. If more than one column is given, the covariance between the sets of data is also calculated.  Default: 1.')
     parser.add_option('-f', '--from', dest='start_index', type='int', default=0, help='Set the index from which the data is blocked.  Data with a smaller index is discarded.  Default: %default.')
     parser.add_option('-p', '--plotfile', help='Save a plot of the blocking analysis to PLOTFILE rather than showing the plot on screen (default behaviour).')
+    parser.add_option('-o','--operation', help='')
 
     (options, filenames) = parser.parse_args(args)
 
