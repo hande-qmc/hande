@@ -296,9 +296,9 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
             for data in self.data:
                 print fmt % (data.stats[s].mean, data.stats[s].se, data.stats[s].se_error),
             for cov in self.covariance.itervalues():
-                print '%-#12.9g' % (cov[s]),
+                print '%+-#12.5e' % (cov[s]),
             for comb in self.combination_stats.itervalues():
-                print '%-#16.12g %-#18.12g' % (comb[s].mean, comb[s].se),
+                print '%-#16.12f %-#18.12e' % (comb[s].mean, comb[s].se),
             print
 
         # plot standard error 
