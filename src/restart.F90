@@ -6,6 +6,8 @@ use parallel
 use utils, only: get_unique_filename, get_free_unit
 use const, only: p, i0
 use fciqmc_data
+use basis, only: basis_length
+use system, only: nel
 
 implicit none
 
@@ -30,8 +32,13 @@ logical :: binary_fmt = .true.
 interface write_out
     module procedure write_out_int
     module procedure write_out_int_arr
+    !testing to see if Fortran does kind checking ( i.e. whether it can
+    !differentiate between different kinds of the same type
+    module procedure write_out_int0
+    module procedure write_out_int_arr0
     module procedure write_out_float
     module procedure write_out_char
+    module procedure write_out_logical ! damn you vary_shift
 end interface write_out
 
 interface read_in 
@@ -39,6 +46,7 @@ interface read_in
     module procedure read_in_int_arr
     module procedure read_in_float
     module procedure read_in_char
+    module procedure read_in_logical
 end interface read_in
 
 contains 
@@ -49,7 +57,7 @@ contains
 
         integer, intent(in) :: nmc_cycles, nparticles_old
         character(255) :: restart_file
-        integer :: io
+        integer :: io, scratch
         integer, parameter :: restart_version = 1
 #ifdef PARALLEL
         integer :: nwalkers(0:nprocs-1), ierr, stat(MPI_STATUS_SIZE), i
@@ -70,27 +78,46 @@ contains
             end if
 
             write (6,'(1X,a23,1X,a,a1,/)') 'Writing restart file to',trim(restart_file),'.'
+            
+            if (binary_fmt) then
+                open(io,file=restart_file,form='unformatted')
+            else
+                open(io, file=restart_file)
+            end if
 
-            open(io, file=restart_file)
-
-            write (io,*) '# restart version'
-            write (io,*) restart_version
-            write (io,*) '# number of cycles'
-            write (io,*) nmc_cycles
-            write (io,*) '# shift'
-            write (io,*) nparticles_old, shift, vary_shift
-            write (io,*) '# reference determinant'
-            write (io,*) f0, occ_list0, D0_population, H00
-            write (io,*) '# number of unique walkers'
+            call write_out('# restart version',io)
+            call write_out(restart_version,io) 
+            call write_out('# number of cycles',io)
+            call write_out(nmc_cycles,io)
+            call write_out('#shift',io)
+            call write_out(nparticles_old,io,'no')
+            call write_out(shift,io,'no')
+            call write_out(vary_shift,io)
+            call write_out('#reference determinant',io)
+            call write_out(f0,basis_length,io,'no')
+            call write_out(occ_list0,nel,io,'no')
+            call write_out(D0_population,io,'no')
+            call write_out(H00,io)
+            call write_out('# number of unique walkers',io)
 #ifdef PARALLEL
-            write (io,*) sum(nwalkers)
+            call write_out(sum(nwalkers),io)
             ! Write out walkers on parent processor to restart file.
-            write (io,*) '# walker info'
+            call write_out('# walker info',io)
             call write_walkers(tot_walkers, io)
+            
+            ! if writing in binary, there is no character marker telling us
+            ! where the root processor's walkers are stored - thus use scratch
+            ! so that we can get root's walkers back
+            if (binary_fmt) then
+                scratch = get_free_unit()
+                open(scratch,status='scratch',form='unformatted')
+                write_walkers(tot_walkers,scratch)
+            end if
 
             ! Communicate with all other processors.
             do i = 1, nprocs-1
                 ! Receive walker infor from all other processors.
+                ! This overwrites the root processor's walkers
                 call mpi_recv(walker_population, nwalkers(i), mpi_integer, i, comm_tag, mpi_comm_world, stat, ierr)
                 call mpi_recv(walker_dets, nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
                 call mpi_recv(walker_energies, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
@@ -98,21 +125,33 @@ contains
                 call write_walkers(nwalkers(i), io)
             end do
 
-            ! Read "self" info back in.
-            call flush(io)
-            rewind(io)
-            do
-                ! Read restart file until we've found the start of the
-                ! walker information.
-                read (io,'(a255)') junk
-                call flush(6)
-                if (index(junk,'walker info') /= 0) exit
-            end do
-            ! The next tot_walkers lines contain the walker info that came
-            ! from the root processor.
-            do i = 1, tot_walkers
-                read (io, *) walker_dets(:,i), walker_population(i), walker_energies(i)
-            end do
+            ! we need to read back from scratch if in binary format
+            if (binary_fmt) then
+                do i = 1, tot_walkers
+                    call read_in(walker_dets(:,i),basis_length,scratch,'no')
+                    call read_in(walker_population(i),scratch,'no')
+                    call read_in(walker_energies(i),scratch)
+                end do
+                !no longer need the scratchfile
+                close(scratch)
+            else
+                ! we can read from the input file and no need for scratch
+                ! Read "self" info back in.
+                call flush(io)
+                rewind(io)
+                do
+                    ! Read restart file until we've found the start of the
+                    ! walker information.
+                    read (io,'(a255)') junk
+                    call flush(6)
+                    if (index(junk,'walker info') /= 0) exit
+                end do
+                ! The next tot_walkers lines contain the walker info that came
+                ! from the root processor.
+                do i = 1, tot_walkers
+                    read (io, *) walker_dets(:,i), walker_population(i), walker_energies(i)
+                end do
+            end if
 #else
             write (io,*) tot_walkers
             write (io,*) '# walker info'
@@ -137,7 +176,9 @@ contains
                 integer :: iwalker
 
                 do iwalker = 1, my_nwalkers
-                    write (iunit,*) walker_dets(:,iwalker), walker_population(iwalker), walker_energies(iwalker)
+                    call write_out(walker_dets(:,iwalker),basis_length,iunit,'no')
+                    call write_out(walker_population(iwalker),iunit,'no')
+                    call write_out(walker_energies(iwalker),iunit)
                 end do
 
             end subroutine write_walkers
@@ -151,9 +192,6 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
-
-        use basis, only: basis_length
-        use system, only: nel
 
         character(255) :: restart_file, junk
         integer :: io, i
@@ -184,20 +222,29 @@ contains
             if (.not.exists) then
                 call stop_all('read_restart','restart file '//trim(restart_file)//' does not exist.')
             end if
+            
+            if (binary_fmt) then
+                open(io,file=restart_file,form='unformatted')
+            else
+                open(io, file=restart_file)
+            end if
 
-            open(io, file=restart_file)
-
-            read (io,*) junk
-            read (io,*) restart_version
-            read (io,*) junk
-            read (io,*) mc_cycles_done
-            read (io,*) junk
-            read (io,*) nparticles_old_restart, shift, vary_shift
-            read (io,*) junk
-            read (io,*) f0, occ_list0, D0_population, H00
-            read (io,*) junk
-            read (io,*) tot_walkers
-            read (io,*) junk
+            call read_in(junk,io)
+            call read_in(restart_version,io)
+            call read_in(junk,io)
+            call read_in(mc_cycles_done,io)
+            call read_in(junk,io)
+            call read_in(nparticles_old_restart,io,'no')
+            call read_in(shift,io,'no')
+            call read_in(vary_shift,io,'no')
+            call read_in(junk,io)
+            call read_in(f0,basis_length,io,'no')
+            call read_in(occ_list0,nel,io,'no')
+            call read_in(D0_population,io,'no')
+            call read_in(H00,io)
+            call read_in(junk,io)
+            call read_in(tot_walkers,io)
+            call read_in(junk,io)
         end if
 
         ! Just need to read in the walker information now.
@@ -222,7 +269,9 @@ contains
             if (parent) then
                 spawning_head = spawning_block_start
                 do i = iread, global_tot_walkers
-                    read (io,*) det, pop, energy
+                    call read_in(det,io,'no')
+                    call read_in(pop,io,'no')
+                    call read_in(energy,io)
                     dest = modulo(murmurhash_bit_string(det, basis_length), nprocs)
                     spawning_head(dest) = spawning_head(dest) + 1
                     spawned_walkers(:basis_length, spawning_head(dest)) = det
@@ -281,7 +330,9 @@ contains
         end if
 #else
         do i = 1, tot_walkers
-            read (io,*) walker_dets(:,i), walker_population(i), walker_energies(i)
+            call read_in(walker_dets(:,i),basis_length,io,'no')
+            call read_in(walker_population(i),io,'no')
+            call read_in(walker_energies(i),io,'no')
         end do
 #endif
 
@@ -289,18 +340,21 @@ contains
 
     end subroutine read_restart
     
-    subroutine write_out_int(a, wunit, tadvance,)
+    
+    subroutine write_out_int(a, wunit, tadvance)
         
         implicit none
 
-        integer(i0), intent(in) :: a
+        integer, intent(in) :: a
         integer, intent(in) :: wunit
-        character(*), intent(in) :: tadvance
+        character(*), intent(in), optional :: tadvance
         
         if (binary_fmt) then
             write(wunit) a
-        else
+        else if(present(tadvance)) then
             write(wunit,*,advance=tadvance) a
+        else 
+            write(wunit,*) a
         end if
 
     end subroutine write_out_int
@@ -313,19 +367,55 @@ contains
 
         integer :: counter
         integer, intent(in) :: length, wunit
-        integer(i0), dimension(length), intent(in) :: a
-        character(*), intent(in) :: tadvance
+        integer, dimension(length), intent(in) :: a
+        character(*), intent(in), optional :: tadvance
         
         if (binary_fmt) then
-            do counter=1,length
-                write(wunit) a(i)
-            end do
-        else
-            do counter=1,length
-                write(wunit,*,advance=tadvance) a
-            end do
+            write(wunit) a
+        else if(present(tadvance)) then
+            write(wunit,*,advance=tadvance) a
+        else 
+            write(wunit,*) a
         end if
     end subroutine write_out_int_arr
+    
+    subroutine write_out_int0(a, wunit, tadvance)
+        
+        implicit none
+
+        integer(i0), intent(in) :: a
+        integer, intent(in) :: wunit
+        character(*), intent(in), optional :: tadvance
+        
+        if (binary_fmt) then
+            write(wunit) a
+        else if(present(tadvance)) then
+            write(wunit,*,advance=tadvance) a
+        else 
+            write(wunit,*) a
+        end if
+
+    end subroutine write_out_int0
+
+    subroutine write_out_int_arr0(a, length, wunit, tadvance)
+    !print out an array of integers
+    !for ASCII output, most of the time we will want non-advancing input
+
+        implicit none
+
+        integer :: counter
+        integer, intent(in) :: length, wunit
+        integer(i0), dimension(length), intent(in) :: a
+        character(*), intent(in), optional :: tadvance
+        
+        if (binary_fmt) then
+            write(wunit) a
+        else if(present(tadvance)) then
+            write(wunit,*,advance=tadvance) a
+        else 
+            write(wunit,*) a
+        end if
+    end subroutine write_out_int_arr0
 
     subroutine write_out_float(a, wunit, tadvance)
 
@@ -333,12 +423,14 @@ contains
 
         real(p), intent(in) :: a
         integer, intent(in) :: wunit
-        character(*), intent(in) :: tadvance
+        character(*), intent(in), optional :: tadvance
         
         if (binary_fmt) then
             write(wunit) a
-        else
+        else if(present(tadvance)) then
             write(wunit,*,advance=tadvance) a
+        else 
+            write(wunit,*) a
         end if
     end subroutine write_out_float
 
@@ -348,14 +440,34 @@ contains
 
         character(*), intent(in) :: a
         integer, intent(in) :: wunit
-        character(*), intent(in) :: tadvance
+        character(*), intent(in), optional :: tadvance
         
-        if (binary_fmt) then
-            write(wunit) a
-        else
-            write(wunit,*,advance=tadvance) a
+        ! no character data for the binary format output file
+        if (.not. binary_fmt) then
+            if (present(tadvance)) then
+                write(wunit,*,advance=tadvance) a
+            else
+                write(wunit,*) a
+            end if
         end if
     end subroutine write_out_char
+
+    subroutine write_out_logical(a,runit,tadvance)
+        
+        implicit none
+
+        logical, intent(in):: a
+        integer, intent(in) :: runit
+        character(*), intent(in),optional :: tadvance
+
+        if (binary_fmt) then
+            write(runit) a
+        else if (present(tadvance)) then
+            write(runit,*,advance=tadvance) a
+        else
+            write(runit,*) a
+        end if
+    end subroutine write_out_logical
 
 
     subroutine read_in_int(a, runit, tadvance)
@@ -364,12 +476,14 @@ contains
 
         integer(i0), intent(out) :: a
         integer, intent(in) :: runit
-        character(*), intent(in) :: tadvance
+        character(*), intent(in), optional :: tadvance
 
         if (binary_fmt) then
             read(runit) a 
-        else
+        else if (present(tadvance)) then
             read(runit,*,advance=tadvance) a
+        else
+            read(runit,*) a
         end if
     end subroutine read_in_int
 
@@ -380,29 +494,31 @@ contains
         integer :: counter
         integer, intent(in) :: runit,length
         integer(i0), dimension(length), intent(out) :: a
-        character(*), intent(in) :: tadvance
+        character(*), intent(in), optional :: tadvance
 
         if (binary_fmt) then
-            do counter=1,length
-                read(runit) a(i)
-            end do
-        else
+            read(runit) a
+        else if (present(tadvance)) then
             read(runit,*,advance=tadvance) a
+        else
+            read(runit,*) a
         end if
     end subroutine read_in_int_arr
 
-    subroutine read_in_float(a, sort, runit, tadvance)
+    subroutine read_in_float(a, runit, tadvance)
 
         implicit none
 
         real(p), intent(out) :: a
         integer, intent(in) :: runit
-        character(*), intent(in) :: tadvance
+        character(*), intent(in), optional :: tadvance
 
         if (binary_fmt) then
             read(runit) a 
-        else
+        else if (present(tadvance)) then
             read(runit,*,advance=tadvance) a
+        else
+            read(runit,*) a
         end if
     end subroutine read_in_float
 
@@ -412,13 +528,33 @@ contains
 
         character(*), intent(out) :: a
         integer, intent(in) :: runit
-        character(*), intent(in) :: tadvance
+        character(*), intent(in), optional :: tadvance
 
-        if (binary_fmt) then
-            read(runit) a 
-        else
-            read(runit,*,advance=tadvance) a
+        ! there is no character data in the binary restart file
+        if (.not.binary_fmt) then
+            if (present(tadvance)) then
+                read(runit,*,advance=tadvance) a
+            else
+                read(runit,*) a
+            end if
         end if
     end subroutine read_in_char
+
+    subroutine read_in_logical(a, runit, tadvance)
+        
+        implicit none
+
+        logical, intent(out) :: a
+        integer, intent(in) :: runit
+        character(*), intent(in), optional :: tadvance
+
+        if (binary_fmt) then
+            read(runit) a
+        else if (present(tadvance)) then
+            read(runit,*,advance=tadvance) a
+        else
+            read(runit,*) a
+        end if
+    end subroutine read_in_logical
 
 end module fciqmc_restart
