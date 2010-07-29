@@ -26,6 +26,7 @@ contains
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
+        use checking, only: check_allocate
         use errors, only: stop_all
 
         integer :: i, j, k, ierr
@@ -40,7 +41,9 @@ contains
 
             nsym = nbasis/2
             allocate(sym_table(nsym, nsym), stat=ierr)
+            call check_allocate('sym_table',nsym*nsym,ierr)
             allocate(inv_sym(nsym), stat=ierr)
+            call check_allocate('inv_sym',nsym,ierr)
 
             fmt1 = int_fmt(nsym)
 
@@ -100,10 +103,18 @@ contains
 
         ! Clean up after symmetry.
 
+        use checking, only: check_deallocate
+
         integer :: ierr
 
-        if (allocated(sym_table)) deallocate(sym_table, stat=ierr)
-        if (allocated(inv_sym)) deallocate(inv_sym, stat=ierr)
+        if (allocated(sym_table)) then
+            deallocate(sym_table, stat=ierr)
+            call check_deallocate('sym_table',ierr)
+        end if
+        if (allocated(inv_sym)) then
+            deallocate(inv_sym, stat=ierr)
+            call check_deallocate('inv_sym',ierr)
+        end if
 
     end subroutine end_symmetry
 

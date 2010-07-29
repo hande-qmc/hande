@@ -7,5 +7,5 @@ extract = ../../tools/extract.py
 
 [user]
 diff = meld
-benchfile = benchmark%(INPUTTAG)s-4e45e2c.out
+benchfile = benchmark%(INPUTTAG)s-d5a9a1c.out
 

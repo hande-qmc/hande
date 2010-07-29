@@ -318,6 +318,18 @@ These options describe the system which is to be investigated.
 
     Applicable only in the momentum space formulation of the Hubbard model.
 
+**finite_cluster**
+
+    This keyword may only be given if the calculations are being carried out
+    in real-space, otherwise the user is notified and the keyword is ignored.
+
+    The default behaviour for Hubbard is to work on an infinite lattice 
+    contructed out of repeating the user-specified unit cell. If finite_cluster is 
+    specified then Hubbard will only work on the single unit cell and *not*
+    the periodic continuation which would give us a lattice.
+
+    This option is introduced so that Hubbard can now work on single molecules.
+
 Calculation type
 ^^^^^^^^^^^^^^^^
 
@@ -326,7 +338,7 @@ chosen system.  If no calculation type is given, then only the calculation
 initialisation (mainly the enumeration of the basis) is performed.
 
 **exact**
-    Perform an full diagonalisation of the Hamiltonian matrix.
+    Perform a full diagonalisation of the Hamiltonian matrix.
 **fci**
     Synonym for **exact**.
 **simple_fciqmc**

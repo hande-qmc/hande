@@ -15,28 +15,34 @@ contains
         ! allocate the required memory for the list of walkers and set the
         ! initial walker.
 
+        use checking, only: check_allocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs, parent
         use utils, only: int_fmt
 
-        use basis, only: basis_length
+        use basis, only: basis_length, write_basis_fn, basis_fns
         use calc, only: sym_in, ms_in
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use fciqmc_restart, only: read_restart
+        use fciqmc_data, only: occ_list0
         use system, only: nel, system_type, hub_real, hub_k
+        use symmetry, only: gamma_sym, sym_table
 
         integer :: ierr
         integer :: i
         integer :: step
-
+        integer :: ref_sym ! the symmetry of the reference determinant
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
         ! Allocate main walker lists.
         allocate(walker_dets(basis_length,walker_length), stat=ierr)
+        call check_allocate('walker_dets',basis_length*walker_length,ierr)
         allocate(walker_population(walker_length), stat=ierr)
+        call check_allocate('walker_population',walker_length,ierr)
         allocate(walker_energies(walker_length), stat=ierr)
+        call check_allocate('walker_energies',walker_length,ierr)
 
         ! Allocate spawned walker lists.
         if (initiator) then
@@ -51,13 +57,16 @@ contains
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
         allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
+        call check_allocate('spawned_walkers1',spawned_size*spawned_walker_length,ierr)
         spawned_walkers => spawned_walkers1
         ! Allocate scratch space for doing communication.
         allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
+        call check_allocate('spawned_walkers2',spawned_size*spawned_walker_length,ierr)
         spawned_walkers_recvd => spawned_walkers2
 
         ! Set spawning_head to be the same size as spawning_block_start.
         allocate(spawning_head(0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('spawning_head',max(2,nprocs),ierr)
 
         ! Find the start position within the spawned walker lists for each
         ! processor.
@@ -65,6 +74,7 @@ contains
         ! for each processor so we allow it to be accessible even if the number
         ! of processors is 1.
         allocate(spawning_block_start(0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('spawning_block_start',max(2,nprocs),ierr)
         step = spawned_walker_length/nprocs
         forall (i=0:nprocs-1) spawning_block_start(i) = i*step
 
@@ -74,8 +84,12 @@ contains
         ! Set initial walker population.
         ! occ_list could be set and allocated in the input.
         allocate(f0(basis_length), stat=ierr)
+        call check_allocate('f0',basis_length,ierr)
         if (restart) then
-            if (.not.allocated(occ_list0)) allocate(occ_list0(nel), stat=ierr)
+            if (.not.allocated(occ_list0)) then
+                allocate(occ_list0(nel), stat=ierr)
+                call check_allocate('occ_list0',nel,ierr)
+            end if
             call read_restart()
         else
             tot_walkers = 1
@@ -117,12 +131,26 @@ contains
         ! D0_population or obtaining it from the restart file, as appropriate.
         nparticles = sum(abs(walker_population(:tot_walkers)))
 
+        ! calculate the reference determinant symmetry
+        ! Brought outside if block for clarity.
+        ! Only if we are working in k-space.
+        if(system_type == hub_k) then
+            ref_sym = gamma_sym
+            do i=1,nel
+                ref_sym = sym_table((occ_list0(i)+1)/2,ref_sym)
+            end do
+        end if
+
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-            write (6,'(1X,a44,'//int_fmt(nint(D0_population),1)//',/)') &
-                              'Initial population on reference determinant:',nint(D0_population)
+            if(system_type == hub_k) then
+                write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+                call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+            end if
+            write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
+                              'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
             if (initiator) then
                 write (6,'(1X,a24)') 'Initiator method in use.'

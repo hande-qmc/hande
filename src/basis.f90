@@ -65,7 +65,7 @@ integer, allocatable :: basis_lookup(:,:) ! (i0_length, basis_length)
 
 contains
 
-    pure subroutine init_basis_fn(b, l, ms)
+    subroutine init_basis_fn(b, l, ms)
 
         ! Initialise a variable of type basis_fn.
         ! In:
@@ -86,6 +86,7 @@ contains
         ! This should be called even if l and ms are not specified so that the
         ! l component can be correctly allocated.
 
+        use checking, only: check_allocate
         use system, only: system_type, hub_real
 
         type(basis_fn), intent(out) :: b
@@ -95,6 +96,7 @@ contains
 
         if (.not.associated(b%l)) then
             allocate(b%l(ndim),stat=ierr)
+            call check_allocate('b%l',ndim,ierr)
         end if
 
         if (present(l)) then
