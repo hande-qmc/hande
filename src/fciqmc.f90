@@ -149,7 +149,7 @@ contains
                 write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
                 call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
             end if
-            write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
+            write (6,'(1X,a44,1X,f11.4,/)') &
                               'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
             if (initiator) then
