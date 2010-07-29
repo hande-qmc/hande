@@ -126,8 +126,7 @@ contains
         use energy_evaluation, only: update_shift
 
         integer :: ireport, icycle, iwalker, ipart
-        integer :: nparticles, nparticles_old
-        real(p) :: inst_proj_energy
+        integer :: nparticles, nparticles_old, nattempts
         real :: t1, t2
 
         ! from restart
@@ -139,23 +138,25 @@ contains
 
         do ireport = 1, nreport
 
-            ! Zero averaged projected energy.
+            ! Zero report cycle quantities.
             proj_energy = 0.0_p
+            rspawn = 0.0_p
+            D0_population = 0.0_p
 
             do icycle = 1, ncycles
 
-                ! Zero instantaneous projected energy.
-                inst_proj_energy = 0.0_p
-
                 ! Zero spawning arrays.
                 spawned_walkers = 0
+
+                ! Number of spawning attempts that will be made.
+                nattempts = nparticles
 
                 ! Consider all walkers.
                 do iwalker = 1, ndets
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(iwalker, inst_proj_energy)
+                    call simple_update_proj_energy(iwalker, proj_energy)
 
                     ! Simulate spawning.
                     do ipart = 1, abs(walker_population(iwalker))
@@ -168,8 +169,9 @@ contains
 
                 end do
 
-                ! Normalise and update running average projected energy.
-                proj_energy = proj_energy + inst_proj_energy/D0_population
+                ! Find the spawning rate and add to the running
+                ! total.
+                rspawn = rspawn + sum(abs(spawned_walkers(1,:)))/nattempts
 
                 call simple_annihilation()
 
@@ -186,10 +188,13 @@ contains
                 start_vary_shift = ireport
             end if
 
-            ! Running average projected energy 
+            ! Running average projected energy and walker population on
+            ! reference determinant.
             av_proj_energy = av_proj_energy + proj_energy
-            ! Average projected energy
+            av_D0_population = av_D0_population + D0_population
+            ! Average these quantities over the report cycle.
             proj_energy = proj_energy/ncycles
+            D0_population = D0_population/ncycles
 
             call cpu_time(t2)
             
@@ -356,7 +361,7 @@ contains
 
         if (iwalker == ref_det) then
             ! Have reference determinant.
-            D0_population = walker_population(iwalker)
+            D0_population = D0_population + walker_population(iwalker)
         else
             inst_proj_energy = inst_proj_energy + hamil(iwalker,ref_det)*walker_population(iwalker)
         end if
