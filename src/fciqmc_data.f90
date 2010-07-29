@@ -532,9 +532,9 @@ contains
         write (6,'(1X,a11,12X,f22.12)') 'av. shift =', av_shift
         write (6,'(1X,a18,5X,f22.12)') 'av. proj. energy =', av_proj_energy/av_D0_population
         write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift+H00
-        write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy+H00
+        write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
         write (6,'(1X,a16,7X,f22.12)') 'E0 + av. shift =', av_shift+H00
-        write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', av_proj_energy+H00
+        write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', av_proj_energy/av_D0_population+H00
 
     end subroutine write_fciqmc_final
 
