@@ -4,7 +4,7 @@ module fciqmc_restart
 
 use parallel
 use utils, only: get_unique_filename, get_free_unit
-
+use const, only: p, i0
 use fciqmc_data
 
 implicit none
@@ -24,7 +24,24 @@ integer :: write_restart_number = 0
 ! as opposed to 1 integer per integer of output!) but is human-readable
 logical :: binary_fmt = .true. 
 
-contains
+! An attempt to do generic programming in Fortran: These functions all print
+! a variable of a specific type to a given unit, either in binary or ascii
+! format
+interface write_out
+    module procedure write_out_int
+    module procedure write_out_int_arr
+    module procedure write_out_float
+    module procedure write_out_char
+end interface write_out
+
+interface read_in 
+    module procedure read_in_int
+    module procedure read_in_int_arr
+    module procedure read_in_float
+    module procedure read_in_char
+end interface read_in
+
+contains 
 
     subroutine dump_restart(nmc_cycles, nparticles_old)
 
@@ -271,5 +288,137 @@ contains
         if (parent) close(io)
 
     end subroutine read_restart
+    
+    subroutine write_out_int(a, wunit, tadvance,)
+        
+        implicit none
+
+        integer(i0), intent(in) :: a
+        integer, intent(in) :: wunit
+        character(*), intent(in) :: tadvance
+        
+        if (binary_fmt) then
+            write(wunit) a
+        else
+            write(wunit,*,advance=tadvance) a
+        end if
+
+    end subroutine write_out_int
+
+    subroutine write_out_int_arr(a, length, wunit, tadvance)
+    !print out an array of integers
+    !for ASCII output, most of the time we will want non-advancing input
+
+        implicit none
+
+        integer :: counter
+        integer, intent(in) :: length, wunit
+        integer(i0), dimension(length), intent(in) :: a
+        character(*), intent(in) :: tadvance
+        
+        if (binary_fmt) then
+            do counter=1,length
+                write(wunit) a(i)
+            end do
+        else
+            do counter=1,length
+                write(wunit,*,advance=tadvance) a
+            end do
+        end if
+    end subroutine write_out_int_arr
+
+    subroutine write_out_float(a, wunit, tadvance)
+
+        implicit none
+
+        real(p), intent(in) :: a
+        integer, intent(in) :: wunit
+        character(*), intent(in) :: tadvance
+        
+        if (binary_fmt) then
+            write(wunit) a
+        else
+            write(wunit,*,advance=tadvance) a
+        end if
+    end subroutine write_out_float
+
+    subroutine write_out_char(a, wunit, tadvance)
+
+        implicit none
+
+        character(*), intent(in) :: a
+        integer, intent(in) :: wunit
+        character(*), intent(in) :: tadvance
+        
+        if (binary_fmt) then
+            write(wunit) a
+        else
+            write(wunit,*,advance=tadvance) a
+        end if
+    end subroutine write_out_char
+
+
+    subroutine read_in_int(a, runit, tadvance)
+        
+        implicit none
+
+        integer(i0), intent(out) :: a
+        integer, intent(in) :: runit
+        character(*), intent(in) :: tadvance
+
+        if (binary_fmt) then
+            read(runit) a 
+        else
+            read(runit,*,advance=tadvance) a
+        end if
+    end subroutine read_in_int
+
+    subroutine read_in_int_arr(a, length, runit, tadvance)
+
+        implicit none
+        
+        integer :: counter
+        integer, intent(in) :: runit,length
+        integer(i0), dimension(length), intent(out) :: a
+        character(*), intent(in) :: tadvance
+
+        if (binary_fmt) then
+            do counter=1,length
+                read(runit) a(i)
+            end do
+        else
+            read(runit,*,advance=tadvance) a
+        end if
+    end subroutine read_in_int_arr
+
+    subroutine read_in_float(a, sort, runit, tadvance)
+
+        implicit none
+
+        real(p), intent(out) :: a
+        integer, intent(in) :: runit
+        character(*), intent(in) :: tadvance
+
+        if (binary_fmt) then
+            read(runit) a 
+        else
+            read(runit,*,advance=tadvance) a
+        end if
+    end subroutine read_in_float
+
+    subroutine read_in_char(a, runit, tadvance)
+
+        implicit none
+
+        character(*), intent(out) :: a
+        integer, intent(in) :: runit
+        character(*), intent(in) :: tadvance
+
+        if (binary_fmt) then
+            read(runit) a 
+        else
+            read(runit,*,advance=tadvance) a
+        end if
+    end subroutine read_in_char
 
 end module fciqmc_restart
