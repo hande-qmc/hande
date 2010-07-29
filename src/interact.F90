@@ -24,7 +24,8 @@ contains
         use parallel
 
         use fciqmc_data, only: target_particles, tau, av_shift, av_proj_energy, &
-                               vary_shift, start_vary_shift, start_averaging_from
+                               av_D0_population, vary_shift, start_vary_shift,  &
+                               start_averaging_from
 
         integer, intent(in) :: ireport
         logical, intent(out) :: soft_exit
@@ -105,6 +106,7 @@ contains
                             end if
                         case('ZERO_MEANS')
                             av_proj_energy = 0.0_p
+                            av_D0_population = 0.0_p
                             av_shift = 0.0_p
                             start_averaging_from = ireport
                         case default

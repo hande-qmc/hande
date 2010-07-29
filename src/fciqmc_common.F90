@@ -20,30 +20,32 @@ contains
         use parallel
 
         interface
-            subroutine update_proj_energy(idet, inst_proj_energy)
+            subroutine update_proj_energy(idet)
                 use const, only: p
                 implicit none
                 integer, intent(in) :: idet
-                real(p), intent(inout) :: inst_proj_energy
             end subroutine update_proj_energy
         end interface
 
-        integer :: idet, ierr
+        integer :: idet
         integer :: ntot_particles
-        real(p) :: inst_proj_energy
+#ifdef PARALLEL
+        integer :: ierr
+        real(p) :: proj_energy_sum
+#endif
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution.
-        inst_proj_energy = 0.0_p
+        proj_energy = 0.0_p
         do idet = 1, tot_walkers 
-            call update_proj_energy(idet, inst_proj_energy)
+            call update_proj_energy(idet)
         end do 
 
 #ifdef PARALLEL
-        call mpi_allreduce(inst_proj_energy, proj_energy, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        proj_energy = proj_energy_sum
         call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
-        proj_energy = inst_proj_energy
         ntot_particles = nparticles
 #endif 
         
@@ -53,7 +55,7 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            write (6,'(1X,"#",3X,i8,2X,4(f14.10,2X),i11,2X,i11,6X,a3,3X,a3)') &
+            write (6,'(1X,"#",3X,i8,2X,2(f15.10,2X),f16.10,2X,f15.10,2X,f11.4,4X,i11,6X,a3,3X,a3)') &
                     mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, D0_population, ntot_particles,'n/a','n/a'
         end if
 

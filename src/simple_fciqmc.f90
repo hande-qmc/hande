@@ -108,7 +108,7 @@ contains
             end if
             call decode_det(f0, occ_list0)
             f0 = dets_list(:,ref_det)
-            walker_population(ref_det) = D0_population
+            walker_population(ref_det) = nint(D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
