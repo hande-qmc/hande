@@ -25,7 +25,7 @@ contains
         !        next report loop.
 
         use fciqmc_data, only: nparticles, target_particles, ncycles, rspawn
-        use fciqmc_data, only: proj_energy, av_proj_energy, shift, av_shift
+        use fciqmc_data, only: proj_energy, av_proj_energy, av_D0_population, shift, av_shift
         use fciqmc_data, only: vary_shift, start_vary_shift, D0_population
 
         use parallel
@@ -34,7 +34,7 @@ contains
         integer, intent(inout) :: ntot_particles_old
 
 #ifdef PARALLEL
-        integer, parameter :: n = 3
+        integer, parameter :: n = 4
         real(dp) :: ir(n), ir_sum(n)
         integer :: ntot_particles, ierr
 
@@ -78,7 +78,8 @@ contains
             ! As a result, the running accumulation of the projected energy
             ! need only be divided by the the number of report loops in order to
             ! get an estimate of the average projected energy.
-            av_proj_energy = av_proj_energy + proj_energy/D0_population
+            av_proj_energy = av_proj_energy + proj_energy
+            av_D0_population = av_D0_population + D0_population
             ! average energy quantities over report loop.
             proj_energy = proj_energy/ncycles
             D0_population = D0_population/ncycles
