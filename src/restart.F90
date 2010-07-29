@@ -19,6 +19,11 @@ integer :: read_restart_number = 0
 ! a specific restart file.
 integer :: write_restart_number = 0
 
+! specifies if the restart file is in binary (.true.) or ASCII (.false.) format;
+! The latter requires substantially more space ( 1 integer per digit of output
+! as opposed to 1 integer per integer of output!) but is human-readable
+logical :: binary_fmt = .true. 
+
 contains
 
     subroutine dump_restart(nmc_cycles, nparticles_old)

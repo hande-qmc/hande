@@ -577,6 +577,14 @@ The following options are valid for FCIQMC calculations.
 
     Warning: these files can become very large, so care should be taken when
     not re-using the same filenames.
+**ascii_format**
+    The default format for restart files is binary, as for the most part the files
+    are meant purely for reading by Hubbard, and having the file in human-readable
+    ASCII format is both wasteful of space and unnecessary. 
+
+    If the ascii_format keyword is specified, however, this overrides the default
+    and the restart file is written out in ASCII. Beware; these files can become
+    very large.
 **restart** [*id*]
     Optional integer.
 
