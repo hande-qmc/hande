@@ -2,6 +2,8 @@ module fciqmc_restart
 
 ! Module for dumping out and restarting FCIQMC files.
 
+#include "cdefs.h"
+
 use parallel
 use utils, only: get_unique_filename, get_free_unit
 use const, only: p, i0
@@ -31,10 +33,10 @@ logical :: binary_fmt = .true.
 ! format
 interface write_out
 #if DET_SIZE != 32    
-!    ! for non-32 bit integers, the i0 kind is distinct from the default kind;
-!    ! thus we need distinct functions to deal with them
-!    module procedure write_out_int
-!    module procedure write_out_int_arr
+    ! for non-32 bit integers, the i0 kind is distinct from the default kind;
+    ! thus we need distinct functions to deal with them
+    module procedure write_out_int
+    module procedure write_out_int_arr
 #endif
     module procedure write_out_int_i0
     module procedure write_out_int_arr_i0
@@ -340,43 +342,43 @@ contains
     end subroutine read_restart
     
 #if DET_SIZE != 32
-!
-!    subroutine write_out_int(a, wunit, fmt_string)
-!        
-!        implicit none
-!
-!        integer, intent(in) :: a, wunit
-!        character(*), intent(in), optional :: fmt_string
-!        
-!        if (binary_fmt) then
-!            write(wunit) a
-!        else if(present(fmt_string)) then
-!            write(wunit,fmt=fmt_string) a
-!        else 
-!            write(wunit,*) a
-!        end if
-!
-!    end subroutine write_out_int
-!
-!    subroutine write_out_int_arr(a, length, wunit, fmt_string)
-!    !print out an array of integers
-!    !for ASCII output, most of the time we will want non-advancing input
-!
-!        implicit none
-!
-!        integer, intent(in) :: length, wunit
-!        integer, dimension(length), intent(in) :: a
-!        character(*), intent(in), optional :: fmt_string
-!        
-!        if (binary_fmt) then
-!            write(wunit) a
-!        else if(present(fmt_string)) then
-!            write(wunit,fmt=fmt_string) a
-!        else 
-!            write(wunit,*) a
-!        end if
-!    end subroutine write_out_int_arr
-!
+
+    subroutine write_out_int(a, wunit, fmt_string)
+        
+        implicit none
+
+        integer, intent(in) :: a, wunit
+        character(*), intent(in), optional :: fmt_string
+        
+        if (binary_fmt) then
+            write(wunit) a
+        else if(present(fmt_string)) then
+            write(wunit,fmt=fmt_string) a
+        else 
+            write(wunit,*) a
+        end if
+
+    end subroutine write_out_int
+
+    subroutine write_out_int_arr(a, length, wunit, fmt_string)
+    !print out an array of integers
+    !for ASCII output, most of the time we will want non-advancing input
+
+        implicit none
+
+        integer, intent(in) :: length, wunit
+        integer, dimension(length), intent(in) :: a
+        character(*), intent(in), optional :: fmt_string
+        
+        if (binary_fmt) then
+            write(wunit) a
+        else if(present(fmt_string)) then
+            write(wunit,fmt=fmt_string) a
+        else 
+            write(wunit,*) a
+        end if
+    end subroutine write_out_int_arr
+
 #endif     
     
     subroutine write_out_int_i0(a, wunit, fmt_string)
@@ -521,7 +523,7 @@ contains
         integer(i0), dimension(l1), intent(in) :: i0arr
         integer, dimension(l2), intent(in) :: iarr
         real(p), intent(in) :: r1, r2
-        character(*), intent(in) :: fmt_string
+        character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt) then
             write(wunit) i0arr, iarr, r1, r2
@@ -663,9 +665,10 @@ contains
 
         implicit none
 
-        integer, intent(in) :: length, i, runit
-        integer(i0), dimension(length), intent(in) :: i0arr
-        real(p), intent(in) :: r
+        integer, intent(in) :: length, runit
+        integer, intent(out) :: i
+        integer(i0), dimension(length), intent(out) :: i0arr
+        real(p), intent(out) :: r
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt) then
@@ -682,9 +685,10 @@ contains
         
         implicit none
 
-        integer, intent(in) :: i, runit
-        real(p), intent(in) :: r
-        logical, intent(in) :: l
+        integer, intent(in) :: runit
+        integer, intent(out) :: i
+        real(p), intent(out) :: r
+        logical, intent(out) :: l
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt) then
@@ -696,16 +700,17 @@ contains
         end if
     end subroutine read_in_i_r_l
 
-    subroutine read_in_i0_2i_r(i0arr, l1, iarr, l2, r1, r2, runit, fmt_string)
+    subroutine read_in_i0arr_iarr_2r(i0arr, l1, iarr, l2, r1, r2, runit, fmt_string)
         ! read in i0 array, integer array and 2 real
         ! variables all on 1 line
         implicit none
 
-        integer, intent(in) :: l1, l2, runit
-        integer(i0), dimension(l1), intent(in) :: i0arr
-        integer, dimension(l2), intent(in) :: iarr
-        real(p), intent(in) :: r1, r2
-        character(*), intent(in) :: fmt_string
+        integer, intent(in) :: runit
+        integer, intent(in) :: l1, l2
+        integer(i0), dimension(l1), intent(out) :: i0arr
+        integer, dimension(l2), intent(out) :: iarr
+        real(p), intent(out) :: r1, r2
+        character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt) then
             read(runit) i0arr, iarr, r1, r2
