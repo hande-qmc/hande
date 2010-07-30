@@ -1,0 +1,93 @@
+fortcom: Error: src/restart.F90, line 61: Unresolved MODULE PROCEDURE specification name.   [READ_IN_I0ARR_IARR_2R]
+    module procedure read_in_i0arr_iarr_2r
+---------------------^
+fortcom: Error: src/restart.F90, line 107: This name does not have a type, and must have an explicit type.   [OCC_LIST]
+            call write_out(f0,basis_length,occ_list,nel,D0_population,H00,io)
+-------------------------------------------^
+fortcom: Error: src/restart.F90, line 107: There is no matching specific subroutine for this generic subroutine call.   [WRITE_OUT]
+            call write_out(f0,basis_length,occ_list,nel,D0_population,H00,io)
+-----------------^
+fortcom: Error: src/restart.F90, line 241: Generic procedure reference has two or more specific procedure with the same type/rank/keyword signature.   [READ_IN]
+            call read_in(restart_version,io)
+-----------------^
+fortcom: Error: src/restart.F90, line 243: Generic procedure reference has two or more specific procedure with the same type/rank/keyword signature.   [READ_IN]
+            call read_in(mc_cycles_done,io)
+-----------------^
+fortcom: Error: src/restart.F90, line 247: There is no matching specific subroutine for this generic subroutine call.   [READ_IN]
+            call read_in(f0,basis_length,occ_list0,nel,D0_population,H00,io)
+-----------------^
+fortcom: Error: src/restart.F90, line 249: Generic procedure reference has two or more specific procedure with the same type/rank/keyword signature.   [READ_IN]
+            call read_in(tot_walkers,io)
+-----------------^
+fortcom: Error: src/restart.F90, line 528: The argument to the PRESENT intrinsic function must be an optional argument of the procedure in which the PRESENT function reference appears.   [FMT_STRING]
+        else if (present(fmt_string)) then
+-------------------------^
+fortcom: Error: src/restart.F90, line 672: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I0ARR]
+            read(runit) i0arr, i, r
+------------------------^
+fortcom: Error: src/restart.F90, line 672: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I]
+            read(runit) i0arr, i, r
+-------------------------------^
+fortcom: Error: src/restart.F90, line 672: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [R]
+            read(runit) i0arr, i, r
+----------------------------------^
+fortcom: Error: src/restart.F90, line 674: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I0ARR]
+            read(runit,fmt=fmt_string) i0arr, i, r
+---------------------------------------^
+fortcom: Error: src/restart.F90, line 674: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I]
+            read(runit,fmt=fmt_string) i0arr, i, r
+----------------------------------------------^
+fortcom: Error: src/restart.F90, line 674: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [R]
+            read(runit,fmt=fmt_string) i0arr, i, r
+-------------------------------------------------^
+fortcom: Error: src/restart.F90, line 676: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I0ARR]
+            read(runit,*) i0arr, i, r
+--------------------------^
+fortcom: Error: src/restart.F90, line 676: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I]
+            read(runit,*) i0arr, i, r
+---------------------------------^
+fortcom: Error: src/restart.F90, line 676: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [R]
+            read(runit,*) i0arr, i, r
+------------------------------------^
+fortcom: Error: src/restart.F90, line 691: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I]
+            read(runit) i, r, l
+------------------------^
+fortcom: Error: src/restart.F90, line 691: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [R]
+            read(runit) i, r, l
+---------------------------^
+fortcom: Error: src/restart.F90, line 691: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [L]
+            read(runit) i, r, l
+------------------------------^
+fortcom: Error: src/restart.F90, line 693: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I]
+            read(runit,fmt=fmt_string) i, r, l
+---------------------------------------^
+fortcom: Error: src/restart.F90, line 693: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [R]
+            read(runit,fmt=fmt_string) i, r, l
+------------------------------------------^
+fortcom: Error: src/restart.F90, line 693: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [L]
+            read(runit,fmt=fmt_string) i, r, l
+---------------------------------------------^
+fortcom: Error: src/restart.F90, line 695: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I]
+            read(runit,*) i, r, l
+--------------------------^
+fortcom: Error: src/restart.F90, line 695: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [R]
+            read(runit,*) i, r, l
+-----------------------------^
+fortcom: Error: src/restart.F90, line 695: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [L]
+            read(runit,*) i, r, l
+--------------------------------^
+fortcom: Error: src/restart.F90, line 711: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [I0ARR]
+            read(runit) i0arr, iarr, r1, r2
+------------------------^
+fortcom: Error: src/restart.F90, line 711: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [IARR]
+            read(runit) i0arr, iarr, r1, r2
+-------------------------------^
+fortcom: Error: src/restart.F90, line 711: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [R1]
+            read(runit) i0arr, iarr, r1, r2
+-------------------------------------^
+fortcom: Error: src/restart.F90, line 711: A dummy argument with the INTENT(IN) attribute shall not appear in a variable definition context   [R2]
+            read(runit) i0arr, iarr, r1, r2
+-----------------------------------------^
+fortcom: Severe: Too many errors, exiting
+compilation aborted for src/restart.F90 (code 1)
+make: *** [dest/cmth/optimised/restart.o] Error 1

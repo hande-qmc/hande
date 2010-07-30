@@ -1,0 +1,556 @@
+
+ Hubbard
+
+ ================================================================
+ Compiled on Jul 29 2010 at 23:40:36
+ VCS BASE repository version:
+     d1dda141601f34f27403b423883c0041cef472df
+ Working directory contains local changes.
+ Working directory: 
+     /Users/jamesspencer/projects/hubbard_fciqmc/test_suite/kspace_1d
+ Started running on 29/07/2010 at 23:50:28
+ ================================================================
+
+ Input options
+ -------------
+
+lattice
+4
+electrons 4
+fci
+lanczos
+eigenvectors
+end
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point   ms     kinetic energy
+     1   ( 0)      1     -2.00000000
+     2   ( 0)     -1     -2.00000000
+     3   (-1)      1     -0.00000000
+     4   (-1)     -1     -0.00000000
+     5   ( 1)      1     -0.00000000
+     6   ( 1)     -1     -0.00000000
+     7   ( 2)      1      2.00000000
+     8   ( 2)     -1      2.00000000
+
+ Number of electrons: 4
+ Number of basis functions: 8
+ Total size of determinant space: 70
+ Bit-length of integers used to store determinant bit-strings: 32
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point   Inverse
+   1      ( 0)        1
+   2      (-1)        3
+   3      ( 1)        2
+   4      ( 2)        4
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3  4
+  2  4  1  3
+  3  1  4  2
+  4  3  2  1
+
+ Diagonalisation
+ ===============
+
+ Considering determinants with spin:  0
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1               10
+         2                8
+         3                8
+         4               10
+
+ Diagonalising symmetry block 1 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           5 ) is large relative to the matrix dimension (          10 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:28.173 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          9 (computed),          5 (wanted)
+Times the operator is applied:         10 (MAX:             1000 ).
+Problem size:                          10 (PE:   0),          10 (Global)
+Convergence tolerance:          1.490E-08 (rel),       7.958E-08 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations         8
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+
+ Performing exact diagonalisation...
+
+           1 =  0.70340211684711051       4.80002224673601180E-002  0.70340211684710952      -4.80002224673602429E-002 -7.34223460114204227E-017  1.52071049229876693E-016  4.80002224673600972E-002 -2.48479234780802707E-002 -4.80002224673600209E-002 -2.48479234780802846E-002
+           2 = -0.69595567907592615       5.08274250256362456E-002  0.69595567907592626       5.08274250256361068E-002  0.10165485005127237      -0.10165485005127262      -5.08274250256360582E-002  1.20469893976392229E-002 -5.08274250256361693E-002 -1.20469893976392663E-002
+           3 = -6.96259688315060826E-002  0.49608296894414056      -6.96259688315069153E-002 -0.49608296894413850       2.08093262893659656E-015 -1.96990995589716648E-015  0.49608296894413867      -5.43654330564012564E-002 -0.49608296894414045      -5.43654330564005556E-002
+           4 =  0.12176328847857756       0.28165953565239332      -0.12176328847857724       0.28165953565239649       0.56331907130478986      -0.56331907130478931      -0.28165953565239638      -9.58182520992057057E-002 -0.28165953565239288       9.58182520992060943E-002
+           5 =  6.21709238356203016E-017 -0.52646692796303129      -4.05651749596942540E-017  0.44988591345658524      -0.14295187523954322      -0.14295187523954381       0.44988591345658541      -1.30497889112570763E-016 -0.52646692796303129       1.11167032792785285E-017
+           6 = -1.31838984174237339E-016  0.45019579182473807       1.38777878078144568E-016  0.41411339029909811      -0.35473067107072076      -0.35473067107072065       0.41411339029909822      -2.77555756156289135E-017  0.45019579182473840        0.0000000000000000     
+           7 = -1.05011438235319862E-018 -0.14197296497736833      -3.15693643721358722E-017 -0.35512359094872914      -0.59475281619107467      -0.59475281619107467      -0.35512359094872975      -3.62169925330455487E-017 -0.14197296497736894       3.15203674742228362E-017
+           8 =  8.16626226431937612E-017  0.40824829046386307      -1.61385438240882068E-017  0.40824829046386346      -0.40824829046386246       0.40824829046386329      -0.40824829046386268      -9.42131350179791597E-017 -0.40824829046386318       2.92782779134796626E-018
+           9 =  1.94341575397223021E-002  3.99708214407946127E-002  1.94341575397223645E-002 -3.99708214407947376E-002 -1.87350135405495166E-016  1.70002900645727095E-016  3.99708214407948209E-002  0.70457574496104780      -3.99708214407947307E-002  0.70457574496105035     
+          10 = -2.86250649055963986E-002 -3.76538467447090838E-002  2.86250649055963015E-002 -3.76538467447089728E-002 -7.53076934894179734E-002  7.53076934894180011E-002  3.76538467447088826E-002 -0.70048107227184098       3.76538467447091740E-002  0.70048107227183798     
+ ---------------
+
+ Diagonalising symmetry block 2 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           5 ) is large relative to the matrix dimension (           8 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:28.173 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          7 (computed),          5 (wanted)
+Times the operator is applied:          8 (MAX:             1000 ).
+Problem size:                           8 (PE:   0),           8 (Global)
+Convergence tolerance:          1.490E-08 (rel),       5.307E-08 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations        11
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+
+ Performing exact diagonalisation...
+
+           1 = -0.49625377834145157       0.49625377834145157      -0.49625377834145190       6.10916318478523096E-002  0.49625377834145168      -6.10916318478522402E-002 -6.10916318478522818E-002  6.10916318478522333E-002
+           2 =  0.11146899541179189       0.11146899541179223      -0.69826546747056439      -1.87516189978020741E-016 -0.69826546747056484      -2.29521550242284918E-016 -6.97612460360561854E-017 -2.57037337881656976E-017
+           3 =  0.69826546747056439       0.69826546747056428       0.11146899541179184      -5.80430503050122634E-017  0.11146899541179206      -6.79985926833588624E-017  9.15974818580160064E-017  1.91270963788438023E-017
+           4 = -0.49625377834145151       0.49625377834145185       0.49625377834145190       6.10916318478522333E-002 -0.49625377834145112      -6.10916318478520667E-002  6.10916318478523790E-002 -6.10916318478522888E-002
+           5 =  6.10916318478521431E-002 -6.10916318478520598E-002  6.10916318478521708E-002  0.49625377834145273      -6.10916318478521361E-002 -0.49625377834145112      -0.49625377834145035       0.49625377834145218     
+           6 = -2.31277611169162583E-017 -6.05152251636394495E-017  2.06732907390107710E-016 -0.66154369844868688       1.62806391766417966E-016 -0.66154369844868821       0.24971971296401868       0.24971971296401882     
+           7 =  1.72625408382153415E-017 -2.55542746335684006E-017 -1.31839144022652954E-016  0.24971971296401752      -7.44058832291282707E-017  0.24971971296402007       0.66154369844868810       0.66154369844868710     
+           8 = -6.10916318478522610E-002  6.10916318478522610E-002  6.10916318478523304E-002 -0.49625377834145201      -6.10916318478523235E-002  0.49625377834145085      -0.49625377834145207       0.49625377834145123     
+ ---------------
+
+ Diagonalising symmetry block 3 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           5 ) is large relative to the matrix dimension (           8 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:28.175 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          7 (computed),          5 (wanted)
+Times the operator is applied:          8 (MAX:             1000 ).
+Problem size:                           8 (PE:   0),           8 (Global)
+Convergence tolerance:          1.490E-08 (rel),       5.307E-08 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations        10
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+
+ Performing exact diagonalisation...
+
+           1 = -0.49625377834145185       0.49625377834145185       0.49625377834145140      -6.10916318478524553E-002 -0.49625377834145151       6.10916318478524623E-002 -6.10916318478521569E-002  6.10916318478522194E-002
+           2 = -1.75495444421926508E-002 -1.75495444421922414E-002 -0.70688896828983838      -7.44030936602965488E-018 -0.70688896828983760       1.04195623484018372E-016  5.98364231103084568E-017 -3.35837832483006589E-017
+           3 =  0.70688896828983805       0.70688896828983794      -1.75495444421924982E-002 -8.40568444449770952E-017 -1.75495444421925120E-002 -1.07395710226041030E-016  3.46984706824595928E-017 -8.33766154363510166E-019
+           4 = -0.49625377834145118       0.49625377834145118      -0.49625377834145157      -6.10916318478520529E-002  0.49625377834145223       6.10916318478521223E-002  6.10916318478523998E-002 -6.10916318478523235E-002
+           5 =  6.10916318478523512E-002 -6.10916318478523512E-002 -6.10916318478521708E-002 -0.49625377834145118       6.10916318478523998E-002  0.49625377834145218      -0.49625377834145040       0.49625377834145240     
+           6 =  4.39360280261165866E-017 -6.59192276458097319E-017  7.66145635222188228E-017 -0.69955757032318255       2.28049370931747619E-017 -0.69955757032318189       0.10304953082632576       0.10304953082632605     
+           7 =  1.21090529069274752E-016 -1.24328802090642731E-016 -2.45421135209960600E-018 -0.10304953082632659       2.20060466699997406E-016 -0.10304953082632509      -0.69955757032318333      -0.69955757032318167     
+           8 = -6.10916318478522333E-002  6.10916318478522333E-002 -6.10916318478522472E-002  0.49625377834145118       6.10916318478523512E-002 -0.49625377834145135      -0.49625377834145157       0.49625377834145179     
+ ---------------
+
+ Diagonalising symmetry block 4 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           5 ) is large relative to the matrix dimension (          10 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:28.175 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          9 (computed),          5 (wanted)
+Times the operator is applied:         10 (MAX:             1000 ).
+Problem size:                          10 (PE:   0),          10 (Global)
+Convergence tolerance:          1.490E-08 (rel),       7.887E-08 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations        12
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+
+ Performing exact diagonalisation...
+
+           1 = -0.70048107227183820      -3.76538467447091046E-002  0.70048107227184109      -3.76538467447090006E-002  7.53076934894180705E-002  7.53076934894179872E-002 -3.76538467447089242E-002  2.86250649055960031E-002 -3.76538467447089450E-002 -2.86250649055962911E-002
+           2 =  0.70457574496105058      -3.99708214407946474E-002  0.70457574496104813       3.99708214407947793E-002 -2.16735190653404540E-016 -6.97168466687781048E-017  3.99708214407946960E-002 -1.94341575397224964E-002 -3.99708214407946613E-002 -1.94341575397222154E-002
+           3 =  5.76537284651676734E-018  0.40824829046386285       7.82172234712269334E-017  0.40824829046386285       0.40824829046386257       0.40824829046386324       0.40824829046386302      -5.03086300264564948E-018  0.40824829046386296       1.42042946976017508E-018
+           4 =  9.48919096780352602E-017  0.41829095466822264      -8.35919447388656557E-017 -0.14522096345307933      -0.55131075539708607       0.55131075539708629       0.14522096345307922       1.04964275527334191E-016 -0.41829095466822358      -4.58731278974351970E-017
+           5 =  5.02309610609704115E-017  0.38757128987829703       5.74694129007581720E-017 -0.42904519103480920       0.40707335863696292      -0.40707335863696248       0.42904519103480887       4.29391444779986297E-017 -0.38757128987829620      -5.77443651981221876E-017
+           6 =  3.54563567757040968E-017 -0.41811621889711448       8.41480383738898852E-017 -0.54298351339949857      -0.17420600354613766       0.17420600354613733       0.54298351339949880      -3.58797502401465395E-017  0.41811621889711426       4.50136684673629049E-017
+           7 =  9.58182520992039571E-002 -0.28165953565241225      -9.58182520992078429E-002 -0.28165953565237772       0.56331907130479009       0.56331907130478920      -0.28165953565237795       0.12176328847857994      -0.28165953565241147      -0.12176328847857502     
+           8 =  5.43654330564040111E-002  0.49608296894412951       5.43654330563974955E-002 -0.49608296894414927       1.87894746356239751E-014  2.02327644617575602E-014 -0.49608296894414927      -6.96259688315022385E-002  0.49608296894413001      -6.96259688315107039E-002
+           9 = -1.20469893976389748E-002 -5.08274250256360513E-002  1.20469893976394536E-002 -5.08274250256364191E-002  0.10165485005127256       0.10165485005127253      -5.08274250256364746E-002 -0.69595567907592393      -5.08274250256360721E-002  0.69595567907592837     
+          10 =  2.48479234780800730E-002  4.80002224673603123E-002  2.48479234780799203E-002 -4.80002224673599723E-002 -4.44089209850062616E-016 -4.23272528138340931E-016 -4.80002224673598960E-002  0.70340211684711251       4.80002224673603539E-002  0.70340211684710785     
+ ---------------
+
+ Considering determinants with spin:  2
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=2.
+
+ Symmetry index      # dets
+         1                4
+         2                4
+         3                4
+         4                4
+
+ Diagonalising symmetry block 1 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:28.175 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       7.131E-08 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations         3
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+
+ Performing exact diagonalisation...
+
+           1 = -0.99476081344712708      -6.78825656102660518E-002  6.78825656102664265E-002  3.51402703795097165E-002
+           2 =  9.84659894148827847E-002 -0.70156726274311321       0.70156726274311221       7.68843327526486653E-002
+           3 = -3.05594581427217568E-017  0.70710678118654724       0.70710678118654802       4.53246651836838588E-017
+           4 =  2.74840491659706296E-002  5.65272777807651200E-002 -5.65272777807651200E-002  0.99642057424304253     
+ ---------------
+
+ Diagonalising symmetry block 2 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:28.176 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       4.470E-08 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations         4
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+
+ Performing exact diagonalisation...
+
+           1 = -0.70180882370937203       0.70180882370937281      -8.63966143067364384E-002  8.63966143067367159E-002
+           2 =  0.70710678118654802       0.70710678118654702      -5.87205946863739622E-017 -6.79869977755259361E-017
+           3 =  8.63966143067366188E-002 -8.63966143067363412E-002 -0.70180882370937414       0.70180882370937070     
+           4 =  3.33066907387546962E-016 -5.41233724504763813E-016  0.70710678118654580       0.70710678118654935     
+ ---------------
+
+ Diagonalising symmetry block 3 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:28.176 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       4.470E-08 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations         4
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+
+ Performing exact diagonalisation...
+
+           1 = -0.70180882370937248      -8.63966143067367437E-002  0.70180882370937259       8.63966143067367576E-002
+           2 =  0.70710678118654746      -5.55111512312578270E-017  0.70710678118654757        0.0000000000000000     
+           3 =  8.63966143067367437E-002 -0.70180882370937170      -8.63966143067368408E-002  0.70180882370937303     
+           4 =  1.01674933271520394E-016 -0.70710678118654824      -1.78273816757507687E-016 -0.70710678118654680     
+ ---------------
+
+ Diagonalising symmetry block 4 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:28.176 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       1.490E-08 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations        10
+Number of (re)start loops:              1
+Number of random vectors used:          2
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+
+ Performing exact diagonalisation...
+
+           1 =  0.49999999999999989       0.49999999999999989       0.49999999999999989       0.50000000000000011     
+           2 = -0.21132486540518711       0.78867513459481287      -0.57735026918962573        0.0000000000000000     
+           3 = -0.28867513459481292      -0.28867513459481292      -0.28867513459481292       0.86602540378443849     
+           4 =  0.78867513459481287      -0.21132486540518711      -0.57735026918962573        0.0000000000000000     
+ ---------------
+
+ Considering determinants with spin:  4
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=4.
+
+ Symmetry index      # dets
+         1                0
+         2                0
+         3                0
+         4                1
+
+ No determinants with spin 4 in symmetry block 1 out of 4
+
+ ---------------
+
+ No determinants with spin 4 in symmetry block 2 out of 4
+
+ ---------------
+
+ No determinants with spin 4 in symmetry block 3 out of 4
+
+ ---------------
+
+ Diagonalising symmetry block 4 out of 4
+
+ Performing trivial diagonalisation.
+
+ ---------------
+
+ Lanczos diagonalisation results
+ -------------------------------
+
+    State   Spin   Total energy
+      1       0    -3.340847617248
+      2       0    -3.292951380696
+      3       2    -3.292951380696
+      4      -2    -3.292951380696
+      5       0    -2.863876339070
+      6       0    -2.785260864830
+      7       0    -1.561552812809
+      8       2    -1.561552812809
+      9      -2    -1.561552812809
+     10       2    -1.561552812809
+     11      -2    -1.561552812809
+     12       0    -1.561552812809
+     13       0    -1.000000000000
+     14       0    -1.000000000000
+     15       2    -1.000000000000
+     16      -2    -1.000000000000
+     17       2    -1.000000000000
+     18      -2    -1.000000000000
+     19       0    -1.000000000000
+     20       0    -1.000000000000
+     21       0    -0.561552812809
+     22       0    -0.561552812809
+     23       2     0.000000000000
+     24      -2     0.000000000000
+     25       4     0.000000000000
+     26      -4     0.000000000000
+     27       0     0.000000000000
+     28       0     0.507690515867
+     29       2     0.507690515867
+     30      -2     0.507690515867
+     31       0     0.523028721821
+     32       0     1.000000000000
+     33       0     1.000000000000
+     34       2     1.000000000000
+     35      -2     1.000000000000
+     36       2     1.000000000000
+     37      -2     1.000000000000
+     38       0     1.000000000000
+     39       2     1.000000000000
+     40      -2     1.000000000000
+     41       2     1.000000000000
+     42      -2     1.000000000000
+     43       0     2.561552812809
+     44       2     2.561552812809
+     45      -2     2.561552812809
+     46       2     2.561552812809
+     47      -2     2.561552812809
+     48       0     2.561552812809
+     49       2     3.000000000000
+     50      -2     3.000000000000
+     51       2     3.000000000000
+     52      -2     3.000000000000
+     53       2     4.785260864830
+     54      -2     4.785260864830
+
+ Lanczos ground state:   -3.340847617248
+
+ Exact diagonalisation results
+ -----------------------------
+
+    State   Spin   Total energy
+      1       0    -3.340847617248
+      2       0    -3.292951380696
+      3       2    -3.292951380696
+      4      -2    -3.292951380696
+      5       0    -2.863876339070
+      6       0    -2.785260864830
+      7       2    -1.561552812809
+      8      -2    -1.561552812809
+      9       0    -1.561552812809
+     10       2    -1.561552812809
+     11      -2    -1.561552812809
+     12       0    -1.561552812809
+     13       0    -1.000000000000
+     14       0    -1.000000000000
+     15       2    -1.000000000000
+     16      -2    -1.000000000000
+     17       2    -1.000000000000
+     18      -2    -1.000000000000
+     19       0    -1.000000000000
+     20       0    -1.000000000000
+     21       0    -0.561552812809
+     22       0    -0.561552812809
+     23       4     0.000000000000
+     24      -4     0.000000000000
+     25       0     0.000000000000
+     26       2     0.000000000000
+     27      -2     0.000000000000
+     28       2     0.507690515867
+     29      -2     0.507690515867
+     30       0     0.507690515867
+     31       0     0.523028721821
+     32       0     1.000000000000
+     33       0     1.000000000000
+     34       0     1.000000000000
+     35       0     1.000000000000
+     36       0     1.000000000000
+     37       2     1.000000000000
+     38      -2     1.000000000000
+     39       2     1.000000000000
+     40      -2     1.000000000000
+     41       2     1.000000000000
+     42      -2     1.000000000000
+     43       2     1.000000000000
+     44      -2     1.000000000000
+     45       0     1.000000000000
+     46       0     1.476971278179
+     47       0     1.492309484133
+     48       0     2.000000000000
+     49       2     2.561552812809
+     50      -2     2.561552812809
+     51       0     2.561552812809
+     52       2     2.561552812809
+     53      -2     2.561552812809
+     54       0     2.561552812809
+     55       0     3.000000000000
+     56       0     3.000000000000
+     57       0     3.000000000000
+     58       2     3.000000000000
+     59      -2     3.000000000000
+     60       2     3.000000000000
+     61      -2     3.000000000000
+     62       0     3.000000000000
+     63       0     3.561552812809
+     64       0     3.561552812809
+     65       2     4.785260864830
+     66      -2     4.785260864830
+     67       0     4.785260864830
+     68       0     4.863876339070
+     69       0     5.292951380696
+     70       0     5.340847617248
+
+ Exact ground state:   -3.340847617248
+
+ ================================================================
+ Finished running on 29/07/2010 at 23:50:28
+ Calculation took:                    0.01s
+ ================================================================
+

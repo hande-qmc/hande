@@ -1,6 +1,5 @@
 dest/
 bin/
-run/
 /Makefile
 test*.out*
 testcode*.err*
@@ -18,5 +17,3 @@ fort.*
 joe_calc/
 sub/
 todo.joe
-.nfs*
-
