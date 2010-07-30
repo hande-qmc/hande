@@ -31,10 +31,10 @@ logical :: binary_fmt = .true.
 ! format
 interface write_out
 #if DET_SIZE != 32    
-    ! for non-32 bit integers, the i0 kind is distinct from the default kind;
-    ! thus we need distinct functions to deal with them
-    module procedure write_out_int
-    module procedure write_out_int_arr
+!    ! for non-32 bit integers, the i0 kind is distinct from the default kind;
+!    ! thus we need distinct functions to deal with them
+!    module procedure write_out_int
+!    module procedure write_out_int_arr
 #endif
     module procedure write_out_int_i0
     module procedure write_out_int_arr_i0
@@ -340,45 +340,43 @@ contains
     end subroutine read_restart
     
 #if DET_SIZE != 32
-
-    subroutine write_out_int(a, wunit, fmt_string)
-        
-        implicit none
-
-        integer, intent(in) :: a
-        integer, intent(in) :: wunit
-        character(*), intent(in), optional :: fmt_string
-        
-        if (binary_fmt) then
-            write(wunit) a
-        else if(present(fmt_string)) then
-            write(wunit,fmt=fmt_string) a
-        else 
-            write(wunit,*) a
-        end if
-
-    end subroutine write_out_int
-
-    subroutine write_out_int_arr(a, length, wunit, fmt_string)
-    !print out an array of integers
-    !for ASCII output, most of the time we will want non-advancing input
-
-        implicit none
-
-        integer :: counter
-        integer, intent(in) :: length, wunit
-        integer, dimension(length), intent(in) :: a
-        character(*), intent(in), optional :: fmt_string
-        
-        if (binary_fmt) then
-            write(wunit) a
-        else if(present(fmt_string)) then
-            write(wunit,fmt=fmt_string) a
-        else 
-            write(wunit,*) a
-        end if
-    end subroutine write_out_int_arr
-
+!
+!    subroutine write_out_int(a, wunit, fmt_string)
+!        
+!        implicit none
+!
+!        integer, intent(in) :: a, wunit
+!        character(*), intent(in), optional :: fmt_string
+!        
+!        if (binary_fmt) then
+!            write(wunit) a
+!        else if(present(fmt_string)) then
+!            write(wunit,fmt=fmt_string) a
+!        else 
+!            write(wunit,*) a
+!        end if
+!
+!    end subroutine write_out_int
+!
+!    subroutine write_out_int_arr(a, length, wunit, fmt_string)
+!    !print out an array of integers
+!    !for ASCII output, most of the time we will want non-advancing input
+!
+!        implicit none
+!
+!        integer, intent(in) :: length, wunit
+!        integer, dimension(length), intent(in) :: a
+!        character(*), intent(in), optional :: fmt_string
+!        
+!        if (binary_fmt) then
+!            write(wunit) a
+!        else if(present(fmt_string)) then
+!            write(wunit,fmt=fmt_string) a
+!        else 
+!            write(wunit,*) a
+!        end if
+!    end subroutine write_out_int_arr
+!
 #endif     
     
     subroutine write_out_int_i0(a, wunit, fmt_string)
@@ -495,7 +493,7 @@ contains
         end if
     end subroutine write_out_i0arr_i_r
 
-    subroutine write_out_i_r_l(i, r, l, wunit, fmtstring)
+    subroutine write_out_i_r_l(i, r, l, wunit, fmt_string)
         ! write out an integer, real(p) and logical all on 1 line
         
         implicit none
@@ -679,7 +677,7 @@ contains
         end if
     end subroutine read_in_i0arr_i_r
 
-    subroutine read_in_i_r_l(i, r, l, runit, fmtstring)
+    subroutine read_in_i_r_l(i, r, l, runit, fmt_string)
         ! read in an integer, real(p) and logical all on 1 line
         
         implicit none
