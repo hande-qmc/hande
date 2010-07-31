@@ -9,7 +9,8 @@ use calc
 use lanczos
 use determinants
 use fciqmc_data
-use fciqmc_restart, only: read_restart_number, write_restart_number, binary_fmt 
+use fciqmc_restart, only: read_restart_number, write_restart_number,&
+                          binary_fmt_in, binary_fmt_out 
 use hubbard_real, only: finite_cluster
 
 implicit none
@@ -177,8 +178,10 @@ contains
                     call readi(write_restart_number)
                     write_restart_number = -write_restart_number-1
                 end if
-            case('ASCII_FORMAT')
-                binary_fmt = .false.
+            case('ASCII_FORMAT_IN')
+                binary_fmt_in = .false.
+            case('ASCII_FORMAT_OUT')
+                binary_fmt_out = .false.
             case('SEED')
                 call readi(seed)
             case('SHIFT_DAMPING')

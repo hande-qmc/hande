@@ -23,16 +23,17 @@ integer :: read_restart_number = 0
 ! a specific restart file.
 integer :: write_restart_number = 0
 
-! specifies if the restart file is in binary (.true.) or ASCII (.false.) format;
+! specifies if the restart file (to read --> in, to write --> out
+! is in binary (.true.) or ASCII (.false.) format;
 ! The latter requires substantially more space ( 1 integer per digit of output
 ! as opposed to 1 integer per integer of output!) but is human-readable
-logical :: binary_fmt = .true. 
+logical :: binary_fmt_in = .true., binary_fmt_out = .true. 
 
 ! An attempt to do generic programming in Fortran: These functions all print
 ! a variable of a specific type to a given unit, either in binary or ascii
 ! format
 interface write_out
-#if DET_SIZE != 32    
+#if DET_SIZE != 32 
     ! for non-32 bit integers, the i0 kind is distinct from the default kind;
     ! thus we need distinct functions to deal with them
     module procedure write_out_int
@@ -50,6 +51,10 @@ end interface write_out
 
 interface read_in 
 #if DET_SIZE != 32
+    module procedure read_in_int
+    module procedure read_in_int_arr
+#endif
+#ifndef DET_SIZE
     module procedure read_in_int
     module procedure read_in_int_arr
 #endif
@@ -93,7 +98,7 @@ contains
 
             write (6,'(1X,a23,1X,a,a1,/)') 'Writing restart file to',trim(restart_file),'.'
             
-            if (binary_fmt) then
+            if (binary_fmt_out) then
                 open(io,file=restart_file,form='unformatted')
             else
                 open(io, file=restart_file)
@@ -106,7 +111,7 @@ contains
             call write_out('#shift',io)
             call write_out(nparticles_old,shift,vary_shift,io)
             call write_out('#reference determinant',io)
-            call write_out(f0,basis_length,occ_list,nel,D0_population,H00,io)
+            call write_out(f0,basis_length,occ_list0,nel,D0_population,H00,io)
             call write_out('# number of unique walkers',io)
 #ifdef PARALLEL
             call write_out(sum(nwalkers),io)
@@ -117,7 +122,7 @@ contains
             ! if writing in binary, there is no character marker telling us
             ! where the root processor's walkers are stored - thus use scratch
             ! so that we can get root's walkers back
-            if (binary_fmt) then
+            if (binary_fmt_out) then
                 scratch = get_free_unit()
                 open(scratch,status='scratch',form='unformatted')
                 write_walkers(tot_walkers,scratch)
@@ -135,7 +140,7 @@ contains
             end do
 
             ! we need to read back from scratch if in binary format
-            if (binary_fmt) then
+            if (binary_fmt_out) then
                 do i = 1, tot_walkers
                     call read_in(walker_dets(:,i),basis_length,scratch)
                     call read_in(walker_population(i),scratch)
@@ -186,9 +191,9 @@ contains
                 integer :: iwalker
 
                 do iwalker = 1, my_nwalkers
-                    call write_out(walker_dets(:,iwalker),basis_length,iunit)
-                    call write_out(walker_population(iwalker),iunit)
-                    call write_out(walker_energies(iwalker),iunit)
+                    call write_out(walker_dets(:,iwalker),basis_length,&
+                                   walker_population(iwalker),&
+                                   walker_energies(iwalker),iunit)
                 end do
 
             end subroutine write_walkers
@@ -233,12 +238,11 @@ contains
                 call stop_all('read_restart','restart file '//trim(restart_file)//' does not exist.')
             end if
             
-            if (binary_fmt) then
+            if (binary_fmt_in) then
                 open(io,file=restart_file,form='unformatted')
             else
                 open(io, file=restart_file)
             end if
-
             call read_in(junk,io)
             call read_in(restart_version,io)
             call read_in(junk,io)
@@ -283,6 +287,7 @@ contains
                     ! Filled up spawning/scratch arrays?
                     if (any(spawning_head(:nprocs-1)-spawn_max == 0)) exit
                 end do
+                write(*,*) 'line 291' ! DBG
                 iread = i
                 done = iread == global_tot_walkers + 1
             end if
@@ -350,7 +355,7 @@ contains
         integer, intent(in) :: a, wunit
         character(*), intent(in), optional :: fmt_string
         
-        if (binary_fmt) then
+        if (binary_fmt_out_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
@@ -370,7 +375,7 @@ contains
         integer, dimension(length), intent(in) :: a
         character(*), intent(in), optional :: fmt_string
         
-        if (binary_fmt) then
+        if (binary_fmt_out_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
@@ -389,7 +394,7 @@ contains
         integer, intent(in) :: wunit
         character(*), intent(in), optional :: fmt_string
         
-        if (binary_fmt) then
+        if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
@@ -410,7 +415,7 @@ contains
         integer(i0), dimension(length), intent(in) :: a
         character(*), intent(in), optional :: fmt_string
         
-        if (binary_fmt) then
+        if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
@@ -427,7 +432,7 @@ contains
         integer, intent(in) :: wunit
         character(*), intent(in), optional :: fmt_string
         
-        if (binary_fmt) then
+        if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
@@ -445,7 +450,7 @@ contains
         character(*), intent(in), optional :: fmt_string
         
         ! no character data for the binary format output file
-        if (.not. binary_fmt) then
+        if (.not. binary_fmt_out) then
             if (present(fmt_string)) then
                 write(wunit,fmt=fmt_string) a
             else
@@ -462,7 +467,7 @@ contains
         integer, intent(in) :: runit
         character(*), intent(in),optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_out) then
             write(runit) a
         else if (present(fmt_string)) then
             write(runit,fmt=fmt_string) a
@@ -486,7 +491,7 @@ contains
         real(p), intent(in) :: r
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_out) then
             write(wunit) i0arr, i, r
         else if (present(fmt_string)) then
             write(wunit,fmt=fmt_string) i0arr, i, r
@@ -505,7 +510,7 @@ contains
         logical, intent(in) :: l
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_out) then
             write(wunit) i, r, l
         else if (present(fmt_string)) then
             write(wunit,fmt=fmt_string) i, r, l
@@ -525,7 +530,7 @@ contains
         real(p), intent(in) :: r1, r2
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_out) then
             write(wunit) i0arr, iarr, r1, r2
         else if (present(fmt_string)) then
             write(wunit,fmt=fmt_string) i0arr, iarr, r1, r2
@@ -544,7 +549,7 @@ contains
         integer, intent(in) :: runit
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) a 
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
@@ -562,7 +567,7 @@ contains
         integer, dimension(length), intent(out) :: a
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) a
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
@@ -581,7 +586,7 @@ contains
         integer, intent(in) :: runit
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) a 
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
@@ -599,7 +604,7 @@ contains
         integer(i0), dimension(length), intent(out) :: a
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) a
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
@@ -616,7 +621,7 @@ contains
         integer, intent(in) :: runit
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) a 
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
@@ -634,7 +639,7 @@ contains
         character(*), intent(in), optional :: fmt_string
 
         ! there is no character data in the binary restart file
-        if (.not.binary_fmt) then
+        if (.not. binary_fmt_in) then
             if (present(fmt_string)) then
                 read(runit,fmt=fmt_string) a
             else
@@ -651,7 +656,7 @@ contains
         integer, intent(in) :: runit
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) a
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
@@ -671,7 +676,7 @@ contains
         real(p), intent(out) :: r
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) i0arr, i, r
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) i0arr, i, r
@@ -691,7 +696,7 @@ contains
         logical, intent(out) :: l
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) i, r, l
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) i, r, l
@@ -712,7 +717,7 @@ contains
         real(p), intent(out) :: r1, r2
         character(*), intent(in), optional :: fmt_string
 
-        if (binary_fmt) then
+        if (binary_fmt_in) then
             read(runit) i0arr, iarr, r1, r2
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) i0arr, iarr, r1, r2
