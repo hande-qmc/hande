@@ -355,7 +355,7 @@ contains
         integer, intent(in) :: a, wunit
         character(*), intent(in), optional :: fmt_string
         
-        if (binary_fmt_out_out) then
+        if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
@@ -375,7 +375,7 @@ contains
         integer, dimension(length), intent(in) :: a
         character(*), intent(in), optional :: fmt_string
         
-        if (binary_fmt_out_out) then
+        if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
