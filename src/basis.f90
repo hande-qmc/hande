@@ -38,7 +38,7 @@ integer :: nbasis
 ! The determinants are stored as a bit string.  Each element of an array is
 ! an integer of kind i0 (containing i0_length bits).
 ! (The bit type has just been deleted from the forthcoming F2008 standard, so we
-! won't hold out breath until we can use bits directly......)
+! won't hold our breath until we can use bits directly......)
 ! basis_length is the length of the byte array necessary to contain a bit for
 ! each basis function, i.e. ceiling(nbasis/i0_length).
 integer :: basis_length
