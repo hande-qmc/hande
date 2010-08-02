@@ -132,7 +132,8 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
+! TODO.
+!        call initial_fciqmc_status(update_proj_energy)
 
         ! Initialise timer.
         call cpu_time(t1)

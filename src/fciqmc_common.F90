@@ -108,7 +108,7 @@ contains
             ! Zero all populations...
             walker_population(:,tot_walkers) = 0
             ! Set initial population of Hamiltonian walkers.
-            walker_population(1,tot_walkers) = D0_population
+            walker_population(1,tot_walkers) = nint(D0_population)
 
             ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
@@ -135,9 +135,8 @@ contains
             ! belongs on this processor.
             ! If it doesn't, set the walkers array to be empty.
             if (nprocs > 1) then
-                iproc_ref = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
-                if (iproc_ref /= iproc) tot_walkers = 0
-                D0_proc = iproc_ref
+                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+                if (D0_proc /= iproc) tot_walkers = 0
             else
                 D0_proc = iproc
             end if
@@ -166,7 +165,7 @@ contains
                 write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
                 call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
             end if
-            write (6,'(1X,a44,'//int_fmt(D0_population,1)//',/)') &
+            write (6,'(1X,a44,1X,f11.4,/)') &
                               'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
             if (doing_calc(initiator_fciqmc)) then
@@ -189,37 +188,45 @@ contains
         
     end subroutine init_fciqmc
 
-    subroutine initial_fciqmc_status()
+    subroutine initial_fciqmc_status(update_proj_energy)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
-        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_energy_hub_real
-        use system, only: system_type, hub_k, hub_real
+        ! In:
+        !    update_proj_energy: relevant subroutine to update the projected
+        !        energy.  See the energy_evaluation module.
 
         use parallel
 
-        integer :: idet, ierr
+        interface
+            subroutine update_proj_energy(idet)
+                use const, only: p
+                implicit none
+                integer, intent(in) :: idet
+            end subroutine update_proj_energy
+        end interface
+
+        integer :: idet
         integer :: ntot_particles
-        real(p) :: inst_proj_energy
+#ifdef PARALLEL
+        integer :: ierr
+        real(p) :: proj_energy_sum
+#endif
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution.
-        inst_proj_energy = 0.0_p
+        proj_energy = 0.0_p
         do idet = 1, tot_walkers 
-            if (system_type == hub_k) then
-                call update_proj_energy_hub_k(idet, inst_proj_energy)
-            else
-                call update_proj_energy_hub_real(idet, inst_proj_energy)
-            end if
+            call update_proj_energy(idet)
         end do 
 
 #ifdef PARALLEL
-        call mpi_allreduce(inst_proj_energy, proj_energy, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        proj_energy = proj_energy_sum
+        call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
-        proj_energy = inst_proj_energy
         ntot_particles = nparticles(1)
 #endif 
         
@@ -229,7 +236,7 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            write (6,'(1X,"#",3X,i8,2X,4(f14.10,2X),i11,2X,i11,6X,a3,3X,a3)') &
+            write (6,'(1X,"#",3X,i8,2X,4(es17.10,2X),f11.4,4X,i11,6X,a3,3X,a3)') &
                     mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, D0_population, ntot_particles,'n/a','n/a'
         end if
 

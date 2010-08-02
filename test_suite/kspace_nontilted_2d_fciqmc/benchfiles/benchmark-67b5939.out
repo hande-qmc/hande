@@ -2,12 +2,12 @@
  Hubbard
 
  ================================================================
- Compiled on Jun 20 2010 at 19:06:28
+ Compiled on Jul 20 2010 at 11:58:56
  VCS BASE repository version:
-     4e45e2c7ad88815b33de566c998cb08a00edaa22
+     e716ba85727a358a0c5b15c6ff9ca35b97063e46
  Working directory: 
-     /home/james/work/src/hubbard_fciqmc/test_suite/kspace_nontilted_2d_ifciqmc
- Started running on 20/06/2010 at 19:09:35
+     /home/jw1208/work/hubbard_fciqmc/test_suite/kspace_nontilted_2d_fciqmc
+ Started running on 27/07/2010 at 13:48:03
  ================================================================
 
  Input options
@@ -15,11 +15,7 @@
 
 k_space
 
-ifciqmc
-( By setting the initiator population to 0, i.e. the population at which we )
-( consider a determinant to be an initiator, we should recapture the fciqmc )
-( result. )
-initiator_population 0
+fciqmc
 
 lattice
 2 0
@@ -49,10 +45,10 @@ sym 1
  index   k-point      ms     kinetic energy
      1   ( 0, 0)      1     -4.00000000
      2   ( 0, 0)     -1     -4.00000000
-     3   ( 1, 0)      1     -0.00000000
-     4   ( 1, 0)     -1     -0.00000000
-     5   ( 0, 1)      1     -0.00000000
-     6   ( 0, 1)     -1     -0.00000000
+     3   ( 1, 0)      1      0.00000000
+     4   ( 1, 0)     -1      0.00000000
+     5   ( 0, 1)      1      0.00000000
+     6   ( 0, 1)     -1      0.00000000
      7   ( 1, 1)      1      4.00000000
      8   ( 1, 1)     -1      4.00000000
 
@@ -89,13 +85,10 @@ sym 1
 
  Reference determinant, |D0> = | 1 2 >
  E0 = <D0|H|D0> =     -7.750000000000
+ Symmetry of reference determinant: ( 0, 0)
  Initial population on reference determinant: 10
 
  Note that FCIQMC calculates the correlation energy relative to |D0>.
-
- Initiator method in use.
- CAS space of initiator determinants: (0,0)
- Population for a determinant outside CAS space to be an initiator: 0
 
  Information printed out every FCIQMC report loop:
 
@@ -370,7 +363,7 @@ sym 1
  E0 + av. proj. energy =       -7.768682547690
 
  ================================================================
- Finished running on 20/06/2010 at 19:09:38
- Calculation took:                    3.50s
+ Finished running on 27/07/2010 at 13:48:04
+ Calculation took:                    0.28s
  ================================================================
 

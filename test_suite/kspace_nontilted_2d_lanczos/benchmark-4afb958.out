@@ -1,0 +1,326 @@
+
+ Hubbard
+
+ ================================================================
+ Compiled on Jul 29 2010 at 23:40:36
+ VCS BASE repository version:
+     d1dda141601f34f27403b423883c0041cef472df
+ Working directory contains local changes.
+ Working directory: 
+     /Users/jamesspencer/projects/hubbard_fciqmc/test_suite/kspace_nontilted_2d_lanczos
+ Started running on 29/07/2010 at 23:50:21
+ ================================================================
+
+ Input options
+ -------------
+
+lattice
+2 0
+0 2
+electrons 2
+lanczos
+lanczos_basis 20
+lanczos_solns 8
+block_size 8
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point      ms     kinetic energy
+     1   ( 0, 0)      1     -4.00000000
+     2   ( 0, 0)     -1     -4.00000000
+     3   ( 1, 0)      1     -0.00000000
+     4   ( 1, 0)     -1     -0.00000000
+     5   ( 0, 1)      1     -0.00000000
+     6   ( 0, 1)     -1     -0.00000000
+     7   ( 1, 1)      1      4.00000000
+     8   ( 1, 1)     -1      4.00000000
+
+ Number of electrons: 2
+ Number of basis functions: 8
+ Total size of determinant space: 28
+ Bit-length of integers used to store determinant bit-strings: 32
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point      Inverse
+   1      ( 0, 0)        1
+   2      ( 1, 0)        2
+   3      ( 0, 1)        3
+   4      ( 1, 1)        4
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3  4
+  2  1  4  3
+  3  4  1  2
+  4  3  2  1
+
+ Diagonalisation
+ ===============
+
+ Considering determinants with spin:  0
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1                4
+         2                4
+         3                4
+         4                4
+
+ Diagonalising symmetry block 1 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:21.615 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       1.232E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations         6
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+Restarting:             1.0000E-03 sec,  1.2800E+05 FLOP/S ( 1.2800E+02 FLOP)
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 2 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:21.616 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       6.752E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations         6
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 3 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:21.616 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       6.752E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations         6
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 4 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           4 ) is large relative to the matrix dimension (           4 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:21.616 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          4 (computed),          4 (wanted)
+Times the operator is applied:          4 (MAX:             1000 ).
+Problem size:                           4 (PE:   0),           4 (Global)
+Convergence tolerance:          1.490E-08 (rel),       1.490E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        10
+Number of (re)start loops:              1
+Number of random vectors used:          2
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Considering determinants with spin:  2
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=2.
+
+ Symmetry index      # dets
+         1                0
+         2                2
+         3                2
+         4                2
+
+ No determinants with spin 2 in symmetry block 1 out of 4
+
+ ---------------
+
+ Diagonalising symmetry block 2 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           2 ) is large relative to the matrix dimension (           2 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:21.616 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
+Times the operator is applied:          2 (MAX:             1000 ).
+Problem size:                           2 (PE:   0),           2 (Global)
+Convergence tolerance:          1.490E-08 (rel),       5.960E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations         1
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 3 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           2 ) is large relative to the matrix dimension (           2 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:21.616 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
+Times the operator is applied:          2 (MAX:             1000 ).
+Problem size:                           2 (PE:   0),           2 (Global)
+Convergence tolerance:          1.490E-08 (rel),       5.960E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations         1
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 4 out of 4
+
+ Performing Lanczos diagonalisation...
+
+ TRLAN: info%ned (           2 ) is large relative to the matrix dimension (           2 )
+        it might be more appropriate to use LAPACK dsyev/ssyev
+ TRLan (Lanczos) information:
+
+                                        2010/07/29 23:50:21.616 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          2 (computed),          2 (wanted)
+Times the operator is applied:          2 (MAX:             1000 ).
+Problem size:                           2 (PE:   0),           2 (Global)
+Convergence tolerance:          1.490E-08 (rel),       0.000E+00 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations         7
+Number of (re)start loops:              1
+Number of random vectors used:          2
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Lanczos diagonalisation results
+ -------------------------------
+
+    State   Spin   Total energy
+      1       0    -7.768564865582
+      2       0    -4.000000000000
+      3       0    -4.000000000000
+      4       2    -4.000000000000
+      5      -2    -4.000000000000
+      6       2    -4.000000000000
+      7      -2    -4.000000000000
+      8       0    -3.531128874149
+      9       0    -3.531128874149
+     10       0    -0.000000000000
+     11       0     0.000000000000
+     12       0     0.000000000000
+     13       2     0.000000000000
+     14      -2     0.000000000000
+     15       2     0.000000000000
+     16      -2     0.000000000000
+     17       0     0.000000000000
+     18       0     0.498054504048
+     19       0     1.000000000000
+     20       2     4.000000000000
+     21      -2     4.000000000000
+     22       2     4.000000000000
+     23      -2     4.000000000000
+     24       0     4.000000000000
+     25       0     4.000000000000
+     26       0     4.531128874149
+     27       0     4.531128874149
+     28       0     8.270510361534
+
+ Lanczos ground state:   -7.768564865582
+
+ ================================================================
+ Finished running on 29/07/2010 at 23:50:21
+ Calculation took:                    0.00s
+ ================================================================
+

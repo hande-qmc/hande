@@ -1,5 +1,6 @@
 dest/
 bin/
+run/
 /Makefile
 test*.out*
 testcode*.err*
@@ -14,3 +15,4 @@ tags
 restart.*
 fort.*
 /config/.default
+.nfs*

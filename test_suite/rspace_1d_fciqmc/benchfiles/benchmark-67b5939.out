@@ -2,12 +2,12 @@
  Hubbard
 
  ================================================================
- Compiled on Jun 20 2010 at 19:06:28
+ Compiled on Jul 20 2010 at 11:58:56
  VCS BASE repository version:
-     4e45e2c7ad88815b33de566c998cb08a00edaa22
+     e716ba85727a358a0c5b15c6ff9ca35b97063e46
  Working directory: 
-     /home/james/work/src/hubbard_fciqmc/test_suite/rspace_1d_fciqmc
- Started running on 20/06/2010 at 19:09:28
+     /home/jw1208/work/hubbard_fciqmc/test_suite/rspace_1d_fciqmc
+ Started running on 27/07/2010 at 13:48:06
  ================================================================
 
  Input options
@@ -201,7 +201,7 @@ sym 1
  Writing restart file to restart.1.
 
  ================================================================
- Finished running on 20/06/2010 at 19:09:32
- Calculation took:                    4.34s
+ Finished running on 27/07/2010 at 13:48:06
+ Calculation took:                    0.31s
  ================================================================
 

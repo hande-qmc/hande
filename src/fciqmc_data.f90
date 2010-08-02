@@ -57,9 +57,12 @@ real(p) :: shift_damping = 0.050_dp
 real(p) :: proj_energy
 
 ! projected energy averaged over the calculation.
-! This is really a running total: the average is only taken at output time (in
-! write_fciqmc_report).
+! This is really a running total of \sum_{i/=0} <D_0|H|D_i> N_i: the average is
+! only taken at output time (in write_fciqmc_report) by considering the ratio
+!   av_proj_energy/av_D0_population.
 real(p) :: av_proj_energy = 0.0_p
+! Similarly a running total for the population on the reference determinant.
+real(p) :: av_D0_population = 0.0_p
 
 ! Report loop at which the averages are set to 0.
 integer :: start_averaging_from = 0
@@ -155,7 +158,7 @@ integer, allocatable :: occ_list0(:)
 
 ! Population of walkers on reference determinant.
 ! The initial value can be overridden by a restart file or input option.
-integer :: D0_population = 10
+real(p) :: D0_population = 10.0_p
 
 ! Energy of reference determinant.
 real(p) :: H00
@@ -488,8 +491,8 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        write (6,'(1X,a12,3X,a13,4X,a9,7X,a12,5X,a11,9X,a4,2X,a11,2X,a7,2X,a4)') &
-          '# iterations','Instant shift','Av. shift','Proj. Energy','Av. Proj. E','# D0','# particles','R_spawn','time'
+        write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
+          '# iterations','Instant shift','Av. shift','\sum H_0j Nj','Av. Proj. E','# D0','# particles','R_spawn','time'
 
     end subroutine write_fciqmc_report_header
 
@@ -503,18 +506,17 @@ contains
 
         integer, intent(in) :: ireport, ntot_particles
         real, intent(in) :: elapsed_time
-        integer :: mc_cycles, vary_shift_reports, proj_energy_cycles
+        integer :: mc_cycles, vary_shift_reports
 
         mc_cycles = ireport*ncycles
 
-        proj_energy_cycles = (ireport - start_averaging_from)*ncycles
-        vary_shift_reports = ireport - start_vary_shift - start_averaging_from
+        vary_shift_reports = ireport - start_averaging_from - start_vary_shift
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,2X,4(f14.10,2X),i11,2X,i11,3X,f6.4,2X,f4.2)') &
+        write (6,'(5X,i8,2X,4(es17.10,2X),f11.4,4X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
-                                             av_shift/vary_shift_reports, proj_energy,         &
-                                             av_proj_energy/proj_energy_cycles, D0_population, & 
+                                             av_shift/vary_shift_reports, proj_energy,       &
+                                             av_proj_energy/av_D0_population, D0_population, & 
                                              ntot_particles, rspawn, elapsed_time/ncycles
 
     end subroutine write_fciqmc_report
@@ -540,16 +542,15 @@ contains
         end if
 
         av_shift = av_shift/(report_cycles_done - start_vary_shift - start_averaging_from)
-        av_proj_energy = av_proj_energy/((report_cycles_done - start_averaging_from)*ncycles)
 
         write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
-        write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy
+        write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy/D0_population
         write (6,'(1X,a11,12X,f22.12)') 'av. shift =', av_shift
-        write (6,'(1X,a18,5X,f22.12)') 'av. proj. energy =', av_proj_energy
+        write (6,'(1X,a18,5X,f22.12)') 'av. proj. energy =', av_proj_energy/av_D0_population
         write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift+H00
-        write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy+H00
+        write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
         write (6,'(1X,a16,7X,f22.12)') 'E0 + av. shift =', av_shift+H00
-        write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', av_proj_energy+H00
+        write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', av_proj_energy/av_D0_population+H00
 
     end subroutine write_fciqmc_final
 

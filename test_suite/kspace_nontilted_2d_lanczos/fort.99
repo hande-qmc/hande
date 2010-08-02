@@ -1,0 +1,24 @@
+ TRL_CHECK_ORTH: check orthogonality of            2  basis vectors.
+Frobenius norm of orthogonality level          1   2   1.00000E+00
+Maximum abs. value of orthogonality level is    1.00000E+00
+                                        2010/07/27 14:59:18.851 (+01:00)
+ PE           0 : Dumping the content of the variables on error..        -203
+MAXLAN:        20, Restart:         0,   NED:  -      2,     NEC:         0
+MATVEC:         1,  Reorth:        16, Nloop:         0, Nlocked:         0
+Ttotal: 3.411E+05,    T_op: 0.000E+00, Torth: 9.000E-04,  Tstart: 0.000E+00
+ This Lanczos iteration started With            0  vectors.
+ There are            1 (           1 ,            0 ) Lanczos vectors currently
+ .
+ PE           0 : Content of eval ..
+ 1.356-312 1.356-312 0.000E+00 0.000E+00 0.000E+00 0.000E+00 0.000E+00 3.765-317
+ 0.000E+00 4.244-314 5.315-315 0.000E+00 7.115-322 1.581-322 0.000E+00 1.356-312
+ PE           0 :  Alpha(1:           1) ..  0.000000000000000E+000
+ PE           0 :  Betaa(1:           1) ..  0.000000000000000E+000
+ PE           0 :  Alfrot(1:           1) ..  0.000000000000000E+000
+ PE           0 : betfrot(1:           1) ..  0.000000000000000E+000
+ PE           0 : the First row of evec ..  0.707106781186547     
+ PE           0 :  row            2 of evec ..  0.707106781186547     
+ PE           0 :  Content of qa (q_           1) ..
+ 7.071E-01 7.071E-01
+ PE           0 :  Content of rr (residual == q_           2) ..
+ 1.334E-94 1.334E-94
