@@ -132,6 +132,8 @@ contains
         ! from restart
         nparticles_old = nparticles_old_restart
 
+        nparticles = sum(abs(walker_population(1,:)))
+
         call write_fciqmc_report_header()
 
         call cpu_time(t1)
@@ -171,14 +173,14 @@ contains
 
                 ! Find the spawning rate and add to the running
                 ! total.
-                rspawn = rspawn + sum(abs(spawned_walkers(1,:)))/nattempts
+                rspawn = rspawn + real(sum(abs(spawned_walkers(1,:))))/nattempts
 
                 call simple_annihilation()
 
             end do
 
             ! Update the shift
-            nparticles = sum(abs(walker_population))
+            nparticles = sum(abs(walker_population(1,:)))
             if (vary_shift) then
                 call update_shift(nparticles_old, nparticles, ncycles)
             end if
@@ -195,6 +197,7 @@ contains
             ! Average these quantities over the report cycle.
             proj_energy = proj_energy/ncycles
             D0_population = D0_population/ncycles
+            rspawn = rspawn/ncycles
 
             call cpu_time(t2)
             
