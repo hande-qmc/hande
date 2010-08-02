@@ -122,10 +122,10 @@ contains
             ! if writing in binary, there is no character marker telling us
             ! where the root processor's walkers are stored - thus use scratch
             ! so that we can get root's walkers back
-            if (binary_fmt_out) then
+            if (binary_fmt_out) then  
                 scratch = get_free_unit()
-                open(scratch,status='scratch',form='unformatted')
-                write_walkers(tot_walkers,scratch)
+                open(scratch,status="scratch",form='unformatted')
+                call write_walkers(tot_walkers,scratch)
             end if
 
             ! Communicate with all other processors.
@@ -141,11 +141,11 @@ contains
 
             ! we need to read back from scratch if in binary format
             if (binary_fmt_out) then
-                do i = 1, tot_walkers
-                    call read_in(walker_dets(:,i),basis_length,scratch)
-                    call read_in(walker_population(i),scratch)
-                    call read_in(walker_energies(i),scratch)
-                end do
+                !workaround to make sure even if reading in ASCII from input
+                !file we write to scratch in binary fmt. This is safe as we do 
+                ! all input file reading before this writing
+                binary_fmt_in = .true. 
+                call read_walkers(tot_walkers,scratch)
                 !no longer need the scratchfile
                 close(scratch)
             else
@@ -162,10 +162,7 @@ contains
                 end do
                 ! The next tot_walkers lines contain the walker info that came
                 ! from the root processor.
-                do i = 1, tot_walkers
-                    call read_in(walker_dets(:,i),walker_population(i),&
-                                 walker_energies(i),io)
-                end do
+                call read_walkers(tot_walkers,io)
             end if
 #else
             call write_out(tot_walkers,io)
@@ -197,6 +194,19 @@ contains
                 end do
 
             end subroutine write_walkers
+
+            subroutine read_walkers(my_nwalkers, iunit)
+
+                integer, intent(in) :: my_nwalkers, iunit
+                integer :: iwalker
+
+                do iwalker = 1, my_nwalkers
+                    call read_in(walker_dets(:,iwalker),basis_length,&
+                                 walker_population(iwalker),&
+                                 walker_energies(iwalker),iunit)
+                end do
+
+            end subroutine read_walkers
 
     end subroutine dump_restart
 
@@ -337,9 +347,7 @@ contains
             D0_proc = iproc
         end if
 #else
-        do i = 1, tot_walkers
-            call read_in(walker_dets(:,i),basis_length,walker_population(i),walker_energies(i),io)
-        end do
+        read_walkers(tot_walkers,io)
 #endif
 
         if (parent) close(io)
