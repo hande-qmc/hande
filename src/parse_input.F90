@@ -182,6 +182,9 @@ contains
                 binary_fmt_in = .false.
             case('ASCII_FORMAT_OUT')
                 binary_fmt_out = .false.
+            case('ASCII_FORMAT')
+                binary_fmt_in = .false.
+                binary_fmt_out = .false.
             case('SEED')
                 call readi(seed)
             case('SHIFT_DAMPING')

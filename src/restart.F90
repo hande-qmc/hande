@@ -43,7 +43,7 @@ interface write_out
     module procedure write_out_int_arr_i0
     module procedure write_out_float
     module procedure write_out_char
-    module procedure write_out_logical ! damn you vary_shift
+    module procedure write_out_logical
     module procedure write_out_i0arr_i_r
     module procedure write_out_i_r_l
     module procedure write_out_i0arr_iarr_2r
@@ -51,10 +51,6 @@ end interface write_out
 
 interface read_in 
 #if DET_SIZE != 32
-    module procedure read_in_int
-    module procedure read_in_int_arr
-#endif
-#ifndef DET_SIZE
     module procedure read_in_int
     module procedure read_in_int_arr
 #endif
@@ -136,16 +132,22 @@ contains
                 call mpi_recv(walker_dets, nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
                 call mpi_recv(walker_energies, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
                 ! Write out walkers from all other processors.
-                call write_walkers(nwalkers(i), io)
+                call write_walkers(nwalkers(i), io) 
             end do
 
             ! we need to read back from scratch if in binary format
             if (binary_fmt_out) then
-                !workaround to make sure even if reading in ASCII from input
-                !file we write to scratch in binary fmt. This is safe as we do 
-                ! all input file reading before this writing
-                binary_fmt_in = .true. 
-                call read_walkers(tot_walkers,scratch)
+                call flush(scratch)
+                rewind(scratch)
+                ! best to preserve the binary_fmt state in case of 
+                ! alteration of program mechaincs later
+                if (binary_fmt_in) then
+                    call read_walkers(tot_walkers,scratch)
+                else
+                    binary_fmt_in = .true.
+                    call read_walkers(tot_walker,scratch)
+                    binary_fmt_in = .false.
+                end if
                 !no longer need the scratchfile
                 close(scratch)
             else
@@ -157,7 +159,6 @@ contains
                     ! Read restart file until we've found the start of the
                     ! walker information.
                     call read_in(junk,io,'(a255)')
-                    call flush(6)
                     if (index(junk,'walker info') /= 0) exit
                 end do
                 ! The next tot_walkers lines contain the walker info that came
@@ -179,7 +180,6 @@ contains
             call mpi_send(walker_energies, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
-
         contains
 
             subroutine write_walkers(my_nwalkers, iunit)
@@ -380,7 +380,7 @@ contains
         implicit none
 
         integer, intent(in) :: length, wunit
-        integer, dimension(length), intent(in) :: a
+        integer,  intent(in) :: a(length)
         character(*), intent(in), optional :: fmt_string
         
         if (binary_fmt_out) then
@@ -420,7 +420,7 @@ contains
 
         integer :: counter
         integer, intent(in) :: length, wunit
-        integer(i0), dimension(length), intent(in) :: a
+        integer(i0), intent(in) :: a(length)
         character(*), intent(in), optional :: fmt_string
         
         if (binary_fmt_out) then
@@ -495,7 +495,7 @@ contains
         implicit none
 
         integer, intent(in) :: length, i, wunit
-        integer(i0), dimension(length), intent(in) :: i0arr
+        integer(i0), intent(in) :: i0arr(length)
         real(p), intent(in) :: r
         character(*), intent(in), optional :: fmt_string
 
@@ -533,8 +533,8 @@ contains
         implicit none
 
         integer, intent(in) :: l1, l2, wunit
-        integer(i0), dimension(l1), intent(in) :: i0arr
-        integer, dimension(l2), intent(in) :: iarr
+        integer(i0), intent(in) :: i0arr(l1)
+        integer, intent(in) :: iarr(l2)
         real(p), intent(in) :: r1, r2
         character(*), intent(in), optional :: fmt_string
 
@@ -572,7 +572,7 @@ contains
         
         integer :: counter
         integer, intent(in) :: runit,length
-        integer, dimension(length), intent(out) :: a
+        integer, intent(out) :: a(length)
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt_in) then
@@ -609,7 +609,7 @@ contains
         
         integer :: counter
         integer, intent(in) :: runit,length
-        integer(i0), dimension(length), intent(out) :: a
+        integer(i0), intent(out) :: a(length)
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt_in) then
@@ -680,7 +680,7 @@ contains
 
         integer, intent(in) :: length, runit
         integer, intent(out) :: i
-        integer(i0), dimension(length), intent(out) :: i0arr
+        integer(i0), intent(out) :: i0arr(length)
         real(p), intent(out) :: r
         character(*), intent(in), optional :: fmt_string
 
@@ -720,8 +720,8 @@ contains
 
         integer, intent(in) :: runit
         integer, intent(in) :: l1, l2
-        integer(i0), dimension(l1), intent(out) :: i0arr
-        integer, dimension(l2), intent(out) :: iarr
+        integer(i0), intent(out) :: i0arr(l1)
+        integer, intent(out) :: iarr(l2)
         real(p), intent(out) :: r1, r2
         character(*), intent(in), optional :: fmt_string
 

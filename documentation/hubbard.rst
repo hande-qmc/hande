@@ -589,6 +589,8 @@ The following options are valid for FCIQMC calculations.
     Similar behaviour to **ascii_format_out** except that this one specifies that the restart
     file to be read (specifed with the **restart** keyword) is in non-standard ASCII format
     as opposed to binary format.
+**ascii_format**
+    An Alias for both **ascii_format_in** and **ascii_format_out**
 **restart** [*id*]
     Optional integer.
 
