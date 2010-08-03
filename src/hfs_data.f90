@@ -11,7 +11,7 @@ implicit none
 ! Specifiy the magnitude squared of the l quantum vector which specifies a set
 ! of symmetry-related orbitals.  The occupation number of this set is then
 ! sampled using HF-FCIQMC.
-integer :: lmag2
+integer :: lmag2 = -1
 
 !--- Operator parameters. ---
 

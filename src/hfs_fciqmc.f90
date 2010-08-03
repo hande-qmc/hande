@@ -19,16 +19,19 @@ contains
         use fciqmc_data, only: D0_proc, f0, walker_energies, tot_walkers
         use hfs_data, only: lmask
         use operators, only: calc_orb_occ
+
+        use errors, only: stop_all
         use parallel, only: iproc
 
         integer :: ierr
 
         allocate(lmask(basis_length), stat=ierr)
 
-        lmag2 = 1
-        write (6,*) 'lmag2 = ', lmag2
-
         call set_orb_mask(lmag2, lmask)
+
+        if (all(lmask == 0)) then
+            call stop_all('init_hellmann_feynman_sampling','Setting lmask failed.  Invalid value of lmag2 given?')
+        end if
 
         if (iproc == D0_proc) then
             walker_energies(2,tot_walkers) = calc_orb_occ(f0, lmask)
@@ -143,13 +146,12 @@ contains
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
             proj_hf_expectation = 0.0_p
+            D0_population = 0.0_p
             rspawn = 0.0_p
 
             do icycle = 1, ncycles
 
                 ! Zero MC cycle quantities.
-                inst_proj_energy = 0.0_p
-                D0_population = 0
                 inst_proj_hf_t1 = 0.0_p
 
                 ! Reset the current position in the spawning array to be the
@@ -168,7 +170,7 @@ contains
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy(idet, inst_proj_energy, inst_proj_hf_t1)
+                    call update_proj_energy(idet, proj_energy, inst_proj_hf_t1)
 
                     do iparticle = 1, abs(walker_population(1,idet))
                         
@@ -215,13 +217,10 @@ contains
                 ! algorithm for efficiency.
                 call direct_annihilation(sc0)
 
-                ! normalise projected energy and add to running total.
-                proj_energy = proj_energy + inst_proj_energy/D0_population
-
                 ! Form HF projected expectation value and add to running
                 ! total.
-                proj_hf_expectation = proj_hf_expectation + &
-                     inst_proj_hf_t1/D0_population - (inst_proj_energy*D0_hf_population)/D0_population**2
+                !proj_hf_expectation = proj_hf_expectation + &
+                !     inst_proj_hf_t1/D0_population - (inst_proj_energy*D0_hf_population)/D0_population**2
 
             end do
 

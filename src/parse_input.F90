@@ -11,6 +11,7 @@ use determinants
 use fciqmc_data
 use fciqmc_restart, only: read_restart_number, write_restart_number 
 use hubbard_real, only: finite_cluster
+use hfs_data, only: lmag2
 
 implicit none
 
@@ -191,6 +192,11 @@ contains
                 call readi(CAS(2))
             case('INITIATOR_POPULATION')
                 call readi(initiator_population)
+
+            ! Calculation options: operators sampled using Hellmann--Feynman.
+            case('L2')
+                ! Set value of |l|^2 which is used
+                call readi(lmag2)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
