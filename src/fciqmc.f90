@@ -213,7 +213,7 @@ contains
             call fciqmc_interact(ireport, soft_exit)
             if (soft_exit) exit
 
-            call dump_restart(ireport*ncycles, nparticles_old(1))
+!            call dump_restart(ireport*ncycles, nparticles_old(1))
 
         end do
 
@@ -432,7 +432,7 @@ contains
             call fciqmc_interact(ireport, soft_exit)
             if (soft_exit) exit
 
-            call dump_restart(ireport*ncycles, nparticles_old(1))
+!            call dump_restart(ireport*ncycles, nparticles_old(1))
 
         end do
 
