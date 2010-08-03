@@ -23,9 +23,9 @@ integer :: read_restart_number = 0
 ! a specific restart file.
 integer :: write_restart_number = 0
 
-! specifies if the restart file (to read --> in, to write --> out
+! specifies if the restart file (to read --> in, to write --> out)
 ! is in binary (.true.) or ASCII (.false.) format;
-! The latter requires substantially more space ( 1 integer per digit of output
+! The latter requires substantially more space ( 1 byte per digit of output
 ! as opposed to 1 integer per integer of output!) but is human-readable
 logical :: binary_fmt_in = .true., binary_fmt_out = .true. 
 
@@ -100,20 +100,20 @@ contains
                 open(io, file=restart_file)
             end if
 
-            call write_out('# restart version',io)
-            call write_out(restart_version,io) 
-            call write_out('# number of cycles',io)
-            call write_out(nmc_cycles,io)
-            call write_out('#shift',io)
-            call write_out(nparticles_old,shift,vary_shift,io)
-            call write_out('#reference determinant',io)
-            call write_out(f0,basis_length,occ_list0,nel,D0_population,H00,io)
-            call write_out('# number of unique walkers',io)
+            call write_out(io,'# restart version')
+            call write_out(io,restart_version) 
+            call write_out(io,'# number of cycles')
+            call write_out(io,nmc_cycles)
+            call write_out(io,'#shift')
+            call write_out(io,nparticles_old,shift,vary_shift)
+            call write_out(io,'#reference determinant')
+            call write_out(io,f0,occ_list0,D0_population,H00)
+            call write_out(io,'# number of unique walkers')
 #ifdef PARALLEL
-            call write_out(sum(nwalkers),io)
+            call write_out(io,sum(nwalkers))
             ! Write out walkers on parent processor to restart file.
-            call write_out('# walker info',io)
-            call write_walkers(tot_walkers, io)
+            call write_out(io,'# walker info')
+            call write_walkers(io,tot_walkers)
             
             ! if writing in binary, there is no character marker telling us
             ! where the root processor's walkers are stored - thus use scratch
@@ -121,7 +121,7 @@ contains
             if (binary_fmt_out) then  
                 scratch = get_free_unit()
                 open(scratch,status="scratch",form='unformatted')
-                call write_walkers(tot_walkers,scratch)
+                call write_walkers(scratch,tot_walkers)
             end if
 
             ! Communicate with all other processors.
@@ -132,7 +132,7 @@ contains
                 call mpi_recv(walker_dets, nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
                 call mpi_recv(walker_energies, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
                 ! Write out walkers from all other processors.
-                call write_walkers(nwalkers(i), io) 
+                call write_walkers(io, nwalkers(i)) 
             end do
 
             ! we need to read back from scratch if in binary format
@@ -142,10 +142,10 @@ contains
                 ! best to preserve the binary_fmt state in case of 
                 ! alteration of program mechaincs later
                 if (binary_fmt_in) then
-                    call read_walkers(tot_walkers,scratch)
+                    call read_walkers(scratch,tot_walkers)
                 else
                     binary_fmt_in = .true.
-                    call read_walkers(tot_walker,scratch)
+                    call read_walkers(scratch,tot_walker)
                     binary_fmt_in = .false.
                 end if
                 !no longer need the scratchfile
@@ -158,17 +158,17 @@ contains
                 do
                     ! Read restart file until we've found the start of the
                     ! walker information.
-                    call read_in(junk,io,'(a255)')
+                    call read_in(io,junk,'(a255)')
                     if (index(junk,'walker info') /= 0) exit
                 end do
                 ! The next tot_walkers lines contain the walker info that came
                 ! from the root processor.
-                call read_walkers(tot_walkers,io)
+                call read_walkers(io,tot_walkers,io)
             end if
 #else
-            call write_out(tot_walkers,io)
-            call write_out('# walker info', io)
-            call write_walkers(tot_walkers, io)
+            call write_out(io,tot_walkers)
+            call write_out(io,'# walker info')
+            call write_walkers(io,tot_walkers)
 #endif
             close(io)
 
@@ -180,33 +180,6 @@ contains
             call mpi_send(walker_energies, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
-        contains
-
-            subroutine write_walkers(my_nwalkers, iunit)
-
-                integer, intent(in) :: my_nwalkers, iunit
-                integer :: iwalker
-
-                do iwalker = 1, my_nwalkers
-                    call write_out(walker_dets(:,iwalker),basis_length,&
-                                   walker_population(iwalker),&
-                                   walker_energies(iwalker),iunit)
-                end do
-
-            end subroutine write_walkers
-
-            subroutine read_walkers(my_nwalkers, iunit)
-
-                integer, intent(in) :: my_nwalkers, iunit
-                integer :: iwalker
-
-                do iwalker = 1, my_nwalkers
-                    call read_in(walker_dets(:,iwalker),basis_length,&
-                                 walker_population(iwalker),&
-                                 walker_energies(iwalker),iunit)
-                end do
-
-            end subroutine read_walkers
 
     end subroutine dump_restart
 
@@ -253,17 +226,17 @@ contains
             else
                 open(io, file=restart_file)
             end if
-            call read_in(junk,io)
-            call read_in(restart_version,io)
-            call read_in(junk,io)
-            call read_in(mc_cycles_done,io)
-            call read_in(junk,io)
-            call read_in(nparticles_old_restart,shift,vary_shift,io)
-            call read_in(junk,io)
-            call read_in(f0,basis_length,occ_list0,nel,D0_population,H00,io)
-            call read_in(junk,io)
-            call read_in(tot_walkers,io)
-            call read_in(junk,io)
+            call read_in(io,junk)
+            call read_in(io,restart_version)
+            call read_in(io,junk)
+            call read_in(io,mc_cycles_done)
+            call read_in(io,junk)
+            call read_in(io,nparticles_old_restart,shift,vary_shift)
+            call read_in(io,junk)
+            call read_in(io,f0,occ_list0,D0_population,H00)
+            call read_in(io,junk)
+            call read_in(io,tot_walkers)
+            call read_in(io,junk)
         end if
 
         ! Just need to read in the walker information now.
@@ -288,7 +261,7 @@ contains
             if (parent) then
                 spawning_head = spawning_block_start
                 do i = iread, global_tot_walkers
-                    call read_in(det,basis_length,pop,energy,io)
+                    call read_in(io,det,pop,energy)
                     dest = modulo(murmurhash_bit_string(det, basis_length), nprocs)
                     spawning_head(dest) = spawning_head(dest) + 1
                     spawned_walkers(:basis_length, spawning_head(dest)) = det
@@ -347,7 +320,7 @@ contains
             D0_proc = iproc
         end if
 #else
-        read_walkers(tot_walkers,io)
+        call read_walkers(tot_walkers,io)
 #endif
 
         if (parent) close(io)
@@ -356,9 +329,36 @@ contains
     
 #if DET_SIZE != 32
 
-    subroutine write_out_int(a, wunit, fmt_string)
+
+    subroutine write_walkers(iunit, my_nwalkers)
+
+        integer, intent(in) :: my_nwalkers, iunit
+        integer :: iwalker
+
+        do iwalker = 1, my_nwalkers
+            call write_out(iunit,walker_dets(:,iwalker),&
+                           walker_population(iwalker),&
+                           walker_energies(iwalker))
+        end do
+
+    end subroutine write_walkers
+
+    subroutine read_walkers(iunit, my_nwalkers)
+
+        integer, intent(in) :: my_nwalkers, iunit
+        integer :: iwalker
+
+        do iwalker = 1, my_nwalkers
+            call read_in(iunit,walker_dets(:,iwalker),&
+                         walker_population(iwalker),&
+                         walker_energies(iwalker))
+        end do
+
+    end subroutine read_walkers
+    
+    subroutine write_out_int(wunit, a, fmt_string)
         
-        implicit none
+        ! write one integer to wunit with optional format string
 
         integer, intent(in) :: a, wunit
         character(*), intent(in), optional :: fmt_string
@@ -373,14 +373,11 @@ contains
 
     end subroutine write_out_int
 
-    subroutine write_out_int_arr(a, length, wunit, fmt_string)
-    !print out an array of integers
-    !for ASCII output, most of the time we will want non-advancing input
+    subroutine write_out_int_arr(wunit, a, fmt_string)
+    
+        !print out an array of integers to wunit with optional format string
 
-        implicit none
-
-        integer, intent(in) :: length, wunit
-        integer,  intent(in) :: a(length)
+        integer, intent(in) :: wunit, a(:)
         character(*), intent(in), optional :: fmt_string
         
         if (binary_fmt_out) then
@@ -394,9 +391,10 @@ contains
 
 #endif     
     
-    subroutine write_out_int_i0(a, wunit, fmt_string)
+    subroutine write_out_int_i0(wunit, a, fmt_string)
         
-        implicit none
+        ! for non 32-bit integers, the i0 type is distinct and thus needs
+        ! its own write_out procedure
 
         integer(i0), intent(in) :: a
         integer, intent(in) :: wunit
@@ -412,15 +410,14 @@ contains
 
     end subroutine write_out_int_i0
 
-    subroutine write_out_int_arr_i0(a, length, wunit, fmt_string)
-    !print out an array of integers
-    !for ASCII output, most of the time we will want non-advancing input
-
-        implicit none
-
+    subroutine write_out_int_arr_i0(wunit, a, fmt_string)
+        
+        ! the i0 integer array needs its own procedure for non 32-bit 
+        ! integers
+     
         integer :: counter
-        integer, intent(in) :: length, wunit
-        integer(i0), intent(in) :: a(length)
+        integer, intent(in) ::  wunit
+        integer(i0), intent(in) :: a(:)
         character(*), intent(in), optional :: fmt_string
         
         if (binary_fmt_out) then
@@ -432,9 +429,9 @@ contains
         end if
     end subroutine write_out_int_arr_i0
 
-    subroutine write_out_float(a, wunit, fmt_string)
+    subroutine write_out_float(wunit, a,fmt_string)
 
-        implicit none
+        ! write a p-precision floating point number to wunit
 
         real(p), intent(in) :: a
         integer, intent(in) :: wunit
@@ -449,9 +446,12 @@ contains
         end if
     end subroutine write_out_float
 
-    subroutine write_out_char(a, wunit, fmt_string)
+    subroutine write_out_char(wunit, a, fmt_string)
 
-        implicit none
+        ! Write out a character to wunit in the optional format given
+        ! by fmt_string. For binary output we do not want character output
+        ! as they only serve as comments for the human reader, and thus if
+        ! binary_fmt_out is set, this procedure does nothing
 
         character(*), intent(in) :: a
         integer, intent(in) :: wunit
@@ -467,35 +467,35 @@ contains
         end if
     end subroutine write_out_char
 
-    subroutine write_out_logical(a,runit,fmt_string)
+    subroutine write_out_logical(wunit, a, fmt_string)
         
-        implicit none
+        ! write a logical variable to wunit with an optional format
 
         logical, intent(in):: a
-        integer, intent(in) :: runit
+        integer, intent(in) :: wunit
         character(*), intent(in),optional :: fmt_string
 
         if (binary_fmt_out) then
-            write(runit) a
+            write(wunit) a
         else if (present(fmt_string)) then
-            write(runit,fmt=fmt_string) a
+            write(wunit,fmt=fmt_string) a
         else
-            write(runit,*) a
+            write(wunit,*) a
         end if
     end subroutine write_out_logical
 
     ! we need specific routines for writing more than 1 entry per line
-    ! Thank you lack of generic programming. Cannot use advance='no' as
-    ! we are in general using free format i/o. These routines will of course
-    ! only really do different things for ASCII output, however to keep to 
-    ! the same programming paradigm they must be included
-    subroutine write_out_i0arr_i_r(i0arr,length, i, r, wunit, fmt_string)
-        ! write out an i0 integer array, integer, and real variables on 1 line
+    ! due to lack of proper generic programming in Fortran 90.
+    ! For binary format these procedures will do the same task as multiple
+    ! calls to the above procedures, however for ASCII output they are 
+    ! necessary to have output all on one line
 
-        implicit none
+    subroutine write_out_i0arr_i_r(wunit, i0arr, i, r, fmt_string)
+        
+        ! Write an i0 array, integer and real out on 1 line in optional format 
 
-        integer, intent(in) :: length, i, wunit
-        integer(i0), intent(in) :: i0arr(length)
+        integer, intent(in) :: i, wunit
+        integer(i0), intent(in) :: i0arr(:)
         real(p), intent(in) :: r
         character(*), intent(in), optional :: fmt_string
 
@@ -508,11 +508,11 @@ contains
         end if
     end subroutine write_out_i0arr_i_r
 
-    subroutine write_out_i_r_l(i, r, l, wunit, fmt_string)
-        ! write out an integer, real(p) and logical all on 1 line
+    subroutine write_out_i_r_l(wunit, i, r, l, fmt_string)
         
-        implicit none
-
+        ! write out an integer, real(p) and logical all on 1 line 
+        ! in optional format
+        
         integer, intent(in) :: i, wunit
         real(p), intent(in) :: r
         logical, intent(in) :: l
@@ -527,14 +527,14 @@ contains
         end if
     end subroutine write_out_i_r_l
 
-    subroutine write_out_i0arr_iarr_2r(i0arr, l1, iarr, l2, r1, r2, wunit, fmt_string)
+    subroutine write_out_i0arr_iarr_2r(wunit, i0arr, iarr, r1, r2, fmt_string)
+        
         ! write out i0 array, integer array and 2 real
         ! variables all on 1 line
-        implicit none
+        
 
-        integer, intent(in) :: l1, l2, wunit
-        integer(i0), intent(in) :: i0arr(l1)
-        integer, intent(in) :: iarr(l2)
+        integer, intent(in) :: wunit, iarr(:)
+        integer(i0), intent(in) :: i0arr(:)
         real(p), intent(in) :: r1, r2
         character(*), intent(in), optional :: fmt_string
 
@@ -549,9 +549,9 @@ contains
 
 #if DET_SIZE != 32
 
-    subroutine read_in_int(a, runit, fmt_string)
+    subroutine read_in_int(runit, a, fmt_string)
         
-        implicit none
+        ! read in a single integer from runit
 
         integer, intent(out) :: a
         integer, intent(in) :: runit
@@ -566,13 +566,12 @@ contains
         end if
     end subroutine read_in_int
 
-    subroutine read_in_int_arr(a, length, runit, fmt_string)
+    subroutine read_in_int_arr(runit, a, fmt_string)
 
-        implicit none
+        ! read in an integer array from runit 
         
-        integer :: counter
-        integer, intent(in) :: runit,length
-        integer, intent(out) :: a(length)
+        integer, intent(in) :: runit
+        integer, intent(out) :: a(:)
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt_in) then
@@ -586,9 +585,9 @@ contains
 
 #endif
 
-    subroutine read_in_int_i0(a, runit, fmt_string)
+    subroutine read_in_int_i0(runit, a, fmt_string)
         
-        implicit none
+        ! Read in a single integer of i0 kind from runit
 
         integer(i0), intent(out) :: a
         integer, intent(in) :: runit
@@ -603,13 +602,12 @@ contains
         end if
     end subroutine read_in_int_i0
 
-    subroutine read_in_int_arr_i0(a, length, runit, fmt_string)
+    subroutine read_in_int_arr_i0(runit, a, fmt_string)
 
-        implicit none
+        ! Read in an array of i0-kind integers from runit
         
-        integer :: counter
-        integer, intent(in) :: runit,length
-        integer(i0), intent(out) :: a(length)
+        integer, intent(in) :: runit
+        integer(i0), intent(out) :: a(:)
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt_in) then
@@ -621,9 +619,9 @@ contains
         end if
     end subroutine read_in_int_arr_i0
 
-    subroutine read_in_float(a, runit, fmt_string)
+    subroutine read_in_float(runit, a, fmt_string)
 
-        implicit none
+        ! Read in a p-kind real from runit
 
         real(p), intent(out) :: a
         integer, intent(in) :: runit
@@ -638,15 +636,16 @@ contains
         end if
     end subroutine read_in_float
 
-    subroutine read_in_char(a, runit, fmt_string)
+    subroutine read_in_char(runit, a, fmt_string)
 
-        implicit none
+        ! Read in a string with optional format from runit. 
+        ! As there is no character data in the binary restart files, 
+        ! if binary_fmt_in is set, this procedure does nothing
 
         character(*), intent(out) :: a
         integer, intent(in) :: runit
         character(*), intent(in), optional :: fmt_string
 
-        ! there is no character data in the binary restart file
         if (.not. binary_fmt_in) then
             if (present(fmt_string)) then
                 read(runit,fmt=fmt_string) a
@@ -658,7 +657,7 @@ contains
 
     subroutine read_in_logical(a, runit, fmt_string)
         
-        implicit none
+        ! Read in a single logical variable from runit 
 
         logical, intent(out) :: a
         integer, intent(in) :: runit
@@ -673,14 +672,15 @@ contains
         end if
     end subroutine read_in_logical
 
-    subroutine read_in_i0arr_i_r(i0arr,length, i, r, runit, fmt_string)
-        ! read in an i0 integer array, integer, and real variables on 1 line
+    subroutine read_in_i0arr_i_r(runit, i0arr, i, r, fmt_string)
 
-        implicit none
+        ! Read in an array of i0-kind integers, an integer and a real 
+        ! from runit. If we are reading an ASCII file then this is all
+        ! read from a single line
 
-        integer, intent(in) :: length, runit
+        integer, intent(in) :: runit
         integer, intent(out) :: i
-        integer(i0), intent(out) :: i0arr(length)
+        integer(i0), intent(out) :: i0arr(:)
         real(p), intent(out) :: r
         character(*), intent(in), optional :: fmt_string
 
@@ -693,10 +693,9 @@ contains
         end if
     end subroutine read_in_i0arr_i_r
 
-    subroutine read_in_i_r_l(i, r, l, runit, fmt_string)
-        ! read in an integer, real(p) and logical all on 1 line
+    subroutine read_in_i_r_l(runit, i, r, l, fmt_string)
         
-        implicit none
+        ! Read in an integer, a real and a logial variable from runit
 
         integer, intent(in) :: runit
         integer, intent(out) :: i
@@ -713,15 +712,15 @@ contains
         end if
     end subroutine read_in_i_r_l
 
-    subroutine read_in_i0arr_iarr_2r(i0arr, l1, iarr, l2, r1, r2, runit, fmt_string)
-        ! read in i0 array, integer array and 2 real
-        ! variables all on 1 line
-        implicit none
+    subroutine read_in_i0arr_iarr_2r(runit, i0arr, iarr, r1, r2,fmt_string)
+       
+        ! Read in an array of i0-kind integers, an array of integers 
+        ! and 2 reals/ If we are reading an ASCII format file then this is
+        ! all read from a single line
 
         integer, intent(in) :: runit
-        integer, intent(in) :: l1, l2
-        integer(i0), intent(out) :: i0arr(l1)
-        integer, intent(out) :: iarr(l2)
+        integer(i0), intent(out) :: i0arr(:)
+        integer, intent(out) :: iarr(:)
         real(p), intent(out) :: r1, r2
         character(*), intent(in), optional :: fmt_string
 
