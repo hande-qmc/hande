@@ -326,9 +326,6 @@ contains
         if (parent) close(io)
 
     end subroutine read_restart
-    
-#if DET_SIZE != 32
-
 
     subroutine write_walkers(iunit, my_nwalkers)
 
@@ -355,6 +352,8 @@ contains
         end do
 
     end subroutine read_walkers
+    
+#if DET_SIZE != 32
     
     subroutine write_out_int(wunit, a, fmt_string)
         
@@ -655,12 +654,12 @@ contains
         end if
     end subroutine read_in_char
 
-    subroutine read_in_logical(a, runit, fmt_string)
+    subroutine read_in_logical(runit, a, fmt_string)
         
         ! Read in a single logical variable from runit 
 
-        logical, intent(out) :: a
         integer, intent(in) :: runit
+        logical, intent(out) :: a
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt_in) then
