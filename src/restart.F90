@@ -145,7 +145,7 @@ contains
                     call read_walkers(scratch,tot_walkers)
                 else
                     binary_fmt_in = .true.
-                    call read_walkers(scratch,tot_walker)
+                    call read_walkers(scratch,tot_walkers)
                     binary_fmt_in = .false.
                 end if
                 !no longer need the scratchfile
@@ -163,7 +163,7 @@ contains
                 end do
                 ! The next tot_walkers lines contain the walker info that came
                 ! from the root processor.
-                call read_walkers(io,tot_walkers,io)
+                call read_walkers(io,tot_walkers)
             end if
 #else
             call write_out(io,tot_walkers)
