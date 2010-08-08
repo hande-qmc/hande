@@ -15,4 +15,8 @@ tags
 restart.*
 fort.*
 /config/.default
+joe_calc/
+sub/
+todo.joe
 .nfs*
+

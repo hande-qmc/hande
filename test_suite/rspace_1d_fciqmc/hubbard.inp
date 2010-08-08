@@ -20,6 +20,7 @@ shift_damping 0.06
 
 restart 0
 dump_restart 1
+ascii_format
 
 ms 1
 sym 1
