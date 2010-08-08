@@ -320,7 +320,7 @@ contains
             D0_proc = iproc
         end if
 #else
-        call read_walkers(tot_walkers,io)
+        call read_walkers(io, tot_walkers)
 #endif
 
         if (parent) close(io)
