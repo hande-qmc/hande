@@ -5,6 +5,6 @@ lattice
 electrons 4
 block_size 1
 fci
-eigenvalues
+(eigenvalues)
 hamil 
 det 
