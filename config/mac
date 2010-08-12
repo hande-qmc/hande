@@ -10,5 +10,5 @@ fflags = -O3
 cxxflags = -O3
 
 [dbg]
-fflags = -g -fbounds-check
+fflags = -g -fbounds-check -fbacktrace
 cxxflags = -g -fbounds-check

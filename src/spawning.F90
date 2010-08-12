@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine spawn_hub_k(cdet, parent_sign, nparticles, connection)
+    subroutine spawn_hub_k(cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant for the 
         ! momentum space formulation of the Hubbard model.
@@ -31,7 +31,7 @@ contains
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         ! Out:
-        !    nparticles: number of particles spawned.  0 indicates the spawning
+        !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
@@ -44,7 +44,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
-        integer, intent(out) :: nparticles
+        integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, psuccess, pspawn
@@ -89,12 +89,12 @@ contains
         ! producing multiple offspring...
         ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
         ! then spawn a particle with probability pspawn-floor(pspawn).
-        nparticles = int(pspawn)
-        pspawn = pspawn - nparticles
+        nspawn = int(pspawn)
+        pspawn = pspawn - nspawn
 
-        if (pspawn > psuccess) nparticles = nparticles + 1
+        if (pspawn > psuccess) nspawn = nspawn + 1
 
-        if (nparticles > 0) then
+        if (nspawn > 0) then
             ! 4. Well, I suppose we should find out which determinant we're spawning
             ! on...
             call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b)
@@ -153,16 +153,16 @@ contains
             ! If H_ij is negative, then the spawned walker is of the same sign
             ! as the parent.
             if (s > 0) then
-                nparticles = -sign(nparticles, parent_sign)
+                nspawn = -sign(nspawn, parent_sign)
             else
-                nparticles = sign(nparticles, parent_sign)
+                nspawn = sign(nspawn, parent_sign)
             end if
 
         end if
         
     end subroutine spawn_hub_k
 
-    subroutine spawn_hub_real(cdet, parent_sign, nparticles, connection)
+    subroutine spawn_hub_real(cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant for the 
         ! real space formulation of the Hubbard model.
@@ -173,7 +173,7 @@ contains
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         ! Out:
-        !    nparticles: number of particles spawned.  0 indicates the spawning
+        !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
@@ -186,7 +186,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
-        integer, intent(out) :: nparticles
+        integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, psuccess, pspawn, hmatel
@@ -220,20 +220,20 @@ contains
         ! producing multiple offspring...
         ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
         ! then spawn a particle with probability pspawn-floor(pspawn).
-        nparticles = int(pspawn)
-        pspawn = pspawn - nparticles
+        nspawn = int(pspawn)
+        pspawn = pspawn - nspawn
 
-        if (pspawn > psuccess) nparticles = nparticles + 1
+        if (pspawn > psuccess) nspawn = nspawn + 1
 
-        if (nparticles > 0) then
+        if (nspawn > 0) then
 
             ! 5. If H_ij is positive, then the spawned walker is of opposite
             ! sign to the parent, otherwise the spawned walkers if of the same
             ! sign as the parent.
             if (hmatel > 0.0_p) then
-                nparticles = -sign(nparticles, parent_sign)
+                nspawn = -sign(nspawn, parent_sign)
             else
-                nparticles = sign(nparticles, parent_sign)
+                nspawn = sign(nspawn, parent_sign)
             end if
 
         end if
@@ -526,7 +526,7 @@ contains
 
     end subroutine choose_ia_hub_real
 
-    subroutine create_spawned_particle(cdet, connection, nparticles)
+    subroutine create_spawned_particle(cdet, connection, nspawn, particle_type)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -536,8 +536,12 @@ contains
         !        from.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
-        !    nparticles: the (signed) number of particles to create on the
+        !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
+        !    particle_type: the type of particle created.  Must correspond to
+        !        the desired element in the spawning array (i.e. be spawned_pop
+        !        for Hamiltonian particles and spawned_hf_pop for
+        !        Hellmann--Feynman particles).
 
         use hashing
         use parallel, only: iproc, nprocs
@@ -545,11 +549,12 @@ contains
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head
+        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nparticles
+        integer, intent(in) :: nspawn
+        integer, intent(in) :: particle_type
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -573,12 +578,14 @@ contains
         spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
 
         ! Set info in spawning array.
+        ! Zero it as not all fields are set.
+        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(basis_length+1,spawning_head(iproc_spawn)) = nparticles
+        spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(cdet, parent_flag, connection, nparticles)
+    subroutine create_spawned_particle_initiator(cdet, parent_flag, connection, nspawn, particle_type)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -591,8 +598,12 @@ contains
         !        parent_flag = 1 indicates the parent is not an initiator.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
-        !    nparticles: the (signed) number of particles to create on the
+        !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
+        !    particle_type: the type of particle created.  Must correspond to
+        !        the desired element in the spawning array (i.e. be spawned_pop
+        !        for Hamiltonian particles and spawned_hf_pop for
+        !        Hellmann--Feynman particles).
 
         use hashing
         use parallel, only: iproc, nprocs
@@ -600,12 +611,13 @@ contains
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head
+        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, spawned_parent
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_flag
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nparticles
+        integer, intent(in) :: nspawn
+        integer, intent(in) :: particle_type
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -629,9 +641,11 @@ contains
         spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
 
         ! Set info in spawning array.
+        ! Zero it as not all fields are set.
+        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(basis_length+1,spawning_head(iproc_spawn)) = nparticles
-        spawned_walkers(basis_length+2,spawning_head(iproc_spawn)) = parent_flag
+        spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
+        spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = parent_flag
 
     end subroutine create_spawned_particle_initiator
 

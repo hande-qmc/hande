@@ -25,9 +25,6 @@ integer :: spawned_walker_length
 ! Number of particles before which varyshift mode is turned on.
 integer :: target_particles = 10000
 
-! True if doing initiator-FCIQMC rather than standard FCIQMC.
-logical :: initiator = .false.
-
 !--- Input data: initiator-FCIQMC ---
 
 integer :: CAS(2) = (/ 0,0 /)
@@ -79,29 +76,48 @@ integer :: tot_walkers
 
 ! Total number of particles on all walkers/determinants (processor dependent)
 ! Updated during death and annihilation and merging.
-integer :: nparticles
+! The first element is the number of normal (Hamiltonian) particles.
+! Subsequent elements are the number of Hellmann--Feynamnn particles.
+integer, allocatable :: nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
+! sampling_size is one for each quantity sampled (i.e. 1 for standard
+! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
+integer :: sampling_size
 ! a) determinants
 integer(i0), allocatable :: walker_dets(:,:) ! (basis_length, walker_length)
 ! b) walker population
-integer, allocatable :: walker_population(:) ! (walker_length)
+integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
 ! c) Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 ! K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
 ! reference determinant.
-real(p), allocatable :: walker_energies(:)
+real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
 
 ! Walker information: spawned list.
-! a) array size.
-! spawned_size is basis_length+1 for FCIQMC and basis_length+2 for initiator-FCIQMC.
-! spawned_walkers*(:basis_length,i) gives the determinant of the spawned walker.
-! spawned_walkers*(basis_length+1,i) gives the population of the spawned walker.
-! spawned_walkers*(basis_length+2,i) gives information about the parent of the spawned walker (initiator-FCIQMC only).
 ! By combining the info in with the determinant, we can reduce the number of MPI
 ! communication calls during annihilation.
+! a) array size.
+! The size of each element in the spawned_walkers arrays depend upon what
+! calculation is being done.  Each element has at least basis_length elements.
+! * FCIQMC requires an additional element to store the population of the spawned
+! walker.
+! * initiator-FCIQMC requires a further additional element for information
+! about the parent of the spawned walker.
+! * Hellmann--Feynman sampling requires a further additional element for the
+! population of the spawned Hellmann--Feynman walkers.
+
+! spawned_walkers*(:basis_length,i) gives the determinant of the spawned walker.
+! spawned_walkers*(spawned_pop,i) gives the population of the spawned walker.
+! spawned_walkers*(spawned_hf_pop,i) gives the population of the spawned walker
+! (Hellmann--Feynman sampling only).
+! spawned_walkers*(spawned_parent,i) gives information about the parent of the
+! spawned walker (initiator-FCIQMC only).
+! spawned_hf_pop (if it exists) will always be equal to spawned_pop+1.
+
 ! In simple_fciqmc we only need to store the walker populations, so spawned_size
 ! is 1.
 integer :: spawned_size
+integer :: spawned_pop, spawned_parent, spawned_hf_pop
 ! b) determinants.
 integer(i0), allocatable, target :: spawned_walkers1(:,:) ! (spawned_size, spawned_walker_length)
 integer(i0), allocatable, target :: spawned_walkers2(:,:) ! (spawned_size, spawned_walker_length)
@@ -546,6 +562,10 @@ contains
 
         integer :: ierr
 
+        if (allocated(nparticles)) then
+            deallocate(nparticles, stat=ierr)
+            call check_deallocate('nparticles',ierr)
+        end if
         if (allocated(walker_dets)) then
             deallocate(walker_dets, stat=ierr)
             call check_deallocate('walker_dets',ierr)

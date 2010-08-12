@@ -17,8 +17,12 @@ integer, parameter :: lanczos_diag = 2**1
 ! Use the incredibly simple and naive FCIQMC or the optimised implementation?
 integer, parameter :: fciqmc_calc = 2**2
 integer, parameter :: simple_fciqmc_calc = 2**3
+! Doing initiator-FCIQMC?
+integer, parameter :: initiator_fciqmc = 2**4
+! Doing Hellmann--Feynman sampling?
+integer, parameter :: hfs_fciqmc_calc = 2**5
 ! Estimate the size of the Hilbert space using Monte Carlo?
-integer, parameter :: mc_hilbert_space = 2**4
+integer, parameter :: mc_hilbert_space = 2**6
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
@@ -38,9 +42,15 @@ integer :: sym_in = huge(1)
 ! matrix-vector multiplication routines.
 real(p), allocatable :: hamil(:,:) ! (ndets, ndets)
 
-! If true, then the eigenvectors are found during exact diagonalisation as well
-! as the eigenvalues.  Doing this is substantially more expensive.
-logical :: find_eigenvectors = .false.
+! If either of the following options are true, then the eigenvectors are found
+! during exact diagonalisation as well as the eigenvalues.  Doing this is
+! substantially more expensive.
+
+! Print out the ground state wavefunction.
+logical :: print_ground_state = .false.
+
+! Analyse the ground state wavefunction.
+logical :: analyse_ground_state = .false.
 
 ! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
 logical :: write_hamiltonian = .false.

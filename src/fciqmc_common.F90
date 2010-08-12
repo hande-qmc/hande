@@ -7,6 +7,187 @@ implicit none
 
 contains
 
+    subroutine init_fciqmc()
+
+        ! Initialisation for fciqmc calculations.
+        ! Setup the spin polarisation for the system, initialise the RNG,
+        ! allocate the required memory for the list of walkers and set the
+        ! initial walker.
+
+        use checking, only: check_allocate, check_deallocate
+        use errors, only: stop_all
+        use hashing, only: murmurhash_bit_string
+        use parallel, only: iproc, nprocs, parent
+        use utils, only: int_fmt
+
+        use basis, only: basis_length, basis_fns, write_basis_fn
+        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, doing_calc
+        use determinants, only: encode_det, set_spin_polarisation, write_det
+        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
+        use fciqmc_restart, only: read_restart
+        use system, only: nel, system_type, hub_real, hub_k
+        use symmetry, only: gamma_sym, sym_table
+
+        integer :: ierr
+        integer :: i, iproc_ref
+        integer :: step
+        integer :: ref_sym ! the symmetry of the reference determinant
+
+        if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
+
+        ! Array sizes depending upon FCIQMC algorithm.
+        sampling_size = 1
+        spawned_size = basis_length + 1
+        spawned_pop = spawned_size
+        if (doing_calc(hfs_fciqmc_calc)) then
+            spawned_size = spawned_size + 1
+            spawned_hf_pop = spawned_size
+            sampling_size = sampling_size + 1
+        else
+            spawned_hf_pop = spawned_size
+        end if
+        if (doing_calc(initiator_fciqmc)) then
+            spawned_size = spawned_size + 1
+            spawned_parent = spawned_size
+        end if
+
+        ! Allocate main walker lists.
+        allocate(nparticles(sampling_size), stat=ierr)
+        call check_allocate('nparticles', sampling_size, ierr)
+        allocate(walker_dets(basis_length,walker_length), stat=ierr)
+        call check_allocate('walker_dets', basis_length*walker_length, ierr)
+        allocate(walker_population(sampling_size,walker_length), stat=ierr)
+        call check_allocate('walker_population', sampling_size*walker_length, ierr)
+        allocate(walker_energies(sampling_size,walker_length), stat=ierr)
+        call check_allocate('walker_energies', sampling_size*walker_length, ierr)
+
+        ! Allocate spawned walker lists.
+        if (mod(spawned_walker_length, nprocs) /= 0) then
+            if (parent) write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
+            spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
+            if (parent) write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',a1,/)') &
+                                        'Increasing spawned_walker_length to',spawned_walker_length,'.'
+        end if
+        allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
+        call check_allocate('spawned_walkers1',spawned_size*spawned_walker_length,ierr)
+        spawned_walkers => spawned_walkers1
+        ! Allocate scratch space for doing communication.
+        allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
+        call check_allocate('spawned_walkers2',spawned_size*spawned_walker_length,ierr)
+        spawned_walkers_recvd => spawned_walkers2
+
+        ! Set spawning_head to be the same size as spawning_block_start.
+        allocate(spawning_head(0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('spawning_head',max(2,nprocs),ierr)
+
+        ! Find the start position within the spawned walker lists for each
+        ! processor.
+        ! spawning_block_start(1) should contain the number of elements allocated
+        ! for each processor so we allow it to be accessible even if the number
+        ! of processors is 1.
+        allocate(spawning_block_start(0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('spawning_block_start',max(2,nprocs),ierr)
+        step = spawned_walker_length/nprocs
+        forall (i=0:nprocs-1) spawning_block_start(i) = i*step
+
+        ! Set spin variables.
+        call set_spin_polarisation(ms_in)
+
+        ! Set initial walker population.
+        ! occ_list could be set and allocated in the input.
+        allocate(f0(basis_length), stat=ierr)
+        call check_allocate('f0',basis_length,ierr)
+        if (restart) then
+            if (.not.allocated(occ_list0)) then
+                allocate(occ_list0(nel), stat=ierr)
+                call check_allocate('occ_list0',nel,ierr)
+            end if
+            call read_restart()
+        else
+            tot_walkers = 1
+            ! Zero all populations...
+            walker_population(:,tot_walkers) = 0
+            ! Set initial population of Hamiltonian walkers.
+            walker_population(1,tot_walkers) = nint(D0_population)
+
+            ! Reference det
+            ! Set the reference determinant to be the spin-orbitals with the lowest
+            ! kinetic energy which satisfy the spin polarisation.
+            ! Note: this is for testing only!  The symmetry input is currently
+            ! ignored.
+            call set_reference_det()
+
+            call encode_det(occ_list0, walker_dets(:,tot_walkers))
+
+            ! Reference det
+            f0 = walker_dets(:,tot_walkers)
+            ! Energy of reference determinant.
+            select case(system_type)
+            case(hub_k)
+                H00 = slater_condon0_hub_k(f0)
+            case(hub_real)
+                H00 = slater_condon0_hub_real(f0)
+            end select
+            ! By definition:
+            walker_energies(1,tot_walkers) = 0.0_p
+
+            ! Finally, we need to check if the reference determinant actually
+            ! belongs on this processor.
+            ! If it doesn't, set the walkers array to be empty.
+            if (nprocs > 1) then
+                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+                if (D0_proc /= iproc) tot_walkers = 0
+            else
+                D0_proc = iproc
+            end if
+        end if
+
+        ! Total number of particles on processor.
+        ! Probably should be handled more simply by setting it to be either 0 or
+        ! D0_population or obtaining it from the restart file, as appropriate.
+        forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
+
+        ! calculate the reference determinant symmetry
+        ! Brought outside if block for clarity.
+        ! Only if we are working in k-space.
+        if(system_type == hub_k) then
+            ref_sym = gamma_sym
+            do i=1,nel
+                ref_sym = sym_table((occ_list0(i)+1)/2,ref_sym)
+            end do
+        end if
+
+        if (parent) then
+            write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
+            call write_det(f0, new_line=.true.)
+            write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+            if(system_type == hub_k) then
+                write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+                call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+            end if
+            write (6,'(1X,a44,1X,f11.4,/)') &
+                              'Initial population on reference determinant:',D0_population
+            write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+            if (doing_calc(initiator_fciqmc)) then
+                write (6,'(1X,a24)') 'Initiator method in use.'
+                write (6,'(1X,a36,1X,"(",'//int_fmt(CAS(1),0)//',",",'//int_fmt(CAS(2),0)//'")")')  &
+                    'CAS space of initiator determinants:',CAS
+                write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
+                    'Population for a determinant outside CAS space to be an initiator:', initiator_population
+            end if
+            write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
+            write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
+            write (6,'(1X,a88)') 'Average shift: the running average of the shift from when the shift was allowed to vary.'
+            write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
+                                 &Calculated at the end of each cycle.'
+            write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
+            write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+            write (6,'(1X,a49)') '# particles: current total population of walkers.'
+            write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
+        end if
+        
+    end subroutine init_fciqmc
+
     subroutine initial_fciqmc_status(update_proj_energy)
 
         ! Calculate the projected energy based upon the initial walker
@@ -46,7 +227,7 @@ contains
         proj_energy = proj_energy_sum
         call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
-        ntot_particles = nparticles
+        ntot_particles = nparticles(1)
 #endif 
         
         proj_energy = proj_energy/D0_population

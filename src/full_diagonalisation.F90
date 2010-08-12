@@ -25,6 +25,8 @@ contains
         use calc
         use determinants, only: ndets
 
+        use operators
+
         real(p), intent(out) :: eigv(ndets)
         real(p), allocatable :: work(:), eigvec(:,:)
         integer :: info, ierr, lwork
@@ -35,7 +37,7 @@ contains
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
-        if (find_eigenvectors) then
+        if (analyse_ground_state .or. print_ground_state) then
             job = 'V'
         else
             job = 'N'
@@ -45,8 +47,10 @@ contains
             call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
         end if
         
-        allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
-        call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
+        if (nprocs > 1) then
+            allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+            call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
+        end if
 
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
@@ -109,13 +113,24 @@ contains
 
         deallocate(work, stat=ierr)
         call check_deallocate('work',ierr)
-        deallocate(eigvec, stat=ierr)
-        call check_deallocate('eigvec',ierr)
 
-        if (find_eigenvectors) then
-            do i = 1,ndets
-                write (6,*) i,'=',hamil(:,i)
-            end do
+        if (analyse_ground_state) then
+            if (nprocs == 1) then
+                call analyse_wavefunction(hamil(:,1))
+            else
+                call analyse_wavefunction(eigvec(:,1))
+            end if
+        else if (print_ground_state) then
+            if (nprocs == 1) then
+                call print_wavefunction('GROUND_STATE_WFN', hamil(:,1))
+            else
+                call print_wavefunction('GROUND_STATE_WFN', eigvec(:,1))
+            end if
+        end if
+
+        if (nprocs > 1) then
+            deallocate(eigvec, stat=ierr)
+            call check_deallocate('eigvec',ierr)
         end if
 
     end subroutine exact_diagonalisation

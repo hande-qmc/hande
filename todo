@@ -11,7 +11,18 @@ FCIQMC
 ------
 
 1. HPHF type work
-2. Hellmann--Feynmann
+
+Hellmann--Feynmann
+------------------
+
+1. Variables to refer to pop, hfpop etc in main lists.
+   Possibility to expand pop lists.
+2. Changes to annihilation. NOT DONE FOR i-FCIQMC.
+3. Changes to restart.
+4. fciqmc routine.
+5. test with hamiltonian operator.
+6. test with kinetic energy.
+7. w/ initiator?
 
 FCIQMC parallelisation
 ----------------------

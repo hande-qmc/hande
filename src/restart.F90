@@ -92,8 +92,8 @@ contains
                 call get_unique_filename(restart_file_stem, .true., 0, restart_file)
             end if
 
-            write (6,'(1X,a23,1X,a,a1,/)') 'Writing restart file to',trim(restart_file),'.'
-            
+            write (6,'(1X,"#",1X,a23,1X,a,a1)') 'Writing restart file to',trim(restart_file),'.'
+
             if (binary_fmt_out) then
                 open(io,file=restart_file,form='unformatted')
             else
@@ -265,7 +265,7 @@ contains
                     dest = modulo(murmurhash_bit_string(det, basis_length), nprocs)
                     spawning_head(dest) = spawning_head(dest) + 1
                     spawned_walkers(:basis_length, spawning_head(dest)) = det
-                    spawned_walkers(basis_length+1, spawning_head(dest)) = pop
+                    spawned_walkers(spawned_pop, spawning_head(dest)) = pop
                     scratch_energies(spawning_head(dest)) = energy
                     ! Filled up spawning/scratch arrays?
                     if (any(spawning_head(:nprocs-1)-spawn_max == 0)) exit
@@ -281,8 +281,8 @@ contains
             send_displacements = spawning_block_start(:nprocs-1)
             call mpi_scatter(send_counts, 1, mpi_integer, nread, 1, mpi_integer, root, mpi_comm_world, ierr)
             ! send walkers to their appropriate processor.
-            call mpi_scatterv(scratch_energies, send_counts, send_displacements, mpi_preal, &
-                              walker_energies(tot_walkers+1:), nread, mpi_preal, root,      &
+            call mpi_scatterv(scratch_energies, send_counts, send_displacements, mpi_preal,   &
+                              walker_energies(:,tot_walkers+1:), nread, mpi_preal, root,      &
                               mpi_comm_world, ierr)
             send_counts = send_counts*spawned_size
             send_displacements = send_displacements*spawned_size
@@ -294,7 +294,7 @@ contains
             ! Transfer from spawned arrays to main walker arrays.
             do i = 1, nread
                 walker_dets(:,i+tot_walkers) = spawned_walkers_recvd(:basis_length,i)
-                walker_population(i+tot_walkers) = spawned_walkers_recvd(basis_length+1,i)
+                walker_population(1,i+tot_walkers) = spawned_walkers_recvd(basis_length+1,i)
             end do
             tot_walkers = tot_walkers + nread
 
@@ -334,8 +334,8 @@ contains
 
         do iwalker = 1, my_nwalkers
             call write_out(iunit,walker_dets(:,iwalker),&
-                           walker_population(iwalker),&
-                           walker_energies(iwalker))
+                           walker_population(1,iwalker),&
+                           walker_energies(1,iwalker))
         end do
 
     end subroutine write_walkers
@@ -347,8 +347,8 @@ contains
 
         do iwalker = 1, my_nwalkers
             call read_in(iunit,walker_dets(:,iwalker),&
-                         walker_population(iwalker),&
-                         walker_energies(iwalker))
+                         walker_population(1,iwalker),&
+                         walker_energies(1,iwalker))
         end do
 
     end subroutine read_walkers

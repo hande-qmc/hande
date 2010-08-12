@@ -24,46 +24,56 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
 
-        use fciqmc_data, only: nparticles, target_particles, ncycles, rspawn
+        use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn
         use fciqmc_data, only: proj_energy, av_proj_energy, av_D0_population, shift, av_shift
         use fciqmc_data, only: vary_shift, start_vary_shift, D0_population
+        use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
+        use calc, only: doing_calc, hfs_fciqmc_calc
 
         use parallel
 
         integer, intent(in) :: ireport
-        integer, intent(inout) :: ntot_particles_old
+        integer, intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
-        integer, parameter :: n = 4
-        real(dp) :: ir(n), ir_sum(n)
-        integer :: ntot_particles, ierr
+        real(dp) :: ir(2*sampling_size+2), ir_sum(2*sampling_size+2)
+        integer :: ntot_particles(sampling_size), ierr
 
             ! Need to sum the number of particles and the projected energy over
             ! all processors.
-            ir(1) = nparticles
-            ir(2) = proj_energy
-            ir(3) = D0_population
-            ir(4) = rspawn
-            call mpi_allreduce(ir, ir_sum, n, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            ntot_particles = nint(ir_sum(1))
-            proj_energy = ir_sum(2)
-            D0_population = ir_sum(3)
-            rspawn = ir_sum(4)
+            ir(1:sampling_size) = nparticles
+            ir(sampling_size+1) = proj_energy
+            ir(sampling_size+2) = proj_hf_expectation
+            ir(2*sampling_size+1) = D0_population
+            ir(2*sampling_size+2) = rspawn
+            call mpi_allreduce(ir, ir_sum, 2*sampling_size+1, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            ntot_particles = nint(ir_sum(1:sampling_size))
+            proj_energy = ir_sum(sampling_size+1)
+            proj_hf_expectation = ir_sum(sampling_size+2)
+            D0_population = ir_sum(2*sampling_size+1)
+            rspawn = ir_sum(2*sampling_size+2)
             
             if (vary_shift) then
-                call update_shift(ntot_particles_old, ntot_particles, ncycles)
+                call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call update_hf_shift(ntot_particles_old(1), ntot_particles(1), ntot_particles_old(2), &
+                                         ntot_particles(2), ncycles)
+                end if
             end if
             ntot_particles_old = ntot_particles
-            if (ntot_particles > target_particles .and. .not.vary_shift) then
+            if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
                 start_vary_shift = ireport
             end if
 #else
             if (vary_shift) then
-                call update_shift(ntot_particles_old, nparticles, ncycles)
+                call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call update_hf_shift(ntot_particles_old(1), nparticles(1), ntot_particles_old(2), nparticles(2), ncycles)
+                end if
             end if
             ntot_particles_old = nparticles
-            if (nparticles > target_particles .and. .not.vary_shift) then
+            if (nparticles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
                 start_vary_shift = ireport
             end if
@@ -83,12 +93,15 @@ contains
             ! average energy quantities over report loop.
             proj_energy = proj_energy/ncycles
             D0_population = D0_population/ncycles
+            ! Similarly for the HFS estimator
+            av_proj_hf_expectation = av_proj_hf_expectation + proj_hf_expectation
+            proj_hf_expectation = proj_hf_expectation/ncycles
             ! average spawning rate over report loop and processor.
             rspawn = rspawn/(ncycles*nprocs)
 
     end subroutine update_energy_estimators
 
-    subroutine update_shift(nparticles_old, nparticles,nupdate_steps)
+    subroutine update_shift(nparticles_old, nparticles, nupdate_steps)
 
         ! Update the shift according to:
         !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
@@ -111,6 +124,20 @@ contains
         av_shift = av_shift + shift
 
     end subroutine update_shift
+
+    subroutine update_hf_shift(nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
+
+        use fciqmc_data, only: tau, shift_damping
+        use hfs_data, only: hf_shift, av_hf_shift
+
+        integer, intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps
+
+        hf_shift = hf_shift + &
+                 (shift_damping/(tau*nupdate_steps)) &
+                 *(real(nhf_particles,p)/nparticles - real(nhf_particles_old,p)/nparticles_old)
+        av_hf_shift = av_hf_shift + hf_shift
+
+    end subroutine update_hf_shift
 
     subroutine update_proj_energy_hub_k(idet)
 
@@ -141,13 +168,13 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(idet)
+            D0_population = D0_population + walker_population(1,idet)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to 
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            proj_energy = proj_energy + hmatel*walker_population(idet)
+            proj_energy = proj_energy + hmatel*walker_population(1,idet)
         end if
 
     end subroutine update_proj_energy_hub_k
@@ -181,14 +208,57 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(idet)
+            D0_population = D0_population + walker_population(1,idet)
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to 
             ! projected energy.
             hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            proj_energy = proj_energy + hmatel*walker_population(idet)
+            proj_energy = proj_energy + hmatel*walker_population(1,idet)
         end if
 
     end subroutine update_proj_energy_hub_real
+
+    subroutine update_proj_hfs_hub_k(idet, inst_proj_energy, inst_proj_hf_t1)
+
+        ! Add the contribution of the current determinant to the projected
+        ! energy in an identical way to update_proj_energy_hub_k.
+
+        ! Also add the contribution of the current determinant to the running
+        ! total of the projected Hellmann--Feynman estimator.
+
+        ! This procedure is for the Hubbard model in momentum space only.
+
+        ! In:
+        !    idet: index of current determinant in the main walker list.
+        ! In/Out:
+        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !    This is updated if D_i is connected to D_0 (and isn't D_0).
+
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use excitations, only: excit, get_excitation
+        use hamiltonian, only: slater_condon2_hub_k
+        use hfs_data, only: D0_hf_population
+
+        integer, intent(in) :: idet
+        real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
+        type(excit) :: excitation
+        real(p) :: hmatel
+
+        excitation = get_excitation(walker_dets(:,idet), f0)
+
+        if (excitation%nexcit == 0) then
+            ! Have reference determinant.
+            D0_population = D0_population + walker_population(1,idet)
+            D0_hf_population = walker_population(2,idet)
+        else if (excitation%nexcit == 2) then
+            ! Have a determinant connected to the reference determinant: add to 
+            ! projected energy.
+            hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
+                                       & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
+            inst_proj_energy = inst_proj_energy + hmatel*walker_population(1,idet)
+            inst_proj_hf_t1 = inst_proj_hf_t1 + hmatel*walker_population(2,idet)
+        end if
+
+    end subroutine update_proj_hfs_hub_k
 
 end module energy_evaluation

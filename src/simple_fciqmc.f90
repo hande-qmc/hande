@@ -71,7 +71,7 @@ contains
         ! Allocate main and spawned lists to hold population of walkers.
         ! Don't need to hold determinants, so can just set spawned_size to be 1.
         spawned_size = 1
-        allocate(walker_population(ndets), stat=ierr)
+        allocate(walker_population(1,ndets), stat=ierr)
         call check_allocate('walker_population',ndets,ierr)
         allocate(spawned_walkers1(spawned_size,ndets), stat=ierr)
         call check_allocate('spawned_walkers1',spawned_size*ndets,ierr)
@@ -108,7 +108,7 @@ contains
             end if
             call decode_det(f0, occ_list0)
             f0 = dets_list(:,ref_det)
-            walker_population(ref_det) = nint(D0_population)
+            walker_population(1,ref_det) = nint(D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
@@ -131,6 +131,8 @@ contains
 
         ! from restart
         nparticles_old = nparticles_old_restart
+
+        nparticles = sum(abs(walker_population(1,:)))
 
         call write_fciqmc_report_header()
 
@@ -159,7 +161,7 @@ contains
                     call simple_update_proj_energy(iwalker, proj_energy)
 
                     ! Simulate spawning.
-                    do ipart = 1, abs(walker_population(iwalker))
+                    do ipart = 1, abs(walker_population(1,iwalker))
                         ! Attempt to spawn from the current particle onto all
                         ! connected determinants.
                         call attempt_spawn(iwalker)
@@ -171,14 +173,14 @@ contains
 
                 ! Find the spawning rate and add to the running
                 ! total.
-                rspawn = rspawn + sum(abs(spawned_walkers(1,:)))/nattempts
+                rspawn = rspawn + real(sum(abs(spawned_walkers(1,:))))/nattempts
 
                 call simple_annihilation()
 
             end do
 
             ! Update the shift
-            nparticles = sum(abs(walker_population))
+            nparticles = sum(abs(walker_population(1,:)))
             if (vary_shift) then
                 call update_shift(nparticles_old, nparticles, ncycles)
             end if
@@ -195,6 +197,7 @@ contains
             ! Average these quantities over the report cycle.
             proj_energy = proj_energy/ncycles
             D0_population = D0_population/ncycles
+            rspawn = rspawn/ncycles
 
             call cpu_time(t2)
             
@@ -250,7 +253,7 @@ contains
             ! Create particles.
             if (hamil(iwalker,j) > 0.0_p) then
                 ! Flip child sign.
-                if (walker_population(iwalker) < 0) then
+                if (walker_population(1,iwalker) < 0) then
                     ! Positive offspring.
                     spawned_walkers(1,j) = spawned_walkers(1,j) + nspawn
                 else
@@ -258,7 +261,7 @@ contains
                 end if
             else
                 ! Same sign as parent.
-                if (walker_population(iwalker) > 0) then
+                if (walker_population(1,iwalker) > 0) then
                     ! Positive offspring.
                     spawned_walkers(1,j) = spawned_walkers(1,j) + nspawn
                 else
@@ -289,7 +292,7 @@ contains
         ! We store the Hamiltonian matrix rather than the K matrix.
         ! It is efficient to allow all particles on a given determinant to
         ! attempt to die in one go (like lemmings) in a stochastic process.
-        rate = abs(walker_population(iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
+        rate = abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
         ! Number to definitely kill.
         nkill = int(rate)
         rate = rate - nkill
@@ -305,9 +308,9 @@ contains
         end if
 
         ! Don't allow creation of anti-particles in simple_fciqmc.
-        if (nkill > abs(walker_population(iwalker))) then
-            write (6,*) iwalker, walker_population(iwalker), &
-            abs(walker_population(iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
+        if (nkill > abs(walker_population(1,iwalker))) then
+            write (6,*) iwalker, walker_population(1,iwalker), &
+            abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 
@@ -315,10 +318,10 @@ contains
         ! Particle death takes the walker_population closer to 0...
         ! (and similarly if cloning (ie nkill is negative) then the
         ! walker_population should move away from 0...)
-        if (walker_population(iwalker) > 0) then
-            walker_population(iwalker) = walker_population(iwalker) - nkill
+        if (walker_population(1,iwalker) > 0) then
+            walker_population(1,iwalker) = walker_population(1,iwalker) - nkill
         else
-            walker_population(iwalker) = walker_population(iwalker) + nkill
+            walker_population(1,iwalker) = walker_population(1,iwalker) + nkill
         end if
 
     end subroutine simple_death
@@ -331,7 +334,7 @@ contains
         ! determinants for both the main and spawned lists so it just amounts to
         ! adding the two arrays together,
 
-        walker_population = walker_population + spawned_walkers(1,:)
+        walker_population = walker_population + spawned_walkers
 
     end subroutine simple_annihilation
 
@@ -361,9 +364,9 @@ contains
 
         if (iwalker == ref_det) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(iwalker)
+            D0_population = D0_population + walker_population(1,iwalker)
         else
-            inst_proj_energy = inst_proj_energy + hamil(iwalker,ref_det)*walker_population(iwalker)
+            inst_proj_energy = inst_proj_energy + hamil(iwalker,ref_det)*walker_population(1,iwalker)
         end if
 
     end subroutine simple_update_proj_energy

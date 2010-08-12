@@ -8,170 +8,6 @@ implicit none
 
 contains
 
-    subroutine init_fciqmc()
-
-        ! Initialisation for fciqmc calculations.
-        ! Setup the spin polarisation for the system, initialise the RNG,
-        ! allocate the required memory for the list of walkers and set the
-        ! initial walker.
-
-        use checking, only: check_allocate
-        use errors, only: stop_all
-        use hashing, only: murmurhash_bit_string
-        use parallel, only: iproc, nprocs, parent
-        use utils, only: int_fmt
-
-        use basis, only: basis_length, write_basis_fn, basis_fns
-        use calc, only: sym_in, ms_in
-        use determinants, only: encode_det, set_spin_polarisation, write_det
-        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
-        use fciqmc_restart, only: read_restart
-        use fciqmc_data, only: occ_list0
-        use system, only: nel, system_type, hub_real, hub_k
-        use symmetry, only: gamma_sym, sym_table
-
-        integer :: ierr
-        integer :: i
-        integer :: step
-        integer :: ref_sym ! the symmetry of the reference determinant
-        if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
-
-        ! Allocate main walker lists.
-        allocate(walker_dets(basis_length,walker_length), stat=ierr)
-        call check_allocate('walker_dets',basis_length*walker_length,ierr)
-        allocate(walker_population(walker_length), stat=ierr)
-        call check_allocate('walker_population',walker_length,ierr)
-        allocate(walker_energies(walker_length), stat=ierr)
-        call check_allocate('walker_energies',walker_length,ierr)
-
-        ! Allocate spawned walker lists.
-        if (initiator) then
-            spawned_size = basis_length + 2
-        else
-            spawned_size = basis_length + 1
-        end if
-        if (mod(spawned_walker_length, nprocs) /= 0) then
-            if (parent) write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
-            spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
-            if (parent) write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',a1,/)') &
-                                        'Increasing spawned_walker_length to',spawned_walker_length,'.'
-        end if
-        allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
-        call check_allocate('spawned_walkers1',spawned_size*spawned_walker_length,ierr)
-        spawned_walkers => spawned_walkers1
-        ! Allocate scratch space for doing communication.
-        allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
-        call check_allocate('spawned_walkers2',spawned_size*spawned_walker_length,ierr)
-        spawned_walkers_recvd => spawned_walkers2
-
-        ! Set spawning_head to be the same size as spawning_block_start.
-        allocate(spawning_head(0:max(1,nprocs-1)), stat=ierr)
-        call check_allocate('spawning_head',max(2,nprocs),ierr)
-
-        ! Find the start position within the spawned walker lists for each
-        ! processor.
-        ! spawning_block_start(1) should contain the number of elements allocated
-        ! for each processor so we allow it to be accessible even if the number
-        ! of processors is 1.
-        allocate(spawning_block_start(0:max(1,nprocs-1)), stat=ierr)
-        call check_allocate('spawning_block_start',max(2,nprocs),ierr)
-        step = spawned_walker_length/nprocs
-        forall (i=0:nprocs-1) spawning_block_start(i) = i*step
-
-        ! Set spin variables.
-        call set_spin_polarisation(ms_in)
-
-        ! Set initial walker population.
-        ! occ_list could be set and allocated in the input.
-        allocate(f0(basis_length), stat=ierr)
-        call check_allocate('f0',basis_length,ierr)
-        if (restart) then
-            if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(nel), stat=ierr)
-                call check_allocate('occ_list0',nel,ierr)
-            end if
-            call read_restart()
-        else
-            tot_walkers = 1
-            walker_population(tot_walkers) = nint(D0_population)
-
-            ! Reference det
-            ! Set the reference determinant to be the spin-orbitals with the lowest
-            ! kinetic energy which satisfy the spin polarisation.
-            ! Note: this is for testing only!  The symmetry input is currently
-            ! ignored.
-            call set_reference_det()
-
-            call encode_det(occ_list0, walker_dets(:,tot_walkers))
-
-            walker_energies(tot_walkers) = 0.0_p
-
-            f0 = walker_dets(:,tot_walkers)
-            ! Energy of reference determinant.
-            select case(system_type)
-            case(hub_k)
-                H00 = slater_condon0_hub_k(f0)
-            case(hub_real)
-                H00 = slater_condon0_hub_real(f0)
-            end select
-
-            ! Finally, we need to check if the reference determinant actually
-            ! belongs on this processor.
-            ! If it doesn't, set the walkers array to be empty.
-            if (nprocs > 1) then
-                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
-                if (D0_proc /= iproc) tot_walkers = 0
-            else
-                D0_proc = iproc
-            end if
-        end if
-
-        ! Total number of particles on processor.
-        ! Probably should be handled more simply by setting it to be either 0 or
-        ! D0_population or obtaining it from the restart file, as appropriate.
-        nparticles = sum(abs(walker_population(:tot_walkers)))
-
-        ! calculate the reference determinant symmetry
-        ! Brought outside if block for clarity.
-        ! Only if we are working in k-space.
-        if(system_type == hub_k) then
-            ref_sym = gamma_sym
-            do i=1,nel
-                ref_sym = sym_table((occ_list0(i)+1)/2,ref_sym)
-            end do
-        end if
-
-        if (parent) then
-            write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-            call write_det(f0, new_line=.true.)
-            write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-            if(system_type == hub_k) then
-                write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
-                call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
-            end if
-            write (6,'(1X,a44,1X,f11.4,/)') &
-                              'Initial population on reference determinant:',D0_population
-            write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
-            if (initiator) then
-                write (6,'(1X,a24)') 'Initiator method in use.'
-                write (6,'(1X,a36,1X,"(",'//int_fmt(CAS(1),0)//',",",'//int_fmt(CAS(2),0)//'")")')  &
-                    'CAS space of initiator determinants:',CAS
-                write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
-                    'Population for a determinant outside CAS space to be an initiator:', initiator_population
-            end if
-            write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
-            write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
-            write (6,'(1X,a88)') 'Average shift: the running average of the shift from when the shift was allowed to vary.'
-            write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
-                                 &Calculated at the end of each cycle.'
-            write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
-            write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
-            write (6,'(1X,a49)') '# particles: current total population of walkers.'
-            write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
-        end if
-        
-    end subroutine init_fciqmc
-
     subroutine fciqmc_main()
 
         ! Wrapper around do_fciqmc and do_ifciqmc to set the appropriate procedures
@@ -180,12 +16,16 @@ contains
         ! within the fciqmc algorithm.
 
         use system, only: system_type, hub_k, hub_real
+        use hellmann_feynman_sampling
+
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
-        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_energy_hub_real
+        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
-        if (initiator) then
+        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, doing_calc
+
+        if (doing_calc(initiator_fciqmc)) then
             select case(system_type)
             case(hub_k)
                 call do_ifciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
@@ -195,7 +35,12 @@ contains
         else
             select case(system_type)
             case(hub_k)
-                call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call init_hellmann_feynman_sampling()
+                    call do_hfs_fciqmc(decode_det_spinocc_spinunocc, update_proj_hfs_hub_k, spawn_hub_k, slater_condon0_hub_k)
+                else
+                    call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
+                end if
             case(hub_real)
                 call do_fciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
             end select
@@ -277,7 +122,7 @@ contains
             end function sc0
         end interface
 
-        integer :: idet, ireport, icycle, iparticle, nparticles_old
+        integer :: idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, nattempts
@@ -316,7 +161,7 @@ contains
                 spawning_head = spawning_block_start
 
                 ! Number of spawning attempts that will be made.
-                nattempts = nparticles
+                nattempts = nparticles(1)
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -329,17 +174,17 @@ contains
                     ! already looping over the determinants.
                     call update_proj_energy(idet)
 
-                    do iparticle = 1, abs(walker_population(idet))
+                    do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn.
-                        call spawner(cdet, walker_population(idet), nspawned, connection)
+                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned)
+                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
 
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(idet)
+                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1))
 
                 end do
 
@@ -360,13 +205,15 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1)
+            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
 
             call fciqmc_interact(ireport, soft_exit)
             if (soft_exit) exit
+
+!            call dump_restart(ireport*ncycles, nparticles_old(1))
 
         end do
 
@@ -377,7 +224,7 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
     end subroutine do_fciqmc
 
@@ -449,7 +296,7 @@ contains
             end function sc0
         end interface
 
-        integer :: i, idet, ireport, icycle, iparticle, nparticles_old
+        integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, nattempts
@@ -519,7 +366,7 @@ contains
                 spawning_head = spawning_block_start
 
                 ! Number of spawning attempts that will be made.
-                nattempts = nparticles
+                nattempts = nparticles(1)
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -533,7 +380,7 @@ contains
                     call update_proj_energy(idet)
 
                     ! Is this determinant an initiator?
-                    if (abs(walker_population(idet)) > initiator_population) then
+                    if (abs(walker_population(1,idet)) > initiator_population) then
                         ! Has a high enough population to be an initiator.
                         parent_flag = 0
                     else if (all(iand(cdet%f,cas_mask) == cas_core)) then
@@ -544,17 +391,19 @@ contains
                         parent_flag = 1
                     end if
 
-                    do iparticle = 1, abs(walker_population(idet))
+                    do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn.
-                        call spawner(cdet, walker_population(idet), nspawned, connection)
+                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned)
+                        if (nspawned /= 0) then
+                            call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned, spawned_pop)
+                        end if
 
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(idet)
+                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1))
 
                 end do
 
@@ -575,13 +424,15 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1)
+            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
 
             call fciqmc_interact(ireport, soft_exit)
             if (soft_exit) exit
+
+!            call dump_restart(ireport*ncycles, nparticles_old(1))
 
         end do
 
@@ -592,7 +443,7 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
     end subroutine do_ifciqmc
 

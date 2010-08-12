@@ -12,6 +12,7 @@ use fciqmc_data
 use fciqmc_restart, only: read_restart_number, write_restart_number,&
                           binary_fmt_in, binary_fmt_out 
 use hubbard_real, only: finite_cluster
+use hfs_data, only: lmag2
 
 implicit none
 
@@ -125,8 +126,9 @@ contains
             case('FCIQMC')
                 calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
-                calc_type = calc_type + fciqmc_calc
-                initiator = .true.
+                calc_type = calc_type + initiator_fciqmc
+            case('HELLMANN-FEYNMAN')
+                calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
                 calc_type = calc_type + mc_hilbert_space
                 call readi(nhilbert_cycles)
@@ -138,10 +140,10 @@ contains
                 call readi(nlanczos_eigv)
 
             ! Calculation options: lanczos/exact diagonalisation.
-            case('EIGENVALUES')
-                find_eigenvectors = .false.
-            case('EIGENVECTORS')
-                find_eigenvectors = .true.
+            case('PRINT_GROUND_STATE')
+                print_ground_state = .true.
+            case('ANALYSE_GROUND_STATE')
+                analyse_ground_state = .true.
 
             ! Calculation options: fciqmc.
             case('MC_CYCLES')
@@ -198,6 +200,11 @@ contains
                 call readi(CAS(2))
             case('INITIATOR_POPULATION')
                 call readi(initiator_population)
+
+            ! Calculation options: operators sampled using Hellmann--Feynman.
+            case('L2')
+                ! Set value of |l|^2 which is used
+                call readi(lmag2)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
@@ -331,13 +338,13 @@ contains
 
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(find_eigenvectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(print_ground_state, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(analyse_ground_state, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)

@@ -8,32 +8,46 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(cpos)
+    subroutine stochastic_death(Kii, population, tot_population)
 
         ! Particles will attempt to die with probability
-        !  p_d = tau(K_ii - S)
-        ! where tau is the timestep, S is the shift and K_ii is
-        !  K_ii =  < D_i | H | D_i > - E_0
+        !  p_d = tau*M_ii
+        ! where tau is the timestep and M_ii is the appropriate diagonal
+        ! matrix element.
+        ! For FCIQMC M_ii = K_ii - S where S is the shift and K_ii is
+        !  K_ii =  < D_i | H | D_i > - E_0.
+
         ! In:
-        !    cpos: current position within the main walkers array.
+        !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
+        !         which the particles reside.
+        ! In/Out:
+        !    population: number of particles on determinant D_i.
+        !    tot_population: total number of particles.
+        
+        ! Note that population and tot_population refer to a single 'type' of
+        ! population, i.e. either a set of Hamiltonian walkers or a set of
+        ! Hellmann--Feynman walkers.
 
         use dSFMT_interface, only: genrand_real2
 
-        integer, intent(in) :: cpos
+        real(p), intent(in) :: Kii
+        integer, intent(inout) :: population, tot_population
+
         real(p) :: pd
         real(dp) :: r
-        integer :: current_pop, new_pop, kill
+        integer :: kill, old_population
 
         ! Optimisation: the number of particles on a given determinant can die
         ! stochastically...
+        ! This amounts to multplying p_d by the population.  int(p_d) is thus
+        ! the number that definitely die and the fractional part of p_d is the
+        ! probability of an additional death.
 
-        pd = tau*(walker_energies(cpos)-shift)
-
-        current_pop = walker_population(cpos)
+        pd = tau*(Kii-shift)
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.
-        pd = pd*abs(current_pop)
+        pd = pd*abs(population)
 
         ! Number that definitely die...
         kill = int(pd)
@@ -51,19 +65,76 @@ contains
             end if
         end if
 
-        ! Find the new total of particles.
+        ! Find the new number of particles.
         ! If kill is positive then particles are killed (i.e. the population
         ! should move towards zero).
-        ! Also update the number of particles on the processor.
-        if (current_pop < 0) then
-            new_pop = current_pop + kill
+        ! Also update the total number of particles on the processor.
+        old_population = population
+        if (population < 0) then
+            population = population + kill
         else
-            new_pop = current_pop - kill
+            population = population - kill
         end if
-        nparticles = nparticles - abs(current_pop) + abs(new_pop)
-
-        walker_population(cpos) = new_pop
+        tot_population = tot_population - abs(old_population) + abs(population)
 
     end subroutine stochastic_death
+
+    subroutine stochastic_hf_cloning(Oii, hamiltonian_pop, hf_pop, tot_hf_pop)
+
+        ! Clone Hellmann--Feynman particles from Hamiltonian particles.
+        ! HF particles are created from Hamiltonian particles on the same
+        ! determinant with probability 
+        !   tau(O_ii - \tilde{S})
+        ! where
+        !   O_ii = < D_i | O | D_i >
+        !   \tilde{S} is the HF shift.
+
+        ! In:
+        !    Oii: < D_i | O | D_i > (stored in the appropriate element of
+        !        walker_enegies).
+        !    hamiltonian_pop: number of Hamiltonian particles on determinant
+        !        D_i.
+        ! In/Out:
+        !    hf_pop: number of Hellmann--Feynman particles on determinant D_i.
+        !    tot_hf_pop: total number of Hellmann--Feynman particles.
+
+        use dSFMT_interface, only: genrand_real2
+
+        use hfs_data, only: hf_shift
+
+        real(p), intent(in) :: Oii
+        integer, intent(in) :: hamiltonian_pop
+        integer, intent(inout) :: hf_pop, tot_hf_pop
+
+        real(p) :: pd, matel
+        real(dp) :: r
+        integer :: clone, old_pop
+
+        ! Attempt to clone with a Hellmann--Feynman walker with probability
+        !  p = tau*(Oii-shift)
+        ! This will be the same for all particles on the determinant, so we can
+        ! attempt all cloning in one shot.
+        matel = Oii-hf_shift
+        pd = tau*abs(matel*hamiltonian_pop)
+
+        ! Number that are definitely cloned...
+        clone = int(pd)
+
+        ! In addition, stochastic cloning.
+        pd = pd - clone
+        r = genrand_real2()
+        if (pd > r) clone = clone + 1
+
+        ! Hellmann--Feynman offsping have the same sign as the Hamiltonian
+        ! parents if Oii-hf_shift is negative, otherwise they have the opposite sign.
+        old_pop = hf_pop
+        if (matel > 0.0_p) then
+            hf_pop = hf_pop - sign(clone, hamiltonian_pop)
+        else
+            hf_pop = hf_pop + sign(clone, hamiltonian_pop)
+        end if
+        tot_hf_pop = tot_hf_pop - abs(old_pop) + abs(hf_pop)
+
+    end subroutine stochastic_hf_cloning
 
 end module death
