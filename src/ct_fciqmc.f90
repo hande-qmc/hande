@@ -8,8 +8,9 @@ implicit none
     ! Array to hold the spawned times of the walkers
 real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
 
+
 contains
-    subroutine do_tc_fciqmc()
+    subroutine do_tc_fciqmc(spawner)
         
         integer :: nspawned, ireport, idet, iparticle
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
@@ -46,7 +47,7 @@ contains
                 ! loop over each walker on the determinant
                 do iparticle = 1, abs(walker_population(1,idet))
 
-                    time = 0
+                    time = 0.0_p
                     do
                         time = time + timestep(R)
                         if ( time > t_barrier ) exit
@@ -55,17 +56,13 @@ contains
                         
                         ! If death then kill the walker immediately and move
                         ! onto the next one
-                        if (connections%nexcit == 0) then
-                            !if the spawned walker and the parent (all the
-                            !walkers on a perticular det. have the same sgn due
-                            !to annihilation) are of opposite sgn we get death
-                            if(walker_population(1,idet)*nspawned < 0) then
-                                if (sgn(nspawned) == 1) then
-                                    tmp_pop = tmp_pop + 1 ! if nspawned +ve then add it
-                                else
-                                    tmp_pop = tmp_pop - 1 ! if nspawned -ve then subtract it
-                                end if
-                                exit ! the walker is dead
+                        !if the spawned walker and the parent (all the
+                        !walkers on a perticular det. have the same sgn due
+                        !to annihilation) are of opposite sgn we get death
+                        if (connections%nexcit == 0 .and. &
+                        walker_population(1,idet)*nspawned < 0) then
+                            tmp_pop = tmp_pop + nspawned 
+                            exit ! the walker is dead
                             end if
                         end if
 
@@ -77,7 +74,9 @@ contains
                     end do
 
                 end do
+                
                 walker_population(1,idet) = tmp_pop
+            
             end do
 
             ! now we advance all the spawned walkers to the barrier from their
@@ -105,8 +104,15 @@ contains
                             time = time - timestep(R)
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet, spawned_walkers(spawned_pop,idet), nspawned, connections)
-                            
+                            call ct_spawn(cdet, spawned_walkers(spawned_pop,current_pos(iproc)), nspawned, connections)
+                           
+                            ! Handle walker death
+                            if(connections%nexcit == 0 .and. &
+                            spawned_walkers(spawned_pop,current_pos(iproc))*nspawned < 0) then
+                                spawned_walkers(spawned_pop,current_pos(iproc)) = spawned_walkers(spawned_pop,current_pos(iproc) + nspawned 
+                                exit
+                            end if
+
                             ! add a walker to the end of the spawned walker list in the
                             ! appropriate block - this will increment the appropriate
                             ! spawning heads for the processors which were spawned on
@@ -123,18 +129,24 @@ contains
                 if(all(current_pos == spawning_head+1)) exit
                 
             end do
+
+            do_annihilation
+            if(vary_shift) update_shift
+            print_out
+
         end do
 
     end subroutine do_tc_fciqmc
 
     
-    subroutine ct_spawn(d, parent_sgn, nspawned, connection)
+    subroutine ct_spawn_real(d, K_ii, parent_sgn, matel, nspawned, connection)
     
         ! randomly select a (valid) excitation from the current determinant
-        ! stored in "d"
+        ! stored in "d" for the Hubbard model in realspace
         !
         ! In: 
         !    d: info on current determinant that we will spawn from.
+        !    R_ii: the diagonal Hamiltonian matrix element for the determinant d
         !    parent_sgn: sgn on the parent determinant (i.e. +ve or -ve integer)
         !
         ! Out:
@@ -143,8 +155,56 @@ contains
         !    connection: the excitation connection between the parent and child
         !                determinants
 
-    end subroutine ct_spawn
-    
+        use excitations, only: enumerate_all_excitations
+        use dSFMT_interface, only: genrand_real2
+        use system, only: ndim, nel
+
+        type(det_info), intent(in) :: det
+        integer, intent(in) :: parent_sgn
+        real(p), intent(in) :: K_ii, matel
+        
+        integer, intent(out) :: nspawned
+        type(excit), intent(out) :: connection
+        
+        real(p) :: rand, test, R_ii, R, abs_matel
+        integer :: num_excitations
+        type(excit) :: connection_list(2*ndim*nel)
+
+        R_ii = abs(H_ii)
+        abs_matel = abs(matel)
+        call enumerate_all_excitations_real(d, num_excitations, connection_list)
+        R = R_ii + matel*num_excitations
+        rand = genrand_real2()*R
+
+        if (rand < R_ii) then
+            connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
+            if (K_ii < 0) then    ! child is same sign as parent
+                nspawned = sign(1,parent_sgn)
+            else if (K_ii > 0) then
+                nspawned = -sign(1,parent_sgn)
+            else
+                nspawned = 0
+            end if
+        else
+            test = R_ii
+            do j = 2, nexcit
+                test = test + abs_matel
+                if (rand < test) then
+                    if (K_ii < 0) then ! child is same sign as parent
+                        nspawned = sign(1,parent_sgn)
+                    else if (K_ii > 0)
+                        nspawned = -sign(1,parent_sgn)
+                    else
+                        nspawned = 0
+                    end if
+                    connection = connection_list(j)
+                    exit
+                end if
+            end do
+        end if
+
+    end subroutine ct_spawn_real
+
 
     subroutine create_spawned_particle_ct(d, connection, time, nspawned, spawned_pop)
 
@@ -174,6 +234,7 @@ contains
 
         ! Returns a random timestep to advance a walker by for the continuous
         ! time algorithm.
+
         use dSFMT_interface, only: genrand_real2
 
         real(p), intent(out) :: timestep
