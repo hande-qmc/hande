@@ -118,9 +118,10 @@ real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
 ! is 1.
 integer :: spawned_size
 integer :: spawned_pop, spawned_parent, spawned_hf_pop
-! b) determinants.
+! b) determinants and the spawn times of the progeny (only used for ct_fciqmc)
 integer(i0), allocatable, target :: spawned_walkers1(:,:) ! (spawned_size, spawned_walker_length)
 integer(i0), allocatable, target :: spawned_walkers2(:,:) ! (spawned_size, spawned_walker_length)
+real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
 ! c) pointers.
 ! In serial we only use spawned_walker_*1.  In parallel it is useful to have two
 ! arrays (one for receiving data and one for sending data when we need to

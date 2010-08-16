@@ -61,7 +61,7 @@ contains
         allocate(walker_energies(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_energies', sampling_size*walker_length, ierr)
 
-        ! Allocate spawned walker lists.
+        ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
         if (mod(spawned_walker_length, nprocs) /= 0) then
             if (parent) write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
             spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
@@ -71,6 +71,8 @@ contains
         allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
         call check_allocate('spawned_walkers1',spawned_size*spawned_walker_length,ierr)
         spawned_walkers => spawned_walkers1
+        allocate(spawn_times(spawned_walker_length),stat=ierr)
+        call check_allocate('spawn_times',spawned_walker_length,ierr)
         ! Allocate scratch space for doing communication.
         allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
         call check_allocate('spawned_walkers2',spawned_size*spawned_walker_length,ierr)
