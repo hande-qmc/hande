@@ -36,11 +36,11 @@ contains
         !    If the excitation is a single or double excitation then it also
         !    includes:
         ! 
-        !        excitation%from_orbs(2): orbitals excited from in f1.
-        !        excitation%to_orbs(2): orbitals excited to in f2.
+        !        excitation%from_orb(2): orbitals excited from in f1.
+        !        excitation%to_orb(2): orbitals excited to in f2.
         !        excitation%perm: true if an odd number of permutations are
         !            reqiured to align the determinants.
-        !        The second element of from_orbs and to_orbs is zero for single
+        !        The second element of from_orb and to_orb is zero for single
         !        excitations.
 
         use bit_utils
@@ -543,7 +543,7 @@ contains
 
     end function calc_pgen_hub_real
 
-    pure subroutine enumerate_all_excitations_real(cdet, nexcit, excitations)
+    pure subroutine enumerate_all_excitations_hub_real(cdet, max_excit, excitations)
 
         ! Find all excitations connected to a determinant constructed from the
         ! real-space (atomic) spin-orbitals.
@@ -552,10 +552,11 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  The f and occ_list fields must be set.
         ! Out:
-        !    nexcit: the number of possible excitations from the determinant.
+        !    max_excit: the number of possible excitations from the determinant.
         !    excitations: array of excit variables containing the excitation
         !        information.  Note that only single excitations are allowed, so
-        !        the nexcit field is not set and the permutation field is also
+        !        the nexcit field is not set, the second element in the from_orb
+        !        and to_orb filed is not set, and the permutation field is also
         !        not set, as it's quite expensive to evaluate and not necessary
         !        for most of the excitations.  The array must be at least of the
         !        size of the maximum number of excitations: 2*ndim*nel.
@@ -566,12 +567,12 @@ contains
         use system, only: ndim, nel
 
         type(det_info), intent(in) :: cdet
-        integer, intent(out) :: nexcit
+        integer, intent(out) :: max_excit
         type(excit), intent(out) :: excitations(:)
 
         integer :: ii, i, ia, a, a_pos, a_el
 
-        nexcit = 0
+        max_excit = 0
 
         do ii = 1, nel
             i = cdet%occ_list(i)
@@ -587,17 +588,17 @@ contains
                     a_el = bit_lookup(2,a)
                     if (.not.btest(cdet%f(a_el), a_pos)) then
                         ! a is unoccupied.  Have an excitation.
-                        nexcit = nexcit+1
-                        excitations(nexcit)%from_orb(1) = i
-                        excitations(nexcit)%to_orb(1) = a
+                        max_excit = max_excit+1
+                        excitations(max_excit)%from_orb(1) = i
+                        excitations(max_excit)%to_orb(1) = a
                     end if
                 end if
             end do
         end do
 
-    end subroutine enumerate_all_excitations_real
+    end subroutine enumerate_all_excitations_hub_real
 
-    pure subroutine enumerate_all_excitations_k(cdet, nexcit, excitations)
+    pure subroutine enumerate_all_excitations_hub_k(cdet, max_excit, excitations)
 
         ! Find all excitations connected to a determinant constructed from the
         ! momentum-space (Bloch) spin-orbitals.
@@ -607,7 +608,7 @@ contains
         !        from.  The f, occ_list_alpha, occ_list_beta and
         !        occ_list_unocc_alpha fields must be set.
         ! Out:
-        !    nexcit: the number of possible excitations from the determinant.
+        !    max_excit: the number of possible excitations from the determinant.
         !    excitations: array of excit variables containing the excitation
         !        information.  Note that only double excitations are allowed, so
         !        the nexcit field is not set and the permutation field is also
@@ -615,6 +616,8 @@ contains
         !        for most of the excitations.  The array must be at least of the
         !        size of the maximum number of excitations:
         !        nalpha*nbeta*min(nsites-nalpha,nsites-nbeta).
+        !        WARNING: the from_orb and to_orb are not ordered and must be
+        !        ordered before (e.g.) find_excitation_permutation2 is called.
 
         use basis, only: bit_lookup
         use determinants, only: det_info
@@ -622,12 +625,12 @@ contains
         use system, only: ndim, nel, nalpha, nvirt_alpha, nbeta
 
         type(det_info), intent(in) :: cdet
-        integer, intent(out) :: nexcit
+        integer, intent(out) :: max_excit
         type(excit), intent(out) :: excitations(:)
 
         integer :: ii, i, ij, j, ij_sym, ia, a, b, b_pos, b_el
 
-        nexcit = 0
+        max_excit = 0
 
         do ii = 1, nalpha
             i = cdet%occ_list_alpha(ii)
@@ -644,14 +647,14 @@ contains
                     b_el = bit_lookup(2,b)
                     if (.not.btest(cdet%f(b_el), b_pos)) then
                         ! If b is unoccupied then have found the excitation.
-                        nexcit = nexcit + 1
-                        excitations(nexcit)%from_orb = (/ i, j /)
-                        excitations(nexcit)%to_orb = (/ a, b /)
+                        max_excit = max_excit + 1
+                        excitations(max_excit)%from_orb = (/ i, j /)
+                        excitations(max_excit)%to_orb = (/ a, b /)
                     end if
                 end do
             end do
         end do
 
-    end subroutine enumerate_all_excitations_k
+    end subroutine enumerate_all_excitations_hub_k
 
 end module excitations
