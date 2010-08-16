@@ -1,0 +1,901 @@
+\documentclass{article}
+
+\usepackage{times}
+\usepackage{graphics}
+\usepackage{bm}
+
+\usepackage{amsmath}
+
+\setlength{\parindent}{0mm}
+\setlength{\parskip}{3mm}
+
+\newcommand{\mathbi}[1]{\textbf{\em #1}}
+
+\newcommand{\bi}{\boldsymbol{i}}
+\newcommand{\bj}{\boldsymbol{j}}
+\newcommand{\bk}{\boldsymbol{k}}
+\newcommand{\bzero}{\boldsymbol{0}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bP}{\boldsymbol{P}}
+\newcommand{\bp}{\boldsymbol{p}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\bH}{\boldsymbol{H}}
+\newcommand{\bT}{\boldsymbol{T}}
+\newcommand{\bc}{\boldsymbol{c}}
+\newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bO}{\boldsymbol{O}}
+
+\newcommand{\bra}{\langle}
+\newcommand{\ket}{\rangle}
+
+\begin{document}
+
+\title{The Full-Configuration-Interaction Quantum Monte
+  Carlo Method} 
+\author{Matthew Foulkes and James Spencer}
+\date{\today} \maketitle
+
+
+\section{The Configuration-Interaction Approach to 
+the Many-Electron Schr\"{o}dinger Equation}
+\label{sec:ConfigurationInteraction}
+
+Choose an orthonormal set of $M$ single-particle spin orbitals $\{
+\phi_1, \phi_2,\ldots, \phi_M\}$. These could be any sensible basis
+set: Gaussians, plane waves, molecular orbitals represented as linear
+combinations of Gaussian or plane waves, Wannier functions, $\ldots$.
+
+Given any selection $\{ \phi_{i_1}, \phi_{i_2}, \ldots, \phi_{i_N} \}$
+of $N$ ($\leq M$) of the single-particle spin orbitals, one can
+construct an $N$-electron Slater determinant:
+\begin{eqnarray*}
+D_{\bi} & = &  D_{i_1,i_2,\ldots,i_N} \;\; = \;\; 
+\frac{1}{\sqrt{N!}} \left | \phi_{i_1}
+\phi_{i_2}\ldots \phi_{i_N} \right | \\
+& = & \frac{1}{\sqrt{N!}}\left | \begin{array}{lllll}
+\phi_{i_1}(1) & \phi_{i_1}(2) & \ldots & \ldots & \phi_{i_1}(N) \\
+\phi_{i_2}(2) & \phi_{i_2}(2) & \ldots & \ldots & \phi_{i_2}(N) \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\phi_{i_N}(1) & \phi_{i_N}(2) & \ldots & \ldots & \phi_{i_N}(N)
+\end{array} \right |\;.
+\end{eqnarray*}
+The order in which the orbitals appear only affects the sign, so we
+might as well insist that $i_1 < i_2 \ldots < i_N$. The $^MC_N$
+inequivalent determinants provide an incomplete basis for the space of
+$N$-electron wave functions. The determinants in the basis are known
+as configurations and are labelled by the ordered set of indices $\bi
+= (i_1,i_2,\ldots,i_N)$ where $i_1 < i_2 < \ldots < i_N$.
+
+The $N$-electron ground state $\Psi_0$ may be defined variationally as
+the $N$-electron wave function that minimises the energy expectation
+value
+\begin{displaymath}
+E[\Psi] = \langle \Psi | \hat{H} | \Psi \rangle \;,
+\end{displaymath}
+subject to the normalisation constant $\langle \Psi | \Psi \rangle =
+1$.  Imposing the constraint via a Lagrange multiplier and carrying
+out the variation, it is easy to see that this variational formulation
+is equivalent to the Schr\"{o}dinger equation. If we restrict the
+search for $\Psi_0$ to the subset of wave functions that can be
+expanded in the basis of $^MC_N$ determinants,
+\begin{displaymath}
+\Psi = \sum_{\bi} c_{\bi} D_{\bi} \;,
+\end{displaymath}
+the best set of expansion coefficients $\{ c_{\bi} \}$ minimises the
+function of many variables
+\begin{displaymath}
+E(\{c_{\bi}\}) = \langle {\textstyle \sum_{\bi}} c_{\bi} D_{\bi} | \hat{H} |
+  {\textstyle \sum_{\bj}} c_{\bj} D_{\bj} \rangle = 
+  {\textstyle \sum_{\bi, \bj}} c_{\bj}^{\ast} H_{\bj\bi}^{\,}
+  c_{\bi}^{\,}
+\end{displaymath}
+subject to the constraint $\sum_{\bi} c_{\bi}^{\ast} c_{\bi}^{\,} =
+1$.  Imposing the constraint via a Lagrange multiplier and carrying
+out the minimisation in this discrete case, one finds that the
+minimising coefficients $\{ c_{\bi} \}$ are the lowest eigenvector of
+the matrix eigenvalue problem
+\begin{displaymath}
+\sum_{\bj} H_{\bi\bj}c_{\bj} = E_0 c_{\bi} \;,
+\end{displaymath}
+where $E_0$ is both the Lagrange multiplier and the best estimate of
+the ground-state energy eigenvalue.  Thus, the many-electron
+Schr\"{o}dinger equation is approximated by a matrix equation.
+
+\section{Imaginary-Time Evolution}
+\label{sec:ImaginaryTimeEvolution}
+
+One way to obtain the ground-state eigenvalue and eigenvector of the
+Hamiltonian matrix $H_{\bi\bj}$ is to find the long-time solution of
+the $^MC_N$ coupled first-order differential equations,
+\begin{displaymath}
+\frac{d c_{\bi}}{dt} = - \sum_{\bj} H_{\bi\bj} c_{\bj} \;,
+\end{displaymath}
+or, in matrix-vector form,
+\begin{displaymath}
+\frac{d \bc}{dt} = - \bH \bc \;.
+\end{displaymath}
+If the real variable $t$ were replaced by $it$, this would be a matrix
+representation of the Schr\"{o}dinger equation; as it is, despite the
+fact that $t$ is real, it is called the imaginary-time Schr\"{o}dinger
+equation.
+
+The formal solution of the imaginary-time Schr\"{o}dinger equation is
+easy to write down:
+\begin{displaymath}
+\bc(t) = e^{-\bH t} \bc(0) \;.
+\end{displaymath}
+To understand why this yields the ground state as $t \rightarrow
+\infty$, suppose that the starting vector $\bc(0)$ is expanded in the
+complete orthonormal set of $^MC_N$ eigenvectors $\bv_{\alpha}$ (each
+with $^MC_N$ components) of $\bH$:
+\begin{displaymath}
+\bc(0) = \sum_{\alpha} c_{\alpha}(0) \bv_{\alpha} \;,
+\end{displaymath}
+where 
+\begin{displaymath}
+c_{\alpha}^{\,}(0) = \bv_{\alpha}^{\dagger} \bc(0) \;.
+\end{displaymath}
+Then
+\begin{displaymath}
+\bc(t) = e^{-\bH t} \sum_{\alpha} c_{\alpha}(0) \bv_{\alpha}
+= \sum_{\alpha} c_{\alpha}(0) e^{-\bH t} \bv_{\alpha} = 
+\sum_{\alpha} c_{\alpha}(0) e^{-E_{\alpha} t} \bv_{\alpha} \;.
+\end{displaymath}
+As $t$ increases, the $\alpha$ term in the summation dies out or grows
+depending on the sign and magnitude of the energy eigenvalue
+$E_{\alpha}$. In the $t\rightarrow \infty$ limit, the summation is
+dominated by the ground-state contribution, since this term dies out
+the most slowly (or grows the fastest if $E_{0} < 0$). Thus
+\begin{displaymath}
+\bc(t\rightarrow\infty) \; \approx \; c_0(0) e^{-E_0 t} \bv_0 \;.
+\end{displaymath}
+As long as the starting vector $\bc(t=0)$ has a non-zero ground-state
+component, the imaginary-time evolution yields the ground state
+eventually.
+
+The steady change in normalisation given by the $e^{-E_0 t}$ factor is
+awkward but can be removed by choosing the zero of energy such that
+$E_0 = 0$. In practice, since $E_0$ is not known until the end of the
+simulation, we solve the equation
+\begin{displaymath}
+\frac{d\bc}{dt} = - (\bH - S \bI) \bc \;, \;\;\;\;\;\;
+\bc(t) = e^{-(\bH - S \bI) t} \bc(0) \;,
+\end{displaymath}
+where $\bI$ is the $^MC_N \times \,^MC_N$ identity matrix and the energy
+shift $S$ is adjusted slowly during the simulation to keep the
+normalisation more or less fixed. In the long-time limit, the value of
+$S$ converges to the ground-state eigenvalue $E_0$.
+Note that I have decided not to separate the Hartree-Fock energy
+$E_{\rm HF}$ from the rest of the shift, as favoured by the Alavi
+group, so my definition of $S$ differs from theirs. 
+
+From now on, to make the notation as simple as possible, I define the
+``transition matrix'' $\bT$ via
+\begin{displaymath}
+\bT = -(\bH - S \bI) \;,
+\end{displaymath}
+so that the imaginary-time Schr\"{o}dinger equation becomes
+\begin{displaymath}
+\frac{d\bc}{dt} = \bT \bc \;, \;\;\;\;\;\;\;\;\;
+\frac{dc_{\bi}}{dt} = \sum_{\bj} T_{\bi\bj} c_{\bj} \;.
+\end{displaymath}
+The matrix elements $T_{\bi\bj}$ are not all positive and their signs
+matter, so I sometimes write
+\begin{displaymath}
+T_{\bi\bj} = R_{\bi\bj} \zeta_{\bi\bj} \;,
+\end{displaymath}
+where $R_{\bi\bj} = |T_{\bi\bj}|$ and $\zeta_{\bi\bj} = \mbox{sign}(
+T_{\bi\bj} )$.
+
+\section{The FCIQMC Algorithm}
+\label{sec:FCIQMCAlgorithm}
+
+Consider a collection of markers distributed over the space of
+configurations $D_{\bi}$. Following J.B.\ Anderson, I'll call these
+markers \emph{psips}, which stands for ``psi particles''. Every psip
+has both a location $\bi$ and a ``charge'' $q = \pm 1$. A single step
+of the full configuration-interation quantum Monte Carlo (FCIQMC)
+algorithm proposed by Alavi may be summarised as follows:
+
+\begin{quotation}
+
+\noindent In one time step $\Delta t$, we loop over the population of
+psips and allow each to ``spawn'' children (new psips) at other
+locations, which may be the same or different from the parent's
+location, according to the following rules:
+  \begin{enumerate}
+    \item The probability that a psip at $\bi$ spawns a child at $\bj$
+      is $R_{\bj\bi} \Delta t = |T_{\bj\bi}| \Delta t$. (The
+      interpretation of $R_{\bj\bi}\Delta t$ as a probability requires
+      that $R_{\bj\bi}\Delta t \leq 1 \; \forall \bi,\bj$, limiting
+      the value of $\Delta t$; this restriction may be overcome at the
+      cost of complicating the description of the algorithm.)
+    \item If a parent of charge $q_{\rm parent}$ at location $\bi$
+      spawns a child at location $\bj$, the charge of the child is
+      given by
+      \begin{displaymath}
+        q_{\rm child} = \zeta_{\bj\bi} \, q_{\rm parent} = 
+        \mbox{sign}(T_{\bj\bi}) q_{\rm parent} \,.
+      \end{displaymath}
+  \end{enumerate}
+At the end of the time step, after every psip has spawned as many
+children as it wants (no more than one at any given location, but
+there are many locations to choose from), pairs of psips of opposite
+charge on the same configuration annihilate each other and are removed
+from the simulation. Thus, although psips on different configurations
+may have different signs, all psips on any configuration $\bi$ at the
+end of the time step have the same sign.
+
+\end{quotation}
+
+After many time steps $\Delta t$, the distribution of psips settles
+down and the expected value $\bar{q}_{\bi}$ of the sum of the charges
+of the psips on configuration $\bi$ becomes proportional to the weight
+of $D_{\bi}$ in the expansion of the full CI ground state. That is, if
+we define the ground-state expansion coefficients $c_{\bi}^{0}$ via
+\begin{displaymath}
+\Psi_0 = \sum_{\bi} c_{\bi}^{0} |D_{\bi}\rangle \;,
+\end{displaymath}
+then
+\begin{displaymath}
+\lim_{t\rightarrow\infty} \bar{q}_{\bi}^{\,}(t) \; \propto \; c_{\bi}^0 \;.
+\end{displaymath}
+
+This description of the FCIQMC algorithm differs from Alavi's because
+psips never die. A parent at $\bi$ may, however, spawn a child of the
+opposite sign at the same location $\bi$, in which case the parent and
+child annihilate. Once the simulation has settled down and $S \approx
+E_0$, we have
+\begin{displaymath}
+T_{\bi\bi} = S - H_{\bi\bi} \approx E_0 - H_{\bi\bi} \;.
+\end{displaymath}
+This is less than zero because $E_0 = \langle \Psi_0 | \hat{H} |
+\Psi_0 \rangle \leq \langle D_{\bi} | \hat{H} | D_{\bi} \rangle =
+H_{\bi\bi}$ by the variational principle, so parents and children
+spawned at the same location normally annihilate each other.
+
+
+\section{How Does the FCIQMC Algorithm Work?}
+\label{sec:HowFCIQMCWorks}
+
+Imagine a huge population of psips, all undergoing the dynamics
+described above.  The expected charge $\bar{q}_{\bi}(t + \Delta t)$ on
+configuration $\bi$ at time $t + \Delta t$ is related to the expected
+charges $\bar{q}_{\bj}(t)$ at time $t$ via
+\begin{displaymath}
+\bar{q}_{\bi}(t + \Delta t) \; = \; \bar{q}_{\bi}(t) + \sum_{j}
+T_{\bi\bj} \bar{q}_{\bj}(t) \Delta t \;.
+\end{displaymath}
+The first term on the right-hand side describes the psips already at
+$\bi$ at time step $t$, and the sum over $j$ (which includes the $j=i$
+term) describes the new psips spawned on configuration $\bi$ during
+the time step. The psip annihilation step has no effect on the charge
+on any configuration and hence does not affect this equation. The
+timestep described by the equation above is obviously a first-order
+Euler finite-difference approximation to the equation we would like to
+solve,
+\begin{displaymath}
+\frac{d c_{\bi}(t)}{dt} \; = \; \sum_{\bj} T_{\bi\bj} c_{\bj}(t) \;.
+\end{displaymath}
+Hence, as $t$ increases, the expected psip charges on the
+configurations become proportional to the corresponding components
+$c_{\bi}^0$ of the ground-state eigenvector of the Hamiltonian matrix
+$\bH$.
+
+\section{Time-Step Errors}
+\label{sec:TimeStepErrors}
+
+Finite-difference methods for solving differential equations are
+normally approximate, becoming less accurate as $\Delta t$
+increases. In this case, the use of a finite time step amounts to
+iterating with the matrix
+\begin{displaymath}
+\bI + \bT \Delta t = \bI + (S\bI - \bH) \Delta t
+\end{displaymath}
+instead of with the exact time-evolution operator
+\begin{displaymath}
+e^{\bT \Delta t} = e^{(S\bI - \bH)\Delta t} \;.
+\end{displaymath}
+We show below that both iterative procedures yield the \emph{exact}
+ground-state eigenvector of $\bH$ if the time step $\Delta t$ is small
+enough. This result may seem surprising at first, but it is easy to
+prove and very welcome.
+
+If a Hermitian matrix $\bO$ is applied repeatedly to a vector $\bq$,
+the end result is always to enhance the component of $\bq$ along the
+eigenvector corresponding to the eigenvalue of largest magnitude of
+$\bO$. All other components become relatively less important as the
+iteration count increases. Assuming that we have already reached the
+$t \rightarrow \infty$ limit, so that $S = E_0$, the eigenvalue of
+largest magnitude of the exact propagator $\exp(\bT \Delta t)$ is
+\begin{displaymath}
+\exp (T_{\rm max} \Delta t) = \exp(\{S - E_{0}\}\Delta
+t) = 1 \;,
+\end{displaymath}
+where $T_{\rm max} = S - E_{0}$ is the largest eigenvalue of $\bT =
+S\bI - \bH$ and $E_{0}$ is the smallest eigenvalue of $\bH$. Hence,
+iterating with the exact propagator picks out the ground state of
+$\bH$ as expected.
+
+The eigenvalue of largest magnitude of the approximate propagator $\bI
++ \Delta t \bT$ is either
+\begin{displaymath}
+1 + T_{\rm max} \Delta t \; = \; 1 + (S-E_0)\Delta t \; = \; 1 \;,
+\end{displaymath}
+corresponding to the ground state of $\bH$ (the state we want), or
+\begin{displaymath}
+1 + T_{\rm min} \Delta t \; = \; 1 + (S - E_{\rm max})\Delta t \; = \;
+1 + (E_0 - E_{\rm max})\Delta t\;,
+\end{displaymath}
+corresponding to the eigenvector of $\bH$ with the largest eigenvalue
+$E_{\rm max}$ (which we don't want). Since $E_0 - E_{\rm max} < 0$,
+the ground-state solution is obtained when $\Delta t$ is small enough,
+despite the use of a finite time step. If $\Delta t$ is too large,
+however, $1 + (E_0 - E_{\rm max})\Delta t$ may be less than $-1$, in
+which case
+\begin{displaymath} 
+|1 + (E_0 - E_{\rm max})\Delta t| \; = \; 
+- 1 + (E_{\rm max} -E_{0})\Delta t \; > \; 1 \;.
+\end{displaymath}
+The eigenvector corresponding to the highest eigenvalue of $\bH$ is
+then obtained instead of the eigenvector corresponding to the lowest
+eigenvalue.  This disaster happens when
+\begin{displaymath}
+\Delta t > \frac{2}{E_{\rm max} - E_0} \;.
+\end{displaymath}
+
+To summarise the results of this section, the exact ground-state
+solution is obtained whenever $\Delta t < 2/(E_{\rm max} - E_0)$.
+This condition becomes harder to satisfy as the system is made larger
+or the basis set is increased. In practice, however, for simulations
+of small molecules such as those done by Alavi, it does not seem to be
+a limiting factor.
+
+
+\section{Energy Estimators}
+\label{sec:EnergyEstimators}
+
+How can one estimate the energy once the simulation has settled down
+and the psip charges model the ground state expansion coefficients?
+One estimate is obtained from the energy shift $S$, which, as
+explained earlier, is adjusted to keep the total number of psips more
+or less constant. Once this has been accomplished, the normalisation
+of the psip representation of the ground state is conserved and the
+shift is equal to the ground-state energy.
+
+An alternative approach is to note that, for any single determinant
+$D_{\bzero}$ that has a non-zero component along the ground state, the
+quantity
+\begin{eqnarray*}
+E(t) & = & \frac{\langle D_{\bzero} | \hat{H} | \Psi(t) 
+  \rangle}{\rule{0em}{1em}
+  \langle D_{\bzero} | \Psi(t) \rangle } \\
+& = & 
+\frac{\sum_{\bj} \langle D_{\bzero} | \hat{H} | D_{\bj} \rangle c_{\bj}(t)}
+{c_{\bzero}(t)} \\
+& = & \frac{\sum_{\bj} H_{\bzero\bj} \bar{q}_{\bj}(t)
+  }{\bar{q}_{\bzero}(t)}
+\end{eqnarray*}
+tends to the ground-state energy as $t \rightarrow \infty$. Alavi
+normally works in the basis of Hartree-Fock orbitals and chooses
+$D_{\bzero}$ to be the Hartree-Fock ground-state determinant. Since
+the only non-zero matrix elements of $\hat{H}$ link determinants
+differing by two or fewer excitations (exactly two if the determinants
+are built of Hartree-Fock orbitals), the number of terms that need to
+be included in the sum over $\bj$ is quite limited. Note that it is
+important to average $q_{\bj}$ and $q_{\bzero}$ separately, taking the
+ratio afterwards.
+
+
+\section{Importance Sampling}
+\label{sec:ImportanceSampling}
+
+In diffusion Monte Carlo, it is very advantageous to introduce an
+importance sampling transformation based on a trial wave
+function. Might importance sampling also help in FCIQMC? I am not
+sure, but an importance-sampling transformation analogous to the one
+used in diffusion Monte Carlo is easy to write down and deserves to be
+investigated.
+
+Start with the matrix form of the imaginary-time Schr\"{o}dinger
+equation
+\begin{displaymath}
+\frac{dc_{\bi}(t)}{dt} \; = \;
+- \sum_{\bj} \left ( H_{\bi\bj} - S \delta_{\bi\bj} \right )c_{\bj}(t)
+\;,
+\end{displaymath}
+and choose a trial ground state
+\begin{displaymath}
+\Psi_T \; = \; \sum_{\bi} c_{\bi}^T D_{\bi}^{\,} \;.
+\end{displaymath}
+Multiply the imaginary-time Schr\"{o}dinger equation on both sides by
+$c_{\bi}^{T\ast}$ to obtain
+\begin{eqnarray*}
+c_{\bi}^{T\ast} \frac{dc_{\bi}(t)}{dt} & = & 
+- \sum_{\bj} c_{\bi}^{T\ast} ( H_{\bi\bj} -
+S\delta_{\bi\bj} ) c_{\bj}(t) \\
+& = & \sum_{\bj} \left ( c_{\bi}^{T\ast} ( H_{\bi\bj} - S\delta_{\bi\bj} )
+\frac{1}{c_{\bj}^{T\ast}} \right ) c_{\bj}^{T\ast} c_{\bj}^{\,}(t)
+\end{eqnarray*}
+[Note: These equations are supposed to cover the general case in which
+$c_{\bi}^{T}$ is complex. However, as long as $\hat{H}$ has time
+reversal symmetry (which implies no applied magnetic fields) and the
+basis functions are chosen to be real, the Hamiltonian matrix $\bH$ is
+real and symmetric and every component of the ground-state eigenvector
+$\bc^{0}$ is real. There is then no harm in assuming that every
+component of $\bc^{T}$ is real. This is the only case in which I have
+used importance sampling in DMC. Complex generalisations have been
+used by other people, but I do not guarantee that the complex version
+presented here is correct.] 
+
+Introducing the quantity $f_{\bi}(t) = c_{\bi}^{T\ast}
+c_{\bi}^{\,}(t)$, defining
+\begin{displaymath}
+\tilde{H}_{\bi\bj} \; = \; c_{\bi}^{T\ast} H_{\bi\bj} \frac{1}{c_{\bj}^{T\ast}} \;,
+\end{displaymath}
+and noting that $c_{\bi}^T$ is independent of time, we obtain
+\begin{displaymath}
+\frac{df_{\bi}(t)}{dt} \; = \; 
+\sum_{\bj} \left ( \tilde{H}_{\bi\bj} - S \delta_{\bi\bj} \right )
+f_{\bj}(t) \;,
+\end{displaymath}
+which is the importance-sampled version of the imaginary-time
+Schr\"{o}dinger equation.  It has exactly the same form as the
+original imaginary-time Schr\"{o}dinger equation and may be solved
+using psips in an exactly analogous way, except that the Hamiltonian
+matrix $H_{\bi\bj}$ is replaced by $\tilde{H}_{\bi\bj}$ and the psip
+charges represent $f_{\bi}(t) = c_{\bi}^{T\ast} c_{\bi}^{\,}(t)$
+instead of $c_{\bi}(t)$.
+
+\subsection{Advantages of Importance Sampling}
+
+Most of the advantages of importance sampling in diffusion QMC seem to
+carry over to FCIQMC.
+
+\begin{description}
+
+\item[Psip charge fluctuations are decreased:] Consider the expected
+  total charge of the children spawned at time $t + \Delta t$ by a
+  positively charged psip on configuration $\bi$ at time
+  $t$. Referring back to the algorithm described in Sec.\
+  \ref{sec:FCIQMCAlgorithm} (adjusted to include importance sampling),
+  we see that the psip at $\bi$ produces a child of charge
+  $\mbox{sign}(\tilde{T}_{\bj\bi})$ at $\bj$ (which may equal $\bi$)
+  with probablity $|\tilde{T}_{\bj\bi}|\Delta t$, where
+  \begin{displaymath}
+    \tilde{T}_{\bj\bi} \; = \; c_{\bj}^{T\ast} \left ( S
+    \delta_{\bj\bi} - H_{\bj\bi} \right ) \frac{1}{c_{\bi}^{T\ast}}
+     \; = \; S\delta_{\bj\bi} - \tilde{H}_{\bj\bi}
+    \;.
+  \end{displaymath}
+  The expected total charge $q^{\rm children}_{\bi}(t + \Delta t)$ of
+  the offspring of the psip at $\bi$ is given by
+  \begin{eqnarray*}
+    q_{\bi}^{\rm children}(t + \Delta t) & = &
+    \sum_{\bj} \tilde{T}_{\bj\bi}\Delta t \\
+    & = & S\Delta t - \sum_{\bj}
+    \tilde{H}_{\bj\bi} \Delta t \\
+    & = & S\Delta t - \sum_{\bj} \left ( c_{\bj}^{T\ast} H_{\bj\bi}
+    \frac{1}{c_{\bi}^{T\ast}} \right ) \Delta t \\
+    & = & (S - E^{L}_{\bi})\Delta t \;,
+  \end{eqnarray*}
+  where $E^{L}_{\bi}$, the \emph{local energy} of configuration $\bi$,
+  is defined by
+  \begin{displaymath}
+    E_{\bi}^{L} \; \equiv \; \sum_{\bj} c_{\bj}^{T\ast} H_{\bj\bi} 
+    \frac{1}{c_{\bi}^{T\ast}}\;.
+  \end{displaymath}
+  Now, if the trial function is a good approximation to the
+  ground-state, it almost satisfies the time-independent
+  Schr\"{o}dinger equation,
+  \begin{displaymath}
+    \sum_{\bj} H_{\bi\bj} c_{\bj}^{T} \; \approx \; E_0 c_{\bi}^{T} \;,
+  \end{displaymath}
+  and hence, taking the Hermitian conjugate,
+  \begin{displaymath}
+    \sum_{\bj} c_{\bj}^{T\ast} H_{\bj\bi} \; \approx \; E_0
+    c_{\bi}^{T\ast} \;.
+  \end{displaymath}
+  The local energy $E^{L}_{\bi}$ is therefore almost equal to $E_0$.
+  Plugging this back into the expression for the total charge of the
+  children of psip $\bi$ gives
+  \begin{displaymath}
+    q_{\bi}^{\rm children}(t + \Delta t) \;\; \approx \;\;
+    (S - E_0)\Delta t \;.
+  \end{displaymath}
+  Once the simulation has settled down, so that $S \approx E_0$, the
+  expected total charge of the children is zero, regardless of the
+  position $\bi$ of the parent. Note that this is a much stronger
+  constraint than the \emph{global} stabilisation of the psip
+  population guaranteed by the algorithm used to adjust $S$.
+
+  In diffusion QMC, where all of the psips are positive, the reduction
+  of the local population fluctuations due to importance sampling is
+  crucial; without it, the population suffers local ``blooms'' and may
+  blow up near divergences in the potential energy. In FCIQMC, where
+  psips of both signs appear and the infinities in the Hamiltonian
+  operator are integrated explicitly during the calculation of the
+  Hamiltonian matrix elements, the advantage is less obvious.
+
+  \item[The local energy estimator:] Once you have a trial function
+  $\Psi_T$, the ground-state energy can be estimated from the
+  long-time limit of
+  \begin{eqnarray*}
+    E(t) & = & \frac{\langle \Psi_T | \hat{H} | \Psi(t) \rangle}
+               {\langle \Psi_T | \Psi(t) \rangle} \\ 
+	       & = & \frac{\sum_{\bj} c_{\bj}^{T\ast} \langle D_{\bj} 
+	       | \hat{H} | D_{\bi} \rangle c_{\bi}(t)}{\sum_{\bj}
+               c_{\bj}^{T\ast} \langle D_{\bj} | D_{\bi} \rangle
+               c_{\bi}(t)} \\
+	       & = & \frac{\sum_{\bi} \left ( \sum_{\bj}
+               c_{\bj}^{T\ast} H_{\bj\bi}
+               \frac{1}{c_{\bi}^{T\ast}} \right ) f_{\bi}(t) }
+	       {\sum_{\bi} f_{\bi}(t)} \\
+	       & = & \frac{\sum_{\bi} E_{\bi}^{L}
+               f_{\bi}(t)}{\sum_{\bi} f_{\bi}(t)} \\
+	       & = & \frac{\sum_{\bi} E_{\bi}^{L} \bar{q}_{\bi}(t)}
+	             {\sum_{\bi} \bar{q}_{\bi}(t)}
+  \end{eqnarray*}
+  If you replace $\Psi_T$ by the Hartree-Fock determinant
+  $D_{\bzero}$, so that $c_{\bi}^{T} = \delta_{\bzero\bi}$ and
+  $f_{\bi}(t) = c_{\bi}^{T\ast} c_{\bi}^{\,}(t) =
+  \delta_{\bzero\bi}^{\,} c_{\bi}^{\,}(t)$, this reduces to the
+  estimator used by Alavi and explained in Sec.\
+  \ref{sec:EnergyEstimators}. In general, however,, the better the
+  trial function $\Psi_T$, the less the local energy $E_{\bi}^{L}$
+  depends on $\bi$, and the smaller the variance in estimates of
+  $E(t\rightarrow\infty)$.
+
+\end{description} 
+
+
+\subsection{Basis Sets and Trial Functions}
+
+The importance-sampled transition matrix element
+\begin{displaymath}
+\tilde{T}_{\bi\bj} = c_{\bi}^{T\ast} T_{\bi\bj}
+\frac{1}{c_{\bj}^{T\ast}}
+\end{displaymath}
+gives the rate at which a positively charged psip on site $\bj$
+creates charge on site $\bi$. To avoid infinite rates, the initial
+population of psips must all be placed on configurations $\bj$ for
+which $c_{\bj}^{T\ast} \neq 0$. Then, since $\tilde{T}_{\bi\bj}$ is
+zero if $c_{\bi}^{T\ast} = 0$, only configurations for which $\langle
+D_{\bi} | \Psi_T \rangle \neq 0$ are sampled by the importance-sampled
+FCIQMC algorithm. Any other configurations are ``on the nodes of the
+trial function'' (to use the diffusion QMC terminology) and are never
+reached.
+
+Suppose, for example, that we choose to work in a basis of
+determinants of Hartree-Fock molecular orbitals, as the Alavi group
+does in most cases. Using the HF ground state as a trial function is
+then useless because $c_{\bi}^T = \langle D_{\bi}^{\,} | \Psi_T^{\,}
+\rangle = 0$ unles $\bi = \bzero$. Only the HF configuration is
+sampled and the FCIQMC algorithm produces HF energies. A good trial
+function must have non-zero weight on every important determinant.
+
+This leads to a problem of representation. How can we choose a trial
+function that has non-zero weight on every important determinant and
+yet for which $c_{\bi}^{T} = \langle D_{\bi} | \Psi_T \rangle$ can be
+evaluated quickly and conveniently? Since FCIQMC calculations use so
+many psips to ensure efficient sign cancellation, it must also be
+possible to evaluate $c_{\bi}^{T}$ for any configuration $\bi$ without
+paying a large storage cost per psip.
+
+Instead of a HF trial function, one might consider using a
+multi-configuration trial wave function from a quantum chemistry
+calculation; the FCIQMC method would then yield the result of an exact
+CI calculation in the multi-configuration basis. This would be better
+than the original quantum chemistry calculation (unless that
+calculation was done using full CI), but the improvement might not be
+significant enough to justify the cost (most quantum chemistry methods
+are very accurate, if not as accurate as full CI). Representing a
+hugely multi-configurational trial function efficiently might also be
+very costly.
+
+The most obvious use of importance sampling in FCIQMC is in
+combination with a basis of Slater determinants of local (Gaussian,
+Slater type, or atomic-like) orbitals. The HF determinant has a
+non-zero overlap with almost any determinant of local orbitals and so
+\emph{can} be used as a trial function in this case, even though it
+cannot be used as a trial function when the FCIQMC calculation is done
+using a basis of determinants of HF orbitals.  According to James,
+FCIQMC calculations using determinants of local orbitals are normally
+much noisier than those using determinants of HF orbitals; if
+importance sampling is used, I hope that this will no longer be the
+case.
+
+To use the HF determinant as a trial function in an FCIQMC calculation
+carried out using a basis of determinants of local orbitals, it is
+necessary to work out matrix elements such as
+\begin{displaymath}
+  c_{\bi}^{T} = \langle D_{\bi} | D_{\bzero} \rangle \;.
+\end{displaymath}
+If the HF determinant takes the form
+\begin{displaymath}
+D_{\bzero} = \frac{1}{\sqrt{N!}}  \left | \begin{array}{ccccc}
+\psi_{1}(x_1) & \psi_{1}(x_2) & \ldots & \ldots & \psi_{1}(x_N) \\
+\psi_{2}(x_1) & \psi_{2}(x_2) & \ldots & \ldots & \psi_{2}(x_N) \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\ \ldots & \ldots & \ldots
+& \ldots & \ldots \\ \ldots & \ldots & \ldots & \ldots & \ldots \\
+\psi_{N}(x_1) & \psi_{N}(x_2) & \ldots & \ldots & \psi_{N}(x_N)
+\end{array} \right | \;,
+\end{displaymath}
+where $\psi_i(x) = \psi_i(\br,\sigma)$ is a one-electron HF molecular
+spin-orbital, and if the basis of local one-electron spin-orbitals is
+$\{\phi_1(x), \phi_2(x), \ldots, \phi_M(x)\}$, so that
+\begin{displaymath}
+D_{\bi} = D_{i_1 i_2\ldots i_N} = \frac{1}{\sqrt{N!}}
+\left | \begin{array}{ccccc}
+\phi_{i_1}(x_1) & \phi_{i_1}(x_2) & \ldots & \ldots & \phi_{i_1}(x_N) \\
+\phi_{i_2}(x_1) & \phi_{i_2}(x_2) & \ldots & \ldots & \phi_{i_2}(x_N) \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\phi_{i_N}(x_1) & \phi_{i_N}(x_2) & \ldots & \ldots & \phi_{i_N}(x_N)
+\end{array} \right |\;,
+\end{displaymath}
+it may be shown (see Appendix \ref{sec:AppA}) that
+\begin{displaymath}
+\langle D_{\bi} | D_{\bzero} \rangle = 
+\left | 
+ \begin{array}{ccccc}
+\langle \phi_{i_1} | \psi_1 \rangle & 
+\langle \phi_{i_1} | \psi_2 \rangle & 
+\ldots & \ldots & 
+\langle \phi_{i_1} | \psi_N \rangle \\
+\langle \phi_{i_2} | \psi_1 \rangle & 
+\langle \phi_{i_2} | \psi_2 \rangle 
+& \ldots & \ldots & 
+\langle \phi_{i_2} | \psi_N \rangle \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\ldots & \ldots & \ldots & \ldots & \ldots \\
+\langle \phi_{i_N} | \psi_1 \rangle & 
+\langle \phi_{i_N} | \psi_2 \rangle & 
+\ldots & \ldots & 
+\langle \phi_{i_N} | \psi_N \rangle
+\end{array} \right |\;.
+\end{displaymath}
+Thus, evaluating $\langle D_{\bi} | D_{\bzero} \rangle$ requires
+working out an $N\times N$ determinant. The number of operations
+required to evaluate such a determinant from scratch using LU
+decomposition is ${\mathcal O}(N^3)$. In order to do so, however, it
+is also necessary to store the expansion coefficients of the HF
+orbitals $\psi_k$ in terms of the local basis functions $\phi_i$,
+amounting to ${\mathcal O}(NM)$ real (or perhaps in some cases
+complex) numbers. These numbers are global, independent of the psip or
+its location, but must be available to every processor. By using
+efficient rank-1 update algorithms (the Sherman-Morrison formula), it
+is possible to reduce the CPU time required to evaluate the
+determinants to ${\mathcal O}(N^2)$ in most cases, but only at the
+cost of carrying an $N\times N$ matrix along with every psip (or, more
+precisely, with every configuration currently occupied by one or more
+psips). Check the DMC literature for further details.
+
+Better than using a HF trial function would be to use a Gutzwiller
+trial wave function of the form
+\begin{displaymath}
+\Psi_T \; = \; \exp \left ( - \sum_{i,\sigma,\sigma'}
+\lambda_{i}^{\sigma\sigma'} \hat{n}_i^{\sigma} \hat{n}_i^{\sigma'}
+\right ) D_{\bzero} \;,
+\end{displaymath}
+where the $\lambda_{i}^{\sigma\sigma'}$ are constants adjusted to
+minimise the ground-state energy expectation value. In a paramagnetic
+Hubbard model for which all lattice sites $i$ are identical,
+$\lambda_i^{\sigma\sigma'}$ depends only on the relative spins and
+there are just two variational parameters, $\lambda^{\uparrow\uparrow}
+= \lambda^{\downarrow\downarrow}$ and
+$\lambda^{\uparrow\downarrow}=\lambda^{\downarrow\uparrow}$.  If the
+system is ferromagnetic, as Hubbard models often are,
+$\lambda^{\uparrow\uparrow}$ need not equal
+$\lambda^{\downarrow\downarrow}$; if the system is antiferromagnetic,
+the values of $\lambda_i^{\uparrow\uparrow}$ and
+$\lambda_i^{\downarrow\downarrow}$ may depend on the direction of the
+magnetic moment on site $i$. The Gutzwiller trial function is
+analogous to the Slater-Jastrow trial functions used so successfully
+in diffusion QMC calculations: the exponential pre-factor helps keep
+electrons apart and adds a rough description of correlation to the
+exchange included in the HF determinant.
+
+Since $D_{\bi}$ is a determinant of local orbitals, the matrix element
+\begin{displaymath}
+\langle D_{\bi} | \Psi_T \rangle = 
+\langle D_{\bi} | \exp ( - {\textstyle \sum_{i,\sigma,\sigma'}}
+\lambda_{i}^{\sigma\sigma'} \hat{n}_i^{\sigma} \hat{n}_i^{\sigma'}
+) D_{\bzero} \rangle
+\end{displaymath}
+is easy to evaluate. The exponential prefactor is a Hermitian operator
+and so may be taken to act to its left, yielding
+\begin{displaymath}
+\langle D_{\bi} | \Psi_T \rangle =
+\exp ( - {\textstyle \sum_{i,\sigma,\sigma'}}
+\lambda_{i}^{\sigma\sigma'} {n}_i^{\sigma} {n}_i^{\sigma'} )
+\langle D_{\bi} | D_{\bzero} \rangle \;,
+\end{displaymath}
+where $n_i^{\sigma}=1$ if $\phi_{i}^{\sigma}(\br)$ is among the
+spin-orbitals appearing in $D_{\bi}$ and $n_i^{\sigma}=0$
+otherwise. (For simplicity, we have assumed that the localised
+spin-orbitals appearing in $D_{\bi}$ are either spin-up or spin-down,
+$\phi_i(\br,\sigma) = \psi_i^{s}(\br)\delta_{s\sigma}$ with $s =
+\uparrow$ or $s = \downarrow$. Since the localised orbitals are just
+basis functions, we are free to choose them such that this assumption
+is valid. The HF orbitals $\psi_k$ may have more complicated spin
+structures.)
+
+\subsection{Costs of Importance Sampling}
+
+The costs of importance sampling in FCIQMC are obvious. The memory
+requirements are increased (substantially if $c_{\bi}^T$ is not to be
+evaluated from scratch every time a psip is spawned on a currently
+empty configuration) and the computation time per step is increased
+substantially. It is likely, although by no means certain, that these
+drawbacks will outweigh the advantages, but only testing will settle
+this for sure.
+
+
+\appendix
+
+
+\section{Real-Space Components of Determinants of Molecular Orbitals}
+\label{sec:AppA}
+
+
+Let $\psi_i$ be a local spin-orbital, where index $i$ comprises both a spatial index (a site index in the case of the Hubbard model) and a spin index and let $\phi_i$ be a molecular spin-orbital, for instance obtained from a Hartree--Fock (HF) calculation, where index $i$ might comprise of a Bloch wavevector which is in turn defined by 3 integers, a band index and a spin index.
+
+The set $\{\psi_i\}$ and the set $\{\phi_i\}$ span the same space and so there exists a matrix of coefficients, $\mathbf{\alpha}$ such that
+\begin{displaymath}
+\psi_i = \sum_j \alpha_{ji} \phi_j.
+\end{displaymath}
+The coefficients are known from an HF calculation or perhaps even from symmetry alone in the case of the one-band Hubbard model.
+
+The HF determinant, $D_0$, is constructed using the $N$ lowest energy spin-orbitals:
+\begin{displaymath}
+D_0(x_1, x_2, \cdots, x_N) = \frac{1}{\sqrt{N!}}
+\begin{vmatrix}
+\psi_1(x_1) & \psi_1(x_2) & \cdots & \psi_1(x_N) \\
+\psi_2(x_1) & \psi_2(x_2) & \cdots & \psi_2(x_N) \\
+\vdots      & \vdots      & \ddots & \vdots      \\
+\psi_N(x_1) & \psi_N(x_2) & \cdots & \psi_N(x_N)
+\end{vmatrix}
+\end{displaymath}
+where $x_i=(\br,\sigma_i)$ represents both the position and spin components of electron $i$.
+
+$D_0$ can obviously be expanded in the basis of determinants of lcoal orbitals:
+\begin{displaymath}
+D_0 = \sum_{i_1<i_2<\cdots<i_N} C_{i_1i_2\cdots i_N} \frac{1}{\sqrt{N!}}
+\begin{vmatrix}
+\phi_{i_1}(x_1) & \phi_{i_1}(x_2) & \cdots & \phi_{i_1}(x_N) \\
+\phi_{i_2}(x_1) & \phi_{i_2}(x_2) & \cdots & \phi_{i_2}(x_N) \\
+\vdots      & \vdots      & \ddots & \vdots      \\
+\phi_{i_N}(x_1) & \phi_{i_N}(x_2) & \cdots & \phi_{i_N}(x_N)
+\end{vmatrix}.
+\end{displaymath}
+We need to find the coefficients, $C_{i_1i_2\cdots i_N}$ for all sets
+of indices $\{i_1i_2\cdots i_N\}$ such that $i_1<i_2<\cdots<i_N$.
+
+First, we must show that the determinants of local orbitals are orthonormal.  Let
+\begin{align*}
+D_{i_1i_2\cdots i_N} &= \frac{1}{\sqrt{N!}}
+\begin{vmatrix}
+\phi_{i_1}(x_1) & \phi_{i_1}(x_2) & \cdots & \phi_{i_1}(x_N) \\
+\phi_{i_2}(x_1) & \phi_{i_2}(x_2) & \cdots & \phi_{i_2}(x_N) \\
+\vdots      & \vdots      & \ddots & \vdots      \\
+\phi_{i_N}(x_1) & \phi_{i_N}(x_2) & \cdots & \phi_{i_N}(x_N)
+\end{vmatrix} \\
+&= \frac{1}{\sqrt{N!}} \sum_P (-1)^{\xi_P} \phi_{i_{P1}}(x_1) \phi_{i_{P2}}(x_2) \cdots \phi_{i_{PN}}(x_N)
+\end{align*}
+where $P=(P1,P2,\cdots,PN)$ is some permutation of the indices $(1,2,\cdots,N)$ and $\xi_P$ is the parity of the permutation $P$.  Then the overlap between two determinants of local orbitals is given by
+\begin{displaymath}
+\begin{split}
+\bra D_{j_1j_2\cdots j_N} | D_{i_1i_2\cdots i_N} \ket = &
+\frac{1}{\sqrt{N!}} \sum_P (-1)^{\xi_P}
+\frac{1}{\sqrt{N!}} \sum_Q (-1)^{\xi_Q} \\
+&\int
+\phi_{j_{P1}}^*(x_1) \phi_{j_{P2}}^*(x_2) \cdots \phi_{j_{PN}}^*(x_N)
+\; \times \\
+&\quad\ \phi_{i_{Q1}}(x_1) \phi_{i_{Q2}}(x_2) \cdots \phi_{i_{QN}}(x_N)
+dx_1 dx_2 \cdots dx_N.
+\end{split}
+\end{displaymath}
+
+Now, whatever the permutation $Q$, we can write it as the combination of two other permutations:
+\begin{eqnarray*}
+Q & = & PR \\
+\xi_Q & = & \xi_P + \xi_R
+\end{eqnarray*}
+where $R$ is some other permutation.  Thus
+\begin{eqnarray*}
+\lefteqn{
+\sum_Q (-1)^{\xi_Q} \phi_{i_{Q1}}(x_1) \phi_{i_{Q2}}(x_2) \cdots
+\phi_{i_{QN}}(x_N) } \nonumber \\
+& = & \sum_R 
+(-1)^{\xi_P + \xi_R} \phi_{i_{PR1}}(x_1) \phi_{i_{PR2}}(x_2) \cdots \phi_{i_{PRN}}(x_N) 
+\end{eqnarray*}
+and so 
+\begin{displaymath}
+\begin{split}
+\bra D_{j_1j_2\cdots j_N} | D_{i_1i_2\cdots i_N} \ket \; = \; & \frac{1}{N!} \sum_P \sum_R (-1)^{\xi_R}
+\int 
+\phi_{j_{P1}}^*(x_1) \phi_{j_{P2}}^*(x_2) \cdots \phi_{j_{PN}}^*(x_N) \\
+& \quad\ \phi_{i_{PR1}}(x_1) \phi_{i_{PR2}}(x_2) \cdots \phi_{i_{PRN}}(x_N) 
+dx_1 dx_2 \cdots dx_N.
+\end{split}
+\end{displaymath}
+All permutations $P$ now give identical contributions as changing $P$ just reorders terms in the integrand.  Hence the sum over $P$ exactly cancels with the $(N!)^{-1}$ normalisation factor and we obtain:
+\begin{align*}
+\begin{split}
+\bra D_{j_1j_2\cdots j_N} | D_{i_1i_2\cdots i_N} \ket \; = \; &
+\sum_R (-1)^{\xi_R} \int
+\phi_{j_{1}}^*(x_1) \phi_{j_{2}}^*(x_2) \cdots \phi_{j_{N}}^*(x_N) \\
+& \times \phi_{i_{R1}}(x_1) \phi_{i_{R2}}(x_2) \cdots \phi_{i_{RN}}(x_N) 
+dx_1 dx_2 \cdots dx_N
+\end{split} \\
+\begin{split}
+\; = \; &
+\sum_R (-1)^{\xi_R} 
+\int \phi_{j_{1}}(x_1)^* \phi_{i_{R1}}(x_1) dx_1 \\
+& \hphantom{\sum_R (-1)^{\xi_R}}
+\int \phi_{j_{2}}(x_2)^* \phi_{i_{R2}}(x_2) dx_2 \\
+& \hphantom{\sum_R (-1)^{\xi_R}}
+\cdots \\
+& \hphantom{\sum_R (-1)^{\xi_R}}
+\int \phi_{j_{N}}(x_N)^* \phi_{i_{RN}}(x_N) dx_N 
+\end{split} \\
+\begin{split}
+\; = \; & \sum_R (-1)^{\xi_R} 
+\delta_{j_1,i_{R1}}
+\delta_{j_2,i_{R2}}
+\cdots
+\delta_{j_N,i_{RN}}
+\end{split}
+\end{align*}
+assuming that the local orbitals are sufficiently localised such that they form an orthonormal set.  This vanishes unless $j_1=i_{R1}, j_2=i_{R2}, \cdots, j_N=i_{RN}$.  Since we defined $i_1<i_2<\cdots<i_N$ and $j_1<j_2<\cdots<j_N$, this is only possible when $R$ is the identity permutation and $j_1=i_1, j_2=i_2, \cdots, j_N=i_N$.  Thus
+\begin{displaymath}
+\bra D_{j_1j_2\cdots j_N} | D_{i_1i_2\cdots i_N} \ket = \delta_{j_1i_1} \delta_{j_2i_2} \cdots \delta{j_Ni_N}
+\end{displaymath}
+as required.
+
+We now use this property to find the overlap of a determinant of local orbitals with the Hartree--Fock determinant.  Since the determinants of local orbitals, $D_{i_1,i_2,\cdots,i_N}$ form an orthonormal basis, and since
+\begin{displaymath}
+D_0(x_1, x_2, \cdots, x_N) = \sum_{i_1<i_2<\cdots<i_N} C_{i_1i_2\cdots i_N} D_{i_1,i_2,\cdots,i_N}
+\end{displaymath}
+it follows that
+\begin{displaymath}
+C_{i_1i_2\cdots i_N} = \bra D_{i_1,i_2,\cdots,i_N} | D_0(x_1, x_2, \cdots, x_N) \ket.
+\end{displaymath}
+We can evaluate this in a similar fashion:
+\begin{align*}
+\begin{split}
+C_{i_1i_2\cdots i_N} = & \frac{1}{N!} \sum_P (-1)^{\xi_P} \sum_Q (-1)^{\xi_Q}
+\int \phi_{j_{P1}}^*(x_1) \phi_{j_{P2}}^*(x_2) \cdots \phi_{j_{PN}}^*(x_N)
+\\
+& \quad \times \psi_{i_{Q1}}(x_1) \psi_{i_{Q2}}(x_2) \cdots \psi_{i_{QN}}(x_N)
+dx_1 dx_2 \cdots dx_N \\
+= & \sum_R (-1)^{\xi_R} \int 
+\phi_{i_{1}}^*(x_1) \phi_{i_{2}}^*(x_2) \cdots \phi_{i_{N}}^*(x_N) \\
+& \quad \times \psi_{j_{R1}}(x_1) \psi_{j_{R2}}(x_2) \cdots \psi_{j_{RN}}(x_N)
+dx_1 dx_2 \cdots dx_N.
+\end{split}
+\end{align*}
+Now as
+\begin{displaymath}
+\int \phi_{i_1}^*(x_1) \psi_{j_{R1}}(x_1) dx_1 = \alpha_{i_1 j_{R1}}
+\end{displaymath}
+by construction, it follows that $C_{i_1i_2\cdots i_N}$ can be found by taking the determinant of the appropriate elements of the $\mathbf{\alpha}$ matrix:
+\begin{align*}
+C_{i_1i_2\cdots i_N} &= \sum_R (-1)^{\xi_R} \alpha_{i_1 j_{R1}} \alpha_{i_2 j_{R2}} \cdots \alpha_{i_N j_{RN}} \\
+                     &= 
+\begin{vmatrix}
+\alpha_{i_1 j_1} & \alpha_{i_1 j_2} & \cdots & \alpha_{i_1 j_N} \\
+\alpha_{i_2 j_1} & \alpha_{i_2 j_2} & \cdots & \alpha_{i_2 j_N} \\
+\vdots           & \vdots           & \ddots & \vdots           \\
+\alpha_{i_N j_1} & \alpha_{i_N j_2} & \cdots & \alpha_{i_N j_N}
+\end{vmatrix}.
+\end{align*}
+
+\end{document}
