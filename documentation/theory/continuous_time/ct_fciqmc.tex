@@ -63,17 +63,20 @@ e^x = \lim_{n\to\infty} \left(1+\frac{x}{n}\right)^n,
 this becomes:
 \begin{align}
 p_\bi &= \prod_{\bk} \exp\left(-R_{\bk\bj}t\right) R_{\bi\bj}\Delta t \\
-  &= \exp\left(\sum_\bk R_{\bk\bj}t\right)  R_{\bi\bj}\Delta t.
+  &= \exp\left(-\sum_\bk R_{\bk\bj}t\right)  R_{\bi\bj}\Delta t.
 \end{align}
 Thus
-\begin{gather}
-\begin{split}
-p(\textrm{1st spawning is on determinant $\bi$ between times $t$ and $t+dt$}) \\ \quad = e^{-Rt} R_{\bi\bj} dt
-\end{split} \\ 
-\intertext{and hence}
-p(\textrm{1st spawning is between times $t$ and $t+dt$}) = e^{-R_\bj t} R_\bj dt
-\end{gather}
-where we define $R_\bj=\sum_\bk R_{\bk\bj}$.  We note that the probability is normalised:
+\begin{eqnarray}
+& & p(\textrm{1st spawning is on determinant $\bi$ between times $t$ and
+ $t+dt$}) \hspace*{3em} \\\nonumber
+&& \quad = \;\; e^{-R_{\bj}t} R_{\bi\bj} dt,
+\end{eqnarray}
+where we define $R_\bj=\sum_\bk R_{\bk\bj}$. Summing over final states
+$\bi$ gives:
+\begin{equation}
+p(\textrm{1st spawning is between times $t$ and $t+dt$}) = e^{-R_\bj t} R_\bj dt.
+\end{equation}
+We note that the probability is normalised:
 \begin{equation}
 \int_0^\infty R_\bj e^{-R_\bj t} dt = 1.
 \end{equation}
@@ -90,7 +93,7 @@ We can thus evolve the population dynamics by `jumping' to the next spawning eve
     so that $0 \le t < \infty$. 
     \end{enumerate}
 Then as $f_t(t) |dt| = f_u(u) |du|$, it follows that $f_t(t) = R_\bj e^{-R_\bj t}$ as required.
-\item Once the spawning time, $t$, has been chosen, chose the determinant $\bi$ on which to spawn according to
+\item Once the spawning time, $t$, has been chosen, choose the determinant $\bi$ on which to spawn according to
 \begin{equation}
 p_\bi = \frac{R_{\bi\bj}}{R_\bj}.
 \end{equation}
@@ -99,7 +102,7 @@ This can be done simply by evaluating all the non-zero $p_\bi$ values and using 
 
 This process makes it possible to perform FCIQMC without time steps and no rejections, hence leading to efficient sampling.  In the Hubbard model the summations $R_\bi$ are easy and fast to evaluate.
 
-However, each spawning event happens at different times for each psip.  How cann annihilation (which is crucial to avoid an exponential growth in noise) occur?  We can do this by introducing `annihilation barriers'.
+However, each spawning event happens at different times for each psip.  How can annihilation (which is crucial to avoid an exponential growth in noise) occur?  We can do this by introducing `annihilation barriers'.
 
 \begin{itemize}
 \item Choose an annihilation time step, $t_a$.  Since annihilation is costly, it might be sensible to make this reasonably large.  However, if it is too large then the memory demands are that much greater and (more importantly) the noise in the simulation increases dramatically.  A time step such that around $40-50\%$ of psips spawn between annihilation barriers might be a good value.
@@ -108,7 +111,7 @@ However, each spawning event happens at different times for each psip.  How cann
 \item After annihilation, start advancing all remaining walkers to the next annihilation barrier at time $2t_a$.
 \end{itemize}
 
-Why does introducting annihilation barriers work?  First, consider a psip on determinant $\bj$ at time $t<t_a$.  If we ignore the annihilation barrier for a moment, then the probability of the next spawning event taking place between times $t^\prime$ and $t^\prime+dt^\prime$, where $t^\prime$ is after the annihilation barrier (i.e.\ $t^\prime>t_a$) is simply
+Why does introducing annihilation barriers work?  First, consider a psip on determinant $\bj$ at time $t<t_a$.  If we ignore the annihilation barrier for a moment, then the probability of the next spawning event taking place between times $t^\prime$ and $t^\prime+dt^\prime$, where $t^\prime$ is after the annihilation barrier (i.e.\ $t^\prime>t_a$) is simply
 \begin{equation}
 R_\bj e^{-R_\bj (t^\prime - t)} dt^\prime.
 \end{equation}
@@ -156,6 +159,6 @@ Crystal momentum is conserved if
 \end{equation}
 where here $\bk_i$ refers to the wavevector of the $i$-th spin-orbital.
 
-Due to the form of the Hubbard Hamiltonian, only double excitations where $i$ and $j$ are of opposite spins are allowed and the selection of the fourth spin-orbital involved in a connected excitation is uniquely determined by the other three spin-orbitals.  Thus the maximum number of excitations from a determinant is $N_\uparrow N_\downarrow \min( M - N_\uparrow, M - N_\downarrow)$, where $N_\alpha$ is the number of electrons of spin $\alpha$ and $2M$ is the total number of spin-orbitals.
+Due to the form of the Hubbard Hamiltonian, only double excitations where $i$ and $j$ are of opposite spin are allowed and the selection of the fourth spin-orbital involved in a connected excitation is uniquely determined by the other three spin-orbitals.  Thus the maximum number of excitations from a determinant is $N_\uparrow N_\downarrow \min( M - N_\uparrow, M - N_\downarrow)$, where $N_\alpha$ is the number of electrons of spin $\alpha$ and $2M$ is the total number of spin-orbitals.
 
 \end{document}
