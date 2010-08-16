@@ -11,10 +11,10 @@ contains
     subroutine do_ct_fciqmc(decoder, update_proj_energy, ct_spawn, sc0, matel)
 
         interface  
-            subroutine ct_spawn(det, diag, parent_sign, matel, nspawned, connection)
+            subroutine ct_spawn(det, diag, parent_sign, hmatel, nspawned, connection)
                 implicit none
                 type(det_info), intent(in) :: det
-                real(p), intent(in) :: diag, matel
+                real(p), intent(in) :: diag, hmatel
                 integer, intent(in) :: parent_sign
                 integer, intent(out) :: nspawned
                 type(excit), intent(out) :: connection
@@ -86,10 +86,10 @@ contains
 
                     time = 0.0_p
                     do
-                        time = time + timestep(R)
+                        time = time + timestep(calc_R(cdet, matel, walker_energies(1,idet)))
                         if ( time > t_barrier ) exit
 
-                        call ct_spawn(cdet, walker_population(1,idet), nspawned, connections)
+                        call ct_spawn(cdet, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
                         
                         ! If death then kill the walker immediately and move
                         ! onto the next one
@@ -97,10 +97,9 @@ contains
                         !walkers on a perticular det. have the same sgn due
                         !to annihilation) are of opposite sgn we get death
                         if (connections%nexcit == 0 .and. &
-                        walker_population(1,idet)*nspawned < 0) then
+                        walker_population(1,idet)*nspawned < 0.0_p) then
                             tmp_pop = tmp_pop + nspawned 
                             exit ! the walker is dead
-                            end if
                         end if
 
                         ! If there were some walkers spawned, append them to the
@@ -138,16 +137,16 @@ contains
                         time = spawn_times(current_pos(iproc))
                         do
 
-                            time = time + timestep(R)
+                            time = time + timestep(calc_R(cdet, matel, K_ii)
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet, spawned_walkers(spawned_pop,current_pos(iproc)), nspawned, connections)
+                            call ct_spawn(cdet, spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
                            
                             ! Handle walker death
                             if(connections%nexcit == 0 .and. &
                             spawned_walkers(spawned_pop,current_pos(iproc))*nspawned < 0) then
                                 spawned_walkers(spawned_pop,current_pos(iproc)) = spawned_walkers(spawned_pop,current_pos(iproc)) + nspawned 
-                                exit
+                                exit ! the walker is dead - do not continue
                             end if
 
                             ! add a walker to the end of the spawned walker list in the
@@ -169,12 +168,14 @@ contains
 
             !update spawn rate 
             call direct_annihilation(sc0)
+
+            !update projected energy and shift
             call update_energy_estimators(ireport, nparticles_old)
 
             call cpu_time(t2)
 
             if(parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            !if(vary_shift) update_shift
+            
             t1 = t2
 
             call fciqmc_interact(ireport, soft_exit)
@@ -225,7 +226,7 @@ contains
         integer :: num_excitations
         type(excit) :: connection_list(2*ndim*nel)
 
-        R_ii = abs(H_ii)
+        R_ii = abs(K_ii)
         abs_matel = abs(matel)
         call enumerate_all_excitations_real(d, num_excitations, connection_list)
         R = R_ii + matel*num_excitations
@@ -292,10 +293,6 @@ contains
         integer :: num_excitations
         type(excit) :: connection_list(nalpha*nbeta*min(nsites-nalpha,nsites-nbeta))
 
-        R_ii = abs(H_ii)
-        abs_matel = abs(matel)
-        call enumerate_all_excitations_hub_k(d, num_excitations, connection_list)
-        R = R_ii + matel*num_excitations
         rand = genrand_real2()*R
 
         if (rand < R_ii) then
@@ -404,11 +401,17 @@ contains
     end function timestep
 
 
-    pure function calc_R(d) result(R)
+    pure function calc_R(d,matel,K_ii) result(R)
 
         ! Returns \sum_i R_ij where R_ij is the unsigned matrix element
         ! connecting |D_i> to |D_j>. Used for selecting a time to jump to and
         ! also which excitation to choose when spawning.
+
+        type(det_info), intent(in) :: d
+        real(p), intent(in) :: matel, K_ii, R_ii
+        
+        call enumerate_all_excitations_hub_k(d, num_excitations, connection_list)
+        R = abs(K_ii) + abs(matel)*num_excitations
 
     end function calc_R
 
