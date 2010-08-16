@@ -1,0 +1,167 @@
+\documentclass[a4paper, 11pt]{revtex4}
+
+\usepackage{amsmath}
+
+\newcommand{\bi}{\mathbf{i}}
+\newcommand{\bj}{\mathbf{j}}
+\newcommand{\bz}{\mathbf{0}}
+\newcommand{\br}{\mathbf{r}}
+\newcommand{\bra}{\langle}
+\newcommand{\ket}{\rangle}
+
+\begin{document}
+
+\title{Real-space components of Determinants of Molecular Orbitals}
+
+\maketitle
+
+Let $\psi_i$ be a local spin-orbital, where index $i$ comprises both a spatial index (a site index in the case of the Hubbard model) and a spin index and let $\phi_i$ be a molecular spin-orbital, for instance obtained from a Hartree--Fock (HF) calculation, where index $i$ might comprise of a Bloch wavevector which is in turn defined by 3 integers, a band index and a spin index.
+
+The set $\{\psi_i\}$ and the set $\{\phi_i\}$ span the same space and so there exists a matrix of coefficients, $\boldsymbol{\alpha}$, such that
+\begin{equation}
+\psi_i = \sum_j \alpha_{ji} \phi_i.
+\end{equation}
+The coefficients are known from an HF calculation or perhaps even from symmetry alone in the case of the one-band Hubbard model.
+
+[JSS: Perhaps the above might be more clearly represented using covariant and contravariant notation?  This might be a very (hardcode) quantum chemist thing to do though...]
+
+The HF determinant, $D_0$, is constructed using the $N$ lowest energy spin-orbitals, $\psi_1, \psi_2, \cdots, \psi_N$:
+\begin{equation}
+D_0(x_1, x_2, \cdots, x_N) = \frac{1}{\sqrt{N!}}
+\begin{vmatrix}
+\psi_1(x_1) & \psi_1(x_2) & \cdots & \psi_1(x_N) \\
+\psi_2(x_1) & \psi_2(x_2) & \cdots & \psi_2(x_N) \\
+\vdots      & \vdots      & \ddots & \vdots      \\
+\psi_N(x_1) & \psi_N(x_2) & \cdots & \psi_N(x_N)
+\end{vmatrix}
+\end{equation}
+where $x_i=(\br,\sigma_i)$ represents both the position and spin components of electron $i$.
+
+$D_0$ can obviously be expanded in the basis of determinants of lcoal orbitals:
+\begin{equation}
+D_0(x_1, x_2, \cdots, x_N) = \sum_{i_1<i_2<\cdots<i_N} C_{i_1i_2\cdots i_N} \frac{1}{\sqrt{N!}}
+\begin{vmatrix}
+\phi_{i_1}(x_1) & \phi_{i_1}(x_2) & \cdots & \phi_{i_1}(x_N) \\
+\phi_{i_2}(x_1) & \phi_{i_2}(x_2) & \cdots & \phi_{i_2}(x_N) \\
+\vdots      & \vdots      & \ddots & \vdots      \\
+\phi_{i_N}(x_1) & \phi_{i_N}(x_2) & \cdots & \phi_{i_N}(x_N)
+\end{vmatrix}.
+\end{equation}
+We need to find the coefficients, $C_{i_1i_2\cdots i_N}$ for all index sets $\{i_1i_2\cdots i_N|i_1<i_2<\cdots<i_N\}$.
+
+First, we must show that the determinants of local orbitals are orthonormal.  Let
+\begin{align}
+D_{i_1i_2\cdots i_N} &= \frac{1}{\sqrt{N!}}
+\begin{vmatrix}
+\phi_{i_1}(x_1) & \phi_{i_1}(x_2) & \cdots & \phi_{i_1}(x_N) \\
+\phi_{i_2}(x_1) & \phi_{i_2}(x_2) & \cdots & \phi_{i_2}(x_N) \\
+\vdots      & \vdots      & \ddots & \vdots      \\
+\phi_{i_N}(x_1) & \phi_{i_N}(x_2) & \cdots & \phi_{i_N}(x_N)
+\end{vmatrix} \\
+&= \frac{1}{\sqrt{N!}} \sum_P (-1)^{\xi_P} \phi_{i_{P1}}(x_1) \phi_{i_{P2}}(x_2) \cdots \phi_{i_{PN}}(x_N)
+\end{align}
+where $P=(P1,P2,\cdots,PN)$ is some permutation of the indices $(1,2,\cdots,N)$ and $\xi_P$ is the parity of the permutation $P$.  Then the overlap between two determinants of local orbitals is given by
+\begin{equation}
+\begin{split}
+\bra D_{j_1j_2\cdots j_N} | D_{i_1i_2\cdots i_N} \ket = 
+\frac{1}{\sqrt{N!}}& \sum_P (-1)^{\xi_P}
+\frac{1}{\sqrt{N!}} \sum_Q (-1)^{\xi_Q} \\
+&\int
+\phi_{j_{P1}}^*(x_1) \phi_{j_{P2}}^*(x_2) \cdots \phi_{j_{PN}}^*(x_N) \\
+&\quad\ \phi_{i_{Q1}}(x_1) \phi_{i_{Q2}}(x_2) \cdots \phi_{i_{QN}}(x_N)
+dx_1 dx_2 \cdots dx_N.
+\end{split}
+\end{equation}
+
+Now, whatever the permutation $Q$, we can write it as the combination of two other permutations:
+\begin{gather}
+Q = PR \\
+\xi_Q = \xi_P + \xi_R
+\end{gather}
+where $R$ is some other permutation.  Thus
+\begin{equation}
+\sum_Q (-1)^{\xi_Q} \phi_{i_{Q1}}(x_1) \phi_{i_{Q2}}(x_2) \cdots \phi_{i_{QN}}(x_N) = \sum_R 
+(-1)^{\xi_P + \xi_R} \phi_{i_{PR1}}(x_1) \phi_{i_{PR2}}(x_2) \cdots \phi_{i_{PRN}}(x_N) 
+\end{equation}
+and so 
+\begin{equation}
+\begin{split}
+\bra D_{j_1j_2\cdots j_N} | D_{i_1i_2\cdots i_N} \ket = \frac{1}{N!} \sum_P \sum_R (-1)^{\xi_R}
+& \int 
+\phi_{j_{P1}}^*(x_1) \phi_{j_{P2}}^*(x_2) \cdots \phi_{j_{PN}}^*(x_N) \\
+& \quad\ \phi_{i_{PR1}}(x_1) \phi_{i_{PR2}}(x_2) \cdots \phi_{i_{PRN}}(x_N) 
+dx_1 dx_2 \cdots dx_N.
+\end{split}
+\end{equation}
+All permutations $P$ now give identical contributions as changing $P$ just reorders terms in the integrand.  Hence the sum over $P$ exactly cancels with the $N!^{-1}$ normalisation factor and we obtain:
+\begin{align}
+\begin{split}
+\bra D_{j_1j_2\cdots j_N} | D_{i_1i_2\cdots i_N} \ket =&
+\sum_R (-1)^{\xi_R} \int
+\phi_{j_{1}}^*(x_1) \phi_{j_{2}}^*(x_2) \cdots \phi_{j_{N}}^*(x_N) \\
+&\hphantom{\sum_R (-1)^{\xi_R}\int} \phi_{i_{R1}}(x_1) \phi_{i_{R2}}(x_2) \cdots \phi_{i_{RN}}(x_N) 
+dx_1 dx_2 \cdots dx_N
+\end{split} \\
+\begin{split}
+=&
+\sum_R (-1)^{\xi_R} 
+\int \phi_{j_{1}}(x_1)^* \phi_{i_{R1}}(x_1) dx_1 \\
+& \hphantom{\sum_R (-1)^{\xi_R}}
+\int \phi_{j_{2}}(x_2)^* \phi_{i_{R2}}(x_2) dx_2 \\
+& \hphantom{\sum_R (-1)^{\xi_R}}
+\cdots \\
+& \hphantom{\sum_R (-1)^{\xi_R}}
+\int \phi_{j_{N}}(x_N)^* \phi_{i_{RN}}(x_N) dx_N 
+\end{split} \\
+\begin{split}
+=& \sum_R (-1)^{\xi_R} 
+\delta_{j_1,i_{R1}}
+\delta_{j_2,i_{R2}}
+\cdots
+\delta_{j_N,i_{RN}}
+\end{split}
+\end{align}
+assuming that the local orbitals are sufficiently localised such that they form an orthonormal set.  This vanishes unless $j_1=i_{R1}, j_2=i_{R2}, \cdots, j_N=i_{RN}$.  Since we defined $i_1<i_2<\cdots<i_N$ and $j_1<j_2<\cdots<j_N$, this is only possible when $R$ is the identity permutation and $j_1=i_1, j_2=i_2, \cdots, j_N=i_N$.  Thus
+\begin{equation}
+\bra D_{j_1j_2\cdots j_N} | D_{i_1i_2\cdots i_N} \ket = \delta_{j_1i_1} \delta_{j_2i_2} \cdots \delta{j_Ni_N}
+\end{equation}
+as required.
+
+We now use this property to find the overlap of a determinant of local orbitals with the Hartree--Fock determinant.  Since the determinants of local orbitals, $D_{i_1,i_2,\cdots,i_N}$ form an orthonormal basis, and since
+\begin{equation}
+D_0(x_1, x_2, \cdots, x_N) = \sum_{i_1<i_2<\cdots<i_N} C_{i_1i_2\cdots i_N} D_{i_1,i_2,\cdots,i_N}
+\end{equation}
+it follows that
+\begin{equation}
+C_{i_1i_2\cdots i_N} = \bra D_{i_1,i_2,\cdots,i_N} | D_0(x_1, x_2, \cdots, x_N) \ket.
+\end{equation}
+We can evaluate this in a similar fashion:
+\begin{align}
+\begin{split}
+C_{i_1i_2\cdots i_N} =& \frac{1}{N!} \sum_P (-1)^{\xi_P} \sum_Q (-1)^{\xi_Q} \\
+& \quad \int
+\phi_{j_{P1}}^*(x_1) \phi_{j_{P2}}^*(x_2) \cdots \phi_{j_{PN}}^*(x_N)
+\psi_{i_{Q1}}(x_1) \psi_{i_{Q2}}(x_2) \cdots \psi_{i_{QN}}(x_N)
+dx_1 dx_2 \cdots dx_N \end{split} \\
+                     =& \sum_R (-1)^{\xi_R} \int 
+\phi_{i_{1}}^*(x_1) \phi_{i_{2}}^*(x_2) \cdots \phi_{i_{N}}^*(x_N)
+\psi_{j_{R1}}(x_1) \psi_{j_{R2}}(x_2) \cdots \psi_{j_{RN}}(x_N)
+dx_1 dx_2 \cdots dx_N.
+\end{align}
+Now as
+\begin{equation}
+\int \phi_{i_1}^*(x_1) \psi_{j_{R1}}(x_1) dx_1 = \alpha_{i_1 j_{R1}}
+\end{equation}
+by construction, it follows that $C_{i_1i_2\cdots i_N}$ can be found by taking the determinant of the appropriate elements of the $\boldsymbol{\alpha}$ matrix:
+\begin{align}
+C_{i_1i_2\cdots i_N} &= \sum_R (-1)^{\xi_R} \alpha_{i_1 j_{R1}} \alpha_{i_2 j_{R2}} \cdots \alpha_{i_N j_{RN}} \\
+                     &= 
+\begin{vmatrix}
+\alpha_{i_1 j_1} & \alpha_{i_1 j_2} & \cdots & \alpha_{i_1 j_N} \\
+\alpha_{i_2 j_1} & \alpha_{i_2 j_2} & \cdots & \alpha_{i_2 j_N} \\
+\vdots           & \vdots           & \ddots & \vdots           \\
+\alpha_{i_N j_1} & \alpha_{i_N j_2} & \cdots & \alpha_{i_N j_N}
+\end{vmatrix}.
+\end{align}
+
+\end{document}

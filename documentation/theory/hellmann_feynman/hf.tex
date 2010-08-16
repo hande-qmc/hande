@@ -1,0 +1,101 @@
+\documentclass[a4paper, 11pt]{revtex4}
+
+\usepackage{amsmath}
+
+\newcommand{\bi}{\mathbf{i}}
+\newcommand{\bj}{\mathbf{j}}
+\newcommand{\bz}{\mathbf{0}}
+\newcommand{\dd}[2]{\frac{\partial#1}{\partial#2}}
+\newcommand{\bra}{\langle}
+\newcommand{\ket}{\rangle}
+\newcommand{\EHF}{E_{\text{HF}}} 
+
+\begin{document}
+
+\title{Hellmann--Feynman sampling in FCIQMC}
+
+\maketitle
+
+Let us start by stating the central equations to FCIQMC, namely:
+\begin{gather}
+|\Psi(\beta)\ket = \sum_\bi c_\bi(\beta) | D_\bi \ket; \\
+- \dd{c_\bi(\beta)}{\beta} = \sum_\bj (K_{\bi\bj} - S(\beta) \delta_{\bi\bj}) c_\bj(\beta); \\
+E(\beta) = \sum_\bj \bra D_\bj | \hat{H} | D_\bz \ket \frac{c_\bj(\beta)}{c_\bz(\beta)}; \\
+S(\beta) = S(\beta - A\delta\beta) - \frac{\xi}{A\delta\beta} \ln{\left[\frac{N_w(\beta)}{N_w(\beta-A\delta\beta)}\right]}.
+\end{gather}
+These respectively define the expansion of the wavefunction at a given imaginary time in a space of Slater Determinants; the coupled diffusion equations governing the coefficient of each Slater Determinant; the projected energy; and the response of the shift to changes in the total walker population.  Terms are as defined in the original FCIQMC paper (Booth et al, JCP 131 054106 2009).  In particular the `K-matrix' is defined as 
+\begin{equation}
+K_{\bi\bj} = \bra D_\bi | \hat{H} - \EHF | D_\bj \ket,
+\end{equation}
+where $\EHF$ is the Hartree--Fock energy.
+
+We now consider what happens if a new Hamiltonian operator is formed from the usual Hamiltonian operator, $\hat{H}$, and an additional operator, $\hat{O}$, which does not necessarily commute with the Hamiltonian operator:
+\begin{equation}
+\hat{H}(\alpha) = \hat{H} + \alpha \hat{O},
+\end{equation}
+where $\alpha$ is an adjustable parameter.  $\hat{O}$ is Hermitian if it corresponds to an observable (which it always will for our purposes) and so
+$\hat{H}(\alpha)$ is also Hermitian.
+
+The behaviour of the walker dynamics under this new operator is easy to write down:
+\begin{gather}
+|\Psi(\beta;\alpha)\ket = \sum_\bi c_\bi(\beta;\alpha) | D_\bi \ket; \\
+- \dd{c_\bi(\beta;\alpha)}{\beta} = \sum_\bj (K_{\bi\bj}(\alpha) - S(\beta;\alpha) \delta_{\bi\bj}) c_\bj(\beta;\alpha);\\
+E(\beta;\alpha) = \sum_\bj \bra D_\bj | \hat{H}(\alpha) | D_\bz \ket \frac{c_\bj(\beta;\alpha)}{c_\bz(\beta;\alpha)}; \\
+S(\beta;\alpha) = S(\beta - A\delta\beta;\alpha) - \frac{\xi}{A\delta\beta} \ln{\left[\frac{N_w(\beta;\alpha)}{N_w(\beta-A\delta\beta;\alpha)}\right]},
+\end{gather}
+where
+\begin{equation}
+K_{\bi\bj}(\alpha) = \bra D_\bi | \hat{H}(\alpha) - \EHF | D_\bj \ket.
+\end{equation}
+The Hellmann--Feynman theorem means that the expectation value of $\hat{O}$ of the ground-state wavefunction can be found via the differential with respect to $\alpha$:
+\begin{gather}
+E(\alpha) = \bra \Psi(\alpha) | \hat{H}(\alpha) | \Psi(\alpha) \ket \\
+O = \bra \Psi | \hat{O} | \Psi \ket = \left.\dd{E(\alpha)}{\alpha}\right|_{\alpha=0}.
+\end{gather}
+Here I use the notation that $X(\alpha=0) \equiv X$ and so $|\Psi\ket$ represents the ground-state wavefunction of the original Hamiltonian equation.
+
+We can evaluate $O$ via FCIQMC by performing calculations at different values of $\alpha$ and taking the numerical derivative.  However, taking the numerical derivative of noisy data is unpleasant.  Instead, we seek a more elegant procedure via analytic differentiation of the energy.
+
+The differential of the projected energy is:
+\begin{align}
+\left.\dd{E(\beta;\alpha)}{\alpha}\right|_{\alpha=0} &= \sum_\bj \left[ \bra D_\bj | \hat{O} | D_\bz \ket \frac{c_\bj(\beta)}{c_\bz(\beta)} + 
+\bra D_\bj | \hat{H} | D_\bz \ket \left\{ 
+       \frac{1}{c_\bz(\beta)} \left.\dd{c_\bj(\beta;\alpha)}{\alpha}\right|_{\alpha=0} -
+       \frac{c_\bj(\beta)}{c_\bz(\beta)^2} \left.\dd{c_\bz(\beta;\alpha)}{\alpha}\right|_{\alpha=0}
+   \right\} 
+\right] 
+\end{align}
+where
+\begin{equation}
+c_\bi(\beta) \equiv c_\bi(\beta;\alpha=0)
+\end{equation}
+and similarly for other quantities.  We note the striking similarity between
+this estimator for $O$ and the analagous estimator in DMC (eq. 9, Gaudoin and Pitarke, PRL 99 126406 (2007)).  Note that the final term is the projected energy multiplied by $\frac{1}{c_\bz(\beta)} \left.\dd{c_\bz(\beta;\alpha)}{\alpha}\right|_{\alpha=0}$ and cancels out the middle term if $\hat{O}$ commutes with $\hat{H}$.
+
+The set of coefficients $\left\{c_\bi(\beta)\right\}$ can easily be found via standard FCIQMC calculations.  The hard part is 
+$\left\{\left.\dd{c_\bi(\beta;\alpha)}{\alpha}\right|_{\alpha=0}\right\}$.  Returning to the diffusion equation, we note that $\dd{}{\alpha}$ and {$\dd{}{\beta}$ commute and so a diffusion equation for $\left.\dd{c_\bi(\beta;\alpha)}{\alpha}\right|_{\alpha=0}$ can be obtained:
+\begin{equation}
+- \dd{}{\beta} \dd{c_\bi(\beta;\alpha)}{\alpha} = 
+\sum_\bj \left[ \left(K_{\bi\bj}(\alpha) - S(\beta;\alpha) \delta_{\bi\bj}\vphantom{\dd{}{}}\right) \dd{c_\bj(\beta;\alpha)}{\alpha} + \left(O_{\bi\bj} - \dd{S(\beta;\alpha)}{\alpha} \delta_{\bi\bj}\right) c_\bj(\beta;\alpha) \right]
+\end{equation}
+and hence:
+\begin{equation}
+- \dd{\tilde{c}_\bi(\beta)}{\beta} = \sum_\bj \left[ \left(K_{\bi\bj} - S(\beta) \delta_{\bi\bj}\vphantom{\tilde{S}}\right) \tilde{c}_\bj(\beta) + \left(O_{\bi\bj} - \tilde{S}(\beta) \delta_{\bi\bj}\right) c_\bj(\beta) \right]
+\end{equation}
+where the tilde is used to denote differentiated quantities:
+\begin{equation}
+\tilde{X}(\beta) \equiv \left.\dd{X(\beta;\alpha)}{\alpha}\right|_{\alpha=0}.
+\end{equation}
+
+We can evaluate the diffusion equation for the `Hellmann--Feynman' walkers, $\{\tilde{c}_\bi(\beta)\}$, using the same discrete population dynamics as used in standard FCIQMC.  The only undefined term is the Hellmann--Feynman shift, $\tilde{S}(\beta)$, which acts to control the flux of Hellmann-Feynman walkers from the Hamiltonian walkers, $\{c_\bi(\beta)\}$ in a similar way to how the Hamiltonian shift, $S(\beta)$, controls the total population.  $\tilde{S}(\beta)$ can also be found via simple differentiation:
+\begin{align}
+\tilde{S}(\beta) &= \tilde{S}(\beta-A\delta\beta) - \frac{\xi}{A\delta\beta} \dd{}{\alpha}\left.\ln{\left[\frac{N_w(\beta;\alpha)}{N_w(\beta-A\delta\beta;  \alpha)}\right]}\right|_{\alpha=0} \\
+&=  \tilde{S}(\beta-A\delta\beta) - \frac{\xi}{A\delta\beta} \left[ \frac{\tilde{N}_w(\beta)}{N_w(\beta)} - \frac{\tilde{N}_w(\beta-A\delta\beta)}{N_w(\beta-A\delta\beta)} \right]
+\end{align}
+where $\tilde{N}_w(\beta)$ is simply the total number of Hellmann--Feynman walkers:
+\begin{gather}
+N_w(\beta;\alpha) = \sum_\bj N_\bj(\beta;\alpha) \\
+\Rightarrow \tilde{N}_w(\beta) = \sum_\bj \tilde{N}_\bj(\beta).
+\end{gather}
+
+\end{document}

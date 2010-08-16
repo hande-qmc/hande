@@ -1,0 +1,161 @@
+\documentclass[a4paper, 11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{enumerate}
+
+\newcommand{\bi}{\mathbf{i}}
+\newcommand{\bj}{\mathbf{j}}
+\newcommand{\bk}{\mathbf{k}}
+\newcommand{\bz}{\mathbf{0}}
+\newcommand{\br}{\mathbf{r}}
+\newcommand{\bra}{\langle}
+\newcommand{\ket}{\rangle}
+\newcommand{\dd}[2]{\frac{d#1}{d#2}}
+\newcommand{\Hamil}{\hat{H}}
+
+\newcommand{\sgn}{\operatorname{sgn}}
+
+\begin{document}
+
+\title{Continuous-Time FCIQMC}
+
+\maketitle
+
+The psip population in FCIQMC is evolved in imaginary time using a series of time steps, where each time step is of length $\tau$.  $\tau$ is set to be small to ensure convergence onto the lowest eigenstate of the Hamiltonian and so smaller values have to be used as the system size increases due to (typically) a larger spread in eigenvalues.  A consequence of this is that the vast majority of attempted spawning steps are rejected, thus wasting a lot of CPU time.  Here we describe how to perform FCIQMC without a time step by `jumping' to the next spawning event.
+
+We start from the standard diffusion equation used in FCIQMC, namely:
+\begin{equation}
+\dd{c_\bi}{t} = - \sum_\bj T_{\bi\bj} c_\bj
+\end{equation}
+where
+\begin{equation}
+T_{\bi\bj} = H_{\bi\bj} - (\bra D_\bz | \Hamil | D_\bz \ket + S)\delta_{\bi\bj}.
+\end{equation}
+We define the matrices $\mathbf{R}$ and $\boldsymbol{\Xi}$ by
+\begin{gather}
+R_{\bi\bj} = |T_{\bi\bj}| \\
+\Xi_{\bi\bj} = \sgn(T_{\bi\bj})
+\end{gather}
+and so the diffusion equation can be written as
+\begin{equation}
+\dd{c_\bi}{t} = - \sum_\bj \Xi_{\bi\bj} R_{\bi\bj} c_\bj.
+\end{equation}
+Consider a psip that is on determinant $\bj$.  The probability that this psip spawns a child onto determinant $\bi$ in time $\Delta t$ is $R_{\bi\bj}\Delta t$.  Hence $R_{\bi\bj}$ is the \emph{rate} at which a psip on determinant $\bj$ spawns children on determinant $\bi$.  A psip on determinant $\bj$ may spawn children on all other determinants $\{\bi\}$ (where $\{\bi\}$ includes $\bj$, i.e.\ spawning onto the same determinant is permitted), with each spawning connection occurring at its own rate.
+
+What is the probability, $p_\bi$, that the first child spawned appears on determinant $\bi$ at time $t=n\Delta t$?
+\begin{align}
+\begin{split}
+p_\bi =& 
+\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob. \emph{no} children spawned in 1st time step}}}
+\quad\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob. \emph{no} children spawned in 2nd time step}}}
+\cdots \\
+& \times \underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob. \emph{no} children spawned in $(n-1)$-th time step}}} 
+\quad\underbrace{\prod_{\bk\neq\bi} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob. \emph{no} children spawned on determinants $\bk\neq\bi$ in $n$-th time step}}} \\
+& \times \underbrace{R_{\bi\bj}\Delta t}_{\textrm{\parbox{4cm}{prob. child spawned on determinant $\bi$ in $n$-th time step}}}
+\end{split} \\
+\hphantom{p}=& \prod_{\bk} (1-R_{\bk\bj}\Delta t)^n \left(\frac{R_{\bi\bj}\Delta t}{1-R_{\bi\bj}\Delta t}\right) \\
+\hphantom{p}\approx& \prod_{\bk} \left(1-\frac{R_{\bk\bj}t}{n}\right)^n R_{\bi\bj}\Delta t
+\end{align}
+where the last line holds for sufficiently small $\Delta t$.  Using the limit definition of the exponential function, 
+\begin{equation}
+e^x = \lim_{n\to\infty} \left(1+\frac{x}{n}\right)^n,
+\end{equation}
+this becomes:
+\begin{align}
+p_\bi &= \prod_{\bk} \exp\left(-R_{\bk\bj}t\right) R_{\bi\bj}\Delta t \\
+  &= \exp\left(\sum_\bk R_{\bk\bj}t\right)  R_{\bi\bj}\Delta t.
+\end{align}
+Thus
+\begin{gather}
+\begin{split}
+p(\textrm{1st spawning is on determinant $\bi$ between times $t$ and $t+dt$}) \\ \quad = e^{-Rt} R_{\bi\bj} dt
+\end{split} \\ 
+\intertext{and hence}
+p(\textrm{1st spawning is between times $t$ and $t+dt$}) = e^{-R_\bj t} R_\bj dt
+\end{gather}
+where we define $R_\bj=\sum_\bk R_{\bk\bj}$.  We note that the probability is normalised:
+\begin{equation}
+\int_0^\infty R_\bj e^{-R_\bj t} dt = 1.
+\end{equation}
+
+We can thus evolve the population dynamics by `jumping' to the next spawning event.  For each psip (on, say, determinant $\bj$):
+\begin{enumerate}
+\item Pick next spawning time from the probability distribution function $f_t(t) = R_\bj e^{-R_\bj t}$.  A point can be sampled from $f_t(t)$ as follows:
+    \begin{enumerate}[a)]
+    \item Choose a random number, $u$, from the uniform distribution on $[0,1)$. $f_u(u) du = du$ gives the probability that $u$ lies between $u$ and $u+du$.
+    \item Calculate $t$ from
+    \begin{equation}
+    t = - \frac{1}{R_\bj} \ln(u)
+    \end{equation}
+    so that $0 \le t < \infty$. 
+    \end{enumerate}
+Then as $f_t(t) |dt| = f_u(u) |du|$, it follows that $f_t(t) = R_\bj e^{-R_\bj t}$ as required.
+\item Once the spawning time, $t$, has been chosen, chose the determinant $\bi$ on which to spawn according to
+\begin{equation}
+p_\bi = \frac{R_{\bi\bj}}{R_\bj}.
+\end{equation}
+This can be done simply by evaluating all the non-zero $p_\bi$ values and using them to tile the interval $[0,1]$.  If a random number chosen from the uniform distribution on $[0,1]$ lies on segment $\bi$, then the spawning event occurs on determinant $\bi$.
+\end{enumerate}
+
+This process makes it possible to perform FCIQMC without time steps and no rejections, hence leading to efficient sampling.  In the Hubbard model the summations $R_\bi$ are easy and fast to evaluate.
+
+However, each spawning event happens at different times for each psip.  How cann annihilation (which is crucial to avoid an exponential growth in noise) occur?  We can do this by introducing `annihilation barriers'.
+
+\begin{itemize}
+\item Choose an annihilation time step, $t_a$.  Since annihilation is costly, it might be sensible to make this reasonably large.  However, if it is too large then the memory demands are that much greater and (more importantly) the noise in the simulation increases dramatically.  A time step such that around $40-50\%$ of psips spawn between annihilation barriers might be a good value.
+\item Advance all walkers, spawning event by spawning event, until the next event for that psip happens \emph{after} $t_a$.  As soon as this happens, advance the psip to time $t_a$ but do not carry out the spawning event which happens after $t_a$.  Note: we also have to advance all children to the annihilation barrier (and the grandchildren and great-grandchildren etc.), which leads to an increase in memory as $t_a$ increases.  If it is easy to annihilate pairs of psips during the time evolution (e.g.\ if a psip spawns a child of the opposite sign on its own determinant) then do so.
+\item Once all psips in the simulation have reached $t_a$, annihilation is performed in exactly the same fashion as in standard FCIQMC.
+\item After annihilation, start advancing all remaining walkers to the next annihilation barrier at time $2t_a$.
+\end{itemize}
+
+Why does introducting annihilation barriers work?  First, consider a psip on determinant $\bj$ at time $t<t_a$.  If we ignore the annihilation barrier for a moment, then the probability of the next spawning event taking place between times $t^\prime$ and $t^\prime+dt^\prime$, where $t^\prime$ is after the annihilation barrier (i.e.\ $t^\prime>t_a$) is simply
+\begin{equation}
+R_\bj e^{-R_\bj (t^\prime - t)} dt^\prime.
+\end{equation}
+With the barrier present, the probability that the next spawning event occurs during the interval $[t^\prime,t^\prime+dt^\prime]$ is given by:
+\begin{align}
+\begin{split}
+\left(\textrm{\parbox{3cm}{probability we pick a time $t_1>t_a$, so advancing to the barrier}}\right) &\times \left(\textrm{\parbox{3cm}{probability the first event after the barrier happens during the interval$[t^\prime,t^\prime+dt^\prime]$}}\right) \\
+&=  \left(\int_{t_1=t_a}^\infty R_\bj e^{-R_\bj(t_1-t)} dt_1\right) \times \left(R_\bj e^{-R_\bj(t^\prime-t_a)}dt^\prime\right)
+\end{split} \\
+&= e^{-R_\bj(t_a-t)} R_\bj e^{-R_\bj(t^\prime-t_a)} dt^\prime \\
+&= e^{-R_\bj(t^\prime-t)} dt^\prime.
+\end{align}
+Thus the introduction of the annihilation barrier has no effect on the statistics of the sequence of spawning events!
+
+\appendix
+\section{Evaluation of $R_{\bi\bj}$}
+
+An efficient continuous-time FCIQMC algorithm requires efficient enumeration of all the possible excitations from determinant $\bj$ and the associated $R_{\bi\bj}$ matrix elements.  Fortunately, this is relatively straight-forward in the Hubbard model (and also in, e.g., the uniform electron gas).
+
+\subsection{Real space spin-orbitals}
+
+If the determinant space is constructed from the real space (atomic) spin-orbitals, then only single excitations are connected and $R_{\bi\bj}$ has only three possible values:
+\begin{equation}
+R_{\bi\bj} = \begin{cases} 
+    R_{\bj\bj} & \bi = \bj \\
+    t          & \textrm{\parbox{9cm}{$|D_\bi\ket=a^\dagger_a a_i|D_\bj\ket$, where $i$ and $a$ are respectively occupied and unoccupied spin-orbitals on neighbouring sites}} \\
+    0          & \textrm{otherwise.}
+\end{cases}
+\end{equation}
+Due to the form of the Hubbard Hamiltonian, the maximum number of excitations possible from a determinant is $2n_\textrm{dim}N$, where $n_\textrm{dim}$ is the number of dimensions in the system and $N$ is the number of electrons.  The number of possible excitations is often reduced by orbital $a$ already being occupied.
+
+\subsection{Bloch spin-orbitals}
+
+In contrast, if the determinant is constructed from the Bloch spin-orbitals, then only double excitations are connected.  Again, $R_{\bi\bj}$ has three possible values:
+\begin{equation}
+R_{\bi\bj} = \begin{cases} 
+    R_{\bj\bj} & \bi = \bj \\
+    U          & \textrm{\parbox{9cm}{$|D_\bi\ket=a^\dagger_a a^\dagger_b a_i a_j|D_\bj\ket$, where $i,j$ and $a,b$ are respectively occupied and unoccupied spin-orbitals and conserve crystal momentum.}} \\
+    0          & \textrm{otherwise.}
+\end{cases}
+\end{equation}
+Crystal momentum is conserved if 
+\begin{equation}
+\bk_i + \bk_j = \bk_a + \bk_b,
+\end{equation}
+where here $\bk_i$ refers to the wavevector of the $i$-th spin-orbital.
+
+Due to the form of the Hubbard Hamiltonian, only double excitations where $i$ and $j$ are of opposite spins are allowed and the selection of the fourth spin-orbital involved in a connected excitation is uniquely determined by the other three spin-orbitals.  Thus the maximum number of excitations from a determinant is $N_\uparrow N_\downarrow \min( M - N_\uparrow, M - N_\downarrow)$, where $N_\alpha$ is the number of electrons of spin $\alpha$ and $2M$ is the total number of spin-orbitals.
+
+\end{document}
