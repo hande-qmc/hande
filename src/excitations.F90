@@ -36,11 +36,11 @@ contains
         !    If the excitation is a single or double excitation then it also
         !    includes:
         ! 
-        !        excitation%from_orbs(2): orbitals excited from in f1.
-        !        excitation%to_orbs(2): orbitals excited to in f2.
+        !        excitation%from_orb(2): orbitals excited from in f1.
+        !        excitation%to_orb(2): orbitals excited to in f2.
         !        excitation%perm: true if an odd number of permutations are
         !            reqiured to align the determinants.
-        !        The second element of from_orbs and to_orbs is zero for single
+        !        The second element of from_orb and to_orb is zero for single
         !        excitations.
 
         use bit_utils
@@ -543,7 +543,7 @@ contains
 
     end function calc_pgen_hub_real
 
-    pure subroutine enumerate_all_excitations_real(cdet, max_excit, excitations)
+    pure subroutine enumerate_all_excitations_hub_real(cdet, max_excit, excitations)
 
         ! Find all excitations connected to a determinant constructed from the
         ! real-space (atomic) spin-orbitals.
@@ -555,7 +555,8 @@ contains
         !    max_excit: the number of possible excitations from the determinant.
         !    excitations: array of excit variables containing the excitation
         !        information.  Note that only single excitations are allowed, so
-        !        the nexcit field is not set and the permutation field is also
+        !        the nexcit field is not set, the second element in the from_orb
+        !        and to_orb filed is not set, and the permutation field is also
         !        not set, as it's quite expensive to evaluate and not necessary
         !        for most of the excitations.  The array must be at least of the
         !        size of the maximum number of excitations: 2*ndim*nel.
@@ -595,9 +596,9 @@ contains
             end do
         end do
 
-    end subroutine enumerate_all_excitations_real
+    end subroutine enumerate_all_excitations_hub_real
 
-    pure subroutine enumerate_all_excitations_k(cdet, max_excit, excitations)
+    pure subroutine enumerate_all_excitations_hub_k(cdet, max_excit, excitations)
 
         ! Find all excitations connected to a determinant constructed from the
         ! momentum-space (Bloch) spin-orbitals.
@@ -615,6 +616,8 @@ contains
         !        for most of the excitations.  The array must be at least of the
         !        size of the maximum number of excitations:
         !        nalpha*nbeta*min(nsites-nalpha,nsites-nbeta).
+        !        WARNING: the from_orb and to_orb are not ordered and must be
+        !        ordered before (e.g.) find_excitation_permutation2 is called.
 
         use basis, only: bit_lookup
         use determinants, only: det_info
@@ -652,6 +655,6 @@ contains
             end do
         end do
 
-    end subroutine enumerate_all_excitations_k
+    end subroutine enumerate_all_excitations_hub_k
 
 end module excitations
