@@ -238,6 +238,77 @@ contains
 
     end function slater_condon2_hub_k
 
+    pure subroutine slater_condon2_hub_k_excit(occ_list, connection, hmatel)
+
+        ! Generate the matrix element between a determinant and a double
+        ! excitation in the momentum space formulation of the Hubbard model.
+        ! WARNING: this routine assumes that the excitation is allowed (i.e.
+        ! conserves crystal momentum).  It is, however, faster as symmetry
+        ! checking is skipped.
+
+        ! In:
+        !    occ_list: integer list of occupied spin-orbitals in a determinant, D.
+        ! In/Out:
+        !    connection: excit type describing the excitation between |D> and
+        !    |D_ij^ab>.  On entry, only the from_orb and to_orb fields must be
+        !    set.  On exit the from_orb and to_orb fields will be ordered
+        !    and the perm field will be set.
+        ! Out:
+        !    hmatel: < D | H | D_ij^ab >, the Hamiltonian matrix element between a 
+        !    determinant and a double excitation of it in the momemtum space
+        !    formulation of the Hubbard model.
+
+        use excitations, only: excit, find_excitation_permutation2
+        use system, only: nel
+
+        integer, intent(in) :: occ_list(nel)
+        type(excit), intent(inout) :: connection
+        real(p), intent(out) :: hmatel
+
+        integer :: tmp
+
+        ! The permuting algorithm works by lining up the min(i,j) with
+        ! min(a,b) and max(i,j) with max(a,b) and hence we can find out
+        ! whether the Coulomb or exchange integral is non-zero.  
+        ! Thus (i,j) and (a,b) must be ordered.
+        if (connection%from_orb(1) > connection%from_orb(2)) then
+            ! Swap.
+            tmp = connection%from_orb(1)
+            connection%from_orb(1) = connection%from_orb(2)
+            connection%from_orb(2) = tmp
+        end if
+        if (connection%to_orb(1) > connection%to_orb(2)) then
+            ! Swap
+            tmp = connection%to_orb(1)
+            connection%to_orb(1) = connection%to_orb(2)
+            connection%to_orb(2) = tmp
+        end if
+
+        ! a) Sign from value of U as well---U can be negative!
+        hmatel = hub_k_coulomb
+
+        ! b) Negative sign from permuting the determinants so that they line
+        ! up?
+        call find_excitation_permutation2(occ_list, connection)
+        if (connection%perm) then
+            ! Matrix element gets a -sign from rearranging determinants so
+            ! that they maximally line up.
+            hmatel = -hmatel
+        end if
+
+        ! c) Because the only non-zero excitations are when i is alpha and
+        ! j is beta or vice-versa, only the Coulomb integral or the exchange
+        ! integral is non-zero.  If it's the exchange
+        ! integral, then we obtain an additional minus sign.
+        if (mod(connection%from_orb(1)-connection%to_orb(1),2) /= 0) then
+            ! (i',a') are (alpha,beta) or (beta,alpha).
+            ! Thus it is the exchange integral which contributes to the
+            ! connecting matrix element.
+            hmatel = -hmatel
+        end if
+
+    end subroutine slater_condon2_hub_k_excit
+
     pure function slater_condon0_hub_real(f) result(hmatel)
 
         ! In:
@@ -308,5 +379,43 @@ contains
         if (perm) hmatel = -hmatel
 
     end function slater_condon1_hub_real
+
+    pure subroutine slater_condon1_hub_real_excit(occ_list, connection, hmatel)
+
+        ! Generate the matrix element between a determinant and a single
+        ! excitation in the real space formulation of the Hubbard model.
+        ! WARNING: this routine assumes that the excitation is allowed (i.e.
+        ! the excitation is from an occupied orbital, i, to an unoccupied
+        ! orbital, a, which is connected to i).  By skipping such checks, it is,
+        ! however, faster.
+
+        ! In:
+        !    occ_list: integer list of occupied spin-orbitals in a determinant, D.
+        ! In/Out:
+        !    connection: excit type describing the excitation between |D> and
+        !    |D_i^a>.  On entry, only the from_orb and to_orb fields must be
+        !    set.  On exit the perm field will also be set.
+        ! Out:
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    determinant and a single excitation of it in the real space
+        !    formulation of the Hubbard model.
+
+        use excitations, only: excit, find_excitation_permutation1
+
+        integer, intent(in) :: occ_list(nel)
+        type(excit), intent(inout) :: connection
+        real(p), intent(out) :: hmatel
+
+        ! a) Find out permutation required to line up determinants.
+        call find_excitation_permutation1(occ_list, connection)
+
+        ! b) The matrix element connected |D> and |D_i^a> is <i|h|a> = -t.
+        if (connection%perm) then
+            hmatel = hubt
+        else
+            hmatel = -hubt
+        end if
+
+    end subroutine slater_condon1_hub_real_excit
 
 end module hamiltonian

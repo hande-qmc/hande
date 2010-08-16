@@ -38,7 +38,8 @@ contains
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_k, excit, find_excitation_permutation2
+        use excitations, only: calc_pgen_hub_k, excit
+        use hamiltonian, only: slater_condon2_hub_k_excit
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
 
@@ -47,8 +48,8 @@ contains
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, psuccess, pspawn
-        integer :: i, j, a, b, ij_sym, s, tmp
+        real(p) :: pgen, psuccess, pspawn, hmatel
+        integer :: i, j, a, b, ij_sym, tmp
 
         ! Single excitations are not connected determinants within the 
         ! momentum space formulation of the Hubbard model.
@@ -99,60 +100,20 @@ contains
             ! on...
             call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b)
 
-            ! 5. Is connecting matrix element positive (in which case we spawn with
-            ! negative walkers) or negative (in which case we spawn with positive
-            ! walkers)?
-
-            ! The permuting algorithm works by lining up the min(i,j) with
-            ! min(a,b) and max(i,j) with max(a,b) and hence we can find out
-            ! whether the Coulomb or exchange integral is non-zero.  
-            ! Thus (i,j) and (a,b) must be ordered.
-            if (i > j) then
-                ! Swap.
-                tmp = i
-                i = j
-                j = tmp
-            end if
-            if (a > b) then
-                ! Swap
-                tmp = a
-                a = b
-                b = tmp
-            end if
-
             connection%nexcit = 2
             connection%from_orb = (/ i,j /)
             connection%to_orb = (/ a,b /)
 
-            call find_excitation_permutation2(cdet%occ_list, connection)
-
-            ! a) Negative sign from permuting the determinants so that they line
-            ! up?
-            s = 1
-            if (connection%perm) then
-                ! Matrix element gets a -sign from rearranging determinants so
-                ! that they maximally line up.
-                s = -s
-            end if
-
-            ! b) Because the only non-zero excitations are when i is alpha and
-            ! j is beta or vice-versa, only the Coulomb integral or the exchange
-            ! integral is non-zero.  If it's the exchange
-            ! integral, then we obtain an additional minus sign.
-            if (mod(i-a,2) /= 0) then
-                ! (i',a') are (alpha,beta) or (beta,alpha).
-                ! Thus it is the exchange integral which contributes to the
-                ! connecting matrix element.
-                s = -s
-            end if
-            ! Sign from value of U as well---U can be negative!
-            if (hub_k_coulomb < 0) s = -s
+            ! 5. Is connecting matrix element positive (in which case we spawn with
+            ! negative walkers) or negative (in which case we spawn with positive
+            ! walkers)?
+            call slater_condon2_hub_k_excit(cdet%occ_list, connection, hmatel)
 
             ! If H_ij is positive, then the spawned walker is of opposite sign
             ! to the parent.
             ! If H_ij is negative, then the spawned walker is of the same sign
             ! as the parent.
-            if (s > 0) then
+            if (hmatel > 0) then
                 nspawn = -sign(nspawn, parent_sign)
             else
                 nspawn = sign(nspawn, parent_sign)
@@ -180,9 +141,9 @@ contains
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_real, excit, find_excitation_permutation1
+        use excitations, only: calc_pgen_hub_real, excit
         use fciqmc_data, only: tau
-        use hamiltonian, only: slater_condon1_hub_real
+        use hamiltonian, only: slater_condon1_hub_real_excit
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -208,9 +169,7 @@ contains
         connection%from_orb(1) = i
         connection%to_orb(1) = a
 
-        call find_excitation_permutation1(cdet%occ_list, connection)
-
-        hmatel = slater_condon1_hub_real(connection%from_orb(1), connection%to_orb(1), connection%perm)
+        call slater_condon1_hub_real_excit(cdet%occ_list, connection, hmatel)
 
         ! 4. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen
