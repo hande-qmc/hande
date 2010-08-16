@@ -543,7 +543,7 @@ contains
 
     end function calc_pgen_hub_real
 
-    pure subroutine enumerate_all_excitations_real(cdet, max_excit, excitations)
+    pure subroutine enumerate_all_excitations_hub_real(cdet, max_excit, excitations)
 
         ! Find all excitations connected to a determinant constructed from the
         ! real-space (atomic) spin-orbitals.
@@ -596,9 +596,9 @@ contains
             end do
         end do
 
-    end subroutine enumerate_all_excitations_real
+    end subroutine enumerate_all_excitations_hub_real
 
-    pure subroutine enumerate_all_excitations_k(cdet, max_excit, excitations)
+    pure subroutine enumerate_all_excitations_hub_k(cdet, max_excit, excitations)
 
         ! Find all excitations connected to a determinant constructed from the
         ! momentum-space (Bloch) spin-orbitals.
@@ -655,6 +655,6 @@ contains
             end do
         end do
 
-    end subroutine enumerate_all_excitations_k
+    end subroutine enumerate_all_excitations_hub_k
 
 end module excitations
