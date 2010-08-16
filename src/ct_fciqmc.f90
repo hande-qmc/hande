@@ -38,6 +38,7 @@ contains
                 cdet%f = walker_dets(:,idet) 
                 call decoder(cdet%f, cdet)
                 R = calc_R(cdet)
+                tmp_pop = walker_population(1,idet) ! not sure if this should be a "2" here?
 
                 !evaluate the projected energy
                 call update_proj_energy(idet)
@@ -51,6 +52,22 @@ contains
                         if ( time > t_barrier ) exit
 
                         call ct_spawn(cdet, walker_population(1,idet), nspawned, connections)
+                        
+                        ! If death then kill the walker immediately and move
+                        ! onto the next one
+                        if (connections%nexcit == 0) then
+                            !if the spawned walker and the parent (all the
+                            !walkers on a perticular det. have the same sgn due
+                            !to annihilation) are of opposite sgn we get death
+                            if(walker_population(1,idet)*nspawned < 0) then
+                                if (sgn(nspawned) == 1) then
+                                    tmp_pop = tmp_pop + 1 ! if nspawned +ve then add it
+                                else
+                                    tmp_pop = tmp_pop - 1 ! if nspawned -ve then subtract it
+                                end if
+                                exit ! the walker is dead
+                            end if
+                        end if
 
                         ! If there were some walkers spawned, append them to the
                         ! spawned array - maintaining processor blocks if going in
@@ -60,7 +77,7 @@ contains
                     end do
 
                 end do
-
+                walker_population(1,idet) = tmp_pop
             end do
 
             ! now we advance all the spawned walkers to the barrier from their
