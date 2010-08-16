@@ -543,7 +543,7 @@ contains
 
     end function calc_pgen_hub_real
 
-    pure subroutine enumerate_all_excitations_real(cdet, nexcit, excitations)
+    pure subroutine enumerate_all_excitations_real(cdet, max_excit, excitations)
 
         ! Find all excitations connected to a determinant constructed from the
         ! real-space (atomic) spin-orbitals.
@@ -552,7 +552,7 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  The f and occ_list fields must be set.
         ! Out:
-        !    nexcit: the number of possible excitations from the determinant.
+        !    max_excit: the number of possible excitations from the determinant.
         !    excitations: array of excit variables containing the excitation
         !        information.  Note that only single excitations are allowed, so
         !        the nexcit field is not set and the permutation field is also
@@ -566,12 +566,12 @@ contains
         use system, only: ndim, nel
 
         type(det_info), intent(in) :: cdet
-        integer, intent(out) :: nexcit
+        integer, intent(out) :: max_excit
         type(excit), intent(out) :: excitations(:)
 
         integer :: ii, i, ia, a, a_pos, a_el
 
-        nexcit = 0
+        max_excit = 0
 
         do ii = 1, nel
             i = cdet%occ_list(i)
@@ -587,9 +587,9 @@ contains
                     a_el = bit_lookup(2,a)
                     if (.not.btest(cdet%f(a_el), a_pos)) then
                         ! a is unoccupied.  Have an excitation.
-                        nexcit = nexcit+1
-                        excitations(nexcit)%from_orb(1) = i
-                        excitations(nexcit)%to_orb(1) = a
+                        max_excit = max_excit+1
+                        excitations(max_excit)%from_orb(1) = i
+                        excitations(max_excit)%to_orb(1) = a
                     end if
                 end if
             end do
@@ -597,7 +597,7 @@ contains
 
     end subroutine enumerate_all_excitations_real
 
-    pure subroutine enumerate_all_excitations_k(cdet, nexcit, excitations)
+    pure subroutine enumerate_all_excitations_k(cdet, max_excit, excitations)
 
         ! Find all excitations connected to a determinant constructed from the
         ! momentum-space (Bloch) spin-orbitals.
@@ -607,7 +607,7 @@ contains
         !        from.  The f, occ_list_alpha, occ_list_beta and
         !        occ_list_unocc_alpha fields must be set.
         ! Out:
-        !    nexcit: the number of possible excitations from the determinant.
+        !    max_excit: the number of possible excitations from the determinant.
         !    excitations: array of excit variables containing the excitation
         !        information.  Note that only double excitations are allowed, so
         !        the nexcit field is not set and the permutation field is also
@@ -622,12 +622,12 @@ contains
         use system, only: ndim, nel, nalpha, nvirt_alpha, nbeta
 
         type(det_info), intent(in) :: cdet
-        integer, intent(out) :: nexcit
+        integer, intent(out) :: max_excit
         type(excit), intent(out) :: excitations(:)
 
         integer :: ii, i, ij, j, ij_sym, ia, a, b, b_pos, b_el
 
-        nexcit = 0
+        max_excit = 0
 
         do ii = 1, nalpha
             i = cdet%occ_list_alpha(ii)
@@ -644,9 +644,9 @@ contains
                     b_el = bit_lookup(2,b)
                     if (.not.btest(cdet%f(b_el), b_pos)) then
                         ! If b is unoccupied then have found the excitation.
-                        nexcit = nexcit + 1
-                        excitations(nexcit)%from_orb = (/ i, j /)
-                        excitations(nexcit)%to_orb = (/ a, b /)
+                        max_excit = max_excit + 1
+                        excitations(max_excit)%from_orb = (/ i, j /)
+                        excitations(max_excit)%to_orb = (/ a, b /)
                     end if
                 end do
             end do
