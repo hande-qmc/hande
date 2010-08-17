@@ -152,7 +152,7 @@ contains
                     if (current_pos(iproc) /= spawning_head(iproc) + 1) then
 
                         ! decode the spawned walker bitstring
-                        cdet%f = spawned_walkers(:basis_length,iproc)
+                        cdet%f = spawned_walkers(:basis_length,current_pos(iproc))
                         K_ii = sc0(cdet%f)
                         call decoder(cdet%f,cdet)
                         call enumerator(cdet,nexcitations,connection_list)
