@@ -13,11 +13,10 @@ contains
         use determinants, only: det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
-        use fciqmc_common, only: load_balancing_report
+        use fciqmc_common, only: load_balancing_report, initial_fciqmc_status
         use fciqmc_restart
         use interact
-        use system, only: ndim
-
+        use system, only: ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
         use parallel
 
         interface  
@@ -65,11 +64,19 @@ contains
         type(excit), allocatable :: connection_list(:)
         logical :: soft_exit
 
-        allocate(connection_list(2*ndim*nel))
+        if (system_type == hub_k) then
+            allocate(connection_list(nalpha*nbeta*min(nsites-nalpha,nsites-nbeta)))  
+        else if (system_type == hub_real) then
+            allocate(connection_list(2*ndim*nel))
+        end if
+
         allocate(current_pos(0:max(1,nprocs-1)))
         call alloc_det_info(cdet)
 
         nparticles_old = nparticles_old_restart
+
+        if (parent) call write_fciqmc_report_header()
+        call initial_fciqmc_status(update_proj_energy)
 
         ! Main fciqmc loop
         do ireport = 1, nreport
