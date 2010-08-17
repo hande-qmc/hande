@@ -348,6 +348,8 @@ initialisation (mainly the enumeration of the basis) is performed.
     Perform an FCIQMC calculation.
 **ifciqmc**
     Perform an initiator-FCIQMC calculation.
+**ct_fciqmc**
+    Perform a continuous-time FCIQMC calculation.
 **lanczos**
     Perform a Lanczos diagonalisation of the Hamiltonian matrix.
 **lanczos_direct**
