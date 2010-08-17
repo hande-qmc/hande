@@ -149,10 +149,10 @@ contains
             do
                 do iproc = 0, nprocs-1
 
-                    if (current_pos(iproc) /= spawning_head(iproc) + 1) then
+                    if (current_pos(iproc) /= spawning_head(iproc) + 1 .and. spawning_head(iproc) /= spawning_block_start(iproc)) then
 
                         ! decode the spawned walker bitstring
-                        cdet%f = spawned_walkers(:basis_length,iproc)
+                        cdet%f = spawned_walkers(:basis_length,current_pos(iproc))
                         K_ii = sc0(cdet%f)
                         call decoder(cdet%f,cdet)
                         call enumerator(cdet,nexcitations,connection_list)
@@ -189,13 +189,14 @@ contains
 
                 end do
 
-                if(all(current_pos == spawning_head+1)) exit
+                if(all(current_pos == spawning_head+1 .or. current_pos == spawning_block_start)) exit
                 
             end do
 
 
             ! calculate rspawn
-            rspawn = tot_spawned/nparticles_old(1)
+            ! JSS: don't understand why this is a problem. Will fix later.
+!            rspawn = tot_spawned/nparticles_old(1)
 
             !update spawn rate 
             call direct_annihilation(sc0)
