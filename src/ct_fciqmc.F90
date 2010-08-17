@@ -1,17 +1,29 @@
 module tc_fciqmc
 
-#include "cdefs.h"
 use fciqmc_data
 use const, only: p
-use excitation
     
 implicit none
 
 contains
     subroutine do_ct_fciqmc(decoder, update_proj_energy, ct_spawn, sc0, diag_element, matel)
 
+        use annihilation, only: direct_annihilation
+        use basis, only: basis_length
+        use determinants, only: det_info, alloc_det_info
+        use energy_evaluation, only: update_energy_estimators
+        use excitations, only: excit
+        use fciqmc_common, only: load_balancing_report
+        use fciqmc_restart
+        use interact
+
+        use parallel
+
         interface  
             subroutine ct_spawn(det, diag, parent_sign, hmatel, nspawned, connection)
+                use determinants, only: det_info
+                use const, only: p
+                use excitations, only: excit
                 implicit none
                 type(det_info), intent(in) :: det
                 real(p), intent(in) :: diag, hmatel
@@ -40,16 +52,20 @@ contains
                 integer(i0), intent(in) :: f(basis_length)
             end function sc0
             function diag_element(f) result(diag)
-               use hubbard_real
-               use hubbard_k
-               implicit none
-               integer(i-), intent(in) :: f(basis_length)
+                use const
+                use basis, only: basis_length
+                implicit none
+                real(p) :: diag
+                integer(i0), intent(in) :: f(basis_length)
+           end function
         end interface
 
-        integer :: nspawned, tot_spawned,  nparticles_old(sampling_size), ireport, idet, iparticle
-        integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
-        real(p) :: time, t_barrier, t1, t2, K_ii
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
+
+        integer :: nspawned, tot_spawned,  nparticles_old(sampling_size), ireport, idet, iparticle, tmp_pop
+        integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
+        real(p) :: time, t_barrier, K_ii, R
+        real :: t1, t2
         type(det_info) :: cdet
         type(excit) :: connections
         logical :: soft_exit
@@ -60,7 +76,7 @@ contains
         nparticles_old = nparticles_old_restart
 
         ! Main fciqmc loop
-        do ireport = 1, nreports
+        do ireport = 1, nreport
     
             ! time the report loop
             call cpu_time(t1)
@@ -81,7 +97,7 @@ contains
                 ! doing it. Then find list of occupied orbitals
                 cdet%f = walker_dets(:,idet) 
                 call decoder(cdet%f, cdet)
-                R = calc_R(cdet)
+!                R = calc_R(cdet)
                 tmp_pop = walker_population(1,idet)
 
                 !evaluate the projected energy
@@ -95,7 +111,7 @@ contains
                         time = time + timestep(calc_R(cdet, matel, walker_energies(1,idet)))
                         if ( time > t_barrier ) exit
 
-                        call ct_spawn(cdet, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
+!                        call ct_spawn(cdet, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
                         
 
                         ! If death then kill the walker immediately and move
@@ -141,24 +157,25 @@ contains
 
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,iproc)
-                        K_ii = diagonal_element(cdet%f)
+                        K_ii = diag_element(cdet%f)
                         call decoder(cdet%f,cdet)
-                        R = calc_R(cdet)
+!                        R = calc_R(cdet)
 
                         ! Spawn from this walker & append to the spawned array until
                         ! we hit the barrier
                         time = spawn_times(current_pos(iproc))
                         do
 
-                            time = time + timestep(calc_R(cdet, matel, K_ii)
+                            time = time + timestep(calc_R(cdet, matel, K_ii))
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet, spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
+!                            call ct_spawn(cdet, spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
                            
                             ! Handle walker death
                             if(connections%nexcit == 0 .and. &
                             spawned_walkers(spawned_pop,current_pos(iproc))*nspawned < 0) then
-                                spawned_walkers(spawned_pop,current_pos(iproc)) = spawned_walkers(spawned_pop,current_pos(iproc)) + nspawned 
+                                spawned_walkers(spawned_pop,current_pos(iproc)) = &
+                                    spawned_walkers(spawned_pop,current_pos(iproc)) + nspawned 
                                 exit ! the walker is dead - do not continue
                             end if
 
@@ -209,16 +226,16 @@ contains
 
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
-    end subroutine do_tc_fciqmc
+    end subroutine do_ct_fciqmc
 
     
-    subroutine ct_spawn_real(d, K_ii, parent_sgn, matel, nspawned, connection)
+    subroutine ct_spawn_real(det, K_ii, parent_sgn, matel, nspawned, connection)
     
         ! randomly select a (valid) excitation from the current determinant
         ! stored in "d" for the Hubbard model in realspace
         !
         ! In: 
-        !    d: info on current determinant that we will spawn from.
+        !    det: info on current determinant that we will spawn from.
         !    R_ii: the diagonal Hamiltonian matrix element for the determinant d
         !    parent_sgn: sgn on the parent determinant (i.e. +ve or -ve integer)
         !
@@ -228,7 +245,8 @@ contains
         !    connection: the excitation connection between the parent and child
         !                determinants
 
-        use excitations, only: enumerate_all_excitations
+        use excitations, only: enumerate_all_excitations_hub_real, excit
+        use determinants, only: det_info
         use dSFMT_interface, only: genrand_real2
         use system, only: ndim, nel
 
@@ -240,12 +258,12 @@ contains
         type(excit), intent(out) :: connection
         
         real(p) :: rand, test, R_ii, R, abs_matel
-        integer :: num_excitations
+        integer :: num_excitations, j
         type(excit) :: connection_list(2*ndim*nel)
 
         R_ii = abs(K_ii)
         abs_matel = abs(matel)
-        call enumerate_all_excitations_real(d, num_excitations, connection_list)
+        call enumerate_all_excitations_hub_real(det, num_excitations, connection_list)
         R = R_ii + matel*num_excitations
         rand = genrand_real2()*R
 
@@ -262,7 +280,7 @@ contains
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
         else
             test = R_ii
-            do j = 2, nexcit
+            do j = 2, num_excitations
                 test = test + abs_matel
                 if (rand < test) then
                     connection = connection_list(j)
@@ -274,13 +292,13 @@ contains
     end subroutine ct_spawn_real
 
 
-    subroutine ct_spawn_kspace(d, K_ii, parent_sgn, matel, nspawned, connection)
+    subroutine ct_spawn_kspace(det, K_ii, parent_sgn, matel, nspawned, connection)
     
         ! randomly select a (valid) excitation from the current determinant
-        ! stored in "d" for the Hubbard model in realspace
+        ! stored in "det" for the Hubbard model in realspace
         !
         ! In: 
-        !    d: info on current determinant that we will spawn from.
+        !    det: info on current determinant that we will spawn from.
         !    R_ii: the diagonal Hamiltonian matrix element for the determinant d
         !    parent_sgn: sgn on the parent determinant (i.e. +ve or -ve integer)
         !
@@ -290,7 +308,8 @@ contains
         !    connection: the excitation connection between the parent and child
         !                determinants
 
-        use excitations, only: enumerate_all_excitations_hub_k
+        use determinants, only: det_info
+        use excitations, only: enumerate_all_excitations_hub_k, excit
         use dSFMT_interface, only: genrand_real2
         use system, only: ndim, nel, nalpha, nbeta, nsites
 
@@ -302,7 +321,7 @@ contains
         type(excit), intent(out) :: connection
         
         real(p) :: rand, test, R_ii, R, abs_matel
-        integer :: num_excitations
+        integer :: num_excitations, j
         type(excit) :: connection_list(nalpha*nbeta*min(nsites-nalpha,nsites-nbeta))
 
         rand = genrand_real2()*R
@@ -319,7 +338,7 @@ contains
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
         else
             test = R_ii
-            do j = 2, nexcit ! cycle over connections and test for each one
+            do j = 2, size(connection_list) ! cycle over connections and test for each one
                 test = test + abs_matel
                 if (rand < test) then
                     connection = connection_list(j)
@@ -390,19 +409,19 @@ contains
         spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
         spawn_times(iproc_spawn) = spawn_time
 
-    end subroutine create_spawned_particle
+    end subroutine create_spawned_particle_ct
 
-    pure function timestep(R)
+    function timestep(R) result(dt)
 
         ! Returns a random timestep to advance a walker by for the continuous
         ! time algorithm.
 
         use dSFMT_interface, only: genrand_real2
 
-        real(p), intent(out) :: timestep
+        real(p) :: dt
         real(p), intent(in)  :: R
 
-        timestep = -R*log(genrand_real2())
+        dt = -R*log(genrand_real2())
     
     end function timestep
 
@@ -413,11 +432,14 @@ contains
         ! connecting |D_i> to |D_j>. Used for selecting a time to jump to and
         ! also which excitation to choose when spawning.
 
+        use determinants, only: det_info
+
+        real(p) :: R
         type(det_info), intent(in) :: d
-        real(p), intent(in) :: matel, K_ii, R_ii
+        real(p), intent(in) :: matel, K_ii
         
-        call enumerate_all_excitations_hub_k(d, num_excitations, connection_list)
-        R = abs(K_ii) + abs(matel)*num_excitations
+!        call enumerate_all_excitations_hub_k(d, num_excitations, connection_list)
+!        R = abs(K_ii) + abs(matel)*num_excitations
 
     end function calc_R
 
