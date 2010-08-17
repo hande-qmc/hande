@@ -8,7 +8,7 @@ use excitation
 implicit none
 
 contains
-    subroutine do_ct_fciqmc(decoder, update_proj_energy, ct_spawn, sc0, matel)
+    subroutine do_ct_fciqmc(decoder, update_proj_energy, ct_spawn, sc0, diag_element, matel)
 
         interface  
             subroutine ct_spawn(det, diag, parent_sign, hmatel, nspawned, connection)
@@ -39,11 +39,16 @@ contains
                 real(p) :: hmatel
                 integer(i0), intent(in) :: f(basis_length)
             end function sc0
+            function diag_element(f) result(diag)
+               use hubbard_real
+               use hubbard_k
+               implicit none
+               integer(i-), intent(in) :: f(basis_length)
         end interface
 
-        integer :: nspawned, ireport, idet, iparticle
+        integer :: nspawned, tot_spawned,  nparticles_old(sampling_size), ireport, idet, iparticle
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
-        real(p) :: time, t_barrier, t1, t2
+        real(p) :: time, t_barrier, t1, t2, K_ii
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
         type(det_info) :: cdet
         type(excit) :: connections
@@ -64,6 +69,7 @@ contains
             rspawn = 0.0_p
             proj_energy = 0.0_p
             D0_population = 0.0_p
+            tot_spawned = 0
             
             ! Reset the pointer to the current position in the spawning array to 
             ! be the slot preceding the first
@@ -76,7 +82,7 @@ contains
                 cdet%f = walker_dets(:,idet) 
                 call decoder(cdet%f, cdet)
                 R = calc_R(cdet)
-                tmp_pop = walker_population(1,idet) ! not sure if this should be a "2" here?
+                tmp_pop = walker_population(1,idet)
 
                 !evaluate the projected energy
                 call update_proj_energy(idet)
@@ -91,21 +97,26 @@ contains
 
                         call ct_spawn(cdet, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
                         
+
                         ! If death then kill the walker immediately and move
                         ! onto the next one
-                        !if the spawned walker and the parent (all the
-                        !walkers on a perticular det. have the same sgn due
-                        !to annihilation) are of opposite sgn we get death
+                        ! if the spawned walker and the parent (all the
+                        ! walkers on a perticular det. have the same sgn due
+                        ! to annihilation) are of opposite sgn we get death
                         if (connections%nexcit == 0 .and. &
                         walker_population(1,idet)*nspawned < 0.0_p) then
                             tmp_pop = tmp_pop + nspawned 
+                            nparticles(1) = nparticles(1) - abs(nspawned) 
                             exit ! the walker is dead
                         end if
-
+                         
+                        ! used for calculating rspawn
+                        tot_spawned = tot_spawned + abs(nspawned)
+                        
                         ! If there were some walkers spawned, append them to the
                         ! spawned array - maintaining processor blocks if going in
                         ! parallel. We now also have an extra "time" array giving
-                        ! the birth time of the walker                   (cdet, connection, nspawn, particle_type, spawn_time)
+                        ! the birth time of the walker
                         if (nspawned /= 0) call create_spawned_particle_ct(cdet, connections, nspawned, spawned_pop, time)
                     end do
 
@@ -114,6 +125,7 @@ contains
                 walker_population(1,idet) = tmp_pop
             
             end do
+
 
             ! now we advance all the spawned walkers to the barrier from their
             ! respective birth times - Any walkers spawned as a consequence of
@@ -129,6 +141,7 @@ contains
 
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,iproc)
+                        K_ii = diagonal_element(cdet%f)
                         call decoder(cdet%f,cdet)
                         R = calc_R(cdet)
 
@@ -165,6 +178,10 @@ contains
                 if(all(current_pos == spawning_head+1)) exit
                 
             end do
+
+
+            ! calculate rspawn
+            rspawn = tot_spawned/nparticles_old(1)
 
             !update spawn rate 
             call direct_annihilation(sc0)
@@ -232,27 +249,22 @@ contains
         R = R_ii + matel*num_excitations
         rand = genrand_real2()*R
 
+
+        if (K_ii < 0) then    ! child is same sign as parent
+            nspawned = sign(1,parent_sgn)
+        else if (K_ii > 0) then
+            nspawned = -sign(1,parent_sgn)
+        else
+            nspawned = 0
+        end if
+
         if (rand < R_ii) then
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
-            if (K_ii < 0) then    ! child is same sign as parent
-                nspawned = sign(1,parent_sgn)
-            else if (K_ii > 0) then
-                nspawned = -sign(1,parent_sgn)
-            else
-                nspawned = 0
-            end if
         else
             test = R_ii
             do j = 2, nexcit
                 test = test + abs_matel
                 if (rand < test) then
-                    if (K_ii < 0) then ! child is same sign as parent
-                        nspawned = sign(1,parent_sgn)
-                    else if (K_ii > 0) then
-                        nspawned = -sign(1,parent_sgn)
-                    else
-                        nspawned = 0
-                    end if
                     connection = connection_list(j)
                     exit
                 end if
@@ -295,27 +307,21 @@ contains
 
         rand = genrand_real2()*R
 
+        if (K_ii < 0) then    ! child is same sign as parent
+            nspawned = sign(1,parent_sgn)
+        else if (K_ii > 0) then
+            nspawned = -sign(1,parent_sgn)
+        else
+            nspawned = 0
+        end if
+
         if (rand < R_ii) then
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
-            if (K_ii < 0) then    ! child is same sign as parent
-                nspawned = sign(1,parent_sgn)
-            else if (K_ii > 0) then
-                nspawned = -sign(1,parent_sgn)
-            else
-                nspawned = 0
-            end if
         else
             test = R_ii
             do j = 2, nexcit ! cycle over connections and test for each one
                 test = test + abs_matel
                 if (rand < test) then
-                    if (K_ii < 0) then ! child is same sign as parent
-                        nspawned = sign(1,parent_sgn)
-                    else if (K_ii > 0) then
-                        nspawned = -sign(1,parent_sgn)
-                    else
-                        nspawned = 0
-                    end if
                     connection = connection_list(j)
                     exit
                 end if
