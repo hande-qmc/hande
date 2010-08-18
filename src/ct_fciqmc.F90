@@ -75,6 +75,8 @@ contains
 
         nparticles_old = nparticles_old_restart
 
+        t_barrier = tau ! or we could just not bother with the t_barrier var...
+
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(update_proj_energy)
 
@@ -111,11 +113,10 @@ contains
 
                     time = 0.0_p
                     do
-                        time = time + timestep(nexcitations*matel)
+                        time = time + timestep(abs(walker_energies(1,idet)) + nexcitations*abs(matel))
                         if ( time > t_barrier ) exit
-
-                        call ct_spawn(nexcitations, connection_list, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
                         
+                        call ct_spawn(nexcitations, connection_list, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
 
                         ! If death then kill the walker immediately and move
                         ! onto the next one
@@ -170,7 +171,7 @@ contains
                         time = spawn_times(current_pos(iproc))
                         do
 
-                            time = time + timestep(nexcitations*matel)
+                            time = time + timestep(abs(sc0(cdet%f)) + nexcitations*abs(matel))
                             if ( time > t_barrier ) exit
 
                             call ct_spawn(nexcitations, connection_list, sc0(cdet%f), spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
@@ -254,7 +255,8 @@ contains
         use excitations, only: enumerate_all_excitations_hub_real, excit
         use determinants, only: det_info
         use dSFMT_interface, only: genrand_real2
-        use system, only: ndim, nel
+        use system, only: ndim, nel, system_type, hub_real, hub_k
+        use hamiltonian, only: slater_condon1_hub_real, slater_condon2_hub_k
 
         integer, intent(in) :: parent_sgn, num_excitations
         real(p), intent(in) :: K_ii, matel
@@ -263,25 +265,19 @@ contains
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
         
-        real(p) :: rand, test, R_ii, R, abs_matel
+        real(p) :: rand, test, R_ii, R, abs_matel, K_ij
         integer :: j
 
-        R_ii = abs(K_ii)
+        R_ii = abs(K_ii-shift)
         abs_matel = abs(matel)
-        R = R_ii + matel*num_excitations
+        R = R_ii + abs_matel*num_excitations
         rand = genrand_real2()*R
 
 
-        if (K_ii < 0) then    ! child is same sign as parent
-            nspawned = sign(1,parent_sgn)
-        else if (K_ii > 0) then
-            nspawned = -sign(1,parent_sgn)
-        else
-            nspawned = 0
-        end if
 
         if (rand < R_ii) then
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
+            return
         else
             test = R_ii
             do j = 2, num_excitations
@@ -293,6 +289,20 @@ contains
             end do
         end if
 
+        if (system_type == hub_k) then
+            K_ij = slater_condon2_hub_k(connection%from_orb(1), connection%from_orb(2),&
+                                        connection%to_orb(1), connection%to_orb(2), connection%perm)
+        else if (system_type == hub_real) then
+            K_ij = slater_condon1_hub_real(connection%from_orb(1), connection%to_orb(1), connection%perm)
+        end if
+
+            if (K_ij < 0.0_p) then    ! child is same sign as parent
+                nspawned = -sign(1,parent_sgn)
+            else if (K_ij > 0.0_p) then
+                nspawned = sign(1,parent_sgn)
+            else
+                nspawned = 0
+            end if
     end subroutine ct_spawn
 
 

@@ -15,7 +15,7 @@ contains
         ! This is a bit hacky, but avoids lots of branching due to if blocks
         ! within the fciqmc algorithm.
 
-        use system, only: system_type, hub_k, hub_real, hubu, hubt
+        use system, only: system_type, hub_k, hub_real, hub_k_coulomb, hubt
         use hellmann_feynman_sampling
 
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
@@ -39,10 +39,10 @@ contains
             select case(system_type)
             case(hub_k)
                 call do_ct_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, enumerate_all_excitations_hub_k,&
-                                  slater_condon0_hub_k, hubt)
+                                  slater_condon0_hub_k, hub_k_coulomb)
             case(hub_real)
                 call do_ct_fciqmc(decode_det_occ, update_proj_energy_hub_real, enumerate_all_excitations_hub_real,&
-                                  slater_condon0_hub_real, hubu)
+                                  slater_condon0_hub_real, hubt)
             end select
         else
             select case(system_type)
