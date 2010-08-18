@@ -156,7 +156,7 @@ contains
             do
                 do iproc = 0, nprocs-1
 
-                    if (current_pos(iproc) /= spawning_head(iproc) + 1 .and. spawning_head(iproc) /= spawning_block_start(iproc)) then
+                    if (current_pos(iproc) /= spawning_head(iproc) + 1 .and. current_pos(iproc) /= spawning_block_start(iproc)) then
 
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,current_pos(iproc))
