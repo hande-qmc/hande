@@ -281,7 +281,7 @@ contains
             return
         else
             test = R_ii
-            do j = 2, num_excitations
+            do j = 1, num_excitations
                 test = test + abs_matel
                 if (rand < test) then
                     connection = connection_list(j)
