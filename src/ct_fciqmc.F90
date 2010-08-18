@@ -411,7 +411,7 @@ contains
         spawned_walkers(:,spawning_head(iproc_spawn)) = 0
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
         spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
-        spawn_times(iproc_spawn) = spawn_time
+        spawn_times(spawning_head(iproc_spawn)) = spawn_time
 
     end subroutine create_spawned_particle_ct
 
