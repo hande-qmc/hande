@@ -116,7 +116,7 @@ contains
                         time = time + timestep(abs(walker_energies(1,idet)) + nexcitations*abs(matel))
                         if ( time > t_barrier ) exit
                         
-                        call ct_spawn(nexcitations, connection_list, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
+                        call ct_spawn(cdet,nexcitations, connection_list, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
 
                         ! If death then kill the walker immediately and move
                         ! onto the next one
@@ -174,7 +174,7 @@ contains
                             time = time + timestep(abs(sc0(cdet%f)) + nexcitations*abs(matel))
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(nexcitations, connection_list, sc0(cdet%f), spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
+                            call ct_spawn(cdet,nexcitations, connection_list, sc0(cdet%f), spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
                            
                             ! Handle walker death
                             if(connections%nexcit == 0 .and. &
@@ -237,7 +237,7 @@ contains
     end subroutine do_ct_fciqmc
 
     
-    subroutine ct_spawn(num_excitations, connection_list, K_ii, parent_sgn, matel, nspawned, connection)
+    subroutine ct_spawn(det, num_excitations, connection_list, K_ii, parent_sgn, matel, nspawned, connection)
     
         ! randomly select a (valid) excitation 
         !
@@ -256,11 +256,12 @@ contains
         use determinants, only: det_info
         use dSFMT_interface, only: genrand_real2
         use system, only: ndim, nel, system_type, hub_real, hub_k
-        use hamiltonian, only: slater_condon1_hub_real, slater_condon2_hub_k
+        use hamiltonian, only: slater_condon1_hub_real_excit, slater_condon2_hub_k_excit
 
         integer, intent(in) :: parent_sgn, num_excitations
         real(p), intent(in) :: K_ii, matel
         type(excit), intent(in) :: connection_list(:)
+        type(det_info), intent(in) :: det
         
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
@@ -290,10 +291,11 @@ contains
         end if
 
         if (system_type == hub_k) then
-            K_ij = slater_condon2_hub_k(connection%from_orb(1), connection%from_orb(2),&
-                                        connection%to_orb(1), connection%to_orb(2), connection%perm)
+            call slater_condon2_hub_k_excit(det%occ_list, connection, K_ij)
+            connection%nexcit = 2
         else if (system_type == hub_real) then
-            K_ij = slater_condon1_hub_real(connection%from_orb(1), connection%to_orb(1), connection%perm)
+            call slater_condon1_hub_real_excit(det%occ_list, connection, K_ij)
+            connection%nexcit = 1
         end if
 
             if (K_ij < 0.0_p) then    ! child is same sign as parent
@@ -456,5 +458,4 @@ contains
 !        R = abs(K_ii) + abs(matel)*num_excitations
 !
 !    end function calc_R
-
 end module ct_fciqmc
