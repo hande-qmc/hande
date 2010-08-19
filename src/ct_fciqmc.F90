@@ -102,6 +102,7 @@ contains
                 ! doing it. Then find list of occupied orbitals
                 cdet%f = walker_dets(:,idet) 
                 call decoder(cdet%f, cdet)
+                !find the number of allowed excitations and list them
                 call enumerator(cdet,nexcitations,connection_list)
                 tmp_pop = walker_population(1,idet)
 
@@ -113,7 +114,11 @@ contains
 
                     time = 0.0_p
                     do
-                        time = time + timestep(abs(walker_energies(1,idet)) + nexcitations*abs(matel))
+
+                        ! We pass R to the timestep generator. Luckily all R_ij,
+                        ! i/=j are the same for the hubbard model(U or
+                        ! t - matel),  and there are nexcitations of them
+                        time = time + timestep(abs(walker_energies(1,idet) - shift) + nexcitations*abs(matel))
                         if ( time > t_barrier ) exit
                         
                         call ct_spawn(cdet,nexcitations, connection_list, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
@@ -141,7 +146,8 @@ contains
                     end do
 
                 end do
-                
+               
+                ! update the walker population from the death events
                 walker_population(1,idet) = tmp_pop
             
             end do
@@ -158,6 +164,11 @@ contains
                 do iproc = 0, nprocs-1
 
                     if (current_pos(iproc) /= spawning_head(iproc) + 1 .and. current_pos(iproc) /= spawning_block_start(iproc)) then
+                        
+                        !DEBUG
+                        write(6,*) "spawned walkers spawning..."
+                        call flush(6)
+                        !END DEBUG
 
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,current_pos(iproc))
@@ -171,7 +182,7 @@ contains
                         time = spawn_times(current_pos(iproc))
                         do
 
-                            time = time + timestep(abs(sc0(cdet%f)) + nexcitations*abs(matel))
+                            time = time + timestep(abs(sc0(cdet%f)-shift) + nexcitations*abs(matel))
                             if ( time > t_barrier ) exit
 
                             call ct_spawn(cdet,nexcitations, connection_list, sc0(cdet%f), spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
@@ -198,7 +209,7 @@ contains
                 end do
 
                 if(all(current_pos == spawning_head+1 .or. current_pos == spawning_block_start)) exit
-                
+
             end do
 
 
