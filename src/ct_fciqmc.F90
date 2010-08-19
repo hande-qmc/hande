@@ -274,11 +274,9 @@ contains
         R = R_ii + abs_matel*num_excitations
         rand = genrand_real2()*R
 
-
-
         if (rand < R_ii) then
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
-            return
+            K_ij = R_ii - shift
         else
             test = R_ii
             do j = 1, num_excitations
@@ -288,23 +286,23 @@ contains
                     exit
                 end if
             end do
-        end if
 
-        if (system_type == hub_k) then
-            call slater_condon2_hub_k_excit(det%occ_list, connection, K_ij)
-            connection%nexcit = 2
-        else if (system_type == hub_real) then
-            call slater_condon1_hub_real_excit(det%occ_list, connection, K_ij)
-            connection%nexcit = 1
-        end if
-
-            if (K_ij < 0.0_p) then    ! child is same sign as parent
-                nspawned = -sign(1,parent_sgn)
-            else if (K_ij > 0.0_p) then
-                nspawned = sign(1,parent_sgn)
-            else
-                nspawned = 0
+            if (system_type == hub_k) then
+                call slater_condon2_hub_k_excit(det%occ_list, connection, K_ij)
+                connection%nexcit = 2
+            else if (system_type == hub_real) then
+                call slater_condon1_hub_real_excit(det%occ_list, connection, K_ij)
+                connection%nexcit = 1
             end if
+
+        end if
+
+        if (K_ij < 0.0_p) then    ! child is same sign as parent
+            nspawned = sign(1,parent_sgn)
+        else
+            nspawned = -sign(1,parent_sgn)
+        end if
+
     end subroutine ct_spawn
 
 
