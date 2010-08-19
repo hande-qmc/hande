@@ -46,7 +46,7 @@ contains
             ir(sampling_size+2) = proj_hf_expectation
             ir(2*sampling_size+1) = D0_population
             ir(2*sampling_size+2) = rspawn
-            call mpi_allreduce(ir, ir_sum, 2*sampling_size+1, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
             proj_energy = ir_sum(sampling_size+1)
             proj_hf_expectation = ir_sum(sampling_size+2)
