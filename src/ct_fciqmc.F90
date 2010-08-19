@@ -158,12 +158,14 @@ contains
             ! this  must be appened to the spawned array and themselves advanced
             ! to the barrier.
 
-            !start @ the start of the block
-            current_pos = spawning_block_start
+            !start the first element in each block in spawned_walkers.
+            current_pos = spawning_block_start + 1
             do
                 do iproc = 0, nprocs-1
 
-                    if (current_pos(iproc) /= spawning_head(iproc) + 1 .and. current_pos(iproc) /= spawning_block_start(iproc)) then
+                    if (current_pos(iproc) <= spawning_head(iproc)) then
+                        ! Have spawned walkers in the block to be sent to
+                        ! processor iproc.  Need to advance them to the barrier.
                         
                         !DEBUG
                         write(6,*) "spawned walkers spawning..."
@@ -208,7 +210,8 @@ contains
 
                 end do
 
-                if(all(current_pos == spawning_head+1 .or. current_pos == spawning_block_start)) exit
+                ! Spawned all children and future generations to the barrier?
+                if(all(current_pos == spawning_head+1)) exit
 
             end do
 
