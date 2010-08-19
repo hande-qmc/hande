@@ -126,7 +126,7 @@ contains
                         ! If death then kill the walker immediately and move
                         ! onto the next one
                         ! if the spawned walker and the parent (all the
-                        ! walkers on a perticular det. have the same sgn due
+                        ! walkers on a particular det. have the same sgn due
                         ! to annihilation) are of opposite sgn we get death
                         if (connections%nexcit == 0 .and. &
                         walker_population(1,idet)*nspawned < 0.0_p) then
@@ -134,7 +134,6 @@ contains
                             nparticles(1) = nparticles(1) - abs(nspawned) 
                             exit ! the walker is dead
                         end if
-                         
                         ! used for calculating rspawn
                         tot_spawned = tot_spawned + abs(nspawned)
                         
@@ -167,27 +166,21 @@ contains
                         ! Have spawned walkers in the block to be sent to
                         ! processor iproc.  Need to advance them to the barrier.
                         
-                        !DEBUG
-                        write(6,*) "spawned walkers spawning..."
-                        call flush(6)
-                        !END DEBUG
-
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,current_pos(iproc))
                         K_ii = sc0(cdet%f)
                         call decoder(cdet%f,cdet)
                         call enumerator(cdet,nexcitations,connection_list)
-!                        R = calc_R(cdet)
 
                         ! Spawn from this walker & append to the spawned array until
                         ! we hit the barrier
                         time = spawn_times(current_pos(iproc))
                         do
 
-                            time = time + timestep(abs(sc0(cdet%f)-shift) + nexcitations*abs(matel))
+                            time = time + timestep(abs(K_ii-shift) + nexcitations*abs(matel))
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet,nexcitations, connection_list, sc0(cdet%f), spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
+                            call ct_spawn(cdet,nexcitations, connection_list, K_ii, spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
                            
                             ! Handle walker death
                             if(connections%nexcit == 0 .and. &
@@ -290,7 +283,7 @@ contains
 
         if (rand < R_ii) then
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
-            K_ij = R_ii - shift
+            K_ij = K_ii - shift
         else
             test = R_ii
             do j = 1, num_excitations

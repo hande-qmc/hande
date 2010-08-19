@@ -19,4 +19,4 @@ joe_calc/
 sub/
 todo.joe
 .nfs*
-
+*.aux
