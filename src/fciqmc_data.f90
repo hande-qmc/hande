@@ -244,11 +244,7 @@ contains
         integer :: nspawn
 
         nspawn = sum(spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1))
-        if (nspawn /= 0) then
-            rate = real(nspawn,p)/nattempts
-        else
-            rate = 0.0_p
-        end if
+        rate = real(nspawn,p)/nattempts
 
     end function spawning_rate
 
