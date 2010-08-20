@@ -170,7 +170,7 @@ contains
                         
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,current_pos(iproc))
-                        K_ii = sc0(cdet%f)
+                        K_ii = sc0(cdet%f) - H00
                         call decoder(cdet%f,cdet)
                         call enumerator(cdet,nexcitations,connection_list)
 
