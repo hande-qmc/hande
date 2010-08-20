@@ -80,11 +80,12 @@ contains
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(update_proj_energy)
 
+        ! time the report loop
+        call cpu_time(t1)
+
         ! Main fciqmc loop
         do ireport = 1, nreport
     
-            ! time the report loop
-            call cpu_time(t1)
             
             ! Zero cycle quantities
             rspawn = 0.0_p
@@ -131,11 +132,12 @@ contains
                         if (connections%nexcit == 0 .and. &
                         walker_population(1,idet)*nspawned < 0.0_p) then
                             tmp_pop = tmp_pop + nspawned 
-                            nparticles(1) = nparticles(1) - abs(nspawned) 
+                            ! abs(nspawned) guaranteed to be 1
+                            nparticles(1) = nparticles(1) - 1 
                             exit ! the walker is dead
                         end if
-                        ! used for calculating rspawn
-                        tot_spawned = tot_spawned + abs(nspawned)
+                        ! used for calculating rspawn (npawn guaranteed to be +/- 1
+                        tot_spawned = tot_spawned + 1
                         
                         ! If there were some walkers spawned, append them to the
                         ! spawned array - maintaining processor blocks if going in
@@ -313,64 +315,6 @@ contains
     end subroutine ct_spawn
 
 
-!    subroutine ct_spawn_kspace(connection_list,num_excitations, K_ii, parent_sgn, matel, nspawned, connection)
-!    
-!        ! randomly select a (valid) excitation from the current determinant
-!        ! stored in "det" for the Hubbard model in realspace
-!        !
-!        ! In: 
-!        !    det: info on current determinant that we will spawn from.
-!        !    R_ii: the diagonal Hamiltonian matrix element for the determinant d
-!        !    parent_sgn: sgn on the parent determinant (i.e. +ve or -ve integer)
-!        !
-!        ! Out:
-!        !    nspawn: +/- 1 as @ the end of each time "jump" we only spawn
-!        !            1 walker.
-!        !    connection: the excitation connection between the parent and child
-!        !                determinants
-!
-!        use determinants, only: det_info
-!        use excitations, only: enumerate_all_excitations_hub_k, excit
-!        use dSFMT_interface, only: genrand_real2
-!        use system, only: ndim, nel, nalpha, nbeta, nsites
-!
-!        type(det_info), intent(in) :: det
-!        integer, intent(in) :: parent_sgn
-!        real(p), intent(in) :: K_ii, matel
-!        
-!        integer, intent(out) :: nspawned
-!        type(excit), intent(out) :: connection
-!        
-!        real(p) :: rand, test, R_ii, R, abs_matel
-!        integer :: num_excitations, j
-!        type(excit) :: connection_list(nalpha*nbeta*min(nsites-nalpha,nsites-nbeta))
-!
-!        rand = genrand_real2()*R
-!
-!        if (K_ii < 0) then    ! child is same sign as parent
-!            nspawned = sign(1,parent_sgn)
-!        else if (K_ii > 0) then
-!            nspawned = -sign(1,parent_sgn)
-!        else
-!            nspawned = 0
-!        end if
-!
-!        if (rand < R_ii) then
-!            connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
-!        else
-!            test = R_ii
-!            do j = 2, size(connection_list) ! cycle over connections and test for each one
-!                test = test + abs_matel
-!                if (rand < test) then
-!                    connection = connection_list(j)
-!                    exit
-!                end if
-!            end do
-!        end if
-!
-!    end subroutine ct_spawn_kspace
-
-    
     subroutine create_spawned_particle_ct(cdet, connection, nspawn, particle_type, spawn_time)
 
         ! Create a spawned walker in the spawned walkers lists.
@@ -442,25 +386,9 @@ contains
         real(p) :: dt
         real(p), intent(in)  :: R
 
-        dt = -R*log(genrand_real2())
+        dt = -(1.0_p/R)*log(genrand_real2())
     
     end function timestep
 
 
-!    pure function calc_R(d,matel,K_ii) result(R)
-!
-!        ! Returns \sum_i R_ij where R_ij is the unsigned matrix element
-!        ! connecting |D_i> to |D_j>. Used for selecting a time to jump to and
-!        ! also which excitation to choose when spawning.
-!
-!        use determinants, only: det_info
-!
-!        real(p) :: R
-!        type(det_info), intent(in) :: d
-!        real(p), intent(in) :: matel, K_ii
-!        
-!        call enumerate_all_excitations_hub_k(d, num_excitations, connection_list)
-!        R = abs(K_ii) + abs(matel)*num_excitations
-!
-!    end function calc_R
 end module ct_fciqmc
