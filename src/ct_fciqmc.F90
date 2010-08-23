@@ -297,11 +297,11 @@ contains
             end do
 
             if (system_type == hub_k) then
-                call slater_condon2_hub_k_excit(det%occ_list, connection, K_ij)
                 connection%nexcit = 2
+                call slater_condon2_hub_k_excit(det%occ_list, connection, K_ij)
             else if (system_type == hub_real) then
-                call slater_condon1_hub_real_excit(det%occ_list, connection, K_ij)
                 connection%nexcit = 1
+                call slater_condon1_hub_real_excit(det%occ_list, connection, K_ij)
             end if
 
         end if
