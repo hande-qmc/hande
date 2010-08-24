@@ -255,12 +255,12 @@ contains
         ! each processor.
         forall (i=0:nprocs-2) spawn_max(i) = spawning_head(i+1) - 1
         spawn_max(nprocs-1) = spawned_walker_length
-        iread = 1
+        iread = 0
         do
             ! read in a "block" of walkers.
             if (parent) then
                 spawning_head = spawning_block_start
-                do i = iread, global_tot_walkers
+                do i = iread+1, global_tot_walkers
                     call read_in(io,det,pop,energy)
                     dest = modulo(murmurhash_bit_string(det, basis_length), nprocs)
                     spawning_head(dest) = spawning_head(dest) + 1
@@ -270,7 +270,6 @@ contains
                     ! Filled up spawning/scratch arrays?
                     if (any(spawning_head(:nprocs-1)-spawn_max == 0)) exit
                 end do
-                write(*,*) 'line 291' ! DBG
                 iread = i
                 done = iread == global_tot_walkers + 1
             end if
