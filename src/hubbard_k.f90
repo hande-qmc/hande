@@ -46,25 +46,30 @@ contains
         real(p) :: two_e_int
         integer, intent(in) :: phi1, phi2, phi3, phi4
 
-        ! <phi1 phi2 || phi3 phi4>
-        two_e_int = 0.0_p
+        logical :: s12, s34
 
         ! The integral < k_1 k_2 | U | k_3 k_4 > = U/N \delta_{k_1+k2,k_3+k_4}
         ! where the delta function requires crystal momentum is conserved up to
         ! a reciprocal lattice vector.
 
-        ! <phi1 phi2 | phi3 phi4>
-        if (spin_symmetry(phi1, phi3) .and. spin_symmetry(phi2, phi4)) then
-            if (momentum_conserved(phi1, phi2, phi3, phi4)) then
-                two_e_int = hub_k_coulomb
-            end if
-        end if
+        s12 = spin_symmetry(phi1, phi2)
+        s34 = spin_symmetry(phi3, phi4)
 
-        ! <phi1 phi2 | phi4 phi3>
-        if (spin_symmetry(phi1, phi4) .and. spin_symmetry(phi2, phi3)) then
-            if (momentum_conserved(phi1, phi2, phi4, phi3)) then
-                two_e_int = two_e_int - hub_k_coulomb
+        ! If phi1, phi2, phi3, phi4 all of the same spin, then < phi1 phi2 || phi3 phi4 > is zero
+        ! as the Coulomb and exchange integrals will exactly cancel.
+        
+        if (.not.s12 .and. s12.eqv.s34 .and.  momentum_conserved(phi1, phi2, phi3, phi4)) then
+            ! phi1, phi2 are of opposite spins and so are phi3 and phi4 and
+            ! crystal momentum is conserved.
+            ! Either the Coulomb integral or the exchange integral is
+            ! non-zero.
+            if (spin_symmetry(phi1, phi3)) then
+                two_e_int = hub_k_coulomb
+            else
+                two_e_int = -hub_k_coulomb
             end if
+        else
+            two_e_int = 0.0_p
         end if
 
     end function get_two_e_int_k
