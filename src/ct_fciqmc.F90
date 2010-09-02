@@ -55,7 +55,7 @@ contains
 
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
-        integer :: nspawned, nexcitations, tot_spawned, nparticles_old(sampling_size), ireport, idet, iparticle, tmp_pop
+        integer :: nspawned, nexcitations, nattempts, nparticles_old(sampling_size), ireport, idet, iparticle, tmp_pop
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R
         real :: t1, t2
@@ -91,11 +91,11 @@ contains
             rspawn = 0.0_p
             proj_energy = 0.0_p
             D0_population = 0.0_p
-            tot_spawned = 0
             
             ! Reset the pointer to the current position in the spawning array to 
             ! be the slot preceding the first
             spawning_head = spawning_block_start
+            nattempts = nparticles(1)
 
             do idet = 1, tot_walkers ! loop over determinants in the walker list
             
@@ -122,7 +122,9 @@ contains
                         time = time + timestep(abs(walker_energies(1,idet) - shift) + nexcitations*abs(matel))
                         if ( time > t_barrier ) exit
                         
-                        call ct_spawn(cdet,nexcitations, connection_list, walker_energies(1,idet), walker_population(1,idet), matel, nspawned, connections)
+                        call ct_spawn(cdet,nexcitations, connection_list,                 &
+                                      walker_energies(1,idet), walker_population(1,idet), &
+                                      matel, nspawned, connections)
 
                         ! If death then kill the walker immediately and move
                         ! onto the next one
@@ -136,9 +138,7 @@ contains
                             nparticles(1) = nparticles(1) - 1 
                             exit ! the walker is dead
                         end if
-                        ! used for calculating rspawn (npawn guaranteed to be +/- 1
-                        tot_spawned = tot_spawned + 1
-                        
+
                         ! If there were some walkers spawned, append them to the
                         ! spawned array - maintaining processor blocks if going in
                         ! parallel. We now also have an extra "time" array giving
@@ -182,7 +182,9 @@ contains
                             time = time + timestep(abs(K_ii-shift) + nexcitations*abs(matel))
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet,nexcitations, connection_list, K_ii, spawned_walkers(spawned_pop,current_pos(iproc)), matel, nspawned, connections)
+                            call ct_spawn(cdet,nexcitations, connection_list, K_ii, &
+                                          spawned_walkers(spawned_pop,current_pos(iproc)), &
+                                          matel, nspawned, connections)
                            
                             ! Handle walker death
                             if(connections%nexcit == 0 .and. &
@@ -211,11 +213,9 @@ contains
             end do
 
 
-            ! calculate rspawn
-            ! JSS: don't understand why this is a problem. Will fix later.
-!            rspawn = tot_spawned/nparticles_old(1)
+            ! calculate spawning rate
+            rspawn = rspawn + spawning_rate(nattempts)
 
-            !update spawn rate 
             call direct_annihilation(sc0)
 
             !update projected energy and shift
