@@ -153,7 +153,6 @@ contains
             
             end do
 
-
             ! now we advance all the spawned walkers to the barrier from their
             ! respective birth times - Any walkers spawned as a consequence of
             ! this  must be appened to the spawned array and themselves advanced
@@ -288,13 +287,8 @@ contains
             K_ij = K_ii - shift
         else
             test = R_ii
-            do j = 1, num_excitations
-                test = test + abs_matel
-                if (rand < test) then
-                    connection = connection_list(j)
-                    exit
-                end if
-            end do
+            j = int((rand-R_ii)/abs_matel) + 1
+            connection = connection_list(j)
 
             if (system_type == hub_k) then
                 connection%nexcit = 2
@@ -313,7 +307,6 @@ contains
         end if
 
     end subroutine ct_spawn
-
 
     subroutine create_spawned_particle_ct(cdet, connection, nspawn, particle_type, spawn_time)
 
