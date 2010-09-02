@@ -45,8 +45,6 @@ contains
 
         real(p) :: two_e_int
         integer, intent(in) :: phi1, phi2, phi3, phi4
-        
-        logical :: conserved, tested
 
         ! <phi1 phi2 || phi3 phi4>
         two_e_int = 0.0_p
@@ -57,23 +55,15 @@ contains
 
         ! <phi1 phi2 | phi3 phi4>
         if (spin_symmetry(phi1, phi3) .and. spin_symmetry(phi2, phi4)) then
-            ! If < k_1 k_2 | U | k_3 k_4 > conserves crystal momentum, then so does
-            ! < k_1 k_2 | U | k_4 k_3 >.
-            conserved = momentum_conserved(phi1, phi2, phi3, phi4)
-            tested = .true.
-            if (conserved) then
+            if (momentum_conserved(phi1, phi2, phi3, phi4)) then
                 two_e_int = hub_k_coulomb
             end if
         end if
 
         ! <phi1 phi2 | phi4 phi3>
         if (spin_symmetry(phi1, phi4) .and. spin_symmetry(phi2, phi3)) then
-            if (tested) then
-                if (conserved) two_e_int = two_e_int - hub_k_coulomb
-            else
-                if (momentum_conserved(phi1, phi2, phi4, phi3)) then
-                    two_e_int = two_e_int - hub_k_coulomb
-                end if
+            if (momentum_conserved(phi1, phi2, phi4, phi3)) then
+                two_e_int = two_e_int - hub_k_coulomb
             end if
         end if
 
