@@ -218,8 +218,10 @@ contains
 #endif
 
         ! Calculate the projected energy based upon the initial walker
-        ! distribution.
+        ! distribution.  proj_energy and D0_population are both accumulated in
+        ! update_proj_energy.
         proj_energy = 0.0_p
+        D0_population = 0
         do idet = 1, tot_walkers 
             call update_proj_energy(idet)
         end do 
