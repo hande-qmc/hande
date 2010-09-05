@@ -132,7 +132,7 @@ contains
 
         integer, intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps
 
-        hf_shift = hf_shift + &
+        hf_shift = hf_shift - &
                  (shift_damping/(tau*nupdate_steps)) &
                  *(real(nhf_particles,p)/nparticles - real(nhf_particles_old,p)/nparticles_old)
         av_hf_shift = av_hf_shift + hf_shift
