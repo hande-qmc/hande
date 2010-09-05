@@ -119,7 +119,6 @@ contains
         integer :: nspawned, nattempts
         type(excit) :: connection
 
-        real(p) :: inst_proj_energy, inst_proj_expectations(sampling_size)
         real(p) :: inst_proj_hf_t1
 
         logical :: soft_exit

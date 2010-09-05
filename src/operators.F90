@@ -123,7 +123,7 @@ contains
         character(*), intent(in) :: filename
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
-        integer :: idet, iorb, i, ii, ilocal
+        integer :: idet, i, ii, ilocal
 
 #ifdef PARALLEL
         integer :: ierr

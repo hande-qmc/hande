@@ -29,7 +29,7 @@ contains
         use symmetry, only: gamma_sym, sym_table
 
         integer :: ierr
-        integer :: i, iproc_ref
+        integer :: i
         integer :: step
         integer :: ref_sym ! the symmetry of the reference determinant
 

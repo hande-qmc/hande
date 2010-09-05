@@ -49,7 +49,7 @@ contains
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, psuccess, pspawn, hmatel
-        integer :: i, j, a, b, ij_sym, tmp
+        integer :: i, j, a, b, ij_sym
 
         ! Single excitations are not connected determinants within the 
         ! momentum space formulation of the Hubbard model.

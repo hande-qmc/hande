@@ -64,7 +64,7 @@ contains
         integer :: nspawned, nexcitations, nattempts, nparticles_old(sampling_size), ireport, idet
         integer :: iparticle, tmp_pop, connect_len, ierr
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
-        real(p) :: time, t_barrier, K_ii, R
+        real(p) :: time, t_barrier, K_ii
         real :: t1, t2
         type(det_info) :: cdet
         type(excit) :: connections
