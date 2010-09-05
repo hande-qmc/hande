@@ -127,6 +127,8 @@ contains
                 calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
                 calc_type = calc_type + initiator_fciqmc
+            case('CT_FCIQMC')
+                calc_type = calc_type + ct_fciqmc_calc
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')

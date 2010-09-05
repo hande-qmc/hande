@@ -606,6 +606,7 @@ contains
         spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
         spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = parent_flag
 
+
     end subroutine create_spawned_particle_initiator
 
 end module spawning

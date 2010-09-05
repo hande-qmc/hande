@@ -19,10 +19,12 @@ integer, parameter :: fciqmc_calc = 2**2
 integer, parameter :: simple_fciqmc_calc = 2**3
 ! Doing initiator-FCIQMC?
 integer, parameter :: initiator_fciqmc = 2**4
+! Doing continuous-time FCIQMC?
+integer, parameter :: ct_fciqmc_calc = 2**5
 ! Doing Hellmann--Feynman sampling?
-integer, parameter :: hfs_fciqmc_calc = 2**5
+integer, parameter :: hfs_fciqmc_calc = 2**6
 ! Estimate the size of the Hilbert space using Monte Carlo?
-integer, parameter :: mc_hilbert_space = 2**6
+integer, parameter :: mc_hilbert_space = 2**7
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
