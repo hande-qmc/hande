@@ -34,8 +34,10 @@ contains
         end if
 
         if (iproc == D0_proc) then
-            walker_energies(2,tot_walkers) = calc_orb_occ(f0, lmask)
+            walker_energies(2,tot_walkers) = 0.0_p
         end if
+
+        O00 = calc_orb_occ(f0, lmask)
 
     end subroutine init_hellmann_feynman_sampling
 
@@ -226,12 +228,20 @@ contains
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 
+!            if (vary_shift) then
+!                do idet = 1, tot_walkers
+!                    call decoder(walker_dets(:,idet), cdet)
+!                    write (12,*) cdet%occ_list, walker_population(:,idet)
+!                end do
+!                exit
+!            end if
+
             call cpu_time(t2)
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            write (17,*) ireport, proj_hf_expectation, hf_shift, nparticles_old
+            write (17,*) ireport, proj_hf_expectation, hf_shift, nparticles_old, walker_population(:,1)
             call flush(17)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
