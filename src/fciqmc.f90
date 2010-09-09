@@ -15,7 +15,7 @@ contains
         ! This is a bit hacky, but avoids lots of branching due to if blocks
         ! within the fciqmc algorithm.
 
-        use system, only: system_type, hub_k, hub_real
+        use system, only: system_type, hub_k, hub_real, hub_k_coulomb, hubt
         use hellmann_feynman_sampling
 
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
@@ -23,7 +23,10 @@ contains
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
-        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, doing_calc
+        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
+
+        use ct_fciqmc, only: do_ct_fciqmc
+        use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
 
         if (doing_calc(initiator_fciqmc)) then
             select case(system_type)
@@ -31,6 +34,15 @@ contains
                 call do_ifciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
             case(hub_real)
                 call do_ifciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
+            end select
+        else if (doing_calc(ct_fciqmc_calc)) then
+            select case(system_type)
+            case(hub_k)
+                call do_ct_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, enumerate_all_excitations_hub_k,&
+                                  slater_condon0_hub_k, hub_k_coulomb)
+            case(hub_real)
+                call do_ct_fciqmc(decode_det_occ, update_proj_energy_hub_real, enumerate_all_excitations_hub_real,&
+                                  slater_condon0_hub_real, hubt)
             end select
         else
             select case(system_type)
