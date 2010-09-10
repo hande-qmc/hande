@@ -249,7 +249,7 @@ contains
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
             D0_population = D0_population + walker_population(1,idet)
-            D0_hf_population = walker_population(2,idet)
+            D0_hf_population = D0_hf_population + walker_population(2,idet)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to 
             ! projected energy.
