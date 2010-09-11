@@ -17,7 +17,7 @@ fort.*
 /config/.default
 joe_calc/
 sub/
-todo.joe
+/*todo*
 .nfs*
 *.aux
 *.dat
