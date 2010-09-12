@@ -116,6 +116,7 @@ contains
                 ! doing it. Then find lists of orbitals.
                 cdet%f = walker_dets(:,idet) 
                 call decoder(cdet%f, cdet)
+
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
@@ -196,8 +197,9 @@ contains
                         time = spawn_times(current_pos(iproc))
                         do
 
-                            R = abs(K_ii-shift) + sum_off_diag
+                            R = abs(K_ii - shift) + sum_off_diag
                             time = time + timestep(R)
+
                             if ( time > t_barrier ) exit
 
                             call ct_spawn(cdet, K_ii, spawned_walkers(spawned_pop,current_pos(iproc)), &
@@ -207,9 +209,9 @@ contains
 
                                 ! Handle walker death
                                 if(connection%nexcit == 0 .and. &
-                                spawned_walkers(spawned_pop,current_pos(iproc))*nspawned < 0) then
+                                        spawned_walkers(spawned_pop,current_pos(iproc))*nspawned < 0) then
                                     spawned_walkers(spawned_pop,current_pos(iproc)) = &
-                                        spawned_walkers(spawned_pop,current_pos(iproc)) + nspawned 
+                                            spawned_walkers(spawned_pop,current_pos(iproc)) + nspawned 
                                     exit ! The walker is dead - do not continue
                                 end if
 
@@ -217,7 +219,7 @@ contains
                                 ! appropriate block - this will increment the appropriate
                                 ! spawning heads for the processors which were spawned on
                                 call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
-                                
+
                             end if
 
                         end do
@@ -278,7 +280,6 @@ contains
 
         ! In: 
         !    cdet: info on current determinant, |D>, that we will spawn from.
-        !    num_excitations: number of allowed excitations from cdet.
         !    K_ii: the diagonal matrix element for the determinant |D>, 
         !        < D | H - E_HF - S | D >.
         !    parent_sgn: sgn on the parent determinant (i.e. +ve or -ve integer)
@@ -295,26 +296,33 @@ contains
         use hamiltonian, only: slater_condon1_hub_real_excit, slater_condon2_hub_k_excit
         use spawning, only: choose_ij_hub_k, find_ab_hub_k
 
-        integer, intent(in) :: parent_sgn
-        real(p), intent(in) :: K_ii, R
         type(det_info), intent(in) :: cdet
+        real(p), intent(in) :: K_ii, R
+        integer, intent(in) :: parent_sgn
         
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
         
-        real(p) :: rand, R_ii, K_ij
-        integer :: i, j, a, b, ij_sym
+        real(p) :: rand, K_ij
         logical :: allowed_excitation
+        integer :: i, j, a, b, ij_sym
 
-        R_ii = abs(K_ii-shift)
         rand = genrand_real2()*R
 
-        if (rand < R_ii) then
+        if (rand < abs(K_ii - shift)) then
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
             K_ij = K_ii - shift
         else
+            ! Generate a random excitation and reject if it's forbidden (i.e.
+            ! the orbitals are already occupied).
             if (system_type == hub_k) then
+                ! Choose a random (i,j) pair to excite from.
                 call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
+                ! Choose a random (a,b) pair to attempt to excite to.
+                ! The symmetry of (a,b) is set by the symmetry of (i,j) and 
+                ! hence b is uniquely determined by the choice of i,j and a.
+                ! We choose a to be an unoccupied alpha spin-orbital and then
+                ! reject the spawning attempt if b is in fact occupied.
                 call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
                 if (allowed_excitation) then
                     connection%nexcit = 2
