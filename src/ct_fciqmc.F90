@@ -116,8 +116,6 @@ contains
                 ! doing it. Then find lists of orbitals.
                 cdet%f = walker_dets(:,idet) 
                 call decoder(cdet%f, cdet)
-                ! Find the number of allowed excitations and list them.
-                call enumerator(cdet,nexcitations,connection_list)
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
@@ -138,9 +136,8 @@ contains
 
                         if ( time > t_barrier ) exit
                         
-                        call ct_spawn(cdet,nexcitations, connection_list,                 &
-                                      walker_energies(1,idet), walker_population(1,idet), &
-                                      R, matel, nspawned, connection)
+                        call ct_spawn(cdet, walker_energies(1,idet), walker_population(1,idet), &
+                                      R, nspawned, connection)
 
                         if (nspawned /= 0) then
 
@@ -193,7 +190,6 @@ contains
                         cdet%f = spawned_walkers(:basis_length,current_pos(iproc))
                         K_ii = sc0(cdet%f) - H00
                         call decoder(cdet%f,cdet)
-                        call enumerator(cdet,nexcitations,connection_list)
 
                         ! Spawn from this walker & append to the spawned array until
                         ! we hit the barrier
@@ -204,9 +200,8 @@ contains
                             time = time + timestep(R)
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet,nexcitations, connection_list, K_ii, &
-                                          spawned_walkers(spawned_pop,current_pos(iproc)), &
-                                          R, matel, nspawned, connection)
+                            call ct_spawn(cdet, K_ii, spawned_walkers(spawned_pop,current_pos(iproc)), &
+                                          R, nspawned, connection)
                            
                             if (nspawned /= 0) then
 
@@ -277,7 +272,7 @@ contains
     end subroutine do_ct_fciqmc
 
     
-    subroutine ct_spawn(cdet, num_excitations, connection_list, K_ii, parent_sgn, R, matel, nspawned, connection)
+    subroutine ct_spawn(cdet, K_ii, parent_sgn, R, nspawned, connection)
     
         ! Randomly select a (valid) excitation 
 
@@ -287,8 +282,6 @@ contains
         !    K_ii: the diagonal matrix element for the determinant |D>, 
         !        < D | H - E_HF - S | D >.
         !    parent_sgn: sgn on the parent determinant (i.e. +ve or -ve integer)
-        !    matel: the value of the non-zero off-diagonal matrix elements.
-        !    matel = -t for real space and U/nsites for momentum space.
         ! Out:
         !    nspawned: +/- 1 as @ the end of each time "jump" we only spawn
         !        1 walker.
@@ -300,48 +293,50 @@ contains
         use dSFMT_interface, only: genrand_real2
         use system, only: ndim, nel, system_type, hub_real, hub_k
         use hamiltonian, only: slater_condon1_hub_real_excit, slater_condon2_hub_k_excit
+        use spawning, only: choose_ij_hub_k, find_ab_hub_k
 
-        integer, intent(in) :: parent_sgn, num_excitations
-        real(p), intent(in) :: K_ii, R, matel
-        type(excit), intent(in) :: connection_list(:)
+        integer, intent(in) :: parent_sgn
+        real(p), intent(in) :: K_ii, R
         type(det_info), intent(in) :: cdet
         
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
         
-        real(p) :: rand, R_ii, abs_matel, K_ij
-        integer :: j
+        real(p) :: rand, R_ii, K_ij
+        integer :: i, j, a, b, ij_sym
+        logical :: allowed_excitation
 
         R_ii = abs(K_ii-shift)
-        abs_matel = abs(matel)
         rand = genrand_real2()*R
 
-        if (rand > (R_ii + num_excitations*abs_matel)) then
-            nspawned = 0
+        if (rand < R_ii) then
+            connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
+            K_ij = K_ii - shift
         else
-            if (rand < R_ii) then
-                connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
-                K_ij = K_ii - shift
-            else
-                j = int((rand-R_ii)/abs_matel) + 1
-                connection = connection_list(j)
-
-                if (system_type == hub_k) then
+            if (system_type == hub_k) then
+                call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
+                call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+                if (allowed_excitation) then
                     connection%nexcit = 2
+                    connection%from_orb = (/ i,j /)
+                    connection%to_orb = (/ a,b /)
                     call slater_condon2_hub_k_excit(cdet%occ_list, connection, K_ij)
-                else if (system_type == hub_real) then
-                    connection%nexcit = 1
-                    call slater_condon1_hub_real_excit(cdet%occ_list, connection, K_ij)
+                else
+                    K_ij = 0.0_p
                 end if
-
+            else if (system_type == hub_real) then
+                connection%nexcit = 1
+                call slater_condon1_hub_real_excit(cdet%occ_list, connection, K_ij)
             end if
 
-            if (K_ij < 0.0_p) then    ! child is same sign as parent
-                nspawned = sign(1,parent_sgn)
-            else
-                nspawned = -sign(1,parent_sgn)
-            end if
+        end if
 
+        if (K_ij == 0.0_p) then
+            nspawned = 0
+        else if (K_ij < 0.0_p) then    ! child is same sign as parent
+            nspawned = sign(1,parent_sgn)
+        else
+            nspawned = -sign(1,parent_sgn)
         end if
 
     end subroutine ct_spawn
