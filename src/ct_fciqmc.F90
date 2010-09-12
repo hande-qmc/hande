@@ -133,7 +133,7 @@ contains
                         ! We pass R to the timestep generator. Luckily all R_ij,
                         ! i/=j are the same for the hubbard model (U or
                         ! t - stored in matel),  and there are nexcitations of them.
-                        R = abs(walker_energies(1,idet) - shift) + nexcitations*abs(matel)
+                        R = abs(walker_energies(1,idet) - shift) + sum_off_diag
                         time = time + timestep(R)
 
                         if ( time > t_barrier ) exit
@@ -200,7 +200,7 @@ contains
                         time = spawn_times(current_pos(iproc))
                         do
 
-                            R = abs(K_ii-shift) + nexcitations*abs(matel)
+                            R = abs(K_ii-shift) + sum_off_diag
                             time = time + timestep(R)
                             if ( time > t_barrier ) exit
 
@@ -316,27 +316,32 @@ contains
         abs_matel = abs(matel)
         rand = genrand_real2()*R
 
-        if (rand < R_ii) then
-            connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
-            K_ij = K_ii - shift
+        if (rand > (R_ii + num_excitations*abs_matel)) then
+            nspawned = 0
         else
-            j = int((rand-R_ii)/abs_matel) + 1
-            connection = connection_list(j)
+            if (rand < R_ii) then
+                connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
+                K_ij = K_ii - shift
+            else
+                j = int((rand-R_ii)/abs_matel) + 1
+                connection = connection_list(j)
 
-            if (system_type == hub_k) then
-                connection%nexcit = 2
-                call slater_condon2_hub_k_excit(cdet%occ_list, connection, K_ij)
-            else if (system_type == hub_real) then
-                connection%nexcit = 1
-                call slater_condon1_hub_real_excit(cdet%occ_list, connection, K_ij)
+                if (system_type == hub_k) then
+                    connection%nexcit = 2
+                    call slater_condon2_hub_k_excit(cdet%occ_list, connection, K_ij)
+                else if (system_type == hub_real) then
+                    connection%nexcit = 1
+                    call slater_condon1_hub_real_excit(cdet%occ_list, connection, K_ij)
+                end if
+
             end if
 
-        end if
+            if (K_ij < 0.0_p) then    ! child is same sign as parent
+                nspawned = sign(1,parent_sgn)
+            else
+                nspawned = -sign(1,parent_sgn)
+            end if
 
-        if (K_ij < 0.0_p) then    ! child is same sign as parent
-            nspawned = sign(1,parent_sgn)
-        else
-            nspawned = -sign(1,parent_sgn)
         end if
 
     end subroutine ct_spawn
