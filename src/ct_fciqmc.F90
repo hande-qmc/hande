@@ -62,25 +62,27 @@ contains
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer :: nspawned, nexcitations, nattempts, nparticles_old(sampling_size), ireport, idet
-        integer :: iparticle, tmp_pop, connect_len, ierr
+        integer :: iparticle, tmp_pop, max_nexcitations, ierr
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
-        real(p) :: time, t_barrier, K_ii, R
+        real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
         type(det_info) :: cdet
-        type(excit) :: connections
+        type(excit) :: connection
         type(excit), allocatable :: connection_list(:)
         logical :: soft_exit
 
         if (system_type == hub_k) then
-            connect_len = nalpha*nbeta*min(nsites-nalpha,nsites-nbeta)
+            max_nexcitations = nalpha*nbeta*min(nsites-nalpha,nsites-nbeta)
         else if (system_type == hub_real) then
-            connect_len = 2*ndim*nel
+            max_nexcitations = 2*ndim*nel
         end if
 
-        allocate(connection_list(connect_len), stat=ierr)
-        call check_allocate('connection_list', connect_len, ierr)
+        allocate(connection_list(max_nexcitations), stat=ierr)
+        call check_allocate('connection_list', max_nexcitations, ierr)
         allocate(current_pos(0:max(1,nprocs-1)), stat=ierr)
         call check_allocate('current_pos', max(2,nprocs), ierr)
+
+        sum_off_diag = max_nexcitations*matel
 
         call alloc_det_info(cdet)
 
@@ -96,7 +98,6 @@ contains
 
         ! Main fciqmc loop
         do ireport = 1, nreport
-    
             
             ! Zero cycle quantities
             rspawn = 0.0_p
@@ -132,33 +133,38 @@ contains
                         ! We pass R to the timestep generator. Luckily all R_ij,
                         ! i/=j are the same for the hubbard model (U or
                         ! t - stored in matel),  and there are nexcitations of them.
-                        time = time + timestep(abs(walker_energies(1,idet) - shift) + nexcitations*abs(matel))
+                        R = abs(walker_energies(1,idet) - shift) + nexcitations*abs(matel)
+                        time = time + timestep(R)
 
                         if ( time > t_barrier ) exit
                         
                         call ct_spawn(cdet,nexcitations, connection_list,                 &
                                       walker_energies(1,idet), walker_population(1,idet), &
-                                      matel, nspawned, connections)
+                                      R, matel, nspawned, connection)
 
-                        ! If the spawned walker and the parent (all the
-                        ! walkers on a particular det. have the same sgn due
-                        ! to annihilation) are of opposite sgn we get death.
-                        ! If death then kill the walker immediately and move
-                        ! onto the next one.
-                        if (connections%nexcit == 0 .and. &
-                                   walker_population(1,idet)*nspawned < 0.0_p) then
-                            tmp_pop = tmp_pop + nspawned 
-                            ! abs(nspawned) guaranteed to be 1
-                            nparticles(1) = nparticles(1) - 1 
-                            ! The walker is dead---no need to continue spawning to barrier.
-                            exit 
+                        if (nspawned /= 0) then
+
+                            ! If the spawned walker and the parent (all the
+                            ! walkers on a particular det. have the same sgn due
+                            ! to annihilation) are of opposite sgn we get death.
+                            ! If death then kill the walker immediately and move
+                            ! onto the next one.
+                            if (connection%nexcit == 0 .and. &
+                                       walker_population(1,idet)*nspawned < 0.0_p) then
+                                tmp_pop = tmp_pop + nspawned 
+                                ! abs(nspawned) guaranteed to be 1
+                                nparticles(1) = nparticles(1) - 1 
+                                ! The walker is dead---no need to continue spawning to barrier.
+                                exit 
+                            end if
+
+                            ! If there were some walkers spawned, append them to the
+                            ! spawned array - maintaining processor blocks if going in
+                            ! parallel. We now also have an extra "time" array giving
+                            ! the birth time of the walker.
+                            call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
+
                         end if
-
-                        ! If there were some walkers spawned, append them to the
-                        ! spawned array - maintaining processor blocks if going in
-                        ! parallel. We now also have an extra "time" array giving
-                        ! the birth time of the walker.
-                        if (nspawned /= 0) call create_spawned_particle_ct(cdet, connections, nspawned, spawned_pop, time)
 
                     end do
 
@@ -194,25 +200,30 @@ contains
                         time = spawn_times(current_pos(iproc))
                         do
 
-                            time = time + timestep(abs(K_ii-shift) + nexcitations*abs(matel))
+                            R = abs(K_ii-shift) + nexcitations*abs(matel)
+                            time = time + timestep(R)
                             if ( time > t_barrier ) exit
 
                             call ct_spawn(cdet,nexcitations, connection_list, K_ii, &
                                           spawned_walkers(spawned_pop,current_pos(iproc)), &
-                                          matel, nspawned, connections)
+                                          R, matel, nspawned, connection)
                            
-                            ! Handle walker death
-                            if(connections%nexcit == 0 .and. &
-                            spawned_walkers(spawned_pop,current_pos(iproc))*nspawned < 0) then
-                                spawned_walkers(spawned_pop,current_pos(iproc)) = &
-                                    spawned_walkers(spawned_pop,current_pos(iproc)) + nspawned 
-                                exit ! The walker is dead - do not continue
-                            end if
+                            if (nspawned /= 0) then
 
-                            ! Add a walker to the end of the spawned walker list in the
-                            ! appropriate block - this will increment the appropriate
-                            ! spawning heads for the processors which were spawned on
-                            call create_spawned_particle_ct(cdet, connections, nspawned, spawned_pop, time)
+                                ! Handle walker death
+                                if(connection%nexcit == 0 .and. &
+                                spawned_walkers(spawned_pop,current_pos(iproc))*nspawned < 0) then
+                                    spawned_walkers(spawned_pop,current_pos(iproc)) = &
+                                        spawned_walkers(spawned_pop,current_pos(iproc)) + nspawned 
+                                    exit ! The walker is dead - do not continue
+                                end if
+
+                                ! Add a walker to the end of the spawned walker list in the
+                                ! appropriate block - this will increment the appropriate
+                                ! spawning heads for the processors which were spawned on
+                                call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
+                                
+                            end if
 
                         end do
 
@@ -266,7 +277,7 @@ contains
     end subroutine do_ct_fciqmc
 
     
-    subroutine ct_spawn(cdet, num_excitations, connection_list, K_ii, parent_sgn, matel, nspawned, connection)
+    subroutine ct_spawn(cdet, num_excitations, connection_list, K_ii, parent_sgn, R, matel, nspawned, connection)
     
         ! Randomly select a (valid) excitation 
 
@@ -291,19 +302,18 @@ contains
         use hamiltonian, only: slater_condon1_hub_real_excit, slater_condon2_hub_k_excit
 
         integer, intent(in) :: parent_sgn, num_excitations
-        real(p), intent(in) :: K_ii, matel
+        real(p), intent(in) :: K_ii, R, matel
         type(excit), intent(in) :: connection_list(:)
         type(det_info), intent(in) :: cdet
         
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
         
-        real(p) :: rand, R_ii, R, abs_matel, K_ij
+        real(p) :: rand, R_ii, abs_matel, K_ij
         integer :: j
 
         R_ii = abs(K_ii-shift)
         abs_matel = abs(matel)
-        R = R_ii + abs_matel*num_excitations
         rand = genrand_real2()*R
 
         if (rand < R_ii) then
