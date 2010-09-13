@@ -187,6 +187,7 @@ contains
         !        the Hubbard model in momentum space.
 
         use hubbard_k, only: get_one_e_int_k, get_two_e_int_k
+        use system, only: nalpha, nbeta, hub_k_coulomb
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -204,11 +205,17 @@ contains
         end do
 
         ! Two electron operator
-        do i = 1, nel
-            do j = i+1, nel
-                hmatel = hmatel + get_two_e_int_k(occ_list(i), occ_list(j), occ_list(i), occ_list(j))
-            end do
-        end do
+        ! 1/2 \sum_i \sum_j < ij || ij >
+        ! Some points to note:
+        !   a) Crystal momentum is conserved for all < ij | ij > and < ij | ji > integrals 
+        !      by defintion.
+        !   b) If i,j are of the same spin, then < ij | ij > = < ij | ji > and
+        !      so < ij || ij > = 0.
+        !   c) < ij | ij > = U/nsites for all i,j.
+        !   d) The double sum has 2*nalpha*nbeta terms corresponding to i,j of
+        !      different spins.
+        !   e) Thus  1/2 \sum_i \sum_j < ij || ij > = nalpha*nbeta*U/nsites.
+        hmatel = hmatel + nalpha*nbeta*hub_k_coulomb
 
     end function slater_condon0_hub_k
 
