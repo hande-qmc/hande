@@ -1,0 +1,212 @@
+%==============================================================================
+% Adapted from:
+%
+% beamer style for posters of the
+% Computatinal Physics and Biophysics Group
+%
+% version 1.03
+% - added required packages for nice fonts
+% - added tikz package
+% version 1.02
+% - added jblue, the jacobs blue
+% - use jblue as standart color for borders and boxes
+% version 1.01
+% - fix logo width for landscape posters
+% version 1.00
+% - inital release
+% =============================================================================
+
+\ProvidesPackage{beamerthemetycposter}
+\RequirePackage{tikz}
+\usetikzlibrary{arrows,decorations.pathmorphing,backgrounds,calc}
+\RequirePackage[T1]{fontenc}
+%\RequirePackage{lmodern}
+\RequirePackage{textcomp}
+\RequirePackage{amsmath,amssymb}
+\usefonttheme{professionalfonts}
+  \newlength{\inboxwd}
+  \newlength{\iinboxwd}
+  \newlength{\inboxrule}
+  \newlength{\logocolw}
+  \newcommand{\makeruleinbox}
+             {{\usebeamercolor[bg]{block alerted title}\centering\hspace*{-0.7cm}
+              \rule{\inboxrule}{0.5cm}}
+             }
+%this is needed to get the block text justified
+  \usepackage{ragged2e}
+%define some nice colors 
+  \definecolor{lgreen} {RGB}{180,210,100}
+  \definecolor{dblue}  {RGB}{20,66,129}
+  \definecolor{lred}   {RGB}{220,0,0}
+  \definecolor{nred}   {RGB}{224,0,0}
+  \definecolor{norange}{RGB}{230,120,20}
+  \definecolor{nyellow}{RGB}{255,221,0}
+  \definecolor{ngreen} {RGB}{98,158,31}
+  \definecolor{dgreen} {RGB}{78,138,21}
+  \definecolor{nblue}  {RGB}{28,130,185}
+  \definecolor{jblue}  {RGB}{20,50,100}
+  \definecolor{tycblue}  {RGB}{0,82,155}
+  \definecolor{mgreen}  {RGB}{81,155,0}
+%set the basic colors
+  \setbeamercolor{palette primary}   {fg=black,bg=white}
+  \setbeamercolor{palette secondary} {fg=black,bg=white}
+  \setbeamercolor{palette tertiary}  {bg=tycblue,fg=white}
+  \setbeamercolor{palette quaternary}{fg=black,bg=white}
+  \setbeamercolor{structure}{fg=tycblue}
+  \setbeamercolor{titlelike}         {bg=tycblue,fg=white}
+  \setbeamercolor{frametitle}        {bg=tycblue!10,fg=tycblue}
+  \setbeamercolor{cboxb}{fg=black,bg=tycblue}
+  \setbeamercolor{cboxr}{fg=black,bg=red}
+%set colors for itemize/enumerate
+  \setbeamercolor{item}{fg=ngreen}
+  \setbeamercolor{item projected}{fg=white,bg=ngreen}
+%set colors for blocks
+  \setbeamercolor{block title}{fg=ngreen,bg=white}
+  \setbeamercolor{block body}{fg=black,bg=white}
+%set colors for alerted blocks (with frame)
+  \setbeamercolor{block alerted title}{fg=white,bg=tycblue}
+  \setbeamercolor{block alerted body}{fg=black,bg=tycblue!10}
+%set the fonts
+  \setbeamerfont{section in head/foot}{series=\bfseries}
+  \setbeamerfont{block title}{series=\bfseries}
+  \setbeamerfont{block alerted title}{series=\bfseries}
+  \setbeamerfont{frametitle}{series=\bfseries}
+  \setbeamerfont{frametitle}{size=\Large}
+%set some beamer theme options
+  \setbeamertemplate{title page}[default][colsep=-4bp,rounded=true]
+  \setbeamertemplate{sections/subsections in toc}[square]
+  \setbeamertemplate{items}[circle]
+  \setbeamertemplate{blocks}[width=0.0]
+  \beamertemplatenavigationsymbolsempty
+%set bibliography style
+ \setbeamertemplate{bibliography item}[text]
+ \setbeamercolor{bibliography item}{fg=black,bg=white}
+ \setbeamercolor{bibliography entry author}{fg=black,bg=white}
+ \setbeamercolor{bibliography item}{fg=black,bg=white}
+ %\setbeamerfont{bibliography item}{size=\tiny}
+ %\setbeamerfont{bibliography entry author}{size=\tiny}
+%extra settings for landscape
+\setlength{\logocolw}{.15\paperwidth}
+\makeatletter
+ \if@beamerposter@portrait
+  \setlength{\logocolw}{.2\paperwidth}
+ \fi
+\makeatother
+%==============================================================================
+% build the poster title
+%==============================================================================
+\setbeamertemplate{headline}{
+ \leavevmode
+  \begin{columns}
+% TYC logo column
+   \begin{column}{\logocolw}
+    \begin{center}
+     \vspace{0.6cm}
+     \includegraphics[width=0.5\linewidth]{TYC_logo}
+    \end{center}
+   \end{column}
+%title column
+   \begin{column}{.60\linewidth}
+    \vskip2cm
+    \centering
+    \usebeamercolor{title in headline}{\color{fg}
+     \textbf{\huge{\inserttitle}}\\[1ex]}
+    \usebeamercolor{author in headline}{\color{fg}
+     \large{\insertauthor}\\[1ex]}
+    \usebeamercolor{institute in headline}{\color{fg}
+     \large{\insertinstitute}\\[1ex]}
+        \vskip2cm
+      \end{column}
+% IC logo column
+       \begin{column}{1.02\logocolw}
+         \begin{center}
+           \includegraphics[width=0.58\linewidth]{IC_logo}
+         \end{center}
+       \end{column}
+        \vspace{1cm}
+    \end{columns}
+%\end{beamercolorbox}
+\begin{beamercolorbox}[colsep=0.5cm]{cboxb}
+\end{beamercolorbox}
+
+}
+
+\setbeamertemplate{background}
+{
+\begin{tikzpicture}[remember picture,overlay]
+% \fill [tycblue]
+% (current page.south west) rectangle (current page.north east);
+\draw [line width=2cm,rounded corners=1.5cm, tycblue]
+(current page.south west) rectangle (current page.north east);
+% \fill [white,rounded corners=2cm, xshift=1cm, yshift=1cm]
+% (current page.south west) rectangle (current page.north east);
+\end{tikzpicture}
+}
+
+% block
+\setbeamertemplate{block begin}
+{
+  \par\vskip\medskipamount%
+  \begin{beamercolorbox}[colsep*=0ex,dp={2ex},center]{block title}
+%     \begin{center}
+     \vskip-0.4cm
+     \usebeamerfont{block title}\large\insertblocktitle
+%     {\parskip0pt\par}
+%     \end{center}
+     \begin{flushleft}
+     \vskip-1cm
+     \begin{tikzpicture}[remember picture,overlay]
+       \shade [inner color=gray,outer color=white]
+       (0,0) rectangle (\textwidth,0.3cm);
+     \end{tikzpicture}
+     \end{flushleft}
+  \end{beamercolorbox}%
+  {\parskip0pt\par}%
+  \ifbeamercolorempty[bg]{block title}
+  {}
+  {\ifbeamercolorempty[bg]{block body}{}{\nointerlineskip\vskip-0.5pt}}%
+  \usebeamerfont{block body}%
+  \vskip-0.5cm
+  \begin{beamercolorbox}[colsep*=0ex,vmode]{block body}%
+    %{\vskip1ex}\vbox{}%
+  \justifying 
+}
+
+\setbeamertemplate{block end}  
+{
+  \end{beamercolorbox}
+  \vskip\smallskipamount
+}
+
+% alertblock (with frame)
+\setbeamertemplate{block alerted begin}
+{
+  \par\vskip\medskipamount%
+  \begin{beamercolorbox}[sep=0ex,rounded=true,center,dp={2ex}]{block alerted title}
+     \vskip-0.4cm
+     \usebeamerfont{block title}\large\insertblocktitle
+  \end{beamercolorbox}%
+  {\parskip0pt\par}%
+  \usebeamerfont{block body}%
+  \vskip-0.8cm
+  \begin{beamercolorbox}[sep=0.5cm, rounded=true,center]{block alerted title}%
+  \setlength{\inboxwd}{\linewidth}
+  \addtolength{\inboxwd}{-1cm}
+  \begin{beamercolorbox}[rounded=true,wd={\inboxwd},center]{block alerted body}
+  \setlength{\iinboxwd}{\inboxwd}
+  \setlength{\inboxrule}{\inboxwd}
+  \addtolength{\iinboxwd}{-0.5cm}
+  \addtolength{\inboxrule}{0.5cm}
+  \begin{center}
+  \begin{minipage}{\iinboxwd}
+  \justifying 
+}
+
+\setbeamertemplate{block alerted end}  
+{
+  \end{minipage}
+  \end{center}
+  \end{beamercolorbox}
+  \end{beamercolorbox}
+  \vskip\smallskipamount
+}
