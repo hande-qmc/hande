@@ -197,12 +197,6 @@ contains
         call decode_det(f, occ_list)
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-        hmatel = 0.0_p
-
-        ! One electron operator
-        do i = 1, nel
-            hmatel = hmatel + get_one_e_int_k(occ_list(i), occ_list(i))
-        end do
 
         ! Two electron operator
         ! 1/2 \sum_i \sum_j < ij || ij >
@@ -215,7 +209,12 @@ contains
         !   d) The double sum has 2*nalpha*nbeta terms corresponding to i,j of
         !      different spins.
         !   e) Thus  1/2 \sum_i \sum_j < ij || ij > = nalpha*nbeta*U/nsites.
-        hmatel = hmatel + nalpha*nbeta*hub_k_coulomb
+        hmatel = nalpha*nbeta*hub_k_coulomb
+
+        ! One electron operator
+        do i = 1, nel
+            hmatel = hmatel + get_one_e_int_k(occ_list(i), occ_list(i))
+        end do
 
     end function slater_condon0_hub_k
 
