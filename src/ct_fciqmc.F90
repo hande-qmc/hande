@@ -66,6 +66,7 @@ contains
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
+        real :: tp1, tp2, main_spawn, spawn_spawn, annih
         type(det_info) :: cdet
         type(excit) :: connection
         type(excit), allocatable :: connection_list(:)
@@ -109,6 +110,7 @@ contains
             spawning_head = spawning_block_start
             nattempts = nparticles(1)
 
+            call cpu_time(tp1)
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
             
@@ -172,7 +174,10 @@ contains
                 walker_population(1,idet) = tmp_pop
             
             end do
+            call cpu_time(tp2)
+            main_spawn = tp2 - tp1
 
+            call cpu_time(tp1)
             ! Now we advance all the spawned walkers to the barrier from their
             ! respective birth times. Any walkers spawned as a consequence of
             ! this  must be appened to the spawned array and themselves advanced
@@ -235,13 +240,17 @@ contains
                 if (all(current_pos == spawning_head+1)) exit
 
             end do
-
+            call cpu_time(tp2)
+            spawn_spawn = tp2 - tp1
 
             ! Calculate spawning rate.  We only use the spawning from the main
             ! walker list for this.
             rspawn = rspawn + spawning_rate(nattempts)
 
+            call cpu_time(tp1)
             call direct_annihilation(sc0)
+            call cpu_time(tp2)
+            annih = tp2 - tp1
 
             ! Update projected energy and shift
             call update_energy_estimators(ireport, nparticles_old)
@@ -249,6 +258,7 @@ contains
             call cpu_time(t2)
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
+            if (parent) write (6,*) '# components', main_spawn, spawn_spawn, annih
             
             t1 = t2
 
