@@ -62,7 +62,7 @@ contains
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer :: nspawned, nexcitations, nattempts, nparticles_old(sampling_size), ireport, idet
-        integer :: iparticle, tmp_pop, max_nexcitations, ierr
+        integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
@@ -186,20 +186,20 @@ contains
             ! Start the first element in each block in spawned_walkers.
             current_pos = spawning_block_start + 1
             do
-                do iproc = 0, nprocs-1
+                do proc_id = 0, nprocs-1
 
-                    if (current_pos(iproc) <= spawning_head(iproc)) then
+                    if (current_pos(proc_id) <= spawning_head(proc_id)) then
                         ! Have spawned walkers in the block to be sent to
-                        ! processor iproc.  Need to advance them to the barrier.
+                        ! processor proc_id.  Need to advance them to the barrier.
                         
                         ! decode the spawned walker bitstring
-                        cdet%f = spawned_walkers(:basis_length,current_pos(iproc))
+                        cdet%f = spawned_walkers(:basis_length,current_pos(proc_id))
                         K_ii = sc0(cdet%f) - H00
                         call decoder(cdet%f,cdet)
 
                         ! Spawn from this walker & append to the spawned array until
                         ! we hit the barrier
-                        time = spawn_times(current_pos(iproc))
+                        time = spawn_times(current_pos(proc_id))
                         do
 
                             R = abs(K_ii - shift) + sum_off_diag
@@ -207,16 +207,16 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet, K_ii, spawned_walkers(spawned_pop,current_pos(iproc)), &
+                            call ct_spawn(cdet, K_ii, spawned_walkers(spawned_pop,current_pos(proc_id)), &
                                           R, nspawned, connection)
                            
                             if (nspawned /= 0) then
 
                                 ! Handle walker death
                                 if(connection%nexcit == 0 .and. &
-                                        spawned_walkers(spawned_pop,current_pos(iproc))*nspawned < 0) then
-                                    spawned_walkers(spawned_pop,current_pos(iproc)) = &
-                                            spawned_walkers(spawned_pop,current_pos(iproc)) + nspawned 
+                                        spawned_walkers(spawned_pop,current_pos(proc_id))*nspawned < 0) then
+                                    spawned_walkers(spawned_pop,current_pos(proc_id)) = &
+                                            spawned_walkers(spawned_pop,current_pos(proc_id)) + nspawned 
                                     exit ! The walker is dead - do not continue
                                 end if
 
@@ -230,7 +230,7 @@ contains
                         end do
 
                         ! go on to the next element
-                        current_pos(iproc) = current_pos(iproc) + 1
+                        current_pos(proc_id) = current_pos(proc_id) + 1
 
                     end if
 
