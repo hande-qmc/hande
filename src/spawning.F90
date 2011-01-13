@@ -358,6 +358,46 @@ contains
         ! Returns:
         !    a,b: virtual spin orbitals involved in the excitation.
 
+        use basis, only: basis_length
+        use system, only: nvirt_alpha
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
+        integer, intent(in) :: ij_sym
+        integer, intent(out) :: a, b
+
+        logical :: allowed_excitation
+
+        allowed_excitation = .false.
+
+        do while (.not.allowed_excitation)
+
+            ! Until we find an allowed excitation.
+
+            call find_ab_hub_k(f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+
+        end do
+
+    end subroutine choose_ab_hub_k
+
+    subroutine find_ab_hub_k(f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+
+        ! Choose a random pair of (a,b) spin-orbitals. 
+        ! (a,b) are chosen such that the (i,j)->(a,b) excitation is symmetry-
+        ! allowed and a is a virtual spin-orbital.  As (a,b) must be one alpha
+        ! orbital and one beta orbital, we can choose a to be an alpha orbital
+        ! without loss of generality.
+        ! In: 
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
+        !    ij_sym: symmetry spanned by the (i,j) combination of unoccupied
+        !        spin-orbitals into which electrons are excited.
+        ! Returns:
+        !    a,b: spin orbitals involved in the excitation.
+        !    allowed_excitation: is true if the excitation (i,j)->(a,b) is
+        !        allowed (i.e. both a and b are indeed spin orbitals).
+
         use basis, only: basis_length, bit_lookup, nbasis
         use dSFMT_interface, only:  genrand_real2
         use system, only: nvirt_alpha
@@ -367,6 +407,7 @@ contains
         integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
         integer, intent(in) :: ij_sym
         integer, intent(out) :: a, b
+        logical, intent(out) :: allowed_excitation
 
         integer :: r, b_pos, b_el, ka
 
@@ -385,31 +426,25 @@ contains
         ! Thus k_b is defined by i,j and a.  As we only consider two-band
         ! systems, b is thus defined by spin conservation.
 
-        do
+        ! One electron must be in unocc_list_alpha, so we can use the
+        ! random number just to find which unoccupied alpha orbital is in
+        ! the excitation.
 
-            ! Until we find an allowed excitation.
+        r = int(genrand_real2()*(nvirt_alpha)) + 1
 
-            ! One electron must be in unocc_list_alpha, so we can use the
-            ! random number just to find which unoccupied alpha orbital is in
-            ! the excitation.
+        a = unocc_list_alpha(r)
+        ! Find corresponding beta orbital which satisfies conservation
+        ! of crystal momentum.
+        ka = (a+1)/2
+        b = 2*sym_table(ij_sym, inv_sym(ka))
 
-            r = int(genrand_real2()*(nvirt_alpha)) + 1
+        b_pos = bit_lookup(1,b)
+        b_el = bit_lookup(2,b)
 
-            a = unocc_list_alpha(r)
-            ! Find corresponding beta orbital which satisfies conservation
-            ! of crystal momentum.
-            ka = (a+1)/2
-            b = 2*sym_table(ij_sym, inv_sym(ka))
+        ! If b is unoccupied then have found an allowed excitation.
+        allowed_excitation = .not.btest(f(b_el), b_pos)
 
-            b_pos = bit_lookup(1,b)
-            b_el = bit_lookup(2,b)
-
-            ! If b is unoccupied then have found the excitation.
-            if (.not.btest(f(b_el), b_pos)) exit
-
-        end do
-
-    end subroutine choose_ab_hub_k
+    end subroutine find_ab_hub_k
 
     subroutine choose_ia_hub_real(occ_list, f, i, a, nvirt_avail)
 
