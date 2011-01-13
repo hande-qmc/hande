@@ -375,6 +375,8 @@ contains
         call mpi_bcast(CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
+        call mpi_bcast(lmag2, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

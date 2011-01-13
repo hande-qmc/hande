@@ -34,8 +34,10 @@ contains
         end if
 
         if (iproc == D0_proc) then
-            walker_energies(2,tot_walkers) = calc_orb_occ(f0, lmask)
+            walker_energies(2,tot_walkers) = 0.0_p
         end if
+
+        O00 = calc_orb_occ(f0, lmask)
 
     end subroutine init_hellmann_feynman_sampling
 
@@ -119,7 +121,6 @@ contains
         integer :: nspawned, nattempts
         type(excit) :: connection
 
-        real(p) :: inst_proj_energy, inst_proj_expectations(sampling_size)
         real(p) :: inst_proj_hf_t1
 
         logical :: soft_exit
@@ -141,18 +142,22 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
+        do idet = 1, tot_walkers
+            walker_population(2, idet) = walker_population(1,idet)
+        end do
+        nparticles(2) = nparticles(1)
+
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
+            inst_proj_hf_t1 = 0.0_p
             proj_hf_expectation = 0.0_p
             D0_population = 0.0_p
+            D0_hf_population = 0.0_p
             rspawn = 0.0_p
 
             do icycle = 1, ncycles
-
-                ! Zero MC cycle quantities.
-                inst_proj_hf_t1 = 0.0_p
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
@@ -183,6 +188,9 @@ contains
                         ! Hamiltonian walkers.
                         ! Currently only using operators diagonal in the basis,
                         ! so this isn't possible.
+                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
+                        ! Spawn if attempt was successful.
+                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
                     end do
 
@@ -204,7 +212,7 @@ contains
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! CHECK
-                    call stochastic_hf_cloning(walker_energies(2,idet), walker_population(1,idet), &
+                    call stochastic_hf_cloning(walker_energies(1,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
                 end do
@@ -219,20 +227,27 @@ contains
 
                 ! Form HF projected expectation value and add to running
                 ! total.
-                !proj_hf_expectation = proj_hf_expectation + &
-                !     inst_proj_hf_t1/D0_population - (inst_proj_energy*D0_hf_population)/D0_population**2
 
             end do
 
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 
+!            if (vary_shift) then
+!                do idet = 1, tot_walkers
+!                    call decoder(walker_dets(:,idet), cdet)
+!                    write (12,*) cdet%occ_list, walker_population(:,idet)
+!                end do
+!                exit
+!            end if
+
             call cpu_time(t2)
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
+            proj_hf_expectation = inst_proj_hf_t1 - proj_energy*D0_hf_population/D0_population
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            write (17,*) ireport, proj_hf_expectation, hf_shift, nparticles_old
+            write (17,*) ireport, inst_proj_hf_t1, hf_shift, nparticles_old, walker_population(:,1), D0_population, D0_hf_population
             call flush(17)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.

@@ -132,7 +132,7 @@ contains
 
         integer, intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps
 
-        hf_shift = hf_shift + &
+        hf_shift = hf_shift - &
                  (shift_damping/(tau*nupdate_steps)) &
                  *(real(nhf_particles,p)/nparticles - real(nhf_particles_old,p)/nparticles_old)
         av_hf_shift = av_hf_shift + hf_shift
@@ -249,7 +249,7 @@ contains
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
             D0_population = D0_population + walker_population(1,idet)
-            D0_hf_population = walker_population(2,idet)
+            D0_hf_population = D0_hf_population + walker_population(2,idet)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to 
             ! projected energy.

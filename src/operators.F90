@@ -72,7 +72,6 @@ contains
             if (nprocs == 1) then
                 do idet = 1, size(wfn)
                     orb_occ(iorb) = orb_occ(iorb) + wfn(idet)**2*calc_orb_occ(dets_list(:,idet), orb_mask)
-                    if (iorb == 3) write (16,*) dets_list(:,idet),wfn(idet), calc_orb_occ(dets_list(:,idet), orb_mask)
                 end do
             else
                 do i = 1, proc_blacs_info%nrows, block_size
@@ -123,7 +122,7 @@ contains
         character(*), intent(in) :: filename
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
-        integer :: idet, iorb, i, ii, ilocal
+        integer :: idet, i, ii, ilocal
 
 #ifdef PARALLEL
         integer :: ierr

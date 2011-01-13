@@ -26,5 +26,6 @@ real(p) :: proj_hf_expectation = 0.0_p
 real(p) :: av_proj_hf_expectation = 0.0_p
 
 integer :: D0_hf_population
+real(p) :: O00
 
 end module hfs_data

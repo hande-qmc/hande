@@ -21,4 +21,4 @@ sub/
 .nfs*
 *.aux
 *.dat
-/documentation/theory/*/*pdf
+*.pdf

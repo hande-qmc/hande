@@ -30,7 +30,6 @@ contains
         real(p), intent(out) :: eigv(ndets)
         real(p), allocatable :: work(:), eigvec(:,:)
         integer :: info, ierr, lwork
-        integer :: i
         character(1) :: job
 
         if (parent) then

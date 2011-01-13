@@ -32,7 +32,9 @@ contains
 
         logical :: comms_exists, comms_found, comms_read, eof
         integer :: proc
+#ifdef PARALLEL
         integer :: ierr
+#endif
 
         character(100) :: w
 

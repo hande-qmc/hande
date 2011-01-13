@@ -134,6 +134,7 @@ contains
             hf_pop = hf_pop + sign(clone, hamiltonian_pop)
         end if
         tot_hf_pop = tot_hf_pop - abs(old_pop) + abs(hf_pop)
+        if (abs(clone)>1) write (17,*) 'CLONING', clone, old_pop, hf_pop, hamiltonian_pop, Oii, Oii-hf_shift
 
     end subroutine stochastic_hf_cloning
 

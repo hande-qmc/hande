@@ -72,10 +72,10 @@ contains
 
         integer, intent(in) :: nmc_cycles, nparticles_old
         character(255) :: restart_file
-        integer :: io, scratch
+        integer :: io
         integer, parameter :: restart_version = 1
 #ifdef PARALLEL
-        integer :: nwalkers(0:nprocs-1), ierr, stat(MPI_STATUS_SIZE), i
+        integer :: nwalkers(0:nprocs-1), ierr, stat(MPI_STATUS_SIZE), i, scratch
         integer, parameter :: comm_tag = 123
         character(255) :: junk
 
@@ -192,11 +192,11 @@ contains
         use hashing, only: murmurhash_bit_string
 
         character(255) :: restart_file, junk
-        integer :: io, i
+        integer :: io
         logical :: exists
         integer :: restart_version
 #ifdef PARALLEL
-        integer :: global_tot_walkers, pop, iread, nread, ierr, dest
+        integer :: global_tot_walkers, pop, iread, nread, ierr, dest, i
         real(p), allocatable :: scratch_energies(:)
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         real(p) :: energy
@@ -413,7 +413,6 @@ contains
         ! the i0 integer array needs its own procedure for non 32-bit 
         ! integers
      
-        integer :: counter
         integer, intent(in) ::  wunit
         integer(i0), intent(in) :: a(:)
         character(*), intent(in), optional :: fmt_string
@@ -425,6 +424,7 @@ contains
         else 
             write(wunit,*) a
         end if
+
     end subroutine write_out_int_arr_i0
 
     subroutine write_out_float(wunit, a,fmt_string)
