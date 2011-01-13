@@ -10,7 +10,7 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(decoder, update_proj_energy, enumerator, sc0, matel)
+    subroutine do_ct_fciqmc(decoder, update_proj_energy, sc0, matel)
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
@@ -26,17 +26,6 @@ contains
         use parallel
 
         interface  
-            subroutine enumerator(cdet, nexcits, connection_list)
-                use determinants, only: det_info
-                use const, only: p
-                use excitations, only: excit,&
-                enumerate_all_excitations_hub_real,&
-                enumerate_all_excitations_hub_k 
-                implicit none
-                type(det_info), intent(in) :: cdet
-                integer, intent(out) :: nexcits
-                type(excit), intent(out) :: connection_list(:)
-            end subroutine enumerator
             subroutine decoder(f,d)
                 use basis, only: basis_length
                 use const, only: i0

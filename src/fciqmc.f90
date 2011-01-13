@@ -38,10 +38,10 @@ contains
         else if (doing_calc(ct_fciqmc_calc)) then
             select case(system_type)
             case(hub_k)
-                call do_ct_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, enumerate_all_excitations_hub_k,&
+                call do_ct_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, &
                                   slater_condon0_hub_k, hub_k_coulomb)
             case(hub_real)
-                call do_ct_fciqmc(decode_det_occ, update_proj_energy_hub_real, enumerate_all_excitations_hub_real,&
+                call do_ct_fciqmc(decode_det_occ, update_proj_energy_hub_real, &
                                   slater_condon0_hub_real, hubt)
             end select
         else
