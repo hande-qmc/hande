@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sc0)
+    subroutine direct_annihilation()
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -16,20 +16,6 @@ contains
 
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process.
-
-        ! In:
-        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
-        !    elements, <D|H|D>.  See the hamiltonian module.
-
-        interface
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
-        end interface
 
 #ifdef PARALLEL
         ! 0. Send spawned walkers to the processor which "owns" them and receive
@@ -55,7 +41,7 @@ contains
             call remove_unoccupied_dets()
 
             ! 5. Insert new walkers into main walker list.
-            call insert_new_walkers(sc0)
+            call insert_new_walkers()
 
         else
 
@@ -67,7 +53,7 @@ contains
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_initiator(sc0)
+    subroutine direct_annihilation_initiator()
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -78,20 +64,6 @@ contains
         ! different parts of the annihilation process.
 
         ! This version is for use with the initiator-FCIQMC algorithm.
-
-        ! In:
-        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
-        !    elements, <D|H|D>.  See the hamiltonian module.
-
-        interface
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
-        end interface
 
 #ifdef PARALLEL
         ! 0. Send spawned walkers to the processor which "owns" them and receive
@@ -120,7 +92,7 @@ contains
             call remove_unoccupied_dets()
 
             ! 5. Insert new walkers into main walker list.
-            call insert_new_walkers(sc0)
+            call insert_new_walkers()
 
         else
 
@@ -450,15 +422,11 @@ contains
 
     end subroutine remove_unoccupied_dets
 
-    subroutine insert_new_walkers(sc0)
+    subroutine insert_new_walkers()
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
-
-        ! In:
-        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
-        !    elements, <D|H|D>.  See the hamiltonian module.
 
         use basis, only: basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -467,16 +435,7 @@ contains
         use hamiltonian, only: slater_condon0_hub_real
         use hfs_data, only: lmask, O00
         use operators, only: calc_orb_occ
-
-        interface
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
-        end interface
+        use proc_pointers, only: sc0
 
         integer :: i, istart, iend, j, k, pos
         logical :: hit

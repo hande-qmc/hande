@@ -6,6 +6,8 @@ use const
 
 use hfs_data
 
+use proc_pointers
+
 implicit none
 
 contains
@@ -41,7 +43,7 @@ contains
 
     end subroutine init_hellmann_feynman_sampling
 
-    subroutine do_hfs_fciqmc(decoder, update_proj_energy, spawner, sc0)
+    subroutine do_hfs_fciqmc(update_proj_energy)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -63,8 +65,6 @@ contains
         !        energy.  See the energy_evaluation module.
         !    spawner: relevant subroutine to attempt to spawn a walker from an
         !        existing walker.  See the spawning module.
-        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
-        !    elements, <D|H|D>.  See the hamiltonian module.
 
         use parallel
   
@@ -83,36 +83,12 @@ contains
         ! subroutines around as arguments.  Bummer.
         ! If only procedure pointers were more commonly implemented...
         interface
-            subroutine decoder(f,d)
-                use basis, only: basis_length
-                use const, only: i0
-                use determinants, only: det_info
-                implicit none
-                integer(i0), intent(in) :: f(basis_length)
-                type(det_info), intent(inout) :: d
-            end subroutine decoder
             subroutine update_proj_energy(idet, inst_proj_energy, inst_proj_hf_t1)
                 use const, only: p
                 implicit none
                 integer, intent(in) :: idet
                 real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
             end subroutine update_proj_energy
-            subroutine spawner(d, parent_sign, nspawned, connection)
-                use determinants, only: det_info
-                use excitations, only: excit
-                implicit none
-                type(det_info), intent(in) :: d
-                integer, intent(in) :: parent_sign
-                integer, intent(out) :: nspawned
-                type(excit), intent(out) :: connection
-            end subroutine spawner
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
         end interface
 
         integer :: idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
@@ -223,7 +199,7 @@ contains
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
-                call direct_annihilation(sc0)
+                call direct_annihilation()
 
                 ! Form HF projected expectation value and add to running
                 ! total.

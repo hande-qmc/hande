@@ -4,6 +4,7 @@ module fciqmc
 ! quantum monte carlo (FCIQMC) calculations.
 
 use fciqmc_data
+use proc_pointers
 implicit none
 
 contains
@@ -23,68 +24,55 @@ contains
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real
 
-        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
+        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, doing_calc
 
         use ct_fciqmc, only: do_ct_fciqmc
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
 
+        real(dp) :: hub_matel
+
+        ! set function pointers
+        select case(system_type)
+        case (hub_k)
+            decoder => decode_det_spinocc_spinunocc
+            update_proj_energy => update_proj_energy_hub_k
+            spawner => spawn_hub_k
+            sc0 => slater_condon0_hub_k
+            hub_matel = hub_k_coulomb
+        case (hub_real)
+            decoder => decode_det_occ
+            update_proj_energy => update_proj_energy_hub_real
+            spawner => spawn_hub_real
+            sc0 => slater_condon0_hub_real
+            hub_matel = hubt
+        end select
+
         if (doing_calc(initiator_fciqmc)) then
-            select case(system_type)
-            case(hub_k)
-                call do_ifciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
-            case(hub_real)
-                call do_ifciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
-            end select
+            call do_ifciqmc()
         else if (doing_calc(ct_fciqmc_calc)) then
-            select case(system_type)
-            case(hub_k)
-                call do_ct_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, &
-                                  slater_condon0_hub_k, hub_k_coulomb)
-            case(hub_real)
-                call do_ct_fciqmc(decode_det_occ, update_proj_energy_hub_real, &
-                                  slater_condon0_hub_real, hubt)
-            end select
+            call do_ct_fciqmc(hub_matel)
         else
-            select case(system_type)
-            case(hub_k)
-                if (doing_calc(hfs_fciqmc_calc)) then
-                    call init_hellmann_feynman_sampling()
-                    call do_hfs_fciqmc(decode_det_spinocc_spinunocc, update_proj_hfs_hub_k, spawn_hub_k, slater_condon0_hub_k)
-                else
-                    call do_fciqmc(decode_det_spinocc_spinunocc, update_proj_energy_hub_k, spawn_hub_k, slater_condon0_hub_k)
-                end if
-            case(hub_real)
-                call do_fciqmc(decode_det_occ, update_proj_energy_hub_real, spawn_hub_real, slater_condon0_hub_real)
-            end select
+            if (doing_calc(hfs_fciqmc_calc)) then
+                call init_hellmann_feynman_sampling()
+                call do_hfs_fciqmc(update_proj_hfs_hub_k)
+            else
+                call do_fciqmc()
+            end if
         end if
 
     end subroutine fciqmc_main
 
-    subroutine do_fciqmc(decoder, update_proj_energy, spawner, sc0)
+    subroutine do_fciqmc()
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution.
 
-        ! This is implemented by abusing fortran's ability to pass procedures as
-        ! arguments (if only function pointers (F2003) were implemented in more
-        ! compilers!).  This allows us to avoid many system dependent if blocks,
+        ! This is implemented by using procedure pointers (F2003).
+        ! This allows us to avoid many system dependent if blocks,
         ! which are constant for a given calculation.  Avoiding such branching
         ! is worth the extra verbosity (especially if procedures are written to
         ! be sufficiently modular that implementing a new system can reuse many
         ! existing routines) as it leads to much faster code.
-
-        ! (This idea is now being "borrowed" for use in neci.  Bah...)
-
-        ! In:
-        !    decoder: relevant subroutine to decode/extract the necessary
-        !        information from the determinant bit string.  See the
-        !        determinants module.
-        !    update_proj_energy: relevant subroutine to update the projected
-        !        energy.  See the energy_evaluation module.
-        !    spawner: relevant subroutine to attempt to spawn a walker from an
-        !        existing walker.  See the spawning module.
-        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
-        !    elements, <D|H|D>.  See the hamiltonian module.
 
         use parallel
   
@@ -98,41 +86,6 @@ contains
         use fciqmc_restart, only: dump_restart
         use spawning, only: create_spawned_particle
         use fciqmc_common
-
-        ! It seems this interface block cannot go in a module when we're passing
-        ! subroutines around as arguments.  Bummer.
-        ! If only procedure pointers were more commonly implemented...
-        interface
-            subroutine decoder(f,d)
-                use basis, only: basis_length
-                use const, only: i0
-                use determinants, only: det_info
-                implicit none
-                integer(i0), intent(in) :: f(basis_length)
-                type(det_info), intent(inout) :: d
-            end subroutine decoder
-            subroutine update_proj_energy(idet)
-                use const, only: p
-                implicit none
-                integer, intent(in) :: idet
-            end subroutine update_proj_energy
-            subroutine spawner(d, parent_sign, nspawned, connection)
-                use determinants, only: det_info
-                use excitations, only: excit
-                implicit none
-                type(det_info), intent(in) :: d
-                integer, intent(in) :: parent_sign
-                integer, intent(out) :: nspawned
-                type(excit), intent(out) :: connection
-            end subroutine spawner
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
-        end interface
 
         integer :: idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
@@ -206,7 +159,7 @@ contains
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
-                call direct_annihilation(sc0)
+                call direct_annihilation()
 
             end do
 
@@ -240,24 +193,13 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine do_ifciqmc(decoder, update_proj_energy, spawner, sc0)
+    subroutine do_ifciqmc()
 
         ! Run the initiator-FCIQMC algorithm starting from the initial walker
         ! distribution.
 
         ! See notes about the implementation of this using function pointers
-        ! (F77 style rather than F2003, sadly!) in do_fciqmc.
-
-        ! In:
-        !    decoder: relevant subroutine to decode/extract the necessary
-        !        information from the determinant bit string.  See the
-        !        determinants module.
-        !    update_proj_energy: relevant subroutine to update the projected
-        !        energy.  See the energy_evaluation module.
-        !    spawner: relevant subroutine to attempt to spawn a walker from an
-        !        existing walker.  See the spawning module.
-        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
-        !    elements, <D|H|D>.  See the hamiltonian module.
+        ! in do_fciqmc.
 
         use parallel
   
@@ -272,41 +214,6 @@ contains
         use system, only: nel
         use spawning, only: create_spawned_particle_initiator
         use fciqmc_common
-
-        ! It seems this interface block cannot go in a module when we're passing
-        ! subroutines around as arguments.  Bummer.
-        ! If only procedure pointers were more commonly implemented...
-        interface
-            subroutine decoder(f,d)
-                use basis, only: basis_length
-                use const, only: i0
-                use determinants, only: det_info
-                implicit none
-                integer(i0), intent(in) :: f(basis_length)
-                type(det_info), intent(inout) :: d
-            end subroutine decoder
-            subroutine update_proj_energy(idet)
-                use const, only: p
-                implicit none
-                integer, intent(in) :: idet
-            end subroutine update_proj_energy
-            subroutine spawner(d, parent_sign, nspawned, connection)
-                use determinants, only: det_info
-                use excitations, only: excit
-                implicit none
-                type(det_info), intent(in) :: d
-                integer, intent(in) :: parent_sign
-                integer, intent(out) :: nspawned
-                type(excit), intent(out) :: connection
-            end subroutine spawner
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
-        end interface
 
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
@@ -425,7 +332,7 @@ contains
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
-                call direct_annihilation_initiator(sc0)
+                call direct_annihilation_initiator()
 
             end do
 

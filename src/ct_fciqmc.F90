@@ -10,7 +10,7 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(decoder, update_proj_energy, sc0, matel)
+    subroutine do_ct_fciqmc(matel)
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
@@ -19,34 +19,12 @@ contains
         use excitations, only: excit
         use fciqmc_common, only: load_balancing_report, initial_fciqmc_status
         use fciqmc_restart
+        use proc_pointers
         use interact
         use system, only: ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
 
         use checking
         use parallel
-
-        interface  
-            subroutine decoder(f,d)
-                use basis, only: basis_length
-                use const, only: i0
-                use determinants, only: det_info
-                implicit none
-                integer(i0), intent(in) :: f(basis_length)
-                type(det_info), intent(inout) :: d
-            end subroutine decoder
-            subroutine update_proj_energy(idet)
-                use const, only: p
-                implicit none
-                integer, intent(in) :: idet
-            end subroutine update_proj_energy
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
-        end interface
 
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
@@ -230,7 +208,7 @@ contains
             ! walker list for this.
             rspawn = rspawn + spawning_rate(nattempts)
 
-            call direct_annihilation(sc0)
+            call direct_annihilation()
 
             ! Update projected energy and shift
             call update_energy_estimators(ireport, nparticles_old)
