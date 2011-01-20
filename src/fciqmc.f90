@@ -11,10 +11,8 @@ contains
 
     subroutine fciqmc_main()
 
-        ! Wrapper around do_fciqmc and do_ifciqmc to set the appropriate procedures
+        ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
-        ! This is a bit hacky, but avoids lots of branching due to if blocks
-        ! within the fciqmc algorithm.
 
         use system, only: system_type, hub_k, hub_real, hub_k_coulomb, hubt
         use hellmann_feynman_sampling
