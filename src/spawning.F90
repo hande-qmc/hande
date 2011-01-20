@@ -123,6 +123,54 @@ contains
         
     end subroutine spawn_hub_k
 
+    subroutine gen_excit_hub_k(cdet, pgen, connection)
+
+        ! Create a random excitation from cdet and calculate the probability of
+        ! selecting that excitation.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use determinants, only: det_info
+        use excitations, only: calc_pgen_hub_k, excit
+        use fciqmc_data, only: tau
+        use system, only: hub_k_coulomb
+
+        type(det_info), intent(in) :: cdet
+        real(p), intent(out) :: pgen
+        type(excit), intent(out) :: connection
+
+        integer :: i, j, a, b, ij_sym
+
+        ! See notes in spawn_hub_k for more details regarding this algorithm.
+        ! spawn_hub_k contains a somewhat more optimised version for fciqmc and
+        ! i-fciqmc, as you can decide whether to spawn (or not) without actually
+        ! generating the excitation when working in momentum space.
+
+        ! However, we need pgen and an excitation for use with, e.g. the folded
+        ! spectrum algorithm.
+
+        connection%nexcit = 2
+
+        ! 1. Select a random pair of spin orbitals to excite from.
+        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
+
+        ! 2. Select a random pair of spin orbitals to excite to.
+        call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2))
+
+        ! 3. Calculate the generation probability of the excitation.
+        ! For two-band systems this depends only upon the orbitals excited from.
+        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
+
+    end subroutine gen_excit_hub_k
+
     subroutine spawn_hub_real(cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant for the 
@@ -141,7 +189,7 @@ contains
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_real, excit
+        use excitations, only: excit
         use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
 
@@ -150,29 +198,19 @@ contains
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, psuccess, pspawn, hmatel
-        integer :: i, a
-        integer :: nvirt_avail
+        real(p) :: psuccess, pspawn, pgen, hmatel
 
-        ! Double excitations are not connected determinants within the 
-        ! real space formulation of the Hubbard model.
+        ! 1. Generate random excitation from cdet and probability of spawning
+        ! there.
+        call gen_excit_hub_real(cdet, pgen, connection)
 
-        ! 1. Chose a random connected excitation.
-        call choose_ia_hub_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
+        ! 2. find the connecting matrix element.
+        call slater_condon1_hub_real_excit(cdet%occ_list, connection, hmatel)
 
-        ! 2. Find probability of generating this excited determinant.
-        pgen = calc_pgen_hub_real(cdet%occ_list, cdet%f, nvirt_avail)
-
-        ! 3. Construct the excited determinant and find the connecting matrix
-        ! element.
-        connection%nexcit = 1
-        connection%from_orb(1) = i
-        connection%to_orb(1) = a
-
-        call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
+        ! 3. Probability of gening...
+        pspawn = tau*abs(hmatel)/pgen
 
         ! 4. Attempt spawning.
-        pspawn = tau*abs(hmatel)/pgen
         psuccess = genrand_real2()
 
         ! Need to take into account the possibilty of a spawning attempt
@@ -198,6 +236,42 @@ contains
         end if
 
     end subroutine spawn_hub_real
+
+    subroutine gen_excit_hub_real(cdet, pgen, connection)
+
+        ! Create a random excitation from cdet and calculate the probability of
+        ! selecting that excitation.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+
+        use determinants, only: det_info
+        use excitations, only: calc_pgen_hub_real, excit
+
+        type(det_info), intent(in) :: cdet
+        real(p), intent(out) :: pgen
+        type(excit), intent(out) :: connection
+
+        integer :: nvirt_avail
+
+        ! Double excitations are not connected determinants within the 
+        ! real space formulation of the Hubbard model.
+        connection%nexcit = 1
+
+        ! 1. Chose a random connected excitation.
+        call choose_ia_hub_real(cdet%occ_list, cdet%f, connection%from_orb(1), connection%to_orb(1), nvirt_avail)
+
+        ! 2. Find probability of generating this excited determinant.
+        pgen = calc_pgen_hub_real(cdet%occ_list, cdet%f, nvirt_avail)
+
+    end subroutine gen_excit_hub_real
 
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
 
