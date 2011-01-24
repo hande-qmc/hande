@@ -192,25 +192,14 @@ contains
         
     end subroutine init_fciqmc
 
-    subroutine initial_fciqmc_status(update_proj_energy)
+    subroutine initial_fciqmc_status()
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
-        ! In:
-        !    update_proj_energy: relevant subroutine to update the projected
-        !        energy.  See the energy_evaluation module.
-
         use parallel
-
-        interface
-            subroutine update_proj_energy(idet)
-                use const, only: p
-                implicit none
-                integer, intent(in) :: idet
-            end subroutine update_proj_energy
-        end interface
+        use proc_pointers, only: update_proj_energy_ptr
 
         integer :: idet
         integer :: ntot_particles
@@ -225,7 +214,7 @@ contains
         proj_energy = 0.0_p
         D0_population = 0
         do idet = 1, tot_walkers 
-            call update_proj_energy(idet)
+            call update_proj_energy_ptr(idet)
         end do 
 
 #ifdef PARALLEL

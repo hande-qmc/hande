@@ -146,7 +146,7 @@ contains
 
                     cdet%f = walker_dets(:,idet)
 
-                    call decoder(cdet%f, cdet)
+                    call decoder_ptr(cdet%f, cdet)
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
@@ -156,7 +156,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
 
@@ -164,7 +164,7 @@ contains
                         ! Hamiltonian walkers.
                         ! Currently only using operators diagonal in the basis,
                         ! so this isn't possible.
-                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
@@ -174,7 +174,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner(cdet, walker_population(2,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(2,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
@@ -211,7 +211,7 @@ contains
 
 !            if (vary_shift) then
 !                do idet = 1, tot_walkers
-!                    call decoder(walker_dets(:,idet), cdet)
+!                    call decoder_ptr(walker_dets(:,idet), cdet)
 !                    write (12,*) cdet%occ_list, walker_population(:,idet)
 !                end do
 !                exit

@@ -444,7 +444,7 @@ contains
         use hamiltonian, only: slater_condon0_hub_real
         use hfs_data, only: lmask, O00
         use operators, only: calc_orb_occ
-        use proc_pointers, only: sc0
+        use proc_pointers, only: sc0_ptr
 
         integer :: i, istart, iend, j, k, pos
         logical :: hit
@@ -486,7 +486,7 @@ contains
             walker_dets(:,k) = spawned_walkers(:basis_length,i)
             walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
-            walker_energies(1,k) = sc0(walker_dets(:,k)) - H00
+            walker_energies(1,k) = sc0_ptr(walker_dets(:,k)) - H00
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_energies(2:,k) = <D_i|O|D_i>.
                 walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00

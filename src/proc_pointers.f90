@@ -38,9 +38,9 @@ abstract interface
     end function i_sc0
 end interface
 
-procedure(i_decoder), pointer :: decoder => null()
-procedure(i_update_proj_energy), pointer :: update_proj_energy => null()
-procedure(i_spawner), pointer :: spawner => null()
-procedure(i_sc0), pointer :: sc0 => null()
+procedure(i_decoder), pointer :: decoder_ptr => null()
+procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
+procedure(i_spawner), pointer :: spawner_ptr => null()
+procedure(i_sc0), pointer :: sc0_ptr => null()
 
 end module proc_pointers

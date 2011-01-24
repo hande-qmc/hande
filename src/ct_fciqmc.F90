@@ -58,7 +58,7 @@ contains
         t_barrier = tau ! or we could just not bother with the t_barrier var...
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(update_proj_energy)
+        call initial_fciqmc_status()
 
         ! time the report loop
         call cpu_time(t1)
@@ -82,12 +82,12 @@ contains
                 ! Get the determinant bitstring once so we do not need to keep
                 ! doing it. Then find lists of orbitals.
                 cdet%f = walker_dets(:,idet) 
-                call decoder(cdet%f, cdet)
+                call decoder_ptr(cdet%f, cdet)
 
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                call update_proj_energy(idet)
+                call update_proj_energy_ptr(idet)
                  
                 ! Loop over each walker on the determinant.
                 do iparticle = 1, abs(walker_population(1,idet))
@@ -156,8 +156,8 @@ contains
                         
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,current_pos(proc_id))
-                        K_ii = sc0(cdet%f) - H00
-                        call decoder(cdet%f,cdet)
+                        K_ii = sc0_ptr(cdet%f) - H00
+                        call decoder_ptr(cdet%f,cdet)
 
                         ! Spawn from this walker & append to the spawned array until
                         ! we hit the barrier

@@ -32,16 +32,16 @@ contains
         ! set function pointers
         select case(system_type)
         case (hub_k)
-            decoder => decode_det_spinocc_spinunocc
-            update_proj_energy => update_proj_energy_hub_k
-            spawner => spawn_hub_k
-            sc0 => slater_condon0_hub_k
+            decoder_ptr => decode_det_spinocc_spinunocc
+            update_proj_energy_ptr => update_proj_energy_hub_k
+            spawner_ptr => spawn_hub_k
+            sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
         case (hub_real)
-            decoder => decode_det_occ
-            update_proj_energy => update_proj_energy_hub_real
-            spawner => spawn_hub_real
-            sc0 => slater_condon0_hub_real
+            decoder_ptr => decode_det_occ
+            update_proj_energy_ptr => update_proj_energy_hub_real
+            spawner_ptr => spawn_hub_real
+            sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
         end select
 
@@ -105,7 +105,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(update_proj_energy)
+        call initial_fciqmc_status()
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -130,17 +130,17 @@ contains
 
                     cdet%f = walker_dets(:,idet)
 
-                    call decoder(cdet%f, cdet)
+                    call decoder_ptr(cdet%f, cdet)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy(idet)
+                    call update_proj_energy_ptr(idet)
 
                     do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn.
-                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
 
@@ -266,7 +266,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(update_proj_energy)
+        call initial_fciqmc_status()
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -291,12 +291,12 @@ contains
 
                     cdet%f = walker_dets(:,idet)
 
-                    call decoder(cdet%f, cdet)
+                    call decoder_ptr(cdet%f, cdet)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy(idet)
+                    call update_proj_energy_ptr(idet)
 
                     ! Is this determinant an initiator?
                     if (abs(walker_population(1,idet)) > initiator_population) then
@@ -313,7 +313,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn.
-                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
                             call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned, spawned_pop)
