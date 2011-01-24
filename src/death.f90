@@ -23,6 +23,7 @@ contains
         ! In/Out:
         !    population: number of particles on determinant D_i.
         !    tot_population: total number of particles.
+        ! Out:
         !    ndeath: running total of number of particles died/cloned.
         
         ! Note that population and tot_population refer to a single 'type' of
