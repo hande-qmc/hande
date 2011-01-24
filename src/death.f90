@@ -32,7 +32,8 @@ contains
         use dSFMT_interface, only: genrand_real2
 
         real(p), intent(in) :: Kii
-        integer, intent(inout) :: population, tot_population, ndeath
+        integer, intent(inout) :: population, tot_population
+        integer, intent(out) :: ndeath
 
         real(p) :: pd
         real(dp) :: r

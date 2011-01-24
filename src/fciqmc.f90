@@ -21,6 +21,7 @@ contains
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator
+        use death, only: stochastic_death
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, doing_calc
 
@@ -45,6 +46,8 @@ contains
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
         end select
+
+        death_ptr => stochastic_death
 
         if (doing_calc(initiator_fciqmc)) then
             call init_ifciqmc()
@@ -80,7 +83,6 @@ contains
   
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, bit_lookup, nbasis
-        use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
@@ -165,7 +167,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
