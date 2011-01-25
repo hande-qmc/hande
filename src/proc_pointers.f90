@@ -29,6 +29,13 @@ abstract interface
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
     end subroutine i_spawner
+    subroutine i_gen_excit(d, pgen, connection)
+        import :: det_info, excit, p
+        implicit none
+        type(det_info), intent(in) :: d
+        real(p), intent(out) :: pgen
+        type(excit), intent(out) :: connection
+    end subroutine i_gen_excit
     subroutine i_death(mat, pop, tot_pop, ndeath)
         import :: p
         implicit none
@@ -68,6 +75,7 @@ end interface
 procedure(i_decoder), pointer :: decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
 procedure(i_spawner), pointer :: spawner_ptr => null()
+procedure(i_gen_excit), pointer :: gen_excit_ptr => null()
 procedure(i_death), pointer :: death_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
