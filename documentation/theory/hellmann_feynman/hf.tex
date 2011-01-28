@@ -1,4 +1,4 @@
-\documentclass[a4paper, 11pt]{revtex4}
+\documentclass[a4paper, 11pt]{article}
 
 \usepackage{amsmath}
 
@@ -9,6 +9,8 @@
 \newcommand{\bra}{\langle}
 \newcommand{\ket}{\rangle}
 \newcommand{\EHF}{E_{\text{HF}}} 
+
+\newcommand{\sgn}{\operatorname{sign}}
 
 \begin{document}
 
@@ -90,12 +92,20 @@ where the tilde is used to denote differentiated quantities:
 We can evaluate the diffusion equation for the `Hellmann--Feynman' walkers, $\{\tilde{c}_\bi(\beta)\}$, using the same discrete population dynamics as used in standard FCIQMC.  The only undefined term is the Hellmann--Feynman shift, $\tilde{S}(\beta)$, which acts to control the flux of Hellmann-Feynman walkers from the Hamiltonian walkers, $\{c_\bi(\beta)\}$ in a similar way to how the Hamiltonian shift, $S(\beta)$, controls the total population.  $\tilde{S}(\beta)$ can also be found via simple differentiation:
 \begin{align}
 \tilde{S}(\beta) &= \tilde{S}(\beta-A\delta\beta) - \frac{\xi}{A\delta\beta} \dd{}{\alpha}\left.\ln{\left[\frac{N_w(\beta;\alpha)}{N_w(\beta-A\delta\beta;  \alpha)}\right]}\right|_{\alpha=0} \\
-&=  \tilde{S}(\beta-A\delta\beta) - \frac{\xi}{A\delta\beta} \left[ \frac{\tilde{N}_w(\beta)}{N_w(\beta)} - \frac{\tilde{N}_w(\beta-A\delta\beta)}{N_w(\beta-A\delta\beta)} \right]
+&=  \tilde{S}(\beta-A\delta\beta) - \frac{\xi}{A\delta\beta} \left[ \frac{\tilde{N}_w(\beta)}{N_w(\beta)} - \frac{\tilde{N}_w(\beta-A\delta\beta)}{N_w(\beta-A\delta\beta)} \right].
 \end{align}
-where $\tilde{N}_w(\beta)$ is simply the total number of Hellmann--Feynman walkers:
-\begin{gather}
-N_w(\beta;\alpha) = \sum_\bj N_\bj(\beta;\alpha) \\
-\Rightarrow \tilde{N}_w(\beta) = \sum_\bj \tilde{N}_\bj(\beta).
-\end{gather}
+$\tilde{N}_w(\beta)$ is a tricky quantity to evaluate.  We turn to the definition of $N_w$:
+\begin{equation}
+N_w(\beta;\alpha) = \sum_\bj |N_\bj(\beta;\alpha)|
+\end{equation}
+where $N_\bj$ is a \emph{signed} quantity, and gives the number of walkers on determinant $\bj$ \emph{and} their sign. (We note that this is not the defintion used by the Alavi group.)  Thus
+\begin{align}
+\frac{\partial N_w(\beta;\alpha)}{\partial \alpha} &= \sum_\bj \frac{\partial}{\partial\alpha} |N_\bj(\beta;\alpha)| \\
+& = \sum_\bj \sgn{(N_\bj(\beta; \alpha))} \frac{\partial{N_\bj}}{\partial\alpha},
+\end{align}
+and hence
+\begin{equation}
+\tilde{N}_w(\beta) = \sum_\bj \sgn{(N_\bj(\beta))} \tilde{N}_\bj(\beta).
+\end{equation}
 
 \end{document}

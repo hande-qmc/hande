@@ -465,7 +465,7 @@ contains
         use determinants, only: decode_det
         use system, only: nel
         use hamiltonian, only: slater_condon0_hub_real
-        use hfs_data, only: lmask
+        use hfs_data, only: lmask, O00
         use operators, only: calc_orb_occ
 
         interface
@@ -521,7 +521,7 @@ contains
             walker_energies(1,k) = sc0(walker_dets(:,k)) - H00
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_energies(2:,k) = <D_i|O|D_i>.
-                walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask)
+                walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00
             end if
             ! Next walker will be inserted below this one.
             iend = pos - 1
