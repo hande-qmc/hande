@@ -25,7 +25,7 @@ contains
         !        next report loop.
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn
-        use fciqmc_data, only: proj_energy, av_proj_energy, av_D0_population, shift, av_shift
+        use fciqmc_data, only: bosonic_proj, proj_energy, av_proj_energy, av_D0_population, shift, av_shift
         use fciqmc_data, only: vary_shift, start_vary_shift, D0_population
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -36,7 +36,7 @@ contains
         integer, intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
-        real(dp) :: ir(2*sampling_size+2), ir_sum(2*sampling_size+2)
+        real(dp) :: ir(sampling_size+5), ir_sum(sampling_size+5)
         integer :: ntot_particles(sampling_size), ierr
 
             ! Need to sum the number of particles and the projected energy over
@@ -44,14 +44,16 @@ contains
             ir(1:sampling_size) = nparticles
             ir(sampling_size+1) = proj_energy
             ir(sampling_size+2) = proj_hf_expectation
-            ir(2*sampling_size+1) = D0_population
-            ir(2*sampling_size+2) = rspawn
+            ir(sampling_size+3) = bosonic_proj
+            ir(sampling_size+4) = D0_population
+            ir(sampling_size+5) = rspawn
             call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
             proj_energy = ir_sum(sampling_size+1)
             proj_hf_expectation = ir_sum(sampling_size+2)
-            D0_population = ir_sum(2*sampling_size+1)
-            rspawn = ir_sum(2*sampling_size+2)
+            bosonic_proj = ir_sum(sampling_size+3)
+            D0_population = ir_sum(sampling_size+4)
+            rspawn = ir_sum(sampling_size+5)
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
@@ -156,7 +158,7 @@ contains
         ! In:
         !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, bosonic_proj, proj_energy
         use excitations, only: excit, get_excitation
         use hamiltonian, only: slater_condon2_hub_k
 
@@ -175,6 +177,7 @@ contains
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
             proj_energy = proj_energy + hmatel*walker_population(1,idet)
+            bosonic_proj = bosonic_proj - abs(hmatel*walker_population(1,idet))
         end if
 
     end subroutine update_proj_energy_hub_k
@@ -196,7 +199,7 @@ contains
         ! In:
         !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, bosonic_proj, proj_energy
         use excitations, only: excit, get_excitation
         use hamiltonian, only: slater_condon1_hub_real
 
@@ -214,6 +217,7 @@ contains
             ! projected energy.
             hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
             proj_energy = proj_energy + hmatel*walker_population(1,idet)
+            bosonic_proj = bosonic_proj - abs(hmatel*walker_population(1,idet))
         end if
 
     end subroutine update_proj_energy_hub_real
