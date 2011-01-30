@@ -1,4 +1,3 @@
-
       SUBROUTINE PSLAPRNT( M, N, A, IA, JA, DESCA, IRPRNT, ICPRNT,   &
                            CMATNM, NOUT, WORK )
 !
@@ -14,6 +13,10 @@
       CHARACTER*(*)      CMATNM
       INTEGER            DESCA( * )
       REAL               A( * ), WORK( * )
+
+! Only do something in parallel mode.
+#ifdef PARALLEL
+
 !     ..
 !
 !  Purpose
@@ -306,6 +309,9 @@
  9999 FORMAT(A,'(',I6,',',I6,')=',E16.8)
 !
       RETURN
+
+#endif
+
 !
 !     End of PSLAPRNT
 !

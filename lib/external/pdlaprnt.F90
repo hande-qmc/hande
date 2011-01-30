@@ -1,4 +1,3 @@
-
       SUBROUTINE PDLAPRNT( M, N, A, IA, JA, DESCA, IRPRNT, ICPRNT,   &
                            CMATNM, NOUT, WORK )
 !
@@ -14,6 +13,10 @@
       CHARACTER*(*)      CMATNM
       INTEGER            DESCA( * )
       DOUBLE PRECISION   A( * ), WORK( * )
+
+! Only do something in parallel mode.
+#ifdef PARALLEL
+
 !     ..
 !
 !  Purpose
@@ -306,6 +309,9 @@
  9999 FORMAT(A,'(',I6,',',I6,')=',D30.18)
 !
       RETURN
+
+#endif
+
 !
 !     End of PDLAPRNT
 !
