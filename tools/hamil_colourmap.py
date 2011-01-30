@@ -36,11 +36,6 @@ def colormap(filename, N):
 
     pylab.imsave('%s.png' % filename, HMat, cmap=pylab.get_cmap('RdBu'))
 
-#    pylab.pcolor(HMat,cmap=pylab.get_cmap('RdBu'))
-#
-#    pylab.draw()
-#    pylab.show()
-
 if __name__ == '__main__':
 
     if len(sys.argv) == 3: 
