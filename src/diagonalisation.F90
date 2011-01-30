@@ -268,6 +268,9 @@ contains
         ! output of the Hamiltonian matrix.
         integer, save :: ndets_prev = 0
 
+        ! scratch array for printing distributed matrix
+        real(p), allocatable :: work_print(:)
+
         if (allocated(hamil)) then
             deallocate(hamil, stat=ierr)
             call check_deallocate('hamil',ierr)
@@ -358,20 +361,29 @@ contains
         end select
 
         if (write_hamiltonian) then
+            iunit = get_free_unit()
+            open(iunit, file=hamiltonian_file, status='unknown')
             if (nprocs > 1) then
-                if (parent) call warning('generate_hamil','Output of hamiltonian not implemented in parallel.',2)
+                ! Note that this uses a different format to the serial case...
+                allocate(work_print(block_size**2), stat=ierr)
+                call check_allocate('work_print', block_size**2, ierr)
+#ifdef SINGLE_PRECISION
+                call pslaprnt(ndets, ndets, hamil, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil', iunit, work_print)
+#else
+                call pdlaprnt(ndets, ndets, hamil, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil', iunit, work_print)
+#endif
+                deallocate(work_print)
+                call check_deallocate('work_print', ierr)
             else
-                iunit = get_free_unit()
-                open(iunit, file=hamiltonian_file, status='unknown')
                 do i=1, ndets
                     write (iunit,*) i,i,hamil(i,i)
                     do j=i+1, ndets
                         if (abs(hamil(i,j)) > depsilon) write (iunit,*) i+ndets_prev,j+ndets_prev,hamil(i,j)
                     end do
                 end do
-                close(iunit, status='keep')
                 ndets_prev = ndets
             end if
+            close(iunit, status='keep')
         end if
 
     end subroutine generate_hamil
