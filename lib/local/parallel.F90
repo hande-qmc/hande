@@ -5,7 +5,7 @@ module parallel
 ! serial and parallel cases and avoids the rest of the code being littered
 ! with preprocessing statements.
 
-#include "../src/cdefs.h"
+#include "../../src/cdefs.h"
 
 #ifdef PARALLEL
 use mpi

@@ -72,7 +72,7 @@ DEST='dest'
 EXE='bin'
 
 # List of directories (colon-separated) containing the source files.
-VPATH='src:lib'
+VPATH='src:lib/dSFMT:lib/external:lib/local'
 
 # Space separated list of file extensions for the source files.
 SOURCE_EXT='.f90 .F90 .c .cpp'
