@@ -101,7 +101,7 @@ CXX = %(cxx)s
 CXXFLAGS = %(cxxflags)s
 
 # Pre-processing
-CPPDEFS = -D_VCS_VERSION='$(VCS_VERSION)' -DDSFMT_MEXP=19937 %(cppdefs)s
+CPPDEFS = -D_VCS_VERSION='$(VCS_VERSION)' -D_CONFIG='"$(CONFIG).($(OPT))"' -DDSFMT_MEXP=19937 %(cppdefs)s
 CPPFLAGS = $(WORKING_DIR_CHANGES) %(cppflags)s
 
 # Linker

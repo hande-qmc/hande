@@ -192,7 +192,7 @@ contains
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
         integer :: occ_list(nel)
-        integer :: i, j
+        integer :: i
 
         call decode_det(f, occ_list)
 
