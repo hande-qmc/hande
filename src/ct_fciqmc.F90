@@ -103,6 +103,7 @@ contains
             ! Zero cycle quantities
             rspawn = 0.0_p
             proj_energy = 0.0_p
+            bosonic_proj = 0.0_p
             D0_population = 0.0_p
             
             ! Reset the pointer to the current position in the spawning array to 
