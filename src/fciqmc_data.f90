@@ -498,7 +498,7 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
+        write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a15,4X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
           '# iterations','Instant shift','Av. shift','\sum H_0j Nj','\sum -|H_0j Nj|',    &
           'Av. Proj. E','# D0','# particles','R_spawn','time'
 
