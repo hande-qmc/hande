@@ -1,0 +1,77 @@
+If we define M = -H and write M = M_{+} - M_{-}, where all elements of
+M_{+} and M_{-} are >= 0, the ODE's for the vectors of populations n_{+}
+and n_{-} in FCIQMC without annihilation are:
+
+  dn_{+}/dt = M_{+} n_{+} + M_{-} n_{-}
+  dn_{-}/dt = M_{+} n_{-} + M_{-} n_{+}
+
+Annihilation is hard to represent exactly in this framework, but at very
+low population densities the annihilation rate on a specific determinant
+is proportional to the product of the corresponding elements of n_{+}
+and n_{-} on that determinant, giving the following rough and ready
+representation of the population dynamics including annihilation:
+
+  dn_{+}/dt = M_{+} n_{+} + M_{-} n_{-} - 2 r n_{+} n_{-}
+  dn_{-}/dt = M_{+} n_{-} + M_{-} n_{+} - 2 r n_{+} n_{-}
+
+(The annihilation rate constant is called 2r for later convenience.) We
+now define the difference p = n_{+} - n{-} and the sum n = n_{+} + n_{-}
+of the populations of positive and negative walkers. Adding and
+subtracting the above equations, we obtain:
+
+ dp/dt = (M_{+} - M_{-}) p = -H p
+
+and
+
+ dn/dt = (M_{+} + M_{-}) n  - 4 r n_{+} n_{-}
+    = (M_{+} + M_{-}) n - r (n^2 - p^2)
+
+In the long time limit, p becomes dominated by the largest eigenvalue d
+of M = -H (and hence by the smallest energy eigenvalue E_0 = -d):
+
+   p = v exp( d t ) ,
+
+where v is the ground-state eigenvector of H. Hence, if we define
+S = M_{+} + M_{-}, the equation of motion for n becomes
+
+ dn/dt = S n - r n^2 + r v^2 exp( 2 d t )
+
+or, in suffix form
+
+ dn_i/dt = sum_j S_{ij} n_j - r n_i^2 + r exp( 2 d t ) v_i^2 
+
+In the large time limit, it seems reasonable to assume that the vector n
+becomes dominated by the component corresponding to the largest
+eigenvalue, s, of S. If this is right (I'm not sure), then
+
+    sum_j S_{ij} n_j  ->  s n_i     as t -> infinity
+
+and the equation of motion becomes
+
+    d n_i/dt = s n_i - r n_i^2 + r exp(2 d t) v_i^2
+
+for large enough t. This differential equation is now diagonal in the
+determinant index i, so each component evolves according to a separate
+ODE.
+
+To investigate the behaviour of solutions of this ODE, the attached C++
+program solves
+
+  dx/dt = x - a x^2 + e^{bt}
+
+for the values of a and b chosen in the data file (also attached) with
+initial condition x=0 at t=0. As you can see from the plot of the output
+(also attached), if b is chosen small, the function x(t) behaves exactly
+like the population in FCIQMC. At small t, the x^2 and e^{bt} terms can
+be ignored, dx/dt = x, and x rises exponentially. Eventually, however,
+the a x^2 term becomes appreciable and the growth slows, reaching a
+plateau region when 
+
+  a x^2 \approx x   ->    x \approx 1/a.
+
+Finally, once t gets large enough, the e^{bt} term becomes appreciable
+and the population starts rising exponentially again.
+
+This simple theory reproduces everything seen in real FCIQMC runs.
+Moreoever, if you increase b, so that the exponential growth term kicks
+in earlier, I'm sure you'll see the plateau region disappear.
