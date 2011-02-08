@@ -259,7 +259,6 @@ contains
             call cpu_time(t2)
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            if (parent) write (6,*) '# components', main_spawn, spawn_spawn, annih
             
             t1 = t2
 
