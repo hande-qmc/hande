@@ -570,6 +570,10 @@ contains
 
         integer :: ierr
 
+        if (allocated(occ_list0)) then
+            deallocate(occ_list0, stat=ierr)
+            call check_deallocate('occ_list0',ierr)
+        end if
         if (allocated(nparticles)) then
             deallocate(nparticles, stat=ierr)
             call check_deallocate('nparticles',ierr)
@@ -593,6 +597,14 @@ contains
         if (allocated(spawned_walkers2)) then
             deallocate(spawned_walkers2, stat=ierr)
             call check_deallocate('spawned_walkers2',ierr)
+        end if
+        if (allocated(spawning_head)) then
+            deallocate(spawning_head, stat=ierr)
+            call check_deallocate('spawning_head',ierr)
+        end if
+        if (allocated(spawning_block_start)) then
+            deallocate(spawning_block_start, stat=ierr)
+            call check_deallocate('spawning_block_start',ierr)
         end if
         if (allocated(f0)) then
             deallocate(f0, stat=ierr)

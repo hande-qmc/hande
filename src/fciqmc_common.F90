@@ -21,7 +21,7 @@ contains
         use utils, only: int_fmt
 
         use basis, only: basis_length, basis_fns, write_basis_fn
-        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, doing_calc
+        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use fciqmc_restart, only: read_restart
@@ -71,8 +71,10 @@ contains
         allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
         call check_allocate('spawned_walkers1',spawned_size*spawned_walker_length,ierr)
         spawned_walkers => spawned_walkers1
-        allocate(spawn_times(spawned_walker_length),stat=ierr)
-        call check_allocate('spawn_times',spawned_walker_length,ierr)
+        if (doing_calc(ct_fciqmc_calc)) then
+            allocate(spawn_times(spawned_walker_length),stat=ierr)
+            call check_allocate('spawn_times',spawned_walker_length,ierr)
+        end if
         ! Allocate scratch space for doing communication.
         allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
         call check_allocate('spawned_walkers2',spawned_size*spawned_walker_length,ierr)

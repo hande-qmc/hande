@@ -104,10 +104,12 @@ contains
 
         ! Clean up time!
 
+        use calc
         use system, only: end_system, system_type, hub_real
         use hubbard, only: end_basis_fns
         use determinants, only: end_determinants
         use diagonalisation, only: end_hamil
+        use fciqmc_data, only: end_fciqmc
         use parallel, only: parent, end_parallel
         use hubbard_real, only: end_real_space_hub
         use symmetry, only: end_symmetry
@@ -121,11 +123,13 @@ contains
         call end_determinants()
         call end_hamil()
 
+        if (system_type == hub_real) call end_real_space_hub()
+
+        if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc)) call end_fciqmc()
+
         call cpu_time(end_time)
 
         if (parent) call end_report(end_time-start_time)
-
-        if (system_type == hub_real) call end_real_space_hub()
 
         call end_parallel()
 
