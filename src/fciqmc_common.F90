@@ -254,6 +254,7 @@ contains
         ! determinants and walkers/particles are distributed over the processors.
 
 #ifdef PARALLEL
+        use annihilation, only: annihilation_comms_time
         use parallel
 
         integer :: load_data(nprocs), ierr
@@ -274,6 +275,8 @@ contains
                 write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data)
                 write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data)
                 write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data), p)/nprocs
+                write (6,'()')
+                write (6,'(1X,a34,9X,f8.2,a1)') 'Time take by walker communication:', annihilation_comms_time,'s'
                 write (6,'()')
             end if
         end if
