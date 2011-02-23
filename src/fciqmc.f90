@@ -163,7 +163,6 @@ contains
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
-            bosonic_proj = 0.0_p
             rspawn = 0.0_p
             D0_population = 0.0_p
 
@@ -371,7 +370,6 @@ contains
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
-            bosonic_proj = 0.0_p
             rspawn = 0.0_p
             D0_population = 0.0_p
 

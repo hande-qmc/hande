@@ -55,16 +55,6 @@ real(p) :: shift_damping = 0.050_dp
 ! and so proj_energy must be 'normalised' and averaged over the report loops
 ! accordingly.
 real(p) :: proj_energy
-! Assuming no annihilation, then there is a state corresponding to the lowest
-! eigenvector of the matrix H^{d} - H^{+} - H^{-}, where the actual Hamiltonian
-! matrix, H, is given by  H^{d} + H^{+} - H^{-}.  Assuming no annihilation is
-! present, then this is given by
-!   <D_0|H|D_0> - \sum_{i/=0} |<D_0|H|D_i> N_i / N_0|
-! This is a somewhat crude estimation, but it's an interesting object to follow.
-! The true quantity (which is not available unless annihilation is removed
-! completely) is actually
-!   <D_0|H|D_0> - \sum_{i/=0} |<D_0|H|D_i>| (N^{+}_i + N^{-}_i) / (N^{+}_0 + N^{-}_0).
-real(p) :: bosonic_proj
 
 ! projected energy averaged over the calculation.
 ! This is really a running total of \sum_{i/=0} <D_0|H|D_i> N_i: the average is
@@ -282,7 +272,7 @@ contains
         integer(i0) :: tmp_spawned(spawned_size)
 
         ! Stack.  This is the auxilliary memory required by quicksort.
-        integer :: stack(2,stack_max), nstack
+        integer, save :: stack(2,stack_max), nstack
 
         nstack = 0
         lo = 1
@@ -498,8 +488,8 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a15,4X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
-          '# iterations','Instant shift','Av. shift','\sum H_0j Nj','\sum -|H_0j Nj|',    &
+        write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
+          '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
           'Av. Proj. E','# D0','# particles','R_spawn','time'
 
     end subroutine write_fciqmc_report_header
@@ -521,9 +511,9 @@ contains
         vary_shift_reports = ireport - start_averaging_from - start_vary_shift
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,2X,5(es17.10,2X),f11.4,4X,i11,3X,f6.4,2X,f4.2)') &
+        write (6,'(5X,i8,2X,4(es17.10,2X),f11.4,4X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
-                                             av_shift/vary_shift_reports, proj_energy,bosonic_proj,       &
+                                             av_shift/vary_shift_reports, proj_energy,       &
                                              av_proj_energy/av_D0_population, D0_population, & 
                                              ntot_particles, rspawn, elapsed_time/ncycles
 
