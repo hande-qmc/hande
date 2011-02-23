@@ -3,7 +3,7 @@ fc = ifort
 cxx = icpc
 cppflags = -DHAVE_SSE2
 ld = ifort
-libs = -ltrlan -lacml -cxxlib
+libs = -ltrlan -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -Wl,--end-group -lpthread -cxxlib
 module_flag = -module
 
 [opt]

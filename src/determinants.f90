@@ -208,6 +208,32 @@ contains
 
     end subroutine alloc_det_info
 
+    subroutine dealloc_det_info(det_info_t)
+
+        ! Deallocate the components of a det_info variable.
+        ! Out:
+        !    det_info_t: det_info variable with all components deallocated.
+
+        use checking, only: check_deallocate
+
+        type(det_info), intent(inout) :: det_info_t
+        integer :: ierr
+
+        deallocate(det_info_t%f, stat=ierr)
+        call check_deallocate('det_info_t%f',ierr)
+        deallocate(det_info_t%occ_list, stat=ierr)
+        call check_deallocate('det_info_t%occ_list',ierr)
+        deallocate(det_info_t%occ_list_alpha, stat=ierr)
+        call check_deallocate('det_info_t%occ_list_alpha',ierr)
+        deallocate(det_info_t%occ_list_beta, stat=ierr)
+        call check_deallocate('det_info_t%occ_list_beta',ierr)
+        deallocate(det_info_t%unocc_list_alpha, stat=ierr)
+        call check_deallocate('det_info_t%unocc_list_alpha',ierr)
+        deallocate(det_info_t%unocc_list_beta, stat=ierr)
+        call check_deallocate('det_info_t%unocc_list_beta',ierr)
+
+    end subroutine dealloc_det_info
+
     subroutine set_spin_polarisation(Ms)
 
         ! Set the spin polarisation information stored in module-level

@@ -1,0 +1,10 @@
+# The sign_ode program solves the ODE
+#     dx/dt = x - ax^2 + e^{bt}
+# with the initial condition x(0) = 0.   
+# 
+# Values of a and b:
+0.005     0.05
+# Time step dt:
+0.01
+# Number of time steps
+10000

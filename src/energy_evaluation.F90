@@ -36,7 +36,7 @@ contains
         integer, intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
-        real(dp) :: ir(2*sampling_size+2), ir_sum(2*sampling_size+2)
+        real(dp) :: ir(sampling_size+4), ir_sum(sampling_size+4)
         integer :: ntot_particles(sampling_size), ierr
 
             ! Need to sum the number of particles and the projected energy over
@@ -44,14 +44,14 @@ contains
             ir(1:sampling_size) = nparticles
             ir(sampling_size+1) = proj_energy
             ir(sampling_size+2) = proj_hf_expectation
-            ir(2*sampling_size+1) = D0_population
-            ir(2*sampling_size+2) = rspawn
+            ir(sampling_size+3) = D0_population
+            ir(sampling_size+4) = rspawn
             call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
             proj_energy = ir_sum(sampling_size+1)
             proj_hf_expectation = ir_sum(sampling_size+2)
-            D0_population = ir_sum(2*sampling_size+1)
-            rspawn = ir_sum(2*sampling_size+2)
+            D0_population = ir_sum(sampling_size+3)
+            rspawn = ir_sum(sampling_size+4)
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)

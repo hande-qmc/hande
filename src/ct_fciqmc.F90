@@ -28,7 +28,7 @@ contains
 
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
-        integer :: nspawned, nexcitations, nattempts, nparticles_old(sampling_size), ireport, idet
+        integer :: nspawned, nattempts, nparticles_old(sampling_size), ireport, idet
         integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
@@ -169,7 +169,7 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet, K_ii, spawned_walkers(spawned_pop,current_pos(proc_id)), &
+                            call ct_spawn(cdet, K_ii, int(spawned_walkers(spawned_pop,current_pos(proc_id))), &
                                           R, nspawned, connection)
                            
                             if (nspawned /= 0) then

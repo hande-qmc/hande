@@ -72,7 +72,7 @@ DEST='dest'
 EXE='bin'
 
 # List of directories (colon-separated) containing the source files.
-VPATH='src:lib'
+VPATH='src:lib/dSFMT:lib/external:lib/local'
 
 # Space separated list of file extensions for the source files.
 SOURCE_EXT='.f90 .F90 .c .cpp'
@@ -101,7 +101,7 @@ CXX = %(cxx)s
 CXXFLAGS = %(cxxflags)s
 
 # Pre-processing
-CPPDEFS = -D_VCS_VERSION='$(VCS_VERSION)' -DDSFMT_MEXP=19937 %(cppdefs)s
+CPPDEFS = -D_VCS_VERSION='$(VCS_VERSION)' -D_CONFIG='"$(CONFIG).($(OPT))"' -DDSFMT_MEXP=19937 %(cppdefs)s
 CPPFLAGS = $(WORKING_DIR_CHANGES) %(cppflags)s
 
 # Linker

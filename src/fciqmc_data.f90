@@ -272,7 +272,7 @@ contains
         integer(i0) :: tmp_spawned(spawned_size)
 
         ! Stack.  This is the auxilliary memory required by quicksort.
-        integer :: stack(2,stack_max), nstack
+        integer, save :: stack(2,stack_max), nstack
 
         nstack = 0
         lo = 1
@@ -489,7 +489,8 @@ contains
     subroutine write_fciqmc_report_header()
 
         write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
-          '# iterations','Instant shift','Av. shift','\sum H_0j Nj','Av. Proj. E','# D0','# particles','R_spawn','time'
+          '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
+          'Av. Proj. E','# D0','# particles','R_spawn','time'
 
     end subroutine write_fciqmc_report_header
 
@@ -559,6 +560,10 @@ contains
 
         integer :: ierr
 
+        if (allocated(occ_list0)) then
+            deallocate(occ_list0, stat=ierr)
+            call check_deallocate('occ_list0',ierr)
+        end if
         if (allocated(nparticles)) then
             deallocate(nparticles, stat=ierr)
             call check_deallocate('nparticles',ierr)
@@ -582,6 +587,14 @@ contains
         if (allocated(spawned_walkers2)) then
             deallocate(spawned_walkers2, stat=ierr)
             call check_deallocate('spawned_walkers2',ierr)
+        end if
+        if (allocated(spawning_head)) then
+            deallocate(spawning_head, stat=ierr)
+            call check_deallocate('spawning_head',ierr)
+        end if
+        if (allocated(spawning_block_start)) then
+            deallocate(spawning_block_start, stat=ierr)
+            call check_deallocate('spawning_block_start',ierr)
         end if
         if (allocated(f0)) then
             deallocate(f0, stat=ierr)

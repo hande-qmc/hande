@@ -5,6 +5,8 @@ use fciqmc_data
 
 implicit none
 
+real(dp) :: annihilation_comms_time = 0.0_dp
+
 contains
 
     subroutine direct_annihilation()
@@ -120,6 +122,8 @@ contains
         integer :: i, ierr
         integer(i0), pointer :: tmp_walkers(:,:)
 
+        real(dp) :: t1
+
         ! Send spawned walkers to the processor which "owns" them and receive
         ! the walkers "owned" by this processor.
 
@@ -165,9 +169,14 @@ contains
         receive_counts = receive_counts*spawned_size
         send_displacements = spawning_block_start(:nprocs-1)*spawned_size
         receive_displacements = receive_displacements*spawned_size
+
+        t1 = MPI_WTIME()
+
         call MPI_AlltoAllv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
                            spawned_walkers_recvd, receive_counts, receive_displacements, mpi_det_integer, &
                            MPI_COMM_WORLD, ierr)
+
+        annihilation_comms_time = annihilation_comms_time + MPI_WTIME() - t1
 
         ! Swap pointers so that spawned_walkers points to the received data.
         tmp_walkers => spawned_walkers

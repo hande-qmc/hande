@@ -122,6 +122,7 @@ contains
     ! does.
     write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
 #endif
+    write (io_unit,'(a16,a)') 'Compiled using ', _CONFIG
 
     write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',_VCS_VERSION
 #ifdef _WORKING_DIR_CHANGES

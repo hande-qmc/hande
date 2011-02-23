@@ -77,7 +77,7 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use death, only: stochastic_death
-        use determinants, only:det_info, alloc_det_info 
+        use determinants, only:det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use interact, only: fciqmc_interact
@@ -188,6 +188,8 @@ contains
         call load_balancing_report()
 
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
+
+        call dealloc_det_info(cdet)
 
     end subroutine do_fciqmc
 
