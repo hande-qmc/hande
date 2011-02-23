@@ -207,7 +207,7 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet, K_ii, spawned_walkers(spawned_pop,current_pos(proc_id)), &
+                            call ct_spawn(cdet, K_ii, int(spawned_walkers(spawned_pop,current_pos(proc_id))), &
                                           R, nspawned, connection)
                            
                             if (nspawned /= 0) then
