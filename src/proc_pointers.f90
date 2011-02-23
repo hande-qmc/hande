@@ -36,11 +36,16 @@ abstract interface
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
     end function i_sc0
+    ! generic procedures...
+    subroutine i_sub()
+    end subroutine i_sub
 end interface
 
 procedure(i_decoder), pointer :: decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
 procedure(i_spawner), pointer :: spawner_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
+procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
+procedure(i_sub), pointer :: annihilate_spawned_list_ptr => null()
 
 end module proc_pointers

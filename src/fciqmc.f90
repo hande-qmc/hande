@@ -203,7 +203,7 @@ contains
 
         use parallel
   
-        use annihilation, only: direct_annihilation_initiator
+        use annihilation, only: direct_annihilation
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info
@@ -332,7 +332,7 @@ contains
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
-                call direct_annihilation_initiator()
+                call direct_annihilation()
 
             end do
 

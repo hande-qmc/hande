@@ -19,6 +19,8 @@ contains
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process.
 
+        use proc_pointers, only: annihilate_main_list_ptr, annihilate_spawned_list_ptr
+
 #ifdef PARALLEL
         ! 0. Send spawned walkers to the processor which "owns" them and receive
         ! the walkers "owned" by this processor.
@@ -33,10 +35,10 @@ contains
 
             ! 2. Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
-            call annihilate_spawned_list()
+            call annihilate_spawned_list_ptr()
 
             ! 3. Annihilate main list.
-            call annihilate_main_list()
+            call annihilate_main_list_ptr()
 
             ! 4. Remove determinants with zero walkers on them from the main
             ! walker list.
@@ -54,57 +56,6 @@ contains
         end if
 
     end subroutine direct_annihilation
-
-    subroutine direct_annihilation_initiator()
-
-        ! Annihilation algorithm.
-        ! Spawned walkers are added to the main list, by which new walkers are
-        ! introduced to the main list and existing walkers can have their
-        ! populations either enhanced or diminished.
-
-        ! This is a wrapper around various utility functions which perform the
-        ! different parts of the annihilation process.
-
-        ! This version is for use with the initiator-FCIQMC algorithm.
-
-#ifdef PARALLEL
-        ! 0. Send spawned walkers to the processor which "owns" them and receive
-        ! the walkers "owned" by this processor.
-        call distribute_walkers()
-#endif
-
-        if (spawning_head(0) > 0) then
-            ! Have spawned walkers on this processor.
-
-            ! 1. Sort spawned walkers list.
-            call sort_spawned_lists()
-
-            ! 2. Annihilate within spawned walkers list.
-            ! Compress the remaining spawned walkers list and update the parent
-            ! flag.
-            call annihilate_spawned_list_initiator()
-
-            ! 3. Annihilate main list.
-            ! This also removes spawned walkers that don't come from initiators
-            ! or sign-coherent events and are on unoccupied determinants.
-            call annihilate_main_list_initiator()
-
-            ! 4. Remove determinants with zero walkers on them from the main
-            ! walker list.
-            call remove_unoccupied_dets()
-
-            ! 5. Insert new walkers into main walker list.
-            call insert_new_walkers()
-
-        else
-
-            ! No spawned walkers so we only have to check to see if death has
-            ! killed the entire population on a determinant.
-            call remove_unoccupied_dets()
-
-        end if
-
-    end subroutine direct_annihilation_initiator
 
     subroutine distribute_walkers()
 

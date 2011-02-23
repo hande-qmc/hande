@@ -18,8 +18,10 @@ contains
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs, parent
+        use proc_pointers
         use utils, only: int_fmt
 
+        use annihilation, only: annihilate_main_list, annihilate_spawned_list, annihilate_main_list_initiator, annihilate_spawned_list_initiator
         use basis, only: basis_length, basis_fns, write_basis_fn
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
@@ -49,6 +51,11 @@ contains
         if (doing_calc(initiator_fciqmc)) then
             spawned_size = spawned_size + 1
             spawned_parent = spawned_size
+            annihilate_main_list_ptr => annihilate_main_list_initiator
+            annihilate_spawned_list_ptr => annihilate_spawned_list_initiator
+        else
+            annihilate_main_list_ptr => annihilate_main_list
+            annihilate_spawned_list_ptr => annihilate_spawned_list
         end if
 
         ! Allocate main walker lists.
