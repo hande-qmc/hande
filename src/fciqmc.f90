@@ -20,13 +20,13 @@ contains
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
-        use spawning, only: spawn_hub_k, spawn_hub_real
+        use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, doing_calc
 
         use ct_fciqmc, only: do_ct_fciqmc
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
-        use ifciqmc, only: init_ifciqmc
+        use ifciqmc, only: init_ifciqmc, set_parent_flag, set_parent_flag_dummy
 
         real(dp) :: hub_matel
 
@@ -48,8 +48,14 @@ contains
 
         if (doing_calc(initiator_fciqmc)) then
             call init_ifciqmc()
-            call do_ifciqmc()
-        else if (doing_calc(ct_fciqmc_calc)) then
+            set_parent_flag_ptr => set_parent_flag
+            create_spawned_particle_ptr => create_spawned_particle_initiator
+        else
+            set_parent_flag_ptr => set_parent_flag_dummy
+            create_spawned_particle_ptr => create_spawned_particle
+        end if
+
+        if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(hub_matel)
         else
             if (doing_calc(hfs_fciqmc_calc)) then
@@ -64,144 +70,11 @@ contains
 
     subroutine do_fciqmc()
 
-        ! Run the FCIQMC algorithm starting from the initial walker
-        ! distribution.
-
-        ! This is implemented by using procedure pointers (F2003).
-        ! This allows us to avoid many system dependent if blocks,
-        ! which are constant for a given calculation.  Avoiding such branching
-        ! is worth the extra verbosity (especially if procedures are written to
-        ! be sufficiently modular that implementing a new system can reuse many
-        ! existing routines) as it leads to much faster code.
-
-        use parallel
-  
-        use annihilation, only: direct_annihilation
-        use basis, only: basis_length
-        use death, only: stochastic_death
-        use determinants, only:det_info, alloc_det_info, dealloc_det_info
-        use energy_evaluation, only: update_energy_estimators
-        use excitations, only: excit
-        use interact, only: fciqmc_interact
-        use fciqmc_restart, only: dump_restart
-        use spawning, only: create_spawned_particle
-        use fciqmc_common
-
-        integer :: idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
-        type(det_info) :: cdet
-
-        integer :: nspawned, nattempts
-        type(excit) :: connection
-
-
-        logical :: soft_exit
-
-        real :: t1, t2
-
-        ! Allocate det_info components.
-        call alloc_det_info(cdet)
-
-        ! from restart
-        nparticles_old = nparticles_old_restart
-
-        ! Main fciqmc loop.
-
-        if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
-
-        ! Initialise timer.
-        call cpu_time(t1)
-
-        do ireport = 1, nreport
-
-            ! Zero report cycle quantities.
-            proj_energy = 0.0_p
-            rspawn = 0.0_p
-            D0_population = 0.0_p
-
-            do icycle = 1, ncycles
-
-                ! Reset the current position in the spawning array to be the
-                ! slot preceding the first slot.
-                spawning_head = spawning_block_start
-
-                ! Number of spawning attempts that will be made.
-                nattempts = nparticles(1)
-
-                do idet = 1, tot_walkers ! loop over walkers/dets
-
-                    cdet%f = walker_dets(:,idet)
-
-                    call decoder_ptr(cdet%f, cdet)
-
-                    ! It is much easier to evaluate the projected energy at the
-                    ! start of the FCIQMC cycle than at the end, as we're
-                    ! already looping over the determinants.
-                    call update_proj_energy_ptr(idet)
-
-                    do iparticle = 1, abs(walker_population(1,idet))
-                        
-                        ! Attempt to spawn.
-                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
-                        ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
-
-                    end do
-
-                    ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1))
-
-                end do
-
-                ! Add the spawning rate (for the processor) to the running
-                ! total.
-                rspawn = rspawn + spawning_rate(nattempts)
-
-                ! D0_population is communicated in the direct_annihilation
-                ! algorithm for efficiency.
-                call direct_annihilation()
-
-            end do
-
-            ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(ireport, nparticles_old)
-
-            call cpu_time(t2)
-
-            ! t1 was the time at the previous iteration, t2 the current time.
-            ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-
-            ! cpu_time outputs an elapsed time, so update the reference timer.
-            t1 = t2
-
-            call fciqmc_interact(ireport, soft_exit)
-            if (soft_exit) exit
-
-!            call dump_restart(ireport*ncycles, nparticles_old(1))
-
-        end do
-
-        if (parent) then
-            call write_fciqmc_final(ireport)
-            write (6,'()')
-        end if
-
-        call load_balancing_report()
-
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
-
-        call dealloc_det_info(cdet)
-
-    end subroutine do_fciqmc
-
-    subroutine do_ifciqmc()
-
-        ! Run the initiator-FCIQMC algorithm starting from the initial walker
-        ! distribution.
+        ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
+        ! distribution using the timestep algorithm.
 
         ! See notes about the implementation of this using function pointers
-        ! in do_fciqmc.
+        ! in fciqmc_main.
 
         use parallel
   
@@ -224,7 +97,6 @@ contains
         integer :: nspawned, nattempts
         type(excit) :: connection
 
-        integer :: parent_flag
         integer :: bit_pos, bit_element
 
         logical :: soft_exit
@@ -273,7 +145,7 @@ contains
                     call update_proj_energy_ptr(idet)
 
                     ! Is this determinant an initiator?
-                    call set_parent_flag(walker_population(1,idet), cdet%f, parent_flag)
+                    call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)
 
                     do iparticle = 1, abs(walker_population(1,idet))
                         
@@ -282,7 +154,7 @@ contains
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
-                            call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned, spawned_pop)
+                            call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
                         end if
 
                     end do
@@ -330,6 +202,6 @@ contains
 
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
-    end subroutine do_ifciqmc
+    end subroutine do_fciqmc
 
 end module fciqmc

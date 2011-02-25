@@ -36,9 +36,26 @@ abstract interface
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
     end function i_sc0
+    subroutine i_set_parent_flag(pop, f, flag)
+        use basis, only: basis_length
+        import :: i0
+        implicit none
+        integer, intent(in) :: pop
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(out) :: flag
+    end subroutine i_set_parent_flag
+    subroutine i_create_spawned_particle(d, connection, nspawned, spawned_pop)
+        import :: excit, det_info 
+        implicit none
+        type(det_info), intent(in) :: d
+        type(excit), intent(in) :: connection
+        integer, intent(in) :: nspawned, spawned_pop
+    end subroutine i_create_spawned_particle
+
     ! generic procedures...
     subroutine i_sub()
     end subroutine i_sub
+
 end interface
 
 procedure(i_decoder), pointer :: decoder_ptr => null()
@@ -47,5 +64,7 @@ procedure(i_spawner), pointer :: spawner_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
 procedure(i_sub), pointer :: annihilate_spawned_list_ptr => null()
+procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
+procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 
 end module proc_pointers
