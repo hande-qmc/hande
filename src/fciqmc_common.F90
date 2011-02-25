@@ -21,7 +21,9 @@ contains
         use proc_pointers
         use utils, only: int_fmt
 
-        use annihilation, only: annihilate_main_list, annihilate_spawned_list, annihilate_main_list_initiator, annihilate_spawned_list_initiator
+        use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
+                                annihilate_main_list_initiator,                &
+                                annihilate_spawned_list_initiator
         use basis, only: basis_length, basis_fns, write_basis_fn
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
