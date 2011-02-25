@@ -26,6 +26,7 @@ contains
 
         use ct_fciqmc, only: do_ct_fciqmc
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
+        use ifciqmc, only: init_ifciqmc
 
         real(dp) :: hub_matel
 
@@ -46,6 +47,7 @@ contains
         end select
 
         if (doing_calc(initiator_fciqmc)) then
+            call init_ifciqmc()
             call do_ifciqmc()
         else if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(hub_matel)
@@ -214,6 +216,7 @@ contains
         use system, only: nel
         use spawning, only: create_spawned_particle_initiator
         use fciqmc_common
+        use ifciqmc, only: set_parent_flag
 
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
@@ -222,7 +225,6 @@ contains
         type(excit) :: connection
 
         integer :: parent_flag
-        integer(i0) :: cas_mask(basis_length), cas_core(basis_length)
         integer :: bit_pos, bit_element
 
         logical :: soft_exit
@@ -231,34 +233,6 @@ contains
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
-
-        ! The complete active space (CAS) is given as (N_cas,N_active), where
-        ! N_cas is the number of electrons in the N_active orbitals.
-        ! The N-N_cas electrons occupy the lowest energy orbitals ("core"
-        ! orbitals) for all determinants within the CAS.
-        ! The 2M-N_core-N_active highest energy orbitals are inactive and are
-        ! not occupied in any determinants within the CAS.
-        ! Create a mask which has bits set for all core electrons and a mask
-        ! which has bits set for all inactive orbitals.
-        cas_mask = 0
-        cas_core = 0
-        ! Set core obitals.
-        do i = 1, nel - CAS(1)
-            bit_pos = bit_lookup(1,i)
-            bit_element = bit_lookup(2,i)
-            cas_mask = ibset(cas_mask(bit_element), bit_pos)
-            cas_core = ibset(cas_core(bit_element), bit_pos)
-        end do
-        ! Set inactive obitals.
-        do i = nel - CAS(1) + 2*CAS(2) + 1, nbasis
-            bit_pos = bit_lookup(1,i)
-            bit_element = bit_lookup(2,i)
-            cas_mask = ibset(cas_mask(bit_element), bit_pos)
-        end do
-        ! Thus ANDing a determinant with cas_mask gives the electrons in the
-        ! core or inactive orbitals.  The determinant is only in the CAS if the
-        ! result is identical to the cas_core mask (i.e. all the core orbitals
-        ! are filled and no electrons are in the inactive orbitals).
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -299,21 +273,13 @@ contains
                     call update_proj_energy_ptr(idet)
 
                     ! Is this determinant an initiator?
-                    if (abs(walker_population(1,idet)) > initiator_population) then
-                        ! Has a high enough population to be an initiator.
-                        parent_flag = 0
-                    else if (all(iand(cdet%f,cas_mask) == cas_core)) then
-                        ! Is in the complete active space.
-                        parent_flag = 0
-                    else
-                        ! Isn't an initiator.
-                        parent_flag = 1
-                    end if
+                    call set_parent_flag(walker_population(1,idet), cdet%f, parent_flag)
 
                     do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn.
                         call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
+
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
                             call create_spawned_particle_initiator(cdet, parent_flag, connection, nspawned, spawned_pop)
