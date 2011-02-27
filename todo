@@ -34,3 +34,13 @@ Optimisations
 
 a) sym_table in terms of basis functions
 b) Macros to force inlining?
+
+1D real space w/out sign problem?
+---------------------------------
+
+test but i think all that needs to be changed is:
+
+basis_lookup tables
+order of basis_fns
+f0
+get_coulomb_matel_real
