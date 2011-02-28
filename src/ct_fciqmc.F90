@@ -337,7 +337,7 @@ contains
                     connection%nexcit = 2
                     connection%from_orb = (/ i,j /)
                     connection%to_orb = (/ a,b /)
-                    call slater_condon2_hub_k_excit(cdet%occ_list, connection, K_ij)
+                    call slater_condon2_hub_k_excit(cdet%f, connection, K_ij)
                 else
                     K_ij = 0.0_p
                 end if

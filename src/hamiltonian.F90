@@ -244,7 +244,7 @@ contains
 
     end function slater_condon2_hub_k
 
-    pure subroutine slater_condon2_hub_k_excit(occ_list, connection, hmatel)
+    pure subroutine slater_condon2_hub_k_excit(f, connection, hmatel)
 
         ! Generate the matrix element between a determinant and a double
         ! excitation in the momentum space formulation of the Hubbard model.
@@ -253,7 +253,7 @@ contains
         ! checking is skipped.
 
         ! In:
-        !    occ_list: integer list of occupied spin-orbitals in a determinant, D.
+        !    f: bit string representation of the Slater determinant, D.
         ! In/Out:
         !    connection: excit type describing the excitation between |D> and
         !    |D_ij^ab>.  On entry, only the from_orb and to_orb fields must be
@@ -265,9 +265,9 @@ contains
         !    formulation of the Hubbard model.
 
         use excitations, only: excit, find_excitation_permutation2
-        use system, only: nel
+        use basis, only: basis_length
 
-        integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 
@@ -295,7 +295,7 @@ contains
 
         ! b) Negative sign from permuting the determinants so that they line
         ! up?
-        call find_excitation_permutation2(occ_list, connection)
+        call find_excitation_permutation2(f, connection)
         if (connection%perm) then
             ! Matrix element gets a -sign from rearranging determinants so
             ! that they maximally line up.
@@ -319,10 +319,6 @@ contains
 
         ! In:
         !    f: bit string representation of the Slater determinant.
-        !    occ_list (optional): integer list of occupied spin-orbitals in
-        !        a determinant, D_i.  This is only needed if the system contains
-        !        self-periodic sites.  If not given then the determinant bit
-        !        string is decoded.
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in real space.
@@ -386,7 +382,7 @@ contains
 
     end function slater_condon1_hub_real
 
-    pure subroutine slater_condon1_hub_real_excit(occ_list, connection, hmatel)
+    pure subroutine slater_condon1_hub_real_excit(f, connection, hmatel)
 
         ! Generate the matrix element between a determinant and a single
         ! excitation in the real space formulation of the Hubbard model.
@@ -396,7 +392,7 @@ contains
         ! however, faster.
 
         ! In:
-        !    occ_list: integer list of occupied spin-orbitals in a determinant, D.
+        !    f: bit string representation of the Slater determinant, D.
         ! In/Out:
         !    connection: excit type describing the excitation between |D> and
         !    |D_i^a>.  On entry, only the from_orb and to_orb fields must be
@@ -408,12 +404,12 @@ contains
 
         use excitations, only: excit, find_excitation_permutation1
 
-        integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 
         ! a) Find out permutation required to line up determinants.
-        call find_excitation_permutation1(occ_list, connection)
+        call find_excitation_permutation1(f, connection)
 
         ! b) The matrix element connected |D> and |D_i^a> is <i|h|a> = -t.
         if (connection%perm) then
