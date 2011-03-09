@@ -11,8 +11,12 @@ implicit none
 
 ! Bit masks to reveal the list of alpha basis functions and beta functions
 ! occupied in a Slater determinant.
-! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
-! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
+! If separate_strings is false, then:
+!     Alpha basis functions are in the even bits.  alpha_mask = 01010101...
+!     Beta basis functions are in the odd bits.    beta_mask  = 10101010...
+! otherwise:
+!     Alpha basis functions are stored in the first basis_length/2 integers
+!     followed by the beta orbitals in the next basis_length/2 integers.
 integer(i0) :: alpha_mask, beta_mask
 
 ! If true the determinant bit string is formed from concatenating the strings
@@ -122,9 +126,13 @@ contains
         tot_ndets = binom_i(nbasis, nel)
 
         ! See note in basis.
-        basis_length = nbasis/i0_length
-        if (mod(nbasis,i0_length) /= 0) basis_length = basis_length + 1
-        last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
+        if (separate_strings) then
+            basis_length = 2*ceiling(real(nbasis)/(2*i0_length))
+            last_basis_ind = nbasis/2 - i0_length*(basis_length/2-1) - 1
+        else
+            basis_length = ceiling(real(nbasis)/i0_length)
+            last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
+        end if
 
         if (parent) then
             fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
@@ -142,16 +150,33 @@ contains
         call check_allocate('basis_lookup',i0_length*basis_length,ierr)
         basis_lookup = 0
 
-        do i = 1, nbasis
-            bit_pos = mod(i, i0_length) - 1
-            if (bit_pos == -1) bit_pos = i0_end
-            bit_element = (i+i0_end)/i0_length
-            bit_lookup(:,i) = (/ bit_pos, bit_element /)
-            basis_lookup(bit_pos, bit_element) = i
-        end do
-
+        if (separate_strings) then
+            do i = 1, nbasis-1, 2
+                ! find position of alpha orbital
+                bit_pos = mod((i+1)/2, i0_length) - 1
+                if (bit_pos == -1) bit_pos = i0_end
+                bit_element = ((i+1)/2+i0_end)/i0_length
+                bit_lookup(:,i) = (/ bit_pos, bit_element /)
+                basis_lookup(bit_pos, bit_element) = i
+                ! corresponding beta orbital is in the same position in the
+                ! second half of the string.
+                bit_element = bit_element + basis_length/2
+                bit_lookup(:,i+1) = (/ bit_pos, bit_element /)
+                basis_lookup(bit_pos, bit_element) = i+1
+            end do
+        else
+            do i = 1, nbasis
+                bit_pos = mod(i, i0_length) - 1
+                if (bit_pos == -1) bit_pos = i0_end
+                bit_element = (i+i0_end)/i0_length
+                bit_lookup(:,i) = (/ bit_pos, bit_element /)
+                basis_lookup(bit_pos, bit_element) = i
+            end do
+        end if
+        
         ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
         ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
+        ! This is assumming separate_strings is off...
         alpha_mask = 0
         beta_mask = 0
         do i = 0, i0_end
@@ -461,17 +486,21 @@ contains
                     idet = idet + 1
 
                     ! Merge alpha and beta sets into determinant list.
-                    ! Alpha orbitals are stored in the even bits, beta orbitals in
-                    ! the odd bits (hence the conversion).
-                    dets_list(:,idet) = 0
-                    do ibit = 0, min(nbasis/2, i0_length/2-1)
-                        if (btest(f_alpha,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit)
-                        if (btest(f_beta,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit+1)
-                    end do
-                    do ibit = i0_length/2, max(nbasis/2, i0_end)
-                        if (btest(f_alpha,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit-i0_length)
-                        if (btest(f_beta,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit+1-i0_length)
-                    end do
+                    if (separate_strings) then
+                        dets_list(:,idet) = (/ f_alpha, f_beta /)
+                    else
+                        ! Alpha orbitals are stored in the even bits, beta orbitals in
+                        ! the odd bits (hence the conversion).
+                        dets_list(:,idet) = 0
+                        do ibit = 0, min(nbasis/2, i0_length/2-1)
+                            if (btest(f_alpha,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit)
+                            if (btest(f_beta,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit+1)
+                        end do
+                        do ibit = i0_length/2, max(nbasis/2, i0_end)
+                            if (btest(f_alpha,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit-i0_length)
+                            if (btest(f_beta,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit+1-i0_length)
+                        end do
+                    end if
 
                 end if
 
