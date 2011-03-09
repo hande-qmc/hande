@@ -15,6 +15,15 @@ implicit none
 ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
 integer(i0) :: alpha_mask, beta_mask
 
+! If true the determinant bit string is formed from concatenating the strings
+! for the alpha and beta orbitals rather than interleaving them.
+! Note that this in general uses more memory due to padding at the end of the
+! alpha and beta strings.
+! WARNING: the vast majority of procedures assume this to be false.  It is the
+! developer's responsibility to ensure required procedures can handle the case
+! when it is true.
+logical :: separate_strings = .false.
+
 !--- Info for FCI calculations ---
 
 type det
@@ -25,6 +34,9 @@ type det
     ! contrast to the list of basis functions, basis_fns, where the *odd*
     ! indices refer to alpha (spin up) functions.  This difference arises because 
     ! fortran numbers bits from 0...
+    ! If separate_strings is turned on, then the first basis_length/2 integers
+    ! represent the alpha orbitals and the second half of the bit array the beta
+    ! orbitals.
     integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
     ! Total spin of the determinant in units of electron spin (1/2).   
     integer, pointer :: Ms => NULL()

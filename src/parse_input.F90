@@ -106,6 +106,8 @@ contains
                 do i = 1, nitems-item
                     call readf(ktwist(i))
                 end do
+            case('SEPARATE_STRINGS')
+                separate_strings = .true.
 
             ! Select symmetry of wavefunction.
             case('MS')
@@ -289,6 +291,18 @@ contains
             finite_cluster = .false.    
             if (parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
+        end if
+
+        if (separate_strings) then
+            if (system_type.ne.hub_real) then
+                separate_strings = .false.
+                if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
+                                      & calculations in real-space: ignoring keyword')
+            else if (ndim /= 1) then
+                separate_strings = .false.
+                if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for 1D&
+                                      & calculations in real-space: ignoring keyword')
+            end if
         end if
         
         if (parent) write (6,'(/,1X,13("-"),/)') 
