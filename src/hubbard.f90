@@ -109,7 +109,12 @@ contains
         if (ibasis /= nbasis/2) call stop_all('init_basis_fns','Not enough basis functions found.')
 
         ! Rank by kinetic energy (applies to momentum space formulation only).
-        call mrgref(tmp_basis_fns(:)%kinetic, basis_fns_ranking)
+        select case(system_type)
+        case(hub_k)
+            call mrgref(tmp_basis_fns(:)%kinetic, basis_fns_ranking)
+        case(hub_real)
+            forall (i=1:nbasis/2) basis_fns_ranking(i) = i
+        end select
 
         ! Form the list of sorted basis functions with both alpha and beta
         ! spins.
