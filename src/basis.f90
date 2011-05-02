@@ -41,7 +41,7 @@ integer :: nbasis
 ! won't hold our breath until we can use bits directly......)
 ! basis_length is the length of the byte array necessary to contain a bit for
 ! each basis function, i.e. ceiling(nbasis/i0_length).
-! If real_1d_separate_strings is true, then we actually store the alpha and beta
+! If separate_strings is true, then we actually store the alpha and beta
 ! strings separately, and so basis_length is 2*ceiling(nbasis/(2*i0_length)).
 integer :: basis_length
 

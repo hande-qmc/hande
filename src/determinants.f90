@@ -23,9 +23,17 @@ integer(i0) :: alpha_mask, beta_mask
 ! for the alpha and beta orbitals rather than interleaving them.
 ! Note that this in general uses more memory due to padding at the end of the
 ! alpha and beta strings.
+! Whilst some memory could be saved by having no padding between the end of the
+! alpha string and the start of the beta string (ie not have the beta string
+! start on a new integer) this would make certain operations (eg finding
+! <D|U|D> in the real space Hubbard model) much harder and slower.
 ! WARNING: the vast majority of procedures assume this to be false.  It is the
 ! developer's responsibility to ensure required procedures can handle the case
 ! when it is true.
+! Further, decoding the bit string does not produce an ordered list of
+! orbitals but several procedures assume that the list *is* ordered.  It is
+! therefore not sufficient to only check the procedures which operate directly
+! upon bit strings.
 logical :: separate_strings = .false.
 
 !--- Info for FCI calculations ---
