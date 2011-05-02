@@ -10,7 +10,7 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(decoder, update_proj_energy, enumerator, sc0, matel)
+    subroutine do_ct_fciqmc(matel)
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
@@ -19,45 +19,12 @@ contains
         use excitations, only: excit
         use fciqmc_common, only: load_balancing_report, initial_fciqmc_status
         use fciqmc_restart
+        use proc_pointers
         use interact
         use system, only: ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
 
         use checking
         use parallel
-
-        interface  
-            subroutine enumerator(cdet, nexcits, connection_list)
-                use determinants, only: det_info
-                use const, only: p
-                use excitations, only: excit,&
-                enumerate_all_excitations_hub_real,&
-                enumerate_all_excitations_hub_k 
-                implicit none
-                type(det_info), intent(in) :: cdet
-                integer, intent(out) :: nexcits
-                type(excit), intent(out) :: connection_list(:)
-            end subroutine enumerator
-            subroutine decoder(f,d)
-                use basis, only: basis_length
-                use const, only: i0
-                use determinants, only: det_info
-                implicit none
-                integer(i0), intent(in) :: f(basis_length)
-                type(det_info), intent(inout) :: d
-            end subroutine decoder
-            subroutine update_proj_energy(idet)
-                use const, only: p
-                implicit none
-                integer, intent(in) :: idet
-            end subroutine update_proj_energy
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
-        end interface
 
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
@@ -66,7 +33,6 @@ contains
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
-        real :: tp1, tp2, main_spawn, spawn_spawn, annih
         type(det_info) :: cdet
         type(excit) :: connection
         type(excit), allocatable :: connection_list(:)
@@ -92,7 +58,7 @@ contains
         t_barrier = tau ! or we could just not bother with the t_barrier var...
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(update_proj_energy)
+        call initial_fciqmc_status()
 
         ! time the report loop
         call cpu_time(t1)
@@ -110,19 +76,18 @@ contains
             spawning_head = spawning_block_start
             nattempts = nparticles(1)
 
-            call cpu_time(tp1)
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
             
                 ! Get the determinant bitstring once so we do not need to keep
                 ! doing it. Then find lists of orbitals.
                 cdet%f = walker_dets(:,idet) 
-                call decoder(cdet%f, cdet)
+                call decoder_ptr(cdet%f, cdet)
 
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                call update_proj_energy(idet)
+                call update_proj_energy_ptr(idet)
                  
                 ! Loop over each walker on the determinant.
                 do iparticle = 1, abs(walker_population(1,idet))
@@ -174,10 +139,7 @@ contains
                 walker_population(1,idet) = tmp_pop
             
             end do
-            call cpu_time(tp2)
-            main_spawn = tp2 - tp1
 
-            call cpu_time(tp1)
             ! Now we advance all the spawned walkers to the barrier from their
             ! respective birth times. Any walkers spawned as a consequence of
             ! this  must be appened to the spawned array and themselves advanced
@@ -194,8 +156,8 @@ contains
                         
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,current_pos(proc_id))
-                        K_ii = sc0(cdet%f) - H00
-                        call decoder(cdet%f,cdet)
+                        K_ii = sc0_ptr(cdet%f) - H00
+                        call decoder_ptr(cdet%f,cdet)
 
                         ! Spawn from this walker & append to the spawned array until
                         ! we hit the barrier
@@ -240,17 +202,13 @@ contains
                 if (all(current_pos == spawning_head+1)) exit
 
             end do
-            call cpu_time(tp2)
-            spawn_spawn = tp2 - tp1
+
 
             ! Calculate spawning rate.  We only use the spawning from the main
             ! walker list for this.
             rspawn = rspawn + spawning_rate(nattempts)
 
-            call cpu_time(tp1)
-            call direct_annihilation(sc0)
-            call cpu_time(tp2)
-            annih = tp2 - tp1
+            call direct_annihilation()
 
             ! Update projected energy and shift
             call update_energy_estimators(ireport, nparticles_old)

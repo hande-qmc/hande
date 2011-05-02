@@ -110,6 +110,9 @@ type det_info
     integer, pointer :: occ_list_alpha(:), occ_list_beta(:)
     ! List of unoccupied alpha/beta spin-orbitals
     integer, pointer :: unocc_list_alpha(:), unocc_list_beta(:)
+    ! is the determinant an initiator determinant or not? (used only in
+    ! i-FCIQMC).
+    integer :: initiator_flag
 end type det_info
 
 interface operator(.detgt.)

@@ -18,8 +18,12 @@ contains
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs, parent
+        use proc_pointers
         use utils, only: int_fmt
 
+        use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
+                                annihilate_main_list_initiator,                &
+                                annihilate_spawned_list_initiator
         use basis, only: basis_length, basis_fns, write_basis_fn
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
@@ -49,6 +53,11 @@ contains
         if (doing_calc(initiator_fciqmc)) then
             spawned_size = spawned_size + 1
             spawned_parent = spawned_size
+            annihilate_main_list_ptr => annihilate_main_list_initiator
+            annihilate_spawned_list_ptr => annihilate_spawned_list_initiator
+        else
+            annihilate_main_list_ptr => annihilate_main_list
+            annihilate_spawned_list_ptr => annihilate_spawned_list
         end if
 
         ! Allocate main walker lists.
@@ -192,25 +201,14 @@ contains
         
     end subroutine init_fciqmc
 
-    subroutine initial_fciqmc_status(update_proj_energy)
+    subroutine initial_fciqmc_status()
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
-        ! In:
-        !    update_proj_energy: relevant subroutine to update the projected
-        !        energy.  See the energy_evaluation module.
-
         use parallel
-
-        interface
-            subroutine update_proj_energy(idet)
-                use const, only: p
-                implicit none
-                integer, intent(in) :: idet
-            end subroutine update_proj_energy
-        end interface
+        use proc_pointers, only: update_proj_energy_ptr
 
         integer :: idet
         integer :: ntot_particles
@@ -225,7 +223,7 @@ contains
         proj_energy = 0.0_p
         D0_population = 0
         do idet = 1, tot_walkers 
-            call update_proj_energy(idet)
+            call update_proj_energy_ptr(idet)
         end do 
 
 #ifdef PARALLEL

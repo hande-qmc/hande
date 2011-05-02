@@ -6,6 +6,8 @@ use const
 
 use hfs_data
 
+use proc_pointers
+
 implicit none
 
 contains
@@ -41,7 +43,7 @@ contains
 
     end subroutine init_hellmann_feynman_sampling
 
-    subroutine do_hfs_fciqmc(decoder, update_proj_energy, spawner, sc0)
+    subroutine do_hfs_fciqmc(update_proj_energy)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -63,8 +65,6 @@ contains
         !        energy.  See the energy_evaluation module.
         !    spawner: relevant subroutine to attempt to spawn a walker from an
         !        existing walker.  See the spawning module.
-        !    sc0: relevant function to evaluate the diagonal Hamiltonian matrix
-        !    elements, <D|H|D>.  See the hamiltonian module.
 
         use parallel
   
@@ -83,36 +83,12 @@ contains
         ! subroutines around as arguments.  Bummer.
         ! If only procedure pointers were more commonly implemented...
         interface
-            subroutine decoder(f,d)
-                use basis, only: basis_length
-                use const, only: i0
-                use determinants, only: det_info
-                implicit none
-                integer(i0), intent(in) :: f(basis_length)
-                type(det_info), intent(inout) :: d
-            end subroutine decoder
             subroutine update_proj_energy(idet, inst_proj_energy, inst_proj_hf_t1)
                 use const, only: p
                 implicit none
                 integer, intent(in) :: idet
                 real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
             end subroutine update_proj_energy
-            subroutine spawner(d, parent_sign, nspawned, connection)
-                use determinants, only: det_info
-                use excitations, only: excit
-                implicit none
-                type(det_info), intent(in) :: d
-                integer, intent(in) :: parent_sign
-                integer, intent(out) :: nspawned
-                type(excit), intent(out) :: connection
-            end subroutine spawner
-            function sc0(f) result(hmatel)
-                use basis, only: basis_length
-                use const, only: i0, p
-                implicit none
-                real(p) :: hmatel
-                integer(i0), intent(in) :: f(basis_length)
-            end function sc0
         end interface
 
         integer :: idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
@@ -170,7 +146,7 @@ contains
 
                     cdet%f = walker_dets(:,idet)
 
-                    call decoder(cdet%f, cdet)
+                    call decoder_ptr(cdet%f, cdet)
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
@@ -180,7 +156,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
                         
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
 
@@ -188,7 +164,7 @@ contains
                         ! Hamiltonian walkers.
                         ! Currently only using operators diagonal in the basis,
                         ! so this isn't possible.
-                        call spawner(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
@@ -198,7 +174,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner(cdet, walker_population(2,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(2,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
@@ -223,7 +199,7 @@ contains
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
-                call direct_annihilation(sc0)
+                call direct_annihilation()
 
                 ! Form HF projected expectation value and add to running
                 ! total.
@@ -235,7 +211,7 @@ contains
 
 !            if (vary_shift) then
 !                do idet = 1, tot_walkers
-!                    call decoder(walker_dets(:,idet), cdet)
+!                    call decoder_ptr(walker_dets(:,idet), cdet)
 !                    write (12,*) cdet%occ_list, walker_population(:,idet)
 !                end do
 !                exit

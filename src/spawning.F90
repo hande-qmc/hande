@@ -579,7 +579,7 @@ contains
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(cdet, parent_flag, connection, nspawn, particle_type)
+    subroutine create_spawned_particle_initiator(cdet, connection, nspawn, particle_type)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -587,9 +587,6 @@ contains
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
-        !    parent_flag: flag indicating the staturs of the parent determinant.
-        !        parent_flag = 0 indicates the parent is an initiator.
-        !        parent_flag = 1 indicates the parent is not an initiator.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
@@ -608,7 +605,6 @@ contains
         use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, spawned_parent
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_flag
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
         integer, intent(in) :: particle_type
@@ -639,8 +635,10 @@ contains
         spawned_walkers(:,spawning_head(iproc_spawn)) = 0
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
         spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
-        spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = parent_flag
-
+        ! initiator_flag: flag indicating the staturs of the parent determinant.
+        !     initiator_flag = 0 indicates the parent is an initiator.
+        !     initiator_flag = 1 indicates the parent is not an initiator.
+        spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = cdet%initiator_flag
 
     end subroutine create_spawned_particle_initiator
 
