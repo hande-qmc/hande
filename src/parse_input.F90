@@ -287,10 +287,13 @@ contains
         ! If the FINITE_CLUSTER keyword was detected then make sure that 
         ! we are doing a calculation in real-space. If we're not then
         ! unset finite cluster,tell the user and carry on
-        if(finite_cluster .and. (system_type .ne. hub_real)) then
-            finite_cluster = .false.    
-            if (parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
+        if(system_type .ne. hub_real) then
+            if (finite_cluster .and. parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
+            if (separate_strings .and. parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
+                                      & calculations in real-space: ignoring keyword')
+            finite_cluster = .false.
+            separate_strings = .false.
         end if
 
         if (separate_strings) then
