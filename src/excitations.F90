@@ -33,7 +33,7 @@ contains
         use basis, only: bit_lookup, nbasis, basis_length
         use checking, only: check_allocate
 
-        integer :: ibasis, jbasis, pos, el, ierr
+        integer :: ibasis, jbasis, ipos, iel, jpos, jel, ierr
 
         allocate(excit_mask(basis_length, nbasis), stat=ierr)
         call check_allocate('excit_mask', basis_length*nbasis, ierr)
@@ -41,13 +41,18 @@ contains
         excit_mask = 0
 
         do ibasis = 1, nbasis
+            ipos = bit_lookup(1, ibasis)
+            iel = bit_lookup(2, ibasis)
             ! Set bits corresponding to all orbitals above ibasis.
-            ! Sure, there are quicker ways of doing this, but it's a one-off and
-            ! already fast...
-            do jbasis = ibasis+1, nbasis
-                pos = bit_lookup(1, jbasis)
-                el = bit_lookup(2, jbasis)
-                excit_mask(el, ibasis) = ibset(excit_mask(el, ibasis), pos)
+            ! Sure, there are quicker (and probably more elegant) ways of doing
+            ! this, but it's a one-off...
+            ! Loop from jbasis=1 as separate_strings means that even if
+            ! jbasis<ibasis, it can still come after ibasis in the bit string.
+            do jbasis = 1, nbasis
+                jpos = bit_lookup(1, jbasis)
+                jel = bit_lookup(2, jbasis)
+                if ( (jel==iel .and. jpos > ipos) .or. jel>iel) &
+                    excit_mask(jel, ibasis) = ibset(excit_mask(jel, ibasis), jpos)
             end do
         end do
 
