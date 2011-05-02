@@ -1,0 +1,85 @@
+\documentclass[a4paper, 11pt]{article}
+
+\usepackage{amsmath}
+
+\newcommand{\dd}[3][\null]{\frac{\mathrm{d}^{#1}{#2}}{\mathrm{d}{#3}^{#1}}}
+\newcommand{\hyperF}[2]{{_0}F_1\left(;#1;#2\right)}
+
+\begin{document}
+
+\title{FCIQMC Population dynamics} 
+\date{\today} \maketitle
+
+We consider a trivial space consisting of a single determinant.  The total population of psips on the determinant is governed by the differential equation
+\begin{equation}
+\dd{n}{t} = p e^{2bt} + q n(t) + r n(t)^2. \label{eqn:dynamics}
+\end{equation}
+This is an example of a Riccati differential equation, so despite it being non-linear, a strategy for solving it is known.  First, let
+\begin{equation}
+n(t) = - \frac{1}{r u(t)} \dd{u}{t}.
+\end{equation}
+Hence
+\begin{align}
+\dd{u}{t} &= -\frac{1}{r u} \dd[2]{u}{t} - \dd{u}{t}\dd{\null}{t}\left(\frac{1}{r u}\right) \\
+          &= \frac{1}{r u} \dd[2]{u}{t} + \frac{1}{r u^2} \left(\dd{u}{t}\right)^2 \\
+          &= \frac{1}{r u} \dd[2]{u}{t} + r n^2.
+\end{align}
+Therefore the quadratic first-order ODE can be converted into a linear second-order ODE:
+\begin{gather}
+- \frac{1}{r u} \dd[2]{u}{t} + r n^2 = p e^{2bt} - \frac{p}{ru} \dd{u}{t} + rn^2 \\
+\Rightarrow \dd[2]{u}{t} - q\dd{u}{t} + pre^{2bt} u = 0.
+\end{gather}
+Let
+\begin{equation}
+z = -\frac{pre^{2bt}}{4b^2}.
+\end{equation}
+Noting that
+\begin{equation}
+\dd{u}{t} = 2bz \dd{u}{z}
+\end{equation}
+and
+\begin{align}
+\dd[2]{u}{t} &= \dd{z}{t} \dd{\null}{z}\left(2bz\dd{u}{z}\right) \\
+             &= 4 b^2 z^2 \dd[2]{u}{z} + 4 b^2 z \dd{u}{z},
+\end{align}
+it follows that non-trivial solutions satisfy
+\begin{equation}
+z \dd[2]{u}{z} + \left(1-\frac{q}{2b}\right)\dd{u}{z} - u = 0.
+\end{equation}
+This is the differential equation for the confluent hypergeometric limit function, ${_0}F_1$, and has the general solution
+\begin{equation}
+u(z) = c_0\cdot\hyperF{1-\frac{q}{2b}}{z} + c_1 z^{q/2b}\cdot\hyperF{1+\frac{q}{2b}}{z}.
+\end{equation}
+
+${_0}F_1$ can be expressed as a series:
+\begin{equation}
+\hyperF{p}{x} = \sum_{n=0}^{\infty} \frac{1}{(p)_n} \frac{x^n}{n!},
+\end{equation}
+where $(p)_n$ is the Pochhammer rising factorial
+\begin{equation}
+(p)_n = p(p+1)(p+2)\cdots(p+n-1); \quad (p)_0 = 1,
+\end{equation}
+and hence
+\begin{align}
+\dd{\null}{x} \hyperF{p}{x} &= \sum_{n=1}^{\infty} \frac{1}{(p)_n} \frac{n x^{n-1}}{n!} \\
+                            &= \sum_{n=1}^{\infty} \frac{1}{p(p+1)_{n-1}} \frac{x^{n-1}}{(n-1)!} \\
+                            &= \frac{1}{p} \sum_{n=0}^{\infty} \frac{1}{(p+1)_n} \frac{x^n}{n!} \\
+                            &= \frac{\hyperF{p+1}{x}}{p}.
+\end{align}
+
+Thus the solution to Eq.~\ref{eqn:dynamics} is 
+\begin{equation}
+n(z) = \frac{2bz}{u(z)}\dd{u}{z}
+\end{equation}
+where
+\begin{gather}
+z = -\frac{pre^{2bt}}{4b^2}, \\
+u(z) = c_0\cdot\hyperF{1-\frac{q}{2b}}{z} + c_1 z^{q/2b}\cdot\hyperF{1+\frac{q}{2b}}{z}, \\
+\intertext{and}
+\begin{split}
+\dd{u}{z} = &\frac{2bc_0}{2b-q}\hyperF{2-\frac{q}{2b}}{z} + \frac{q c_1 z^{q/2b-1}}{2b}\hyperF{1+\frac{q}{2b}}{z} \\ &+ \frac{2bc_1z^{q/2b}}{2b+q}\hyperF{2+\frac{q}{2b}}{z}.
+\end{split}
+\end{gather}
+As we are solving a first-order ODE, we can scale $c_1$ and $c_2$ such that $c_2=1$.  $c_1$ can then be determined by applying the constraint that $n(t=0)=n_0$, where $n_0$ is the initial population on the determinant at the start of the simulation.
+
+\end{document}
