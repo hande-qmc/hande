@@ -515,8 +515,9 @@ contains
         !
         !   p(a|i) is the probability of choosing to excite into orbital a given
         !   that the i-th electron has been chosen.
-        !   p(a|i) is the number of virtual orbitals connected to i and is
+        !   nvirt_avail is the number of virtual orbitals connected to i and is
         !   calculated when the random excitation is chosen.
+        !   p(a|i) = 1/nvirt_avail
 
         !   \chi_r is a renormalisation to take into account the fact that not
         !   all electrons may be excited from (e.g. no connected orbitals are
