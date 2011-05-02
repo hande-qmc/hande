@@ -107,7 +107,7 @@ contains
             ! 5. Is connecting matrix element positive (in which case we spawn with
             ! negative walkers) or negative (in which case we spawn with positive
             ! walkers)?
-            call slater_condon2_hub_k_excit(cdet%occ_list, connection, hmatel)
+            call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
 
             ! If H_ij is positive, then the spawned walker is of opposite sign
             ! to the parent.
@@ -169,7 +169,7 @@ contains
         connection%from_orb(1) = i
         connection%to_orb(1) = a
 
-        call slater_condon1_hub_real_excit(cdet%occ_list, connection, hmatel)
+        call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
 
         ! 4. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen

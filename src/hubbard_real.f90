@@ -232,7 +232,7 @@ contains
         use basis
         use system, only: hubu
         use bit_utils, only: count_set_bits
-        use determinants, only: beta_mask
+        use determinants, only: beta_mask, separate_strings
 
         real(p) :: umatel
         integer(i0), intent(in) :: f(basis_length)
@@ -240,19 +240,24 @@ contains
         integer(i0) :: b
 
         ! < D | U | D > = U*number of doubly occupied sites.
-        ! 1. Find the bit string representing the occupied beta orbitals.
-        ! 2. Right shift it by one place.  The beta orbitals now line up with
-        !    alpha orbitals.
-        ! 3. AND the shifted beta bit string with the original bit string
-        !    representing the list of occupied orbitals in the determinant.
-        ! 4. The non-zero bits represent a sites which have both alpha and beta
-        !    orbitals occupied.
-        ! 5. Hence < D | U | D >.
-        umatel = 0.0_p
-        do i = 1, basis_length
-            b = iand(f(i), beta_mask)
-            umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
-        end do
+        if (separate_strings) then
+            ! Just need to AND the alpha string with the beta string.
+            umatel = sum(count_set_bits(iand(f(:basis_length/2),f(basis_length/2+1:))))
+        else
+            ! 1. Find the bit string representing the occupied beta orbitals.
+            ! 2. Right shift it by one place.  The beta orbitals now line up with
+            !    alpha orbitals.
+            ! 3. AND the shifted beta bit string with the original bit string
+            !    representing the list of occupied orbitals in the determinant.
+            ! 4. The non-zero bits represent a sites which have both alpha and beta
+            !    orbitals occupied.
+            ! 5. Hence < D | U | D >.
+            umatel = 0.0_p
+            do i = 1, basis_length
+                b = iand(f(i), beta_mask)
+                umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
+            end do
+        end if
         umatel = hubu*umatel
 
     end function get_coulomb_matel_real

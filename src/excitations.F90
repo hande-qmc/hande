@@ -20,7 +20,58 @@ type excit
     logical :: perm
 end type excit
 
+! excit_mask(:,i) is a bit field with bits corresponding to all orbitals with
+! a higher index than i set.
+integer(i0), allocatable :: excit_mask(:,:) ! (basis_length, nbasis)
+
 contains
+
+    subroutine init_excitations()
+
+        ! Allocate and initialise data in excit_mask.
+
+        use basis, only: bit_lookup, nbasis, basis_length
+        use checking, only: check_allocate
+
+        integer :: ibasis, jbasis, ipos, iel, jpos, jel, ierr
+
+        allocate(excit_mask(basis_length, nbasis), stat=ierr)
+        call check_allocate('excit_mask', basis_length*nbasis, ierr)
+
+        excit_mask = 0
+
+        do ibasis = 1, nbasis
+            ipos = bit_lookup(1, ibasis)
+            iel = bit_lookup(2, ibasis)
+            ! Set bits corresponding to all orbitals above ibasis.
+            ! Sure, there are quicker (and probably more elegant) ways of doing
+            ! this, but it's a one-off...
+            ! Loop from jbasis=1 as separate_strings means that even if
+            ! jbasis<ibasis, it can still come after ibasis in the bit string.
+            do jbasis = 1, nbasis
+                jpos = bit_lookup(1, jbasis)
+                jel = bit_lookup(2, jbasis)
+                if ( (jel==iel .and. jpos > ipos) .or. jel>iel) &
+                    excit_mask(jel, ibasis) = ibset(excit_mask(jel, ibasis), jpos)
+            end do
+        end do
+
+    end subroutine init_excitations
+
+
+    subroutine end_excitations()
+
+        ! Deallocate excit_mask.
+
+        use checking, only: check_deallocate
+
+        integer :: ierr
+
+        deallocate(excit_mask, stat=ierr)
+        call check_deallocate('excit_mask', ierr)
+
+    end subroutine end_excitations
+
 
     pure function get_excitation(f1,f2) result(excitation)
 
@@ -173,7 +224,7 @@ contains
 
     end function get_excitation_level
 
-    pure subroutine find_excitation_permutation1(occ_list, excitation)
+    pure subroutine find_excitation_permutation1(f, excitation)
 
         ! Find the parity of the permutation required to maximally line up
         ! a determinant with an excitation of it, as needed for use with the
@@ -182,57 +233,33 @@ contains
         ! This version is for single excitations of a determinant.
         !
         ! In:
-        !    occ_list: integer list of occupied orbitals in the Slater determinant.
+        !    f: bit string representation of the determinant.
         !    excitation: excit type specifying how the excited determinant is
-        !        connected to the rdeterminant given in occ_list.
+        !        connected to the determinant given in occ_list.
         ! Out:
         !    excitation: excit type with the parity of the permutation also
         !        specified.
-        use system, only: nel
+
+        use basis, only: basis_length
+        use bit_utils, only: count_set_bits
     
-        integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: excitation
 
-        integer :: i, shift, perm, j, j1, nholes
+        integer :: perm
+        integer(i0) :: ia(basis_length)
 
-        ! Adapt algorithm from get_excitation and find_excitation_permutation2.
+        ! This is just a simplification of find_excitation_permutation2.  See
+        ! the comments there (and ignore any that refer to j and b...).
 
-        ! As we only consider single excitations, this is much easier than
-        ! find_excitation_permutation2.
-
-        ! The comments in find_excitation_permutation2 apply here, except that
-        ! there only one slot is needed at the end of the occ_list to hold
-        ! orbitals involved in the excitation.
-        
-        shift = nel - excitation%nexcit 
-
-        perm = 0
-        nholes = 0
-        j1 = 0
-        do i = 1, nel
-            j = occ_list(i)
-
-            ! Check for inserting excited orbital.
-            if (j > excitation%to_orb(1) .and. j1 < excitation%to_orb(1)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - (i - nholes) + 1
-            end if
-
-            ! Check for orbital exciting from.
-            if (j == excitation%from_orb(1)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 1
-                nholes = 1
-            end if
-
-            j1 = j
-        end do
-
+        ia = ieor(excit_mask(:,excitation%from_orb(1)),excit_mask(:,excitation%to_orb(1)))
+        perm = sum(count_set_bits(iand(f,ia)))
+        if (excitation%from_orb(1) > excitation%to_orb(1)) perm = perm - 1
         excitation%perm = mod(perm,2) == 1
 
     end subroutine find_excitation_permutation1
 
-    pure subroutine find_excitation_permutation2(occ_list, excitation)
+    pure subroutine find_excitation_permutation2(f, excitation)
 
         ! Find the parity of the permutation required to maximally line up
         ! a determinant with an excitation of it, as needed for use with the
@@ -241,87 +268,67 @@ contains
         ! This version is for double excitations of a determinant.
         !
         ! In:
-        !    occ_list: integer list of occupied orbitals in the Slater determinant.
+        !    f: bit string representation of the determinant.
         !    excitation: excit type specifying how the excited determinant is
-        !        connected to the rdeterminant given in occ_list.
+        !        connected to the determinant described by f.
         !        Note that we require the lists of orbitals excited from/into to
         !        be ordered.
         ! Out:
         !    excitation: excit type with the parity of the permutation also
         !        specified.
 
-        use system, only: nel
+        use basis, only: basis_length
+        use bit_utils, only: count_set_bits
     
-        integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: excitation
 
-        integer :: i, j, j1, shift, perm, nholes
+        integer :: perm
+        integer(i0) :: ia(basis_length), jb(basis_length)
 
-        shift = nel - excitation%nexcit 
+        ! Fast way of getting the parity of the permutation required to align
+        ! two determinants given one determinant and the connecting exctitation.
+        ! This is hard to generalise to all cases, but we actually only care
+        ! about single and double excitations.  The idea is quite different from
+        ! that used in get_excitation (where we also need to find the orbitals
+        ! involved in the excitation).
 
-        ! Adapt algorithm from get_excitation.
-        ! The idea is to count the number of permutations involved in shifting
-        ! orbitals involved in the excitation to the end of the list (thus
-        ! giving the 2 determinants with maximum coincidence).
+        ! In the following & represents the bitwise and operation; ^ the bitwise exclusive or
+        ! operation; xmask is a mask with all bits representing orbitals above
+        ! x set; f is the string representing the determinant from which we
+        ! excite and the excitation is defined by (i,j)->(a,b), where i<j and
+        ! a<b.
 
-        ! The last 2 positions in the list are for orbitals involved in the
-        ! excitation.
-        ! We count the number of permutations required to shift i and a into the
-        ! first slot and j and b into the second slot.
+        ! imask ^ amask returns a bit string with bits corresponding to all
+        ! orbitals between i and a set, with max(i,a) set and min(i,a) cleared.
+        ! Thus f & (imask ^ amask) returns a bit string with only bits set for
+        ! the occupied orbitals which are between i and a (possibly including i)
+        ! and so the popcount of this gives the number of orbitals between i and
+        ! a (possibly one larger than the actual answer) number of permutations needed to
+        ! align i and a in the same 'slot' in the determinant string.  We need
+        ! to subtract one if i>a to correct for the overcounting.
 
-        ! The number of permutations required is simply the number of orbitals
-        ! between a given orbital and the slot it's going into.
-        ! This is given by:
-        !   nel - 2 - position + slot_number
-        ! where 2 comes from the fact we're considering double excitations and 
-        ! slot_number is 1 or 2.
+        ! An analagous approach counts the number of permutations required so
+        ! j and b are coincident.
 
-        ! The position of the i and j orbitals is easy, as occ_list is ordered.
-        ! The position of the a and b orbitals is harder, as occ_list refers to
-        ! the determinant we're exciting from.  However, this is still more
-        ! efficient than generating the list for the excited determinant or
-        ! testing all spin orbitals (as in get_excitation).
+        ! Finally, we need to account for some more overcounting/undercounting.
+        ! If j is between i and a, then it is counted yet j can either be moved
+        ! before i (resulting in the actual number of permutations being one
+        ! less than that counted) or after i (resulting in moving j taking one
+        ! more permutation than counted).  It doesn't matter which we do, as we
+        ! are only interested in whether the number of permutations is odd or
+        ! even.  We similarly need to take into account the case where i is
+        ! between j and b.
 
-        ! The positions of a and b are given by:
-        !   k - nholes
-        ! where k is the position at which a/b is inserted and nholes is the
-        ! number of orbitals we've excited from *before* k (i.e. not including
-        ! k).
+        ia = ieor(excit_mask(:,excitation%from_orb(1)),excit_mask(:,excitation%to_orb(1)))
+        jb = ieor(excit_mask(:,excitation%from_orb(2)),excit_mask(:,excitation%to_orb(2)))
 
-        ! This is all a counting exercise: occ_list isn't actually altered.
+        perm = sum(count_set_bits(iand(f,ia))) + sum(count_set_bits(iand(f,jb)))
 
-        perm = 0
-        nholes = 0
-        j1 = 0
-        do i = 1, nel
-            j = occ_list(i)
-
-            ! First check if we insert a new electron.
-            ! This works round the problem if we have to insert a
-            ! before j and then b replaces j.  This order keeps the number of
-            ! holes correct.
-            if (j > excitation%to_orb(1) .and. j1 < excitation%to_orb(1)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - (i - nholes) + 1
-                nholes = nholes - 1
-            end if
-            if (j > excitation%to_orb(2) .and. j1 < excitation%to_orb(2)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - (i - nholes) + 2
-            end if
-
-            if (j == excitation%from_orb(1)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 1
-                nholes = nholes + 1
-            else if (j == excitation%from_orb(2)) then
-                ! Number of permutations to get to the end of the list.
-                perm = perm + shift - i + 2
-                nholes = nholes + 1
-            end if
-
-            j1 = j
-        end do
+        if (excitation%from_orb(1) > excitation%to_orb(1)) perm = perm - 1
+        if (excitation%from_orb(1) > excitation%to_orb(2)) perm = perm - 1
+        if (excitation%from_orb(2) > excitation%to_orb(2) .or. &
+            excitation%from_orb(2) < excitation%to_orb(1)) perm = perm - 1
 
         excitation%perm = mod(perm,2) == 1
 
