@@ -46,7 +46,7 @@ $parse_source_files)
 # test to see if keyword is mentioned in the documentation.
 if [ -e $docs ]; then
 
-    doc_files=$(find $docs -name *.rst)
+    doc_files=$(find $docs -name \*.rst)
 
     if [ -z "$doc_files" ]; then
         echo "Documentation files cannot be found."
@@ -80,7 +80,7 @@ fi
 # test to see if keyword (or a synonym) is used in the test suite.
 if [ -e $test_suite ]; then
 
-    inp_files=$(find $test_suite -name *.inp)
+    inp_files=$(find $test_suite -name \*.inp)
 
     if [ -z "$inp_files" ]; then
         echo "Test suite input files cannot be found."
