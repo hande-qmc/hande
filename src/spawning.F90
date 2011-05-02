@@ -143,7 +143,7 @@ contains
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: calc_pgen_hub_real, excit
         use fciqmc_data, only: tau
-        use hamiltonian!, only: slater_condon1_hub_real_excit
+        use hamiltonian, only: slater_condon1_hub_real_excit
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -153,7 +153,6 @@ contains
         real(p) :: pgen, psuccess, pspawn, hmatel
         integer :: i, a
         integer :: nvirt_avail
-        real(p) :: h2
 
         ! Double excitations are not connected determinants within the 
         ! real space formulation of the Hubbard model.
@@ -171,8 +170,6 @@ contains
         connection%to_orb(1) = a
 
         call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
-
-        if (connection%perm) write (6,*) 'HUH?!', connection%perm, cdet%occ_list, i, a
 
         ! 4. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen
