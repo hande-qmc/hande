@@ -77,8 +77,8 @@ def test_input(input_file):
         if bcast_match:
             distributed.update([bcast_match.group(0)])
 
-    # special case: output filenames are not needed apart from on the head node.
-    for v in ['hamiltonian_file','determinant_file']:
+    # special case: output filenames are not needed apart from on the head node, reading the restart file is only read on the head node.
+    for v in ['hamiltonian_file', 'determinant_file', 'binary_fmt_in', 'binary_fmt_out']:
         if v in variables:
             variables.remove(v)
     # special case: option_set is used only for some book-keeping in distribute_input; comms_read is similarly used in fciqmc_interact.
@@ -99,7 +99,7 @@ def test_restart():
     # Get keywords set in restart.F90
     start = re.compile('^ *subroutine read_restart', re.I)
     end = re.compile('^ *end subroutine read_restart', re.I)
-    read = re.compile('(?<=read \(io,\*\))(.*)', re.I)
+    read = re.compile('(?<=call read_in\(io,)(.*?)(?=\))', re.I)
     # remove commas and array slices
     data_extract = re.compile(',|(\(.*?\))')
     data_in = False
@@ -114,7 +114,7 @@ def test_restart():
         if data_in:
             read_search = read.search(line)
             if read_search:
-                data = read_search.group(0).strip().split()
+                data = read_search.group(0).strip().split(',')
                 data = [re.sub(data_extract, '', d) for d in data]
                 variables.update(data)
             else:
@@ -126,7 +126,7 @@ def test_restart():
             data_in = False
 
     # Remove special cases...
-    for v in ['det', 'pop', 'energy', 'junk', 'walker_dets', 'walker_population', 'walker_energies', 'tot_walkers']:
+    for v in ['det', 'pop', 'energy', 'junk', 'tot_walkers']:
         variables.remove(v)
     for v in ['done', 'scratch_energies', 'spawned_walkers']:
         distributed.remove(v)
