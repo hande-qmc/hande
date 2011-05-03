@@ -301,7 +301,7 @@ contains
                 end if
             else if (system_type == hub_real) then
                 connection%nexcit = 1
-                call slater_condon1_hub_real_excit(cdet%occ_list, connection, K_ij)
+                call slater_condon1_hub_real_excit(cdet%f, connection, K_ij)
             end if
 
         end if
