@@ -351,6 +351,7 @@ contains
             end if
             call mpi_bcast(ktwist, ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
+        call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
