@@ -15,6 +15,7 @@ SRC_DIR = os.path.abspath(os.path.join(TOOLS_DIR, '../src'))
 # useful, common, regexes.
 BCAST = re.compile('(?<=call mpi_bcast\()(.*?)(?=,)', re.I)
 SCATTERV = re.compile('(?<=call mpi_scatterv\()(.*?)(?=,)', re.I)
+COMMENT = re.compile('^ *!')
 
 def check_distributed(filename, variables, distributed):
 
@@ -52,19 +53,20 @@ def test_input(input_file):
         if start.match(line):
             data_in = True
         if data_in:
-            if read.match(line):
-                # e.g. if (test) call readi(a)
-                # obtain a.
-                # 1. obtain 'readi(a)'
-                fn_call = line.split('call')[-1].strip()
-                # 2. obtain 'a'.
-                var = parentheses.search(fn_call).group(0)
-                variables.update([var])
-            elif setvar.match(line):
-                # e.g. a = b 
-                # obtain a.
-                var = line.split('=')[-2].strip()
-                variables.update([var])
+            if not COMMENT.match(line):
+                if read.match(line):
+                    # e.g. if (test) call readi(a)
+                    # obtain a.
+                    # 1. obtain 'readi(a)'
+                    fn_call = line.split('call')[-1].strip()
+                    # 2. obtain 'a'.
+                    var = parentheses.search(fn_call).group(0)
+                    variables.update([var])
+                elif setvar.match(line):
+                    # e.g. a = b 
+                    # obtain a.
+                    var = line.split('=')[-2].strip()
+                    variables.update([var])
         if end.match(line):
             data_in = False
             break
@@ -74,7 +76,7 @@ def test_input(input_file):
 
     for line in f:
         bcast_match = BCAST.search(line)
-        if bcast_match:
+        if bcast_match and not COMMENT.match(line):
             distributed.update([bcast_match.group(0)])
 
     # special case: output filenames are not needed apart from on the head node, reading the restart file is only read on the head node.
@@ -112,16 +114,17 @@ def test_restart():
         if start.match(line):
             data_in = True
         if data_in:
-            read_search = read.search(line)
-            if read_search:
-                data = read_search.group(0).strip().split(',')
-                data = [re.sub(data_extract, '', d) for d in data]
-                variables.update(data)
-            else:
-                for mpi_regex in [BCAST, SCATTERV]:
-                    mpi_match = mpi_regex.search(line)
-                    if mpi_match:
-                        distributed.update([mpi_match.group(0)])
+            if not COMMENT.match(line):
+                read_search = read.search(line)
+                if read_search:
+                    data = read_search.group(0).strip().split(',')
+                    data = [re.sub(data_extract, '', d) for d in data]
+                    variables.update(data)
+                else:
+                    for mpi_regex in [BCAST, SCATTERV]:
+                        mpi_match = mpi_regex.search(line)
+                        if mpi_match:
+                            distributed.update([mpi_match.group(0)])
         if end.match(line):
             data_in = False
 
@@ -133,6 +136,6 @@ def test_restart():
 
     return check_distributed(input_file, variables, distributed)
 
-exit = test_input('parse_input.F90') + 100*test_input('interact.F90') + 1000*test_restart()
+exit = test_input('parse_input.F90') + 10*test_input('interact.F90') + 100*test_restart()
 
 sys.exit(exit)
