@@ -356,9 +356,9 @@ initialisation (mainly the enumeration of the basis) is performed.
     Perform an FCIQMC calculation using an extremely simple (but wasteful, in
     terms of CPU and memory resources) algorithm.  This should be used for testing only.
 **fciqmc**
-    Perform an FCIQMC calculation.
+    Perform an FCIQMC calculation [Booth_Thom_Alavi_09]_.
 **ifciqmc**
-    Perform an initiator-FCIQMC calculation.
+    Perform an initiator-FCIQMC calculation [Cleland_Booth_Alavi_10]_.
 **ct_fciqmc**
     Perform a continuous-time FCIQMC calculation.
 **lanczos**
