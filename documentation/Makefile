@@ -41,8 +41,8 @@ clean:
 	-rm -rf $(BUILDDIR)/*
 	-rm -rf developers_guide/xml
 
-EXTS = .cpp .hpp
-SRCDIRS = ../src ../lib
+EXTS = .f90 .F90
+SRCDIRS = ../src ../lib/local
 find_files = $(foreach ext,$(EXTS), $(wildcard $(dir)/*$(ext)))
 SRCFILES := $(foreach dir,$(SRCDIRS),$(find_files))
 DOXYGENXML = developers_guide/xml/index.xml
