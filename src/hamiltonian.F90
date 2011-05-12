@@ -64,12 +64,12 @@ contains
 
         ! Assume D1 and D2 are of the same symmetry.  Namely:
 
-            ! We assume Ms is conserved (ie has already been checked for).
-
-            ! In the momentum space description the overall crystal 
-            ! momentum must be conserved up to a reciprocal lattice
-            ! vector (i.e. satisfy translational symmetry).
-            ! We assume this is also already checked.
+        !     We assume Ms is conserved (ie has already been checked for).
+         
+        !     In the momentum space description the overall crystal 
+        !     momentum must be conserved up to a reciprocal lattice
+        !     vector (i.e. satisfy translational symmetry).
+        !     We assume this is also already checked.
 
         excitation = get_excitation(f1,f2)
         ! Connected determinants can differ by (at most) 2 spin orbitals.
