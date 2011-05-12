@@ -22,3 +22,4 @@ sub/
 *.aux
 *.dat
 *.pdf
+documentation/build
