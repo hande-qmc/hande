@@ -1,18 +1,22 @@
-hubbard
-=======
+User's Guide
+============
 
 Introduction
 ------------
 
-hubbard can currently perform Full Configuration Interaction (FCI) calculations
-of the Hubbard model using either the real space or momentum space formulation.
+hubbard_fciqmc can currently perform Full Configuration Interaction (FCI) and
+Full Configuration Interaction Quantum Monte Carlo calculations of the Hubbard
+model using either the real space or momentum space formulation.
+
 Full and Lanczos diagonalisation methods are implemented using external
 libraries (lapack/scalapack and TRLan respectively) and can be performed in
 both serial and parallel.  Lanczos diagonalisation can be performed with or
 without precomputing the Hamiltonian matrix.
 
-Recently the Full Configuration Interaction Quantum Monte Carlo method has been
-implemented.
+An optimised, highly parallel FCIQMC algorithm based upon
+[Booth_Thom_Alavi_09]_ for the Hubbard model has been implemented.  Development
+work continues to add new features and investigate the algorithm and the
+Hubbard model.
 
 Directory structure
 --------------------
@@ -511,11 +515,11 @@ The following options are valid for FCIQMC calculations.
 
     .. math::
 
-        S(\beta) = S(\beta-A\tau) - \xi log(N_w(\tau)/N_w(\beta-A\tau))/(A\tau)
+        S(\beta) = S(\beta-A\tau) - \frac{\xi}{A\tau} log\left( \frac{N_w(\tau)} {N_w(\beta-A\tau)} \right)
 
     where :math:`\beta` is the current imaginary time, :math:`A\tau` is the
     amount of imaginary time between shift updates, :math:`N_w` is the number of
-    walkers at the given time and :math:`xi` is a damping factor to prevent
+    walkers at the given time and :math:`\xi` is a damping factor to prevent
     wild fluctations in the population dynamics and can be set using the
     **shift_damping** keyword.
 **reference_det** *electron_1 electron_2 ... electron_nel*
