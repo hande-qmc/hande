@@ -265,6 +265,8 @@ These options select the type of system to use.
     are formed from the basis functions, :math:`\phi_i`, which are each centred
     on a lattice site.  Periodic boundary conditions are imposed through the
     kinetic 'hopping' term in the Hamiltonian.
+**ueg**
+    Perform calculation on the uniform electron gas.
 
 System
 ^^^^^^
@@ -277,6 +279,26 @@ These options describe the system which is to be investigated.
     Required.
 
     Set the number of electrons in the system to be *nel*.
+**nel** *nel*
+    Synonym for **electrons**.
+**twist** *t1 [t2 [t3]]*
+    Real.
+
+    Default: 0.0.
+
+    Apply a twist to the wavevector grid.  The twist is an *ndim*-dimensional
+    vector in units of :math:`2\pi`.  The twist angle should be within the
+    first Brillouin zone, and hence the components should be between -0.5 and
+    +0.5.
+
+    Applicable only in the momentum space formulation of the Hubbard model and
+    the uniform electron gas.
+
+Hubbard Systems
+^^^^^^^^^^^^^^^
+
+These options are only relevant for calculations on the Hubbard model.
+
 **lattice** *lattice vectors*
     Integer matrix.
 
@@ -287,8 +309,6 @@ These options describe the system which is to be investigated.
     \times n` matrix containing the lattice vectors of the crystal cell (i.e.
     one lattice vector per line).  1D, 2D and 3D systems can be specified using
     vectors of the appropriate dimensionality.
-**nel** *nel*
-    Synonym for **electrons**.
 **T** *t*
     Real.
 
@@ -306,18 +326,6 @@ These options describe the system which is to be investigated.
     Default: 1.
 
     Set the Coulomb term in the Hamiltonian to be *U*.
-**twist** *t1 [t2 [t3]]*
-    Real.
-
-    Default: 0.0.
-
-    Apply a twist to the wavevector grid.  The twist is an *ndim*-dimensional
-    vector in units of :math:`2\pi`.  The twist angle should be within the
-    first Brillouin zone, and hence the components should be between -0.5 and
-    +0.5.
-
-    Applicable only in the momentum space formulation of the Hubbard model.
-
 **finite_cluster**
     The default behaviour for Hubbard is to work on an infinite lattice 
     contructed out of repeating the user-specified unit cell. If finite_cluster is 
@@ -336,6 +344,29 @@ These options describe the system which is to be investigated.
     Applicable only in the real-space formulation of the Hubbard model,
     otherwise the user is notified and the keyword is ignored.
 
+UEG Systems
+^^^^^^^^^^^
+
+These options are only relevant for calculations on the uniform electron gas.
+
+**2D**
+    Perform calculation on the 2D UEG.
+**3D**
+    Perform calculation on the 3D UEG.
+**density** *rs*
+    Real.
+
+    Default: 1.
+
+    Set the density, :math:`r_s`, of the UEG to be *rs*.
+**ecutoff** *emax*
+    Real.
+
+    Default: 3.
+
+    Set the maximum kinetic energy of the orbitals included in the basis set.
+**rs** *rs*
+    Synonym for **density**.
 
 Calculation type
 ^^^^^^^^^^^^^^^^
@@ -396,7 +427,7 @@ of the determinant is currently hard-coded.
 **symmetry** *isym*
     Integer.
 
-    Only relevant for the momentum space formulation.  Diagonalise only blocks
+    Only relevant for momentum space calculations.  Diagonalise only blocks
     containing determinants of the same symmetry as the specified symmetry
     block *isym*.  *isym* refers to a wavevector label (as given in the
     output).  To see the symmetry labels for a specific crystal cell, run the

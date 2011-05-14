@@ -31,9 +31,14 @@ end type basis_fn
 ! fortran numbers bits from 0...
 type(basis_fn), allocatable :: basis_fns(:) ! (nbasis)
 
-! number of basis functions.  Equal to 2*number of sites as there are
-! 2 spin orbitals per site.
+! number of basis functions used in the calculation.
+! Hubbard model: equal to 2*number of sites as there are 2 spin orbitals per site.
+! UEG: equal to twice the number of k-points within the energy cutoff.
 integer :: nbasis
+
+! Number of basis functions initially generated.
+! Only for the UEG does this not equal nbasis.
+integer :: nbasis_tot
 
 ! The determinants are stored as a bit string.  Each element of an array is
 ! an integer of kind i0 (containing i0_length bits).
@@ -186,8 +191,6 @@ contains
         type(basis_fn), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
 
-        nbasis = 2*nsites
-
         ! Find basis functions.
 
         ! We use a minimal basis: the hubbard model consisting of two
@@ -221,24 +224,38 @@ contains
         ! the crystal cell), *exactly* the same approach is needed, so we're
         ! just going to abuse the same code. Shocking, I know.
 
-        ! Maximum limits...
-        ! [Does it show that I've been writing a lot of python recently?]
-        nmax = 0 ! Set nmax(i) to be 0 for unused higher dimensions.
-        limits = 0
-        ! forall is a poor substitute for list comprehension. ;-)
-        forall (i=1:ndim)
-            forall (j=1:ndim, lattice(i,j) /= 0) 
-                limits(i,j) = abs(nint(box_length(i)**2/(2*lattice(i,j))))
-            end forall
-            nmax(i) = maxval(limits(:,i))
-        end forall
+        ! UEG:
 
-        allocate(basis_fns(nbasis), stat=ierr)
-        call check_allocate('basis_fns',nbasis,ierr)
+        ! This is identical again to the real space formulation, except the FBZ
+        ! is essentially infinite (as there is no underlying crystal lattice).
+
+        select case(system_type)
+        case(hub_k, hub_real)
+            ! Hubbard model has 2 spin-orbitals per site/wavevector.
+            nbasis = 2*nsites
+            ! Maximum limits...
+            ! [Does it show that I've been writing a lot of python recently?]
+            nmax = 0 ! Set nmax(i) to be 0 for unused higher dimensions.
+            limits = 0
+            ! forall is a poor substitute for list comprehension. ;-)
+            forall (i=1:ndim)
+                forall (j=1:ndim, lattice(i,j) /= 0) 
+                    limits(i,j) = abs(nint(box_length(i)**2/(2*lattice(i,j))))
+                end forall
+                nmax(i) = maxval(limits(:,i))
+            end forall
+        case(ueg)
+            ! UEG has 2 spin-orbitals per wavevector.  We include all
+            ! wavevectors up to an energy cutoff.
+            ! We actually generate all wavevectors in the smallest
+            ! line/square/cube which encloses all wavevectors within the cutoff.
+            nmax = 0
+            forall (i=1:ndim) nmax(i) = ceiling(ueg_ecutoff*box_length(1)/(4*pi))
+            nbasis = (2*nmax(1)+1)**ndim
+        end select
+
         allocate(tmp_basis_fns(nbasis/2), stat=ierr)
         call check_allocate('tmp_basis_fns',nbasis/2,ierr)
-        allocate(basis_fns_ranking(nbasis/2), stat=ierr)
-        call check_allocate('basis_fns_ranking',nbasis/2,ierr)
 
         ! Find all alpha spin orbitals.
         ibasis = 0
@@ -249,25 +266,44 @@ contains
                     ! the crystal cell.
                     kp = (/ i, j, k /)
                     if (in_FBZ(kp(1:ndim))) then
-                        if (ibasis==nbasis) then
+                        if (ibasis==nbasis/2) then
                             call stop_all('init_basis_fns','Too many basis functions found.')
                         else
                             ! Have found an allowed wavevector/site.
                             ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
                             call init_basis_fn(tmp_basis_fns(ibasis), kp(1:ndim), 1)
+                            if (system_type==ueg .and. tmp_basis_fns(ibasis)%kinetic > ueg_ecutoff) then
+                                ! Have found a wavevector with too large KE.
+                                ! Discard.
+                                ibasis = ibasis - 1
+                            end if
                         end if
                     end if
                 end do
             end do
         end do
 
-        if (ibasis /= nbasis/2) call stop_all('init_basis_fns','Not enough basis functions found.')
+        select case(system_type)
+        case(hub_k, hub_real)
+            if (ibasis /= nbasis/2) call stop_all('init_basis_fns','Not enough basis functions found.')
+        case(ueg)
+            ! Set nbasis to be the number of basis functions found to be within
+            ! the energy cutoff.
+            ! Yes, I know this could be evaluated as one knows the 'volume'
+            ! occupied by each wavevector, but I just cba.
+            nbasis = 2*ibasis
+        end select
+
+        allocate(basis_fns_ranking(nbasis/2), stat=ierr)
+        call check_allocate('basis_fns_ranking',nbasis/2,ierr)
+        allocate(basis_fns(nbasis), stat=ierr)
+        call check_allocate('basis_fns',nbasis,ierr)
 
         ! Rank by kinetic energy (applies to momentum space formulation only).
         select case(system_type)
-        case(hub_k)
-            call mrgref(tmp_basis_fns(:)%kinetic, basis_fns_ranking)
+        case(hub_k, ueg)
+            call mrgref(tmp_basis_fns(:nbasis/2)%kinetic, basis_fns_ranking)
         case(hub_real)
             forall (i=1:nbasis/2) basis_fns_ranking(i) = i
         end select

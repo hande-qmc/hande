@@ -73,6 +73,8 @@ contains
                 system_type = hub_real
             case('K_SPACE','MOMENTUM_SPACE')
                 system_type = hub_k
+            case('UEG')
+                system_type = ueg
 
             ! System information.
             case('LATTICE')
@@ -94,20 +96,40 @@ contains
                         if (eof) call stop_all('read_input', 'Unexpected end of file reading lattice vectors.')
                     end if
                 end do
+            case('2D')
+                if (ndim > 0) then
+                    call warning('read_input','Dimension already set; ignoring keyword '//w)
+                else
+                    ndim = 2
+                end if
+            case('3D')
+                if (ndim > 0) then
+                    call warning('read_input','Dimension already set; ignoring keyword '//w)
+                else
+                    ndim = 3
+                end if
             case('NEL', 'ELECTRONS')
                 call readi(nel)
-            case('T')
-                call readf(hubt)
-            case('U')
-                call readf(hubu)
             case('TWIST')
                 allocate(ktwist(nitems-item), stat=ierr)
                 call check_allocate('ktwist',nitems-item,ierr)
                 do i = 1, nitems-item
                     call readf(ktwist(i))
                 end do
+
+            ! Hubbard-specific system info
+            case('T')
+                call readf(hubt)
+            case('U')
+                call readf(hubu)
             case('SEPARATE_STRINGS')
                 separate_strings = .true.
+
+            ! UEG-specific system info.
+            case('RS','DENSITY')
+                call readf(r_s)
+            case('ECUTOFF')
+                call readf(ueg_ecutoff)
 
             ! Select symmetry of wavefunction.
             case('MS')
@@ -252,19 +274,59 @@ contains
 
         if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
 
-        if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
+        if (ndim > 3 .or. ndim < 1) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
 
         if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
-        if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
 
-        do ivec = 1, ndim
-            do jvec = ivec+1, ndim
-                if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
-                    call stop_all(this, 'Lattice vectors are not orthogonal.')
-                end if
+        ! System specific checking.
+        ! 1. Hubbard or UEG?
+        select case(system_type)
+        case(hub_k, hub_real)
+            if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
+
+            do ivec = 1, ndim
+                do jvec = ivec+1, ndim
+                    if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
+                        call stop_all(this, 'Lattice vectors are not orthogonal.')
+                    end if
+                end do
             end do
-        end do
+        case(ueg)
+            if (ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
+        end select
 
+        ! 2. Momentum space or real space?
+        select case(system_type)
+        case(hub_k, ueg)
+            ! If the FINITE_CLUSTER keyword was detected then make sure that 
+            ! we are doing a calculation in real-space. If we're not then
+            ! unset finite cluster,tell the user and carry on.
+            ! Similarly for separate_strings.
+            if (finite_cluster .and. parent) call warning(this,'FINITE_CLUSTER keyword only valid for hubbard&
+                                      & calculations in real-space: ignoring keyword')
+            if (separate_strings .and. parent) call warning(this,'SEPARATE_STRINGS keyword only valid for hubbard&
+                                      & calculations in real-space: ignoring keyword')
+            finite_cluster = .false.
+            separate_strings = .false.
+        case(hub_real)
+            if (any(abs(ktwist) > 0.0_p) .and. parent) call warning(this,'TWIST keyword only valid for&
+                                      & momentum-space calculations: ignoring keyword')
+            ktwist = 0.0_p
+        end select
+
+        if (separate_strings) then
+            if (system_type/=hub_real) then
+                separate_strings = .false.
+                if (parent) call warning(this,'SEPARATE_STRINGS keyword only valid for hubbard&
+                                      & calculations in real-space: ignoring keyword')
+            else if (ndim /= 1) then
+                separate_strings = .false.
+                if (parent) call warning(this,'SEPARATE_STRINGS keyword only valid for 1D&
+                                      & calculations in real-space: ignoring keyword')
+            end if
+        end if
+        
+        ! Calculation specific checking.
         if (doing_calc(lanczos_diag)) then
             if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
@@ -284,30 +346,6 @@ contains
             if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
         end if
          
-        ! If the FINITE_CLUSTER keyword was detected then make sure that 
-        ! we are doing a calculation in real-space. If we're not then
-        ! unset finite cluster,tell the user and carry on
-        if(system_type .ne. hub_real) then
-            if (finite_cluster .and. parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
-                                      & calculations in real-space: ignoring keyword')
-            if (separate_strings .and. parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
-                                      & calculations in real-space: ignoring keyword')
-            finite_cluster = .false.
-            separate_strings = .false.
-        end if
-
-        if (separate_strings) then
-            if (system_type.ne.hub_real) then
-                separate_strings = .false.
-                if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
-                                      & calculations in real-space: ignoring keyword')
-            else if (ndim /= 1) then
-                separate_strings = .false.
-                if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for 1D&
-                                      & calculations in real-space: ignoring keyword')
-            end if
-        end if
-        
         if (parent) write (6,'(/,1X,13("-"),/)') 
 
     end subroutine check_input
@@ -351,6 +389,8 @@ contains
             end if
             call mpi_bcast(ktwist, ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
+        call mpi_bcast(r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ueg_ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
