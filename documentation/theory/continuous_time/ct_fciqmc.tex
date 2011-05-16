@@ -1,6 +1,7 @@
 \documentclass[a4paper, 11pt]{article}
 
 \usepackage{amsmath}
+\usepackage{mathtools}
 \usepackage{enumerate}
 
 \newcommand{\bi}{\mathbf{i}}
@@ -18,8 +19,16 @@
 \begin{document}
 
 \title{Continuous-Time FCIQMC}
+\author{J.S. Spencer\\
+  Departments of Physics and Materials\\
+  Imperial College London 
+  \and W.M.C. Foulkes\\
+  Department of Physics
+  Imperial College London}
 
 \maketitle
+
+\section*{FCIQMC as a Rate Process}
 
 The psip population in FCIQMC is evolved in imaginary time using a series of time steps, where each time step is of length $\tau$.  $\tau$ is set to be small to ensure convergence onto the lowest eigenstate of the Hamiltonian and so smaller values have to be used as the system size increases due to (typically) a larger spread in eigenvalues.  A consequence of this is that the vast majority of attempted spawning steps are rejected, thus wasting a lot of CPU time.  Here we describe how to perform FCIQMC without a time step by `jumping' to the next spawning event.
 
@@ -42,21 +51,23 @@ and so the diffusion equation can be written as
 \end{equation}
 Consider a psip that is on determinant $\bj$.  The probability that this psip spawns a child onto determinant $\bi$ in time $\Delta t$ is $R_{\bi\bj}\Delta t$.  Hence $R_{\bi\bj}$ is the \emph{rate} at which a psip on determinant $\bj$ spawns children on determinant $\bi$.  A psip on determinant $\bj$ may spawn children on all other determinants $\{\bi\}$ (where $\{\bi\}$ includes $\bj$, i.e.\ spawning onto the same determinant is permitted), with each spawning connection occurring at its own rate.
 
-What is the probability, $p_\bi$, that the first child spawned appears on determinant $\bi$ at time $t=n\Delta t$?
+What is the probability, $p_\bi$, that the first child spawned appears
+on determinant $\bi$ during the time step starting at time $t=n\Delta t$?
 \begin{align}
 \begin{split}
 p_\bi =& 
-\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob. \emph{no} children spawned in 1st time step}}}
-\quad\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob. \emph{no} children spawned in 2nd time step}}}
+\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in 1st time step}}}
+\quad\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in 2nd time step}}}
 \cdots \\
-& \times \underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob. \emph{no} children spawned in $(n-1)$-th time step}}} 
-\quad\underbrace{\prod_{\bk\neq\bi} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob. \emph{no} children spawned on determinants $\bk\neq\bi$ in $n$-th time step}}} \\
-& \times \underbrace{R_{\bi\bj}\Delta t}_{\textrm{\parbox{4cm}{prob. child spawned on determinant $\bi$ in $n$-th time step}}}
+& \times \underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in $n$-th time step}}} 
+\quad\times \underbrace{R_{\bi\bj}\Delta
+  t}_{\textrm{\parbox{4cm}{\rule{0mm}{5.5mm} prob.\ child spawned on determinant $\bi$ in $(n+1)$-th time step}}}
 \end{split} \\
-\hphantom{p}=& \prod_{\bk} (1-R_{\bk\bj}\Delta t)^n \left(\frac{R_{\bi\bj}\Delta t}{1-R_{\bi\bj}\Delta t}\right) \\
-\hphantom{p}\approx& \prod_{\bk} \left(1-\frac{R_{\bk\bj}t}{n}\right)^n R_{\bi\bj}\Delta t
+\hphantom{p}=& \prod_{\bk} (1-R_{\bk\bj}\Delta t)^n R_{\bi\bj}\Delta t \\
+\hphantom{p}=& \prod_{\bk} 
+\left(1-\frac{R_{\bk\bj}t}{n}\right)^n R_{\bi\bj}\Delta t .
 \end{align}
-where the last line holds for sufficiently small $\Delta t$.  Using the limit definition of the exponential function, 
+Using the limit definition of the exponential function, 
 \begin{equation}
 e^x = \lim_{n\to\infty} \left(1+\frac{x}{n}\right)^n,
 \end{equation}
@@ -106,9 +117,9 @@ However, each spawning event happens at different times for each psip.  How can 
 
 \begin{itemize}
 \item Choose an annihilation time step, $t_a$.  Since annihilation is costly, it might be sensible to make this reasonably large.  However, if it is too large then the memory demands are that much greater and (more importantly) the noise in the simulation increases dramatically.  A time step such that around $40-50\%$ of psips spawn between annihilation barriers might be a good value.
-\item Advance all walkers, spawning event by spawning event, until the next event for that psip happens \emph{after} $t_a$.  As soon as this happens, advance the psip to time $t_a$ but do not carry out the spawning event which happens after $t_a$.  Note: we also have to advance all children to the annihilation barrier (and the grandchildren and great-grandchildren etc.), which leads to an increase in memory as $t_a$ increases.  If it is easy to annihilate pairs of psips during the time evolution (e.g.\ if a psip spawns a child of the opposite sign on its own determinant) then do so.
+\item Advance all psips, spawning event by spawning event, until the next event for that psip happens \emph{after} $t_a$.  As soon as this happens, advance the psip to time $t_a$ but do not carry out the spawning event which happens after $t_a$.  Note: we also have to advance all children to the annihilation barrier (and the grandchildren and great-grandchildren etc.), which leads to an increase in memory as $t_a$ increases.  If it is easy to annihilate pairs of psips during the time evolution (e.g.\ if a psip spawns a child of the opposite sign on its own determinant) then do so.
 \item Once all psips in the simulation have reached $t_a$, annihilation is performed in exactly the same fashion as in standard FCIQMC.
-\item After annihilation, start advancing all remaining walkers to the next annihilation barrier at time $2t_a$.
+\item After annihilation, start advancing all remaining psips to the next annihilation barrier at time $2t_a$.
 \end{itemize}
 
 Why does introducing annihilation barriers work?  First, consider a psip on determinant $\bj$ at time $t<t_a$.  If we ignore the annihilation barrier for a moment, then the probability of the next spawning event taking place between times $t^\prime$ and $t^\prime+dt^\prime$, where $t^\prime$ is after the annihilation barrier (i.e.\ $t^\prime>t_a$) is simply
@@ -125,6 +136,278 @@ With the barrier present, the probability that the next spawning event occurs du
 &= e^{-R_\bj(t^\prime-t)} dt^\prime.
 \end{align}
 Thus the introduction of the annihilation barrier has no effect on the statistics of the sequence of spawning events!
+
+\section*{Continuous-Time FCIQMC with Model Rates}
+
+For simple Hamiltonians such as the Hubbard model it may appear
+practical to evaluate all of the non-zero spawning rates $R_{\bi\bj}$ of
+a psip on configuration $\bj$ and hence the total rate $R_{\bj} =
+\sum_{\bi} R_{\bi\bj}$ at which that psip spawns progeny. In reality,
+however, even for the Hubbard model, although the non-zero off-diagonal
+rates are all identical in magnitude, evaluating the total number of
+non-zero off-diagonal matrix elements quickly is problematic.  In
+interesting cases, the ct-fciqmc algorithm described above is far too
+slow: the connectivity of the space of configurations is so high and the
+number of off-diagonal matrix elements so large that we cannot waste
+time checking them all.
+
+\subsection*{Algorithm described in terms of model rates}
+
+We can circumvent this problem by using simple model rates
+$\tilde{R}_{\bi\bj}$ in place of the exact rates. For the time being (it
+may be possible to get around this limitation) we assume that the model
+rate $\tilde{R}_{\bi\bj}$ at which a psip on $\bj$ spawns progeny on
+$\bi$ is always greater than or equal to the exact rate:
+\begin{equation*}
+\tilde{R}_{\bi\bj} \geq R_{\bi\bj} .
+\end{equation*}
+This, of course, requires the model rate to be non-zero whenever the
+exact rate is non-zero. If a ct-fciqmc psip is at configuration $\bj$ at
+time $t$, the spawning algorithm is as follows:
+\begin{enumerate}
+\item Work out the model rates $\tilde{R}_{\bi\bj}$ for spawning at
+  every configuration $\bi$ connected (in the model) to configuration
+  $\bj$. Since $\tilde{R}_{\bi\bj} \geq R_{\bi\bj} \; \forall \bi, \bj$,
+  every configuration $\bi$ connected to $\bj$ in the real system is
+  also connected in the model.
+\item Evaluate the total model spawning rate from configuration $\bj$:
+\begin{equation*}
+  \tilde{R}_{\bj} = \sum_{\bi} \tilde{R}_{\bi\bj} .
+\end{equation*}
+\item Pick a spawning time $t'$ from the model Poisson distribution:
+\begin{equation*}
+  \tilde{R}_{\bj} e^{-\tilde{R}_{\bj}(t'-t)} .
+\end{equation*}
+\item Pick a spawning site $\bi$ from the probability distribution
+\begin{equation*}
+  \tilde{p}_{\bi} = \frac{\tilde{R}_{\bi\bj}}{\tilde{R}_{\bj}} .
+\end{equation*}
+\item \emph{Accept} the spawning event with probability
+\begin{equation*}
+  \frac{R_{\bi\bj}}{\tilde{R}_{\bi\bj}} .
+\end{equation*}
+(Since $\tilde{R}_{\bi\bj} \geq R_{\bi\bj}\;\forall \bi,\bj$, the
+acceptance probability is always $\leq 1$.)  If the spawning event is
+\emph{rejected}, advance the simulation clock to $t'$ but do not spawn.
+\end{enumerate}
+The algorithm is identical to the standard ct-fciqmc algorithm as far as
+step 4, except that the exact rates are replaced by the model rates. The
+rejection step described in 5 corrects for this replacement. The
+calculation of $\tilde{R}_{\bj}$ requires all of the \emph{model}
+spawning rates from $\bj$, but the only \emph{exact} rate required when
+a psip at $\bj$ attempts to spawn a child at $\bi$ is $R_{\bi\bj}$.
+
+Taking the rejection step into account, the probability that the first
+spawning event attempted by the psip on configuration $\bj$ at time
+$t$ creates a new psip on configuration $\bi$ in the time interval
+$[t',t'+dt']$ is
+\begin{align*}
+  \MoveEqLeft (\text{prob.\ spawning on $\bi$ attempted}) \times
+  (\text{prob.\ spawning on $\bi$ accepted}) \\
+  & = \left ( \tilde{R}_{\bj} e^{-\tilde{R}_{\bj}(t' - t)} dt' \; \times \;
+  \frac{\tilde{R}_{\bi\bj}}{\tilde{R}_{\bj}} \right ) \; \times \; 
+  \left ( \frac{R_{\bi\bj}}{\tilde{R}_{\bi\bj}} \right ) \\
+  & = R_{\bi\bj} e^{-\tilde{R}_{\bj}(t-t')} dt' .
+\end{align*}
+At first sight this result appears wrong, since the model total spawning
+rate $\tilde{R}_{\bj}$ appears in the exponent instead of the exact
+total spawning rate $R_{\bj}$. Progeny appear on sites $\bi$ with the
+correct \emph{relative} rates $R_{\bi\bj}$ but the wrong total rate. We
+will come back to this point later, explaining why this is in fact
+exactly what we want to happen.
+
+The \emph{total} probability that a spawning event is attempted in the
+interval $[t',t'+dt']$ and rejected is
+\begin{align*}
+  \MoveEqLeft \sum_{\bi} (\text{prob.\ spawning on $\bi$ attempted}) \times
+  (\text{prob.\ spawning on $\bi$ rejected}) \\
+  & = \sum_{\bi} \left (  \tilde{R}_{\bi\bj} e^{-\tilde{R}_{\bj}(t'-t)} dt' 
+  \right ) \times \left ( 1 -
+    \frac{R_{\bi\bj}}{\tilde{R}_{\bi\bj}} \right ) \\
+  & = \left ( e^{-\tilde{R}_{\bj}(t'-t)} dt'\right ) \times
+  \sum_{\bi} \left ( \tilde{R}_{\bi\bj} - R_{\bi\bj} \right ) \\
+  & = \left ( \tilde{R}_{\bj} - R_{\bj} \right ) e^{-\tilde{R}_{\bj}(t'-t)}
+  dt' .
+\end{align*}
+
+\subsection*{Algorithm described in terms of null events}
+
+To understand why this algorithm works, it helps to change point of view
+slightly. Instead of thinking in terms of model rates
+$\tilde{R}_{\bi\bj}$, consider instead a ct-fciqmc algorithm that uses
+the \emph{exact} rates $R_{\bi\bj}$ but includes the possibility of
+additional \emph{null} spawning events, which occur at rate
+$\tilde{R}_{\bj} - R_{\bj}$. If a null spawning event takes place, the
+simulation clock is advanced to the spawning time but no new psips are
+created, just as if a spawning attempt has been rejected in the
+model-rates algorithm.
+
+The total rate of spawning, including null events, is
+\begin{equation*}
+  \left ( \sum_{\bi} R_{\bi\bj} \right ) 
+  + \left ( \tilde{R}_{\bj} - R_{\bj} \right ) 
+  = R_{\bj} + \left ( \tilde{R}_{\bj} - R_{\bj} \right ) = \tilde{R}_{\bj}.
+\end{equation*}
+The probability that the first spawning event takes place in the time
+interval $[t',t'+dt']$ and produces a psip on configuration $\bi$ is
+\begin{equation*}
+  \tilde{R}_{\bj} e^{-\tilde{R}_{\bj}(t'-t)} dt' \times
+  \frac{R_{\bi\bj}}{\tilde{R}_{\bj}} = R_{\bi\bj}
+  e^{-\tilde{R}_{\bj}(t'-t)} dt',
+\end{equation*}
+and the probability that the first spawning event takes place in the
+time interval $[t',t'+dt']$ and does nothing except advance the clock
+(i.e., is a null event) is
+\begin{equation*}
+  \tilde{R}_{\bj} e^{-\tilde{R}_{\bj}(t'-t)} dt' \times 
+  \frac{\tilde{R}_{\bj} - R_{\bj}}{\tilde{R}_{\bj}} =
+  \left ( \tilde{R}_{\bj} - R_{\bj} \right ) e^{-\tilde{R}_{\bj}(t'-t)}
+  dt' .
+\end{equation*}
+These rates are exactly as in the model-rates approach, so the two
+algorithms are equivalent.  I find the formulation in terms of exact
+rates and null spawning the more natural of the two and will use it from
+now on.
+
+\subsection*{Why does the model-rates/null-events algorithm work?}
+
+Suppose that there is a psip on configuration $\bj$ at time $t$.  As
+explained above, the probability that the first spawning event attempted
+by this psip creates a new psip on configuration $\bi$ in the time
+interval $[t',t'+dt']$ is
+\begin{equation*}
+R_{\bi\bj} e^{-\tilde{R}_{\bj}(t'-t)} dt' .
+\end{equation*}
+In the version of the ct-fciqmc algorithm using exact rates the
+corresponding probability would be
+\begin{equation*}
+R_{\bi\bj} e^{-R_{\bj}(t'-t)} dt' ,
+\end{equation*}
+with the exact total spawning rate $R_{\bj}$ appearing in the exponent
+in place of the larger model rater $\tilde{R}_{\bj}$. The null-events
+algorithm seems to be wrong.
+
+But hold on. The null-events algorithm also includes failed or null
+spawning events, which do not appear in the exact algorithm. Thus, to
+compare the two algorithms properly, we must ask a slightly different
+question: what is the probability that the first \emph{non-null}
+spawning event attempted by the psip at $\bj$ creates a new psip on
+configuration $\bi$ in the time interval $[t',t'+dt']$? This successful
+spawning event may have been preceded by any number of null events.
+
+Consider, for example, the possibility that a null event might occur in
+the interval $[t_1,t_1+dt_1]$, followed by the successful spawning of a
+new psip on $\bi$ in the interval $[t',t'+dt']$. The probability of this
+happening is
+\begin{align*}
+  \MoveEqLeft 
+  ( \tilde{R}_{\bj} - R_{\bj} ) e^{-\tilde{R}_{\bj}(t_1 -
+    t)} dt_1 \; \times \;
+    R_{\bi\bj} e^{-\tilde{R}_{\bj}(t' - t_1)} dt' \\
+    & = 
+    ( R_{\bi\bj} \, dt' ) ( 
+      \tilde{R}_{\bj} - R_{\bj} ) e^{-\tilde{R}_{\bj}(t'-t)} dt_1.
+\end{align*}
+Since the null event could occur at any time $t_1$ between $t$ and $t'$,
+the total probability that a walker is spawned on $\bi$ after a single
+null event is
+\begin{align*}
+\MoveEqLeft ( R_{\bi\bj} \, dt' ) 
+( \tilde{R}_{\bj} - R_{\bj} ) e^{-\tilde{R}_{\bj}(t'-t)}
+\int_{t}^{t'} dt_1 \\
+& = ( R_{\bi\bj} \, dt' )
+( \tilde{R}_{\bj} - R_{\bj} ) ( t'-t )
+ e^{-\tilde{R}_{\bj}(t'-t)} .
+\end{align*}
+
+Now consider the more general case in which $n$ null events occur at
+times $t_1 \leq t_2 \leq t_3 \ldots \leq t_n$, followed by the
+successful spawning of a new walker on $\bi$ at time $t'$. The
+probability of this happening is
+\begin{align*}
+\MoveEqLeft \int_{t}^{t'} dt_1 (\tilde{R}_{\bj} - R_{\bj})
+e^{-\tilde{R}_{\bj}(t_1 - t)} \int_{t_1}^{t'} dt_2
+(\tilde{R}_{\bj} - R_{\bj}) e^{-\tilde{R}_{\bj}(t_2 - t_1)} \\
+& \ldots \int_{t_{n-1}}^{t'} dt_n
+(\tilde{R}_{\bj} - R_{\bj}) e^{-\tilde{R}_{\bj}(t_n - t_{n-1})}
+\times R_{\bi\bj} e^{-\tilde{R}_{\bj}(t'-t_n)} dt' \\
+& = ( R_{\bi\bj} \, dt' ) ( \tilde{R}_{\bj} - R_{\bj}
+)^{n} e^{-\tilde{R}_{\bj}(t'-t)} \int_{t \leq t_1 \leq t_2 \ldots \leq
+  t_n \leq t'} dt_1 dt_2 \ldots dt_n.
+\end{align*}
+The $t_1 \leq t_2 \leq \ldots \leq t_n$ ordering of the time variables
+in the $n$-dimensional integral is only one of $n!$ possible orderings,
+each of which would yield the same result. Moreover, if the integrals
+corresponding to all $n!$ possible orderings were added together, one
+would obtain an integral over the $n$-dimensional hyper-cube $t \leq t_1
+\leq t'$, $t \leq t_2 \leq t'$, $\ldots$, $t \leq t_n \leq t'$.  Since
+the volume of the hyper-cube is $(t'-t)^{n}$, the time-ordered integral
+must yield $(t'-t)^n/n!$. The probability that a new walker is
+successfully spawned on $\bi$ in the time interval $[t',t'+dt']$ after
+$n$ failed spawning events is thus
+\begin{equation*}
+(R_{\bi\bj}\,dt')  \frac{(\tilde{R}_{\bj} - R_{\bj})^n (t'-t)^n}{n!} 
+e^{-\tilde{R}_{\bj}(t'-t)} .
+\end{equation*}
+The total probability that the first successful spawning event creates a
+new psip on $\bi$ in the time interval $[t',t'+dt']$ (regardless of how
+many failed spawning attempts precede the success) is obtained by
+summing this result over all values of $n$ from zero to infinity. This
+yields
+\begin{align*}
+\MoveEqLeft (R_{\bi\bj}\,dt') e^{-\tilde{R}_{\bj}(t'-t)} \sum_{n=0}^{\infty}
+\frac{[(\tilde{R}_{\bj} - R_{\bj})(t'-t)]^n}{n!} \\
+& = (R_{\bi\bj}\,dt') e^{-\tilde{R}_{\bj}(t'-t)}
+e^{(\tilde{R}_{\bj}-R_{\bj})(t'-t)} \\
+& = R_{\bi\bj} e^{-R_{\bj}(t'-t)} dt' .
+\end{align*}
+The probability that the first \emph{successful} spawning event creates
+a new psip on configuration $\bi$ in the time interval $[t',t'+dt']$ is
+therefore just $R_{\bi\bj} e^{-R_{\bj}(t'-t)} dt'$, exactly as in the
+exact algorithm. As long as null events are ignored, the
+model-rates/null-event algorithm yields exactly the right spawning
+dynamics!
+
+A much easier route to the same result can be found by going back to the
+argument on page 2, which was used to derive the Poisson distribution of
+spawning times for the \emph{exact} ct-fciqmc algorithm. Splitting the
+evolution into time steps $\Delta t$, we asked: ``What is the
+probability, $p_{\bi}$, that the first child spawned appears on
+determinant $\bi$ during the time step starting at time $t' = t +
+n\Delta t$?''  The answer was:
+\begin{align*}
+\begin{split}
+p_\bi =& 
+\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta
+  t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in 1st
+      time step}}} \times
+\quad\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in 2nd time step}}}
+\cdots \\
+& \times \underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in $n$-th time step}}} 
+\quad \times \underbrace{R_{\bi\bj}\Delta t}_{\textrm{\parbox{4cm}{\rule{0mm}{5.5mm}prob.\ child spawned on determinant $\bi$ in $(n+1)$-th time step}}}
+\end{split} \\
+\hphantom{p}=& \prod_{\bk} (1-R_{\bk\bj}\Delta t)^n R_{\bi\bj}\Delta
+t \\
+\hphantom{p}\approx& \prod_{\bk}
+\left(1-\frac{R_{\bk\bj}(t'-t)}{n}\right)^n 
+R_{\bi\bj}\Delta t \\
+\hphantom{p}\approx&  \exp\left(-\sum_\bk R_{\bk\bj}(t'-t)\right)
+R_{\bi\bj}\Delta t. \\
+\hphantom{p}=& \exp\left(- R_{\bj}(t'-t)\right)
+R_{\bi\bj}\Delta t,
+\end{align*}
+where the last few lines require $\Delta t$ sufficiently small and $n$
+sufficiently large. To deal with the null-events algorithm, we simply
+imagine adding a new process, the null-spawning process, with rate
+$\tilde{R} - R$. The clever part is that the addition of the
+null-spawning process has \emph{absolutely no effect} on the argument
+above: the expression for the probability that \emph{no} children are
+spawned in a given time step is unaltered, as is the probability that a
+child \emph{is} spawned on configuration $\bi$ in the final time
+step. Seen from this viewpoint, it is pretty obvious that the
+null-events algorithm can only produce the same spawning dynamics as the
+exact ct-fciqmc algorithm.
+
 
 \appendix
 \section{Evaluation of $R_{\bi\bj}$}
