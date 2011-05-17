@@ -56,7 +56,9 @@ on determinant $\bi$ during the time step starting at time $t=n\Delta t$?
 \begin{align}
 \begin{split}
 p_\bi =& 
-\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in 1st time step}}}
+\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta
+  t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in 1st
+      time step}}} \times
 \quad\underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in 2nd time step}}}
 \cdots \\
 & \times \underbrace{\prod_{\bk} (1-R_{\bk\bj}\Delta t)}_{\textrm{\parbox{4cm}{prob.\ \emph{no} children spawned in $n$-th time step}}} 
@@ -288,12 +290,12 @@ in place of the larger model rater $\tilde{R}_{\bj}$. The null-events
 algorithm seems to be wrong.
 
 But hold on. The null-events algorithm also includes failed or null
-spawning events, which do not appear in the exact algorithm. Thus, to
-compare the two algorithms properly, we must ask a slightly different
-question: what is the probability that the first \emph{non-null}
-spawning event attempted by the psip at $\bj$ creates a new psip on
-configuration $\bi$ in the time interval $[t',t'+dt']$? This successful
-spawning event may have been preceded by any number of null events.
+spawning events, which do not appear in the exact algorithm. To compare
+the two algorithms properly, we must ask a slightly different question:
+what is the probability that the first \emph{non-null} spawning event
+attempted by the psip at $\bj$ creates a new psip on configuration $\bi$
+in the time interval $[t',t'+dt']$? This successful spawning event may
+have been preceded by any number of null events.
 
 Consider, for example, the possibility that a null event might occur in
 the interval $[t_1,t_1+dt_1]$, followed by the successful spawning of a
