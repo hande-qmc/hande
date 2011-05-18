@@ -22,7 +22,7 @@ contains
         ! Construct the symmetry tables.
 
         use basis, only: nbasis, basis_fns, write_basis_fn
-        use system, only: ndim, system_type, hub_real
+        use system, only: ndim, system_type, hub_real, hub_k
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
@@ -33,11 +33,19 @@ contains
         integer :: ksum(ndim)
         character(4) :: fmt1
 
-        if (system_type == hub_real) then
+        select case(system_type)
+        case(hub_real)
 
+            ! Symmetry currently not implemented.
             nsym = 1
 
-        else
+        case(hub_k)
+
+            ! Each wavevector corresponds to its own irreducible representation.
+            ! The maximum system size considered will be quite small (ie <200)
+            ! and the sum of any two wavevectors is another wavevector in the
+            ! basis (up to a primitive reciprocal lattice vector).
+            ! It is thus feasible to store the nsym^2 product table.
 
             nsym = nbasis/2
             allocate(sym_table(nsym, nsym), stat=ierr)
@@ -95,7 +103,7 @@ contains
                 write (6,'()')
             end if
 
-        end if
+        end select
 
     end subroutine init_symmetry
 
