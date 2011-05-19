@@ -2,6 +2,9 @@ module symmetry
 
 implicit none
 
+! Stored symmetry information *only* for the Hubbard model.  UEG symmetry is
+! done on the fly due to the size of the basis---see ueg module.
+
 ! Number of symmetries.
 ! Currently only crystal momentum is implemented.
 integer :: nsym
@@ -22,12 +25,13 @@ contains
         ! Construct the symmetry tables.
 
         use basis, only: nbasis, basis_fns, write_basis_fn
-        use system, only: ndim, system_type, hub_real, hub_k
+        use system, only: ndim, system_type, hub_real, hub_k, ueg
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
         use checking, only: check_allocate
         use errors, only: stop_all
+        use ueg_system, only: init_ueg_indexing
 
         integer :: i, j, k, ierr
         integer :: ksum(ndim)
@@ -103,6 +107,22 @@ contains
                 write (6,'()')
             end if
 
+        case(ueg)
+
+            ! Trickier.
+            ! No primitive reciprocal lattice and thus a secondary basis eight
+            ! times larger than the basis used is required to span all
+            ! possible k_i+k_j combinations.  As we wish to do calculations on
+            ! basis sets containing 1000s of wavevectors, it is not feasible to
+            ! store the product table as we do for the Hubbard model.
+
+            ! Instead, we have a function which produces an index for a given
+            ! k-point and a mapping array which converts that index to the index
+            ! of the energy-ordered basis set.  The symmetry is then done on the
+            ! fly.
+
+            call init_ueg_indexing()
+
         end select
 
     end subroutine init_symmetry
@@ -111,6 +131,7 @@ contains
 
         ! Clean up after symmetry.
 
+        use ueg_system, only: end_ueg_indexing
         use checking, only: check_deallocate
 
         integer :: ierr
@@ -123,6 +144,8 @@ contains
             deallocate(inv_sym, stat=ierr)
             call check_deallocate('inv_sym',ierr)
         end if
+
+        call end_ueg_indexing()
 
     end subroutine end_symmetry
 
