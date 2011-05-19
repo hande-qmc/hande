@@ -251,7 +251,7 @@ contains
             ! line/square/cube which encloses all wavevectors within the cutoff.
             nmax = 0
             forall (i=1:ndim) nmax(i) = ceiling(ueg_ecutoff*box_length(1)/(4*pi))
-            nbasis = (2*nmax(1)+1)**ndim
+            nbasis = 2*(2*nmax(1)+1)**ndim
         end select
 
         allocate(tmp_basis_fns(nbasis/2), stat=ierr)
