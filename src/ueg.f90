@@ -46,7 +46,7 @@ contains
 
         integer :: ierr, i, N_kx
 
-        ueg_basis_max = ceiling(ueg_ecutoff*box_length(1)/(4*pi))
+        ueg_basis_max = ceiling(sqrt(2*ueg_ecutoff))
 
         N_kx = 2*ueg_basis_max+1
 

@@ -250,7 +250,7 @@ contains
             ! We actually generate all wavevectors in the smallest
             ! line/square/cube which encloses all wavevectors within the cutoff.
             nmax = 0
-            forall (i=1:ndim) nmax(i) = ceiling(ueg_ecutoff*box_length(1)/(4*pi))
+            forall (i=1:ndim) nmax(i) = ceiling(sqrt(2*ueg_ecutoff))
             nbasis = 2*(2*nmax(1)+1)**ndim
         end select
 
@@ -273,9 +273,12 @@ contains
                             ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
                             call init_basis_fn(tmp_basis_fns(ibasis), kp(1:ndim), 1)
-                            if (system_type==ueg .and. tmp_basis_fns(ibasis)%kinetic > ueg_ecutoff) then
+                            if (system_type==ueg .and. real(dot_product(kp,kp),p)/2 > ueg_ecutoff) then
                                 ! Have found a wavevector with too large KE.
                                 ! Discard.
+                                ! Note that we don't use the calculated kinetic
+                                ! energy as it's in a.u. (ueg_ecutoff is in
+                                ! scaled units) and includes any twist.
                                 ibasis = ibasis - 1
                             end if
                         end if

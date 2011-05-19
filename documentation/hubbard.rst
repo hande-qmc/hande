@@ -365,6 +365,12 @@ These options are only relevant for calculations on the uniform electron gas.
     Default: 3.
 
     Set the maximum kinetic energy of the orbitals included in the basis set.
+
+    Note that this is in scaled units of :math:`(2\pi/L)^2`, where :math:`L` is the
+    dimension of simulation cell defined by *nel* and *rs* and is compared to
+    the kinetic energy of each plane-wave without the twist angle included.  In
+    this way **ecutoff** can be kept constant when **twist** is varied and the
+    basis set used will remain consistent.
 **rs** *rs*
     Synonym for **density**.
 

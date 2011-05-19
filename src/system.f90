@@ -37,8 +37,7 @@ integer :: nsites
 ! Electron density (UEG only)
 real(p) :: r_s = 1.0_p
 ! Energy cutoff for basis (UEG only).
-! This is in provided in scaled units of 2*pi/L and converted in init_system to
-! a.u.
+! This is in provided in scaled units of (2*pi/L)^2.
 real(p) :: ueg_ecutoff = 3.0_p
 
 ! Lattice vectors of crystal cell. (:,i) is the i-th vector.
@@ -116,9 +115,6 @@ contains
             end select
 
             box_length = lattice(1,1)
-
-            ! Scale the energy cutoff.
-            ueg_ecutoff = ueg_ecutoff*4*pi/box_length(1)
 
         case default
 
