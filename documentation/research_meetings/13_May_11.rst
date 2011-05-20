@@ -1,0 +1,20 @@
+6th May 2011
+============
+
+Progress
+--------
+
+* Bug in the separate strings code fixed.
+* Doc branch created and user documentation improved.  In principle existing comments in the code could be easily transformed into doxygen format and included with the sphinx output.
+* Progress has been made on continuous time optimisation, though there is still some work to do.
+
+Discussion
+----------
+
+* We started discussing model rates for a continuous time UEG implementation.  This quickly turned into a discussion on how using model rates actually worked, which revealed we didn't know how to put what we'd done into a mathematical framework, even for the Hubbard model.  Clearly we need to be able to understand this before we can figure out the approach to use for the UEG.
+
+Todo
+----
+
+* See list from 6th May.
+* Formulation of the continuous time algorithm with model rates.
