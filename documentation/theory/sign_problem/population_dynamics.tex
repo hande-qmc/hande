@@ -1,6 +1,7 @@
 \documentclass[a4paper, 11pt]{article}
 
 \usepackage{amsmath}
+\usepackage{amsfonts}
 
 \newcommand{\dd}[3][\null]{\frac{\mathrm{d}^{#1}{#2}}{\mathrm{d}{#3}^{#1}}}
 \newcommand{\hyperF}[2]{{_0}F_1\left(;#1;#2\right)}
@@ -44,9 +45,9 @@ and
 \end{align}
 it follows that non-trivial solutions satisfy
 \begin{equation}
-z \dd[2]{u}{z} + \left(1-\frac{q}{2b}\right)\dd{u}{z} - u = 0.
+z \dd[2]{u}{z} + \left(1-\frac{q}{2b}\right)\dd{u}{z} - u = 0. \label{eqn:hyperf_ode}
 \end{equation}
-This is the differential equation for the confluent hypergeometric limit function, ${_0}F_1$, and has the general solution
+This is the differential equation for the confluent hypergeometric limit function, ${_0}F_1$, and, assuming $\frac{q}{2b}\notin\mathbb{Z}$, has the general solution
 \begin{equation}
 u(z) = c_0\cdot\hyperF{1-\frac{q}{2b}}{z} + c_1 z^{q/2b}\cdot\hyperF{1+\frac{q}{2b}}{z}.
 \end{equation}
@@ -69,7 +70,7 @@ and hence
 
 Thus the solution to Eq.~\ref{eqn:dynamics} is 
 \begin{equation}
-n(z) = \frac{2bz}{u(z)}\dd{u}{z}
+n(t) = -\frac{2bz}{ru(z)}\dd{u}{z}
 \end{equation}
 where
 \begin{gather}
@@ -80,6 +81,8 @@ u(z) = c_0\cdot\hyperF{1-\frac{q}{2b}}{z} + c_1 z^{q/2b}\cdot\hyperF{1+\frac{q}{
 \dd{u}{z} = &\frac{2bc_0}{2b-q}\hyperF{2-\frac{q}{2b}}{z} + \frac{q c_1 z^{q/2b-1}}{2b}\hyperF{1+\frac{q}{2b}}{z} \\ &+ \frac{2bc_1z^{q/2b}}{2b+q}\hyperF{2+\frac{q}{2b}}{z}.
 \end{split}
 \end{gather}
-As we are solving a first-order ODE, we can scale $c_1$ and $c_2$ such that $c_2=1$.  $c_1$ can then be determined by applying the constraint that $n(t=0)=n_0$, where $n_0$ is the initial population on the determinant at the start of the simulation.
+As we are solving a first-order ODE, there is only one constant of integration and so without loss of generality we can let $c_1 \rightarrow c_1/c_2$.  $c_1$ can then be determined by applying the constraint that $n(t=0)=n_0$, where $n_0$ is the initial population on the determinant at the start of the simulation.
+
+Note that $\hyperF{p}{x}$ is not defined for $p\in\mathbb{Z}^{-}$, in which case the linearly independent solution of Eq.~\ref{eqn:hyperf_ode} is a Bessel function of the second kind.  One can further show that the Wronskian formed from the general solution is zero in such cases.
 
 \end{document}
