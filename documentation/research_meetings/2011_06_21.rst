@@ -1,0 +1,33 @@
+21st June 2011
+==============
+
+Progress
+--------
+
+* Work continues on the sign problem paper.  It is nearing completion.
+
+Discussion
+----------
+
+* Sign problem paper
+    + Does the V matrix have any physical meaning?  At least in the 1D Hubbard case, it seems to correspond to a two-spin hard-core Bosonic model.  We note that the V matrices in real and momentum space are not equivalent.
+    + The severity of the sign problem is quite subtle and really depends upon the point at which annihilation becomes efficient enough to suppress the growth in the :math:`n^{+} + n^{-}` signal.  Matthew observed that if the basis set contains the eigenvector of the V matrix, then annihilation will kick in extremely quickly.
+    + A CCMC calculation works in a much larger effective space than the equivalent CIQMC calculation at the same excitation truncation level.  It thus is reasonable to suppose that a greater number of psips (i.e. to reach a high enough concentration) is required in order for annihilation to become important enough to stabilise growth in the :math:`n^{+} + n^{-}` signal and hence the observation that CCMC requires more psips to reach the plateau.
+    + The decay to the ground state is not simply a case of waiting for contributions from excited states to decay away.  As a result, it is unlikely that an inverse Laplace transform (ignoring how awful it is to do) would give access to the spectrum of excited states.
+* UROP students: introductory project
+    + Tight-binding (cf Joe's work last year)
+        - dimer
+        - chain
+        - simple cubic lattice
+        - graphene (see Wallace paper?)
+* UROP students: research projects
+    + Heisenberg model could be quite fun and essentially standalone.
+    + Gutzwiller-type wavefunctions amount to placing a Jastrow factor in front of all determinants.  This is straightforward in real space and can be viewed as a form of importance sampling.  Can it also be done in momentum space though?
+
+Todo
+----
+
+* Continue work on sign problem paper.
+* Find notes on tight binding for UROP students.
+* Read about Heisenberg model.
+* See todo list from 27th May 2011.  *sigh*

@@ -5,7 +5,7 @@ Progress
 --------
 
 * Mendeley groups for FCIQMC research and for MSci reading lists have been created.  The MSci reading list is populated with a minimal list of articles.
-* James has started the Sign problem paper and it is progressing nicely.  The theory sections are all done.  Introduction, 1D Hubbard model, conclusions, bibliography and figures still need to be done.
+* James has started the sign problem paper and it is progressing nicely.  The theory sections are all done.  Introduction, 1D Hubbard model, conclusions, bibliography and figures still need to be done.
 
 Discussion
 ----------
