@@ -525,13 +525,13 @@ The following options are valid for FCIQMC calculations.
 **reference_det** *electron_1 electron_2 ... electron_nel*
     Integer list.
 
-    Default: use the first nalpha alpha spin-orbitals and first nbeta beta
-    spin-orbitals, where nalpha and nbeta are the number of alpha and beta
-    electrons respectively, as defined by the **ms** input option.  Note that
-    this can lead to using a 'bad' reference determinant which is a long way
-    from the ground state energy. This is particularly true when using the real
-    space formulation of the Hubbard model, as it causes as many sites as
-    possible to be doubly occupied.  Further, the default ignores any value of
+    Default: in the momentum-space formulation of the Hubbard model, use the
+    Hartree--Fock determinant (ie that formed from occupying the nalpha and
+    nbeta spin-orbitals with the lowest kinetic energy); in the real-space
+    formulation of the Hubbard model, attempt to minimise the number of
+    doubly-occupied sites.  Note that this is not guaranteed (especially in the
+    real-space formulation) to give a reference determinant which is close to
+    the ground state.  Further, the default ignores any value of
     the symmetry as defined by the **sym** input option.
 
     Set the reference determinant to occupy the specified spin-orbitals.
