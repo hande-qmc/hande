@@ -210,7 +210,7 @@ contains
         ! a reference determinant.
 
         use checking, only: check_allocate
-        use system, only: nalpha, nbeta, nel
+        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, nsites
         
         integer :: i, ierr
 
@@ -219,8 +219,26 @@ contains
         if (.not.allocated(occ_list0)) then
             allocate(occ_list0(nel), stat=ierr)
             call check_allocate('occ_list0',nel,ierr)
-            forall (i=1:nalpha) occ_list0(i) = 2*i-1
-            forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
+            select case(system_type)
+            case(hub_k)
+                ! Occupy the Fermi sphere.
+                forall (i=1:nalpha) occ_list0(i) = 2*i-1
+                forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
+            case(hub_real)
+                ! Attempt to keep electrons on different sites where possible.
+                ! Sites 1, 3, 5, ... (occupy every other alpha orbital first, ie
+                ! place a max of nsites/2 electrons.  (nsites+1)/2 accounts for
+                ! the possibility that we have an odd number of sites.)
+                forall (i=1:min(nalpha,(nsites+1)/2)) occ_list0(i) = 4*i-3
+                ! now occupy the alternate alpha orbitals
+                forall (i=1:nalpha-min(nalpha,(nsites+1)/2)) &
+                    occ_list0(i+min(nalpha,(nsites+1)/2)) = 4*i-1
+                ! Similarly for beta, but now occupying orbitals sites 2, 4,
+                ! ..., preferentially.
+                forall (i=1:min(nbeta,nsites/2)) occ_list0(i+nalpha) = 4*i
+                forall (i=1:nbeta-min(nbeta,nsites/2)) &
+                    occ_list0(i+nalpha+min(nbeta,nsites/2)) = 4*i-2
+            end select
         end if
 
     end subroutine set_reference_det
