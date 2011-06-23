@@ -227,25 +227,32 @@ contains
 
     !--- Statistics. ---
 
-    function spawning_rate(nattempts) result(rate)
+    function spawning_rate(ndeath, nattempts) result(rate)
 
-        use parallel!, only: nprocs
+        use parallel, only: nprocs
 
         ! Calculate the rate of spawning on the current processor.
         ! In:
+        !    ndeath: number of particles that were killed/cloned during the MC
+        !    cycle.
         !    nattempts: The number of attempts to spawn made in order to
         !    generate the current population of walkers in the spawned arrays.
         !    Note that this is *not* the same as nparticles as nparticles is
         !    updated during the Monte Carlo cycle as particles die.
         !    It is, however, identical to the number of particles on the
-        !    processor at the beginning of the Monte Carlo cycle.
+        !    processor at the beginning of the Monte Carlo cycle (miltiplied by
+        !    2 for the timestep algorithm).
 
         real(p) :: rate
-        integer, intent(in) :: nattempts
+        integer, intent(in) :: ndeath, nattempts
         integer :: nspawn
 
         nspawn = sum(spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1))
-        rate = real(nspawn,p)/nattempts
+        ! The total spawning rate is
+        !   (nspawn + ndeath) / nattempts
+        ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different
+        ! determinant and one to clone/die).
+        rate = real(nspawn+ndeath,p)/nattempts
 
     end function spawning_rate
 
