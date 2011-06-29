@@ -154,6 +154,7 @@ contains
                 call readi(ncycles)
             case('NREPORTS')
                 call readi(nreport)
+                if (nreport < 0) nreport = huge(nreport)
             case('WALKER_LENGTH')
                 call readi(walker_length)
             case('SPAWNED_WALKER_LENGTH')

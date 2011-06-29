@@ -471,6 +471,12 @@ The following options are valid for FCIQMC calculations.
     and output of information on the current state of the walker populations, in
     particular the instantaneous energy estimators.
 
+    If *nreports* is set to be a negative number, then the FCIQMC algorithm
+    will effectively loop indefinitely (strictly speaking: *nreports* is set to
+    the largest possible number that can be held in the standard integer type).
+    In such cases calculations should be cleanly exited using the
+    :ref:`FCIQMC.COMM <FCIQMC.COMM>` functionality.
+
     The total number of Monte Carlo cycles performed in an FCIQMC calculation
     is *nreports* x *mc_cycles*.
 **seed** *seed*
@@ -716,6 +722,8 @@ other options
 **end**
     End of input.  Any subsequent lines in an input file are ignored.  It is
     only strictly required if the input is given via STDIN.
+
+.. _FCIQMC.COMM:
 
 Interacting with FCIQMC calculations
 ------------------------------------
