@@ -283,6 +283,7 @@ contains
             end if
             if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
         end if
+        if (doing_calc(ct_fciqmc_calc)) ncycles = 1
          
         ! If the FINITE_CLUSTER keyword was detected then make sure that 
         ! we are doing a calculation in real-space. If we're not then

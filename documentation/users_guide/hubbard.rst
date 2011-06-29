@@ -461,6 +461,8 @@ The following options are valid for FCIQMC calculations.
     Integer.
 
     Number of Monte Carlo cycles to perform per "report loop".
+
+    Note that *mc_cycles* is set to be 1 for the continuous time algorithm.
 **nreports** *nreports*
     Integer.
 
