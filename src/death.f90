@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(Kii, population, tot_population)
+    subroutine stochastic_death(Kii, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -23,6 +23,7 @@ contains
         ! In/Out:
         !    population: number of particles on determinant D_i.
         !    tot_population: total number of particles.
+        !    ndeath: running total of number of particles died/cloned.
         
         ! Note that population and tot_population refer to a single 'type' of
         ! population, i.e. either a set of Hamiltonian walkers or a set of
@@ -31,7 +32,7 @@ contains
         use dSFMT_interface, only: genrand_real2
 
         real(p), intent(in) :: Kii
-        integer, intent(inout) :: population, tot_population
+        integer, intent(inout) :: population, tot_population, ndeath
 
         real(p) :: pd
         real(dp) :: r
@@ -76,6 +77,7 @@ contains
             population = population - kill
         end if
         tot_population = tot_population - abs(old_population) + abs(population)
+        ndeath = ndeath + abs(kill)
 
     end subroutine stochastic_death
 

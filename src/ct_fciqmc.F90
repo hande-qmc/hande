@@ -28,7 +28,7 @@ contains
 
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
-        integer :: nspawned, nattempts, nparticles_old(sampling_size), ireport, idet
+        integer :: nspawned, nattempts, nparticles_old(sampling_size), ndeath, ireport, idet
         integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
@@ -75,6 +75,7 @@ contains
             ! be the slot preceding the first
             spawning_head = spawning_block_start
             nattempts = nparticles(1)
+            ndeath = 0
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
@@ -120,6 +121,7 @@ contains
                                 ! abs(nspawned) guaranteed to be 1
                                 nparticles(1) = nparticles(1) - 1 
                                 ! The walker is dead---no need to continue spawning to barrier.
+                                ndeath = ndeath + 1
                                 exit 
                             end if
 
@@ -179,6 +181,7 @@ contains
                                         spawned_walkers(spawned_pop,current_pos(proc_id))*nspawned < 0) then
                                     spawned_walkers(spawned_pop,current_pos(proc_id)) = &
                                             spawned_walkers(spawned_pop,current_pos(proc_id)) + nspawned 
+                                    ndeath = ndeath + 1
                                     exit ! The walker is dead - do not continue
                                 end if
 
@@ -206,7 +209,7 @@ contains
 
             ! Calculate spawning rate.  We only use the spawning from the main
             ! walker list for this.
-            rspawn = rspawn + spawning_rate(nattempts)
+            rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
             call direct_annihilation()
 

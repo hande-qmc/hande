@@ -94,7 +94,7 @@ contains
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
-        integer :: nspawned, nattempts
+        integer :: nspawned, nattempts, ndeath
         type(excit) :: connection
 
         integer :: bit_pos, bit_element
@@ -131,7 +131,12 @@ contains
                 spawning_head = spawning_block_start
 
                 ! Number of spawning attempts that will be made.
-                nattempts = nparticles(1)
+                ! Each particle gets to attempt to spawn onto a connected
+                ! determinant and a chance to die/clone.
+                nattempts = 2*nparticles(1)
+
+                ! Reset death counter
+                ndeath = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -160,13 +165,13 @@ contains
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1))
+                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
                 ! Add the spawning rate (for the processor) to the running
                 ! total.
-                rspawn = rspawn + spawning_rate(nattempts)
+                rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.

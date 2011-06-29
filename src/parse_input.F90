@@ -157,8 +157,24 @@ contains
                 if (nreport < 0) nreport = huge(nreport)
             case('WALKER_LENGTH')
                 call readi(walker_length)
+                if (item /= nitems) then
+                    call readu(w)
+                    if (w == 'MB') then
+                        walker_length = -walker_length
+                    else
+                        call report('Keyword '//trim(w)//' not recognized.', .true.)
+                    end if
+                end if
             case('SPAWNED_WALKER_LENGTH')
                 call readi(spawned_walker_length)
+                if (item /= nitems) then
+                    call readu(w)
+                    if (w == 'MB') then
+                        spawned_walker_length = -spawned_walker_length
+                    else
+                        call report('Keyword '//trim(w)//' not recognized.', .true.)
+                    end if
+                end if
             case('TAU')
                 call readf(tau)
             case('INITIAL_SHIFT')
@@ -273,8 +289,8 @@ contains
 
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
-                if (walker_length <= 0) call stop_all(this,'Walker length not positive.')
-                if (spawned_walker_length <= 0) call stop_all(this,'Spawned walker length not positive.')
+                if (walker_length == 0) call stop_all(this,'Walker length zero.')
+                if (spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
             if (tau <= 0) call stop_all(this,'Tau not positive.')
             if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
