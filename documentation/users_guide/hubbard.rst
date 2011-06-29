@@ -546,12 +546,16 @@ The following options are valid for FCIQMC calculations.
 
     Set the initial walker population on the reference determinant.  This will
     be overridden by a restart file.
-**walker_length** *walker_length*
+**walker_length** *walker_length* [**MB**]
     Integer.
 
     Size of walker array.  This is allocated at the start of the calculation
     and is used to store the population of walkers on determinants with
     a non-zero population and the associated energy of the determinant.
+
+    If **MB** is specified, then the walker_length is given in terms of MB per
+    core rather than number of elements per core in each array
+    associated with the parent walkers.
 
     Care: this needs to be large enough to hold the number of unique
     determinants with a non-zero population of walkers in the simulation.  The
@@ -562,12 +566,16 @@ The following options are valid for FCIQMC calculations.
 
     Not valid for simple_fciqmc calculations, where the population of walkers
     on each determinant is stored.
-**spawned_walker_length** *spawned_walker_length*
+**spawned_walker_length** *spawned_walker_length* [**MB**]
     Integer.
 
     Size of the spawned walker array.  This is allocated at the start of the
     calculation and is used to store the population of spawned walkers on child
     determinants.
+
+    If **MB** is specified, then the spawned_walker_length is given in terms of
+    MB per core rather than number of elements per core in each array
+    associated with the spawned walkers.
 
     Care: this needs to be large enough to store all the particles which are spawned
     during a Monte Carlo cycle and so needs to be a reasonable fraction of the 

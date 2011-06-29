@@ -34,7 +34,7 @@ contains
 
         integer :: ierr
         integer :: i
-        integer :: step
+        integer :: step, size_main_walker, size_spawned_walker
         integer :: ref_sym ! the symmetry of the reference determinant
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
@@ -58,6 +58,34 @@ contains
         else
             annihilate_main_list_ptr => annihilate_main_list
             annihilate_spawned_list_ptr => annihilate_spawned_list
+        end if
+
+        ! Each determinant occupies basis_length kind=i0 integers,
+        ! sampling_size integers and sampling_size kind=p reals.
+#ifdef SINGLE_PRECISION
+        size_main_walker = basis_length*i0_length/8 + sampling_size*8
+#else
+        size_main_walker = basis_length*i0_length/8 + sampling_size*12
+#endif
+        if (walker_length < 0) then
+            ! Given in MB.  Convert.  Note: important to avoid overflow in the
+            ! conversion!
+            walker_length = int((-real(walker_length,p)*10**6)/size_main_walker)
+        end if
+
+        ! Each spawned_walker occupies spawned_size kind=i0 integers.
+        size_spawned_walker = spawned_size*i0_length/8
+        if (spawned_walker_length < 0) then
+            ! Given in MB.  Convert.
+            ! Note that we store 2 arrays.
+            spawned_walker_length = int((-real(spawned_walker_length,p)*10**6)/(2*size_spawned_walker))
+        end if
+
+        if (parent) then
+            write (6,'(1X,a53,f7.2)') 'Memory allocated per core for main walker list (MB): ', size_main_walker*real(walker_length,p)/10**6
+            write (6,'(1X,a57,f7.2)') 'Memory allocated per core for spawned walker lists (MB): ', size_spawned_walker*real(2*spawned_walker_length,p)/10**6
+            write (6,'(1X,a48,'//int_fmt(walker_length,1)//')') 'Number of elements per core in main walker list:', walker_length
+            write (6,'(1X,a51,'//int_fmt(spawned_walker_length,1)//',/)') 'Number of elements per core in spawned walker list:', spawned_walker_length
         end if
 
         ! Allocate main walker lists.

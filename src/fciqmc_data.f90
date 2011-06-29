@@ -19,6 +19,8 @@ integer :: nreport
 real(p) :: tau
 
 ! Array sizes
+! If these are < 0, then the values represent the number of MB to be used to
+! store the main walker and spawned walker data respectively.
 integer :: walker_length
 integer :: spawned_walker_length
 
