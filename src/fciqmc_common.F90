@@ -82,10 +82,16 @@ contains
         end if
 
         if (parent) then
-            write (6,'(1X,a53,f7.2)') 'Memory allocated per core for main walker list (MB): ', size_main_walker*real(walker_length,p)/10**6
-            write (6,'(1X,a57,f7.2)') 'Memory allocated per core for spawned walker lists (MB): ', size_spawned_walker*real(2*spawned_walker_length,p)/10**6
-            write (6,'(1X,a48,'//int_fmt(walker_length,1)//')') 'Number of elements per core in main walker list:', walker_length
-            write (6,'(1X,a51,'//int_fmt(spawned_walker_length,1)//',/)') 'Number of elements per core in spawned walker list:', spawned_walker_length
+            write (6,'(1X,a53,f7.2)') &
+                'Memory allocated per core for main walker list (MB): ', &
+                size_main_walker*real(walker_length,p)/10**6
+            write (6,'(1X,a57,f7.2)') &
+                'Memory allocated per core for spawned walker lists (MB): ', &
+                size_spawned_walker*real(2*spawned_walker_length,p)/10**6
+            write (6,'(1X,a48,'//int_fmt(walker_length,1)//')') &
+                'Number of elements per core in main walker list:', walker_length
+            write (6,'(1X,a51,'//int_fmt(spawned_walker_length,1)//',/)') &
+                'Number of elements per core in spawned walker list:', spawned_walker_length
         end if
 
         ! Allocate main walker lists.
