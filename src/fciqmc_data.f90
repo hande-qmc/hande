@@ -311,7 +311,7 @@ contains
                 do j = lo + 1, hi
                     tmp_spawned = spawned_walkers(:,j)
                     do i = j - 1, 1, -1
-                        if (tmp_spawned(:basis_length) .detgt. spawned_walkers(:basis_length,i)) exit
+                        if (tmp_spawned(1:basis_length) .detgt. spawned_walkers(1:basis_length,i)) exit
                         spawned_walkers(:,i+1) = spawned_walkers(:,i)
                     end do
                     spawned_walkers(:,i+1) = tmp_spawned
@@ -331,13 +331,13 @@ contains
                 ! degrades if the pivot is always the smallest element.
                 pivot = (lo + hi)/2
                 call swap_spawned(spawned_walkers(:,pivot), spawned_walkers(:,lo + 1))
-                if (spawned_walkers(:basis_length,lo) .detgt. spawned_walkers(:basis_length,hi)) then
+                if (spawned_walkers(1:basis_length,lo) .detgt. spawned_walkers(1:basis_length,hi)) then
                     call swap_spawned(spawned_walkers(:,lo), spawned_walkers(:,hi))
                 end if
-                if (spawned_walkers(:basis_length,lo+1) .detgt. spawned_walkers(:basis_length,hi)) then
+                if (spawned_walkers(1:basis_length,lo+1) .detgt. spawned_walkers(1:basis_length,hi)) then
                     call swap_spawned(spawned_walkers(:,lo+1), spawned_walkers(:,hi))
                 end if
-                if (spawned_walkers(:basis_length,lo) .detgt. spawned_walkers(:basis_length,lo+1)) then
+                if (spawned_walkers(1:basis_length,lo) .detgt. spawned_walkers(1:basis_length,lo+1)) then
                     call swap_spawned(spawned_walkers(:,lo), spawned_walkers(:,lo+1))
                 end if
 
@@ -347,13 +347,13 @@ contains
                 do while (.true.)
                     ! Scan down list to find element > a.
                     i = i + 1
-                    do while (tmp_spawned(:basis_length) .detgt. spawned_walkers(:basis_length,i))
+                    do while (tmp_spawned(1:basis_length) .detgt. spawned_walkers(1:basis_length,i))
                         i = i + 1
                     end do
 
                     ! Scan down list to find element < a.
                     j = j - 1
-                    do while (spawned_walkers(:basis_length,j) .detgt.  tmp_spawned(:basis_length))
+                    do while (spawned_walkers(1:basis_length,j) .detgt.  tmp_spawned(1:basis_length))
                         j = j - 1
                     end do
 
