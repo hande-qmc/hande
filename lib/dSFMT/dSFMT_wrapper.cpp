@@ -1,40 +1,43 @@
 #include "dSFMT.h"
-#include "dSFMT_wrapper.h"
 
-// Wrap around the required dSFMT functions so that they're accessible from fortran.
-// We use C++'s handy reference function to allow Fortran and C to communicate,
-// despite the different approaches in passing arguments.
-// We only expose functions as needed.
+// Wrap around the required dSFMT functions so that they're accessible from
+// fortran.  We only expose functions as needed.
+
+// We can't bind directly to dSFMT functions as they either:
 //
-// JSS (with a hat-tip to discussions with AJWT)
+// a) are inline functions and I am reluctant to change the dSFMT source code
+//    directly
+// b) require a dsfmt_t state and dsfmt_t contains a union struct which is not
+//    interoperable.  I did try to make a compatible derived type but had
+//    issues with different data alignment in Fortran and C.
+//
+// There is an overhead associated with calling a wrapping routine, but this is
+// minimal if an array of random numbers is produced rather than obtaining one
+// random number at a time.
 
-// To call the functions below from Fortran, omit the trailing underscore and
-// ensure your compiler doesn't append a double underscore to objects which
-// already contain an underscore in their name.  nm objectfile.o and man
-// compiler_of_your_choice are your friends in sorting out such compilation
-// issues!
-
+// extern C as we already use a C++ compiler (which we need for the hashing
+// routines) and don't want to use a C compiler as well.
 extern "C"
 {
-    void init_gen_rand_(uint32_t &seed)
+    void global_init_gen_rand(uint32_t seed)
     {
         // Initialise random number generator.
         // See also the main dSFMT code for the ability to initialise using an
         // array of seeds.
-        init_gen_rand(seed);
+        dsfmt_gv_init_gen_rand(seed);
     }
 
-    double genrand_close_open_(void)
+    double global_genrand_close_open(void)
     {
         // Return a random number in the interval [0,1).
         //
         // This uses the global state function.
         // dSFMT also has the ability to have "local" states---useful for
         // threading?
-        return genrand_close_open();
+        return dsfmt_gv_genrand_close_open();
     }
 
-    void fill_array_close_open_(double array[], int &size)
+    void global_fill_array_close_open(double array[], int size)
     {
         // Fill an array of length size with random numbers in the interval
         // [0,1).
@@ -43,7 +46,7 @@ extern "C"
         // This uses the global state function.
         // dSFMT also has the ability to have "local" states---useful for
         // threading?
-        fill_array_close_open(array, size);
+        dsfmt_gv_fill_array_close_open(array, size);
     }
 
 }

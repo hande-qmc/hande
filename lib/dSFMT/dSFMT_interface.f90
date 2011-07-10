@@ -7,9 +7,28 @@ module dSFMT_interface
 ! See also the functions defined in dSFMT_wrapper.cpp.
 
 use const
+use, intrinsic :: iso_c_binding
 implicit none
 
-! It is much faster to generate random numbers in blocks.
+! Expose functions from C as needed.
+interface
+    subroutine init_gen_rand(seed) bind(c, name='global_init_gen_rand')
+        import :: c_int32_t
+        integer(c_int32_t), value :: seed
+    end subroutine init_gen_rand
+    function genrand_close_open() result(rand) bind(c, name='global_genrand_close_open')
+        import :: c_double
+        real(c_double) :: rand
+    end function genrand_close_open
+    subroutine fill_array_close_open(array, array_size) bind(c, name='global_fill_array_close_open')
+        import :: c_double, c_int
+        real(c_double), intent(out) :: array(*)
+        integer(c_int), value :: array_size
+    end subroutine fill_array_close_open
+end interface
+
+! It is much faster to generate random numbers in blocks---see comments in
+! dSFMT_wrapper.cpp
 ! genrand_real2 is a wrapper around accessing the random_store,
 ! filling it up again as necessary.
 
@@ -17,8 +36,8 @@ implicit none
 ! random numbers.  Testing was done standalone, so undoubtedly influenced by
 ! cache size and this might be different for real-world applications, but it's easy to
 ! change to allocatable later on.
-integer, parameter :: random_store_size=5*10**4
-real(dp), save :: random_store(random_store_size)
+integer(c_int), parameter :: random_store_size=5*10**4
+real(c_double), save :: random_store(random_store_size)
 
 integer, save :: current_element
 
@@ -34,9 +53,13 @@ contains
 
         integer, intent(in) :: seed
 
-        call init_gen_rand(seed)
+        call init_gen_rand(int(seed,c_int32_t))
+
+        write (6,*) 'done init'
 
         call fill_array_close_open(random_store, random_store_size)
+
+        write (6,*) 'done fill'
 
         current_element = 1
 

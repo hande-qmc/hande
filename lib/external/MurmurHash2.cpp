@@ -5,7 +5,7 @@
 using namespace std;
 
 // murmurhash2 has a consistent interface:
-//  murmurhash2_( const void * key, int &len, unsigned int &seed )
+//  murmurhash2( const void * key, int &len, unsigned int &seed )
 // note that len is destroyed by the process.
 //
 // murmurhash2 is only defined for 32 and 64 bit integers.
@@ -31,7 +31,7 @@ extern "C"
     // 2. It will not produce the same results on little-endian and big-endian
     //    machines.
 
-    unsigned int murmurhash2_( const void * key, int &len, unsigned int &seed )
+    unsigned int murmurhash2( const void * key, int &len, unsigned int &seed )
     {
         // 'm' and 'r' are mixing constants generated offline.
         // They're not really 'magic', they just happen to work well.
@@ -96,7 +96,7 @@ extern "C"
 
     // 64-bit hash for 32-bit platforms
 
-    uint64_t murmurhash2_( const void * key, int &len, unsigned int &seed )
+    uint64_t murmurhash2( const void * key, int &len, unsigned int &seed )
     {
         const unsigned int m = 0x5bd1e995;
         const int r = 24;
@@ -151,7 +151,7 @@ extern "C"
 
     // 64-bit hash for 64-bit platforms
 
-    uint64_t murmurhash2_( const void * key, int &len, unsigned int &seed )
+    uint64_t murmurhash2( const void * key, int &len, unsigned int &seed )
     {
         const uint64_t m = 0xc6a4a7935bd1e995;
         const int r = 47;
@@ -198,7 +198,7 @@ extern "C"
 
     #else
 
-    unsigned int murmurhash2_( const void * key, int len, unsigned int seed )
+    unsigned int murmurhash2( const void * key, int len, unsigned int seed )
     {
         cout << "MurmurHash only works with 32 or 64 bit integers." << endl;
         exit(1);

@@ -8,8 +8,8 @@ using namespace std;
 // See http://www.isthe.com/chongo/tech/comp/fnv/index.html.
 // A consistent interface is provided to both:
 //
-//   fnv1_hash_(const void *key, int &len);
-//   fnv1a_hash_(const void *key, int &len);
+//   fnv1_hash(const void *key, int &len);
+//   fnv1a_hash(const void *key, int &len);
 //
 // In:
 //    key: integer array of kind i0 to be hashed.
@@ -22,8 +22,8 @@ using namespace std;
 // Similarly there are procedures which are always available for 32-bit
 // integers, no matter how DET_SIZE is defined:
 //
-//   fnv1_hash32_(const void *key, int &len);
-//   fnv1a_hash32_(const void *key, int &len);
+//   fnv1_hash32(const void *key, int &len);
+//   fnv1a_hash32(const void *key, int &len);
 //
 // Neither key nor length are altered in the hashing.
 
@@ -32,7 +32,7 @@ extern "C"
 
 #if DET_SIZE == 32
 
-    uint32_t fnv1_hash_(const void *key, int &len)
+    uint32_t fnv1_hash(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
         uint32_t h = 2166136261;
@@ -48,7 +48,7 @@ extern "C"
 
 #elif DET_SIZE == 64
 
-    uint64_t fnv1_hash_(const void *key, int &len)
+    uint64_t fnv1_hash(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
         uint64_t h = 14695981039346656037;
@@ -74,7 +74,7 @@ extern "C"
 
 #if DET_SIZE == 32
 
-    uint32_t fnv1a_hash_(const void *key, int &len)
+    uint32_t fnv1a_hash(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
         uint32_t h = 2166136261;
@@ -90,7 +90,7 @@ extern "C"
 
 #elif DET_SIZE == 64
 
-    uint64_t fnv1a_hash_(const void *key, int &len)
+    uint64_t fnv1a_hash(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
         uint64_t h = 14695981039346656037;
@@ -114,7 +114,7 @@ extern "C"
 
 #endif
 
-    uint32_t fnv1_hash32_(const void *key, int &len)
+    uint32_t fnv1_hash32(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
         uint32_t h = 2166136261;
@@ -128,7 +128,7 @@ extern "C"
         return h;
     }
 
-    uint32_t fnv1a_hash32_(const void *key, int &len)
+    uint32_t fnv1a_hash32(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
         uint32_t h = 2166136261;

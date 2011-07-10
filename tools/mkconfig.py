@@ -207,8 +207,9 @@ $(DEST)/%%.o: %%.cpp
 $(PROG): $(EXE)/$(PROG_VERSION)
 \tcd $(EXE) && ln -s -f $(notdir $<) $@
 
-$(EXE)/$(PROG_VERSION): check $(OBJECTS)
-\trm -f $(DEST)/environment_report.o && $(my_make) $(DEST)/environment_report.o
+$(EXE)/$(PROG_VERSION): $(OBJECTS)
+\t$(my_make) check
+\trm -f $(DEST)/environment_report.o && $(my_make) $(DEST)/environment_report.o $(DEST)/hubbard_core.o
 \t$(FC) -o $@ $(FFLAGS) $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
 
 # Remove compiled objects and executable.
