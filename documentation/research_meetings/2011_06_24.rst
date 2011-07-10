@@ -1,0 +1,13 @@
+24th June 2011
+==============
+
+Meeting with Richard Martin
+---------------------------
+
+Discussion
+----------
+
+* Explained work on FCIQMC and the sign problem.  Richard suggested reading about Hirsch's work on the Hubbard model (Hirsch-Fye algorithm) and that by Werner, Gall and Millis.  In particular, the following references:
+    + PRB 28 4059
+    + PRL 56 2521
+    + PRB 31 4403
