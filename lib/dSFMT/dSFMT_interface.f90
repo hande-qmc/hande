@@ -55,11 +55,7 @@ contains
 
         call init_gen_rand(int(seed,c_int32_t))
 
-        write (6,*) 'done init'
-
         call fill_array_close_open(random_store, random_store_size)
-
-        write (6,*) 'done fill'
 
         current_element = 1
 
