@@ -18,10 +18,10 @@ interface
     function MurmurHash2(key, N, seed) result(hash) bind(c)
         use, intrinsic:: iso_c_binding
         use const
-        integer(i0) :: hash
-        type(c_ptr), intent(inout) :: key
-        integer :: N
-        integer :: seed
+        integer(c_i0) :: hash
+        type(c_ptr), value :: key
+        integer(c_int), intent(in) :: N
+        integer(c_int), intent(in) :: seed
     end function MurmurHash2
 
     ! FNV hashes are untested and might also need the c_ptr wrapper that
@@ -29,30 +29,30 @@ interface
     function fnv1_hash(key, N) result(hash)
         use const
         use, intrinsic:: iso_c_binding
-        integer(i0) :: hash
-        type(c_ptr), intent(inout) :: key
-        integer, intent(in) :: N
+        integer(c_i0) :: hash
+        type(c_ptr), value :: key
+        integer(c_int), intent(in) :: N
     end function fnv1_hash
     function fnv1a_hash(key, N) result(hash)
         use const
         use, intrinsic:: iso_c_binding
-        integer(i0) :: hash
-        type(c_ptr), intent(inout) :: key
-        integer, intent(in) :: N
+        integer(c_i0) :: hash
+        type(c_ptr), value :: key
+        integer(c_int), intent(in) :: N
     end function fnv1a_hash
     function fnv1_hash32(key, N) result(hash)
         use const
         use, intrinsic:: iso_c_binding
-        integer :: hash
-        type(c_ptr), intent(inout) :: key
-        integer, intent(in) :: N
+        integer(c_i0) :: hash
+        type(c_ptr), value :: key
+        integer(c_int), intent(in) :: N
     end function fnv1_hash32
     function fnv1a_hash32(key, N) result(hash)
         use const
         use, intrinsic:: iso_c_binding
-        integer :: hash
-        type(c_ptr), intent(inout) :: key
-        integer, intent(in) :: N
+        integer(c_i0) :: hash
+        type(c_ptr), value :: key
+        integer(c_int), intent(in) :: N
     end function fnv1a_hash32
 
 end interface
@@ -75,8 +75,8 @@ contains
         integer(i0), intent(in), target :: f(N)
         integer, intent(in) :: N
         type(c_ptr) :: key
-        integer, parameter :: seed = 7 ! doesn't really matter...
-        integer :: tmp
+        integer(c_int), parameter :: seed = 7 ! doesn't really matter...
+        integer(c_int) :: tmp
 
         ! MurmurHash2 destroys the size paramter, so create a copy.
         ! The size parameter used in Murmurhash is the number of bytes...

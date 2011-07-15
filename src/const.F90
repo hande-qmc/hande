@@ -4,6 +4,8 @@ module const
 
 #include "cdefs.h"
 
+use, intrinsic :: iso_c_binding, only: c_int32_t, c_int64_t
+
 implicit none
 
 ! i0 gives the equivalent of a byte type (8 bits)
@@ -24,8 +26,11 @@ integer, parameter :: i0 = selected_int_kind(0)
 integer, parameter :: i0 = selected_int_kind(3)
 #elif DET_SIZE == 32
 integer, parameter :: i0 = selected_int_kind(6)
+! C int type which interoperates with i0.
+integer, parameter :: c_i0 = c_int32_t
 #elif DET_SIZE == 64
 integer, parameter :: i0 = selected_int_kind(10)
+integer, parameter :: c_i0 = c_int64_t
 #endif
 
 ! Number of bits in an integer of type i0.
