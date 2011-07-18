@@ -33,7 +33,48 @@ integer :: ueg_basis_origin
 ! Note that N_x = 2*kmax+1
 integer :: ueg_basis_max
 
+abstract interface
+
+    ! UEG-specific integral procedure pointers.
+    ! The integral routines are different for 2D and UEG.  Abstract them using
+    ! procedure pointers.
+    pure function i_int_ueg(i, a) result(intgrl)
+        import :: p
+        real(p) :: intgrl
+        integer, intent(in) :: i, a
+    end function i_int_ueg
+
+end interface
+
+procedure(i_int_ueg), pointer :: coulomb_int_ueg => null()
+procedure(i_int_ueg), pointer :: exchange_int_ueg => null()
+
 contains
+
+!-------
+! Initialisation, utilities and finalisation
+
+    subroutine init_ueg()
+
+        use system, only: ndim
+        use errors, only: stop_all
+
+        ! Set pointers to integral routines
+        select case(ndim)
+            case(2)
+                coulomb_int_ueg => coulomb_int_ueg_2d
+            case(3)
+                coulomb_int_ueg => coulomb_int_ueg_2d
+            case default
+                call stop_all('init_ueg', 'Can only do 2D and 3D UEG.')
+        end select
+
+        ! For now, we don't treat exchange integrals differently.
+        exchange_int_ueg => coulomb_int_ueg
+
+        call init_ueg_indexing()
+
+    end subroutine init_ueg
 
     subroutine init_ueg_indexing()
 
@@ -117,5 +158,97 @@ contains
         end if
 
     end subroutine end_ueg_indexing
+
+!-------
+! Integrals
+
+    pure function get_two_e_int_ueg(i, j, a, b) result(intgrl)
+
+        ! In:
+        !    i,j:  index of the spin-orbital from which an electron is excited in
+        !          the reference determinant.
+        !    a,b:  index of the spin-orbital into which an electron is excited in
+        !          the excited determinant.
+        !
+        ! Returns:
+        !   The anti-symmetrized integral < ij || ab >.   
+
+        ! Warning: assume i,j /= a,b (ie not asking for < ij || ij > or < ij || ji >).
+
+        use basis, only: basis_fns
+
+        real(p) :: intgrl
+        integer, intent(in) :: i, j, a, b
+
+        intgrl = 0.0_p
+
+        ! Crystal momentum conserved?
+        if (all(basis_fns(i)%l + basis_fns(j)%l - basis_fns(a)%l - basis_fns(b)%l == 0)) then
+
+            ! Spin conserved?
+
+            ! Coulomb
+            if (basis_fns(i)%ms == basis_fns(a)%ms .and.  basis_fns(j)%ms == basis_fns(b)%ms) &
+                intgrl = intgrl + coulomb_int_ueg(i, a)
+
+            ! Exchange
+            if (basis_fns(i)%ms == basis_fns(b)%ms .and.  basis_fns(j)%ms == basis_fns(a)%ms) &
+                intgrl = intgrl - coulomb_int_ueg(i, b)
+
+        end if
+
+    end function get_two_e_int_ueg
+
+    pure function coulomb_int_ueg_2d(i, a) result(intgrl)
+
+        ! In:
+        !    i: index of spin-orbital basis function.
+        !    a: index of spin-orbital basis function.
+        !
+        ! Returns:
+        !    The Coulumb integral < i j | a b > = 1/|k_i - k_a| for the 2D
+        !    UEG.  Note that we assume i, j, a and b are such that spin and
+        !    crystal momentum is conserved and hence the integral is not zero by
+        !    symmetry.  We also assume that i,j /= a,b (ie the integral is not
+        !    a Hartree integral).
+
+        use basis, only: basis_fns
+        use system, only: rlattice
+
+        real(p) :: intgrl
+        integer, intent(in) :: i, a
+        real(p) :: q(2)
+        integer :: j
+
+        forall (j=1:2) q(j) = sum( (basis_fns(i)%l-basis_fns(a)%l)*rlattice(j,:) )
+        intgrl = 1.0_p/sqrt(dot_product(q,q))
+
+    end function coulomb_int_ueg_2d
+
+    pure function coulomb_int_ueg_3d(i, a) result(intgrl)
+
+        ! In:
+        !    i: index of spin-orbital basis function.
+        !    a: index of spin-orbital basis function.
+        !
+        ! Returns:
+        !    The Coulumb integral < i j | a b > = 1/|k_i - k_a|^2 for the 3D
+        !    UEG.  Note that we assume i, j, a and b are such that spin and
+        !    crystal momentum is conserved and hence the integral is not zero by
+        !    symmetry.  We also assume that i,j /= a,b (ie the integral is not
+        !    a Hartree integral).
+
+        use basis, only: basis_fns
+        use system, only: rlattice
+
+        real(p) :: intgrl
+        integer, intent(in) :: i, a
+        real(p) :: q(3)
+        integer :: j
+
+        forall (j=1:3) q(j) = sum( (basis_fns(i)%l-basis_fns(a)%l)*rlattice(j,:) )
+        intgrl = 1.0_p/dot_product(q,q)
+
+    end function coulomb_int_ueg_3d
 
 end module ueg_system
