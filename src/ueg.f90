@@ -69,7 +69,7 @@ contains
 
     end subroutine init_ueg_indexing
 
-    function ueg_basis_index(k, spin) result(indx)
+    pure function ueg_basis_index(k, spin) result(indx)
 
         ! In:
         !    k: wavevector in units of 2\pi/L.

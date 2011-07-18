@@ -332,9 +332,9 @@ contains
         use bit_utils, only: first_perm, bit_permutation
         use symmetry, only: nsym, gamma_sym, sym_table
 
-        integer :: i, j, ierr, ibit
+        integer :: i, j, ierr, ibit, isym
         integer :: nalpha_combinations, nbeta_combinations
-        integer :: k_beta, k
+        integer :: k_beta(ndim), k(ndim)
         integer(i0) :: f_alpha, f_beta
 
         if (allocated(sym_space_size)) then
@@ -371,9 +371,11 @@ contains
                     f_beta = bit_permutation(f_beta)
                 end if
 
-                k_beta = gamma_sym
+                ! See comments in enumerate_determinants regarding symmetry of
+                ! determinants.
+                k_beta = basis_fns(2*gamma_sym)%l
                 do ibit = 0, i0_end
-                    if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
+                    if (btest(f_beta,ibit)) k_beta = k_beta + basis_fns(2*ibit+1)%l
                 end do
 
                 do j = 1, nalpha_combinations
@@ -388,10 +390,16 @@ contains
                     ! Symmetry of all orbitals.
                     k = k_beta
                     do ibit = 0, i0_end
-                        if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
+                        if (btest(f_alpha,ibit)) k = k + basis_fns(2*ibit+1)%l
                     end do
 
-                    sym_space_size(k) = sym_space_size(k) + 1
+                    ! Definitely not claiming this is efficient...
+                    do isym = 1, nsym
+                        if (is_reciprocal_lattice_vector(k-basis_fns(2*isym)%l)) then
+                            sym_space_size(isym) = sym_space_size(isym) + 1
+                            exit
+                        end if
+                    end do
 
                 end do
             end do
@@ -434,7 +442,7 @@ contains
 
         integer :: i, j, idet, ierr, ibit
         integer :: nalpha_combinations, nbeta_combinations
-        integer :: k_beta, k
+        integer :: k_beta(ndim), k(ndim)
         character(4) :: fmt1
         integer(i0) :: f_alpha, f_beta
 
@@ -469,9 +477,16 @@ contains
 
             ! Symmetry of the beta orbitals.
             if (system_type /= hub_real) then
-                k_beta = gamma_sym
+                ! For Hubbard model it is quicker to use sym_table, but we don't
+                ! store this for the UEG so we evaluate the determinant momentum
+                ! explicitly.  We never promised the FCI code would be fast...
+                ! Factor of 2 as f_beta and gamma_sym do not refer directly to
+                ! a basis function.  We don't care about which spin-function we
+                ! have, just the spatial part, so don't bother to select the
+                ! correct spin from basis_fns.
+                k_beta = basis_fns(2*gamma_sym)%l
                 do ibit = 0, i0_end
-                    if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
+                    if (btest(f_beta,ibit)) k_beta = k_beta + basis_fns(2*ibit+1)%l
                 end do
             end if
 
@@ -486,13 +501,14 @@ contains
 
                 ! Symmetry of all orbitals.
                 if (system_type /= hub_real) then
+                    ! See comments for the loop over beta strings.
                     k = k_beta
                     do ibit = 0, i0_end
-                        if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
+                        if (btest(f_alpha,ibit)) k = k + basis_fns(2*ibit+1)%l
                     end do
                 end if
 
-                if (system_type == hub_real .or. k == ksum) then
+                if (system_type == hub_real .or. is_reciprocal_lattice_vector(k-basis_fns(2*ksum)%l)) then
 
                     idet = idet + 1
 
