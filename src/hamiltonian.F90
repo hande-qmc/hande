@@ -186,7 +186,6 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
-        use hubbard_k, only: get_one_e_int_k, get_two_e_int_k
         use system, only: nalpha, nbeta, hub_k_coulomb
 
         real(p) :: hmatel
@@ -212,8 +211,9 @@ contains
         hmatel = nalpha*nbeta*hub_k_coulomb
 
         ! One electron operator
+        ! Get directly rather than incur the cost of the if test in get_one_e_int_k.
         do i = 1, nel
-            hmatel = hmatel + get_one_e_int_k(occ_list(i), occ_list(i))
+            hmatel = hmatel + basis_fns(occ_list(i))%kinetic
         end do
 
     end function slater_condon0_hub_k
