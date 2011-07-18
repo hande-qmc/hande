@@ -54,7 +54,9 @@ contains
 !-------
 ! Initialisation, utilities and finalisation
 
-    subroutine init_ueg()
+    subroutine init_ueg_proc_pointers()
+
+        ! Initialise UEG procedure pointers
 
         use system, only: ndim
         use errors, only: stop_all
@@ -72,7 +74,7 @@ contains
         ! For now, we don't treat exchange integrals differently.
         exchange_int_ueg => coulomb_int_ueg
 
-    end subroutine init_ueg
+    end subroutine init_ueg_proc_pointers
 
     subroutine init_ueg_indexing()
 

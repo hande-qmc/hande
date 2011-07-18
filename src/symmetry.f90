@@ -121,6 +121,16 @@ contains
             ! of the energy-ordered basis set.  The symmetry is then done on the
             ! fly.
 
+            ! We'll only consider determinants with symmetry corresponding to
+            ! a basis function though.
+            nsym = nbasis/2
+
+            gamma_sym = 0
+            do i = 1, nsym
+                if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
+            end do
+            if (gamma_sym == 0) call stop_all('init_symmetry', 'Gamma-point symmetry not found.')
+
             call init_ueg_indexing()
 
         end select

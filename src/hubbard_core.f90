@@ -29,6 +29,7 @@ contains
         use hubbard_real, only: init_real_space_hub
         use symmetry, only: init_symmetry
         use calc
+        use ueg_system, only: init_ueg_proc_pointers
 
         call init_parallel()
 
@@ -46,6 +47,8 @@ contains
         call distribute_input()
 
         call init_system()
+
+        call init_ueg_proc_pointers()
 
         call check_input()
 
