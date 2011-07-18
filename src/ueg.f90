@@ -61,18 +61,16 @@ contains
 
         ! Set pointers to integral routines
         select case(ndim)
-            case(2)
-                coulomb_int_ueg => coulomb_int_ueg_2d
-            case(3)
-                coulomb_int_ueg => coulomb_int_ueg_2d
-            case default
-                call stop_all('init_ueg', 'Can only do 2D and 3D UEG.')
+        case(2)
+            coulomb_int_ueg => coulomb_int_ueg_2d
+        case(3)
+            coulomb_int_ueg => coulomb_int_ueg_2d
+        case default
+            call stop_all('init_ueg', 'Can only do 2D and 3D UEG.')
         end select
 
         ! For now, we don't treat exchange integrals differently.
         exchange_int_ueg => coulomb_int_ueg
-
-        call init_ueg_indexing()
 
     end subroutine init_ueg
 
@@ -85,7 +83,7 @@ contains
 
         use checking, only: check_allocate
 
-        integer :: ierr, i, N_kx
+        integer :: ierr, i, N_kx, k_min(ndim)
 
         ueg_basis_max = ceiling(sqrt(2*ueg_ecutoff))
 
@@ -95,7 +93,9 @@ contains
         call check_allocate('ueg_basis_dim', ndim, ierr)
         forall (i=1:ndim) ueg_basis_dim(i) = N_kx**(i-1)
 
-        ueg_basis_origin = ueg_basis_max*(1 + N_kx + N_kx**2) + 1
+        ! Wish the indexing array to be 1-indexed.
+        k_min = -ueg_basis_max ! Bottom corner of grid.
+        ueg_basis_origin = -dot_product(ueg_basis_dim, k_min) + 1
 
         allocate(ueg_basis_lookup(N_kx**ndim), stat=ierr)
         call check_allocate('ueg_basis_lookup', N_kx**ndim, ierr)
