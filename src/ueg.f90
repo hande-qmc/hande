@@ -66,7 +66,7 @@ contains
         case(2)
             coulomb_int_ueg => coulomb_int_ueg_2d
         case(3)
-            coulomb_int_ueg => coulomb_int_ueg_2d
+            coulomb_int_ueg => coulomb_int_ueg_3d
         case default
             call stop_all('init_ueg', 'Can only do 2D and 3D UEG.')
         end select
