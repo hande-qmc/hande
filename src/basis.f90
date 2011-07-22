@@ -151,9 +151,9 @@ contains
         end if
 
         write (io,'(1X,"(")', advance='no')
-        write (io,'(i2)',advance='no') b%l(1)
+        write (io,'(i3)',advance='no') b%l(1)
         do i = 2,ndim
-            write (io,'(",",i2)',advance='no') b%l(i)
+            write (io,'(",",i3)',advance='no') b%l(i)
         end do
         write (io,'(")")', advance='no')
         if (print_all) then

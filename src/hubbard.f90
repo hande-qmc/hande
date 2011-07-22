@@ -152,7 +152,7 @@ contains
                 write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
             end if
             do i = 1, ndim
-                write (6,'(3X)', advance='no')
+                write (6,'(4X)', advance='no')
             end do
             write (6,'(a2)', advance='no') 'ms'
             if (system_type == hub_real) then
