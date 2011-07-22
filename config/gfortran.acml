@@ -1,0 +1,14 @@
+[main]
+fc = gfortran
+cxx = g++
+ld = gfortran
+libs = -ltrlan -lacml -lstdc++
+module_flag = -J
+
+[opt]
+fflags = -O3
+cxxflags = -O3
+
+[dbg]
+fflags = -g -fbounds-check -Wall -Wextra
+cxxflags = -g -Wall -Wextra
