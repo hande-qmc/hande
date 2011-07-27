@@ -423,34 +423,41 @@ contains
     pure function slater_condon0_heisenberg(f) result(hmatel)
 
         ! In:
-        !    f: bit string representation of the Slater determinant.
+        !    f: bit string representation of the basis function
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
-        !        the Hubbard model in real space.
-
-        use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
-
+        !        the Heisenberg Model
+        
+        use basis, only: basis_length, basis_lookup
+        use bit_utils, only: count_set_bits
+        use system, only: ndim, nsites, J
+        
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
-        integer :: root_det(nel)
-        integer :: i
-
-        hmatel = 0.0_p
-
-        ! < i | T | i > = 0 within the real space formulation of the
-        ! Hubbard model, unless site i is its own periodic image, in
-        ! which case it has a kinetic interaction with its self-image.
-        ! This only arises if there is at least one crystal cell vector
-        ! which is a unit cell vector.
-        if (t_self_images) then
-            call decode_det(f, root_det)
-            do i = 1, nel
-                hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
+        integer(i0) :: g(basis_length)
+        integer :: ipos, i, basis_find, counter
+        
+        counter = 0
+        
+        ! Count the number of 0-1 type bonds
+        do i = 1, basis_length
+            do ipos = 0, i0_end
+                if (btest(f(i), ipos)) then
+                basis_find = basis_lookup(ipos, i)
+                g = iand(not(f), connected_orbs(:,basis_find))
+                counter = counter + sum(count_set_bits(g))
+                end if
             end do
-        end if
-
-        ! Two electron operator
-        hmatel = hmatel + get_coulomb_matel_real(f)
+        end do
+        
+        ! For any lattice there will be (ndim*nsites) bonds.
+        ! Bonds of type 0-0 or 1-1 will give a contribution of -J to the matrix
+        ! element.  0-1 bonds will give +J contribution.
+        ! The above loop counts the number of 0-1 bonds, so the remaining number
+        ! of 0-0 or 1-1 bonds will be (ndim*nsites-counter), so the matrix element
+        ! will be as below
+        hmatel = -J*(ndim*nsites-2*counter)
+        ! Check kind type stuff to see if it converts integers correctly...
 
     end function slater_condon0_heisenberg
 
