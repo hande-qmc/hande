@@ -429,6 +429,7 @@ contains
         !        the Heisenberg Model
         
         use basis, only: basis_length, basis_lookup
+        use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
         use system, only: ndim, nsites, J
         
