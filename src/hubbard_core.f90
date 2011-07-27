@@ -57,7 +57,7 @@ contains
 
         call init_symmetry()
 
-        if (system_type == hub_real) call init_real_space_hub()
+        if (system_type == hub_real .or. system_type == heisenberg) call init_real_space_hub()
 
     end subroutine init_calc
 
@@ -128,7 +128,7 @@ contains
         call end_excitations()
         call end_hamil()
 
-        if (system_type == hub_real) call end_real_space_hub()
+        if (system_type == hub_real .or. system_type == heisenberg) call end_real_space_hub()
 
         if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc)) call end_fciqmc()
 

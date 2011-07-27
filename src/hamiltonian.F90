@@ -419,5 +419,39 @@ contains
         end if
 
     end subroutine slater_condon1_hub_real_excit
+    
+    pure function slater_condon0_heisenberg(f) result(hmatel)
+
+        ! In:
+        !    f: bit string representation of the Slater determinant.
+        ! Returns:
+        !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
+        !        the Hubbard model in real space.
+
+        use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
+
+        real(p) :: hmatel
+        integer(i0), intent(in) :: f(basis_length)
+        integer :: root_det(nel)
+        integer :: i
+
+        hmatel = 0.0_p
+
+        ! < i | T | i > = 0 within the real space formulation of the
+        ! Hubbard model, unless site i is its own periodic image, in
+        ! which case it has a kinetic interaction with its self-image.
+        ! This only arises if there is at least one crystal cell vector
+        ! which is a unit cell vector.
+        if (t_self_images) then
+            call decode_det(f, root_det)
+            do i = 1, nel
+                hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
+            end do
+        end if
+
+        ! Two electron operator
+        hmatel = hmatel + get_coulomb_matel_real(f)
+
+    end function slater_condon0_heisenberg
 
 end module hamiltonian

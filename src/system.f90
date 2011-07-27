@@ -12,6 +12,7 @@ implicit none
 ! Parameters to used to specify the system type.
 integer, parameter :: hub_k = 0
 integer, parameter :: hub_real = 1
+integer, parameter :: heisenberg = 3
 
 ! Which system are we examining?  Hubbard (real space)? Hubbard (k space)? ...?
 integer :: system_type = hub_k
@@ -51,6 +52,9 @@ integer :: nvirt_alpha, nvirt_beta
 ! Hubbard T and U parameters specifying the kinetic energy and Coulomb
 ! interaction respectively.
 real(p) :: hubu = 1, hubt = 1
+
+! Coupling constant J In the Heisenberg model
+real(p) :: J
 
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
 ! is constant, so it's convenient to store it.

@@ -198,6 +198,86 @@ contains
         end if
 
     end subroutine spawn_hub_real
+    
+    
+    subroutine spawn_heisenberg(cdet, parent_sign, nspawn, connection)
+
+        ! Attempt to spawn a new psip on a connected determinant for the 
+        ! Heisenberg model
+        !
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use determinants, only: det_info
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: calc_pgen_hub_real, excit
+        use fciqmc_data, only: tau
+        use hamiltonian, only: slater_condon1_hub_real_excit
+        use system, only: J
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
+
+        real(p) :: pgen, psuccess, pspawn, hmatel
+        integer :: i, a
+        integer :: nvirt_avail
+
+        ! 1. Chose a random connected spin basis vector
+        ! (Use real space hubbard model procedure, since condition for
+        ! connected 'determinants' is the same)
+        call choose_ia_hub_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
+
+        ! 2. Find probability of generating this excited determinant.
+        ! Again, same for Heisenberg as for real space Hubbard!
+        pgen = calc_pgen_heisenberg(cdet%occ_list, cdet%f, nvirt_avail)
+
+        ! 3. Construct the excited determinant and find the connecting matrix
+        ! element.
+        connection%nexcit = 1
+        connection%from_orb(1) = i
+        connection%to_orb(1) = a
+
+        ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
+        hmatel = -2.0_p*J
+
+        ! 4. Attempt spawning.
+        pspawn = tau*abs(hmatel)/pgen
+        psuccess = genrand_real2()
+
+        ! Need to take into account the possibilty of a spawning attempt
+        ! producing multiple offspring...
+        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+        ! then spawn a particle with probability pspawn-floor(pspawn).
+        nspawn = int(pspawn)
+        pspawn = pspawn - nspawn
+
+        if (pspawn > psuccess) nspawn = nspawn + 1
+
+        if (nspawn > 0) then
+
+            ! 5. If H_ij is positive, then the spawned walker is of opposite
+            ! sign to the parent, otherwise the spawned walkers if of the same
+            ! sign as the parent.
+            if (hmatel > 0.0_p) then
+                nspawn = -sign(nspawn, parent_sign)
+            else
+                nspawn = sign(nspawn, parent_sign)
+            end if
+
+        end if
+
+    end subroutine spawn_heisenberg
+    
 
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
 
@@ -450,6 +530,9 @@ contains
 
         ! Find a random connected excitation from a Slater determinant for the
         ! Hubbard model in the real space formulation.
+        ! This is also used for the Heisenberg model, which has the same conditions
+        ! for two (different) basis functions to be connected. In this context,
+        ! the number of electrons is actually the number of spins up (1 in binary).
         ! In: 
         !    f: bit string representation of the Slater determinant.
         !    occ_list: integer list of the occupied spin-orbitals in 

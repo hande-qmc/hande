@@ -73,6 +73,8 @@ contains
                 system_type = hub_real
             case('K_SPACE','MOMENTUM_SPACE')
                 system_type = hub_k
+            case('HEISENBERG')
+                system_type = heisenberg
 
             ! System information.
             case('LATTICE')

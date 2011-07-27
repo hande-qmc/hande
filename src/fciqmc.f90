@@ -44,6 +44,12 @@ contains
             spawner_ptr => spawn_hub_real
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
+        case (heisenberg)
+            ! Only need occupied orbitals list, as for the real Hubbard case
+            decoder_ptr => spawn_hub_real
+            update_proj_energy_ptr =>
+            spawner_ptr => spawn_heisenberg
+            sc0_ptr => slater_condon0_heisenberg
         end select
 
         if (doing_calc(initiator_fciqmc)) then
