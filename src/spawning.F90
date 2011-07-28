@@ -221,7 +221,7 @@ contains
         use excitations, only: calc_pgen_hub_real, excit
         use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
-        use system, only: J
+        use system, only: J_coupling
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -239,7 +239,7 @@ contains
 
         ! 2. Find probability of generating this excited determinant.
         ! Again, same for Heisenberg as for real space Hubbard!
-        pgen = calc_pgen_heisenberg(cdet%occ_list, cdet%f, nvirt_avail)
+        pgen = calc_pgen_hub_real(cdet%occ_list, cdet%f, nvirt_avail)
 
         ! 3. Construct the excited determinant and find the connecting matrix
         ! element.
@@ -248,7 +248,7 @@ contains
         connection%to_orb(1) = a
 
         ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-        hmatel = -2.0_p*J
+        hmatel = -2.0_p*J_coupling
 
         ! 4. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen

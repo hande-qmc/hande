@@ -14,13 +14,14 @@ contains
         ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
 
-        use system, only: system_type, hub_k, hub_real, hub_k_coulomb, hubt
+        use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt
         use hellmann_feynman_sampling
 
-        use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
+        use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real, slater_condon0_heisenberg
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
-        use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator
+        use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
+                            spawn_heisenberg
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, doing_calc
 
@@ -46,8 +47,8 @@ contains
             hub_matel = hubt
         case (heisenberg)
             ! Only need occupied orbitals list, as for the real Hubbard case
-            decoder_ptr => spawn_hub_real
-            update_proj_energy_ptr =>
+            decoder_ptr => decode_det_occ
+            ! update_proj_energy_ptr =>
             spawner_ptr => spawn_heisenberg
             sc0_ptr => slater_condon0_heisenberg
         end select

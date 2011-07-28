@@ -431,7 +431,7 @@ contains
         use basis, only: basis_length, basis_lookup
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: ndim, nsites, J
+        use system, only: ndim, nsites, J_coupling
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -452,12 +452,12 @@ contains
         end do
         
         ! For any lattice there will be (ndim*nsites) bonds.
-        ! Bonds of type 0-0 or 1-1 will give a contribution of -J to the matrix
-        ! element.  0-1 bonds will give +J contribution.
+        ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
+        ! element.  0-1 bonds will give +J_coupling contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
         ! of 0-0 or 1-1 bonds will be (ndim*nsites-counter), so the matrix element
         ! will be as below
-        hmatel = -J*(ndim*nsites-2*counter)
+        hmatel = -J_coupling*(ndim*nsites-2*counter)
         ! Check kind type stuff to see if it converts integers correctly...
 
     end function slater_condon0_heisenberg

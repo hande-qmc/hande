@@ -61,7 +61,7 @@ contains
 
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use determinants, only: decode_det
-        use system, only: lattice, ndim, box_length, system_type
+        use system, only: lattice, ndim, box_length, system_type, heisenberg
         use bit_utils
         use checking, only: check_allocate
         use errors, only: stop_all
@@ -132,7 +132,7 @@ contains
                         if (all(lvecs(:,ivec) == 0)) then
                             ! Nearest neighbours within unit cell.
                             call set_orb(tmat(:,i),j)
-                            if (isystem == 2) call set_orb(tmat(:,i+),j+1)
+                            if (isystem == 2) call set_orb(tmat(:,i+1),j+1)
                         else if (.not. finite_cluster) then ! if we want inf. lattice
                             ! Nearest neighbours due to periodic boundaries.
                             call set_orb(tmat(:,j),i)

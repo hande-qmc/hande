@@ -54,7 +54,7 @@ integer :: nvirt_alpha, nvirt_beta
 real(p) :: hubu = 1, hubt = 1
 
 ! Coupling constant J In the Heisenberg model
-real(p) :: J
+real(p) :: J_coupling = 1
 
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
 ! is constant, so it's convenient to store it.
