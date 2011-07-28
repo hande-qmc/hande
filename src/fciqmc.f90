@@ -19,7 +19,8 @@ contains
 
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real, slater_condon0_heisenberg
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
-        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
+        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real, &
+                                     update_proj_energy_heisenberg
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
                             spawn_heisenberg
 
@@ -48,7 +49,7 @@ contains
         case (heisenberg)
             ! Only need occupied orbitals list, as for the real Hubbard case
             decoder_ptr => decode_det_occ
-            ! update_proj_energy_ptr =>
+            update_proj_energy_ptr => update_proj_energy_heisenberg
             spawner_ptr => spawn_heisenberg
             sc0_ptr => slater_condon0_heisenberg
         end select
