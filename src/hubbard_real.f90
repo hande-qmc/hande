@@ -37,7 +37,7 @@ integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 integer, allocatable :: connected_sites(:,:) ! (2ndim, nbasis)
 
 ! True if any site is its own periodic image.
-! This is the case if one dimension (or more) has only one site per crystal
+! This is the case if one dimension (or more) has only one site per crystalisystem
 ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
 ! This is the only way that the integral < i | T | i >, where i is a basis
 ! function centred on a lattice site, can be non-zero.
@@ -61,12 +61,12 @@ contains
 
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use determinants, only: decode_det
-        use system, only: lattice, ndim, box_length
+        use system, only: lattice, ndim, box_length, system_type
         use bit_utils
         use checking, only: check_allocate
         use errors, only: stop_all
 
-        integer :: i, j, k, ierr, pos, ind, ivec, v
+        integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
         integer :: r(ndim)
 
         integer :: lvecs(ndim, 3**ndim)
@@ -82,6 +82,19 @@ contains
 
         tmat = 0
         connected_orbs = 0
+        
+        ! For the Hubbard model, each orbital can have spin up or down, so 
+        ! basis_fns(i) refers to alternating alpha and beta orbitals.
+        ! In the do loop we therefore loop over every *second* orbital (because  
+        ! spin must be the same for orbitals to be connected in this case).
+        ! For Heisenberg, we just want to loop over every component of
+        ! basis_fns, so we set isystem = 1
+        if (system_type == heisenberg) then
+            isystem = 1
+        else
+            isystem = 2
+        endif
+            
 
         ! Form all lattice vectors
         select case(ndim)
@@ -106,8 +119,8 @@ contains
         end select
 
         ! Construct how the lattice is connected.
-        do i = 1, nbasis-1, 2
-            do j = i, nbasis-1, 2
+        do i = 1, nbasis-(isystem-1), isystem
+            do j = i, nbasis-(isystem-1), isystem
                 ! Loop only over one spin: the other spin is identical so can be
                 ! filled in automatically.
                 ! All matrix elements between different spins are zero
@@ -119,11 +132,11 @@ contains
                         if (all(lvecs(:,ivec) == 0)) then
                             ! Nearest neighbours within unit cell.
                             call set_orb(tmat(:,i),j)
-                            call set_orb(tmat(:,i+1),j+1)
+                            if (isystem == 2) call set_orb(tmat(:,i+),j+1)
                         else if (.not. finite_cluster) then ! if we want inf. lattice
                             ! Nearest neighbours due to periodic boundaries.
                             call set_orb(tmat(:,j),i)
-                            call set_orb(tmat(:,j+1),i+1) 
+                            if (isystem == 2) call set_orb(tmat(:,j+1),i+1) 
                             ! else we just want connections to other cells to
                             ! stay as 0 
                         end if        
@@ -140,9 +153,9 @@ contains
                                 ! connected_orbs does not contain self-connections 
                                 ! due to the periodic boundary conditions.
                                 call set_orb(connected_orbs(:,i),j)
-                                call set_orb(connected_orbs(:,i+1),j+1)                      
+                                if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)                      
                                 call set_orb(connected_orbs(:,j),i)
-                                call set_orb(connected_orbs(:,j+1),i+1)
+                                if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
                             end if
                         end if
                     end if
