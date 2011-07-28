@@ -789,3 +789,11 @@ FCIQMC.COMM has the same syntax as the input file.  Available options are:
     Change the timestep to be used.
 **zero_means**
     Reset the running averages of the shift and projected energy to 0.
+**shift** *shift*
+    Real.
+
+    Adjust the current value of the shift.  Please note the impact this has on
+    the mean; if used it is not a bad idea to also use **zero_means**.  If the
+    calculation has already entered variable shift mode then the shift will
+    still be updated every report cycle, otherwise this is equivalent to
+    changing the **initial_shift** value.

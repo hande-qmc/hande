@@ -25,7 +25,7 @@ contains
 
         use fciqmc_data, only: target_particles, tau, av_shift, av_proj_energy, &
                                av_D0_population, vary_shift, start_vary_shift,  &
-                               start_averaging_from
+                               start_averaging_from, shift
 
         integer, intent(in) :: ireport
         logical, intent(out) :: soft_exit
@@ -111,6 +111,8 @@ contains
                             av_D0_population = 0.0_p
                             av_shift = 0.0_p
                             start_averaging_from = ireport
+                        case('SHIFT')
+                            call readf(shift)
                         case default
                             write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
                         end select
@@ -134,6 +136,7 @@ contains
             call mpi_bcast(av_proj_energy, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(av_shift, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(shift, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(target_particles, 1, mpi_integer, proc, mpi_comm_world, ierr)
             call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
             call mpi_bcast(start_vary_shift, 1, mpi_integer, proc, mpi_comm_world, ierr)
