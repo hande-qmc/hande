@@ -507,6 +507,25 @@ The following options are valid for FCIQMC calculations.
     walkers due to cloning.  Using too large a value can lead to poor sampling
     as large numbers of walkers reside on the same small number of determinants
     rather than diffusing appropriately through the determinant space.
+**vary_shift_from** **proje**
+**vary_shift_from** *shift*
+    String or real.
+
+    Default: off.
+
+    Set the shift to be either the instantaneous projected energy or the value
+    specified by *shift* when *varyshift_target* is reached.  Most calculations
+    start with setting the shift to be 0; by instantly setting the shift to
+    a value closer to the true ground state, the simulation can stabilise the
+    total walker population substantially faster.
+
+    Note that the last option out of **initial_shift** or **vary_shift_from**
+    *shift* is used.  Only use both options if you know what you're doing.
+
+    There is no guarantee that the instantaneous projected energy is a good
+    estimate of the ground state (particularly in the real-space formulation of
+    the Hubbard model), but it is likely to be closer to it than the default
+    shift value of 0.
 **varyshift_target** *varyshift_target*
     Integer.
 

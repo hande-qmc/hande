@@ -179,6 +179,17 @@ contains
                 call readf(tau)
             case('INITIAL_SHIFT')
                 call readf(shift)
+                ! We assume the user is sensible/knows what he/she is doing if
+                ! initial_shift and vary_shift_from are set.
+                vary_shift_from = shift 
+            case('VARY_SHIFT_FROM')
+                call readu(w)
+                if (w == 'PROJE') then
+                    vary_shift_from_proje = .true.
+                else
+                    call reread(0)
+                    call readf(vary_shift_from)
+                end if
             case('VARYSHIFT_TARGET')
                 call readi(target_particles)
             case('REFERENCE_DET')
@@ -390,6 +401,8 @@ contains
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)

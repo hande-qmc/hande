@@ -35,8 +35,16 @@ integer :: initiator_population = 3
 
 !--- Energy data ---
 
-! shift
-real(p) :: shift = 0.0_p
+! shift: the shift is held constant at the initial value (from input) unless
+! vary_shift is true.
+! vary_shift_from_proje: if true, then the when variable shift mode is entered
+! the shift is set to be the current projected energy.
+! vary_shift_from: if vary_shift_from_proje is false, then the shift is set to
+! this value when variable shift mode is entered.
+! warning: if both initial_shift and vary_shift_from are set, then we expect the
+! user to have been sensible.
+real(p) :: shift = 0.0_p, vary_shift_from = 0.0_p
+logical :: vary_shift_from_proje = .false.
 
 ! shift averaged over the calculation, once varyshift mode has been entered.
 ! This is really a running total: the average is only taken at output time (in

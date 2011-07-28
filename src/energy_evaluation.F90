@@ -24,9 +24,10 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
 
-        use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn
-        use fciqmc_data, only: proj_energy, av_proj_energy, av_D0_population, shift, av_shift
-        use fciqmc_data, only: vary_shift, start_vary_shift, D0_population
+        use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
+                               proj_energy, av_proj_energy, av_D0_population, shift, av_shift, &
+                               vary_shift, start_vary_shift, vary_shift_from,                  &
+                               vary_shift_from_proje, D0_population
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc
 
@@ -64,6 +65,12 @@ contains
             if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
                 start_vary_shift = ireport
+                if (vary_shift_from_proje) then
+                    ! Set shift to be instantaneous projected energy.
+                    shift = proj_energy/D0_population
+                else
+                    shift = vary_shift_from
+                end if
             end if
 #else
             if (vary_shift) then
@@ -76,6 +83,12 @@ contains
             if (nparticles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
                 start_vary_shift = ireport
+                if (vary_shift_from_proje) then
+                    ! Set shift to be instantaneous projected energy.
+                    shift = proj_energy/D0_population
+                else
+                    shift = vary_shift_from
+                end if
             end if
 #endif
 
