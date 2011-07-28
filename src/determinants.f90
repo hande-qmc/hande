@@ -468,7 +468,7 @@ contains
             end if
 
             ! Symmetry of the beta orbitals.
-            if (system_type /= hub_real) then
+            if (system_type == hub_k) then
                 k_beta = gamma_sym
                 do ibit = 0, i0_end
                     if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
@@ -485,7 +485,7 @@ contains
                 end if
 
                 ! Symmetry of all orbitals.
-                if (system_type /= hub_real) then
+                if (system_type == hub_k) then
                     k = k_beta
                     do ibit = 0, i0_end
                         if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
@@ -545,7 +545,7 @@ contains
 
         d%f => dets_list(:,i)
         d%Ms => dets_Ms
-        if (system_type /= hub_real) d%ksum = dets_ksum
+        if (system_type == hub_k) d%ksum = dets_ksum
     
     end function point_to_det
 

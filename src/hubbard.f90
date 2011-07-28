@@ -30,7 +30,15 @@ contains
         type(basis_fn), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
 
-        nbasis = 2*nsites
+        ! For the Hubbard model, each site has an alpha and beta spin orbital,
+        ! each of which could be occupied or unoccupied, so need nbasis = 2*nsites
+        ! For the Heisenberg model, each site has a single spin which must be either
+        ! up or down, so only need 1 bit for each site => nbasis = nsites
+        if (system_type == heisenberg) then
+            nbasis = nsites
+        else
+            nbasis = 2*nsites
+        endif
 
         ! Find basis functions.
 
@@ -79,10 +87,10 @@ contains
 
         allocate(basis_fns(nbasis), stat=ierr)
         call check_allocate('basis_fns',nbasis,ierr)
-        allocate(tmp_basis_fns(nbasis/2), stat=ierr)
-        call check_allocate('tmp_basis_fns',nbasis/2,ierr)
-        allocate(basis_fns_ranking(nbasis/2), stat=ierr)
-        call check_allocate('basis_fns_ranking',nbasis/2,ierr)
+        allocate(tmp_basis_fns(nsites), stat=ierr)
+        call check_allocate('tmp_basis_fns',nsites,ierr)
+        allocate(basis_fns_ranking(nsites), stat=ierr)
+        call check_allocate('basis_fns_ranking',nsites,ierr)
 
         ! Find all alpha spin orbitals.
         ibasis = 0
@@ -105,25 +113,28 @@ contains
                 end do
             end do
         end do
-
-        if (ibasis /= nbasis/2) call stop_all('init_basis_fns','Not enough basis functions found.')
+        
+        if (ibasis /= nsites) call stop_all('init_basis_fns','Not enough basis functions found.')
 
         ! Rank by kinetic energy (applies to momentum space formulation only).
-        select case(system_type)
-        case(hub_k)
+        if (system_type == hub_k) then
             call mrgref(tmp_basis_fns(:)%kinetic, basis_fns_ranking)
-        case(hub_real)
-            forall (i=1:nbasis/2) basis_fns_ranking(i) = i
-        end select
+        else
+            forall (i=1:nsites) basis_fns_ranking(i) = i
+       endif
 
         ! Form the list of sorted basis functions with both alpha and beta
         ! spins.
-        do i = 1, nbasis/2
+        do i = 1, nsites
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
-            call init_basis_fn(basis_fns(2*i-1), basis_fn_p%l, basis_fn_p%ms)
-            call init_basis_fn(basis_fns(2*i), basis_fn_p%l, -basis_fn_p%ms)
+            if (system_type == heisenberg) then
+                call init_basis_fn(basis_fns(i), basis_fn_p%l)
+            else
+                call init_basis_fn(basis_fns(2*i-1), basis_fn_p%l, basis_fn_p%ms)
+                call init_basis_fn(basis_fns(2*i), basis_fn_p%l, -basis_fn_p%ms)
+            end if
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
             call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
         end do
@@ -135,7 +146,7 @@ contains
         if (parent) then
             write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
             write (6,'(1X,a27)') 'Spin given in units of 1/2.'
-            if (system_type == hub_real) then
+            if (system_type == hub_real .or. system_type == heisenberg) then
                 write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
                 write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
             else
@@ -155,7 +166,7 @@ contains
                 write (6,'(4X)', advance='no')
             end do
             write (6,'(a2)', advance='no') 'ms'
-            if (system_type == hub_real) then
+            if (system_type == hub_real .or. system_type == heisenberg) then
                 write(6,'()')
             else
                 write(6,'(5X,a14)') 'kinetic energy'

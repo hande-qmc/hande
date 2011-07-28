@@ -103,7 +103,7 @@ contains
 
         if (present(l)) then
             b%l = l
-            if (system_type /= hub_real) then
+            if (system_type == hub_k) then
                 b%kinetic = calc_kinetic(l)
             else
                 b%kinetic = 0.0_p
@@ -158,7 +158,7 @@ contains
         write (io,'(")")', advance='no')
         if (print_all) then
             write (io,'(5X,i2)', advance='no') b%ms
-            if (system_type /= hub_real) write (io,'(4X,f12.8)', advance='no') b%kinetic
+            if (system_type == hub_k) write (io,'(4X,f12.8)', advance='no') b%kinetic
         end if
         if (present(new_line)) then
             if (new_line) write (io,'()')
