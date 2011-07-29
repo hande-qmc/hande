@@ -1,0 +1,21 @@
+heisenberg
+
+fciqmc
+
+lattice
+5
+electrons 2
+reference_det 3 5
+
+J -1
+
+spawned_walker_length 100000
+walker_length 100
+nreports 200
+mc_cycles 50
+
+seed 123
+
+tau 0.01
+varyshift_target 1000
+shift_damping 1

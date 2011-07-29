@@ -27,9 +27,10 @@ contains
         use basis, only: basis_length, basis_fns, write_basis_fn
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
-        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
+        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k, &
+                               slater_condon0_heisenberg
         use fciqmc_restart, only: read_restart
-        use system, only: nel, system_type, hub_real, hub_k
+        use system, only: nel, system_type, hub_real, hub_k, heisenberg
         use symmetry, only: gamma_sym, sym_table
 
         integer :: ierr
@@ -138,7 +139,7 @@ contains
         forall (i=0:nprocs-1) spawning_block_start(i) = i*step
 
         ! Set spin variables.
-        call set_spin_polarisation(ms_in)
+        if (system_type /= heisenberg) call set_spin_polarisation(ms_in)
 
         ! Set initial walker population.
         ! occ_list could be set and allocated in the input.
@@ -174,6 +175,8 @@ contains
                 H00 = slater_condon0_hub_k(f0)
             case(hub_real)
                 H00 = slater_condon0_hub_real(f0)
+            case(heisenberg)
+                H00 = slater_condon0_heisenberg(f0)
             end select
             ! By definition:
             walker_energies(1,tot_walkers) = 0.0_p

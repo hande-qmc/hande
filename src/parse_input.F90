@@ -102,6 +102,8 @@ contains
                 call readf(hubt)
             case('U')
                 call readf(hubu)
+            case('J')
+                call readf(J_coupling)
             case('TWIST')
                 allocate(ktwist(nitems-item), stat=ierr)
                 call check_allocate('ktwist',nitems-item,ierr)
@@ -362,6 +364,7 @@ contains
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(J_coupling, 1, mpi_preal, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
