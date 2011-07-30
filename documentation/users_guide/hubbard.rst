@@ -50,7 +50,8 @@ Compilation
 
 hubbard requires the lapack (http://www.netlib.org/lapack/), blas
 (http://www.netlib.org/blas) and TRLan
-(http://crd.lbl.gov/~kewu/ps/trlan\_.html) libaries.
+(http://crd.lbl.gov/~kewu/ps/trlan\_.html) libaries.  The dependency upon TRLan
+can be removed at compile-time by disabling the Lanczos functionality.
 
 After meeting these requirements, produce a makefile by running the mkconfig.py
 (residing in the tools subdirectory) script in the root directory:
@@ -179,6 +180,10 @@ DET_SIZE
 
     Must be defined if using 64-bit integers as the determinant bit-strings
     with a 32-bit compiler for performing parallel FCIQMC calculations.
+DISABLE_LANCZOS
+    Default: not defined.
+
+    If defined then Lanczos diagonalisation is disabled.  This removes the dependency on the TRLan
 DSFMT_MEXP 
     Default: 19937.
 

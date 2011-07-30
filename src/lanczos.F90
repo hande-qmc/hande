@@ -27,25 +27,33 @@ contains
         !    eigv(:nfound): Lanczos eigenvalues of the current block of the
         !        Hamiltonian matrix.
 
+#ifndef DISABLE_LANCZOS
         use trl_info
         use trl_interface
         use checking, only: check_allocate, check_deallocate
-        use errors, only: stop_all
         use parallel, only: parent, nprocs, get_blacs_info
 
         use calc
-        use determinants, only: ndets
         use operators
+#endif
+        use determinants, only: ndets
+        use errors, only: stop_all
 
         integer, intent(out) :: nfound
         real(dp), intent(out) :: eigv(ndets)
+
+#ifdef DISABLE_LANCZOS
+        call stop_all('lanczos_diagonalisation','Lanczos diagonalisation disabled at compile-time.')
+#else
         
         integer, parameter :: lohi = -1
         integer :: mev
         real(dp), allocatable :: eval(:) ! (mev)
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
-        type(trl_info_t) :: info
         integer :: ierr, nrows
+#ifndef DISABLE_LANCZOS
+        type(trl_info_t) :: info
+#endif
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
@@ -60,7 +68,7 @@ contains
         end if
        
         if (distribute /= distribute_off .and. distribute /= distribute_cols) then
-            call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
+            call stop_all('lanczos_diagonalisation','Incorrect distribution mode used.')
         end if
 
         if (.not.doing_calc(exact_diag) .and. direct_lanczos) then
@@ -82,7 +90,9 @@ contains
         ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
         !       the largest).
         ! nlanczos_eigv: number of eigenvalues to compute.
+#ifndef DISABLE_LANCZOS
         call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,ndets))
+#endif
        
         allocate(eval(mev), stat=ierr)
         call check_allocate('eval',mev,ierr)
@@ -130,6 +140,7 @@ contains
         call check_deallocate('eval',ierr)
         deallocate(evec, stat=ierr)
         call check_deallocate('evec',ierr)
+#endif // ndef DISABLE_LANCZOS
 
     end subroutine lanczos_diagonalisation
        
