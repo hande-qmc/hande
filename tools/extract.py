@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 '''Usage: extract.py filename
 
 Extract data from the output of a hubbard_fciqmc calculation.'''

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 '''Examine variables set by parsing input files and determine if they are being distributed to the other nodes or not.
 
 This is exceptionally useful for sanity-checking when debugging parallel code.'''

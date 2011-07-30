@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 '''
 
 blocking.py [options] file1 file2 ... fileN
