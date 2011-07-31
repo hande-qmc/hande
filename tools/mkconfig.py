@@ -201,7 +201,7 @@ $(DEST)/%%.o: %%.cpp
 #-----
 # Goals.
 
-.PHONY: clean qt qtests tests depend help $(PROG)
+.PHONY: clean qt qtests tests depend help $(PROG) ctags
 
 # Compile program.
 $(PROG): $(EXE)/$(PROG_VERSION)
@@ -243,11 +243,16 @@ $(DEPEND):
 depend: 
 \t$(my_make) -B $(DEPEND)
 
+# tag files
+# ctags >> etags supplied by emacs
+ctags:
+\tctags $(SRCFILES)
+
 help:
 \t@echo "Please use 'make <target>' where <target> is one of:"
 \t@echo "  %(PROGRAM)-14s       [default target] Compile program in the %(EXE)s directory."
 \t@echo "  clean                Remove the compiled objects."
-\t@echo "  ctags                Run ctags on the source files.  This is performed by default at the end of a successful compilation."
+\t@echo "  ctags                Run ctags on the source files."
 \t@echo "  new                  Remove all previously compiled objects and re-compile."
 \t@echo "  tests                Run test suite."
 \t@echo "  qtests               Run test suite in quiet mode."
