@@ -205,7 +205,7 @@ contains
         call gen_excit_hub_real(cdet, pgen, connection)
 
         ! 2. find the connecting matrix element.
-        call slater_condon1_hub_real_excit(cdet%occ_list, connection, hmatel)
+        call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
 
         ! 3. Probability of gening...
         pspawn = tau*abs(hmatel)/pgen
