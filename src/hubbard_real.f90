@@ -54,10 +54,10 @@ logical :: finite_cluster = .false. ! default to infinite crystals
 
 contains
 
-    subroutine init_real_space_hub()
+    subroutine init_real_space()
 
-        ! Initialise real space Hubbard model: find and store the matrix
-        ! elements < i | T | j > where i and j are real space basis functions.
+        ! Initialise real space Hubbard model and Heisenberg model: find and store 
+        ! the matrix elements < i | T | j > where i and j are real space basis functions.
 
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use determinants, only: decode_det
@@ -177,9 +177,9 @@ contains
             end do
         end do
 
-    end subroutine init_real_space_hub
+    end subroutine init_real_space
 
-    subroutine end_real_space_hub()
+    subroutine end_real_space()
 
         ! Clean up hubbard_real specific allocations.
 
@@ -200,7 +200,7 @@ contains
             call check_deallocate('connected_sites',ierr)
         end if
 
-    end subroutine end_real_space_hub
+    end subroutine end_real_space
 
     elemental function get_one_e_int_real(i, j) result(one_e_int)
 

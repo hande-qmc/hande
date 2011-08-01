@@ -17,6 +17,9 @@ integer, parameter :: heisenberg = 3
 ! Which system are we examining?  Hubbard (real space)? Hubbard (k space)? ...?
 integer :: system_type = hub_k
 
+! True for systems which use Bloch states for basis functions (hub_k and UEG)
+logical :: momentum_space = .false.
+
 ! 1, 2 or 3 dimensions.
 integer :: ndim 
 
@@ -38,11 +41,16 @@ real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 real(p), allocatable :: ktwist(:)
 
 ! # of electrons
+! *NOTE*: For the Heisenberg model nel refers to the number of spins up in the 
+! basis functions. This is to reuse code for the Hubbard model, where it simply
+! refers to the number of electrons in the system
 integer :: nel = 0 
 ! # number of virtual orbitals
+! *NOTE": For Heisenberg model nvirt refers to the number of spins down, or
+! the number of 0's in the basis functions
 integer :: nvirt
 
-! Spin polarisation is set in set_spin_polarisation in the determinants module.
+! Spin polarisation is set in set_spin_polarisation in the determinants modules
 ! # number of alpha, beta electrons
 integer :: nalpha, nbeta
 ! # number of virtual alpha, beta spin-orbitals
@@ -67,6 +75,8 @@ contains
         ! Initialise system based upon input parameters.
 
         use checking, only: check_allocate
+        use determinants, only: set_spin_polarisation_heisenberg
+        use calc, only: ms_in
 
         integer :: ivec, ierr
 
@@ -87,7 +97,20 @@ contains
 
         hub_k_coulomb = hubu/nsites
 
-        nvirt = 2*nsites - nel
+
+        ! For the Heisneberg model, nvirt refers to the number of spins down
+        ! (the number of 0's in the bit strings)
+        if (system_type == heisenberg) then
+            call set_spin_polarisation_heisenberg(ms_in)
+        else
+            nvirt = 2*nsites - nel
+        end if
+        
+        if (system_type == hub_real .or. system_type == heisenberg) then
+            momentum_space = .false.
+        else
+            momentum_space = .true.
+        end if
 
     end subroutine init_system
 

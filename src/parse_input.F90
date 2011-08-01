@@ -275,8 +275,13 @@ contains
 
         if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
 
-        if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
-        if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
+        if (system_type /= heisenberg) then
+            if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
+            if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
+        end if
+        
+        if (system_type == heisenberg .and. ms_in > nsites) call stop_all(this, 'Total spin, ms, &
+                                                            &is not possible for this lattice')
 
         do ivec = 1, ndim
             do jvec = ivec+1, ndim

@@ -141,7 +141,7 @@ contains
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_real, excit
+        use excitations, only: calc_pgen_real, excit
         use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
 
@@ -158,10 +158,10 @@ contains
         ! real space formulation of the Hubbard model.
 
         ! 1. Chose a random connected excitation.
-        call choose_ia_hub_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
+        call choose_ia_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
 
         ! 2. Find probability of generating this excited determinant.
-        pgen = calc_pgen_hub_real(cdet%occ_list, cdet%f, nvirt_avail)
+        pgen = calc_pgen_real(cdet%occ_list, cdet%f, nvirt_avail)
 
         ! 3. Construct the excited determinant and find the connecting matrix
         ! element.
@@ -218,7 +218,7 @@ contains
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
-        use excitations, only: calc_pgen_hub_real, excit
+        use excitations, only: calc_pgen_real, excit
         use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
         use system, only: J_coupling
@@ -235,11 +235,11 @@ contains
         ! 1. Chose a random connected spin basis vector
         ! (Use real space hubbard model procedure, since condition for
         ! connected 'determinants' is the same)
-        call choose_ia_hub_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
+        call choose_ia_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
 
         ! 2. Find probability of generating this excited determinant.
-        ! Again, same for Heisenberg as for real space Hubbard!
-        pgen = calc_pgen_hub_real(cdet%occ_list, cdet%f, nvirt_avail)
+        ! Again, same procedure for Heisenberg as for real space Hubbard
+        pgen = calc_pgen_real(cdet%occ_list, cdet%f, nvirt_avail)
 
         ! 3. Construct the excited determinant and find the connecting matrix
         ! element.
@@ -526,7 +526,7 @@ contains
 
     end subroutine find_ab_hub_k
 
-    subroutine choose_ia_hub_real(occ_list, f, i, a, nvirt_avail)
+    subroutine choose_ia_real(occ_list, f, i, a, nvirt_avail)
 
         ! Find a random connected excitation from a Slater determinant for the
         ! Hubbard model in the real space formulation.
@@ -601,7 +601,7 @@ contains
             end do
         end do finda
 
-    end subroutine choose_ia_hub_real
+    end subroutine choose_ia_real
 
     subroutine create_spawned_particle(cdet, connection, nspawn, particle_type)
 

@@ -10,7 +10,7 @@ use parallel
 implicit none
 
 ! Bit masks to reveal the list of alpha basis functions and beta functions
-! occupied in a Slater determinant.
+! occupied in a Slater determinant, required for Hubbard model.
 ! If separate_strings is false, then:
 !     Alpha basis functions are in the even bits.  alpha_mask = 01010101...
 !     Beta basis functions are in the odd bits.    beta_mask  = 10101010...
@@ -283,7 +283,7 @@ contains
 
     end subroutine dealloc_det_info
 
-    subroutine set_spin_polarisation(Ms)
+    subroutine set_spin_polarisation_hubbard(Ms)
 
         ! Set the spin polarisation information stored in module-level
         ! variables:
@@ -298,7 +298,7 @@ contains
         integer, intent(in) :: Ms
 
         ! Find the number of determinants with the required spin.
-        if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
+        if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation_hubbard','Required Ms not possible.')
          
         dets_Ms = Ms
 
@@ -308,7 +308,29 @@ contains
         nvirt_alpha = nsites - nalpha
         nvirt_beta = nsites - nbeta
 
-    end subroutine set_spin_polarisation
+    end subroutine set_spin_polarisation_hubbard
+    
+    subroutine set_spin_polarisation_heisenberg(Ms)
+
+        ! Given Ms and nsites, calculate the number of spins up
+        ! (nel) and spins down (nvirt)
+        !    
+        ! In:
+        !    Ms: spin of basis functions that are being considered.
+
+        use errors, only: stop_all
+
+        integer, intent(in) :: Ms
+
+        ! Find the number of determinants with the required spin.
+        if (mod(Ms,2) /= mod(nsites,2)) call stop_all('set_spin_polarisation_hubbard','Required Ms not possible.')
+         
+        dets_Ms = Ms
+
+        nel = (nsites+Ms)/2
+        nvirt = (nsites-Ms)/2
+
+    end subroutine set_spin_polarisation_heisenberg
 
     subroutine find_sym_space_size()
 

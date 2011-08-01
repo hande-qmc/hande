@@ -21,12 +21,12 @@ contains
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, hub_real, heisenberg
+        use system, only: init_system, system_type, hub_real, heisenberg, momentum_space
         use hubbard, only: init_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
-        use hubbard_real, only: init_real_space_hub
+        use hubbard_real, only: init_real_space
         use symmetry, only: init_symmetry
         use calc
 
@@ -57,7 +57,8 @@ contains
 
         call init_symmetry()
 
-        if (system_type == hub_real .or. system_type == heisenberg) call init_real_space_hub()
+        ! For real space systems
+        if (.not.momentum_space) call init_real_space()
 
     end subroutine init_calc
 
@@ -108,14 +109,15 @@ contains
         ! Clean up time!
 
         use calc
-        use system, only: end_system, system_type, hub_real, heisenberg
+        use system, only: end_system, system_type, hub_real, heisenberg, &
+                          momentum_space
         use hubbard, only: end_basis_fns
         use determinants, only: end_determinants
         use excitations, only: end_excitations
         use diagonalisation, only: end_hamil
         use fciqmc_data, only: end_fciqmc
         use parallel, only: parent, end_parallel
-        use hubbard_real, only: end_real_space_hub
+        use hubbard_real, only: end_real_space
         use symmetry, only: end_symmetry
         use report, only: end_report
 
@@ -128,7 +130,7 @@ contains
         call end_excitations()
         call end_hamil()
 
-        if (system_type == hub_real .or. system_type == heisenberg) call end_real_space_hub()
+        if (.not.momentum_space) call end_real_space()
 
         if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc)) call end_fciqmc()
 

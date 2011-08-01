@@ -420,7 +420,7 @@ contains
 
     end subroutine slater_condon1_hub_real_excit
     
-    pure function slater_condon0_heisenberg(f) result(hmatel)
+    pure function diagonal_element_heisenberg(f) result(hmatel)
 
         ! In:
         !    f: bit string representation of the basis function
@@ -455,11 +455,12 @@ contains
         ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
         ! element.  0-1 bonds will give +J_coupling contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
-        ! of 0-0 or 1-1 bonds will be (ndim*nsites-counter), so the matrix element
-        ! will be as below
+        ! of 0-0 or 1-1 bonds will be (ndim*nsites-counter)
+        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and 
+        ! +J_coupling*(ndim*nsites-counter) from the 1-1 and 0-0 bonds, so in total
+        ! the matrix element is...
         hmatel = -J_coupling*(ndim*nsites-2*counter)
-        ! Check kind type stuff to see if it converts integers correctly...
 
-    end function slater_condon0_heisenberg
+    end function diagonal_element_heisenberg
 
 end module hamiltonian

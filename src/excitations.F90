@@ -478,13 +478,16 @@ contains
 
     end function calc_pgen_hub_k
 
-    pure function calc_pgen_hub_real(occ_list, f, nvirt_avail) result(pgen)
+    pure function calc_pgen_real(occ_list, f, nvirt_avail) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
-        ! Hubbard model in real space.
+        ! real space models, the real Hubbard model and the Heisenberg model
         !
         ! Note that all the information required for input should be available
         ! during the FCIQMC algorithm and should not be needed to be calculated.
+        !
+        ! Note also that electrons and virtual orbitals in the Hubbard model are
+        ! equivalent to spins up and spins down respectively in the Heisenberg model.
         !
         ! Further, we assume only allowed excitations are generated.
         !
@@ -497,6 +500,9 @@ contains
         !        is being excited from (i.e. having chosen i, how many
         !        possibilities are there for a, where i is occupied and
         !        a occupied and D_i^a is connected to D.
+        !        For Heisenberg model, nvirt_avail is the number spins down
+        !        which can be changed to a spin up, given the spin up we have
+        !        chosen to try and excite from
         ! Returns:
         !    pgen: the generation probability of the excitation.  See notes in
         !        spawning.
@@ -539,8 +545,9 @@ contains
 
         no_excit = 0
         do i = 1, nel
-            ! See if there are any allowed excitations from this electron.
-            ! (see notes in choose_ia_hub_real for how this works)
+            ! See if there are any allowed excitations from this electron
+            ! (Or excitations from this spin up for Hesienberg)
+            ! (see notes in choose_ia_real for how this works)
             if (all(iand(not(f), connected_orbs(:,occ_list(i))) == 0)) then
                 ! none allowed from this orbial
                 no_excit = no_excit + 1
@@ -549,7 +556,7 @@ contains
 
         pgen = 1.0_p/(nvirt_avail * (nel - no_excit))
 
-    end function calc_pgen_hub_real
+    end function calc_pgen_real
 
     pure subroutine enumerate_all_excitations_hub_real(cdet, max_excit, excitations)
 
