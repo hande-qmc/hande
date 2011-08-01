@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 '''Monitor a running job and run a cleanup function when the elapsed time gets to within a specified amount of the walltime allowed for the job.
 
 Usage:

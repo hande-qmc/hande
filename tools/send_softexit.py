@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 #
 # Usage:
 # send_softexit.py [options] walltime &
