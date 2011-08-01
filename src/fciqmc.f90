@@ -194,8 +194,6 @@ contains
             call fciqmc_interact(ireport, soft_exit)
             if (soft_exit) exit
 
-!            call dump_restart(ireport*ncycles, nparticles_old(1))
-
         end do
 
         if (parent) then
@@ -205,7 +203,13 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
+        if (soft_exit) then
+            mc_cycles_done = mc_cycles_done + ncycles*ireport
+        else
+            mc_cycles_done = mc_cycles_done + ncycles*nreport
+        end if
+
+        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
 
         call dealloc_det_info(cdet)
 
