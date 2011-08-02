@@ -75,7 +75,6 @@ contains
         ! Initialise system based upon input parameters.
 
         use checking, only: check_allocate
-        use determinants, only: set_spin_polarisation_heisenberg
         use calc, only: ms_in
 
         integer :: ivec, ierr
@@ -97,11 +96,9 @@ contains
 
         hub_k_coulomb = hubu/nsites
 
-
-        ! For the Heisneberg model, nvirt refers to the number of spins down
-        ! (the number of 0's in the bit strings)
         if (system_type == heisenberg) then
-            call set_spin_polarisation_heisenberg(ms_in)
+            nel = (nsites+ms_in)/2
+            nvirt = (nsites-ms_in)/2
         else
             nvirt = 2*nsites - nel
         end if

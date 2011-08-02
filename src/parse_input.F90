@@ -97,6 +97,9 @@ contains
                     end if
                 end do
             case('NEL', 'ELECTRONS')
+                if (system_type == heisenberg) &
+                     call stop_all('read_input', 'Cannot set electron number for Heisenberg. &
+                     &Please enter n Ms value instead.')
                 call readi(nel)
             case('T')
                 call readf(hubt)
@@ -280,9 +283,14 @@ contains
             if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
         end if
         
-        if (system_type == heisenberg .and. ms_in > nsites) call stop_all(this, 'Total spin, ms, &
-                                                            &is not possible for this lattice')
-
+        if (system_type == heisenberg) then
+            if (abs(ms_in) > nsites) call stop_all(this, 'Total spin, Ms, is not possible for this lattice')
+            if (mod(abs(ms_in),2) /= mod(nsites,2)) call stop_all(this,'Required Ms not possible.')
+            if (calc_type /= fciqmc_calc .and. calc_type /= 0) call stop_all(this, 'Only the FCIQMC option &
+                 &is implemented for the Heisenberg model. No other calculation types are avaliable.')
+        end if
+                                                            
+                                                            
         do ivec = 1, ndim
             do jvec = ivec+1, ndim
                 if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
@@ -304,8 +312,15 @@ contains
             if (tau <= 0) call stop_all(this,'Tau not positive.')
             if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(occ_list0)) then
-                if (size(occ_list0) /= nel) call stop_all(this,'Number of electrons specified is different from &
-                                                           &number of electrons used in the reference determinant.')
+                if (size(occ_list0) /= nel) then
+                    if (system_type /= heisenberg) then
+                        call stop_all(this,'Number of electrons specified is different from &
+                        &number of electrons used in the reference determinant.')
+                    else if (system_type == heisenberg) then
+                        call stop_all(this,'Number of required spins up for the Ms value specified is &
+                        &different to number of spins up in the reference determinant.')
+                    end if
+                end if
             end if
             if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
         end if
@@ -314,7 +329,7 @@ contains
         ! If the FINITE_CLUSTER keyword was detected then make sure that 
         ! we are doing a calculation in real-space. If we're not then
         ! unset finite cluster,tell the user and carry on
-        if(system_type .ne. hub_real) then
+        if(momentum_space) then
             if (finite_cluster .and. parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
             if (separate_strings .and. parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&

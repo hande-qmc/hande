@@ -21,7 +21,7 @@ contains
         use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns
         use calc, only: ms_in
         use const, only: dp
-        use determinants, only: decode_det, set_spin_polarisation_hubbard
+        use determinants, only: decode_det, set_spin_polarisation
         use dSFMT_interface, only: genrand_real2
         use fciqmc_data, only: occ_list0, set_reference_det
         use symmetry, only: sym_table, gamma_sym
@@ -52,7 +52,7 @@ contains
 
             ! Perform a Monte Carlo sampling of the space.
 
-            call set_spin_polarisation_hubbard(ms_in)
+            call set_spin_polarisation(ms_in)
             call set_reference_det()
 
             ! Symmetry of the reference determinant.

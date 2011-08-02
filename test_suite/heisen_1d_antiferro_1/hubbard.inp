@@ -4,7 +4,7 @@ fciqmc
 
 lattice
 5
-electrons 1
+ms -3
 reference_det 1
 
 J -1

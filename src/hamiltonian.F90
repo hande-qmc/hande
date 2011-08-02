@@ -435,17 +435,18 @@ contains
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
-        integer(i0) :: g(basis_length)
+        integer(i0) :: f_not(basis_length), g(basis_length)
         integer :: ipos, i, basis_find, counter
         
         counter = 0
         
         ! Count the number of 0-1 type bonds
+        f_not = not(f)
         do i = 1, basis_length
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
                 basis_find = basis_lookup(ipos, i)
-                g = iand(not(f), connected_orbs(:,basis_find))
+                g = iand(f_not, connected_orbs(:,basis_find))
                 counter = counter + sum(count_set_bits(g))
                 end if
             end do

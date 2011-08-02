@@ -42,7 +42,7 @@ contains
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
 
         ! Find and set information about the space.
-        call set_spin_polarisation_hubbard(ms_in)
+        call set_spin_polarisation(ms_in)
         call find_sym_space_size()
 
         ! Find all determinants with desired spin and symmetry.
