@@ -30,11 +30,13 @@ integer(i0), allocatable :: tmat(:,:) ! (basis_length, nbasis)
 ! excitations.
 integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 
-! connected_sites(:,i) contains the list of sites connected to site i (ie is the
+! connected_orbs(0,i) contains the number of unique sites connected to i.
+! connected_sites(1:,i) contains the list of sites connected to site i (ie is the
 ! decoded/non-bit list form of connected_orbs).
-! If connected_orbs(j,i) is 0 then it means there are fewer than 2ndim sites
-! that are connected to i that are not a periodic image of i.
-integer, allocatable :: connected_sites(:,:) ! (2ndim, nbasis)
+! If connected_orbs(j,i) is 0 then it means there are fewer than 2ndim unique sites
+! that are connected to i that are not a periodic image of i (or connected to
+! i both directly and via periodic boundary conditions).
+integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis)
 
 ! True if any site is its own periodic image.
 ! This is the case if one dimension (or more) has only one site per crystal
@@ -77,7 +79,7 @@ contains
         call check_allocate('tmat',basis_length*nbasis,ierr)
         allocate(connected_orbs(basis_length,nbasis), stat=ierr)
         call check_allocate('connected_orbs',basis_length*nbasis,ierr)
-        allocate(connected_sites(2*ndim,nbasis), stat=ierr)
+        allocate(connected_sites(0:2*ndim,nbasis), stat=ierr)
         call check_allocate('connected_sites',basis_length*2*ndim,ierr)
 
         tmat = 0
@@ -162,6 +164,7 @@ contains
                     end if
                 end do
             end do
+            connected_sites(0,i) = v
         end do
 
     end subroutine init_real_space_hub

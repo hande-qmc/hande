@@ -539,14 +539,14 @@ contains
 
         use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
-        use hubbard_real, only: connected_orbs
+        use hubbard_real, only: connected_orbs, connected_sites
         use system, only: nel
 
         integer, intent(in) :: occ_list(nel)
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(out) :: i, a, nvirt_avail
         integer(i0) :: virt_avail(basis_length)
-        integer :: ipos, iel, nfound
+        integer :: ivirt, ipos, iel
 
         do
             ! Until we find an i orbital which has at least one allowed
@@ -575,22 +575,14 @@ contains
         end do
 
         ! Find a.
-        nvirt_avail = sum(count_set_bits(virt_avail))
-        a = int(genrand_real2()*nvirt_avail) + 1
+        nvirt_avail = connected_sites(0,i)
         ! Now need to find out what orbital this corresponds to...
-        nfound = 0
-        finda: do iel = 1, basis_length
-            do ipos = 0, i0_end
-                if (btest(virt_avail(iel), ipos)) then
-                    nfound = nfound + 1
-                    if (nfound == a) then
-                        ! found the orbital.
-                        a = basis_lookup(ipos, iel)
-                        exit finda
-                    end if
-                end if
-            end do
-        end do finda
+        do ivirt = 1, connected_sites(0,i)
+            ipos = bit_lookup(1, i)
+            iel = bit_lookup(2, i)
+            if (.not.btest(virt_avail(ipos), iel)) nvirt_avail = nvirt_avail - 1
+        end do 
+        a = connected_sites(int(genrand_real2()*nvirt_avail) + 1,i)
 
     end subroutine choose_ia_hub_real
 
