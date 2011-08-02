@@ -540,13 +540,13 @@ contains
         use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
         use hubbard_real, only: connected_orbs, connected_sites
-        use system, only: nel
+        use system, only: nel, ndim
 
         integer, intent(in) :: occ_list(nel)
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(out) :: i, a, nvirt_avail
         integer(i0) :: virt_avail(basis_length)
-        integer :: ivirt, ipos, iel
+        integer :: ivirt, ipos, iel, virt(2*ndim)
 
         do
             ! Until we find an i orbital which has at least one allowed
@@ -575,14 +575,17 @@ contains
         end do
 
         ! Find a.
-        nvirt_avail = connected_sites(0,i)
+        nvirt_avail = 0
         ! Now need to find out what orbital this corresponds to...
         do ivirt = 1, connected_sites(0,i)
-            ipos = bit_lookup(1, i)
-            iel = bit_lookup(2, i)
-            if (.not.btest(virt_avail(ipos), iel)) nvirt_avail = nvirt_avail - 1
-        end do 
-        a = connected_sites(int(genrand_real2()*nvirt_avail) + 1,i)
+            ipos = bit_lookup(1, connected_sites(ivirt,i))
+            iel = bit_lookup(2, connected_sites(ivirt,i))
+            if (btest(virt_avail(iel), ipos)) then
+                nvirt_avail = nvirt_avail + 1
+                virt(nvirt_avail) = connected_sites(ivirt,i)
+            end if
+        end do
+        a = virt(int(genrand_real2()*nvirt_avail) + 1)
 
     end subroutine choose_ia_hub_real
 
