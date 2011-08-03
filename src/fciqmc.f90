@@ -29,6 +29,7 @@ contains
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
         use ifciqmc, only: init_ifciqmc, set_parent_flag, set_parent_flag_dummy
 
+
         real(dp) :: hub_matel
 
         ! set function pointers
@@ -45,6 +46,14 @@ contains
             spawner_ptr => spawn_hub_real
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
+        case (fsfciqmc) !**need to update module system
+            decoder_ptr => !**system dependant
+            update_proj_energy_ptr => !**system dependant 
+            spawner_ptr => fs_spawner 
+            sc0_ptr => !**system dependant 
+            hub_matel = hubt
+
+
         end select
 
         death_ptr => stochastic_death

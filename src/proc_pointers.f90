@@ -69,6 +69,26 @@ abstract interface
     ! generic procedures...
     subroutine i_sub()
     end subroutine i_sub
+ 
+    !fsfciqmc related procedures......................................................................
+    
+    function i_rng() result(r)
+        use input, only : dp
+        implicit none
+        real(dp) :: r
+    end function i_rng
+    pure subroutine i_gen_matrix_elt(f, connection, hmatel) 
+        use const, only : i0, p
+        use excitations, only : excit
+        use basis, only : basis_length
+        implicit none
+        integer(i0), intent(in) :: f(basis_length)
+        type(excit), intent(inout) :: connection
+        real(p), intent(out) :: hmatel
+    end subroutine
+
+
+    !...............................................................................................
 
 end interface
 
@@ -82,5 +102,11 @@ procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
 procedure(i_sub), pointer :: annihilate_spawned_list_ptr => null()
 procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
+
+!fsfciqmc related procedures......................................................................
+procedure(i_rng), pointer :: rng_ptr => null() 
+procedure(i_gen_excit), pointer :: system_excit_ptr => null() !e.g. gen_excit_hub_real
+procedure(i_gen_matrix_elt), pointer :: system_matrix_elt_ptr => null() !e.g slater_condon1_hub_real_excit
+!...............................................................................................
 
 end module proc_pointers
