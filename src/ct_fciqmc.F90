@@ -4,7 +4,7 @@ module ct_fciqmc
 ! directly to the next spawning event without a timestep).
 
 use fciqmc_data
-use const, only: p
+use const, only: p, lint
  
 implicit none
 
@@ -28,7 +28,8 @@ contains
 
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
-        integer :: nspawned, nattempts, nparticles_old(sampling_size), ndeath, ireport, idet
+        integer :: nspawned, nattempts, ndeath, ireport, idet
+        integer(lint) :: nparticles_old(sampling_size)
         integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag

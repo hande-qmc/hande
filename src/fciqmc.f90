@@ -91,7 +91,8 @@ contains
         use fciqmc_common
         use ifciqmc, only: set_parent_flag
 
-        integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
+        integer :: i, idet, ireport, icycle, iparticle
+        integer(lint) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, nattempts, ndeath

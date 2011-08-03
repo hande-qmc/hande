@@ -70,7 +70,8 @@ contains
 
         ! Write out the main walker list to file.
 
-        integer, intent(in) :: nmc_cycles, nparticles_old
+        integer, intent(in) :: nmc_cycles
+        integer(lint) :: nparticles_old
         character(255) :: restart_file
         integer :: io
         integer, parameter :: restart_version = 1
@@ -305,7 +306,7 @@ contains
         ! Finally, need to broadcast the other information read in.
         call mpi_bcast(restart_version, 1, mpi_integer, root, mpi_comm_world, ierr)
         call mpi_bcast(mc_cycles_done, 1, mpi_integer, root, mpi_comm_world, ierr)
-        call mpi_bcast(nparticles_old_restart, 1, mpi_integer, root, mpi_comm_world, ierr)
+        call mpi_bcast(nparticles_old_restart, 1, mpi_integer8, root, mpi_comm_world, ierr)
         call mpi_bcast(shift, 1, mpi_preal, root, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift, 1, mpi_logical, root, mpi_comm_world, ierr)
         call mpi_bcast(f0, basis_length, mpi_det_integer, root, mpi_comm_world, ierr)
@@ -508,10 +509,11 @@ contains
 
     subroutine write_out_i_r_l(wunit, i, r, l, fmt_string)
         
-        ! write out an integer, real(p) and logical all on 1 line 
+        ! write out an integer(lint), real(p) and logical all on 1 line 
         ! in optional format
         
-        integer, intent(in) :: i, wunit
+        integer(lint), intent(in) :: i
+        integer, intent(in) :: wunit
         real(p), intent(in) :: r
         logical, intent(in) :: l
         character(*), intent(in), optional :: fmt_string
@@ -693,10 +695,10 @@ contains
 
     subroutine read_in_i_r_l(runit, i, r, l, fmt_string)
         
-        ! Read in an integer, a real and a logial variable from runit
+        ! Read in an integer(lint), a real and a logial variable from runit
 
         integer, intent(in) :: runit
-        integer, intent(out) :: i
+        integer(lint), intent(out) :: i
         real(p), intent(out) :: r
         logical, intent(out) :: l
         character(*), intent(in), optional :: fmt_string

@@ -46,6 +46,7 @@ CHARACTER(LEN=40) :: file(10)=""
 INTEGER, SAVE :: lc=3
 
 INTEGER, PARAMETER :: sp=kind(1.0),dp=kind(1.d0)!, qp=selected_real_kind(30)
+INTEGER, PARAMETER :: l=selected_int_kind(15)
 
 INTERFACE readf
   MODULE PROCEDURE read_single, read_double!, read_quad
@@ -53,7 +54,7 @@ END INTERFACE
 
 PRIVATE
 PUBLIC :: item, nitems, read_line, stream, reada, readu, readl,        &
-    readf, readi, getf, geta, geti, reread, input_options,             &
+    readf, readi, readli, getf, geta, geti, getli, reread, input_options,             &
     upcase, locase, report, die, assert, find_io, read_colour,         &
     getargs, parse, char, ir
 !  AJWT - added , ir to above
@@ -87,6 +88,7 @@ PUBLIC :: item, nitems, read_line, stream, reada, readu, readl,        &
 !  Read an item of type x from the buffer into variable V:
 !     CALL READF   single or double precision, depending on the type of V
 !     CALL READI   integer
+!     CALL READLI  long integer
 !     CALL READA   character string
 !     CALL READU   character string, uppercased
 !     CALL READL   character string, lowercased
@@ -738,6 +740,39 @@ END SUBROUTINE readi
 
 !-----------------------------------------------------------------------
 
+SUBROUTINE readli(I)
+!  Read an integer from the current record
+
+INTEGER(l), INTENT(INOUT) :: i
+
+CHARACTER(LEN=50) :: string
+
+if (clear) i=0
+
+!  If there are no more items on the line, I is unchanged
+if (item .ge. nitems) return
+
+string=""
+call reada(string)
+!  If the item is null, I is unchanged
+if (string == "") return
+read (unit=string,fmt=*,err=99) i
+return
+
+99 i=0
+select case(nerror)
+case(-1,0)
+  call report("Error while reading integer",.true.)
+case(1)
+  print "(2a)", "Error while reading integer. Input is ", trim(string)
+case(2)
+  nerror=-1
+end select
+
+END SUBROUTINE readli
+
+!-----------------------------------------------------------------------
+
 SUBROUTINE readu(m)
 CHARACTER(LEN=*) m
 
@@ -805,6 +840,28 @@ do
 end do
 
 END SUBROUTINE geti
+
+!-----------------------------------------------------------------------
+
+SUBROUTINE getli(I)
+!  Get a long integer, reading new data records if necessary.
+INTEGER(l), INTENT(INOUT) :: i
+LOGICAL :: eof
+
+do
+  if (item .lt. nitems) then
+    call readli(i)
+    exit
+  else
+    call read_line(eof)
+    if (eof) then
+      print "(A)", "End of file while attempting to read a number"
+      stop
+    endif
+  endif
+end do
+
+END SUBROUTINE getli
 
 !-----------------------------------------------------------------------
 

@@ -25,7 +25,7 @@ integer :: walker_length
 integer :: spawned_walker_length
 
 ! Number of particles before which varyshift mode is turned on.
-integer :: target_particles = 10000
+integer(lint) :: target_particles = 10000
 
 !--- Input data: initiator-FCIQMC ---
 
@@ -88,7 +88,7 @@ integer :: tot_walkers
 ! Updated during death and annihilation and merging.
 ! The first element is the number of normal (Hamiltonian) particles.
 ! Subsequent elements are the number of Hellmann--Feynamnn particles.
-integer, allocatable :: nparticles(:) ! (sampling_size)
+integer(lint), allocatable :: nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -201,7 +201,8 @@ logical :: restart = .false.
 logical :: dump_restart_file = .false.
 
 ! Restart data.
-integer :: mc_cycles_done = 0, nparticles_old_restart = 0
+integer :: mc_cycles_done = 0
+integer(lint) :: nparticles_old_restart = 0
 
 contains
 
@@ -537,7 +538,8 @@ contains
         !    ntot_particles: total number of particles in main walker list.
         !    elapsed_time: time taken for the report loop.
 
-        integer, intent(in) :: ireport, ntot_particles
+        integer, intent(in) :: ireport
+        integer(lint), intent(in) :: ntot_particles
         real, intent(in) :: elapsed_time
         integer :: mc_cycles, vary_shift_reports
 

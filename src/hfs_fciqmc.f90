@@ -91,7 +91,8 @@ contains
             end subroutine update_proj_energy
         end interface
 
-        integer :: idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
+        integer :: idet, ireport, icycle, iparticle
+        integer(lint) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, nattempts, ndeath

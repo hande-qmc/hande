@@ -263,7 +263,7 @@ contains
 #ifdef PARALLEL
         call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
-        call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
         ntot_particles = nparticles(1)
 #endif 
@@ -289,14 +289,15 @@ contains
         use annihilation, only: annihilation_comms_time
         use parallel
 
-        integer :: load_data(nprocs), ierr
+        integer(lint) :: load_data(nprocs)
+        integer :: ierr
 
         if (nprocs > 1) then
             if (parent) then
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, 1, mpi_integer, load_data, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, 1, mpi_integer8, load_data, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 write (6,'(1X,a34,6X,i8)') 'Min # of particles on a processor:', minval(load_data)
                 write (6,'(1X,a34,6X,i8)') 'Max # of particles on a processor:', maxval(load_data)

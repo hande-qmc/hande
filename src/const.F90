@@ -46,6 +46,9 @@ integer, parameter :: sp = selected_real_kind(6,37)
 ! Double precision kind.
 integer, parameter :: dp = selected_real_kind(15,307)
 
+! long integer; used for psip population (where we can exceed 2e9)
+integer, parameter :: lint = selected_int_kind(15)
+
 ! Compile time choice of precision level.
 ! We use p for all real kinds unless double precision is *absolutely* required
 ! by the algorithm (e.g. the Mersenne Twister RNG).

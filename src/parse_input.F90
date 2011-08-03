@@ -1,6 +1,8 @@
 module parse_input
 ! Parse input options and check input for validity.
 
+use const
+
 use parallel, only: parent
 use errors
 use hilbert_space
@@ -191,7 +193,7 @@ contains
                     call readf(vary_shift_from)
                 end if
             case('VARYSHIFT_TARGET')
-                call readi(target_particles)
+                call readli(target_particles)
             case('REFERENCE_DET')
                 allocate(occ_list0(nitems-1), stat=ierr)
                 call check_allocate('occ_list0',nitems-1,ierr)
@@ -403,7 +405,7 @@ contains
         call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(target_particles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then

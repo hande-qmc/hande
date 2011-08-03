@@ -42,7 +42,7 @@ def test_input(input_file):
     # Get keywords set in source file.
     start = re.compile('^ *do ! loop over lines', re.I)
     end = re.compile('^ *end do ! end reading.', re.I)
-    read = re.compile('^.*? *call read[aif]|^.*? *call get[aif]', re.I)
+    read = re.compile('^.*? *call read[aifl]|^.*? *call get[aifl]', re.I)
     setvar = re.compile('^ *[a-z_]+ ?=', re.I)
     parentheses = re.compile('(?<=\()(.*?)(?=\(|\))')
     data_in = False

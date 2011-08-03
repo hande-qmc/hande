@@ -34,11 +34,12 @@ contains
         use parallel
 
         integer, intent(in) :: ireport
-        integer, intent(inout) :: ntot_particles_old(sampling_size)
+        integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
         real(dp) :: ir(sampling_size+4), ir_sum(sampling_size+4)
-        integer :: ntot_particles(sampling_size), ierr
+        integer(lint) :: ntot_particles(sampling_size)
+        integer :: ierr
 
             ! Need to sum the number of particles and the projected energy over
             ! all processors.
@@ -48,7 +49,7 @@ contains
             ir(sampling_size+3) = D0_population
             ir(sampling_size+4) = rspawn
             call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            ntot_particles = nint(ir_sum(1:sampling_size))
+            ntot_particles = nint(ir_sum(1:sampling_size), lint)
             proj_energy = ir_sum(sampling_size+1)
             proj_hf_expectation = ir_sum(sampling_size+2)
             D0_population = ir_sum(sampling_size+3)
@@ -131,7 +132,8 @@ contains
 
         use fciqmc_data, only: shift, tau, shift_damping, av_shift
 
-        integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
+        integer(lint), intent(in) :: nparticles_old, nparticles
+        integer, intent(in) :: nupdate_steps
 
         shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(tau*nupdate_steps)
         av_shift = av_shift + shift
@@ -143,7 +145,8 @@ contains
         use fciqmc_data, only: tau, shift_damping
         use hfs_data, only: hf_shift, av_hf_shift
 
-        integer, intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps
+        integer(lint), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
+        integer, intent(in) :: nupdate_steps
 
         hf_shift = hf_shift - &
                  (shift_damping/(tau*nupdate_steps)) &

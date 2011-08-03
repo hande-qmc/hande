@@ -126,7 +126,8 @@ contains
         use energy_evaluation, only: update_shift
 
         integer :: ireport, icycle, iwalker, ipart
-        integer :: nparticles, nparticles_old, nattempts
+        integer(lint) :: nparticles, nparticles_old
+        integer :: nattempts
         real :: t1, t2
 
         ! from restart

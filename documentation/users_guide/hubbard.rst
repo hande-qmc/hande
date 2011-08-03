@@ -1,12 +1,3 @@
-User's Guide
-============
-
-Introduction
-------------
-
-hubbard_fciqmc can currently perform Full Configuration Interaction (FCI) and
-Full Configuration Interaction Quantum Monte Carlo calculations of the Hubbard
-model using either the real space or momentum space formulation.
 
 Full and Lanczos diagonalisation methods are implemented using external
 libraries (lapack/scalapack and TRLan respectively) and can be performed in
@@ -532,7 +523,7 @@ The following options are valid for FCIQMC calculations.
     the Hubbard model), but it is likely to be closer to it than the default
     shift value of 0.
 **varyshift_target** *varyshift_target*
-    Integer.
+    Long integer.
 
     Default: 10000.
 
@@ -782,7 +773,7 @@ FCIQMC.COMM has the same syntax as the input file.  Available options are:
     hubbard on a queuing system as they write **softexit** to FCIQMC.COMM a
     certain amount of time before the walltime is reached.
 **varyshift_target** *varyshift_target*
-    Integer.
+    Long integer.
 
     Change the number of particles to be reached before the calculation starts
     varying the shift.  Meaningless if the calculation has already started

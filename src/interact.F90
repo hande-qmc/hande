@@ -100,7 +100,7 @@ contains
                             ! Change timestep.
                             call readf(tau)
                         case('VARYSHIFT_TARGET')
-                            call readi(target_particles)
+                            call readli(target_particles)
                             if (target_particles < 0) then
                                 ! start varying the shift now.
                                 vary_shift = .true.
@@ -137,7 +137,7 @@ contains
             call mpi_bcast(av_shift, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(shift, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(target_particles, 1, mpi_integer, proc, mpi_comm_world, ierr)
+            call mpi_bcast(target_particles, 1, mpi_integer8, proc, mpi_comm_world, ierr)
             call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
             call mpi_bcast(start_vary_shift, 1, mpi_integer, proc, mpi_comm_world, ierr)
             call mpi_bcast(start_averaging_from, 1, mpi_integer, proc, mpi_comm_world, ierr)
