@@ -20,7 +20,8 @@ contains
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
-        use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator
+        use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
+                            spawn_hub_k_no_renorm, spawn_hub_real_no_renorm
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, doing_calc
 
@@ -35,13 +36,21 @@ contains
         case (hub_k)
             decoder_ptr => decode_det_spinocc_spinunocc
             update_proj_energy_ptr => update_proj_energy_hub_k
-            spawner_ptr => spawn_hub_k
+            if (no_renorm) then
+                spawner_ptr => spawn_hub_k_no_renorm
+            else
+                spawner_ptr => spawn_hub_k
+            end if
             sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
         case (hub_real)
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_hub_real
-            spawner_ptr => spawn_hub_real
+            if (no_renorm) then
+                spawner_ptr => spawn_hub_real_no_renorm
+            else
+                spawner_ptr => spawn_hub_real
+            end if
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
         end select

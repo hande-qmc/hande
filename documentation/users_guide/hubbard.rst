@@ -618,6 +618,13 @@ The following options are valid for FCIQMC calculations.
 
     Not valid for simple_fciqmc calculations, where the population of spawned
     walkers on each determinant is stored.
+**no_renorm**
+    Default: off.
+
+    Generate (and then reject) excitations which involve exciting an electron
+    into a spin-orbital which is already occupied.  Whilst this is wasteful, it
+    avoids having to renormalise the excitation generation probabilities, which
+    can be expensive for large systems.
 **dump_restart** [*id*]
     Optional integer.
 

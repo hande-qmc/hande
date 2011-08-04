@@ -198,6 +198,8 @@ contains
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
+            case('NO_RENORM')
+                no_renorm = .true.
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
             case('RESTART')
@@ -420,6 +422,7 @@ contains
         call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
