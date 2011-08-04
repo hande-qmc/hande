@@ -47,11 +47,13 @@ contains
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
         case (fsfciqmc) !**need to update module system
-            decoder_ptr => !**system dependant
-            update_proj_energy_ptr => !**system dependant 
+        use folded_spectrum_system_choice
+        use folded_spectrum_utils
+            decoder_ptr = system_decoder_ptr
+            update_proj_energy_ptr => fs_update_proj_energy
             spawner_ptr => fs_spawner 
-            sc0_ptr => !**system dependant 
-            hub_matel = hubt
+            sc0_ptr = system_sc0_ptr  
+            hub_matel = system_hub_matel
 
 
         end select
