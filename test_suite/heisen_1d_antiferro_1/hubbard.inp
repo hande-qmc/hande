@@ -4,18 +4,18 @@ fciqmc
 
 lattice
 5
-ms -3
+spins_up 1
 reference_det 1
 
 J -1
 
-spawned_walker_length 100000
+spawned_walker_length 500
 walker_length 100
-nreports 200
-mc_cycles 50
+nreports 1000
+mc_cycles 10
 
 seed 123
 
 tau 0.01
-varyshift_target 1000
+varyshift_target 10000
 shift_damping 1

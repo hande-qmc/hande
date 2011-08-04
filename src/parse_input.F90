@@ -69,9 +69,9 @@ contains
             select case(w)
 
             ! System type
-            case('REAL_SPACE')
+            case('HUBBARD_REAL')
                 system_type = hub_real
-            case('K_SPACE','MOMENTUM_SPACE')
+            case('HUBBARD_K','HUBBARD_MOMENTUM')
                 system_type = hub_k
             case('HEISENBERG')
                 system_type = heisenberg
@@ -101,6 +101,11 @@ contains
                      call stop_all('read_input', 'Cannot set electron number for Heisenberg. &
                      &Please enter n Ms value instead.')
                 call readi(nel)
+            case('SPINS_UP')
+                if (system_type /= heisenberg) &
+                     call stop_all('read_input', 'Spins up is only a valid input option for &
+                                    &the Heisenberg model')
+                call readi(nel)
             case('T')
                 call readf(hubt)
             case('U')
@@ -119,6 +124,9 @@ contains
             ! Select symmetry of wavefunction.
             case('MS')
                 call readi(ms_in)
+                !if (system_type == heisenberg) then
+                !    nel = (36+ms_in)/2
+                !end if
             case('SYM','SYMMETRY')
                 call readi(sym_in)
 
@@ -284,8 +292,8 @@ contains
         end if
         
         if (system_type == heisenberg) then
-            if (abs(ms_in) > nsites) call stop_all(this, 'Total spin, Ms, is not possible for this lattice')
-            if (mod(abs(ms_in),2) /= mod(nsites,2)) call stop_all(this,'Required Ms not possible.')
+            if (nel <= 0) call stop_all(this,'Number of spins up must be positive')
+            if (nel > nsites) call stop_all(this, 'Number of spins up is not possible for this lattice')
             if (calc_type /= fciqmc_calc .and. calc_type /= 0) call stop_all(this, 'Only the FCIQMC option &
                  &is implemented for the Heisenberg model. No other calculation types are avaliable.')
         end if
@@ -317,7 +325,7 @@ contains
                         call stop_all(this,'Number of electrons specified is different from &
                         &number of electrons used in the reference determinant.')
                     else if (system_type == heisenberg) then
-                        call stop_all(this,'Number of required spins up for the Ms value specified is &
+                        call stop_all(this,'Number of required spins up specified is &
                         &different to number of spins up in the reference determinant.')
                     end if
                 end if

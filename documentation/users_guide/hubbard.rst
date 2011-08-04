@@ -6,10 +6,11 @@ Introduction
 
 hubbard_fciqmc can currently perform Full Configuration Interaction (FCI) and
 Full Configuration Interaction Quantum Monte Carlo calculations of the Hubbard
-model using either the real space or momentum space formulation.
+model using either the real space or momentum space formulation, and can also
+perform FCIQMC for the Heisenberg model.
 
-Full and Lanczos diagonalisation methods are implemented using external
-libraries (lapack/scalapack and TRLan respectively) and can be performed in
+Full and Lanczos diagonalisation methods are implemented for the Hubbard model using
+external libraries (lapack/scalapack and TRLan respectively) and can be performed in
 both serial and parallel.  Lanczos diagonalisation can be performed with or
 without precomputing the Hamiltonian matrix.
 
@@ -256,7 +257,7 @@ System type
 
 These options select the type of system to use.
 
-**k_space**
+**hubbard_k**
     Default system type.
 
     Use the momentum space formulation of the Hubbard model.  Slater
@@ -267,13 +268,17 @@ These options select the type of system to use.
         \psi_k(r) = e^{ik.r} \sum_i \phi_i(r)
 
     where :math:`\phi_i(r)` is the basis function centred on site :math:`i`.
-**momentum_space**
-    Synonym for **k_space**.
-**real_space**
+**hubbard_momentum**
+    Synonym for **hubbard_k**. 
+**hubbard_real**
     Use the real space formulation of the Hubbard model.  Slater determinants
     are formed from the basis functions, :math:`\phi_i`, which are each centred
     on a lattice site.  Periodic boundary conditions are imposed through the
     kinetic 'hopping' term in the Hamiltonian.
+**heisenberg**
+    Run the Heisenberg model.
+    This is for a lattice of spin 1/2 particles with periodic boundary conditions
+    imposed. The coupling constant is denoted by J (see below).
 
 System
 ^^^^^^
@@ -283,9 +288,13 @@ These options describe the system which is to be investigated.
 **electrons** *nel*
     Integer.
 
-    Required.
+    Required for systems other than the Heisenberg model.
 
     Set the number of electrons in the system to be *nel*.
+**spins_up** *spins_up*
+    For the Heisenberg model, set how many spins are to be up in the basis
+    vectors considered. This will correspond to a particular block in the
+    Hamiltonian.
 **lattice** *lattice vectors*
     Integer matrix.
 
@@ -315,6 +324,12 @@ These options describe the system which is to be investigated.
     Default: 1.
 
     Set the Coulomb term in the Hamiltonian to be *U*.
+**J** *J*
+    Real.
+    
+    Default: 1.
+    
+    Set the coupling constant for the Heisenbeg model.
 **twist** *t1 [t2 [t3]]*
     Real.
 
@@ -333,8 +348,8 @@ These options describe the system which is to be investigated.
     specified then Hubbard will only work on the single unit cell and *not*
     the periodic continuation which would give us a lattice.
 
-    Applicable only in the real-space formulation of the Hubbard model,
-    otherwise the user is notified and the keyword is ignored.
+    Applicable only in the real-space formulation of the Hubbard model and Heisenberg
+    model, otherwise the user is notified and the keyword is ignored.
 **separate_strings**
     Use separate bit strings to represent the alpha and beta spin-orbitals in
     a given Slater determinant.  The default behaviour is for the alpha and beta
@@ -352,6 +367,8 @@ Calculation type
 The following options select which kind of calculation(s) are performed on the
 chosen system.  If no calculation type is given, then only the calculation
 initialisation (mainly the enumeration of the basis) is performed.
+
+Note: None of these options are currently avaliable for the Heisenberg model.
 
 **exact**
     Perform a full diagonalisation of the Hamiltonian matrix.
@@ -396,6 +413,8 @@ the following options.
 In contrast, an FCIQMC calculation can only consider a single block of the
 Hamiltonian matrix.  The spin polarisation must be specified and the symmetry
 of the determinant is currently hard-coded.
+
+These options do not apply to the Heisenberg model.
 
 **ms** *ms*
     Integer.
@@ -552,6 +571,9 @@ The following options are valid for FCIQMC calculations.
     section of the output.  This will be overridden by a restart file and
     in a simple_fciqmc calculation, where the determinant with the lowest
     energy is set to the reference determinant.
+    
+    For the Heisenberg model, the 'electron' positions will represent the
+    positions on the lattice of the spins which are up in the reference basis vector.
 **reference_det_population** *pop*
     Integer.
 
