@@ -13,7 +13,10 @@ type excit
     integer :: nexcit
     ! Orbitals which are excited from and to.
     ! Only used for single and double excitations; undefined otherwise.
-    integer :: from_orb(2), to_orb(2)
+    ! In the case of folded spectrum code, there can be up to a quadruple excitation
+    ! *NB* the only subroutines which work sensibly when handed a triple or quadruple
+    !      excitation are those pointed to by create_spawned_particle_ptr.
+    integer :: from_orb(4), to_orb(4)
     ! True if a total odd number of permutations is required to align
     ! the determinants.  Only used for single and double excitations.
     ! Undefined otherwise.
