@@ -7,6 +7,7 @@ module folded_spectrum_utils
 use const
 
 use proc_pointers
+use folded_spectrum_system_choice
 
 use excitations, only: create_excited_det
 
@@ -40,6 +41,12 @@ implicit none
 
 contains
 
+
+
+
+    subroutine fs_update_proj_energy
+
+    end subroutine fs_update_proj_energy
 
 
     subroutine fs_spawner(cdet, parent_sign, nspawn, connection)

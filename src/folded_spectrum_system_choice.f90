@@ -14,6 +14,7 @@ implicit none
     
     system_decoder_ptr   => decode_det_occ
     system_hub_matel     => hubt
+    system_update_proj_energy => update_proj_energy_hub_k
     
 
 

@@ -29,11 +29,11 @@ abstract interface
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
     end subroutine i_spawner
-    subroutine i_gen_excit(d, pgen, connection)
+    subroutine i_gen_excit(d, pgen, connection,hmatel)
         import :: det_info, excit, p
         implicit none
         type(det_info), intent(in) :: d
-        real(p), intent(out) :: pgen
+        real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
     end subroutine i_gen_excit
     subroutine i_death(mat, pop, tot_pop, ndeath)
@@ -77,16 +77,6 @@ abstract interface
         implicit none
         real(dp) :: r
     end function i_rng
-    pure subroutine i_gen_matrix_elt(f, connection, hmatel) 
-        use const, only : i0, p
-        use excitations, only : excit
-        use basis, only : basis_length
-        implicit none
-        integer(i0), intent(in) :: f(basis_length)
-        type(excit), intent(inout) :: connection
-        real(p), intent(out) :: hmatel
-    end subroutine
-
 
     !...............................................................................................
 
@@ -105,8 +95,8 @@ procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => 
 
 !fsfciqmc related procedures......................................................................
 procedure(i_rng), pointer :: rng_ptr => null() 
-procedure(i_gen_excit), pointer :: system_excit_ptr => null() !e.g. gen_excit_hub_real
-procedure(i_gen_matrix_elt), pointer :: system_matrix_elt_ptr => null() !e.g slater_condon1_hub_real_excit
+procedure(i_gen_excit), pointer :: system_gen_excit_ptr => null() !e.g. gen_excit_hub_real
+procedure(i_sc0), pointer :: system_sc0_ptr => null()
 !...............................................................................................
 
 end module proc_pointers
