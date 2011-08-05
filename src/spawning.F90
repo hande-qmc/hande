@@ -192,6 +192,8 @@ contains
 
             if (nspawn > 0) then
 
+                connection%nexcit = 2
+
                 ! 5. Is connecting matrix element positive (in which case we spawn with
                 ! negative walkers) or negative (in which case we spawn with positive
                 ! walkers)?
@@ -391,6 +393,8 @@ contains
             nspawn = 0
 
         else
+
+            connection%nexcit=1
 
             ! 2. find the connecting matrix element.
             call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
