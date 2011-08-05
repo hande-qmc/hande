@@ -203,6 +203,25 @@ logical :: dump_restart_file = .false.
 ! Restart data.
 integer :: mc_cycles_done = 0, nparticles_old_restart = 0
 
+
+
+
+
+!--- Folded spectrum data ---
+
+! fsfciqmc_vary_shift_from_proje: only true when doing a folded spectrum calculation.
+! if true then when the variable shift mode is entered the shift is set to be the
+! current projected energy of the folded matrix. Setting this as true overrides the
+! logical variable vary_shift_from_proje
+logical :: fsfciqmc_vary_shift_from_proje = .false.
+
+! The line about which you are folding i.e. eps in (H-eps)^2 - E_0
+real(p) :: fold_line = 0
+
+! The additional offset to the matrix i.e. E_0 in (H-eps)^2 - E_0
+real(p) :: fs_offset = 0
+
+
 contains
 
     !--- Initialisation. ---
