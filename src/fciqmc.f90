@@ -40,25 +40,28 @@ contains
             spawner_ptr => spawn_hub_k
             sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
+            death_ptr => stochastic_death
         case (hub_real)
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_hub_real
             spawner_ptr => spawn_hub_real
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
+            death_ptr => stochastic_death
         case (fsfciqmc) !**need to update module system
         use folded_spectrum_system_choice
         use folded_spectrum_utils
+        use fciqmc_data, only: fsfciqmc_vary_shift_from_proje
             decoder_ptr = system_decoder_ptr
             update_proj_energy_ptr => fs_update_proj_energy
             spawner_ptr => fs_spawner 
             sc0_ptr = system_sc0_ptr  
             hub_matel = system_hub_matel
-
+            death_ptr => fs_stochastic_death
+            fsfciqmc_vary_shift_from_proje = .true.
 
         end select
 
-        death_ptr => stochastic_death
 
         if (doing_calc(initiator_fciqmc)) then
             call init_ifciqmc()

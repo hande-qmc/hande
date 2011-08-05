@@ -8,6 +8,7 @@ use const
 
 use proc_pointers
 use folded_spectrum_system_choice
+use fciqmc_data, only: fold_line
 
 use excitations, only: create_excited_det
 
@@ -41,12 +42,6 @@ implicit none
 
 contains
 
-
-
-
-    subroutine fs_update_proj_energy
-
-    end subroutine fs_update_proj_energy
 
 
     subroutine fs_spawner(cdet, parent_sign, nspawn, connection)
@@ -84,19 +79,9 @@ contains
         real(p)          :: psuccess, pspawn, pgen, hmatel
         type(det_info)   :: cdet_excit
 
-        ! we need pointers to:
-        !      -function that generates an exited determinant, pgen and hmatel for the given system
-        !         (system_gen_excit_ptr)
-        !      -random number generator function
-        !         (rng_ptr)
-        !      -function that generates a diagonal matrix element
-        !         (system_sc0_ptr)
-        !      -
-        !      -
-        ! specific to imperial code:
+       ! specific to imperial code:
         !      -function that creates an excited determinant (create_excited_det)
         !      -types excit, cdet
-        !      -
 
         
         
@@ -194,7 +179,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
             call create_excited_det(cdet, connection_ki, cdet_excit)
             ! (ii) calculate Pgen and hmatel on this site       
             Pgen_jk = 1
-            hmatel_jk =  system_sc0_ptr(cdet_excit%f)!***optimise this with stored/calculated values
+            hmatel_jk =  system_sc0_ptr(cdet_excit%f) - fold_line !***optimise this with stored/calculated values
             
             ! 2. Probability of gening...
             pgen = P_o * Pgen_ki * Pgen_jk
@@ -240,7 +225,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
             ! 1.1 Generate first random excitation and probability of spawning there from cdet 
             !    (in this case we stay on the same place)
             Pgen_ki = 1
-            hmatel_ki =  system_sc0_ptr(cdet%f)!***optimise this with stored/calculated values
+            hmatel_ki =  system_sc0_ptr(cdet%f) - fold_line !***optimise this with stored/calculated values
 
             ! 1.2 Generate the second random excitation 
             call system_gen_excit_ptr(cdet, Pgen_jk, connection_jk, hmatel_jk)
@@ -323,4 +308,85 @@ elttype:if(choose_double_elt_type <= P__ ) then
 
     end subroutine fs_stochastic_death
 
+    subroutine fs_stochastic_death(Kii, population, tot_population, ndeath)
+
+        ! Particles will attempt to die with probability
+        !  p_d = tau*M_ii*M_ii
+        ! where tau is the timestep and M_ii is the appropriate diagonal
+        ! matrix element.
+        ! For FSFCIQMC M_ii = (K_ii-fold_line)^2 - fs_offset - S        
+        ! where S is the shift, fold_line is the point about which we fold
+        ! the spectrum, fs_offset is an addition offset to move the origin 
+        ! from zero and  K_ii is
+        !  K_ii =  < D_i | H | D_i > - E_0.
+
+        ! In:
+        !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
+        !         which the particles reside.
+        ! In/Out:
+        !    population: number of particles on determinant D_i.
+        !    tot_population: total number of particles.
+        ! Out:
+        !    ndeath: running total of number of particles died/cloned.
+        
+        ! Note that population and tot_population refer to a single 'type' of
+        ! population, i.e. either a set of Hamiltonian walkers or a set of
+        ! Hellmann--Feynman walkers.
+
+        use dSFMT_interface, only: genrand_real2
+
+        real(p), intent(in) :: Kii
+        integer, intent(inout) :: population, tot_population
+        integer, intent(out) :: ndeath
+
+        real(p) :: pd
+        real(dp) :: r
+        integer :: kill, old_population
+
+        ! Optimisation: the number of particles on a given determinant can die
+        ! stochastically...
+        ! This amounts to multplying p_d by the population.  int(p_d) is thus
+        ! the number that definitely die and the fractional part of p_d is the
+        ! probability of an additional death.
+
+        pd = tau*( (Kii-fold_line)**2 - (shift+fs_offset) )
+
+        ! This will be the same for all particles on the determinant, so we can
+        ! attempt all deaths in one shot.
+        pd = pd*abs(population)
+
+        ! Number that definitely die...
+        kill = int(pd)
+
+        ! In addition, stochastic death (bad luck! ;-))
+        pd = pd - kill ! Remaining chance...
+        r = genrand_real2()
+        if (abs(pd) > r) then
+            if (pd > 0.0_p) then
+                ! die die die!
+                kill = kill + 1
+            else
+                ! clone clone clone! doesn't quite have the same ring to it.
+                kill = kill - 1
+            end if
+        end if
+
+        ! Find the new number of particles.
+        ! If kill is positive then particles are killed (i.e. the population
+        ! should move towards zero).
+        ! Also update the total number of particles on the processor.
+        old_population = population
+        if (population < 0) then
+            population = population + kill
+        else
+            population = population - kill
+        end if
+        tot_population = tot_population - abs(old_population) + abs(population)
+        ndeath = ndeath + abs(kill)
+
+    end subroutine fs_stochastic_death
+
+
 end module folded_spectrum_utils
+
+
