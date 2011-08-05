@@ -1,0 +1,9 @@
+files:
+folded_spectrum_utils
+folded_spectrum_system_choice
+
+added global variables fold_line, fs_offset, fsfciqmc_vary_shift_from_proj
+created spawning routine
+modified death_step routine
+modified initialisation of S
+
