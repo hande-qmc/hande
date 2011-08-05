@@ -296,8 +296,8 @@ contains
                 call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
                 if (allowed_excitation) then
                     connection%nexcit = 2
-                    connection%from_orb = (/ i,j /)
-                    connection%to_orb = (/ a,b /)
+                    connection%from_orb(1:2) = (/ i,j /)
+                    connection%to_orb(1:2) = (/ a,b /)
                     call slater_condon2_hub_k_excit(cdet%f, connection, K_ij)
                 else
                     K_ij = 0.0_p

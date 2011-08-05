@@ -101,8 +101,8 @@ contains
             call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b)
 
             connection%nexcit = 2
-            connection%from_orb = (/ i,j /)
-            connection%to_orb = (/ a,b /)
+            connection%from_orb(1:2) = (/ i,j /)
+            connection%to_orb(1:2) = (/ a,b /)
 
             ! 5. Is connecting matrix element positive (in which case we spawn with
             ! negative walkers) or negative (in which case we spawn with positive

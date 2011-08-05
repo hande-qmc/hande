@@ -12,6 +12,7 @@ implicit none
 ! Parameters to used to specify the system type.
 integer, parameter :: hub_k = 0
 integer, parameter :: hub_real = 1
+integer, parameter :: fsfciqmc = 4
 
 ! Which system are we examining?  Hubbard (real space)? Hubbard (k space)? ...?
 integer :: system_type = hub_k

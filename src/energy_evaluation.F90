@@ -27,12 +27,13 @@ contains
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, av_proj_energy, av_D0_population, shift, av_shift, &
                                vary_shift, start_vary_shift, vary_shift_from,                  &
-                               vary_shift_from_proje, D0_population
+                               vary_shift_from_proje, fsfciqmc_vary_shift_from_proje,          &
+                               D0_population, fold_line, fs_offset
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc
 
         use parallel
-
+        
         integer, intent(in) :: ireport
         integer, intent(inout) :: ntot_particles_old(sampling_size)
 
@@ -68,7 +69,6 @@ contains
                 if(fsfciqmc_vary_shift_from_proje) then
                     !if running a folded spectrum calculation, set the shift to
                     !instantaneously be the projected energy of the folded hamiltonian
-                    use fs_data, only: fold_line, fs_offset
                     shift = (proj_energy/D0_population - fold_line)**2 + fs_offset
                 else if (vary_shift_from_proje) then
                     ! Set shift to be instantaneous projected energy.
@@ -91,7 +91,6 @@ contains
                 if(fsfciqmc_vary_shift_from_proje) then
                     !if running a folded spectrum calculation, set the shift to
                     !instantaneously be the projected energy of the folded hamiltonian
-                    use fs_data, only: fold_line, fs_offset
                     shift = (proj_energy/D0_population - fold_line)**2 + fs_offset
                 else if (vary_shift_from_proje) then
                     ! Set shift to be instantaneous projected energy.

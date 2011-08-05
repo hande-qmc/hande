@@ -1,7 +1,6 @@
 module folded_spectrum_utils
 !TO DO:
 ! tau finder
-! death step
 ! calculating P__, P_o, Po_
 
 use const
@@ -58,7 +57,13 @@ contains
         !        attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
-        use dSFMT_interface, only: genrand_real2
+        use determinants, only: det_info
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: excit
+        use fciqmc_data, only: tau
+        use hamiltonian, only: slater_condon1_hub_real_excit
+
+        implicit none
         rng_ptr => genrand_real2 
         
         type(det_info), intent(in) :: cdet

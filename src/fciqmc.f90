@@ -14,7 +14,7 @@ contains
         ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
 
-        use system, only: system_type, hub_k, hub_real, hub_k_coulomb, hubt
+        use system, only: system_type, hub_k, hub_real,fsfciqmc, hub_k_coulomb, hubt
         use hellmann_feynman_sampling
 
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
@@ -28,6 +28,11 @@ contains
         use ct_fciqmc, only: do_ct_fciqmc
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
         use ifciqmc, only: init_ifciqmc, set_parent_flag, set_parent_flag_dummy
+
+
+        use folded_spectrum_system_choice
+        use folded_spectrum_utils
+        use fciqmc_data, only: fsfciqmc_vary_shift_from_proje
 
 
         real(dp) :: hub_matel
@@ -49,9 +54,7 @@ contains
             hub_matel = hubt
             death_ptr => stochastic_death
         case (fsfciqmc) !**need to update module system
-        use folded_spectrum_system_choice
-        use folded_spectrum_utils
-        use fciqmc_data, only: fsfciqmc_vary_shift_from_proje
+            call initialise_hubbard_real_space_system()
             decoder_ptr = system_decoder_ptr
             update_proj_energy_ptr => fs_update_proj_energy
             spawner_ptr => fs_spawner 
