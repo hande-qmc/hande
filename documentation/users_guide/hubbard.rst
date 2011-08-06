@@ -410,6 +410,10 @@ Note: None of these options are currently avaliable for the Heisenberg model.
     available for the momentum formulation of the Hubbard model.  The symmetry
     can be selected by specifying a reference determinant.
 
+    For the real space formulation of the Hubbard model and the Heisenberg
+    model, the exact size of the space (at least to the first 8 significant
+    figures) is found by simple combinatorics.
+
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
