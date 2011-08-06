@@ -99,7 +99,7 @@ contains
             case('NEL', 'ELECTRONS')
                 if (system_type == heisenberg) &
                      call stop_all('read_input', 'Cannot set electron number for Heisenberg. &
-                     &Please enter n Ms value instead.')
+                     &Please enter an Ms value instead.')
                 call readi(nel)
             case('SPINS_UP')
                 if (system_type /= heisenberg) &
