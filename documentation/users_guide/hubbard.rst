@@ -312,24 +312,34 @@ These options describe the system which is to be investigated.
 
     Default: 1.
 
-    Set the kinetic term in the Hamiltonian to be *t*, i.e. the kinetic operator is:
+    Set the kinetic term in the Hubbard Hamiltonian to be *t*, i.e. the kinetic operator (in a local/real-space orbital basis) is:
 
     .. math::
 
-        T = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dag} a_{j\sigma}
+        \hat{T} = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dag} a_{j\sigma}.
 
 **U** *U*
     Real.
 
     Default: 1.
 
-    Set the Coulomb term in the Hamiltonian to be *U*.
+    Set the Coulomb term in the Hubbard Hamiltonian to be *U*, i.e. the Coulomb operator (in a local/real-space orbital basis) is:
+
+    .. math::
+
+        \hat{U} = U \sum_i n_{i\uparrow} n_{i\downarrow}.
+
 **J** *J*
     Real.
     
     Default: 1.
     
-    Set the coupling constant for the Heisenbeg model.
+    Set the coupling constant for the Heisenbeg model, where the Hamiltonian is defined as:
+
+    .. math::
+
+        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j
+
 **twist** *t1 [t2 [t3]]*
     Real.
 
@@ -343,13 +353,14 @@ These options describe the system which is to be investigated.
     Applicable only in the momentum space formulation of the Hubbard model.
 
 **finite_cluster**
-    The default behaviour for Hubbard is to work on an infinite lattice 
-    contructed out of repeating the user-specified unit cell. If finite_cluster is 
-    specified then Hubbard will only work on the single unit cell and *not*
-    the periodic continuation which would give us a lattice.
+    The default behaviour for hubbard.x is to work on an infinite lattice
+    contructed out of repeating the user-specified unit cell. If finite_cluster
+    is specified then hubbard.x will only work on the single unit cell and
+    *not* the periodic continuation which would give us a lattice.
 
-    Applicable only in the real-space formulation of the Hubbard model and Heisenberg
-    model, otherwise the user is notified and the keyword is ignored.
+    Applicable only in the real-space formulation of the Hubbard model and
+    Heisenberg model, otherwise the user is notified and the keyword is
+    ignored.
 **separate_strings**
     Use separate bit strings to represent the alpha and beta spin-orbitals in
     a given Slater determinant.  The default behaviour is for the alpha and beta
@@ -359,7 +370,6 @@ These options describe the system which is to be investigated.
 
     Applicable only in the real-space formulation of the Hubbard model,
     otherwise the user is notified and the keyword is ignored.
-
 
 Calculation type
 ^^^^^^^^^^^^^^^^
@@ -724,7 +734,7 @@ the result but can have a significant impact on performance.
     over the processors in a cyclic fashion.  Applicable only to FCI
     calculations.
 
-output options
+Output options
 ^^^^^^^^^^^^^^
 
 These options increase the verbosity but can be useful for debugging.  Note that
@@ -751,7 +761,7 @@ be used in parallel.
 **hamil** [*filename*]
     Synonym for **hamiltonian**.
 
-other options
+Other options
 ^^^^^^^^^^^^^
 
 **end**

@@ -51,11 +51,12 @@ integer :: nel = 0
 integer :: nvirt
 
 ! Spin polarisation is set in set_spin_polarisation in the determinants modules
+! Only used in Fermionic systems; see note for nel and nvirt for how the spin
+! polarisation is handled in the Heisenberg system.
 ! # number of alpha, beta electrons
 integer :: nalpha, nbeta
 ! # number of virtual alpha, beta spin-orbitals
 integer :: nvirt_alpha, nvirt_beta
-
 
 ! Hubbard T and U parameters specifying the kinetic energy and Coulomb
 ! interaction respectively.
