@@ -5,7 +5,8 @@ usage () {
 usage: 1d_hubbard_gs.sh N U
 
 Find the exact ground state (in terms of t) of the 1D Hubbard model at
-U consisting of N sites in the simulation cell.  Requires Mathematica.
+U consisting of N sites in the simulation cell in the thermodynamic limit.
+Requires Mathematica.
 END
 }
 
