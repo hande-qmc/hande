@@ -344,6 +344,8 @@ The following options select which kind of calculation(s) are performed on the
 chosen system.  If no calculation type is given, then only the calculation
 initialisation (mainly the enumeration of the basis) is performed.
 
+Note that multiple calculations can be specified within a single input, but are performed in a set order.  Specifying **fciqmc** and **ifciqmc** is unlikely to work though!
+
 **exact**
     Perform a full diagonalisation of the Hamiltonian matrix.
 **fci**
@@ -371,7 +373,7 @@ initialisation (mainly the enumeration of the basis) is performed.
     Estimate the size of the Hilbert space within the desired symmetry block of
     the Hamiltonian by performing *ncycles* cycles of a Monte Carlo algorithm.
     The overall spin must be set using **ms**.  Currently symmetry is only
-    available for the momentum formulation of the Hubbard model.  The symmetry
+    available for the momentum formulation of the Hubbard model.  The symmetry block
     can be selected by specifying a reference determinant.
 
 Calculation options: symmetry options
