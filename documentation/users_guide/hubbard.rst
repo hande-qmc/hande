@@ -280,6 +280,9 @@ These options select the type of system to use.
     This is for a lattice of spin 1/2 particles with or without periodic
     boundary conditions imposed. The coupling constant is denoted by J (see
     below).
+    
+    Warning: for efficiency reasons it is assumed that the smallest dimension
+    lattice vector is greater than 2 if periodic boundary conditions are used.
 
 System
 ^^^^^^
@@ -306,6 +309,8 @@ These options describe the system which is to be investigated.
     \times n` matrix containing the lattice vectors of the crystal cell (i.e.
     one lattice vector per line).  1D, 2D and 3D systems can be specified using
     vectors of the appropriate dimensionality.
+
+    
 **nel** *nel*
     Synonym for **electrons**.
 **T** *t*
