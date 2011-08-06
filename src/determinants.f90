@@ -84,7 +84,13 @@ integer(i0), target :: dets_ksum
 ! the desired spin and momentum symmetry.
 integer :: ndets
 
-! Total size of determinant space.
+! Total (exact) size of determinant space.
+! Only used in FCI calculations, where we can be certain that we have fewer
+! determinants than 2**31-1 (ie no overflow).
+! Whilst it's set (and frequently overflows) in FCIQMC calculations, we never
+! actually use it then.  See the estimate_hilbert_space option to obtain an
+! estimate estimate (or, in real-space systems, exact to a certain precision)
+! for the size of the Hilbert space for a given symmetry which avoids overflows.
 integer :: tot_ndets
 
 ! Number of determinants of each symmetry.
@@ -130,6 +136,7 @@ contains
         use checking, only: check_allocate
         use utils, only: binom_i
         use utils, only: get_free_unit, int_fmt
+        use calc, only: doing_calc, exact_diag, lanczos_diag
 
         integer :: i, bit_pos, bit_element, ierr
         character(4) :: fmt1(5)
@@ -149,7 +156,8 @@ contains
             fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
             write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
-            write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
+            if (doing_calc(exact_diag+lanczos_diag)) &
+                write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
             write (6,'(1X,a61,'//fmt1(4)//',/)') 'Bit-length of integers used to store determinant bit-strings:', i0_length
             write (6,'(1X,a57,'//fmt1(5)//',/)') 'Number of integers used to store determinant bit-strings:', basis_length
         end if
