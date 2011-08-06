@@ -277,8 +277,9 @@ These options select the type of system to use.
     kinetic 'hopping' term in the Hamiltonian.
 **heisenberg**
     Run the Heisenberg model.
-    This is for a lattice of spin 1/2 particles with periodic boundary conditions
-    imposed. The coupling constant is denoted by J (see below).
+    This is for a lattice of spin 1/2 particles with or without periodic
+    boundary conditions imposed. The coupling constant is denoted by J (see
+    below).
 
 System
 ^^^^^^
