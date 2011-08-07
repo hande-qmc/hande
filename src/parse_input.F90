@@ -294,8 +294,6 @@ contains
         if (system_type == heisenberg) then
             if (nel <= 0) call stop_all(this,'Number of spins up must be positive')
             if (nel > nsites) call stop_all(this, 'Number of spins up is not possible for this lattice')
-            if (calc_type /= fciqmc_calc .and. calc_type /= 0) call stop_all(this, 'Only the FCIQMC option &
-                 &is implemented for the Heisenberg model. No other calculation types are avaliable.')
         end if
                                                             
                                                             

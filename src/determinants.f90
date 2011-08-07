@@ -297,16 +297,27 @@ contains
 
         integer, intent(in) :: Ms
 
-        ! Find the number of determinants with the required spin.
-        if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
-         
-        dets_Ms = Ms
+        select case(system_type)
 
-        nbeta = (nel - Ms)/2
-        nalpha = (nel + Ms)/2
+        case(heisenberg)
 
-        nvirt_alpha = nsites - nalpha
-        nvirt_beta = nsites - nbeta
+            ! Spin polarization is different (see comments in system) as the
+            ! Heisenberg model is a collection of spins rather than electrons.
+
+        case default
+
+            ! Find the number of determinants with the required spin.
+            if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
+             
+            dets_Ms = Ms
+
+            nbeta = (nel - Ms)/2
+            nalpha = (nel + Ms)/2
+
+            nvirt_alpha = nsites - nalpha
+            nvirt_beta = nsites - nbeta
+
+        end select
 
     end subroutine set_spin_polarisation
 
@@ -347,11 +358,19 @@ contains
         nbeta_combinations = binom_i(nbasis/2, nbeta)
         nalpha_combinations = binom_i(nbasis/2, nalpha)
 
-        if (system_type == hub_real) then
+        select case(system_type)
+
+        case(hub_real)
 
             sym_space_size = nalpha_combinations*nbeta_combinations
 
-        else
+        case(heisenberg)
+
+            ! See notes in system about how the Heisenberg model uses nel and
+            ! nvirt.
+            sym_space_size = binom_i(nsites, nel)
+
+        case default 
 
             ! Determinants are assigned a given symmetry by the sum of the
             ! wavevectors of the occupied basis functions.  This is because only
@@ -396,7 +415,7 @@ contains
                 end do
             end do
 
-        end if
+        end select
 
         if (parent) then
             write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
@@ -451,72 +470,95 @@ contains
         allocate(dets_list(basis_length, ndets), stat=ierr)
         call check_allocate('dets_list',basis_length*ndets,ierr)
 
-        ! Assume that we're not attempting to do FCI for more than
-        ! a 2*i0_length spin orbitals, which is quite large... ;-)
-        if (nbasis/2 > i0_length) then
-            call stop_all('enumerate_determinants','Number of alpha spin functions longer than the an i0 integer.')
-        end if
+        select case(system_type)
 
-        idet = 0
-        do i = 1, nbeta_combinations
+        case(heisenberg)
 
-            ! Get beta orbitals.
-            if (i == 1) then
-                f_beta = first_perm(nbeta)
-            else
-                f_beta = bit_permutation(f_beta)
+            ! Just have spin up and spin down sites (no concept of unoccupied
+            ! sites) so just need to arrange nel spin ups.  No need to
+            ! interweave alpha and beta strings.
+
+            ! Assume that we're not attempting to do FCI for more than
+            ! a i0_length sites , which is quite large... ;-)
+            if (nbasis > i0_length) then
+                call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
             end if
 
-            ! Symmetry of the beta orbitals.
-            if (system_type == hub_k) then
-                k_beta = gamma_sym
-                do ibit = 0, i0_end
-                    if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
-                end do
+            dets_list(1,1) = first_perm(nel)
+            do i = 2, ndets
+                dets_list(1,i) = bit_permutation(dets_list(1,i-1))
+            end do
+
+        case default
+
+            ! Assume that we're not attempting to do FCI for more than
+            ! a 2*i0_length spin orbitals, which is quite large... ;-)
+            if (nbasis/2 > i0_length) then
+                call stop_all('enumerate_determinants','Number of alpha spin functions longer than the an i0 integer.')
             end if
 
-            do j = 1, nalpha_combinations
+            idet = 0
+            do i = 1, nbeta_combinations
 
-                ! Get alpha orbitals.
-                if (j == 1) then
-                    f_alpha = first_perm(nalpha)
+                ! Get beta orbitals.
+                if (i == 1) then
+                    f_beta = first_perm(nbeta)
                 else
-                    f_alpha = bit_permutation(f_alpha)
+                    f_beta = bit_permutation(f_beta)
                 end if
 
-                ! Symmetry of all orbitals.
+                ! Symmetry of the beta orbitals.
                 if (system_type == hub_k) then
-                    k = k_beta
+                    k_beta = gamma_sym
                     do ibit = 0, i0_end
-                        if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
+                        if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
                     end do
                 end if
 
-                if (system_type == hub_real .or. k == ksum) then
+                do j = 1, nalpha_combinations
 
-                    idet = idet + 1
-
-                    ! Merge alpha and beta sets into determinant list.
-                    if (separate_strings) then
-                        dets_list(:,idet) = (/ f_alpha, f_beta /)
+                    ! Get alpha orbitals.
+                    if (j == 1) then
+                        f_alpha = first_perm(nalpha)
                     else
-                        ! Alpha orbitals are stored in the even bits, beta orbitals in
-                        ! the odd bits (hence the conversion).
-                        dets_list(:,idet) = 0
-                        do ibit = 0, min(nbasis/2, i0_length/2-1)
-                            if (btest(f_alpha,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit)
-                            if (btest(f_beta,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit+1)
-                        end do
-                        do ibit = i0_length/2, max(nbasis/2, i0_end)
-                            if (btest(f_alpha,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit-i0_length)
-                            if (btest(f_beta,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit+1-i0_length)
+                        f_alpha = bit_permutation(f_alpha)
+                    end if
+
+                    ! Symmetry of all orbitals.
+                    if (system_type == hub_k) then
+                        k = k_beta
+                        do ibit = 0, i0_end
+                            if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
                         end do
                     end if
 
-                end if
+                    if (system_type == hub_real .or. k == ksum) then
 
+                        idet = idet + 1
+
+                        ! Merge alpha and beta sets into determinant list.
+                        if (separate_strings) then
+                            dets_list(:,idet) = (/ f_alpha, f_beta /)
+                        else
+                            ! Alpha orbitals are stored in the even bits, beta orbitals in
+                            ! the odd bits (hence the conversion).
+                            dets_list(:,idet) = 0
+                            do ibit = 0, min(nbasis/2, i0_length/2-1)
+                                if (btest(f_alpha,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit)
+                                if (btest(f_beta,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit+1)
+                            end do
+                            do ibit = i0_length/2, max(nbasis/2, i0_end)
+                                if (btest(f_alpha,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit-i0_length)
+                                if (btest(f_beta,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit+1-i0_length)
+                            end do
+                        end if
+
+                    end if
+
+                end do
             end do
-        end do
+
+        end select
 
         dets_ksum = ksum
 
