@@ -376,7 +376,7 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        integer :: ierr
+        integer :: ierr, occ_list_size
         logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -428,11 +428,14 @@ contains
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
+            ! Have not yet set nel in the Heisenberg model.
+            occ_list_size = size(occ_list0)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(occ_list0(nel), stat=ierr)
-                call check_allocate('occ_list0',nel,ierr)
+                allocate(occ_list0(occ_list_size), stat=ierr)
+                call check_allocate('occ_list0', occ_list_size, ierr)
             end if
-            call mpi_bcast(occ_list0, nel, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)

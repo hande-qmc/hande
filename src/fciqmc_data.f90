@@ -212,6 +212,7 @@ contains
         ! a reference determinant.
 
         use checking, only: check_allocate
+        use errors, only: stop_all
         use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, nsites
         
         integer :: i, ierr
@@ -219,7 +220,20 @@ contains
         ! Leave the reference determinant unchanged if it's already been
         ! allocated (and presumably set).
         
-        if (.not.allocated(occ_list0)) then
+        if (allocated(occ_list0)) then
+            if (size(occ_list0) /= nel) then
+                select case(system_type)
+                case(heisienberg)
+                    call stop_all('set_reference_det', &
+                        'Reference determinant supplied does not contain the &
+                        &specified number of up electrons.')
+                case default
+                    call stop_all('set_reference_det', &
+                        'Reference determinant supplied does not contain the &
+                        &specified number of electrons.')
+                end select
+            end if
+        else
             allocate(occ_list0(nel), stat=ierr)
             call check_allocate('occ_list0',nel,ierr)
             select case(system_type)
