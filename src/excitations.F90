@@ -376,6 +376,42 @@ contains
 
     end subroutine create_excited_det
 
+    pure subroutine create_excited_det_occ_list(cdet_in, connection, cdet_out)
+    
+        ! Generate a determinant with the list of occupied orbitals from 
+        ! another determinant and the excitation information connecting the 
+        ! two determinants.
+        ! In: 
+        !    cdet_in: info on the current determinant that we will excite
+        !        from.  The f field must be set.
+        !    connection: excitation connecting cdet_in to cdet_out.  Note that
+        !        the perm field is not used.
+        ! Out:
+        !    f_out(basis_length): info on the determinant that we will excite
+        !    to
+        use determinants, only : decode_det
+
+        type(det_info), intent(in)  :: cdet_in
+        type(excit), intent(in)     :: connection
+        type(det_info), intent(out) :: cdet_out
+
+
+        ! Create the excited determinant bit string representation
+        call create_excited_det(cdet_in%f, connection, cdet_out%f)
+
+        ! Decode the excited determinant bit string representation
+        call decode_det(cdet_out%f,cdet_out%occ_list)
+
+    end subroutine create_excited_det_occ_list
+
+
+
+
+
+
+
+
+
     pure function calc_pgen_hub_k(ab_sym, f, unocc_alpha, unocc_beta) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
