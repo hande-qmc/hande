@@ -1,3 +1,12 @@
+User's Guide
+============
+
+Introduction
+------------
+
+hubbard_fciqmc can currently perform Full Configuration Interaction (FCI) and
+Full Configuration Interaction Quantum Monte Carlo calculations of the Hubbard
+model using either the real space or momentum space formulation.
 
 Full and Lanczos diagonalisation methods are implemented using external
 libraries (lapack/scalapack and TRLan respectively) and can be performed in
@@ -505,8 +514,7 @@ The following options are valid for FCIQMC calculations.
     walkers due to cloning.  Using too large a value can lead to poor sampling
     as large numbers of walkers reside on the same small number of determinants
     rather than diffusing appropriately through the determinant space.
-**vary_shift_from** **proje**
-**vary_shift_from** *shift*
+**vary_shift_from** **proje** | *shift* 
     String or real.
 
     Default: off.
