@@ -218,6 +218,7 @@ contains
 
         ! Leave the reference determinant unchanged if it's already been
         ! allocated (and presumably set).
+        
         if (.not.allocated(occ_list0)) then
             allocate(occ_list0(nel), stat=ierr)
             call check_allocate('occ_list0',nel,ierr)

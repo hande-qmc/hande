@@ -124,6 +124,8 @@ contains
 
         ! Initialise timer.
         call cpu_time(t1)
+        
+        print *, nel
 
         do ireport = 1, nreport
 

@@ -102,8 +102,8 @@ contains
         hub_k_coulomb = hubu/nsites
 
         if (system_type == heisenberg) then
-            ms_in = 2*nel-nsites
-            nvirt = nsites-nel
+            nel = (nsites+ms_in)/2
+            nvirt = (nsites-ms_in)/2
         else
             nvirt = 2*nsites - nel
         end if

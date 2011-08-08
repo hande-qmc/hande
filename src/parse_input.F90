@@ -101,11 +101,11 @@ contains
                      call stop_all('read_input', 'Cannot set electron number for Heisenberg. &
                      &Please enter an Ms value instead.')
                 call readi(nel)
-            case('SPINS_UP')
-                if (system_type /= heisenberg) &
-                     call stop_all('read_input', 'Spins up is only a valid input option for &
-                                    &the Heisenberg model')
-                call readi(nel)
+            !case('SPINS_UP')
+            !    if (system_type /= heisenberg) &
+            !         call stop_all('read_input', 'Spins up is only a valid input option for &
+            !                        &the Heisenberg model')
+            !    call readi(nel)
             case('T')
                 call readf(hubt)
             case('U')
@@ -325,8 +325,8 @@ contains
                         call stop_all(this,'Number of electrons specified is different from &
                         &number of electrons used in the reference determinant.')
                     else if (system_type == heisenberg) then
-                        call stop_all(this,'Number of required spins up specified is &
-                        &different to number of spins up in the reference determinant.')
+                        !call stop_all(this,'Number of required spins up specified is &
+                        !&different to number of spins up in the reference determinant.')
                     end if
                 end if
             end if

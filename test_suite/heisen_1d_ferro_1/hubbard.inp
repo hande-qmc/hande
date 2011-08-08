@@ -1,11 +1,10 @@
 heisenberg
 
 fciqmc
-fci
 
 lattice
 4
-spins_up 3
+ms 2
 reference_det 1 2 3
 
 J 0.1
