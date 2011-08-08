@@ -95,7 +95,6 @@ procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => 
 
 !fsfciqmc related procedures......................................................................
 procedure(i_rng), pointer :: rng_ptr => null() 
-procedure(i_gen_excit), pointer :: system_gen_excit_ptr => null() !e.g. gen_excit_hub_real
 procedure(i_sc0), pointer :: system_sc0_ptr => null()
 procedure(i_decoder), pointer :: system_decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: system_update_proj_energy_ptr => null()

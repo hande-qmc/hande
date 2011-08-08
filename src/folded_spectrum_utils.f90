@@ -6,7 +6,6 @@ module folded_spectrum_utils
 use const
 
 use proc_pointers
-use folded_spectrum_system_choice
 use fciqmc_data, only: fold_line, fs_offset
 
 
@@ -59,7 +58,6 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use hamiltonian, only: slater_condon1_hub_real_excit
         use excitations, only: create_excited_det_occ_list
 
         type(det_info), intent(in) :: cdet
@@ -105,15 +103,13 @@ elttype:if(choose_double_elt_type <= P__ ) then
             !    j   
 
             ! 1.1 Generate first random excitation and probability of spawning there from cdet 
-            call system_gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
+            call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
 
             ! 1.2 Generate the second random excitation 
             ! (i)  generate the first excited determinant  
             call create_excited_det_occ_list(cdet, connection_ki, cdet_excit)
             ! (ii) excite again
-            ! **** possible problem here, does system_gen_excit_ptr require more than just the bit
-            !      string address? ****
-            call system_gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
+            call gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
 
 
 
@@ -173,7 +169,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
             
 
             ! 1.1 Generate first random excitation and probability of spawning there from cdet 
-            call system_gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
+            call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
 
             ! 1.2 Generate the second random excitation 
             !    (in this case we stay on the same place)
@@ -181,7 +177,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
             call create_excited_det_occ_list(cdet, connection_ki, cdet_excit)
             ! (ii) calculate Pgen and hmatel on this site       
             Pgen_jk = 1
-            hmatel_jk =  system_sc0_ptr(cdet_excit%f) - fold_line !***optimise this with stored/calculated values
+            hmatel_jk =  sc0_ptr(cdet_excit%f) - fold_line !***optimise this with stored/calculated values
             
             ! 2. Probability of gening...
             pgen = P_o * Pgen_ki * Pgen_jk
@@ -227,10 +223,11 @@ elttype:if(choose_double_elt_type <= P__ ) then
             ! 1.1 Generate first random excitation and probability of spawning there from cdet 
             !    (in this case we stay on the same place)
             Pgen_ki = 1
-            hmatel_ki =  system_sc0_ptr(cdet%f) - fold_line !***optimise this with stored/calculated values
+            hmatel_ki =  sc0_ptr(cdet%f) - fold_line !***optimise this with stored/calculated values
+            
 
             ! 1.2 Generate the second random excitation 
-            call system_gen_excit_ptr(cdet, Pgen_jk, connection_jk, hmatel_jk)
+            call gen_excit_ptr(cdet, Pgen_jk, connection_jk, hmatel_jk)
             
             ! 2. Probability of gening...
             pgen = Po_ * Pgen_ki * Pgen_jk

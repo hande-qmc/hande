@@ -30,10 +30,10 @@ contains
         use ifciqmc, only: init_ifciqmc, set_parent_flag, set_parent_flag_dummy
 
 
-        use folded_spectrum_system_choice
         use folded_spectrum_utils
         use fciqmc_data, only: fsfciqmc_vary_shift_from_proje
         use dSFMT_interface, only:  genrand_real2
+        use spawning, only: gen_excit_hub_real
         
 
 
@@ -49,22 +49,24 @@ contains
             hub_matel = hub_k_coulomb
             death_ptr => stochastic_death
         case (hub_real)
-            decoder_ptr => decode_det_occ
-            update_proj_energy_ptr => update_proj_energy_hub_real
-            spawner_ptr => spawn_hub_real
-            sc0_ptr => slater_condon0_hub_real
-            hub_matel = hubt
-            death_ptr => stochastic_death
-        case (fsfciqmc) !**need to update module system
-            call initialise_hubbard_real_space_system()
-            rng_ptr => genrand_real2 
-            decoder_ptr => system_decoder_ptr
-            spawner_ptr => fs_spawner 
-            sc0_ptr => system_sc0_ptr  
-            hub_matel = system_hub_matel
-            death_ptr => fs_stochastic_death
-            fsfciqmc_vary_shift_from_proje = .true.
-
+            if(fsfciqmc) then
+                rng_ptr => genrand_real2 
+                update_proj_energy_ptr => update_proj_energy_hub_real
+                decoder_ptr => decode_det_occ
+                spawner_ptr => fs_spawner 
+                sc0_ptr => slater_condon0_hub_real  
+                hub_matel = hubt
+                death_ptr => fs_stochastic_death
+                gen_excit_ptr => gen_excit_hub_real
+                fsfciqmc_vary_shift_from_proje = .true.
+            else
+                decoder_ptr => decode_det_occ
+                update_proj_energy_ptr => update_proj_energy_hub_real
+                spawner_ptr => spawn_hub_real
+                sc0_ptr => slater_condon0_hub_real
+                hub_matel = hubt
+                death_ptr => stochastic_death
+            endif
         end select
 
 
@@ -146,6 +148,7 @@ contains
             D0_population = 0.0_p
 
             do icycle = 1, ncycles
+
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.

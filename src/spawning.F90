@@ -641,7 +641,6 @@ contains
 #else
         integer :: iproc_spawn 
 #endif
-
         ! Create bit string of new determinant.
         call create_excited_det(cdet%f, connection, f_new)
 
@@ -658,7 +657,7 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
+        spawned_walkers(:,spawning_head(iproc_spawn)) = 0 
         spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
         spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
 

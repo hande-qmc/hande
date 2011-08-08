@@ -376,7 +376,7 @@ contains
 
     end subroutine create_excited_det
 
-    pure subroutine create_excited_det_occ_list(cdet_in, connection, cdet_out)
+    subroutine create_excited_det_occ_list(cdet_in, connection, cdet_out)
     
         ! Generate a determinant with the list of occupied orbitals from 
         ! another determinant and the excitation information connecting the 
@@ -395,6 +395,9 @@ contains
         type(excit), intent(in)     :: connection
         type(det_info), intent(out) :: cdet_out
 
+        ! Make cdet_out have the same shape as cdet_in
+        ! ***** does this work??? ********
+        cdet_out = cdet_in
 
         ! Create the excited determinant bit string representation
         call create_excited_det(cdet_in%f, connection, cdet_out%f)

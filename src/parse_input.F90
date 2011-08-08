@@ -74,7 +74,7 @@ contains
             case('K_SPACE','MOMENTUM_SPACE')
                 system_type = hub_k
             case('FOLDED_SPECTRUM')
-                system_type = fsfciqmc
+                fsfciqmc = .true.
 
             ! System information.
             case('LATTICE')
@@ -202,7 +202,7 @@ contains
                 end do
 
 
-            !Calculation options: fsfciqmc.
+            ! Calculation options: fsfciqmc.
             case('FOLD_LINE')
                 call readf(fold_line)
             case('FS_OFFSET')
@@ -446,6 +446,7 @@ contains
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
 
+        call mpi_bcast(fsfciqmc, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(fold_line, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(fs_offset, 1, mpi_integer, 0, mpi_comm_world, ierr)
 

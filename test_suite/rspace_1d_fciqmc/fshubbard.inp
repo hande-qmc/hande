@@ -1,7 +1,4 @@
-folded_spectrum
-
-fs_offset -2
-fold_line -1
+real_space
 
 fci
 
@@ -14,12 +11,12 @@ lattice
 electrons 3
 reference_det 2 3 5
 
-spawned_walker_length 500
-walker_length 30
+spawned_walker_length 5000
+walker_length 300
 nreports 300
 mc_cycles 25
 
-tau 0.01
+tau 0.0001
 varyshift_target 550
 vary_shift_from proje
 shift_damping 0.06
@@ -29,3 +26,8 @@ ascii_format
 
 ms 1
 sym 1
+
+folded_spectrum
+
+fs_offset -2
+fold_line -1
