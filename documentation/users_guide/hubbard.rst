@@ -260,7 +260,7 @@ Av. shift
     The running average of the shift.  This is accumulated from the first
     iteration that the shift is allowed to vary within the current calculation
     (i.e. it is not preserved when a calculation is restarted).  As such, it
-    does not exclude an equilibriation period and is not always a good estimate
+    does not exclude an equilibration period and is not always a good estimate
     of the true mean as a result.  
 \sum H_0j Nj
     The numerator of the projected energy summed over the iterations in the
@@ -271,7 +271,7 @@ Av. Proj. E
     The running average of the projected energy.  This is accumulated from the 
     start of the current calculation (i.e. it is not preserved when
     a calculation is restarted).  As such, it does not exclude an
-    equilibriation period and is not always a good estimate of the true mean as
+    equilibration period and is not always a good estimate of the true mean as
     a result.
 
     Note that the numerator and denominator are accumulated separately and the
@@ -314,7 +314,7 @@ typically obtained using
     blocking.py -f N -d 3 -d 5 -o/ out
 
 respectively, where N is the iteration from which data should be blocked (i.e.
-after the calculation has equilibriated) and out is the file to which the
+after the calculation has equilibrated) and out is the file to which the
 calculation output was saved.
 
 Note that blocking.py can accept multiple output files for the case when
@@ -416,7 +416,7 @@ These options describe the system which is to be investigated.
 
 **finite_cluster**
     The default behaviour for Hubbard is to work on an infinite lattice 
-    contructed out of repeating the user-specified unit cell. If finite_cluster is 
+    constructed out of repeating the user-specified unit cell. If finite_cluster is 
     specified then Hubbard will only work on the single unit cell and *not*
     the periodic continuation which would give us a lattice.
 
@@ -476,7 +476,7 @@ Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 FCI calculations consider the full Hamiltonian matrix.  This is automatically
-contructed in a block diagonal form via the use of symmetry, allowing for the
+constructed in a block diagonal form via the use of symmetry, allowing for the
 Hamiltonian matrix to be considered a block at a time.  This results in
 a substantial reduction in CPU and memory demands.  The default behaviour is to
 diagonalise all blocks of the Hamiltonian matrix but this can be controlled by
@@ -502,12 +502,12 @@ of the determinant is currently hard-coded.
     wavevector is always given by *isym*:math:`=1` if *t* is positive and by
     the number of sites in the cell if *t* is negative.
 **sym** *isym*
-    Synonmym for **symmetry**.
+    Synonym for **symmetry**.
 
 Calculation options: diagonalisation options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-These options are only valid when a diagalisation (either full or Lanczos)
+These options are only valid when a diagonalisation (either full or Lanczos)
 calculation is performed.
 
 **eigenvalues**
@@ -584,7 +584,7 @@ The following options are valid for FCIQMC calculations.
 **tau** *tau*
     Real.
 
-    Set the timestep to be used.  Each Monte Carlo cycle amounts to propogating
+    Set the timestep to be used.  Each Monte Carlo cycle amounts to propagating
     the walker population by the *tau* in units of imaginary time.
 
     A small timestep causes the walker population to evolve very slowly.  Too
@@ -640,7 +640,7 @@ The following options are valid for FCIQMC calculations.
     where :math:`\beta` is the current imaginary time, :math:`A\tau` is the
     amount of imaginary time between shift updates, :math:`N_w` is the number of
     walkers at the given time and :math:`\xi` is a damping factor to prevent
-    wild fluctations in the population dynamics and can be set using the
+    wild fluctuations in the population dynamics and can be set using the
     **shift_damping** keyword.
 **reference_det** *electron_1 electron_2 ... electron_nel*
     Integer list.
@@ -699,7 +699,7 @@ The following options are valid for FCIQMC calculations.
 
     Care: this needs to be large enough to store all the particles which are spawned
     during a Monte Carlo cycle and so needs to be a reasonable fraction of the 
-    targetted number of total number of walkers.  The code does not currently
+    targeted number of total number of walkers.  The code does not currently
     check whether this size is exceeded and so setting
     **spawned_walker_length** to be too small can lead to memory problems and
     segmentation faults.
@@ -728,7 +728,7 @@ The following options are valid for FCIQMC calculations.
     very large.
 **ascii_format_in**
     Similar behaviour to **ascii_format_out** except that this one specifies that the restart
-    file to be read (specifed with the **restart** keyword) is in non-standard ASCII format
+    file to be read (specified with the **restart** keyword) is in non-standard ASCII format
     as opposed to binary format.
 **ascii_format**
     An Alias for both **ascii_format_in** and **ascii_format_out**
@@ -813,7 +813,7 @@ output options
 ^^^^^^^^^^^^^^
 
 These options increase the verbosity but can be useful for debugging.  Note that
-the filesizes scale factorially with system size.  These should not currently
+the file sizes scale factorially with system size.  These should not currently
 be used in parallel.
 
 **determinants** [*filename*]
@@ -867,7 +867,7 @@ FCIQMC.COMM has the same syntax as the input file.  Available options are:
 
     The watchdog.py (for PBS queue systems) and send_softexit.py (for other
     queue systems) scripts in the tools subdirectory are useful for running
-    hubbard on a queuing system as they write **softexit** to FCIQMC.COMM a
+    hubbard on a queueing system as they write **softexit** to FCIQMC.COMM a
     certain amount of time before the walltime is reached.
 **varyshift_target** *varyshift_target*
     Long integer.
