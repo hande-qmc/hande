@@ -7,9 +7,8 @@ use const
 
 use proc_pointers
 use folded_spectrum_system_choice
-use fciqmc_data, only: fold_line
+use fciqmc_data, only: fold_line, fs_offset
 
-use excitations, only: create_excited_det
 
 implicit none
 
@@ -58,18 +57,15 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
         use determinants, only: det_info
-        use dSFMT_interface, only:  genrand_real2
         use excitations, only: excit
         use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
+        use excitations, only: create_excited_det_occ_list
 
-        implicit none
-        rng_ptr => genrand_real2 
-        
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn(:)
-        type(excit), intent(out) :: connection(:)
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
 
         real(p),parameter      :: P__=0.2, Po_=(1.0-P__)*0.5, P_o=Po_
         real(p),parameter, dimension(3) :: P_double_elt_type =(/P__, Po_, P_o /)
@@ -79,8 +75,7 @@ contains
         ! P_gen (k|i) and P_gen (j|k)
         real(p)          :: Pgen_ki, Pgen_jk 
         real(p)          :: hmatel_ki, hmatel_jk
-        real(p)          :: pspawn
-        real(p)          :: connection_ki, connection_jk
+        type(excit)      :: connection_ki, connection_jk
         real(p)          :: psuccess, pspawn, pgen, hmatel
         type(det_info)   :: cdet_excit
 
@@ -114,8 +109,10 @@ elttype:if(choose_double_elt_type <= P__ ) then
 
             ! 1.2 Generate the second random excitation 
             ! (i)  generate the first excited determinant  
-            call create_excited_det(cdet, connection_ki, cdet_excit)
+            call create_excited_det_occ_list(cdet, connection_ki, cdet_excit)
             ! (ii) excite again
+            ! **** possible problem here, does system_gen_excit_ptr require more than just the bit
+            !      string address? ****
             call system_gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
 
 
@@ -181,7 +178,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
             ! 1.2 Generate the second random excitation 
             !    (in this case we stay on the same place)
             ! (i)  generate the first excited determinant  
-            call create_excited_det(cdet, connection_ki, cdet_excit)
+            call create_excited_det_occ_list(cdet, connection_ki, cdet_excit)
             ! (ii) calculate Pgen and hmatel on this site       
             Pgen_jk = 1
             hmatel_jk =  system_sc0_ptr(cdet_excit%f) - fold_line !***optimise this with stored/calculated values
@@ -286,40 +283,10 @@ elttype:if(choose_double_elt_type <= P__ ) then
     subroutine fs_stochastic_death(Kii, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
-        !  p_d = tau*M_ii
-        ! where tau is the timestep and M_ii is the appropriate diagonal
-        ! matrix element.
-        ! For folded spectrum FCIQMC, M_ii = K_ii - S where S is the shift and K_ii is
-        !  K_ii =  (< D_i | H | D_i > - E_0 - E_offset)^2.
-        ! We store < D_i | H | D_i > - E_0 - E_offset, so just need to square it
-        ! before passing it to the standard death routine.
-
-        ! In:
-        !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
-        !         which the particles reside.
-        ! In/Out:
-        !    population: number of particles on determinant D_i.
-        !    tot_population: total number of particles.
-        ! Out:
-        !    ndeath: running total of number of particles died/cloned.
-
-        use death, only: stochastic_death
-
-        real(p), intent(in) :: Kii
-        integer, intent(inout) :: population, tot_population
-        integer, intent(out) :: ndeath
-
-        call stochastic_death(Kii**2, population, tot_population, ndeath)
-
-    end subroutine fs_stochastic_death
-
-    subroutine fs_stochastic_death(Kii, population, tot_population, ndeath)
-
-        ! Particles will attempt to die with probability
         !  p_d = tau*M_ii*M_ii
         ! where tau is the timestep and M_ii is the appropriate diagonal
         ! matrix element.
-        ! For FSFCIQMC M_ii = (K_ii-fold_line)^2 - fs_offset - S        
+        ! For FSFCIQMC M_ii = (K_ii-fold_line)^2 + fs_offset - S        
         ! where S is the shift, fold_line is the point about which we fold
         ! the spectrum, fs_offset is an addition offset to move the origin 
         ! from zero and  K_ii is
@@ -338,56 +305,14 @@ elttype:if(choose_double_elt_type <= P__ ) then
         ! population, i.e. either a set of Hamiltonian walkers or a set of
         ! Hellmann--Feynman walkers.
 
-        use dSFMT_interface, only: genrand_real2
+
+        use death, only: stochastic_death
 
         real(p), intent(in) :: Kii
         integer, intent(inout) :: population, tot_population
         integer, intent(out) :: ndeath
 
-        real(p) :: pd
-        real(dp) :: r
-        integer :: kill, old_population
-
-        ! Optimisation: the number of particles on a given determinant can die
-        ! stochastically...
-        ! This amounts to multplying p_d by the population.  int(p_d) is thus
-        ! the number that definitely die and the fractional part of p_d is the
-        ! probability of an additional death.
-
-        pd = tau*( (Kii-fold_line)**2 - (shift+fs_offset) )
-
-        ! This will be the same for all particles on the determinant, so we can
-        ! attempt all deaths in one shot.
-        pd = pd*abs(population)
-
-        ! Number that definitely die...
-        kill = int(pd)
-
-        ! In addition, stochastic death (bad luck! ;-))
-        pd = pd - kill ! Remaining chance...
-        r = genrand_real2()
-        if (abs(pd) > r) then
-            if (pd > 0.0_p) then
-                ! die die die!
-                kill = kill + 1
-            else
-                ! clone clone clone! doesn't quite have the same ring to it.
-                kill = kill - 1
-            end if
-        end if
-
-        ! Find the new number of particles.
-        ! If kill is positive then particles are killed (i.e. the population
-        ! should move towards zero).
-        ! Also update the total number of particles on the processor.
-        old_population = population
-        if (population < 0) then
-            population = population + kill
-        else
-            population = population - kill
-        end if
-        tot_population = tot_population - abs(old_population) + abs(population)
-        ndeath = ndeath + abs(kill)
+        call stochastic_death((Kii-fold_line)**2+fs_offset, population, tot_population, ndeath)
 
     end subroutine fs_stochastic_death
 

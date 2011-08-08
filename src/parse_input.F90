@@ -73,6 +73,8 @@ contains
                 system_type = hub_real
             case('K_SPACE','MOMENTUM_SPACE')
                 system_type = hub_k
+            case('FOLDED_SPECTRUM')
+                system_type = fsfciqmc
 
             ! System information.
             case('LATTICE')
@@ -198,6 +200,18 @@ contains
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
+
+
+            !Calculation options: fsfciqmc.
+            case('FOLD_LINE')
+                call readf(fold_line)
+            case('FS_OFFSET')
+                call readf(fs_offset)
+
+
+
+
+
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
             case('RESTART')
@@ -430,6 +444,10 @@ contains
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
+
+        call mpi_bcast(fold_line, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fs_offset, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
 #endif
 

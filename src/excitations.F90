@@ -389,7 +389,7 @@ contains
         ! Out:
         !    f_out(basis_length): info on the determinant that we will excite
         !    to
-        use determinants, only : decode_det
+        use determinants, only : det_info, decode_det
 
         type(det_info), intent(in)  :: cdet_in
         type(excit), intent(in)     :: connection

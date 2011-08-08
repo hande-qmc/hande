@@ -142,6 +142,7 @@ contains
         use excitations, only: calc_pgen_hub_k, excit
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
+        use hamiltonian, only: slater_condon2_hub_k_excit
 
         type(det_info), intent(in) :: cdet
         real(p), intent(out) :: pgen, hmatel
@@ -260,6 +261,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: calc_pgen_hub_real, excit
+        use hamiltonian, only: slater_condon1_hub_real_excit
 
         type(det_info), intent(in) :: cdet
         real(p), intent(out) :: pgen, hmatel

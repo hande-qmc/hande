@@ -33,6 +33,8 @@ contains
         use folded_spectrum_system_choice
         use folded_spectrum_utils
         use fciqmc_data, only: fsfciqmc_vary_shift_from_proje
+        use dSFMT_interface, only:  genrand_real2
+        
 
 
         real(dp) :: hub_matel
@@ -55,10 +57,10 @@ contains
             death_ptr => stochastic_death
         case (fsfciqmc) !**need to update module system
             call initialise_hubbard_real_space_system()
-            decoder_ptr = system_decoder_ptr
-            update_proj_energy_ptr => fs_update_proj_energy
+            rng_ptr => genrand_real2 
+            decoder_ptr => system_decoder_ptr
             spawner_ptr => fs_spawner 
-            sc0_ptr = system_sc0_ptr  
+            sc0_ptr => system_sc0_ptr  
             hub_matel = system_hub_matel
             death_ptr => fs_stochastic_death
             fsfciqmc_vary_shift_from_proje = .true.
