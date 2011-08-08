@@ -344,7 +344,17 @@ These options describe the system which is to be investigated.
 
     .. math::
 
-        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j
+        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_field\sum_{i}\sigma_{i}^{z}
+        
+**h_field** *h_field*
+    Real.
+    
+    Default: 0.
+    
+    Set a uniform external field for the Heisenberg model. The z direction is defined to be in the same direction
+    as the external field. The spins in the basis functions point in this direction.
+    
+    Applicable only in the Heisenberg model.
 
 **twist** *t1 [t2 [t3]]*
     Real.

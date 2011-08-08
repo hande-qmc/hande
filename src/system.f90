@@ -65,6 +65,10 @@ real(p) :: hubu = 1, hubt = 1
 ! Coupling constant J In the Heisenberg model
 real(p) :: J_coupling = 1
 
+! External magnetic field h in the Heisenberg model, in the z direction
+! (the z direction is defined the same direction as the external field)
+real(p) :: h_field = 0
+
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
 ! is constant, so it's convenient to store it.
 real(p) :: hub_k_coulomb

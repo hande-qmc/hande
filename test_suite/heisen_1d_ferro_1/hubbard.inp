@@ -1,13 +1,15 @@
 heisenberg
 
 fciqmc
+fci
 
 lattice
 4
-ms 0
-reference_det 1 4
+spins_up 3
+reference_det 1 2 3
 
 J 0.1
+h_field 1
 
 spawned_walker_length 100000
 walker_length 100

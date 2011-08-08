@@ -474,9 +474,10 @@ contains
         !        the Heisenberg Model
         
         use basis, only: basis_length, basis_lookup
+        use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: ndim, nsites, J_coupling
+        use system, only: ndim, nsites, J_coupling, h_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -497,6 +498,7 @@ contains
             end do
         end do
         
+        ! Contribution to Hamiltonian from spin interactions:
         ! For any lattice there will be (ndim*nsites) bonds.
         ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
         ! element.  0-1 bonds will give +J_coupling contribution.
@@ -506,6 +508,13 @@ contains
         ! +J_coupling*(ndim*nsites-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
         hmatel = -J_coupling*(ndim*nsites-2*counter)
+        
+        ! Contribution to Hamiltonian from external field:
+        ! Each spin up (bit set) up gives a contirbution of -h_field. Each spin down
+        ! gives a contirbution of +h_field. There are bits_set spins up, and 
+        ! (nsites - bits_set) spins down, so the total contirbution is
+        ! -h_field*(2*bits_set-nsites) = -h_field*ms_in
+        hmatel = hmatel - h_field*ms_in
 
     end function diagonal_element_heisenberg
 
