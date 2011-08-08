@@ -295,10 +295,6 @@ These options describe the system which is to be investigated.
     Required for systems other than the Heisenberg model.
 
     Set the number of electrons in the system to be *nel*.
-**spins_up** *spins_up*
-    For the Heisenberg model, set how many spins are to be up in the basis
-    vectors considered. This will correspond to a particular block in the
-    Hamiltonian.
 **lattice** *lattice vectors*
     Integer matrix.
 
@@ -444,15 +440,19 @@ In contrast, an FCIQMC calculation can only consider a single block of the
 Hamiltonian matrix.  The spin polarisation must be specified and the symmetry
 of the determinant is currently hard-coded.
 
-These options do not apply to the Heisenberg model.
-
 **ms** *ms*
     Integer.
 
     Diagonalise only blocks containing determinants with the specified value of Ms,
     in units of electron spin (i.e. 1/2).
+    
+    For the Heisenberg model, ms is applied in a similar manner. Here, each site is
+    either spin up or spin down, so ms = #spins_up - #spins_down, the total spin
+    in the block considered.
 **symmetry** *isym*
     Integer.
+    
+    This does not apply to the Heisenberg model
 
     Only relevant for the momentum space formulation.  Diagonalise only blocks
     containing determinants of the same symmetry as the specified symmetry

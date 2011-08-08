@@ -601,14 +601,10 @@ contains
         !        functions, the second element the next i0_length and so on.  A basis
         !        function is occupied if the relevant bit is set.
         
-        !use errors, only: stop_all
-
         integer, intent(in) :: occ_list(nel)
         integer(i0), intent(out) :: bit_list(basis_length)
         integer :: i, orb, bit_pos, bit_element
         
-        !if (nel /= 8) call stop_all('encode_det','nel /= 8')
-
         bit_list = 0
         do i = 1, nel
             orb = occ_list(i)
