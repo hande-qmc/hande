@@ -1,5 +1,9 @@
-real_space
+folded_spectrum
 
+fs_offset -2
+fold_line -1
+
+fci
 
 fciqmc
 u 50
