@@ -1,7 +1,6 @@
 real_space
 
 fci
-
 fciqmc
 u 50
 t 1
@@ -9,10 +8,9 @@ t 1
 lattice
 4
 electrons 3
-reference_det 2 3 5
 
-spawned_walker_length 500
-walker_length 30
+spawned_walker_length 5000
+walker_length 300
 nreports 300
 mc_cycles 25
 

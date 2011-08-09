@@ -109,7 +109,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
             ! (i)  generate the first excited determinant  
             call create_excited_det_occ_list(cdet, connection_ki, cdet_excit)
             ! (ii) excite again
-            call gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
+uuu
 
 
 
@@ -280,7 +280,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
     subroutine fs_stochastic_death(Kii, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
-        !  p_d = tau*M_ii*M_ii
+        !  p_d = tau*M_ii
         ! where tau is the timestep and M_ii is the appropriate diagonal
         ! matrix element.
         ! For FSFCIQMC M_ii = (K_ii-fold_line)^2 + fs_offset - S        

@@ -446,9 +446,9 @@ contains
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
 
-        call mpi_bcast(fsfciqmc, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(fold_line, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(fs_offset, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fsfciqmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fold_line, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fs_offset, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
 #endif
 
