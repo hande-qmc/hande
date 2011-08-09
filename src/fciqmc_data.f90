@@ -213,9 +213,13 @@ contains
 
         use checking, only: check_allocate
         use errors, only: stop_all
-        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, nsites
+        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, nsites, &
+                          heisenberg, J_coupling
+        use basis, only: bit_lookup
+        use hubbard_real, only: connected_orbs
         
-        integer :: i, ierr
+        integer :: i, j, ierr, spins_set, connections
+        integer :: bit_element, bit_pos
 
         ! Leave the reference determinant unchanged if it's already been
         ! allocated (and presumably set).
@@ -223,7 +227,7 @@ contains
         if (allocated(occ_list0)) then
             if (size(occ_list0) /= nel) then
                 select case(system_type)
-                case(heisienberg)
+                case(heisenberg)
                     call stop_all('set_reference_det', &
                         'Reference determinant supplied does not contain the &
                         &specified number of up electrons.')
@@ -255,6 +259,60 @@ contains
                 forall (i=1:min(nbeta,nsites/2)) occ_list0(i+nalpha) = 4*i
                 forall (i=1:nbeta-min(nbeta,nsites/2)) &
                     occ_list0(i+nalpha+min(nbeta,nsites/2)) = 4*i-2
+            case(heisenberg)
+                if (J_coupling >= 0) then
+                    forall (i=1:nel) occ_list0(i) = i
+                ! For the antiferromagnetic case, below. This is messy but should 
+                ! give a reasonable reference determinant for general cases, even
+                ! for bizarre lattices. For bipartite lattices (eg 4x4, 6x6...)
+                ! it will give the best possible reference determinant.
+                else if (J_coupling < 0) then
+                    ! Always set the first spin up
+                    occ_list0(1) = 1
+                    spins_set = 1
+                    ! Loop over other sites to find orbitals which are not connected to
+                    ! the other sites previously chosen.
+                    do i=2,nsites
+                        bit_pos = bit_lookup(1,i)
+                        bit_element = bit_lookup(2,i)
+                        connections = 0
+                        ! Loop over all chosen sites to see if they neighbour this site.
+                        do j=1,spins_set
+                            if (btest(connected_orbs(bit_element, occ_list0(j)), bit_pos)) then
+                                  connections = connections + 1
+                            end if
+                        end do
+                        ! If this site has no neighbours which have been previously added
+                        ! to the reference determinant, then we include it.
+                        if (connections == 0) then
+                            spins_set = spins_set + 1
+                            occ_list0(spins_set) = i
+                        end if
+                    end do
+                    ! If, after finding all the sites which are not connected, we still haven't
+                    ! chosen enough sites, we accept that we must have some neigbouring sites
+                    ! included in the reference determinant and start choosing the remaining sites.
+                    if (spins_set /= nel) then
+                        ! Loop over all sites looking for extra spins to include in the
+                        ! reference detereminant.
+                        fill_sites: do i=2,nsites
+                            connections = 0
+                            ! Check if this site is already included.
+                            do j=1,spins_set
+                                if (occ_list0(j) == i) connections = connections + 1
+                            end do
+                            ! If connection = 0, this site is not currently included in the
+                            ! reference determinant, so add it.
+                            if (connections == 0) then
+                                spins_set = spins_set + 1
+                                occ_list0(spins_set) = i
+                            end if
+                            ! When the correct number of spins have been chosen to be up,
+                            ! we are finished.
+                            if (spins_set == nel) exit fill_sites
+                        end do fill_sites
+                    end if
+                end if
             end select
         end if
 

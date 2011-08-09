@@ -390,7 +390,7 @@ The following options select which kind of calculation(s) are performed on the
 chosen system.  If no calculation type is given, then only the calculation
 initialisation (mainly the enumeration of the basis) is performed.
 
-Note: None of these options are currently avaliable for the Heisenberg model.
+Note: Only FCI and FCIQMC options are avaliable for the Heisenberg model.
 
 **exact**
     Perform a full diagonalisation of the Hamiltonian matrix.
@@ -587,23 +587,36 @@ The following options are valid for FCIQMC calculations.
 **reference_det** *electron_1 electron_2 ... electron_nel*
     Integer list.
 
-    Default: in the momentum-space formulation of the Hubbard model, use the
-    Hartree--Fock determinant (ie that formed from occupying the nalpha and
-    nbeta spin-orbitals with the lowest kinetic energy); in the real-space
-    formulation of the Hubbard model, attempt to minimise the number of
-    doubly-occupied sites.  Note that this is not guaranteed (especially in the
+    Default: Momentum-space formulation of the Hubbard model
+    Uses the Hartree--Fock determinant (ie that formed from occupying the
+    nalpha and nbeta spin-orbitals with the lowest kinetic energy); 
+    Default: Real-space formulation of the Hubbard model
+    Attempt to minimise the number of doubly-occupied sites.  
+    Note that this is not guaranteed (especially in the
     real-space formulation) to give a reference determinant which is close to
     the ground state.  Further, the default ignores any value of
     the symmetry as defined by the **sym** input option.
-
+    
+    Default: Heisenberg model
+    For ferromagnetic cases (J>0) the default will attempt to group the up
+    spins together, which often will result in the best reference determinant.
+    For antiferromagnetic cases, first it will attempt to choose sites
+    which do not neighbour each other. Then, if more spins are required
+    it will choose the remaining spins in order of site label.
+    This will usually give a good reference determinant, but it is not guaranteed
+    always. For bipartite lattices however, the antiferromagnetic determinant 
+    chosen should be the best one possible.
+    
     Set the reference determinant to occupy the specified spin-orbitals.
     The index of each spin-orbital is printed out in the basis functions
     section of the output.  This will be overridden by a restart file and
     in a simple_fciqmc calculation, where the determinant with the lowest
     energy is set to the reference determinant.
     
-    For the Heisenberg model, the 'electron' positions will represent the
-    positions on the lattice of the spins which are up in the reference basis vector.
+    For the Heisenberg model, the electron positions will actually represent the
+    positions on the lattice of the up spins in the reference basis vector.
+    (Note that the number of up spins is deduced from the ms value specified and the
+    total number of sites).
 **reference_det_population** *pop*
     Integer.
 

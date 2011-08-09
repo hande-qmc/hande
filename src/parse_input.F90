@@ -286,9 +286,9 @@ contains
         end if
         
         if (system_type == heisenberg) then
-            if (ms > nsites) call stop_all(this,'Value of Ms given is too large for this lattice')
-            if ((-ms) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice')
-            if (mod(abs(ms),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice')
+            if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice')
+            if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice')
+            if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice')
         end if
                                                             
                                                             
