@@ -27,6 +27,10 @@ integer :: spawned_walker_length
 ! Number of particles before which varyshift mode is turned on.
 integer(lint) :: target_particles = 10000
 
+! Don't bother renormalising generation probabilities; instead allow forbidden
+! excitations to be generated and then rejected.
+logical :: no_renorm = .false.
+
 !--- Input data: initiator-FCIQMC ---
 
 integer :: CAS(2) = (/ 0,0 /)
