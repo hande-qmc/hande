@@ -58,7 +58,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use excitations, only: create_excited_det_occ_list
+        use excitations, only: create_excited_det_complete
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -90,7 +90,6 @@ contains
         ! **however, the values of P__ etc will ideally be reference-determinant dependent, what is the best way to order this sequence?**
 
 
-
 elttype:if(choose_double_elt_type <= P__ ) then
             
             !      __   __ 
@@ -101,17 +100,14 @@ elttype:if(choose_double_elt_type <= P__ ) then
             !    ./  \.
             !     \__/ k
             !    j   
-
             ! 1.1 Generate first random excitation and probability of spawning there from cdet 
             call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
 
             ! 1.2 Generate the second random excitation 
             ! (i)  generate the first excited determinant  
-            call create_excited_det_occ_list(cdet, connection_ki, cdet_excit)
+            call create_excited_det_complete(cdet, connection_ki, cdet_excit)
             ! (ii) excite again
-uuu
-
-
+            call gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
 
             ! 2. Probability of gening...
             pgen = P__ * Pgen_ki * Pgen_jk
@@ -161,7 +157,6 @@ uuu
             
 
         else if (choose_double_elt_type <= P__ + P_o ) then elttype
-            
             !          _
             !         / \
             !    .____\./
@@ -171,10 +166,11 @@ uuu
             ! 1.1 Generate first random excitation and probability of spawning there from cdet 
             call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
 
+
             ! 1.2 Generate the second random excitation 
             !    (in this case we stay on the same place)
             ! (i)  generate the first excited determinant  
-            call create_excited_det_occ_list(cdet, connection_ki, cdet_excit)
+            call create_excited_det_complete(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
             ! (ii) calculate Pgen and hmatel on this site       
             Pgen_jk = 1
             hmatel_jk =  sc0_ptr(cdet_excit%f) - fold_line !***optimise this with stored/calculated values

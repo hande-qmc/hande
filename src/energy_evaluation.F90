@@ -66,13 +66,15 @@ contains
             if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
                 start_vary_shift = ireport
-                if(fsfciqmc_vary_shift_from_proje) then
+                if (vary_shift_from_proje) then
+                    if(fsfciqmc_vary_shift_from_proje) then
                     !if running a folded spectrum calculation, set the shift to
                     !instantaneously be the projected energy of the folded hamiltonian
                     shift = (proj_energy/D0_population - fold_line)**2 + fs_offset
-                else if (vary_shift_from_proje) then
+                    else
                     ! Set shift to be instantaneous projected energy.
                     shift = proj_energy/D0_population
+                    endif
                 else
                     shift = vary_shift_from
                 end if

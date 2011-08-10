@@ -376,36 +376,35 @@ contains
 
     end subroutine create_excited_det
 
-    subroutine create_excited_det_occ_list(cdet_in, connection, cdet_out)
+    subroutine create_excited_det_complete(cdet_in, connection, cdet_out)
     
-        ! Generate a determinant with the list of occupied orbitals from 
-        ! another determinant and the excitation information connecting the 
-        ! two determinants.
+        ! Generate a complete excited determinant from another determinant and 
+        !the excitation information connecting the two determinants.
         ! In: 
         !    cdet_in: info on the current determinant that we will excite
         !        from.  The f field must be set.
         !    connection: excitation connecting cdet_in to cdet_out.  Note that
         !        the perm field is not used.
         ! Out:
-        !    f_out(basis_length): info on the determinant that we will excite
-        !    to
-        use determinants, only : det_info, decode_det
+        !    cdet_out info: on the determinant that we will excite to
+        use determinants, only : det_info, decode_det_spinocc_spinunocc
 
         type(det_info), intent(in)  :: cdet_in
         type(excit), intent(in)     :: connection
         type(det_info), intent(out) :: cdet_out
 
-        ! Make cdet_out have the same shape as cdet_in
-        ! ***** does this work??? ********
-        cdet_out = cdet_in
+        ! Make cdet_out the same shape as cdet_in
+        cdet_out = cdet_in   !**** this might cause problems, and is pretty ugly anyway
 
         ! Create the excited determinant bit string representation
         call create_excited_det(cdet_in%f, connection, cdet_out%f)
 
         ! Decode the excited determinant bit string representation
-        call decode_det(cdet_out%f,cdet_out%occ_list)
+        call decode_det_spinocc_spinunocc(cdet_out%f,cdet_out)
 
-    end subroutine create_excited_det_occ_list
+        
+
+    end subroutine create_excited_det_complete
 
 
 
