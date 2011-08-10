@@ -57,7 +57,7 @@ contains
         !        and the child determinant, on which progeny are spawned.
         use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: tau
+        use fciqmc_data, only: tau, H00
         use excitations, only: create_excited_det_complete
 
         type(det_info), intent(in) :: cdet
@@ -143,9 +143,10 @@ elttype:if(choose_double_elt_type <= P__ ) then
             connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
             ! (ii)  combine the annihilations
             connection%from_orb(:connection_ki%nexcit) = &
-             connection_ki%from_orb(:connection_ki%nexcit)
+                                connection_ki%from_orb(:connection_ki%nexcit)
+
             connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
-             connection_jk%from_orb(:connection_jk%nexcit)
+                                connection_jk%from_orb(:connection_jk%nexcit)
 
             ! (iii) combine the creations
             connection%to_orb(:connection_ki%nexcit) = &
@@ -173,7 +174,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
             call create_excited_det_complete(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
             ! (ii) calculate Pgen and hmatel on this site       
             Pgen_jk = 1
-            hmatel_jk =  sc0_ptr(cdet_excit%f) - fold_line !***optimise this with stored/calculated values
+            hmatel_jk =  sc0_ptr(cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
             
             ! 2. Probability of gening...
             pgen = P_o * Pgen_ki * Pgen_jk
@@ -219,7 +220,7 @@ elttype:if(choose_double_elt_type <= P__ ) then
             ! 1.1 Generate first random excitation and probability of spawning there from cdet 
             !    (in this case we stay on the same place)
             Pgen_ki = 1
-            hmatel_ki =  sc0_ptr(cdet%f) - fold_line !***optimise this with stored/calculated values
+            hmatel_ki =  sc0_ptr(cdet%f) - H00 - fold_line !***optimise this with stored/calculated values
             
 
             ! 1.2 Generate the second random excitation 
@@ -297,6 +298,11 @@ elttype:if(choose_double_elt_type <= P__ ) then
         ! Note that population and tot_population refer to a single 'type' of
         ! population, i.e. either a set of Hamiltonian walkers or a set of
         ! Hellmann--Feynman walkers.
+        !      ___
+        !     / _ \
+        !    | / \ |
+        !     \\.//
+
 
 
         use death, only: stochastic_death
