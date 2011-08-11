@@ -468,16 +468,19 @@ contains
     pure function diagonal_element_heisenberg(f) result(hmatel)
 
         ! In:
-        !    f: bit string representation of the basis function
+        !    f: bit string representation of the basis function.
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
-        !        the Heisenberg Model
+        !        the Heisenberg Model.
+        !
+        ! Includes an uniform external field, if one is added.
         
         use basis, only: basis_length, basis_lookup
+        use determinants, only: lattice_mask
         use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: ndim, nsites, J_coupling, h_field
+        use system, only: ndim, nsites, J_coupling, h_field, staggered_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -517,6 +520,66 @@ contains
         hmatel = hmatel - h_field*ms_in
 
     end function diagonal_element_heisenberg
+    
+    pure function diagonal_element_heisenberg_staggered(f) result(hmatel)
+
+        ! In:
+        !    f: bit string representation of the basis function.
+        ! Returns:
+        !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
+        !        the Heisenberg Model.
+        !
+        ! This function is for diagonal elements for the Hamiltonian which includes
+        ! a staggered magnetization term.
+        
+        use basis, only: basis_length, basis_lookup
+        use determinants, only: lattice_mask
+        use calc, only: ms_in
+        use hubbard_real, only: connected_orbs
+        use bit_utils, only: count_set_bits
+        use system, only: ndim, nsites, J_coupling, h_field, staggered_field
+        
+        real(p) :: hmatel
+        integer(i0), intent(in) :: f(basis_length)
+        integer(i0) :: f_not(basis_length), f_mask(basis_length), &
+                       g(basis_length)
+        integer :: ipos, i, basis_find, counter, sublattice1_up_spins
+        
+        counter = 0
+        
+        ! For non-frustrtated lattices where we want to add a staggered magnetization
+        ! term, we need to calculate how many up spins are on each of the two
+        ! so we consider one particular sublattice, and put 0's at all other sites:
+        f_mask = iand(f, lattice_mask)
+        sublattice1_up_spins = sum(count_set_bits(f_mask))
+        
+        ! Count the number of 0-1 type bonds
+        f_not = not(f)
+        do i = 1, basis_length
+            do ipos = 0, i0_end
+                if (btest(f(i), ipos)) then
+                basis_find = basis_lookup(ipos, i)
+                g = iand(f_not, connected_orbs(:,basis_find))
+                counter = counter + sum(count_set_bits(g))
+                end if
+            end do
+        end do
+        
+        ! Contribution to Hamiltonian from spin interactions:
+        ! For any lattice there will be (ndim*nsites) bonds.
+        ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
+        ! element.  0-1 bonds will give +J_coupling contribution.
+        ! The above loop counts the number of 0-1 bonds, so the remaining number
+        ! of 0-0 or 1-1 bonds will be (ndim*nsites-counter)
+        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and 
+        ! +J_coupling*(ndim*nsites-counter) from the 1-1 and 0-0 bonds, so in total
+        ! the matrix element is...
+        hmatel = -J_coupling*(ndim*nsites-2*counter)
+        
+        ! Contibution to Hamiltonian from staggered magnetisation term
+        hmatel = hmatel - staggered_field*(4*sublattice1_up_spins - 2*ms_in)
+
+    end function diagonal_element_heisenberg_staggered
 
     pure function offdiagonal_element_heisenberg(i, a) result(hmatel)
 
@@ -528,6 +591,10 @@ contains
         ! Returns:
         !    < i | H | a >, the Hamiltonian matrix element between a basis
         !    function and a single excitation of it in the Heisenberg model.
+        !
+        ! This applies to all Heisenberg situations, including those with
+        ! uniform and staggered external fields applied, since these additions
+        ! only alter the diagonal elements.
         
         use basis, only: basis_length, bit_lookup
         use hubbard_real, only: connected_orbs

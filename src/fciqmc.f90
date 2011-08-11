@@ -14,10 +14,11 @@ contains
         ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
 
-        use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt
+        use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_field
         use hellmann_feynman_sampling
 
-        use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real, diagonal_element_heisenberg
+        use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
+        use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use energy_evaluation, only: update_proj_energy_heisenberg
@@ -51,7 +52,11 @@ contains
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_heisenberg
             spawner_ptr => spawn_heisenberg
-            sc0_ptr => diagonal_element_heisenberg
+            if (staggered_field == 0.0) then
+                sc0_ptr => diagonal_element_heisenberg
+            else if (staggered_field /= 0.0) then
+                sc0_ptr => diagonal_element_heisenberg_staggered
+            end if
         end select
 
         if (doing_calc(initiator_fciqmc)) then

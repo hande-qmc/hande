@@ -19,6 +19,17 @@ implicit none
 !     followed by the beta orbitals in the next basis_length/2 integers.
 integer(i0) :: alpha_mask, beta_mask
 
+! For the Heisenberg model, certain lattices can be split into two
+! sublattices such that all the sites on one sublattice only have neighbors
+! on the other sublattice. This is important when finding the staggered 
+! magnetisation:
+! 
+! \hat{M} = \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
+!
+! Here zeta will be +1 for sites on one sublattice, and -1 for sites on the
+! other sublattice. This is the standard measure of antiferromagnetism.
+integer(i0), allocatable :: lattice_mask(:)
+
 ! If true the determinant bit string is formed from concatenating the strings
 ! for the alpha and beta orbitals rather than interleaving them.
 ! Note that this in general uses more memory due to padding at the end of the
@@ -131,7 +142,7 @@ contains
         use utils, only: binom_i
         use utils, only: get_free_unit, int_fmt
 
-        integer :: i, bit_pos, bit_element, ierr
+        integer :: i, j, bit_pos, bit_element, ierr, site_index
         character(4) :: fmt1(5)
 
         tot_ndets = binom_i(nbasis, nel)
@@ -197,6 +208,20 @@ contains
                 beta_mask = ibset(beta_mask,i)
             end if
         end do
+        
+        if (system_type == heisenberg .and. staggered_field /= 0.0) then
+        allocate (lattice_mask(basis_length), stat=ierr)
+        call check_allocate('lattice_mask',basis_length,ierr)
+        lattice_mask = 0
+            do i = 1,int(box_length(1))
+                do j = 1,int(box_length(2)),2
+                    site_index = j + box_length(1)*(i-1) + mod(i-1,2)
+                    bit_pos = bit_lookup(1, site_index)
+                    bit_element = bit_lookup(2, site_index)
+                    lattice_mask(bit_pos) = ibset(lattice_mask(bit_pos), bit_element)
+                end do
+            end do
+        end if             
 
         if (write_determinants) then
             det_unit = get_free_unit()
@@ -225,7 +250,10 @@ contains
             deallocate(sym_space_size, stat=ierr)
             call check_deallocate('sym_space_size',ierr)
         end if
-
+        if (allocated(lattice_mask)) then
+            deallocate(lattice_mask, stat=ierr)
+            call check_deallocate('lattice_mask',ierr)
+        end if
         if (write_determinants) close(det_unit, status='keep')
 
     end subroutine end_determinants

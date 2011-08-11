@@ -20,6 +20,9 @@ integer :: system_type = hub_k
 ! True for systems which use Bloch states for basis functions (hub_k and UEG)
 logical :: momentum_space = .false.
 
+! True if the lattice is bipartite. False if it is geomertically frustrated.
+logical :: bipartite_lattice = .false.
+
 ! 1, 2 or 3 dimensions.
 integer :: ndim 
 
@@ -69,6 +72,12 @@ real(p) :: J_coupling = 1
 ! (the z direction is defined the same direction as the external field)
 real(p) :: h_field = 0
 
+! This parameter allows a staggered magnetisation operator to be added
+! to the Hamiltonian. staggered_field gives the constant of proportionality:
+! \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - 
+!                      staggered_field \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
+real(p) :: staggered_field = 0
+
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
 ! is constant, so it's convenient to store it.
 real(p) :: hub_k_coulomb
@@ -106,6 +115,14 @@ contains
             nvirt = (nsites-ms_in)/2
         else
             nvirt = 2*nsites - nel
+        end if
+        
+        if (ndim == 2) then
+            if ( sum(lattice(:,1)) == box_length(1) .and. sum(lattice(:,2)) == box_length(2) ) then
+                if (mod(ceiling(box_length(1)), 2) == 0 .and. mod(ceiling(box_length(2)), 2) == 0) then
+                    bipartite_lattice = .true.
+                end if
+            end if
         end if
         
         if (system_type == hub_real .or. system_type == heisenberg) then

@@ -28,9 +28,9 @@ contains
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
-        use hamiltonian, only: diagonal_element_heisenberg
+        use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use fciqmc_restart, only: read_restart
-        use system, only: nel, system_type, hub_real, hub_k, heisenberg
+        use system, only: nel, system_type, hub_real, hub_k, heisenberg, staggered_field
         use symmetry, only: gamma_sym, sym_table
 
         integer :: ierr
@@ -176,7 +176,11 @@ contains
             case(hub_real)
                 H00 = slater_condon0_hub_real(f0)
             case(heisenberg)
-                H00 = diagonal_element_heisenberg(f0)
+                if (staggered_field == 0.0) then
+                    H00 = diagonal_element_heisenberg(f0)
+                else if (staggered_field /= 0.0) then
+                    H00 = diagonal_element_heisenberg_staggered(f0)
+                end if
             end select
             ! By definition:
             walker_energies(1,tot_walkers) = 0.0_p
