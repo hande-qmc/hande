@@ -387,14 +387,14 @@ contains
         !        the perm field is not used.
         ! Out:
         !    cdet_out info: on the determinant that we will excite to
-        use determinants, only : det_info, decode_det_spinocc_spinunocc
+        use determinants, only : det_info, decode_det_spinocc_spinunocc, alloc_det_info
 
         type(det_info), intent(in)  :: cdet_in
         type(excit), intent(in)     :: connection
         type(det_info), intent(out) :: cdet_out
 
-        ! Make cdet_out the same shape as cdet_in
-        cdet_out = cdet_in   !**** this might cause problems, and is pretty ugly anyway
+        ! Allocate cdet_out
+        call alloc_det_info(cdet_out)
 
         ! Create the excited determinant bit string representation
         call create_excited_det(cdet_in%f, connection, cdet_out%f)
