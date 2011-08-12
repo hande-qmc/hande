@@ -291,6 +291,7 @@ contains
 
         integer(lint) :: load_data(nprocs)
         integer :: ierr
+        real(dp) :: comms(nprocs)
 
         if (nprocs > 1) then
             if (parent) then
@@ -304,12 +305,15 @@ contains
                 write (6,'(1X,a35,5X,f11.2)') 'Mean # of particles on a processor:', real(sum(load_data), p)/nprocs
             end if
             call mpi_gather(tot_walkers, 1, mpi_integer, load_data, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data)
                 write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data)
                 write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data), p)/nprocs
                 write (6,'()')
-                write (6,'(1X,a34,9X,f8.2,a1)') 'Time take by walker communication:', annihilation_comms_time,'s'
+                write (6,'(1X,a38,5X,f8.2,a1)') 'Min time take by walker communication:', minval(comms),'s'
+                write (6,'(1X,a38,5X,f8.2,a1)') 'Max time take by walker communication:', maxval(comms),'s'
+                write (6,'(1X,a39,4X,f8.2,a1)') 'Mean time take by walker communication:', real(sum(comms), p)/nprocs,'s'
                 write (6,'()')
             end if
         end if
