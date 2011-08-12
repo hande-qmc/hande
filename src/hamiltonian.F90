@@ -534,10 +534,9 @@ contains
         
         use basis, only: basis_length, basis_lookup
         use determinants, only: lattice_mask
-        use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: ndim, nsites, J_coupling, h_field, staggered_field
+        use system, only: ndim, nsites, nel, J_coupling, h_field, staggered_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -577,7 +576,7 @@ contains
         hmatel = -J_coupling*(ndim*nsites-2*counter)
         
         ! Contibution to Hamiltonian from staggered magnetisation term
-        hmatel = hmatel - staggered_field*(4*sublattice1_up_spins - 2*ms_in)
+        hmatel = hmatel - staggered_field*(4*sublattice1_up_spins - 2*nel)
 
     end function diagonal_element_heisenberg_staggered
 

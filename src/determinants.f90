@@ -218,7 +218,7 @@ contains
                     site_index = j + box_length(1)*(i-1) + mod(i-1,2)
                     bit_pos = bit_lookup(1, site_index)
                     bit_element = bit_lookup(2, site_index)
-                    lattice_mask(bit_pos) = ibset(lattice_mask(bit_pos), bit_element)
+                    lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
                 end do
             end do
         end if             
