@@ -75,6 +75,8 @@ contains
 
         real(dp) :: t1
 
+        t1 = MPI_WTIME()
+
         ! Send spawned walkers to the processor which "owns" them and receive
         ! the walkers "owned" by this processor.
 
@@ -120,8 +122,6 @@ contains
         receive_counts = receive_counts*spawned_size
         send_displacements = spawning_block_start(:nprocs-1)*spawned_size
         receive_displacements = receive_displacements*spawned_size
-
-        t1 = MPI_WTIME()
 
         call MPI_AlltoAllv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
                            spawned_walkers_recvd, receive_counts, receive_displacements, mpi_det_integer, &
