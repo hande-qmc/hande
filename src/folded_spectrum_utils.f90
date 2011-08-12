@@ -57,7 +57,7 @@ contains
         !        and the child determinant, on which progeny are spawned.
         use determinants, only: det_info, dealloc_det_info
         use excitations, only: excit
-        use fciqmc_data, only: tau, H00
+        use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
         use excitations, only: create_excited_det_complete, create_excited_det, get_excitation
         use basis, only: basis_length
 
@@ -67,13 +67,12 @@ contains
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p),parameter      :: P__=0.05, Po_=(1.0-P__)*0.5, P_o=Po_
-        real(p),parameter, dimension(3) :: P_double_elt_type =(/P__, Po_, P_o /)
-
         real(p)          :: choose_double_elt_type
         
         ! P_gen (k|i) and P_gen (j|k)
         real(p)          :: Pgen_ki, Pgen_jk 
+        real(p)          :: pspawn_ki, pspawn_jk
+        real(p)          :: nspawn_ki, nspawn_jk
         real(p)          :: hmatel_ki, hmatel_jk
         type(excit)      :: connection_ki, connection_jk
         real(p)          :: psuccess, pspawn, pgen, hmatel
@@ -96,54 +95,72 @@ contains
 
 
 elttype:if(choose_double_elt_type <= Po_ ) then
-
             !     _
             !    / \
             !    \./____.
             !    i,k    j
 
-
             ! 1.1 Generate first random excitation and probability of spawning there from cdet 
             !    (in this case we stay on the same place)
             Pgen_ki = 1
             hmatel_ki =  sc0_ptr(cdet%f) - H00 - fold_line !***optimise this with stored/calculated values
-            
 
-            ! 1.2 Generate the second random excitation 
-            call gen_excit_ptr(cdet, Pgen_jk, connection_jk, hmatel_jk)
-            
-            ! 2. Probability of gening...
-            pgen = Po_ * Pgen_ki * Pgen_jk
-            pspawn = tau*abs(hmatel_ki*hmatel_jk)/pgen
-            
-            ! 3. Attempt spawning.
+            ! Calculate P_gen for the first excitation
+            pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
+
+            ! Attempt spawning
             psuccess = rng_ptr()
 
-            ! Need to take into account the possibilty of a spawning attempt
-            ! producing multiple offspring...
-            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
-            ! then spawn a particle with probability pspawn-floor(pspawn).
-            nspawn = int(pspawn)
-            pspawn = pspawn - nspawn
+            ! Multiple offspring
+            nspawn_ki = int(pspawn_ki)
+            pspawn_ki = pspawn_ki - nspawn_ki
 
-            if (pspawn > psuccess) nspawn = nspawn + 1
+            if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
 
-            if (nspawn > 0) then
+            if(nspawn_ki > 0 ) then
+            ! Successful spawning on ki
 
-                ! 4. If H_ij is positive, then the spawned walker is of opposite
-                ! sign to the parent, otherwise the spawned walkers if of the same
-                ! sign as the parent.
-                if (hmatel_ki*hmatel_jk > 0.0_p) then
-                    nspawn = -sign(nspawn, parent_sign)
+                ! 1.2 Generate the second random excitation 
+                call gen_excit_ptr(cdet, Pgen_jk, connection_jk, hmatel_jk)
+
+                ! Calculate P_gen for the second excitation
+                pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
+                psuccess = rng_ptr()
+
+                ! Multiple offspring again...
+                nspawn_jk = int(pspawn_jk)
+                pspawn_jk = pspawn_jk - nspawn_jk
+
+
+                if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
+
+                if (nspawn_jk > 0) then
+                ! Successful spawning on jk
+
+                    ! Combine the spawning numbers
+                    nspawn = nspawn_ki * nspawn_jk
+
+                    ! 4. If H_ij is positive, then the spawned walker is of opposite
+                    ! sign to the parent, otherwise the spawned walkers if of the same
+                    ! sign as the parent.
+                    if (hmatel_ki*hmatel_jk > 0.0_p) then
+                        nspawn = -sign(nspawn, parent_sign)
+                    else
+                        nspawn = sign(nspawn, parent_sign)
+                    end if
+
+                    ! 5. Set connection to the address of the spawned element
+                    connection = connection_jk
+
                 else
-                    nspawn = sign(nspawn, parent_sign)
+                ! Unsuccessful spawning on jk, set nspawn = 0
+                    nspawn =0
                 end if
 
+            else
+            ! Unsuccessful spawning  on ki, set nspawn = 0
+                nspawn = 0
             end if
-
-            ! 5. Set connection to the address of the spawned element
-            connection = connection_jk
-
 
         else if (choose_double_elt_type <= Po_ + P_o ) then elttype
             !          _
@@ -151,52 +168,73 @@ elttype:if(choose_double_elt_type <= Po_ ) then
             !    .____\./
             !    i    k,j
             
-
-            ! 1.1 Generate first random excitation and probability of spawning there from cdet 
+            ! Generate first random excitation and probability of spawning there from cdet 
             call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
-
-
-            ! 1.2 Generate the second random excitation 
-            !    (in this case we stay on the same place)
-            ! (i)  generate the first excited determinant  
-            call create_excited_det_complete(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
-            ! (ii) calculate Pgen and hmatel on this site       
-            Pgen_jk = 1
-            hmatel_jk =  sc0_ptr(cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
             
-            ! 2. Probability of gening...
-            pgen = P_o * Pgen_ki * Pgen_jk
-            pspawn = tau*abs(hmatel_ki*hmatel_jk)/pgen
-            
-            ! 3. Attempt spawning.
+
+            ! Calculate P_gen for the first excitation
+            pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
+
+            ! Attempt spawning
             psuccess = rng_ptr()
 
-            ! Need to take into account the possibilty of a spawning attempt
-            ! producing multiple offspring...
-            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
-            ! then spawn a particle with probability pspawn-floor(pspawn).
-            nspawn = int(pspawn)
-            pspawn = pspawn - nspawn
+            ! Multiple offspring
+            nspawn_ki = int(pspawn_ki)
+            pspawn_ki = pspawn_ki - nspawn_ki
 
-            if (pspawn > psuccess) nspawn = nspawn + 1
+            if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
 
-            if (nspawn > 0) then
+            if(nspawn_ki > 0 ) then
+            ! Successful spawning on ki
 
-                ! 4. If H_ij is positive, then the spawned walker is of opposite
-                ! sign to the parent, otherwise the spawned walkers if of the same
-                ! sign as the parent.
-                if (hmatel_ki*hmatel_jk > 0.0_p) then
-                    nspawn = -sign(nspawn, parent_sign)
+                ! 1.2 Generate the second random excitation 
+                !    (in this case we stay on the same place)
+                ! (i)  generate the first excited determinant  
+                call create_excited_det_complete(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
+                ! (ii) calculate Pgen and hmatel on this site       
+                Pgen_jk = 1
+                hmatel_jk =  sc0_ptr(cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
+
+                ! Calculate P_gen for the second excitation
+                pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
+                psuccess = rng_ptr()
+
+                ! Multiple offspring again...
+                nspawn_jk = int(pspawn_jk)
+                pspawn_jk = pspawn_jk - nspawn_jk
+
+
+                if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
+
+                if (nspawn_jk > 0) then
+                ! Successful spawning on jk
+
+                    ! Combine the spawning numbers
+                    nspawn = nspawn_ki * nspawn_jk
+
+                    ! 4. If H_ij is positive, then the spawned walker is of opposite
+                    ! sign to the parent, otherwise the spawned walkers if of the same
+                    ! sign as the parent.
+                    if (hmatel_ki*hmatel_jk > 0.0_p) then
+                        nspawn = -sign(nspawn, parent_sign)
+                    else
+                        nspawn = sign(nspawn, parent_sign)
+                    end if
+
+                    ! 5. Set connection to the address of the spawned element
+                    connection = connection_ki
+                    ! 6. Deallocate cdet_excit (allocated in create_excited_det_complete)
+                    call dealloc_det_info(cdet_excit)
+
                 else
-                    nspawn = sign(nspawn, parent_sign)
+                ! Unsuccessful spawning on jk, set nspawn = 0
+                    nspawn =0
                 end if
 
+            else
+            ! Unsuccessful spawning  on ki, set nspawn = 0
+                nspawn = 0
             end if
-
-            ! 5. Set connection to the address of the spawned element
-            connection = connection_ki
-            ! 6. Deallocate cdet_excit (allocated in create_excited_det_complete)
-            call dealloc_det_info(cdet_excit)
 
 
         else elttype
@@ -209,75 +247,77 @@ elttype:if(choose_double_elt_type <= Po_ ) then
             !    ./  \.
             !     \__/ k
             !    j   
-            ! 1.1 Generate first random excitation and probability of spawning there from cdet 
+
+            ! Generate first random excitation and probability of spawning there from cdet 
             call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
-
-            ! 1.2 Generate the second random excitation 
-            ! (i)  generate the first excited determinant  
-            call create_excited_det_complete(cdet, connection_ki, cdet_excit)
-
-
-
-            ! (ii) excite again
-            call gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
-
-            ! 2. Probability of gening...
-            pgen = P__ * Pgen_ki * Pgen_jk
-            pspawn = tau*abs(hmatel_ki*hmatel_jk)/pgen
             
-            ! 3. Attempt spawning.
+
+            ! Calculate P_gen for the first excitation
+            pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
+
+            ! Attempt spawning
             psuccess = rng_ptr()
 
-            ! Need to take into account the possibilty of a spawning attempt
-            ! producing multiple offspring...
-            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
-            ! then spawn a particle with probability pspawn-floor(pspawn).
-            nspawn = int(pspawn)
-            pspawn = pspawn - nspawn
+            ! Multiple offspring
+            nspawn_ki = int(pspawn_ki)
+            pspawn_ki = pspawn_ki - nspawn_ki
 
-            if (pspawn > psuccess) nspawn = nspawn + 1
+            if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
 
-            if (nspawn > 0) then
+            if(nspawn_ki > 0 ) then
+            ! Successful spawning on ki
 
-                ! 4. If H_ij is positive, then the spawned walker is of opposite
-                ! sign to the parent, otherwise the spawned walkers if of the same
-                ! sign as the parent.
-                if (hmatel_ki*hmatel_jk > 0.0_p) then
-                    nspawn = -sign(nspawn, parent_sign)
+                ! Generate the second random excitation 
+                ! (i)  generate the first excited determinant  
+                call create_excited_det_complete(cdet, connection_ki, cdet_excit)
+                ! (ii) excite again
+                call gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
+
+                ! Calculate P_gen for the second excitation
+                pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk
+                psuccess = rng_ptr()
+
+                ! Multiple offspring again...
+                nspawn_jk = int(pspawn_jk)
+                pspawn_jk = pspawn_jk - nspawn_jk
+
+
+                if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
+
+                if (nspawn_jk > 0) then
+                ! Successful spawning on jk
+
+                    ! Combine the spawning numbers
+                    nspawn = nspawn_ki * nspawn_jk
+
+                    ! 4. If H_ij is positive, then the spawned walker is of opposite
+                    ! sign to the parent, otherwise the spawned walkers if of the same
+                    ! sign as the parent.
+                    if (hmatel_ki*hmatel_jk > 0.0_p) then
+                        nspawn = -sign(nspawn, parent_sign)
+                    else
+                        nspawn = sign(nspawn, parent_sign)
+                    end if
+
+                    ! 5. Calculate the excited determinant connection (can be up to degree 4)
+                    ! (i)   find the second excited determinant bitstring
+                    call create_excited_det(cdet_excit%f, connection_jk, f_excit_2)
+                    ! (ii)  calculate the connection to this excited determinant
+                    connection = get_excitation(cdet%f,f_excit_2)
+                    ! 6. deallocate the cdet_excit (allocated in create_excited_det_complete)
+                    call dealloc_det_info(cdet_excit)
+
                 else
-                    nspawn = sign(nspawn, parent_sign)
+                ! Unsuccessful spawning on jk, set nspawn = 0
+                    nspawn =0
                 end if
 
+            else
+            ! Unsuccessful spawning  on ki, set nspawn = 0
+                nspawn = 0
             end if
 
-            ! 5. Calculate the excited determinant connection (can be up to degree 4)
-            ! (i)   find the second excited determinant bitstring
-            call create_excited_det(cdet_excit%f, connection_jk, f_excit_2)
-            ! (ii)  calculate the connection to this excited determinant
-            connection = get_excitation(cdet%f,f_excit_2)
-            ! 6. deallocate the cdet_excit (allocated in create_excited_det_complete)
-            call dealloc_det_info(cdet_excit)
 
-
-         !******************* this code does not work in the case of looping back on itself *********************
-            ! 5. Calculate the excited determinant (can be up to degree 4)
-            ! (i)   add up the number of excitations
-!           connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
-            ! (ii)  combine the annihilations
-!           connection%from_orb(:connection_ki%nexcit) = &
-!                               connection_ki%from_orb(:connection_ki%nexcit)
-
-!           connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
-!                               connection_jk%from_orb(:connection_jk%nexcit)
-
-            ! (iii) combine the creations
-!           connection%to_orb(:connection_ki%nexcit) = &
-!                               connection_ki%to_orb(:connection_ki%nexcit)
-
-!           connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
-!                               connection_jk%to_orb(:connection_jk%nexcit)
-            
-            
 
         endif elttype
 

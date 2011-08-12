@@ -220,6 +220,11 @@ real(p) :: fold_line = 0
 ! The additional offset to the matrix i.e. E_0 in (H-eps)^2 - E_0
 real(p) :: fs_offset = 0
 
+! The generation probabilities of a dual excitation type
+real(p),parameter      :: P__=0.05, Po_=(1.0-P__)*0.5, P_o=Po_
+
+! The split generation normalisations
+real(p) :: X__=0, Xo_=0, X_o=0
 
 contains
 
