@@ -382,6 +382,10 @@ initialisation (mainly the enumeration of the basis) is performed.
     The overall spin must be set using **ms**.  Currently symmetry is only
     available for the momentum formulation of the Hubbard model.  The symmetry
     can be selected by specifying a reference determinant.
+**folded_spectrum**
+    Perform a folded spectrum (FSFCIQMC) calculation. This involves mapping the
+    Hamiltonian H --> (H-\eps)^2 . This will compute the excited state closest
+    to \eps.
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -720,6 +724,29 @@ the result but can have a significant impact on performance.
     sub-matrices, where :math:`n` is the block size, which are the distributed
     over the processors in a cyclic fashion.  Applicable only to FCI
     calculations.
+
+Calculation options: folded spectrum options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These options are valid when performing a folded spectrum calculation
+
+**fold_line** *fold_line*
+    Real.
+
+    Default: 0.0
+
+    Choose the point about which to fold the hamiltonian, i.e. the value of 
+    \eps in (H-\eps)^2. In the case of convergence the psips settle on a 
+    stochastic representation of the eigenstate(s) with energy closest to \eps
+
+**fs_offset** *fs_offset*
+    Real.
+
+    Default: 0.0
+
+    Choose an additional offset to the folded matrix, i.e. add \lambda to
+    (H-\eps)^2 + \lambda. A good choice is the ground state found by running
+    a traditional FCIQMC calculation.
 
 output options
 ^^^^^^^^^^^^^^
