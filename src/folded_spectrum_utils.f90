@@ -86,30 +86,19 @@ contains
         type(excit), intent(out) :: connection
 
         real(p)          :: choose_double_elt_type
-        
-        ! P_gen (k|i) and P_gen (j|k)
+
         real(p)          :: Pgen_ki, Pgen_jk 
         real(p)          :: pspawn_ki, pspawn_jk
         real(p)          :: nspawn_ki, nspawn_jk
         real(p)          :: hmatel_ki, hmatel_jk
         type(excit)      :: connection_ki, connection_jk
-        real(p)          :: psuccess, pspawn, pgen, hmatel
-        integer(i0)      :: f_excit_2(basis_length)
+        real(p)          :: psuccess
 
 
-       ! specific to imperial code:
-        !      -function that creates an excited determinant (create_excited_det)
-        !      -types excit, cdet
-
-        
         
         ! 0. Choose the type of double element you're going to spawn 
         choose_double_elt_type = genrand_real2()
         
-        ! **We want to choose the largest probability first, since this will reduce the number of if statement calls, 
-        ! **however, the values of P__ etc will ideally be reference-determinant dependent, what is the best way to order this sequence?**
-
-
         if(choose_double_elt_type <= Po_ ) then
             !     _
             !    / \

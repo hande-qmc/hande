@@ -392,7 +392,7 @@ contains
 
         type(det_info), intent(in)  :: cdet_in
         type(excit), intent(in)     :: connection
-        type(det_info), intent(out) :: cdet_out
+        type(det_info), intent(inout) :: cdet_out
 
         ! Create the excited determinant bit string representation
         call create_excited_det(cdet_in%f, connection, cdet_out%f)
