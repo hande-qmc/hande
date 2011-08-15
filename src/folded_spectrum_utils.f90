@@ -110,7 +110,7 @@ contains
         ! **however, the values of P__ etc will ideally be reference-determinant dependent, what is the best way to order this sequence?**
 
 
-elttype:if(choose_double_elt_type <= Po_ ) then
+        if(choose_double_elt_type <= Po_ ) then
             !     _
             !    / \
             !    \./____.
@@ -178,7 +178,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
                 nspawn = 0
             end if
 
-        else if (choose_double_elt_type <= Po_ + P_o ) then elttype
+        else if (choose_double_elt_type <= Po_ + P_o ) then 
             !          _
             !         / \
             !    .____\./
@@ -251,7 +251,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
             end if
 
 
-        else elttype
+        else 
             
             !      __   __ 
             !    ./  \./  \.
@@ -344,7 +344,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
 
 
 
-        endif elttype
+        endif 
 
 
 
