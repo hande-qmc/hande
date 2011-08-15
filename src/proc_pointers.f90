@@ -83,13 +83,4 @@ procedure(i_sub), pointer :: annihilate_spawned_list_ptr => null()
 procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 
-!fsfciqmc related procedures......................................................................
-procedure(i_sc0), pointer :: system_sc0_ptr => null()
-procedure(i_decoder), pointer :: system_decoder_ptr => null()
-procedure(i_update_proj_energy), pointer :: system_update_proj_energy_ptr => null()
-    
-
-
-!...............................................................................................
-
 end module proc_pointers

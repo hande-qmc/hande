@@ -219,7 +219,7 @@ real(p) :: fold_line = 0
 real(p) :: fs_offset = 0
 
 ! The generation probabilities of a dual excitation type
-real(p),parameter      :: P__=0.05, Po_=(1.0-P__)*0.5, P_o=Po_
+real(p) :: P__=0.2, Po_=0.4, P_o=0.4
 
 ! The split generation normalisations
 real(p) :: X__=0, Xo_=0, X_o=0
