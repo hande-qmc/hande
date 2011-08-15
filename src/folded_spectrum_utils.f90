@@ -302,22 +302,21 @@ contains
                         nspawn = sign(nspawn, parent_sign)
                     end if
 
-         !******************* this code does not work in the case of looping back on itself *********************
-            ! 5. Calculate the excited determinant (can be up to degree 4)
-            ! (i)   add up the number of excitations
-           connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
-            ! (ii)  combine the annihilations
-           connection%from_orb(:connection_ki%nexcit) = &
+                ! 5. Calculate the excited determinant (can be up to degree 4)
+                ! (i)   add up the number of excitations
+                connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
+                ! (ii)  combine the annihilations
+                connection%from_orb(:connection_ki%nexcit) = &
                                connection_ki%from_orb(:connection_ki%nexcit)
 
-           connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
+                connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
                                connection_jk%from_orb(:connection_jk%nexcit)
 
-            ! (iii) combine the creations
-           connection%to_orb(:connection_ki%nexcit) = &
+                ! (iii) combine the creations
+                connection%to_orb(:connection_ki%nexcit) = &
                                connection_ki%to_orb(:connection_ki%nexcit)
 
-           connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
+                connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
                                connection_jk%to_orb(:connection_jk%nexcit)
             
 
