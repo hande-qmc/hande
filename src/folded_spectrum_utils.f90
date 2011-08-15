@@ -55,9 +55,9 @@ contains
         !        attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
-        use determinants, only: det_info, dealloc_det_info
+        use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
+        use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o, cdet_excit
         use excitations, only: create_excited_det_complete, create_excited_det, get_excitation
         use basis, only: basis_length
 
@@ -76,8 +76,6 @@ contains
         real(p)          :: hmatel_ki, hmatel_jk
         type(excit)      :: connection_ki, connection_jk
         real(p)          :: psuccess, pspawn, pgen, hmatel
-        type(det_info)   :: cdet_excit
-
         integer(i0)      :: f_excit_2(basis_length)
 
 
@@ -223,8 +221,6 @@ elttype:if(choose_double_elt_type <= Po_ ) then
 
                     ! 5. Set connection to the address of the spawned element
                     connection = connection_ki
-                    ! 6. Deallocate cdet_excit (allocated in create_excited_det_complete)
-                    call dealloc_det_info(cdet_excit)
 
                 else
                 ! Unsuccessful spawning on jk, set nspawn = 0
@@ -299,13 +295,24 @@ elttype:if(choose_double_elt_type <= Po_ ) then
                         nspawn = sign(nspawn, parent_sign)
                     end if
 
-                    ! 5. Calculate the excited determinant connection (can be up to degree 4)
-                    ! (i)   find the second excited determinant bitstring
-                    call create_excited_det(cdet_excit%f, connection_jk, f_excit_2)
-                    ! (ii)  calculate the connection to this excited determinant
-                    connection = get_excitation(cdet%f,f_excit_2)
-                    ! 6. deallocate the cdet_excit (allocated in create_excited_det_complete)
-                    call dealloc_det_info(cdet_excit)
+         !******************* this code does not work in the case of looping back on itself *********************
+            ! 5. Calculate the excited determinant (can be up to degree 4)
+            ! (i)   add up the number of excitations
+           connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
+            ! (ii)  combine the annihilations
+           connection%from_orb(:connection_ki%nexcit) = &
+                               connection_ki%from_orb(:connection_ki%nexcit)
+
+           connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
+                               connection_jk%from_orb(:connection_jk%nexcit)
+
+            ! (iii) combine the creations
+           connection%to_orb(:connection_ki%nexcit) = &
+                               connection_ki%to_orb(:connection_ki%nexcit)
+
+           connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
+                               connection_jk%to_orb(:connection_jk%nexcit)
+            
 
                 else
                 ! Unsuccessful spawning on jk, set nspawn = 0

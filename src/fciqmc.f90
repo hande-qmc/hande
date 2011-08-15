@@ -39,6 +39,7 @@ contains
 
         real(dp) :: hub_matel
 
+
         ! set function pointers
         select case(system_type)
         case (hub_k)
@@ -116,6 +117,7 @@ contains
         use spawning, only: create_spawned_particle_initiator
         use fciqmc_common
         use ifciqmc, only: set_parent_flag
+        use system, only: fsfciqmc
 
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
@@ -131,6 +133,10 @@ contains
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
+        if(fsfciqmc)  then
+        print*, "allocating..."
+        call alloc_det_info(cdet_excit)
+        endif
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -238,6 +244,7 @@ contains
         if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
 
         call dealloc_det_info(cdet)
+        if(fsfciqmc) call dealloc_det_info(cdet_excit)
 
     end subroutine do_fciqmc
 

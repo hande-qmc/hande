@@ -4,6 +4,7 @@ module fciqmc_data
 ! fciqmc data.
 
 use const
+use determinants, only: det_info
 implicit none
 
 !--- Input data: FCIQMC ---
@@ -226,6 +227,7 @@ real(p),parameter      :: P__=0.05, Po_=(1.0-P__)*0.5, P_o=Po_
 ! The split generation normalisations
 real(p) :: X__=0, Xo_=0, X_o=0
 
+type(det_info), save :: cdet_excit
 contains
 
     !--- Initialisation. ---
