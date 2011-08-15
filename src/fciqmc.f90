@@ -14,7 +14,7 @@ contains
         ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
 
-        use system, only: system_type, hub_k, hub_real,fsfciqmc, hub_k_coulomb, hubt
+        use system, only: system_type, hub_k, hub_real, hub_k_coulomb, hubt
         use hellmann_feynman_sampling
 
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
@@ -31,8 +31,7 @@ contains
 
 
         use folded_spectrum_utils
-        use fciqmc_data, only: P__, Po_, P_o, X__, X_o, Xo_
-        use dSFMT_interface, only:  genrand_real2
+        use fciqmc_data, only: P__, Po_, P_o, X__, X_o, Xo_, fsfciqmc
         use spawning, only: gen_excit_hub_real
         
 
@@ -51,7 +50,6 @@ contains
             death_ptr => stochastic_death
         case (hub_real)
             if(fsfciqmc) then
-                rng_ptr => genrand_real2 
                 update_proj_energy_ptr => update_proj_energy_hub_real
                 decoder_ptr => decode_det_occ
                 spawner_ptr => fs_spawner 
@@ -116,7 +114,7 @@ contains
         use spawning, only: create_spawned_particle_initiator
         use fciqmc_common
         use ifciqmc, only: set_parent_flag
-        use system, only: fsfciqmc
+        use fciqmc_data, only: fsfciqmc
         use folded_spectrum_utils, only: alloc_cdet_excit, dealloc_cdet_excit
 
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)

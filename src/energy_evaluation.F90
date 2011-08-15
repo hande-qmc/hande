@@ -27,7 +27,8 @@ contains
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, av_proj_energy, av_D0_population, shift, av_shift, &
                                vary_shift, start_vary_shift, vary_shift_from,                  &
-                               vary_shift_from_proje, D0_population, fold_line, fs_offset
+                               vary_shift_from_proje, D0_population,                           &
+                               fsfciqmc, fold_line, fs_offset
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc
 

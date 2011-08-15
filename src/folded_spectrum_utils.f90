@@ -77,6 +77,7 @@ contains
         use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
         use excitations, only: create_excited_det_complete, create_excited_det, get_excitation
         use basis, only: basis_length
+        use dSFMT_interface, only: genrand_real2
 
         implicit none
         type(det_info), intent(in) :: cdet
@@ -103,7 +104,7 @@ contains
         
         
         ! 0. Choose the type of double element you're going to spawn 
-        choose_double_elt_type = rng_ptr()
+        choose_double_elt_type = genrand_real2()
         
         ! **We want to choose the largest probability first, since this will reduce the number of if statement calls, 
         ! **however, the values of P__ etc will ideally be reference-determinant dependent, what is the best way to order this sequence?**
@@ -124,7 +125,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            psuccess = rng_ptr()
+            psuccess = genrand_real2()
 
             ! Multiple offspring
             nspawn_ki = int(pspawn_ki)
@@ -140,7 +141,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
-                psuccess = rng_ptr()
+                psuccess = genrand_real2()
 
                 ! Multiple offspring again...
                 nspawn_jk = int(pspawn_jk)
@@ -191,7 +192,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
             pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            psuccess = rng_ptr()
+            psuccess = genrand_real2()
 
             ! Multiple offspring
             nspawn_ki = int(pspawn_ki)
@@ -212,7 +213,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
-                psuccess = rng_ptr()
+                psuccess = genrand_real2()
 
                 ! Multiple offspring again...
                 nspawn_jk = int(pspawn_jk)
@@ -269,7 +270,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            psuccess = rng_ptr()
+            psuccess = genrand_real2()
 
             ! Multiple offspring
             nspawn_ki = int(pspawn_ki)
@@ -288,7 +289,7 @@ elttype:if(choose_double_elt_type <= Po_ ) then
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk
-                psuccess = rng_ptr()
+                psuccess = genrand_real2()
 
                 ! Multiple offspring again...
                 nspawn_jk = int(pspawn_jk)

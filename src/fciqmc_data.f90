@@ -209,6 +209,9 @@ integer :: mc_cycles_done = 0, nparticles_old_restart = 0
 
 !--- Folded spectrum data ---
 
+! Are we doing folded spectrum?
+logical :: fsfciqmc = .false.
+
 ! The line about which you are folding i.e. eps in (H-eps)^2 - E_0
 real(p) :: fold_line = 0
 

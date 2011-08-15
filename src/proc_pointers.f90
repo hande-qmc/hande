@@ -69,16 +69,6 @@ abstract interface
     ! generic procedures...
     subroutine i_sub()
     end subroutine i_sub
- 
-    !fsfciqmc related procedures......................................................................
-    
-    function i_rng() result(r)
-        import:: dp
-        implicit none
-        real(dp) :: r
-    end function i_rng
-
-    !...............................................................................................
 
 end interface
 
@@ -94,7 +84,6 @@ procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 
 !fsfciqmc related procedures......................................................................
-procedure(i_rng), pointer :: rng_ptr => null() 
 procedure(i_sc0), pointer :: system_sc0_ptr => null()
 procedure(i_decoder), pointer :: system_decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: system_update_proj_energy_ptr => null()
