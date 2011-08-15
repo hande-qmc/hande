@@ -23,7 +23,7 @@ contains
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator
         use death, only: stochastic_death
 
-        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, doing_calc
+        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, folded_spectrum, doing_calc
 
         use ct_fciqmc, only: do_ct_fciqmc
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
@@ -31,7 +31,7 @@ contains
 
 
         use folded_spectrum_utils
-        use fciqmc_data, only: P__, Po_, P_o, X__, X_o, Xo_, fsfciqmc
+        use fciqmc_data, only: P__, Po_, P_o, X__, X_o, Xo_
         use spawning, only: gen_excit_hub_k, gen_excit_hub_real
         
 
@@ -48,7 +48,7 @@ contains
             sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
             death_ptr => stochastic_death
-                if(fsfciqmc) then
+                if(doing_calc(folded_spectrum)) then
                     gen_excit_ptr => gen_excit_hub_k
                     spawner_ptr => fs_spawner        !overrides previous spawner_ptr declaration
                     death_ptr => fs_stochastic_death !overrides previous death_ptr declaration
@@ -60,15 +60,15 @@ contains
                 sc0_ptr => slater_condon0_hub_real
                 hub_matel = hubt
                 death_ptr => stochastic_death
-                if(fsfciqmc) then
+                if(doing_calc(folded_spectrum)) then
                     gen_excit_ptr => gen_excit_hub_real
                     spawner_ptr => fs_spawner        !overrides previous spawner_ptr declaration
                     death_ptr => fs_stochastic_death !overrides previous death_ptr declaration
                 endif
         end select
 
-        ! set fsfciqmc parameters
-        if (fsfciqmc) then
+        ! set folded spectrum parameters
+        if (doing_calc(folded_spectrum)) then
             P__=0.05
             Po_=(1.0-P__)*0.5
             P_o=Po_
@@ -113,6 +113,7 @@ contains
   
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, bit_lookup, nbasis
+        use calc, only: folded_spectrum, doing_calc
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
@@ -122,7 +123,6 @@ contains
         use spawning, only: create_spawned_particle_initiator
         use fciqmc_common
         use ifciqmc, only: set_parent_flag
-        use fciqmc_data, only: fsfciqmc
         use folded_spectrum_utils, only: alloc_cdet_excit, dealloc_cdet_excit
 
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
@@ -139,7 +139,7 @@ contains
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
-        if(fsfciqmc) call alloc_cdet_excit()
+        if(doing_calc(folded_spectrum)) call alloc_cdet_excit()
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -247,7 +247,7 @@ contains
         if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
 
         call dealloc_det_info(cdet)
-        if(fsfciqmc) call dealloc_cdet_excit()
+        if(doing_calc(folded_spectrum)) call dealloc_cdet_excit()
 
     end subroutine do_fciqmc
 

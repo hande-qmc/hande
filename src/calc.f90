@@ -25,6 +25,8 @@ integer, parameter :: ct_fciqmc_calc = 2**5
 integer, parameter :: hfs_fciqmc_calc = 2**6
 ! Estimate the size of the Hilbert space using Monte Carlo?
 integer, parameter :: mc_hilbert_space = 2**7
+! Doing a folded spectrum calculation?
+integer, parameter :: folded_spectrum = 2**8
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.

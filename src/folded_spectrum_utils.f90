@@ -61,7 +61,7 @@ contains
 
     subroutine fs_spawner(cdet, parent_sign, nspawn, connection)
         ! Attempt to spawn a new particle on a daughter or granddaughter determinant according to
-        ! the fsfciqmc algorithm for a given system
+        ! the folded spectrum algorithm for a given system
         !
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
