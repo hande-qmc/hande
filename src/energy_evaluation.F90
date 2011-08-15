@@ -26,7 +26,8 @@ contains
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn
         use fciqmc_data, only: proj_energy, av_proj_energy, av_D0_population, shift, av_shift
-        use fciqmc_data, only: vary_shift, start_vary_shift, D0_population
+        use fciqmc_data, only: vary_shift, start_vary_shift, D0_population, average_magnetisation
+        use fciqmc_data, only: calculate_magnetisation, population_squared
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc
 
@@ -36,7 +37,7 @@ contains
         integer, intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
-        real(dp) :: ir(sampling_size+4), ir_sum(sampling_size+4)
+        real(dp) :: ir(sampling_size+6), ir_sum(sampling_size+6)
         integer :: ntot_particles(sampling_size), ierr
 
             ! Need to sum the number of particles and the projected energy over
@@ -46,12 +47,16 @@ contains
             ir(sampling_size+2) = proj_hf_expectation
             ir(sampling_size+3) = D0_population
             ir(sampling_size+4) = rspawn
+            ir(sampling_size+5) = average_magnetisation
+            ir(sampling_size+6) = population_squared
             call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
             proj_energy = ir_sum(sampling_size+1)
             proj_hf_expectation = ir_sum(sampling_size+2)
             D0_population = ir_sum(sampling_size+3)
             rspawn = ir_sum(sampling_size+4)
+            average_magnetisation = ir_sum(sampling_size+5)
+            population_squared = ir(sampling_size+6)
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
@@ -93,6 +98,10 @@ contains
             ! average energy quantities over report loop.
             proj_energy = proj_energy/ncycles
             D0_population = D0_population/ncycles
+            if (calculate_magnetisation) then
+                average_magnetisation = average_magnetisation/ncycles
+                population_squared = population_squared/ncycles
+            end if
             ! Similarly for the HFS estimator
             av_proj_hf_expectation = av_proj_hf_expectation + proj_hf_expectation
             proj_hf_expectation = proj_hf_expectation/ncycles
@@ -235,7 +244,8 @@ contains
         ! In:
         !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, &
+                               proj_energy, calculate_magnetisation
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
         use system, only: J_coupling
@@ -261,8 +271,31 @@ contains
             if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
                      proj_energy = proj_energy - 2.0_p*J_coupling*walker_population(1,idet)
         end if
+        
+        if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
 
     end subroutine update_proj_energy_heisenberg
+    
+    subroutine update_magnetisation_heisenberg(idet)
+
+        use fciqmc_data, only: walker_dets, population_squared, &
+                               walker_population, average_magnetisation
+        use basis, only: basis_length
+        use determinants, only: lattice_mask
+        use system, only: nel
+        use bit_utils, only: count_set_bits
+
+        integer, intent(in) :: idet
+        integer(i0) :: f_mask(basis_length)
+        integer :: sublattice1_up_spins
+
+        f_mask = iand(walker_dets(:,idet), lattice_mask)
+        sublattice1_up_spins = sum(count_set_bits(f_mask))
+        average_magnetisation = average_magnetisation + &
+             (walker_population(1,idet)**2)*((4*sublattice1_up_spins - 2*nel)**2)
+        population_squared = population_squared + walker_population(1,idet)**2
+
+    end subroutine update_magnetisation_heisenberg
 
     subroutine update_proj_hfs_hub_k(idet, inst_proj_energy, inst_proj_hf_t1)
 
