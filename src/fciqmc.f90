@@ -31,7 +31,7 @@ contains
 
 
         use folded_spectrum_utils
-        use fciqmc_data, only: fsfciqmc_vary_shift_from_proje, P__, Po_, P_o, X__, X_o, Xo_
+        use fciqmc_data, only: P__, Po_, P_o, X__, X_o, Xo_
         use dSFMT_interface, only:  genrand_real2
         use spawning, only: gen_excit_hub_real
         
@@ -59,7 +59,6 @@ contains
                 hub_matel = hubt
                 death_ptr => fs_stochastic_death
                 gen_excit_ptr => gen_excit_hub_real
-                fsfciqmc_vary_shift_from_proje = .true.
                 X__ = sqrt(tau / P__ )
                 Xo_ = sqrt(tau / Po_)
                 X_o = sqrt(tau / P_o ) 
