@@ -7,9 +7,13 @@ use const
 
 use proc_pointers
 use fciqmc_data, only: fold_line, fs_offset
+use determinants, only: det_info
 
 
 implicit none
+
+type(det_info), save :: cdet_excit
+
 
 ! 1) self spawning
 !      ___
@@ -39,6 +43,20 @@ implicit none
 
 contains
 
+    subroutine alloc_cdet_excit
+    use determinants, only: alloc_det_info
+
+        call alloc_det_info(cdet_excit)
+
+    end subroutine alloc_cdet_excit
+
+
+    subroutine dealloc_cdet_excit
+    use determinants, only: dealloc_det_info
+
+        call dealloc_det_info(cdet_excit)
+
+    end subroutine dealloc_cdet_excit
 
 
     subroutine fs_spawner(cdet, parent_sign, nspawn, connection)
@@ -55,9 +73,8 @@ contains
         !        attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
-        use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o, cdet_excit
+        use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
         use excitations, only: create_excited_det_complete, create_excited_det, get_excitation
         use basis, only: basis_length
 
