@@ -136,11 +136,7 @@ contains
         end do
         if (counter == ndim) bipartite_lattice = .true.
         
-        if (system_type == hub_real .or. system_type == heisenberg) then
-            momentum_space = .false.
-        else
-            momentum_space = .true.
-        end if
+        momentum_space = .not.(system_type == hub_real .or. system_type == heisenberg)
 
     end subroutine init_system
 
