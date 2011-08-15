@@ -1,24 +1,24 @@
 real_space
 
-fci
 fciqmc
 u 50
 t 1
 
 lattice
-4
+3
 electrons 3
+reference_det 2 3 5
 
-spawned_walker_length 5000
-walker_length 300
-nreports 300
+spawned_walker_length 500
+walker_length 10
+nreports 100
 mc_cycles 25
 
 tau 0.01
 varyshift_target 550
-vary_shift_from proje
 shift_damping 0.06
 
+restart 0
 dump_restart 1
 ascii_format
 
