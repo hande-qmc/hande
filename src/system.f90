@@ -20,7 +20,7 @@ integer :: system_type = hub_k
 ! True for systems which use Bloch states for basis functions (hub_k and UEG)
 logical :: momentum_space = .false.
 
-! True if the lattice is bipartite. False if it is geomertically frustrated.
+! True if the lattice is bipartite. False if it is geometrically frustrated.
 logical :: bipartite_lattice = .false.
 
 ! 1, 2 or 3 dimensions.
@@ -34,6 +34,11 @@ integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
 ! Lengths of lattice vectors.
 real(p), allocatable :: box_length(:) ! ndim.
+
+! Contains integer lattice lengths. If less than 3 dimensions are used
+! then the corresponding unused components are set to 1.
+! This is useful for making loops over all dimension general.
+integer :: lattice_size(3)
 
 ! As we are working in an orthogonal space, the reciprocal lattice vectors are
 ! easily obtained:
@@ -49,7 +54,7 @@ real(p), allocatable :: ktwist(:)
 ! refers to the number of electrons in the system
 integer :: nel = 0 
 ! # number of virtual orbitals
-! *NOTE": For Heisenberg model nvirt refers to the number of spins down, or
+! *NOTE*: For the Heisenberg model nvirt refers to the number of spins down, or
 ! the number of 0's in the basis functions
 integer :: nvirt
 
@@ -91,7 +96,7 @@ contains
         use checking, only: check_allocate
         use calc, only: ms_in
 
-        integer :: ivec, ierr
+        integer :: i, ivec, ierr, counter
 
         allocate(box_length(ndim), stat=ierr)
         call check_allocate('box_length',ndim,ierr)
@@ -117,13 +122,19 @@ contains
             nvirt = 2*nsites - nel
         end if
         
-        if (ndim == 2) then
-            if ( sum(lattice(:,1)) == box_length(1) .and. sum(lattice(:,2)) == box_length(2) ) then
-                if (mod(ceiling(box_length(1)), 2) == 0 .and. mod(ceiling(box_length(2)), 2) == 0) then
-                    bipartite_lattice = .true.
-                end if
-            end if
-        end if
+        counter = 0
+        lattice_size = 1  
+        lattice_size(1) = ceiling(box_length(1), 2)
+        if (ndim > 1) lattice_size(2) = ceiling(box_length(2), 2)
+        if (ndim > 2) lattice_size(3) = ceiling(box_length(3), 2)
+        
+        ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
+        ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
+        ! to be calculated.
+        do i = 1,ndim
+            if ( sum(lattice(:,i)) == box_length(i) .and. mod(lattice_size(i), 2) == 0) counter = counter + 1 
+        end do
+        if (counter == ndim) bipartite_lattice = .true.
         
         if (system_type == hub_real .or. system_type == heisenberg) then
             momentum_space = .false.

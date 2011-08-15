@@ -142,7 +142,7 @@ contains
         use utils, only: binom_i
         use utils, only: get_free_unit, int_fmt
 
-        integer :: i, j, bit_pos, bit_element, ierr, site_index
+        integer :: i, j, k, bit_pos, bit_element, ierr, site_index
         character(4) :: fmt1(5)
 
         tot_ndets = binom_i(nbasis, nel)
@@ -209,16 +209,23 @@ contains
             end if
         end do
         
+        ! For Heisenberg systems, to include staggered fields and to calculate
+        ! the staggered magnetisation, we require lattice_mask. Here we find
+        ! lattice_mask for a gerenal lattice.
         if (system_type == heisenberg .and. staggered_field /= 0.0) then
-        allocate (lattice_mask(basis_length), stat=ierr)
-        call check_allocate('lattice_mask',basis_length,ierr)
-        lattice_mask = 0
-            do i = 1,int(box_length(1))
-                do j = 1,int(box_length(2)),2
-                    site_index = j + box_length(1)*(i-1) + mod(i-1,2)
-                    bit_pos = bit_lookup(1, site_index)
-                    bit_element = bit_lookup(2, site_index)
-                    lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
+            allocate (lattice_mask(basis_length), stat=ierr)
+            call check_allocate('lattice_mask',basis_length,ierr)
+            lattice_mask = 0
+            do k = 1,lattice_size(3)
+                do j = 1,lattice_size(2)
+                    do i = 1,lattice_size(1),2
+                        site_index = (lattice_size(2)*lattice_size(1))*(k-1) + &
+                                      lattice_size(1)*(j-1) + mod(j+k,2) + i
+                        print *, site_index
+                        bit_pos = bit_lookup(1, site_index)
+                        bit_element = bit_lookup(2, site_index)
+                        lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
+                    end do
                 end do
             end do
         end if             

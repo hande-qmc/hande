@@ -547,8 +547,8 @@ contains
         counter = 0
         
         ! For non-frustrtated lattices where we want to add a staggered magnetization
-        ! term, we need to calculate how many up spins are on each of the two
-        ! so we consider one particular sublattice, and put 0's at all other sites:
+        ! term, we need to calculate how many up spins are on each of the sublattices,
+        ! so we first consider one particular sublattice and put 0's at all other sites:
         f_mask = iand(f, lattice_mask)
         sublattice1_up_spins = sum(count_set_bits(f_mask))
         
@@ -575,7 +575,15 @@ contains
         ! the matrix element is...
         hmatel = -J_coupling*(ndim*nsites-2*counter)
         
-        ! Contibution to Hamiltonian from staggered magnetisation term
+        ! Contibution to Hamiltonian from staggered field term.
+        ! Split the lattice into a (+) sublattice and a (-) sublattice.
+        ! For every up spin on a (+) site, add one to the hmatel. (add staggered_field * 1)
+        ! For every down spin on a (+) site, minus one.
+        ! For every up spin on a (-) site, minus one.
+        ! For every down spin on a (-) site, add one.
+        ! sublattice1_up_spins gives the number of up spins on the (+) lattice, so there are
+        ! (nel-sublattice1_up_spins) up spins on the (-) lattice, and a total of (nsites/2)
+        ! sites on each sublattice. Putting all this together gives the following:
         hmatel = hmatel - staggered_field*(4*sublattice1_up_spins - 2*nel)
 
     end function diagonal_element_heisenberg_staggered
