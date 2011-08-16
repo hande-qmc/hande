@@ -123,10 +123,8 @@ contains
         nparticles_old = nparticles_old_restart
 
         ! Main fciqmc loop.
-
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status()
-
         ! Initialise timer.
         call cpu_time(t1)
         
@@ -136,6 +134,8 @@ contains
             proj_energy = 0.0_p
             rspawn = 0.0_p
             D0_population = 0.0_p
+            average_magnetisation = 0.0_p
+            population_squared = 0.0_p
 
             do icycle = 1, ncycles
 
@@ -191,7 +191,7 @@ contains
                 call direct_annihilation()
 
             end do
-
+            
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 

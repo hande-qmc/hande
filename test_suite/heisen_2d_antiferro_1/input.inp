@@ -8,8 +8,9 @@ lattice
 ms 0
 
 J -0.00694444
-staggered_field 0.01
 reference_det 1 3 5 8 10 12 13 15 17 20 22 24 25 27 29 32 34 36
+
+calculate_magnetisation
 
 spawned_walker_length 50 MB
 walker_length 25 MB
@@ -19,5 +20,5 @@ mc_cycles 50
 seed 123
 
 tau 0.01
-varyshift_target 50000
-shift_damping 0.1
+varyshift_target 30000
+shift_damping 0.5

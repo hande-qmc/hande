@@ -58,6 +58,11 @@ real(p) :: shift_damping = 0.050_dp
 ! accordingly.
 real(p) :: proj_energy
 
+! This is \sum_{i/=0} <D_i|M_z^2|D_i> N_i^2 which is numerator of the expectation
+! value of the staggered magnetisation squared (this is normalised by dividing
+! through by population_squared).
+real(p) :: average_magnetisation = 0.0_p
+
 ! projected energy averaged over the calculation.
 ! This is really a running total of \sum_{i/=0} <D_0|H|D_i> N_i: the average is
 ! only taken at output time (in write_fciqmc_report) by considering the ratio
@@ -163,6 +168,11 @@ integer, allocatable :: occ_list0(:)
 ! The initial value can be overridden by a restart file or input option.
 real(p) :: D0_population = 10.0_p
 
+! The modulus squared of the wavefunction which the psips represent
+! This is used in calculating the expectation value of the
+! staggered magnetisation.
+real(p) :: population_squared = 0.0_p
+
 ! Energy of reference determinant.
 real(p) :: H00
 
@@ -183,6 +193,8 @@ integer :: ref_det
 logical :: vary_shift = .false.
 ! The number of report loops after which vary_shift mode was entered.
 integer :: start_vary_shift
+! True if the staggered magnetisation is to be calculated in the Heisenberg model
+logical :: calculate_magnetisation
 
 !--- Restart data ---
 
@@ -587,10 +599,16 @@ contains
     !--- Output procedures ---
 
     subroutine write_fciqmc_report_header()
-
-        write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
-          '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
-          'Av. Proj. E','# D0','# particles','R_spawn','time'
+        
+        if (calculate_magnetisation) then
+            write (6,'(2X,a6,3X,a13,10X,a12,7X,a11,9X,a4,3X,a11,2X,a7,2X,a4,3X,a16,5X,a5)') &
+           '# iter','Instant shift','\sum H_0j Nj', &
+           'Av. Proj. E','# D0','# particles','R_spawn','time','\sum M_ii^2 Ni^2','Pop^2'
+       else if (.not.calculate_magnetisation) then
+           write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
+           '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
+           'Av. Proj. E','# D0','# particles','R_spawn','time'
+       end if
 
     end subroutine write_fciqmc_report_header
 
@@ -611,11 +629,20 @@ contains
         vary_shift_reports = ireport - start_averaging_from - start_vary_shift
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,2X,4(es17.10,2X),f11.4,4X,i11,3X,f6.4,2X,f4.2)') &
+        if (calculate_magnetisation) then
+            write (6,'(i8,3(2X,es17.10),f11.4,2X,i9,2X,f6.4,3X,f4.2,2X,es17.10,1X,es17.10)') &
+                                             mc_cycles_done+mc_cycles, shift,   &
+                                             proj_energy, av_proj_energy/av_D0_population, &
+                                             D0_population, ntot_particles, rspawn, & 
+                                             elapsed_time/ncycles, average_magnetisation, &
+                                             population_squared
+        else if (.not.calculate_magnetisation) then                                    
+            write (6,'(5X,i8,2X,4(es17.10,2X),f11.4,4X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, proj_energy,       &
                                              av_proj_energy/av_D0_population, D0_population, & 
                                              ntot_particles, rspawn, elapsed_time/ncycles
+        end if
 
     end subroutine write_fciqmc_report
 
