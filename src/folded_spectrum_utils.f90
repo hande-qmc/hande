@@ -45,6 +45,7 @@ contains
 
     subroutine init_folded_spectrum()
         use fciqmc_data, only: P__, Po_, P_o, X__, Xo_, X_o, tau
+        real(p) :: P_renorm
         
         !overwrite spawning and death pointers
         spawner_ptr => fs_spawner        
@@ -52,9 +53,10 @@ contains
 
         ! set folded spectrum generation probabilities
         ! renormalise P__, Po_, P_o (just in case)
-        P__ = P__ / (P__ + Po_ + P_o)
-        Po_ = Po_ / (P__ + Po_ + P_o)
-        P_o = P_o / (P__ + Po_ + P_o)
+        P_renorm = P__ + Po_ + P_o
+        P__ = P__ / P_renorm
+        Po_ = Po_ / P_renorm
+        P_o = P_o / P_renorm
         ! calculate chis for split generation 
         X__ = sqrt(tau / P__ )
         Xo_ = sqrt(tau / Po_)
