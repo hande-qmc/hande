@@ -207,7 +207,12 @@ contains
                 call readf(fold_line)
             case('FS_OFFSET')
                 call readf(fs_offset)
-
+            case('P__')
+                call readf(P__)
+            case('Po_')
+                call readf(Po_)
+            case('P_o')
+                call readf(P_o)
 
 
 
@@ -448,6 +453,9 @@ contains
 
         call mpi_bcast(fold_line, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(fs_offset, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(P__, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(Po_, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(P_o, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
 #endif
 

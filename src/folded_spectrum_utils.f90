@@ -43,6 +43,25 @@ type(det_info), save :: cdet_excit
 
 contains
 
+    subroutine init_folded_spectrum()
+        use fciqmc_data, only: P__, Po_, P_o, X__, Xo_, X_o, tau
+        
+        !overwrite spawning and death pointers
+        spawner_ptr => fs_spawner        
+        death_ptr => fs_stochastic_death
+
+        ! set folded spectrum generation probabilities
+        ! renormalise P__, Po_, P_o (just in case)
+        P__ = P__ / (P__ + Po_ + P_o)
+        Po_ = Po_ / (P__ + Po_ + P_o)
+        P_o = P_o / (P__ + Po_ + P_o)
+        ! calculate chis for split generation 
+        X__ = sqrt(tau / P__ )
+        Xo_ = sqrt(tau / Po_)
+        X_o = sqrt(tau / P_o ) 
+
+    end subroutine init_folded_spectrum
+
     subroutine alloc_cdet_excit
     use determinants, only: alloc_det_info
 

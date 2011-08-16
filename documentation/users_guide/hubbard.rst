@@ -748,6 +748,31 @@ These options are valid when performing a folded spectrum calculation
     (H-\eps)^2 + \lambda. A good choice is the ground state found by running
     a traditional FCIQMC calculation.
 
+**P__** *P_*
+    Real.
+
+    Default: 0.05
+
+    Manually choose the split generation probabilities. Best to choose them such that 
+    the ratio of: 
+    \frac{*P__*}{*P_o*} = \frac{*P__*}{*P_o*} \approx frac{H_{off_diag}}{H_{on_diag}},
+    where H_{on(off)_diag} are the rough magnitudes of the on(off) diagonal elements
+    of the Hamiltonian. Code automatically renormalises the probabilities.
+
+**Po_** *Po_*
+    Real.
+
+    Default: 0.475
+
+    See above.
+
+**P_o** *P_o*
+    Real.
+
+    Default: 0.475
+
+    See above.
+
 output options
 ^^^^^^^^^^^^^^
 

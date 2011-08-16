@@ -48,35 +48,16 @@ contains
             sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
             death_ptr => stochastic_death
-                if(doing_calc(folded_spectrum)) then
-                    gen_excit_ptr => gen_excit_hub_k
-                    spawner_ptr => fs_spawner        !overrides previous spawner_ptr declaration
-                    death_ptr => fs_stochastic_death !overrides previous death_ptr declaration
-                endif
+            if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_k
         case (hub_real)
-                decoder_ptr => decode_det_occ
-                update_proj_energy_ptr => update_proj_energy_hub_real
-                spawner_ptr => spawn_hub_real
-                sc0_ptr => slater_condon0_hub_real
-                hub_matel = hubt
-                death_ptr => stochastic_death
-                if(doing_calc(folded_spectrum)) then
-                    gen_excit_ptr => gen_excit_hub_real
-                    spawner_ptr => fs_spawner        !overrides previous spawner_ptr declaration
-                    death_ptr => fs_stochastic_death !overrides previous death_ptr declaration
-                endif
+            decoder_ptr => decode_det_occ
+            update_proj_energy_ptr => update_proj_energy_hub_real
+            spawner_ptr => spawn_hub_real
+            sc0_ptr => slater_condon0_hub_real
+            hub_matel = hubt
+            death_ptr => stochastic_death
+            if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_real
         end select
-
-        ! set folded spectrum parameters
-        if (doing_calc(folded_spectrum)) then
-            P__=0.05
-            Po_=(1.0-P__)*0.5
-            P_o=Po_
-
-            X__ = sqrt(tau / P__ )
-            Xo_ = sqrt(tau / Po_)
-            X_o = sqrt(tau / P_o ) 
-        endif
 
 
         if (doing_calc(initiator_fciqmc)) then
@@ -98,6 +79,8 @@ contains
                 call do_fciqmc()
             end if
         end if
+
+        if (doing_calc(folded_spectrum)) call init_folded_spectrum()
 
     end subroutine fciqmc_main
 
