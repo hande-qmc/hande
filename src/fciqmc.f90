@@ -52,10 +52,10 @@ contains
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_heisenberg
             spawner_ptr => spawn_heisenberg
-            if (staggered_field == 0.0) then
-                sc0_ptr => diagonal_element_heisenberg
-            else if (staggered_field /= 0.0) then
+            if (abs(staggered_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
+            else
+                sc0_ptr => diagonal_element_heisenberg
             end if
         end select
 

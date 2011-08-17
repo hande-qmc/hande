@@ -601,9 +601,9 @@ contains
     subroutine write_fciqmc_report_header()
         
         if (calculate_magnetisation) then
-            write (6,'(2X,a6,3X,a13,10X,a12,7X,a11,9X,a4,3X,a11,2X,a7,2X,a4,3X,a16,5X,a5)') &
+            write (6,'(2X,a6,6X,a13,7X,a12,2X,a17,9X,a4,3X,a11,3X,a7,3X,a4,3X,a16,11X,a9)') &
            '# iter','Instant shift','\sum H_0j Nj', &
-           'Av. Proj. E','# D0','# particles','R_spawn','time','\sum M_ii^2 Ni^2','Pop^2'
+           'Current Proj. E','# D0','# particles','R_spawn','time','\sum M_ii^2 Ni^2','\sum Ni^2'
        else if (.not.calculate_magnetisation) then
            write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
            '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
@@ -630,9 +630,9 @@ contains
 
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (calculate_magnetisation) then
-            write (6,'(i8,3(2X,es17.10),f11.4,2X,i9,2X,f6.4,3X,f4.2,2X,es17.10,1X,es17.10)') &
+            write (6,'(i8,3(2X,es17.10),2X,f11.4,5X,i9,4X,f6.4,3X,f4.2,2X,es17.10,3X,es17.10)') &
                                              mc_cycles_done+mc_cycles, shift,   &
-                                             proj_energy, av_proj_energy/av_D0_population, &
+                                             proj_energy, proj_energy/D0_population, &
                                              D0_population, ntot_particles, rspawn, & 
                                              elapsed_time/ncycles, average_magnetisation, &
                                              population_squared

@@ -176,10 +176,10 @@ contains
             case(hub_real)
                 H00 = slater_condon0_hub_real(f0)
             case(heisenberg)
-                if (staggered_field == 0.0) then
-                    H00 = diagonal_element_heisenberg(f0)
-                else if (staggered_field /= 0.0) then
+                if (abs(staggered_field) > 0.0_p) then
                     H00 = diagonal_element_heisenberg_staggered(f0)
+                else
+                    H00 = diagonal_element_heisenberg(f0)
                 end if
             end select
             ! By definition:
@@ -234,7 +234,8 @@ contains
             write (6,'(1X,a88)') 'Average shift: the running average of the shift from when the shift was allowed to vary.'
             write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
                                  &Calculated at the end of each cycle.'
-            write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
+            if (calculate_magnetisation) write (6,'(1X,a59)') 'Current Proj. E: The projected energy from this report loop'
+            if (.not.calculate_magnetisation) write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
             write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
             write (6,'(1X,a49)') '# particles: current total population of walkers.'
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
@@ -282,7 +283,7 @@ contains
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
             if (calculate_magnetisation) then
-                write (6,'(2X,"#",i5,3(2X,es17.10),f11.4,2X,i9,5X,a3,4X,a3,2X,es17.10,1X,es17.10)') &
+                write (6,'(2X,"#",i5,3(2X,es17.10),2X,f11.4,5X,i9,7X,a3,4X,a3,2X,es17.10,3X,es17.10)') &
                     mc_cycles_done, shift, proj_energy, 0.0_p, D0_population, ntot_particles,'n/a', &
                     'n/a', average_magnetisation, population_squared
             else if (.not.calculate_magnetisation) then 

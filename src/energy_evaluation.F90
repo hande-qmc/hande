@@ -56,7 +56,7 @@ contains
             D0_population = ir_sum(sampling_size+3)
             rspawn = ir_sum(sampling_size+4)
             average_magnetisation = ir_sum(sampling_size+5)
-            population_squared = ir(sampling_size+6)
+            population_squared = ir_sum(sampling_size+6)
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
