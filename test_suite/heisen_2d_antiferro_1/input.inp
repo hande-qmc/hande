@@ -13,11 +13,13 @@ calculate_magnetisation
 
 spawned_walker_length 3 MB
 walker_length 1 MB
-nreports 2000
+nreports 1000
 mc_cycles 50
 
 seed 123
 
+dump_restart 0
+
 tau 0.01
-varyshift_target 100000
-shift_damping 0.5
+varyshift_target 80000
+shift_damping 0.1

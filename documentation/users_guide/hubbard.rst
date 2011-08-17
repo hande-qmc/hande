@@ -712,6 +712,18 @@ The following options are valid for FCIQMC calculations.
     Furthermore, the current implementation does not allow restart files
     produced with one value of DET_SIZE to be used with binaries produced with
     a different value of DET_SIZE.  However, this is not checked!
+    
+**calculate_magnetisation**
+
+    For the Heisenberg model only. If this keyword is specified then the staggered
+    magnetisation of the ground state is calculated. The relevant quantities are
+    output into the the two additional columns:
+    
+    '\sum M_ii^2 Ni^2' and '\sum Ni^2'
+    
+    such that the first of these divided by the second gives the staggered magnetisation for
+    for a single report loop. Note that the 'Av. shift' column is removed to allow for
+    the addition of these columns.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

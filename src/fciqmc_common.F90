@@ -231,11 +231,11 @@ contains
             end if
             write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
             write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
-            write (6,'(1X,a88)') 'Average shift: the running average of the shift from when the shift was allowed to vary.'
+            if (.not.calculate_magnetisation) write (6,'(1X,a88)') 'Average shift: the running average & 
+                                                    &of the shift from when the shift was allowed to vary.'
             write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
                                  &Calculated at the end of each cycle.'
-            if (calculate_magnetisation) write (6,'(1X,a59)') 'Current Proj. E: The projected energy from this report loop'
-            if (.not.calculate_magnetisation) write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
+            write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
             write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
             write (6,'(1X,a49)') '# particles: current total population of walkers.'
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
@@ -283,9 +283,9 @@ contains
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
             if (calculate_magnetisation) then
-                write (6,'(2X,"#",i5,3(2X,es17.10),2X,f11.4,5X,i9,7X,a3,4X,a3,2X,es17.10,3X,es17.10)') &
-                    mc_cycles_done, shift, proj_energy, 0.0_p, D0_population, ntot_particles,'n/a', &
-                    'n/a', average_magnetisation, population_squared
+                write (6,'(1X,"#",3X,i8,3(2X,es17.10),2X,f11.4,5X,i9,2X,es17.10,3X,es17.10,7X,a3,4X,a3)') &
+                    mc_cycles_done, shift, proj_energy, 0.0_p, D0_population, ntot_particles, &
+                    average_magnetisation, population_squared, 'n/a','n/a'
             else if (.not.calculate_magnetisation) then 
                 write (6,'(1X,"#",3X,i8,2X,4(es17.10,2X),f11.4,4X,i11,6X,a3,3X,a3)') &
                     mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, D0_population, ntot_particles,'n/a','n/a'
