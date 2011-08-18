@@ -173,6 +173,15 @@ real(p) :: D0_population = 10.0_p
 ! staggered magnetisation.
 real(p) :: population_squared = 0.0_p
 
+! A general variable used to store the average of the denominator
+! in varous estimators, such as for magnetisation and energy
+real(p) :: estimator_denom = 0.0_p
+
+! When using the Neel singlet trial wavefunction, it is convenient
+! to store all possible amplitudes in the wavefunction, since
+! there are relativley few of them and they are expensive to calculate
+real(dp), allocatable : neel_singlet_amp(:) ! (nsites/2) + 1
+
 ! Energy of reference determinant.
 real(p) :: H00
 
@@ -194,7 +203,10 @@ logical :: vary_shift = .false.
 ! The number of report loops after which vary_shift mode was entered.
 integer :: start_vary_shift
 ! True if the staggered magnetisation is to be calculated in the Heisenberg model
-logical :: calculate_magnetisation
+logical :: calculate_magnetisation = .false.
+! True if the Neel singlet state is to be used as a reference function instead of
+! a single determinant
+logical :: neel_singlet_reference = .false.
 
 !--- Restart data ---
 

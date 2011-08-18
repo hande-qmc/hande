@@ -227,7 +227,7 @@ contains
 
     end subroutine update_proj_energy_hub_real
     
-    subroutine update_proj_energy_heisenberg(idet)
+    subroutine update_proj_energy_heisenberg_basic(idet)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -253,7 +253,6 @@ contains
 
         integer, intent(in) :: idet
         type(excit) :: excitation
-        real(p) :: hmatel
         integer :: bit_position, bit_element
 
         excitation = get_excitation(walker_dets(:,idet), f0)
@@ -274,7 +273,48 @@ contains
         
         if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
 
-    end subroutine update_proj_energy_heisenberg
+    end subroutine update_proj_energy_heisenberg_basic
+    
+    subroutine update_proj_energy_heisenberg_neel_singlet(idet)
+    
+        ! Add the contribution of the current determinant to the projected
+        ! energy.
+        ! The correlation energy given by the projected energy is:
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
+        ! where N_i is the population on the i-th determinant, D_i,
+        ! and 0 refers to the reference determinant.
+        ! During a MC cycle we store
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
+        ! If the current determinant is the reference determinant, then
+        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! efficient.
+        ! This procedure is for the Heisenberg model only
+        ! In:
+        !    idet: index of current determinant in the main walker list.
+
+        use fciqmc_data, only: walker_dets, population_squared, &
+                               walker_population, average_magnetisation
+        use basis, only: basis_length
+        use determinants, only: lattice_mask
+        use system, only: nel, nsites, ndim
+        use bit_utils, only: count_set_bits
+
+        integer, intent(in) :: idet
+        type(excit) :: excitation
+        integer :: n, m
+        real(dp) :: neel_singlet_n
+        
+        f_mask = iand(walker_dets(:,idet), lattice_mask)
+        n = sum(count_set_bits(f_mask))
+        
+        if (n > nsites/2) n = nsites/2 - n
+        neel_singlet_n = neel_singlet(n)
+        
+        estimator_denom = estimator_denom + walker_population(1,idet)*neel_singlet
+        
+        if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
+
+    end subroutine update_proj_energy_heisenberg_neel_singlet
     
     subroutine update_magnetisation_heisenberg(idet)
 
