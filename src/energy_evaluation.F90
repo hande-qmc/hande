@@ -278,6 +278,20 @@ contains
     
     subroutine update_magnetisation_heisenberg(idet)
 
+        ! Add the contribution of the current determinant to the projected
+        ! magnetisation. This only gets run when calculate_magnetisation
+        ! is true, and only in the Heisenberg model.
+        ! The staggered magnetisation squared in the z direction is:
+        !   \sum_{i \neq 0} <D_i|M_z^2|D_i> N_i^2/Magnitude^2
+        ! where N_i is the population on the i-th basis function,
+        ! and Magnitude^2 is the sum of the squares of the components
+        ! of the wavefunction, ie, the sum of the squares of the psips.
+        ! During a MC cycle we store
+        !   \sum_{i \neq 0} <D_i|M_z^2|D_i> N_i^2 and Magnitude^2
+        ! This procedure is for the Heisenberg model only
+        ! In:
+        !    idet: index of current determinant in the main walker list.
+        
         use fciqmc_data, only: walker_dets, population_squared, &
                                walker_population, average_magnetisation
         use basis, only: basis_length

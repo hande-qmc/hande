@@ -722,8 +722,7 @@ The following options are valid for FCIQMC calculations.
     '\sum M_ii^2 Ni^2' and '\sum Ni^2'
     
     such that the first of these divided by the second gives the staggered magnetisation for
-    for a single report loop. Note that the 'Av. shift' column is removed to allow for
-    the addition of these columns.
+    for a single report loop.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
