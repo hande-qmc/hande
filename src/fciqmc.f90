@@ -21,7 +21,7 @@ contains
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
-        use energy_evaluation, only: update_proj_energy_heisenberg
+        use energy_evaluation, only: update_proj_energy_heisenberg_basic, update_proj_energy_heisenberg_neel_singlet
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator
         use spawning, only: spawn_heisenberg
 
@@ -50,7 +50,11 @@ contains
         case (heisenberg)
             ! Only need occupied orbitals list, as for the real Hubbard case
             decoder_ptr => decode_det_occ
-            update_proj_energy_ptr => update_proj_energy_heisenberg
+            if (neel_singlet_reference) then
+                update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
+            else
+                update_proj_energy_ptr => update_proj_energy_heisenberg_basic
+            end if
             spawner_ptr => spawn_heisenberg
             if (abs(staggered_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered

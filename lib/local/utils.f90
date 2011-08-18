@@ -66,7 +66,7 @@ contains
         use const, only: dp
         
         real(dp) :: combination
-        integer, intent(in) m, n
+        integer, intent(in) :: m, n
         integer :: m1, n1, i
         
         ! Choose m1 to be the larger of m and n

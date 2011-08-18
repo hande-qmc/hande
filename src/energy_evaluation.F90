@@ -292,25 +292,45 @@ contains
         ! In:
         !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, population_squared, &
-                               walker_population, average_magnetisation
-        use basis, only: basis_length
-        use determinants, only: lattice_mask
-        use system, only: nel, nsites, ndim
+        use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
+        use determinants, only: lattice_mask
+        use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
+                               calculate_magnetisation, estimator_denom, proj_energy, &
+                               neel_singlet_amp
+        use hubbard_real, only: connected_orbs
+        use system, only: nel, nsites, ndim, J_coupling
 
         integer, intent(in) :: idet
-        type(excit) :: excitation
-        integer :: n, m
-        real(dp) :: neel_singlet_n
+        integer :: i, n, m, ipos, lattice_1_up, lattice_2_up, basis_find
+        integer(i0) :: f_mask(basis_length), g(basis_length)
         
         f_mask = iand(walker_dets(:,idet), lattice_mask)
         n = sum(count_set_bits(f_mask))
         
         if (n > nsites/2) n = nsites/2 - n
-        neel_singlet_n = neel_singlet(n)
         
-        estimator_denom = estimator_denom + walker_population(1,idet)*neel_singlet
+        ! Count the number of 0-1 bonds, where the 1's are on the first sublattice
+        lattice_1_up = 0
+        do i = 1, basis_length
+            do ipos = 0, i0_end
+                if (btest(f_mask(i), ipos)) then
+                    basis_find = basis_lookup(ipos, i)
+                    g = iand(f_mask, connected_orbs(:,basis_find))
+                    lattice_1_up = lattice_1_up + sum(count_set_bits(g))
+                end if
+            end do
+        end do
+        
+        ! And the can deduce the number of 0-1 bonds, where the 1's are on the
+        ! second sublattice
+        lattice_2_up = (ndim*nsites) + nint(walker_energies(1,idet)/J_coupling) - lattice_1_up
+        
+        proj_energy = proj_energy + (neel_singlet_amp(n) * walker_energies(1,idet) * walker_population(1,idet))
+        proj_energy = proj_energy - (2 * J_coupling * lattice_1_up * walker_population(1,idet) * neel_singlet_amp(n-1))
+        proj_energy = proj_energy - (2 * J_coupling * lattice_2_up * walker_population(1,idet) * neel_singlet_amp(n+1))
+        
+        estimator_denom = estimator_denom + walker_population(1,idet)*neel_singlet_amp(n)
         
         if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
 

@@ -180,7 +180,7 @@ real(p) :: estimator_denom = 0.0_p
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
-real(dp), allocatable : neel_singlet_amp(:) ! (nsites/2) + 1
+real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
 ! Energy of reference determinant.
 real(p) :: H00
@@ -738,6 +738,10 @@ contains
         if (allocated(f0)) then
             deallocate(f0, stat=ierr)
             call check_deallocate('f0',ierr)
+        end if
+        if (allocated(neel_singlet_amp)) then
+            deallocate(neel_singlet_amp, stat=ierr)
+            call check_deallocate('neel_singlet_amp',ierr)
         end if
 
     end subroutine end_fciqmc

@@ -30,8 +30,9 @@ contains
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use fciqmc_restart, only: read_restart
-        use system, only: nel, system_type, hub_real, hub_k, heisenberg, staggered_field
+        use system, only: nel, nsites, system_type, hub_real, hub_k, heisenberg, staggered_field
         use symmetry, only: gamma_sym, sym_table
+        use utils, only: factorial_combination_1
 
         integer :: ierr
         integer :: i
@@ -179,7 +180,11 @@ contains
                 if (abs(staggered_field) > 0.0_p) then
                     H00 = diagonal_element_heisenberg_staggered(f0)
                 else
-                    H00 = diagonal_element_heisenberg(f0)
+                    if (neel_singlet_reference) then
+                        H00 = 0
+                    else
+                        H00 = diagonal_element_heisenberg(f0)
+                    end if
                 end if
             end select
             ! By definition:
@@ -208,6 +213,18 @@ contains
             ref_sym = gamma_sym
             do i=1,nel
                 ref_sym = sym_table((occ_list0(i)+1)/2,ref_sym)
+            end do
+        end if
+        
+        ! Calculate all the possible different amplitudes for the Neel singlet state
+        ! and store them in an array
+        if (neel_singlet_reference) then
+            allocate(neel_singlet_amp((nsites/2)+1), stat=ierr)
+            call check_allocate('neel_singlet_amp',(nsites/2)+1,ierr)
+            
+            do i=0,(nsites/2)
+                neel_singlet_amp(i) = factorial_combination_1( (nsites/2)-i , i )
+                neel_singlet_amp(i) = -(2*mod(i,2)-1) * neel_singlet_amp(i)
             end do
         end if
 

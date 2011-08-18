@@ -494,9 +494,9 @@ contains
         do i = 1, basis_length
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
-                basis_find = basis_lookup(ipos, i)
-                g = iand(f_not, connected_orbs(:,basis_find))
-                counter = counter + sum(count_set_bits(g))
+                    basis_find = basis_lookup(ipos, i)
+                    g = iand(f_not, connected_orbs(:,basis_find))
+                    counter = counter + sum(count_set_bits(g))
                 end if
             end do
         end do
@@ -557,9 +557,9 @@ contains
         do i = 1, basis_length
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
-                basis_find = basis_lookup(ipos, i)
-                g = iand(f_not, connected_orbs(:,basis_find))
-                counter = counter + sum(count_set_bits(g))
+                    basis_find = basis_lookup(ipos, i)
+                    g = iand(f_not, connected_orbs(:,basis_find))
+                    counter = counter + sum(count_set_bits(g))
                 end if
             end do
         end do
