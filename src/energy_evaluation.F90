@@ -28,7 +28,7 @@ contains
                                proj_energy, av_proj_energy, av_D0_population, shift, av_shift, &
                                vary_shift, start_vary_shift, vary_shift_from,                  &
                                vary_shift_from_proje, D0_population,                           &
-                               fold_line, fs_offset
+                               fold_line
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
@@ -70,7 +70,7 @@ contains
                     if(doing_calc(folded_spectrum)) then
                       !if running a folded spectrum calculation, set the shift to
                       !instantaneously be the projected energy of the folded hamiltonian
-                      shift = (proj_energy/D0_population - fold_line)**2 + fs_offset
+                      shift = (proj_energy/D0_population - fold_line)**2
                     else
                       ! Set shift to be instantaneous projected energy.
                       shift = proj_energy/D0_population
@@ -94,7 +94,7 @@ contains
                     if(doing_calc(folded_spectrum)) then
                     !if running a folded spectrum calculation, set the shift to
                     !instantaneously be the projected energy of the folded hamiltonian
-                    shift = (proj_energy/D0_population - fold_line)**2 + fs_offset
+                    shift = (proj_energy/D0_population - fold_line)**2
                     else
                     ! Set shift to be instantaneous projected energy.
                     shift = proj_energy/D0_population

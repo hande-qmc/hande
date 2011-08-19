@@ -739,15 +739,6 @@ These options are valid when performing a folded spectrum calculation
     \eps in (H-\eps)^2. In the case of convergence the psips settle on a 
     stochastic representation of the eigenstate(s) with energy closest to \eps
 
-**fs_offset** *fs_offset*
-    Real.
-
-    Default: 0.0
-
-    Choose an additional offset to the folded matrix, i.e. add \lambda to
-    (H-\eps)^2 + \lambda. A good choice is the ground state found by running
-    a traditional FCIQMC calculation.
-
 **P__** *P_*
     Real.
 

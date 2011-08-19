@@ -212,9 +212,6 @@ integer :: mc_cycles_done = 0, nparticles_old_restart = 0
 ! The line about which you are folding i.e. eps in (H-eps)^2 - E_0
 real(p) :: fold_line = 0
 
-! The additional offset to the matrix i.e. E_0 in (H-eps)^2 - E_0
-real(p) :: fs_offset = 0
-
 ! The generation probabilities of a dual excitation type
 real(p) :: P__=0.05, Po_=0.475, P_o=0.475
 

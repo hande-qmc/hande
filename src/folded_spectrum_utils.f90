@@ -6,7 +6,7 @@ module folded_spectrum_utils
 use const
 
 use proc_pointers
-use fciqmc_data, only: fold_line, fs_offset
+use fciqmc_data, only: fold_line
 use determinants, only: det_info
 
 
@@ -408,10 +408,9 @@ contains
         !  p_d = tau*M_ii
         ! where tau is the timestep and M_ii is the appropriate diagonal
         ! matrix element.
-        ! For FSFCIQMC M_ii = (K_ii-fold_line)^2 + fs_offset - S        
+        ! For FSFCIQMC M_ii = (K_ii-fold_line)^2  - S        
         ! where S is the shift, fold_line is the point about which we fold
-        ! the spectrum, fs_offset is an addition offset to move the origin 
-        ! from zero and  K_ii is
+        ! the spectrum and  K_ii is
         !  K_ii =  < D_i | H | D_i > - E_0.
 
         ! In:
@@ -439,7 +438,7 @@ contains
         integer, intent(inout) :: population, tot_population
         integer, intent(out) :: ndeath
 
-        call stochastic_death((Kii-fold_line)**2+fs_offset, population, tot_population, ndeath)
+        call stochastic_death((Kii-fold_line)**2, population, tot_population, ndeath)
 
     end subroutine fs_stochastic_death
 
