@@ -30,7 +30,7 @@ contains
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use fciqmc_restart, only: read_restart
-        use system, only: nel, nsites, system_type, hub_real, hub_k, heisenberg, staggered_field
+        use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_field
         use symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
 
@@ -105,6 +105,10 @@ contains
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
         allocate(walker_energies(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_energies', sampling_size*walker_length, ierr)
+        if (neel_singlet_reference) then
+            allocate(walker_reference_data(2,walker_length), stat=ierr)
+            call check_allocate('walker_reference_data', 2*walker_length, ierr)
+        end if
 
         ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
         if (mod(spawned_walker_length, nprocs) /= 0) then
@@ -189,6 +193,10 @@ contains
             end select
             ! By definition:
             walker_energies(1,tot_walkers) = 0.0_p
+            if (allocated(walker_reference_data)) then
+                walker_reference_data(1,tot_walkers) = nsites/2
+                walker_reference_data(2,tot_walkers) = nsites*ndim
+            end if
 
             ! Finally, we need to check if the reference determinant actually
             ! belongs on this processor.

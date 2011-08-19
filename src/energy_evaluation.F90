@@ -27,7 +27,7 @@ contains
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn
         use fciqmc_data, only: proj_energy, av_proj_energy, av_D0_population, shift, av_shift
         use fciqmc_data, only: vary_shift, start_vary_shift, D0_population, average_magnetisation
-        use fciqmc_data, only: calculate_magnetisation, population_squared, estimator_denom
+        use fciqmc_data, only: calculate_magnetisation, population_squared
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc
 
@@ -37,7 +37,7 @@ contains
         integer, intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
-        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7)
+        real(dp) :: ir(sampling_size+6), ir_sum(sampling_size+6)
         integer :: ntot_particles(sampling_size), ierr
 
             ! Need to sum the number of particles and the projected energy over
@@ -49,7 +49,6 @@ contains
             ir(sampling_size+4) = rspawn
             ir(sampling_size+5) = average_magnetisation
             ir(sampling_size+6) = population_squared
-            ir(sampling_size+7) = estimator_denom
             call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
             proj_energy = ir_sum(sampling_size+1)
@@ -58,7 +57,6 @@ contains
             rspawn = ir_sum(sampling_size+4)
             average_magnetisation = ir_sum(sampling_size+5)
             population_squared = ir_sum(sampling_size+6)
-            estimator_denom = ir_sum(sampling_size+7)
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
@@ -104,7 +102,6 @@ contains
                 average_magnetisation = average_magnetisation/ncycles
                 population_squared = population_squared/ncycles
             end if
-            estimator_denom = estimator_denom/ncycles
             ! Similarly for the HFS estimator
             av_proj_hf_expectation = av_proj_hf_expectation + proj_hf_expectation
             proj_hf_expectation = proj_hf_expectation/ncycles
@@ -295,25 +292,56 @@ contains
         ! In:
         !    idet: index of current determinant in the main walker list.
 
+        use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
+                               walker_reference_data, calculate_magnetisation, &
+                               proj_energy, neel_singlet_amp, D0_population
+        use system, only: nsites, ndim, J_coupling
+
+        integer, intent(in) :: idet
+        integer :: i, n, ipos, lattice_1_up, lattice_2_up
+        
+        n = walker_reference_data(1,idet)
+        lattice_1_up = walker_reference_data(2,idet)
+        
+        ! Deduce the number of 0-1 bonds, where the 1's are on the
+        ! second sublattice
+        lattice_2_up = ((ndim*nsites) + nint(walker_energies(1,idet)/J_coupling))/2 - lattice_1_up
+        
+        proj_energy = proj_energy + (neel_singlet_amp(n+1) * walker_energies(1,idet) * walker_population(1,idet))
+        if (n > 0) proj_energy = proj_energy - (2 * J_coupling * lattice_1_up * &
+                                 walker_population(1,idet) * neel_singlet_amp(n))
+        if (n < (nsites/2)) proj_energy = proj_energy - (2 * J_coupling * lattice_2_up * &
+                            walker_population(1,idet) * neel_singlet_amp(n+2))
+        
+        D0_population = D0_population + walker_population(1,idet)*neel_singlet_amp(n+1)
+        
+        if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
+
+    end subroutine update_proj_energy_heisenberg_neel_singlet
+    
+    pure function neel_singlet_data(idet) result(spin_config_data)
+    
+        ! This subroutine calculates the number of up spins on one of the
+        ! sublattices so that it can be stored, along with the total number
+        ! of spins which are up on the sublattice. These are later used in the
+        ! update_proj_energy_heisenberg_neel_singlet subroutine.
+    
         use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
         use determinants, only: lattice_mask
-        use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
-                               calculate_magnetisation, estimator_denom, proj_energy, &
-                               neel_singlet_amp
+        use fciqmc_data, only: walker_dets
         use hubbard_real, only: connected_orbs
-        use system, only: nel, nsites, ndim, J_coupling
-
+        use system, only: nsites
+    
         integer, intent(in) :: idet
-        integer :: i, n, ipos, lattice_1_up, lattice_2_up, basis_find
         integer(i0) :: f_mask(basis_length), f_not(basis_length), g(basis_length)
-        
+        integer :: lattice_1_up, n, i, ipos, basis_find
+        integer :: spin_config_data(2)
+    
         f_mask = iand(walker_dets(:,idet), lattice_mask)
         n = sum(count_set_bits(f_mask))
-        
         if (n > nsites/2) n = nsites/2 - n
-        
-        ! Count the number of 0-1 bonds, where the 1's are on the first sublattice
+    
         lattice_1_up = 0
         f_not = not(walker_dets(:,idet))
         do i = 1, basis_length
@@ -326,21 +354,10 @@ contains
             end do
         end do
         
-        ! And the can deduce the number of 0-1 bonds, where the 1's are on the
-        ! second sublattice
-        lattice_2_up = ((ndim*nsites) + nint(walker_energies(1,idet)/J_coupling))/2 - lattice_1_up
-        
-        proj_energy = proj_energy + (neel_singlet_amp(n+1) * walker_energies(1,idet) * walker_population(1,idet))
-        if (n > 0) proj_energy = proj_energy - (2 * J_coupling * lattice_1_up * &
-                                 walker_population(1,idet) * neel_singlet_amp(n))
-        if (n < (nsites/2)) proj_energy = proj_energy - (2 * J_coupling * lattice_2_up * &
-                            walker_population(1,idet) * neel_singlet_amp(n+2))
-        
-        estimator_denom = estimator_denom + walker_population(1,idet)*neel_singlet_amp(n+1)
-        
-        if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
-
-    end subroutine update_proj_energy_heisenberg_neel_singlet
+        spin_config_data(1) = n
+        spin_config_data(2) = lattice_1_up
+    
+    end function neel_singlet_data
     
     subroutine update_magnetisation_heisenberg(idet)
 

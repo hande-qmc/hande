@@ -99,6 +99,12 @@ integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
 ! K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
 ! reference determinant.
 real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
+! When calculating the projected energy with various trial wavefunctions, it
+! is useful to store quantites which are expensive to calculate and which are
+! instead of recalculating them. For the Neel singlet state, the first component
+! gives stores the total number of spins up on the first sublattice. The second
+! component gives the number of 0-1 bonds where the 1 is on the first sublattice.
+integer, allocatable :: walker_reference_data(:,:) ! (2,walker_length)
 
 ! Walker information: spawned list.
 ! By combining the info in with the determinant, we can reduce the number of MPI
@@ -172,10 +178,6 @@ real(p) :: D0_population = 10.0_p
 ! This is used in calculating the expectation value of the
 ! staggered magnetisation.
 real(p) :: population_squared = 0.0_p
-
-! A general variable used to store the average of the denominator
-! in varous estimators, such as for magnetisation and energy
-real(p) :: estimator_denom = 0.0_p
 
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
@@ -652,7 +654,7 @@ contains
             write (6,'(5X,i8,2X,4(es17.10,2X),f11.4,4X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, proj_energy,       &
-                                             av_proj_energy/av_D0_population, estimator_denom, & 
+                                             av_proj_energy/av_D0_population, D0_population, & 
                                              ntot_particles, rspawn, elapsed_time/ncycles
         end if
 
@@ -718,6 +720,10 @@ contains
         if (allocated(walker_energies)) then
             deallocate(walker_energies, stat=ierr)
             call check_deallocate('walker_energies',ierr)
+        end if
+        if (allocated(walker_reference_data)) then
+            deallocate(walker_reference_data, stat=ierr)
+            call check_deallocate('walker_reference_data',ierr)
         end if
         if (allocated(spawned_walkers1)) then
             deallocate(spawned_walkers1, stat=ierr)
