@@ -151,7 +151,6 @@ contains
         type(excit)      :: connection_ki, connection_jk
         real(p)          :: psuccess
 
-
         
         ! 0. Choose the type of double element you're going to spawn 
         choose_double_elt_type = genrand_real2()
@@ -166,7 +165,6 @@ contains
             !    (in this case we stay on the same place)
             Pgen_ki = 1
             hmatel_ki =  sc0_ptr(cdet%f) - H00 - fold_line !***optimise this with stored/calculated values
-
             ! Calculate P_gen for the first excitation
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
 

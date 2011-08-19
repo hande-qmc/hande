@@ -70,6 +70,9 @@ contains
 
         end select
 
+        if(doing_calc(folded_spectrum)) then
+            call init_folded_spectrum()
+        endif   
 
         if (doing_calc(initiator_fciqmc)) then
             call init_ifciqmc()
@@ -91,9 +94,6 @@ contains
             end if
         end if
 
-        if (doing_calc(folded_spectrum)) then
-            call init_folded_spectrum()
-        endif   
 
     end subroutine fciqmc_main
 
