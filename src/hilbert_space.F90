@@ -42,17 +42,18 @@ contains
 
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
 
+        call set_spin_polarisation(ms_in)
+
         if (system_type == hub_real) then
 
             ! Symmetry not currently implemented for the real space Hubbard
             ! code.
-            if (parent) write (6,'(1X,a,g8.4,/)') 'Size of space is', binom_r(nsites, nalpha)*binom_r(nsites, nbeta)
+            if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', binom_r(nsites, nalpha)*binom_r(nsites, nbeta)
 
         else if (system_type == hub_k) then
 
             ! Perform a Monte Carlo sampling of the space.
 
-            call set_spin_polarisation(ms_in)
             call set_reference_det()
 
             ! Symmetry of the reference determinant.
