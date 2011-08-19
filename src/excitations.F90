@@ -376,40 +376,6 @@ contains
 
     end subroutine create_excited_det
 
-    subroutine create_excited_det_complete(cdet_in, connection, cdet_out)
-    
-        ! Generate a complete excited determinant from another determinant and 
-        !the excitation information connecting the two determinants.
-        ! In: 
-        !    cdet_in: info on the current determinant that we will excite
-        !        from.  The f field must be set.
-        !    connection: excitation connecting cdet_in to cdet_out.  Note that
-        !        the perm field is not used.
-        ! Out:
-        !    cdet_out info: on the determinant that we will excite to
-        use determinants, only: det_info
-        use proc_pointers, only: decoder_ptr
-
-        type(det_info), intent(in)  :: cdet_in
-        type(excit), intent(in)     :: connection
-        type(det_info), intent(inout) :: cdet_out
-
-        ! Create the excited determinant bit string representation
-        call create_excited_det(cdet_in%f, connection, cdet_out%f)
-
-        ! Decode the excited determinant bit string representation
-        call decoder_ptr(cdet_out%f,cdet_out)
-
-    end subroutine create_excited_det_complete
-
-
-
-
-
-
-
-
-
     pure function calc_pgen_hub_k(ab_sym, f, unocc_alpha, unocc_beta) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the

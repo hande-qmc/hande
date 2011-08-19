@@ -44,12 +44,9 @@ type(det_info), save :: cdet_excit
 contains
 
     subroutine init_folded_spectrum()
-        use fciqmc_data, only: P__, Po_, P_o, X__, Xo_, X_o, tau
+        use fciqmc_data, only: P__, Po_, P_o, X__, Xo_, X_o, tau, H00
         real(p) :: P_renorm
         
-        !overwrite spawning and death pointers
-        spawner_ptr => fs_spawner        
-        death_ptr => fs_stochastic_death
 
         ! set folded spectrum generation probabilities
         ! renormalise P__, Po_, P_o (just in case)
@@ -61,6 +58,10 @@ contains
         X__ = sqrt(tau / P__ )
         Xo_ = sqrt(tau / Po_)
         X_o = sqrt(tau / P_o ) 
+
+        !remove E0 from the fold_line
+
+        fold_line = fold_line - H00 
 
     end subroutine init_folded_spectrum
 
@@ -79,6 +80,41 @@ contains
 
     end subroutine dealloc_cdet_excit
 
+    subroutine create_cdet_excit(cdet_in, connection, cdet_out)
+    
+        ! Generate a complete excited determinant from another determinant and 
+        !the excitation information connecting the two determinants.
+        ! In: 
+        !    cdet_in: info on the current determinant that we will excite
+        !        from.  The f field must be set.
+        !    connection: excitation connecting cdet_in to cdet_out.  Note that
+        !        the perm field is not used.
+        ! Out:
+        !    cdet_out info: on the determinant that we will excite to
+        use determinants, only: det_info
+        use proc_pointers, only: decoder_ptr
+        use excitations, only: excit, create_excited_det
+
+        type(det_info), intent(in)  :: cdet_in
+        type(excit), intent(in)     :: connection
+        type(det_info), intent(inout) :: cdet_out
+
+        ! Create the excited determinant bit string representation
+        call create_excited_det(cdet_in%f, connection, cdet_out%f)
+
+        ! Decode the excited determinant bit string representation
+        call decoder_ptr(cdet_out%f,cdet_out)
+
+    end subroutine create_cdet_excit
+
+
+
+
+
+
+
+
+
 
     subroutine fs_spawner(cdet, parent_sign, nspawn, connection)
         ! Attempt to spawn a new particle on a daughter or granddaughter determinant according to
@@ -96,7 +132,7 @@ contains
         !        and the child determinant, on which progeny are spawned.
         use excitations, only: excit
         use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
-        use excitations, only: create_excited_det_complete, create_excited_det, get_excitation
+        use excitations, only: create_excited_det, get_excitation
         use basis, only: basis_length
         use dSFMT_interface, only: genrand_real2
 
@@ -216,7 +252,7 @@ contains
                 ! 1.2 Generate the second random excitation 
                 !    (in this case we stay on the same place)
                 ! (i)  generate the first excited determinant  
-                call create_excited_det_complete(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
+                call create_cdet_excit(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
                 ! (ii) calculate Pgen and hmatel on this site       
                 Pgen_jk = 1
                 hmatel_jk =  sc0_ptr(cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
@@ -293,7 +329,7 @@ contains
 
                 ! Generate the second random excitation 
                 ! (i)  generate the first excited determinant  
-                call create_excited_det_complete(cdet, connection_ki, cdet_excit)
+                call create_cdet_excit(cdet, connection_ki, cdet_excit)
                 ! (ii) excite again
                 call gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
 
