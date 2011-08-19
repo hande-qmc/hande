@@ -140,6 +140,7 @@ contains
             D0_population = 0.0_p
             average_magnetisation = 0.0_p
             population_squared = 0.0_p
+            estimator_denom = 0.0_p
 
             do icycle = 1, ncycles
 

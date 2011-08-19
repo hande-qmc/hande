@@ -652,7 +652,7 @@ contains
             write (6,'(5X,i8,2X,4(es17.10,2X),f11.4,4X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, proj_energy,       &
-                                             av_proj_energy/av_D0_population, D0_population, & 
+                                             av_proj_energy/av_D0_population, estimator_denom, & 
                                              ntot_particles, rspawn, elapsed_time/ncycles
         end if
 
