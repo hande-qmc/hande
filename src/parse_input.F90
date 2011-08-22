@@ -258,8 +258,12 @@ contains
             
             case('CALCULATE_MAGNETISATION')
                 calculate_magnetisation = .true.
+                
+            case('UNIFORM_COMBINATION')
+                trial_function = uniform_combination
+                unitary_factor = -1
             case('NEEL_SINGLET')
-                neel_singlet_reference = .true.
+                trial_function = neel_singlet
 
             case('END')
                 exit
@@ -391,13 +395,14 @@ contains
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_magnetisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(neel_singlet_reference, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(J_coupling, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(h_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(staggered_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(unitary_factor, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then

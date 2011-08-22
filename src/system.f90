@@ -23,6 +23,16 @@ logical :: momentum_space = .false.
 ! True if the lattice is bipartite. False if it is geometrically frustrated.
 logical :: bipartite_lattice = .false.
 
+! For the Heisenberg model, several different trial functions can be used in the
+! energy estimator. Only a single determinant can be used for the Hubbard model.
+integer, parameter :: single_basis = 0
+integer, parameter :: uniform_combination = 1
+integer, parameter :: neel_singlet = 2
+
+! Which trial function are we using? Only relevant to the Heisneberg model.
+! trial_function will always be 0 for other models to represent a single determinant.
+integer :: trial_function = 0
+
 ! 1, 2 or 3 dimensions.
 integer :: ndim 
 
@@ -70,11 +80,11 @@ integer :: nvirt_alpha, nvirt_beta
 ! interaction respectively.
 real(p) :: hubu = 1, hubt = 1
 
-! Coupling constant J In the Heisenberg model
+! Coupling constant J In the Heisenberg model.
 real(p) :: J_coupling = 1
 
 ! External magnetic field h in the Heisenberg model, in the z direction
-! (the z direction is defined the same direction as the external field)
+! (the z direction is defined the same direction as the external field).
 real(p) :: h_field = 0
 
 ! This parameter allows a staggered magnetisation operator to be added
@@ -82,6 +92,15 @@ real(p) :: h_field = 0
 ! \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - 
 !                      staggered_field \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
 real(p) :: staggered_field = 0
+
+! For the Heisenberg model applied to bipartite lattices,
+! a unitary transformation can be applied which rotates
+! all spins on one of the sublattices by 180 degrees around the
+! z axis. When working in a basis of spins in the z direction, this
+! transformation does not affect the diagonal elements, but multiplies 
+! all off-diagonal elements by -1 to make all elements either 0 or -2.
+! unitary_factor is -1 if this transformation is applied or +1 if not.
+integer :: unitary_factor = 1
 
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
 ! is constant, so it's convenient to store it.

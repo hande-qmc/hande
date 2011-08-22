@@ -365,6 +365,8 @@ contains
         ! Remove any determinants with 0 population.
         ! This can be done in a more efficient manner by doing it only when necessary...
 
+        use system, only: trial_function, neel_singlet
+        
         integer :: nzero, i, k
 
         nzero = 0
@@ -376,7 +378,9 @@ contains
                 walker_dets(:,k) = walker_dets(:,i)
                 walker_population(:,k) = walker_population(:,i)
                 walker_energies(:,k) = walker_energies(:,i)
-                if (neel_singlet_reference) walker_reference_data(:,k) = walker_reference_data(:,i)
+                if (trial_function == neel_singlet) then
+                    walker_reference_data(:,k) = walker_reference_data(:,i)
+                end if
             end if
         end do
         tot_walkers = tot_walkers - nzero
@@ -392,12 +396,12 @@ contains
         use basis, only: basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det
-        use system, only: nel
+        use system, only: nel, trial_function, neel_singlet
         use hamiltonian, only: slater_condon0_hub_real
         use hfs_data, only: lmask, O00
         use operators, only: calc_orb_occ
         use proc_pointers, only: sc0_ptr
-        use energy_evaluation, only: neel_singlet_data
+        use heisenberg_estimators, only: neel_singlet_data
 
         integer :: i, istart, iend, j, k, pos
         logical :: hit
@@ -432,7 +436,7 @@ contains
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(:,k) = walker_population(:,j)
                 walker_energies(:,k) = walker_energies(:,j)
-                if (neel_singlet_reference) walker_reference_data(:,k) = walker_reference_data(:,j)
+                if (trial_function == neel_singlet) walker_reference_data(:,k) = walker_reference_data(:,j)
             end do
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
@@ -441,7 +445,7 @@ contains
             walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
             walker_energies(1,k) = sc0_ptr(walker_dets(:,k)) - H00
-            if (neel_singlet_reference) walker_reference_data(:,k) = neel_singlet_data(k)
+            if (trial_function == neel_singlet) walker_reference_data(:,k) = neel_singlet_data(k)
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_energies(2:,k) = <D_i|O|D_i>.
                 walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00

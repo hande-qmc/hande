@@ -31,6 +31,7 @@ contains
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use fciqmc_restart, only: read_restart
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_field
+        use system, only: trial_function, neel_singlet, single_basis
         use symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
 
@@ -105,7 +106,7 @@ contains
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
         allocate(walker_energies(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_energies', sampling_size*walker_length, ierr)
-        if (neel_singlet_reference) then
+        if (trial_function == neel_singlet) then
             allocate(walker_reference_data(2,walker_length), stat=ierr)
             call check_allocate('walker_reference_data', 2*walker_length, ierr)
         end if
@@ -184,7 +185,7 @@ contains
                 if (abs(staggered_field) > 0.0_p) then
                     H00 = diagonal_element_heisenberg_staggered(f0)
                 else
-                    if (neel_singlet_reference) then
+                    if (trial_function /= single_basis) then
                         H00 = 0
                     else
                         H00 = diagonal_element_heisenberg(f0)
@@ -226,7 +227,7 @@ contains
         
         ! Calculate all the possible different amplitudes for the Neel singlet state
         ! and store them in an array
-        if (neel_singlet_reference) then
+        if (trial_function == neel_singlet) then
             allocate(neel_singlet_amp((nsites/2)+1), stat=ierr)
             call check_allocate('neel_singlet_amp',(nsites/2)+1,ierr)
             

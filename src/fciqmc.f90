@@ -15,13 +15,15 @@ contains
         ! that are to be called for the current fciqmc calculation.
 
         use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_field
+        use system, only: trial_function, single_basis, uniform_combination, neel_singlet
         use hellmann_feynman_sampling
-
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
+        use heisenberg_estimators, only: update_proj_energy_heisenberg_basic, update_proj_energy_&
+                                                                          &heisenberg_neel_singlet
+        use heisenberg_estimators, only: update_proj_energy_heisenberg_positive
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
-        use energy_evaluation, only: update_proj_energy_heisenberg_basic, update_proj_energy_heisenberg_neel_singlet
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator
         use spawning, only: spawn_heisenberg
 
@@ -50,12 +52,17 @@ contains
         case (heisenberg)
             ! Only need occupied orbitals list, as for the real Hubbard case
             decoder_ptr => decode_det_occ
-            if (neel_singlet_reference) then
-                update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
-            else
+            ! Set which trial wavefunction to use for the energy estimator
+            select case(trial_function)
+            case (single_basis)
                 update_proj_energy_ptr => update_proj_energy_heisenberg_basic
-            end if
+            case (uniform_combination)
+                update_proj_energy_ptr => update_proj_energy_heisenberg_positive
+            case (neel_singlet)
+                update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
+            end select 
             spawner_ptr => spawn_heisenberg
+            ! Set whether the staggered magnetisation is to be calculated
             if (abs(staggered_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
             else

@@ -206,9 +206,6 @@ logical :: vary_shift = .false.
 integer :: start_vary_shift
 ! True if the staggered magnetisation is to be calculated in the Heisenberg model
 logical :: calculate_magnetisation = .false.
-! True if the Neel singlet state is to be used as a reference function instead of
-! a single determinant
-logical :: neel_singlet_reference = .false.
 
 !--- Restart data ---
 

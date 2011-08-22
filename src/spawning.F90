@@ -199,7 +199,6 @@ contains
 
     end subroutine spawn_hub_real
     
-    
     subroutine spawn_heisenberg(cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new psip on a connected determinant for the 
@@ -221,7 +220,7 @@ contains
         use excitations, only: calc_pgen_real, excit
         use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
-        use system, only: J_coupling
+        use system, only: J_coupling, unitary_factor
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -248,7 +247,12 @@ contains
         connection%to_orb(1) = a
 
         ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-        hmatel = -2.0_p*J_coupling
+        ! However, for bipartite lattices a unitary transformation can make all
+        ! off-diagonal elements of H negative. This also transforms the ground
+        ! state so that all components are positive. This is useful when using
+        ! certain trial functions. If the unitary transformation is applied
+        ! to H, then unitary_factor = -1
+        hmatel = -2.0_p*J_coupling*unitary_factor
 
         ! 4. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen
@@ -277,7 +281,6 @@ contains
         end if
 
     end subroutine spawn_heisenberg
-    
 
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
 
