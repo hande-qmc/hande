@@ -46,33 +46,20 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
-            if(doing_calc(folded_spectrum)) then
-                gen_excit_ptr => gen_excit_hub_k
-                spawner_ptr => fs_spawner        
-                death_ptr => fs_stochastic_death
-            else
-                spawner_ptr => spawn_hub_k
-                death_ptr => stochastic_death
-            endif
+            spawner_ptr => spawn_hub_k
+            death_ptr => stochastic_death
+            if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_k
         case (hub_real)
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_hub_real
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
-            if(doing_calc(folded_spectrum))then
-                gen_excit_ptr => gen_excit_hub_real
-                spawner_ptr => fs_spawner        
-                death_ptr => fs_stochastic_death
-            else
-                spawner_ptr => spawn_hub_real
-                death_ptr => stochastic_death
-            endif
-
+            spawner_ptr => spawn_hub_real
+            death_ptr => stochastic_death
+            if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_real
         end select
 
-        if(doing_calc(folded_spectrum)) then
-            call init_folded_spectrum()
-        endif   
+        if(doing_calc(folded_spectrum)) call init_folded_spectrum()
 
         if (doing_calc(initiator_fciqmc)) then
             call init_ifciqmc()
