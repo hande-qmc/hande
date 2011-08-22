@@ -312,7 +312,7 @@ contains
                     mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, D0_population, ntot_particles, &
                     average_magnetisation, population_squared, 'n/a','n/a'
             else if (.not.calculate_magnetisation) then 
-                write (6,'(1X,"#",3X,i8,2X,4(es17.10,2X),f11.4,4X,i11,6X,a3,3X,a3)') &
+                write (6,'(1X,"#",3X,i8,2X,4(es17.10,2X),es17.10,4X,i11,6X,a3,3X,a3)') &
                     mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, D0_population, ntot_particles,'n/a','n/a'
             end if
         end if
