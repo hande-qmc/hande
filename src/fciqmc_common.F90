@@ -228,12 +228,14 @@ contains
         ! Calculate all the possible different amplitudes for the Neel singlet state
         ! and store them in an array
         if (trial_function == neel_singlet) then
-            allocate(neel_singlet_amp((nsites/2)+1), stat=ierr)
+            allocate(neel_singlet_amp(-1:(nsites/2)+1), stat=ierr)
             call check_allocate('neel_singlet_amp',(nsites/2)+1,ierr)
             
+            neel_singlet_amp(-1) = 0
+            neel_singlet_amp((nsites/2)+1) = 0
             do i=0,(nsites/2)
-                neel_singlet_amp(i+1) = factorial_combination_1( (nsites/2)-i , i )
-                neel_singlet_amp(i+1) = -(2*mod(i,2)-1) * neel_singlet_amp(i+1)
+                neel_singlet_amp(i) = factorial_combination_1( (nsites/2)-i , i )
+                neel_singlet_amp(i) = -(2*mod(i,2)-1) * neel_singlet_amp(i)
             end do
         end if
 

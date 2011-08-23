@@ -445,7 +445,7 @@ contains
             walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
             walker_energies(1,k) = sc0_ptr(walker_dets(:,k)) - H00
-            if (trial_function == neel_singlet) walker_reference_data(:,k) = neel_singlet_data(k)
+            if (trial_function == neel_singlet) walker_reference_data(:,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_energies(2:,k) = <D_i|O|D_i>.
                 walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00
