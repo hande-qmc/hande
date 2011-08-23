@@ -168,9 +168,9 @@ contains
             !    (in this case we stay on the same place)
             Pgen_ki = 1
             hmatel_ki =  sc0_ptr(cdet%f) - H00 - fold_line !***optimise this with stored/calculated values
+            
             ! Calculate P_gen for the first excitation
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
-
             ! Attempt spawning
             psuccess = genrand_real2()
 
@@ -178,23 +178,25 @@ contains
             nspawn_ki = int(pspawn_ki)
             pspawn_ki = pspawn_ki - nspawn_ki
 
+            ! Stochastic offspring
             if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
 
             if(nspawn_ki > 0 ) then
             ! Successful spawning on ki
 
-                ! 1.2 Generate the second random excitation 
+                ! Generate the second random excitation 
                 call gen_excit_ptr(cdet, Pgen_jk, connection_jk, hmatel_jk)
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
+                ! Attempt spawning
                 psuccess = genrand_real2()
 
                 ! Multiple offspring again...
                 nspawn_jk = int(pspawn_jk)
                 pspawn_jk = pspawn_jk - nspawn_jk
 
-
+                ! Stochastic offspring
                 if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
 
                 if (nspawn_jk > 0) then
@@ -203,7 +205,7 @@ contains
                     ! Combine the spawning numbers
                     nspawn = nspawn_ki * nspawn_jk
 
-                    ! 4. If H_ij is positive, then the spawned walker is of opposite
+                    ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
                     if (hmatel_ki*hmatel_jk > 0.0_p) then
@@ -212,7 +214,7 @@ contains
                         nspawn = sign(nspawn, parent_sign)
                     end if
 
-                    ! 5. Set connection to the address of the spawned element
+                    ! Set connection to the address of the spawned element
                     connection = connection_jk
 
                 else
@@ -234,10 +236,8 @@ contains
             ! Generate first random excitation and probability of spawning there from cdet 
             call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
             
-
             ! Calculate P_gen for the first excitation
             pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
-
             ! Attempt spawning
             psuccess = genrand_real2()
 
@@ -245,12 +245,13 @@ contains
             nspawn_ki = int(pspawn_ki)
             pspawn_ki = pspawn_ki - nspawn_ki
 
+            ! Stochastic offspring
             if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
 
             if(nspawn_ki > 0 ) then
             ! Successful spawning on ki
 
-                ! 1.2 Generate the second random excitation 
+                ! Generate the second random excitation 
                 !    (in this case we stay on the same place)
                 ! (i)  generate the first excited determinant  
                 call create_cdet_excit(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
@@ -260,13 +261,14 @@ contains
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
+                ! Attempt spawning
                 psuccess = genrand_real2()
 
                 ! Multiple offspring again...
                 nspawn_jk = int(pspawn_jk)
                 pspawn_jk = pspawn_jk - nspawn_jk
 
-
+                ! Stochastic offspring
                 if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
 
                 if (nspawn_jk > 0) then
@@ -275,7 +277,7 @@ contains
                     ! Combine the spawning numbers
                     nspawn = nspawn_ki * nspawn_jk
 
-                    ! 4. If H_ij is positive, then the spawned walker is of opposite
+                    ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
                     if (hmatel_ki*hmatel_jk > 0.0_p) then
@@ -284,7 +286,7 @@ contains
                         nspawn = sign(nspawn, parent_sign)
                     end if
 
-                    ! 5. Set connection to the address of the spawned element
+                    ! Set connection to the address of the spawned element
                     connection = connection_ki
 
                 else
@@ -315,7 +317,6 @@ contains
 
             ! Calculate P_gen for the first excitation
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
-
             ! Attempt spawning
             psuccess = genrand_real2()
 
@@ -323,6 +324,7 @@ contains
             nspawn_ki = int(pspawn_ki)
             pspawn_ki = pspawn_ki - nspawn_ki
 
+            ! Stochastic offspring
             if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
 
             if(nspawn_ki > 0 ) then
@@ -336,13 +338,14 @@ contains
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk
+                ! Attempt spawning
                 psuccess = genrand_real2()
 
                 ! Multiple offspring again...
                 nspawn_jk = int(pspawn_jk)
                 pspawn_jk = pspawn_jk - nspawn_jk
 
-
+                ! Stochastic offspring
                 if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
 
                 if (nspawn_jk > 0) then
@@ -351,7 +354,7 @@ contains
                     ! Combine the spawning numbers
                     nspawn = nspawn_ki * nspawn_jk
 
-                    ! 4. If H_ij is positive, then the spawned walker is of opposite
+                    ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
                     if (hmatel_ki*hmatel_jk > 0.0_p) then
@@ -360,7 +363,7 @@ contains
                         nspawn = sign(nspawn, parent_sign)
                     end if
 
-                ! 5. Calculate the excited determinant (can be up to degree 4)
+                ! Calculate the excited determinant (can be up to degree 4)
                 ! (i)   add up the number of excitations
                 connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
                 ! (ii)  combine the annihilations
@@ -376,6 +379,9 @@ contains
 
                 connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
                                connection_jk%to_orb(:connection_jk%nexcit)
+
+                ! (iv) combine the permutations
+                connection%perm = connection_jk%perm .eqv. connection_ki%perm
             
 
                 else
