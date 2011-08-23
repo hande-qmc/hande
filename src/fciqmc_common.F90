@@ -37,7 +37,7 @@ contains
 
         integer :: ierr
         integer :: i
-        integer :: step, size_main_walker, size_spawned_walker
+        integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
@@ -65,10 +65,20 @@ contains
 
         ! Each determinant occupies basis_length kind=i0 integers,
         ! sampling_size integers and sampling_size kind=p reals.
+        ! If the Neel singlet state is used as the reference state for the
+        ! projected estimator, then a further 2 integers are used per
+        ! determinant.
+        nwalker_int = sampling_size
+        nwalker_real = sampling_size
+        if (trial_function == neel_singlet) nwalker_int = nwalker_int + 2
+
+        ! Thus the number of bits occupied by each determinant in the main
+        ! walker list is given by basis_length*i0_length+nwalker_int*32+nwalker_real*32
+        ! (*64 if double precision).  The number of bytes is simply 1/8 this.
 #ifdef SINGLE_PRECISION
-        size_main_walker = basis_length*i0_length/8 + sampling_size*8
+        size_main_walker = basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*4
 #else
-        size_main_walker = basis_length*i0_length/8 + sampling_size*12
+        size_main_walker = basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*8
 #endif
         if (walker_length < 0) then
             ! Given in MB.  Convert.  Note: important to avoid overflow in the
