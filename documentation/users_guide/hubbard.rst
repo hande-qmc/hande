@@ -723,6 +723,43 @@ The following options are valid for FCIQMC calculations.
     
     such that the first of these divided by the second gives the staggered magnetisation for
     for a single report loop.
+    
+**uniform_combination**
+
+    For the Heisenberg model only. If this keyword is specified, instead of using a single
+    reference detereminant to calculate the projected energy, a linear combination of
+    of basis fucntions with amplitudes 1 is used:
+    |psi> = \sum_{i} |D_i>
+    hence the estimator used is
+    
+            <psi|H|psi_0>
+    E_0 =  ---------------
+             <psi|psi_0>
+              
+           \sum_{i,j} <D_i|H|D_j> c_j
+        = ----------------------------
+                  sum_{i} c_i
+                  
+    A unitary transformation will be applied to the Hamiltonian so that all the
+    off-diagonal elements are multiplied by -1. This has the effect of making
+    the transformed ground state have all positive components, and hence the above
+    trial function has a good overlap with it.
+    
+    This can only be used for bipartite lattices.
+    
+**neel_singlet**
+
+    For the Heisenberg model only. If this keyword is specified, instead of using a single
+    reference detereminant to calculate the projected energy, the Neel singlet state is used.
+    This is a state |NS> = \sum_{i} a_i * |D_i>
+    where the amplitudes a_i only depend on the number of up spins on either of the sublattices.
+    the Neel state is formed by taking a combination of Neel states pointing in all directions.
+    Hence it is an S = 0 eigenstate. This is also true for the ground state, and hence
+    a the Neel singlet state is an apropriate trial wavefunction.
+    For further details, see the comments in the subroutine update_proj_energy_heisenberg_neel_singlet
+    in heisenberg_estimator.F90, and also see K. Runge, Phys. Rev. B 45, 7229 (1992).
+    
+    This can only be used for bipartite lattices.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
