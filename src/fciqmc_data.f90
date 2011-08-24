@@ -206,6 +206,9 @@ logical :: vary_shift = .false.
 integer :: start_vary_shift
 ! True if the staggered magnetisation is to be calculated in the Heisenberg model
 logical :: calculate_magnetisation = .false.
+! True if importance sampling is to be applied, so that the chosen trial function
+! will be used to guide the random walk.
+logical :: importance_sampling = .false.
 
 !--- Restart data ---
 

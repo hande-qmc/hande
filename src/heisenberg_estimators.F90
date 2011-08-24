@@ -100,14 +100,25 @@ subroutine update_proj_energy_heisenberg_basic(idet)
 
         use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
                                walker_reference_data, calculate_magnetisation, &
-                               proj_energy, neel_singlet_amp, D0_population
+                               proj_energy, neel_singlet_amp, D0_population, &
+                               importance_sampling
         use system, only: nsites, ndim, J_coupling
 
         integer, intent(in) :: idet
         integer :: i, n, ipos, lattice_1_up, lattice_2_up
+        real(dp) :: importance_sampling_factor = 1.0
         
         n = walker_reference_data(1,idet)
         lattice_1_up = walker_reference_data(2,idet)
+        
+        ! If importance sampling is applied then the psip amplitudes, n_i,
+        ! will represent the quantities
+        ! f_i = c_i^T * c_i
+        ! where c_i the amplitude of |D_i> in the true ground state and
+        ! c_i^T is the amplitude of |D_i> in the trial ground state. Hence, we
+        ! must remove this extra factor if we wish to calculate the projected eneergy
+        ! in the same way. This is done with the factor, importance_sampling_factor.
+        if (importance_sampling) importance_sampling_factor = 1.0/neel_singlet_amp(n)
         
         ! Deduce the number of 0-1 bonds, where the 1's are on the
         ! second sublattice:
@@ -128,7 +139,8 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
-        proj_energy = proj_energy + (neel_singlet_amp(n) * walker_energies(1,idet) * walker_population(1,idet))
+        proj_energy = proj_energy + (neel_singlet_amp(n) * walker_energies(1,idet) * &
+                                          walker_population(1,idet) * importance_sampling_factor)
         
         ! Now, to find all other basis functions connected to |D_j>, we find 0-1 bonds
         ! and then flip both of these spins. The resulting basis function, |D_i> will be
@@ -140,22 +152,23 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         ! the two amplitudes, neel_singlet_amp(n-1) or neel_singlet_amp(n+1) 
         ! respectively. We just need to know how many of each type of 0-1 bonds there
         ! are. But we have these already - they are stored as lattice_1_up and lattice_2_up.
-        ! Finally note that the matrix element is -2*J_coupling, and we can all this together...
+        ! Finally note that the matrix element is -2*J_coupling, and we can put this together...
         
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
         proj_energy = proj_energy - (2 * J_coupling * lattice_1_up * &
-                                 walker_population(1,idet) * neel_singlet_amp(n-1))
+                    walker_population(1,idet) * neel_singlet_amp(n-1) * importance_sampling_factor)
                                  
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
         proj_energy = proj_energy - (2 * J_coupling * lattice_2_up * &
-                            walker_population(1,idet) * neel_singlet_amp(n+1))
+                    walker_population(1,idet) * neel_singlet_amp(n+1) * importance_sampling_factor)
         
         ! Now we just need to find the contribution to the denominator. The total
         ! denominator is
         ! \sum_{i} (a_i * n_i)
         ! Hence from this paritcular basis function, |D_j>, we just add (a_j * n_j)
         
-        D0_population = D0_population + walker_population(1,idet)*neel_singlet_amp(n)
+        D0_population = D0_population + &
+                          walker_population(1,idet)*neel_singlet_amp(n)*importance_sampling_factor
         
         if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
 

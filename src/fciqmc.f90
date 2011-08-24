@@ -25,7 +25,7 @@ contains
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator
-        use spawning, only: spawn_heisenberg
+        use spawning, only: spawn_heisenberg, spawn_heisenberg_importance_sampling
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, doing_calc
 
@@ -52,6 +52,7 @@ contains
         case (heisenberg)
             ! Only need occupied orbitals list, as for the real Hubbard case
             decoder_ptr => decode_det_occ
+            spawner_ptr => spawn_heisenberg
             ! Set which trial wavefunction to use for the energy estimator
             select case(trial_function)
             case (single_basis)
@@ -60,8 +61,8 @@ contains
                 update_proj_energy_ptr => update_proj_energy_heisenberg_positive
             case (neel_singlet)
                 update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
+                if (importance_sampling) spawner_ptr => spawn_heisenberg_importance_sampling
             end select 
-            spawner_ptr => spawn_heisenberg
             ! Set whether the staggered magnetisation is to be calculated
             if (abs(staggered_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
@@ -165,6 +166,7 @@ contains
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
                     cdet%f = walker_dets(:,idet)
+                    cdet%idet = idet
 
                     call decoder_ptr(cdet%f, cdet)
 

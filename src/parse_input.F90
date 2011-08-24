@@ -259,6 +259,8 @@ contains
             case('CALCULATE_MAGNETISATION')
                 calculate_magnetisation = .true.
                 
+            case('IMPORTANCE_SAMPLING')
+                importance_sampling = .true.
             case('UNIFORM_COMBINATION')
                 trial_function = uniform_combination
                 unitary_factor = -1
@@ -395,6 +397,7 @@ contains
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_magnetisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(importance_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
