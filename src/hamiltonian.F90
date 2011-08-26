@@ -480,7 +480,7 @@ contains
         use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: ndim, nsites, J_coupling, h_field, staggered_field
+        use system, only: ndim, nsites, J_coupling, h_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)

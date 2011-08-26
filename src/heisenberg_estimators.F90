@@ -203,7 +203,6 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         ! Calculate the number of up spins on the first sublattice.
         f_mask = iand(f, lattice_mask)
         n = sum(count_set_bits(f_mask))
-        if (n > nsites/2) n = nsites/2 - n
     
         ! Find the number of 0-1 bonds where the 1 lies on the first sublattice.
         lattice_1_up = 0

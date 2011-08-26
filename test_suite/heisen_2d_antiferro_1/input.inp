@@ -3,23 +3,27 @@ heisenberg
 fciqmc
 
 lattice
-4 0
-0 4
+6 0
+0 6
 ms 0
 
-J -0.015625
+J -0.006944444
 
-calculate_magnetisation
+neel_singlet
+importance_sampling
 
-spawned_walker_length 5 MB
-walker_length 2 MB
-nreports 2000
+spawned_walker_length 50 MB
+walker_length 25 MB
+nreports 1000000
 mc_cycles 50
 
 seed 123
 
-dump_restart 0
+dump_restart 2
 
-tau 0.01
-varyshift_target 100000
-shift_damping 0.5
+tau 0.001
+initial_shift -0.5
+reference_det_population 10
+flipped_basis_population 10
+varyshift_target 5000
+shift_damping 0.05

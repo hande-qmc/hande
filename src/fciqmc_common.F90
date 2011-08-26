@@ -24,7 +24,7 @@ contains
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
                                 annihilate_main_list_initiator,                &
                                 annihilate_spawned_list_initiator
-        use basis, only: basis_length, basis_fns, write_basis_fn
+        use basis, only: basis_length, basis_fns, write_basis_fn, basis_lookup
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
@@ -36,9 +36,10 @@ contains
         use utils, only: factorial_combination_1
 
         integer :: ierr
-        integer :: i
+        integer :: i, D0_not_proc, ipos, basis_find
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
+        integer(i0) :: f0_not(basis_length)
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -174,6 +175,7 @@ contains
             ! Set initial population of Hamiltonian walkers.
             walker_population(1,tot_walkers) = nint(D0_population)
 
+
             ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
             ! kinetic energy which satisfy the spin polarisation.
@@ -202,8 +204,12 @@ contains
                     end if
                 end if
             end select
-            ! By definition:
+            ! By definition, when using a single determinant as a reference state:
             walker_energies(1,tot_walkers) = 0.0_p
+            ! Or if not:
+            if (trial_function /= single_basis) walker_energies(1,tot_walkers) = &
+                                                 diagonal_element_heisenberg(f0)
+            ! Set the Neel state data for the reference state, if it is being used.
             if (allocated(walker_reference_data)) then
                 walker_reference_data(1,tot_walkers) = nsites/2
                 walker_reference_data(2,tot_walkers) = nsites*ndim
@@ -217,6 +223,48 @@ contains
                 if (D0_proc /= iproc) tot_walkers = 0
             else
                 D0_proc = iproc
+            end if
+        end if
+        
+        ! For the Heisenberg model it is often useful to have psips on both Neel
+        ! states initially. If the user has asked for this then the code below
+        ! initialises these psips on the correct processor.
+        if (D0_not_population > 0.0_p) then
+            ! Flip all spins in f0 to get f0_not - Note, there are generally left
+            ! over bits in the bit strings which do not refer to a spin, and must
+            ! all be set to 0. If they are not, errors occur. Therefore, we
+            ! first set these spins up, so that when all spins are flipped these
+            ! are flipped back down, so that the corresponding bits are not set.
+            f0_not = f0
+            do i = 1, basis_length
+                do ipos = 0, i0_end
+                    basis_find = basis_lookup(ipos, i)
+                    if (basis_find == 0) then
+                        f0_not(i) = ibset(f0_not(i),ipos)
+                    end if
+                end do
+            end do
+            
+            ! Now flip all spins to get the second Neel state
+            f0_not = not(f0_not)
+            
+            if (nprocs > 1) then
+                D0_not_proc = modulo(murmurhash_bit_string(f0_not, basis_length), nprocs)
+                if (D0_not_proc == iproc) then
+                    tot_walkers = tot_walkers + 1
+                    ! Zero all populations...
+                    walker_population(:,tot_walkers) = 0.
+                    ! Set all the data for this basis function
+                    walker_population(1,tot_walkers) = nint(D0_not_population)
+                    walker_energies(1,tot_walkers) = diagonal_element_heisenberg(f0_not)-H00
+                    walker_dets(:,tot_walkers) = f0_not
+                    ! If we are using the Neel state as a reference, set the
+                    ! required data.
+                    if (allocated(walker_reference_data)) then
+                        walker_reference_data(1,tot_walkers) = 0
+                        walker_reference_data(2,tot_walkers) = 0
+                    end if
+                end if
             end if
         end if
 

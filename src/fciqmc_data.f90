@@ -174,6 +174,12 @@ integer, allocatable :: occ_list0(:)
 ! The initial value can be overridden by a restart file or input option.
 real(p) :: D0_population = 10.0_p
 
+! For the Heisenberg model, it is often useful to start with psips on both
+! of the Neel states in the basis set. If this varibale is set non-zero, then
+! this population is placed on the basis fucntion with every spin in the
+! reference state flipped.
+real(p) :: D0_not_population = 0.0_p
+
 ! The modulus squared of the wavefunction which the psips represent
 ! This is used in calculating the expectation value of the
 ! staggered magnetisation.
