@@ -134,6 +134,10 @@ contains
 
         hub_k_coulomb = hubu/nsites
 
+        ! For the Heisenberg model, we have ms_in and nsites defined, but nel not.
+        ! Here nel means the number of up spins, nvirt means the number of down spins.
+        ! For other models, both ms_in and nel have already been set, and nel refers
+        ! to the number of electrons in the system.
         if (system_type == heisenberg) then
             nel = (nsites+ms_in)/2
             nvirt = (nsites-ms_in)/2
@@ -141,7 +145,9 @@ contains
             nvirt = 2*nsites - nel
         end if
         
-        counter = 0
+        ! lattice_size is useful for loops over a general number of dimensions. This
+        ! variable is only concerned with simple lattices which could be bipartite,
+        ! as it is used in init_determinants to split a bipartite lattice into its two parts.
         lattice_size = 1  
         lattice_size(1) = ceiling(box_length(1), 2)
         if (ndim > 1) lattice_size(2) = ceiling(box_length(2), 2)
@@ -150,11 +156,14 @@ contains
         ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
         ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
         ! to be calculated.
+        counter = 0
         do i = 1,ndim
             if ( sum(lattice(:,i)) == box_length(i) .and. mod(lattice_size(i), 2) == 0) counter = counter + 1 
         end do
         if (counter == ndim) bipartite_lattice = .true.
         
+        ! This logical variable is set true if the system being used has basis functions
+        ! in momentum space - the Heisenberg and real Hubbard models are in real space.
         momentum_space = .not.(system_type == hub_real .or. system_type == heisenberg)
 
     end subroutine init_system

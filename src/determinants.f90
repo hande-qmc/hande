@@ -213,7 +213,7 @@ contains
         
         ! For Heisenberg systems, to include staggered fields and to calculate
         ! the staggered magnetisation, we require lattice_mask. Here we find
-        ! lattice_mask for a gerenal lattice.
+        ! lattice_mask for a gerenal bipartite lattice.
         if (system_type == heisenberg .and. bipartite_lattice) then
             allocate (lattice_mask(basis_length), stat=ierr)
             call check_allocate('lattice_mask',basis_length,ierr)

@@ -206,7 +206,7 @@ contains
             end select
             ! By definition, when using a single determinant as a reference state:
             walker_energies(1,tot_walkers) = 0.0_p
-            ! Or if not:
+            ! Or if not using a single determinant:
             if (trial_function /= single_basis) walker_energies(1,tot_walkers) = &
                                                  diagonal_element_heisenberg(f0)
             ! Set the Neel state data for the reference state, if it is being used.

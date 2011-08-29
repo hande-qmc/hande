@@ -198,7 +198,7 @@ contains
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
-            case('FLIPPED_BASIS_POPULATION')
+            case('FLIPPED_REFERENCE_POPULATION')
                 call readf(D0_not_population)
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
@@ -298,16 +298,28 @@ contains
         if (system_type /= heisenberg) then
             if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
             if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
+            if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
+                                                 & state for this system. Other trial functions are not avaliable.')
+            if (importance_sampling) call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
+                                                            currently.')
+            if (abs(D0_not_population) > 0.0_p) call stop_all(this, 'The flipped_reference_population option is only avaliable&
+                                                 & for the Heisenberg model.')
         end if
         
         if (system_type == heisenberg) then
-            if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice')
-            if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice')
-            if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice')
+            if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+            if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
+            if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice.')
             if (staggered_field /= 0.0 .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
-                                                       & for this lattice because it is frustrated')
+                                                       & for this lattice because it is frustrated.')
             if (staggered_field /= 0.0 .and. h_field /= 0.0) call stop_all(this, 'Cannot set a uniform and a staggered&
-                                                       & field at the same time')
+                                                       & field at the same time.')
+            if ((.not.bipartite_lattice) .and. trial_function /= single_basis) call stop_all(this, 'This trial function&
+                                   & can only be used for bipartite lattices. Please use a single basis function instead.')
+            if (importance_sampling .and. trial_function /= neel_singlet) call stop_all(this, 'Importance sampling is only&
+                                                     & implemented for the Neel singlet trial function.') 
+            if (abs(D0_population) > 0.0_p .and. ms_in /= 0) call stop_all(this, 'Flipping this reference state will give a&
+                                            & state which has a different value of Ms and so cannot be used here.')
         end if
                                                             
                                                             
