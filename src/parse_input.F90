@@ -257,6 +257,8 @@ contains
                 ! is only used when we are formulating the calculation
                 ! in real-space
                 finite_cluster = .true.   
+            case('TRIANGULAR_LATTICE')
+                triangular_lattice = .true.
             
             case('CALCULATE_MAGNETISATION')
                 calculate_magnetisation = .true.
@@ -410,6 +412,7 @@ contains
         end if
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_magnetisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(importance_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)

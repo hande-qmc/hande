@@ -42,6 +42,9 @@ integer :: nsites
 ! Lattice vectors of crystal cell. (:,i) is the i-th vector.
 integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
+! If we a triangular lattice is being used, this variable is true
+logical :: triangular_lattice
+
 ! Lengths of lattice vectors.
 real(p), allocatable :: box_length(:) ! ndim.
 
