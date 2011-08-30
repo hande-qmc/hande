@@ -70,11 +70,11 @@ subroutine update_proj_energy_heisenberg_basic(idet)
 
         use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
                                proj_energy, calculate_magnetisation, D0_population
-        use system, only: J_coupling, ndim, nsites
+        use system, only: J_coupling, nbonds
 
         integer, intent(in) :: idet
         
-        proj_energy = proj_energy + (J_coupling*ndim*nsites+2*walker_energies(1,idet))* &
+        proj_energy = proj_energy + (J_coupling*nbonds+2*walker_energies(1,idet))* &
                                      walker_population(1,idet)
                                      
         D0_population = D0_population + walker_population(1,idet)
@@ -102,7 +102,7 @@ subroutine update_proj_energy_heisenberg_basic(idet)
                                walker_reference_data, calculate_magnetisation, &
                                proj_energy, neel_singlet_amp, D0_population, &
                                importance_sampling
-        use system, only: nsites, ndim, J_coupling
+        use system, only: nbonds, ndim, J_coupling
 
         integer, intent(in) :: idet
         integer :: i, n, ipos, lattice_1_up, lattice_2_up
@@ -124,11 +124,11 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         ! second sublattice:
         ! The total number of 0-1 bonds, n(0-1) can be found from the diagonal 
         ! element of the current basis function:
-        ! hmatel = -J_coupling*(ndim*nsites - 2*n(0-1))
+        ! hmatel = -J_coupling*(nbonds - 2*n(0-1))
         ! This means we can avoid calculating n(0-1) again, which is expensive.
         ! We know the number of 0-1 bonds where the 1 (the spin up) is on sublattice 1,
         ! so can then deduce the number where the 1 is on sublattice 2.
-        lattice_2_up = ((ndim*nsites) + nint(walker_energies(1,idet)/J_coupling))/2 - lattice_1_up
+        lattice_2_up = ((nbonds) + nint(walker_energies(1,idet)/J_coupling))/2 - lattice_1_up
         
         ! There are three contributions to add to the projected energy from
         ! the current basis function. Consider the Neel singlet state:

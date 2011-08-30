@@ -1,0 +1,27 @@
+heisenberg
+
+fciqmc
+
+lattice
+6 0
+0 6
+ms 0
+
+J -0.006944444
+
+neel_singlet
+importance_sampling
+
+spawned_walker_length 100 MB
+walker_length 50 MB
+nreports 200000
+mc_cycles 50
+
+seed 123
+
+tau 0.01
+initial_shift -0.5
+reference_det_population 10
+flipped_basis_population 10
+varyshift_target 1000000
+shift_damping 0.05

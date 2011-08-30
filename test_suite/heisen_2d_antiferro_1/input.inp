@@ -15,13 +15,12 @@ triangular_lattice
 
 spawned_walker_length 50 MB
 walker_length 25 MB
-nreports 1000000
+nreports 10000000
 mc_cycles 50
 
-seed 123456789
-
-dump_restart 0
+seed 1234567
 
 tau 0.01
-varyshift_target 1000000
-shift_damping 0.5
+reference_det_population 10
+varyshift_target 1000000000
+shift_damping 0.05

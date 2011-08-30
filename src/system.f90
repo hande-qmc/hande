@@ -37,12 +37,15 @@ integer :: trial_function = 0
 integer :: ndim 
 
 ! Number of sites in crystal cell.
-integer :: nsites 
+integer :: nsites
+
+! Number of bonds in the crystal cell.
+integer :: nbonds
 
 ! Lattice vectors of crystal cell. (:,i) is the i-th vector.
 integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
-! If we a triangular lattice is being used, this variable is true
+! If a triangular lattice is being used, this variable is true.
 logical :: triangular_lattice
 
 ! Lengths of lattice vectors.
@@ -168,6 +171,17 @@ contains
         ! This logical variable is set true if the system being used has basis functions
         ! in momentum space - the Heisenberg and real Hubbard models are in real space.
         momentum_space = .not.(system_type == hub_real .or. system_type == heisenberg)
+        
+        if (triangular_lattice) then
+            ! Triangular lattice, only in 2d. Each site has 6 bonds, but each bond is
+            ! connected to 2 sites, so we divide by 2 to avoid counting twice. So there
+            ! are 6*nsites/2 = 3*nsites bonds in total.
+            nbonds = 3*nsites
+        else
+            ! For a simple rectangular lattice, each site has 2*ndim bonds, so there are
+            ! (ndim*nsites) bonds in total.
+            nbonds = ndim*nsites
+        end if
 
     end subroutine init_system
 

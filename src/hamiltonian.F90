@@ -480,7 +480,7 @@ contains
         use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: ndim, nsites, J_coupling, h_field
+        use system, only: nbonds, J_coupling, h_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -502,15 +502,15 @@ contains
         end do
         
         ! Contribution to Hamiltonian from spin interactions:
-        ! For any lattice there will be (ndim*nsites) bonds.
+        ! For a lattice the number of bonds is stored as nbonds.
         ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
         ! element.  0-1 bonds will give +J_coupling contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
-        ! of 0-0 or 1-1 bonds will be (ndim*nsites-counter)
+        ! of 0-0 or 1-1 bonds will be (nbonds-counter)
         ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and 
-        ! +J_coupling*(ndim*nsites-counter) from the 1-1 and 0-0 bonds, so in total
+        ! +J_coupling*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
-        hmatel = -J_coupling*(ndim*nsites-2*counter)
+        hmatel = -J_coupling*(nbonds-2*counter)
         
         ! Contribution to Hamiltonian from external field:
         ! Each spin up (bit set) up gives a contirbution of -h_field. Each spin down
@@ -536,7 +536,7 @@ contains
         use determinants, only: lattice_mask
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: ndim, nsites, nel, J_coupling, h_field, staggered_field
+        use system, only: nbonds, nel, J_coupling, h_field, staggered_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -565,15 +565,15 @@ contains
         end do
         
         ! Contribution to Hamiltonian from spin interactions:
-        ! For any lattice there will be (ndim*nsites) bonds.
+        ! For a lattice the number of bonds is stored as nbonds.
         ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
         ! element.  0-1 bonds will give +J_coupling contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
-        ! of 0-0 or 1-1 bonds will be (ndim*nsites-counter)
+        ! of 0-0 or 1-1 bonds will be (nbonds-counter)
         ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and 
-        ! +J_coupling*(ndim*nsites-counter) from the 1-1 and 0-0 bonds, so in total
+        ! +J_coupling*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
-        hmatel = -J_coupling*(ndim*nsites-2*counter)
+        hmatel = -J_coupling*(nbonds-2*counter)
         
         ! Contibution to Hamiltonian from staggered field term.
         ! Split the lattice into a (+) sublattice and a (-) sublattice.

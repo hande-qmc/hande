@@ -212,7 +212,9 @@ contains
             ! Set the Neel state data for the reference state, if it is being used.
             if (allocated(walker_reference_data)) then
                 walker_reference_data(1,tot_walkers) = nsites/2
-                walker_reference_data(2,tot_walkers) = nsites*ndim
+                ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
+                ! The Neel state cannot be used for non-bipartite lattices.
+                walker_reference_data(2,tot_walkers) = ndim*nsites
             end if
 
             ! Finally, we need to check if the reference determinant actually

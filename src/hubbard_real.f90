@@ -197,7 +197,8 @@ contains
                         ! number the rows 1,2,3...) the extra connected sites will be in different
                         ! positions relative to the site - either both to the right of it
                         ! or both to the left of it (see picture above).
-                        ! It is important to distinguish between these two cases.
+                        ! It is important to distinguish between these two cases, by taking
+                        ! mod(row_1,2) and mod(row_2,2) to see which of the two cases each row is.
                         row_1 = basis_fns(i)%l(1)-basis_fns(1)%l(1)
                         row_2 = basis_fns(j)%l(1)-basis_fns(1)%l(1)
                         
@@ -208,7 +209,7 @@ contains
                         if (mod(row_1,2) == 0 .and. mod(row_2,2) == 0) then
                             connected = .false.
                         ! If the first sites is on the correct row type, we shift it, and also
-                        ! take the lvec of to allow for periodic boundaries.
+                        ! take the lvec away to allow for periodic boundaries.
                         else if (mod(row_1,2) == 0) then
                             shifted_vec = basis_fns(i)%l
                             shifted_vec(2) = shifted_vec(2) - 1
@@ -227,8 +228,10 @@ contains
                         ! If the two are on the correct rows to have a possible extra
                         ! connection on the triangular lattice then...
                         if (connected) then
-                            ! If connected through boundary conditions:
-                            if (all(lvecs(:,ivec) == 0)) then                       
+                            ! If connected not through boundary conditions:
+                            if (all(lvecs(:,ivec) == 0)) then
+                                ! If, after the shifting, the sites are vertically above each
+                                ! other by one position, then there is an extra connection.       
                                 if (sum(abs(shifted_vec-unshifted_vec)-difference_vec) == 0) then
                                     call set_orb(connected_orbs(:,i),j)
                                     if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)                      
@@ -236,7 +239,7 @@ contains
                                     if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
                                     end if
                             ! If connected through boundary conditions, and boundary conditions
-                            ! turned on:
+                            ! are turned on:
                             else if (.not.finite_cluster) then
                                 if (sum(abs(shifted_vec-unshifted_vec)-difference_vec) == 0) then
                                     call set_orb(connected_orbs(:,i),j)
@@ -246,7 +249,7 @@ contains
                                 end if
                             end if 
                         end if
-                        ! For triangular lattice, just set tmat and connected orbs the same...
+                        ! For triangular lattice, just set tmat and connected orbs to be the same...
                         tmat = connected_orbs
                     end if
                     
