@@ -171,15 +171,9 @@ contains
             
             ! Calculate P_gen for the first excitation
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
+
             ! Attempt spawning
-            psuccess = genrand_real2()
-
-            ! Multiple offspring
-            nspawn_ki = int(pspawn_ki)
-            pspawn_ki = pspawn_ki - nspawn_ki
-
-            ! Stochastic offspring
-            if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
+            nspawn_ki = spawn_from_prob(pspawn_ki)
 
             if(nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -189,15 +183,9 @@ contains
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
+
                 ! Attempt spawning
-                psuccess = genrand_real2()
-
-                ! Multiple offspring again...
-                nspawn_jk = int(pspawn_jk)
-                pspawn_jk = pspawn_jk - nspawn_jk
-
-                ! Stochastic offspring
-                if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
+                nspawn_jk = spawn_from_prob(pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -238,15 +226,9 @@ contains
             
             ! Calculate P_gen for the first excitation
             pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
+
             ! Attempt spawning
-            psuccess = genrand_real2()
-
-            ! Multiple offspring
-            nspawn_ki = int(pspawn_ki)
-            pspawn_ki = pspawn_ki - nspawn_ki
-
-            ! Stochastic offspring
-            if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
+            nspawn_ki = spawn_from_prob(pspawn_ki)
 
             if(nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -261,15 +243,9 @@ contains
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
+
                 ! Attempt spawning
-                psuccess = genrand_real2()
-
-                ! Multiple offspring again...
-                nspawn_jk = int(pspawn_jk)
-                pspawn_jk = pspawn_jk - nspawn_jk
-
-                ! Stochastic offspring
-                if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
+                nspawn_jk = spawn_from_prob(pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -317,15 +293,9 @@ contains
 
             ! Calculate P_gen for the first excitation
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
+
             ! Attempt spawning
-            psuccess = genrand_real2()
-
-            ! Multiple offspring
-            nspawn_ki = int(pspawn_ki)
-            pspawn_ki = pspawn_ki - nspawn_ki
-
-            ! Stochastic offspring
-            if (pspawn_ki > psuccess) nspawn_ki = nspawn_ki + 1
+            nspawn_ki = spawn_from_prob(pspawn_ki)
 
             if(nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -338,15 +308,9 @@ contains
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk
+
                 ! Attempt spawning
-                psuccess = genrand_real2()
-
-                ! Multiple offspring again...
-                nspawn_jk = int(pspawn_jk)
-                pspawn_jk = pspawn_jk - nspawn_jk
-
-                ! Stochastic offspring
-                if (pspawn_jk > psuccess) nspawn_jk = nspawn_jk + 1
+                nspawn_jk = spawn_from_prob(pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -451,6 +415,35 @@ contains
 
     end subroutine fs_stochastic_death
 
+
+    function spawn_from_prob(probability) result(number_spawned)
+        ! Generate the number spawned from a probability. If probability is greater than
+        ! zero, then number spawned = int(probability) + stochastic{0,1} 
+        ! where the latter half of the RHS is a stochastic spawning from the remainder
+        !
+        ! In:
+        !    probability: the spawning probability
+        !
+        ! Result:
+        !    number_spawned: the number spawned from this probability
+        
+        use dSFMT_interface , only: genrand_real2
+        implicit none
+        real(p), intent(in) :: probability
+        integer              :: number_spawned
+        real(p)             :: psuccess, pstochastic
+
+        ! Generate random number
+        psuccess = genrand_real2()
+
+        ! Multiple offspring
+        number_spawned = int(probability)
+
+        ! Stochastic offspring
+        pstochastic = probability - number_spawned
+        if (pstochastic > psuccess) number_spawned = number_spawned + 1
+
+    end function spawn_from_prob
 
 end module folded_spectrum_utils
 
