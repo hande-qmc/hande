@@ -143,11 +143,16 @@ contains
         !    nparticles: N_w(beta).
 
         use fciqmc_data, only: shift, tau, shift_damping, av_shift
+        use calc, only: doing_calc, folded_spectrum
 
         integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
 
         shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(tau*nupdate_steps)
-        av_shift = av_shift + shift
+        if(doing_calc(folded_spectrum)) then
+            if(shift .ge. 0.0_p ) av_shift = av_shift + sqrt(shift)
+        else
+            av_shift = av_shift + shift
+        endif
 
     end subroutine update_shift
 
