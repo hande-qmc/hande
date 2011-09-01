@@ -270,6 +270,8 @@ contains
                 unitary_factor = -1
             case('NEEL_SINGLET')
                 trial_function = neel_singlet
+            case('PLOT_GUTZWILLER_ENERGY')
+                gutzwiller_parameter = .true.
 
             case('END')
                 exit
@@ -416,6 +418,7 @@ contains
         call mpi_bcast(calculate_magnetisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(importance_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(gutzwiller_parameter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)

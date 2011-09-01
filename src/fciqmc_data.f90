@@ -215,6 +215,9 @@ logical :: calculate_magnetisation = .false.
 ! True if importance sampling is to be applied, so that the chosen trial function
 ! will be used to guide the random walk.
 logical :: importance_sampling = .false.
+! If set to true, then the Gutzwiller energy will be plotted at the start of the
+! calculation
+logical :: gutzwiller_parameter
 
 !--- Restart data ---
 

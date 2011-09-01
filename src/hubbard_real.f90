@@ -34,7 +34,9 @@ integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 ! decoded/non-bit list form of connected_orbs).
 ! If connected_orbs(j,i) is 0 then it means there are fewer than 2ndim sites
 ! that are connected to i that are not a periodic image of i.
-integer, allocatable :: connected_sites(:,:) ! (2ndim, nbasis)
+! For the triangular lattice, there are 3ndim bonds, and ndim must equal 2,
+! so each site is connected to 6.
+integer, allocatable :: connected_sites(:,:) ! (2ndim, nbasis) or (6, nbasis)
 
 ! True if any site is its own periodic image.
 ! This is the case if one dimension (or more) has only one site per crystalisystem
@@ -83,8 +85,13 @@ contains
         call check_allocate('tmat',basis_length*nbasis,ierr)
         allocate(connected_orbs(basis_length,nbasis), stat=ierr)
         call check_allocate('connected_orbs',basis_length*nbasis,ierr)
-        allocate(connected_sites(2*ndim,nbasis), stat=ierr)
-        call check_allocate('connected_sites',basis_length*2*ndim,ierr)
+        if (triangular_lattice) then
+            allocate(connected_sites(6,nbasis), stat=ierr)
+            call check_allocate('connected_sites',basis_length*6,ierr)
+        else
+            allocate(connected_sites(2*ndim,nbasis), stat=ierr)
+            call check_allocate('connected_sites',basis_length*2*ndim,ierr)
+        end if
 
         tmat = 0
         connected_orbs = 0
