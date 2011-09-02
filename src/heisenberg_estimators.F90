@@ -100,9 +100,8 @@ subroutine update_proj_energy_heisenberg_basic(idet)
 
         use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
                                walker_reference_data, calculate_magnetisation, &
-                               proj_energy, neel_singlet_amp, D0_population, &
-                               importance_sampling
-        use system, only: nbonds, ndim, J_coupling
+                               proj_energy, neel_singlet_amp, D0_population
+        use system, only: nbonds, ndim, J_coupling, guiding_function, gutzwiller_guiding
 
         integer, intent(in) :: idet
         integer :: i, n, ipos, lattice_1_up, lattice_2_up
@@ -118,7 +117,8 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         ! c_i^T is the amplitude of |D_i> in the trial ground state. Hence, we
         ! must remove this extra factor if we wish to calculate the projected eneergy
         ! in the same way. This is done with the factor, importance_sampling_factor.
-        if (importance_sampling) importance_sampling_factor = 1.0/neel_singlet_amp(n)
+        if (guiding_function==gutzwiller_guiding) importance_sampling_factor = &
+                                                               1.0/neel_singlet_amp(n)
         
         ! Deduce the number of 0-1 bonds, where the 1's are on the
         ! second sublattice:

@@ -20,6 +20,10 @@ contains
         ! By minimising this energy we can find the best guiding wavefunction of the
         ! Gutzwiller form for the Heisenberg model.
         
+        ! This isn't efficient but should atleast work. For a 4 by 4 lattice this shouldn't
+        ! take long to run. You can just run it for a 4 by 4 lattice and get an idea of
+        ! what value of b is needed.
+        
         use basis, only: bit_lookup, basis_lookup, basis_length
         use bit_utils, only: count_set_bits
         use checking, only: check_allocate, check_deallocate
@@ -103,9 +107,7 @@ contains
                             find: do iel_bra = 1, basis_length
                                 do ipos_bra = 0, i0_end
                                     if (btest(bonds_0_1(iel_bra), ipos_bra)) then
-                                        bra = not(ket)
-                                        bra = ibset(bra(iel_ket), ipos_ket)
-                                        bra = not(bra)
+                                        bra = ibclr(ket(iel_ket), ipos_ket)
                                         bra = ibset(bra(iel_bra), ipos_bra)
                                         spin_sum_2 = diagonal_element_heisenberg(bra)/J_coupling
                                         exp_energy = exp_energy - 2.0_dp*J_coupling*&
@@ -131,10 +133,17 @@ contains
                                        (exp(b_parameter*spin_sum_1))**2
                 normalisation = normalisation + (exp(b_parameter*spin_sum_1))**2
                 ! This has given all the contributions from a single basis function
+                
                 ! Now repeat for the others!
             
                 ! Find the spin up positions for the new basis function, ready
-                ! for the next cycle.
+                ! for the next cycle. Basically we start with the state where
+                ! all spins are up on the first nsites/2 sites, and then cycle
+                ! through all other configurations. First we move the last up spin
+                ! along through the sites. Then we move the second to last spin
+                ! to next position and move the last spin through all remainig sites.
+                ! Then we repeat so that the second to last spin has visited all
+                ! sites, and then similarly with all other sites, etc... 
                 find_basis: do j = nsites/2,1,-1
                     if (configuration(j) /= (nsites/2)+j) then
                         configuration(j) = configuration(j) + 1

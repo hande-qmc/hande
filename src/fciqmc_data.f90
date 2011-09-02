@@ -47,6 +47,10 @@ real(p) :: av_shift = 0.0_p
 ! shift.
 real(p) :: shift_damping = 0.050_dp
 
+! Gutzwiller parameter b, used in the gutzwiller function which may be used
+! as a guiding function for the Heisenberg model.
+real(p) :: gutzwiller_parameter = 0.0_p
+
 ! projected energy
 ! This stores during an FCIQMC report loop
 !   \sum_{i/=0} <D_0|H|D_i> N_i
@@ -212,12 +216,9 @@ logical :: vary_shift = .false.
 integer :: start_vary_shift
 ! True if the staggered magnetisation is to be calculated in the Heisenberg model
 logical :: calculate_magnetisation = .false.
-! True if importance sampling is to be applied, so that the chosen trial function
-! will be used to guide the random walk.
-logical :: importance_sampling = .false.
 ! If set to true, then the Gutzwiller energy will be plotted at the start of the
 ! calculation
-logical :: gutzwiller_parameter
+logical :: find_gutzwiller_parameter
 
 !--- Restart data ---
 

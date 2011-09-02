@@ -248,7 +248,7 @@ contains
                 end do
             end do
             
-            ! Now flip all spins to get the second Neel state
+            ! Now flip all spins to get the second Neel state.
             f0_not = not(f0_not)
             
             if (nprocs > 1) then
@@ -257,7 +257,7 @@ contains
                     tot_walkers = tot_walkers + 1
                     ! Zero all populations...
                     walker_population(:,tot_walkers) = 0.
-                    ! Set all the data for this basis function
+                    ! Set all the data for this basis function.
                     walker_population(1,tot_walkers) = nint(D0_not_population)
                     walker_energies(1,tot_walkers) = diagonal_element_heisenberg(f0_not)-H00
                     walker_dets(:,tot_walkers) = f0_not
@@ -302,7 +302,7 @@ contains
         
         ! Plot the Gutzwiller energy as a function of the paramater b, if the user has
         ! asked for this.
-        if (gutzwiller_parameter) call plot_gutzwiller_energy
+        if (find_gutzwiller_parameter) call plot_gutzwiller_energy
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='

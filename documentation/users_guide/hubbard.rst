@@ -351,6 +351,19 @@ These options describe the system which is to be investigated.
     as the external field. The spins in the basis functions point in this direction.
     
     Applicable only in the Heisenberg model.
+    
+**gutzwiller_parameter** *gutzwiller_parameter*
+    Real.
+    
+    Default: 0.
+    
+    When using the Gutzwiller function as a guiding function,
+    this is the parameter b in the equation for the amplitudes of basis functions,
+    
+    a = exp(-b*\sum_{i,j} S_i * S_j)
+    
+    Applicable only in the Heisenberg model, and only when the option
+    gutzwiller_guiding is chosen.
 
 **twist** *t1 [t2 [t3]]*
     Real.
@@ -382,6 +395,14 @@ These options describe the system which is to be investigated.
 
     Applicable only in the real-space formulation of the Hubbard model,
     otherwise the user is notified and the keyword is ignored.
+    
+**triangular_lattice**
+    When using a rectangular lattice, this option will add extra bonds to the
+    lattice so that, in terms of the connectivity of the various sites, the
+    lattice will be identical to a triangular lattice. It will have the same
+    smallest energy eigenvalue as the equivalent the triangular lattice.
+    
+    Periodic boundary conditions may only be applied to bipartite lattices.
 
 Calculation type
 ^^^^^^^^^^^^^^^^
@@ -757,7 +778,7 @@ The following options are valid for FCIQMC calculations.
     
     This can only be used for bipartite lattices.
     
-**neel_singlet**
+**neel_singlet_estimator**
 
     For the Heisenberg model only. If this keyword is specified, instead of using a single
     reference detereminant to calculate the projected energy, the Neel singlet state is used.
@@ -770,6 +791,48 @@ The following options are valid for FCIQMC calculations.
     in heisenberg_estimator.F90, and also see K. Runge, Phys. Rev. B 45, 7229 (1992).
     
     This can only be used for bipartite lattices.
+    
+**neel_singlet_guiding**
+
+    For the Heisenberg model only. If this keyword is specified, then the Neel singlet state is used
+    as a guiding state for importance sampling. This means that the the matrix elements of the
+    Hamiltonian, H_ij are replaced by new components
+    
+    H_ij^new = (a_i*H_ij)/a_j
+    
+    where a_i is a component of the Neel state, as specified above.
+    
+    When this guiding function is used, the Neel singlet must be used in the projected energy, so
+    the neel_singlet_estimator keyword must be specified also.
+    
+**gutzwiller_guiding**
+
+    For the Heisenberg model only. If this keyword is specified then the Gutzwiller function is
+    used as a guiding function for importance sampling. This means that the the matrix elements of the
+    Hamiltonian, H_ij are replaced by new components
+    
+    H_ij^new = (a_i*H_ij)/a_j
+    
+    where the a's are the amplitudes of the Gutzwiller function, defined by
+    
+    a = exp(-b*\sum_{i,j} S_i * S_j)
+    
+    where i and j are sites connected by a bond, and S_i and S_j are either +1 or -1 depedning on
+    whether spins i and j are up or down respectively. The parameter b is a parameter which should
+    be chosen to make the expectation energy of the Gutzwiller function a minimum.
+    
+    See K. Runge, Phys. Rev. B 45, 7229 (1992).
+    
+**plot_gutzwiller_energy**
+
+    For the Heisenberg model only. If this keyword is specified then the expectation energy of the
+    gutzwiller function,
+    
+    <pis_G|H|psi_G>
+    
+    will be plotted as a function of the parameter b, from -5 to +5 in steps of 0.1. This may be used
+    to determine the best value of b for a particular lattice.
+
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

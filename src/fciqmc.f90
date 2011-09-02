@@ -16,6 +16,7 @@ contains
 
         use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_field
         use system, only: trial_function, single_basis, uniform_combination, neel_singlet
+        use system, only: guiding_function, no_guiding, gutzwiller_guiding, neel_singlet_guiding
         use hellmann_feynman_sampling
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
@@ -50,10 +51,9 @@ contains
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
         case (heisenberg)
-            ! Only need occupied orbitals list, as for the real Hubbard case
+            ! Only need occupied orbitals list, as for the real Hubbard case.
             decoder_ptr => decode_det_occ
-            spawner_ptr => spawn_heisenberg
-            ! Set which trial wavefunction to use for the energy estimator
+            ! Set which trial wavefunction to use for the energy estimator.
             select case(trial_function)
             case (single_basis)
                 update_proj_energy_ptr => update_proj_energy_heisenberg_basic
@@ -61,9 +61,17 @@ contains
                 update_proj_energy_ptr => update_proj_energy_heisenberg_positive
             case (neel_singlet)
                 update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
-                if (importance_sampling) spawner_ptr => spawn_heisenberg_importance_sampling
-            end select 
-            ! Set whether the staggered magnetisation is to be calculated
+            end select
+            ! Set which guiding wavefunction to use, if requested.
+            select case(guiding_function)
+            case (no_guiding)
+                spawner_ptr => spawn_heisenberg
+            case (neel_singlet_guiding)
+                spawner_ptr => spawn_heisenberg_importance_sampling
+            case (gutzwiller_guiding)
+                spawner_ptr => spawn_heisenberg_importance_sampling
+            end select             
+            ! Set whether the staggered magnetisation is to be calculated.
             if (abs(staggered_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
             else
