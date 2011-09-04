@@ -29,15 +29,10 @@ contains
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
         use ifciqmc, only: init_ifciqmc, set_parent_flag, set_parent_flag_dummy
 
-
         use folded_spectrum_utils
-        use fciqmc_data, only: P__, Po_, P_o, X__, X_o, Xo_
         use spawning, only: gen_excit_hub_k, gen_excit_hub_real
-        
-
 
         real(dp) :: hub_matel
-
 
         ! set function pointers
         select case(system_type)
@@ -81,7 +76,6 @@ contains
             end if
         end if
 
-
     end subroutine fciqmc_main
 
     subroutine do_fciqmc()
@@ -106,7 +100,7 @@ contains
         use spawning, only: create_spawned_particle_initiator
         use fciqmc_common
         use ifciqmc, only: set_parent_flag
-        use folded_spectrum_utils, only: alloc_cdet_excit, dealloc_cdet_excit
+        use folded_spectrum_utils, only: cdet_excit
 
         integer :: i, idet, ireport, icycle, iparticle, nparticles_old(sampling_size)
         type(det_info) :: cdet
@@ -122,12 +116,13 @@ contains
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
-        if(doing_calc(folded_spectrum)) call alloc_cdet_excit()
+        if (doing_calc(folded_spectrum)) call alloc_det_info(cdet_excit)
 
         ! from restart
         nparticles_old = nparticles_old_restart
 
         ! Main fciqmc loop.
+
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status()
 
@@ -142,7 +137,6 @@ contains
             D0_population = 0.0_p
 
             do icycle = 1, ncycles
-
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
@@ -230,7 +224,7 @@ contains
         if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
 
         call dealloc_det_info(cdet)
-        if(doing_calc(folded_spectrum)) call dealloc_cdet_excit()
+        if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)
 
     end subroutine do_fciqmc
 

@@ -384,8 +384,8 @@ initialisation (mainly the enumeration of the basis) is performed.
     can be selected by specifying a reference determinant.
 **folded_spectrum**
     Perform a folded spectrum (FSFCIQMC) calculation. This involves mapping the
-    Hamiltonian H --> (H-\eps)^2 . This will compute the excited state closest
-    to \eps.
+    Hamiltonian :math:`H \rightarrow (H-\eps)^2`. This will compute the excited
+    state closest to :math:`\eps`.
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -735,9 +735,10 @@ These options are valid when performing a folded spectrum calculation
 
     Default: 0.0
 
-    Choose the point about which to fold the hamiltonian, i.e. the value of 
-    \eps in (H-\eps)^2. In the case of convergence the psips settle on a 
-    stochastic representation of the eigenstate(s) with energy closest to \eps
+    Choose the point about which to fold the hamiltonian, i.e. the value of
+    :math:`\eps` in :math:`(H-\eps)^2`. In the case of convergence the psips
+    settle on a stochastic representation of the eigenstate(s) with energy
+    closest to :math:`\eps`.
 
 **P__** *P_*
     Real.
@@ -746,9 +747,14 @@ These options are valid when performing a folded spectrum calculation
 
     Manually choose the split generation probabilities. Best to choose them such that 
     the ratio of: 
-    \frac{*P__*}{*P_o*} = \frac{*P__*}{*P_o*} \approx frac{H_{off_diag}}{H_{on_diag}},
-    where H_{on(off)_diag} are the rough magnitudes of the on(off) diagonal elements
-    of the Hamiltonian. Code automatically renormalises the probabilities.
+
+    ,, math::
+
+        \frac{*P__*}{*P_o*} = \frac{*P__*}{*Po_*} \approx frac{H_{off_diag}}{H_{on_diag}},
+
+    where :math:`H_{on(off)_diag}` are the rough magnitudes of the on(off)
+    diagonal elements of the Hamiltonian. Code automatically renormalises the
+    probabilities.
 
 **Po_** *Po_*
     Real.

@@ -201,7 +201,6 @@ contains
                     call readi(occ_list0(i))
                 end do
 
-
             ! Calculation options: Folded spectrum.
             case('FOLD_LINE')
                 call readf(fold_line)
@@ -211,9 +210,6 @@ contains
                 call readf(Po_)
             case('P_o')
                 call readf(P_o)
-
-
-
 
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
@@ -447,7 +443,6 @@ contains
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
-
 
         call mpi_bcast(fold_line, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(P__, 1, mpi_preal, 0, mpi_comm_world, ierr)

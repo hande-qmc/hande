@@ -203,10 +203,6 @@ logical :: dump_restart_file = .false.
 ! Restart data.
 integer :: mc_cycles_done = 0, nparticles_old_restart = 0
 
-
-
-
-
 !--- Folded spectrum data ---
 
 ! The line about which you are folding i.e. eps in (H-eps)^2 - E_0

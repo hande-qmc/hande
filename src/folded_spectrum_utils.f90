@@ -1,19 +1,16 @@
 module folded_spectrum_utils
+
 !TO DO:
-! tau finder
-! calculating P__, P_o, Po_
+! tau finder.
+! calculating P__, P_o, Po_.
+! auto-adjust reference determinant.
+! use spawn_from_prob everywhere.
+! optimise diagonal matrix element evaluation.
 
-use const
-
-use proc_pointers
-use fciqmc_data, only: fold_line
-use determinants, only: det_info
-
-
-implicit none
-
-type(det_info), save :: cdet_excit
-
+! Utilities for folded-spectrum method of obtaining excited states in FCIQMC.
+! As the Hamiltonian matrix is squared, the spawning/death process must
+! stochastically sample both sums in \sum_ij H_ij H_jk.  There are now 4 kinds
+! of moves in such a process:
 
 ! 1) self spawning
 !      ___
@@ -25,25 +22,42 @@ type(det_info), save :: cdet_excit
 !      __   __ 
 !    ./  \./  \.
 !
-! 3) self spawning
+!    a special case (which is automatically dealt with) of this is
 !      __
 !    ./  \.
 !     \__/
 !
-! 4) daughter spawning
+! 3) daughter spawning
 !     _
 !    / \
 !    \./____.
 !
-! 5) daughter spawning
+! 4) daughter spawning
 !          _
 !         / \
 !    .____\./
+!
+! FS is easily implemented as a wrapper around FCIQMC for all existing system
+! types.
+!
+! See documentation/theory/folded_spectrum/ for details.
 
+use const
+
+use proc_pointers
+use fciqmc_data, only: fold_line
+use determinants, only: det_info
+
+implicit none
+
+type(det_info), save :: cdet_excit
 
 contains
 
     subroutine init_folded_spectrum()
+
+        ! Initialise folded spectrum data.
+
         use fciqmc_data, only: P__, Po_, P_o, X__, Xo_, X_o, tau, H00
         real(p) :: P_renorm
         
@@ -57,43 +71,31 @@ contains
         P__ = P__ / P_renorm
         Po_ = Po_ / P_renorm
         P_o = P_o / P_renorm
+
         ! calculate chis for split generation 
         X__ = sqrt(tau / P__ )
         Xo_ = sqrt(tau / Po_)
         X_o = sqrt(tau / P_o ) 
 
         !remove E0 from the fold_line
-
         fold_line = fold_line - H00 
 
     end subroutine init_folded_spectrum
 
-    subroutine alloc_cdet_excit
-    use determinants, only: alloc_det_info
-
-        call alloc_det_info(cdet_excit)
-
-    end subroutine alloc_cdet_excit
-
-
-    subroutine dealloc_cdet_excit
-    use determinants, only: dealloc_det_info
-
-        call dealloc_det_info(cdet_excit)
-
-    end subroutine dealloc_cdet_excit
-
     subroutine create_cdet_excit(cdet_in, connection, cdet_out)
     
         ! Generate a complete excited determinant from another determinant and 
-        !the excitation information connecting the two determinants.
+        ! the excitation information connecting the two determinants.
+        !
         ! In: 
         !    cdet_in: info on the current determinant that we will excite
         !        from.  The f field must be set.
         !    connection: excitation connecting cdet_in to cdet_out.  Note that
         !        the perm field is not used.
-        ! Out:
-        !    cdet_out info: on the determinant that we will excite to
+        ! In/Out:
+        !    cdet_out info: on the determinant that we will excite to.  Note
+        !        that the appropriate fields of cdet_out must be allocated.
+
         use determinants, only: det_info
         use proc_pointers, only: decoder_ptr
         use excitations, only: excit, create_excited_det
@@ -110,16 +112,8 @@ contains
 
     end subroutine create_cdet_excit
 
-
-
-
-
-
-
-
-
-
     subroutine fs_spawner(cdet, parent_sign, nspawn, connection)
+
         ! Attempt to spawn a new particle on a daughter or granddaughter determinant according to
         ! the folded spectrum algorithm for a given system
         !
@@ -133,6 +127,7 @@ contains
         !        attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
+
         use excitations, only: excit
         use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
         use excitations, only: create_excited_det, get_excitation
@@ -153,12 +148,11 @@ contains
         real(p)          :: hmatel_ki, hmatel_jk
         type(excit)      :: connection_ki, connection_jk
         real(p)          :: psuccess
-
         
         ! 0. Choose the type of double element you're going to spawn 
         choose_double_elt_type = genrand_real2()
         
-        if(choose_double_elt_type <= Po_ ) then
+        if (choose_double_elt_type <= Po_ ) then
             !     _
             !    / \
             !    \./____.
@@ -175,7 +169,7 @@ contains
             ! Attempt spawning
             nspawn_ki = spawn_from_prob(pspawn_ki)
 
-            if(nspawn_ki > 0 ) then
+            if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
 
                 ! Generate the second random excitation 
@@ -206,16 +200,17 @@ contains
                     connection = connection_jk
 
                 else
-                ! Unsuccessful spawning on jk, set nspawn = 0
-                    nspawn =0
+                    ! Unsuccessful spawning on jk, set nspawn = 0
+                    nspawn = 0
                 end if
 
             else
-            ! Unsuccessful spawning  on ki, set nspawn = 0
+                ! Unsuccessful spawning  on ki, set nspawn = 0
                 nspawn = 0
             end if
 
         else if (choose_double_elt_type <= Po_ + P_o ) then 
+
             !          _
             !         / \
             !    .____\./
@@ -230,16 +225,16 @@ contains
             ! Attempt spawning
             nspawn_ki = spawn_from_prob(pspawn_ki)
 
-            if(nspawn_ki > 0 ) then
+            if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
 
                 ! Generate the second random excitation 
                 !    (in this case we stay on the same place)
-                ! (i)  generate the first excited determinant  
+                ! (i)  generate the first excited determinant
                 call create_cdet_excit(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
-                ! (ii) calculate Pgen and hmatel on this site       
+                ! (ii) calculate Pgen and hmatel on this site
                 Pgen_jk = 1
-                hmatel_jk =  sc0_ptr(cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
+                hmatel_jk = sc0_ptr(cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
@@ -266,15 +261,14 @@ contains
                     connection = connection_ki
 
                 else
-                ! Unsuccessful spawning on jk, set nspawn = 0
-                    nspawn =0
+                    ! Unsuccessful spawning on jk, set nspawn = 0
+                    nspawn = 0
                 end if
 
             else
-            ! Unsuccessful spawning  on ki, set nspawn = 0
+                ! Unsuccessful spawning on ki, set nspawn = 0
                 nspawn = 0
             end if
-
 
         else 
             
@@ -286,10 +280,11 @@ contains
             !    ./  \.
             !     \__/ k
             !    j   
+            !
+            ! The latter is taken care of automatically.
 
             ! Generate first random excitation and probability of spawning there from cdet 
             call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
-            
 
             ! Calculate P_gen for the first excitation
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
@@ -297,7 +292,7 @@ contains
             ! Attempt spawning
             nspawn_ki = spawn_from_prob(pspawn_ki)
 
-            if(nspawn_ki > 0 ) then
+            if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
 
                 ! Generate the second random excitation 
@@ -346,34 +341,20 @@ contains
 
                 ! (iv) combine the permutations
                 connection%perm = connection_jk%perm .eqv. connection_ki%perm
-            
 
                 else
-                ! Unsuccessful spawning on jk, set nspawn = 0
-                    nspawn =0
+                    ! Unsuccessful spawning on jk, set nspawn = 0
+                    nspawn = 0
                 end if
 
             else
-            ! Unsuccessful spawning  on ki, set nspawn = 0
+                ! Unsuccessful spawning  on ki, set nspawn = 0
                 nspawn = 0
             end if
 
-
-
         endif 
 
-
-
     end subroutine fs_spawner
-
-
-
-
-
-
-
-
-
 
     subroutine fs_stochastic_death(Kii, population, tot_population, ndeath)
 
@@ -398,12 +379,6 @@ contains
         ! Note that population and tot_population refer to a single 'type' of
         ! population, i.e. either a set of Hamiltonian walkers or a set of
         ! Hellmann--Feynman walkers.
-        !      ___
-        !     / _ \
-        !    | / \ |
-        !     \\.//
-
-
 
         use death, only: stochastic_death
 
@@ -411,12 +386,18 @@ contains
         integer, intent(inout) :: population, tot_population
         integer, intent(out) :: ndeath
 
+        ! Corresponds to:
+        !      ___
+        !     / _ \
+        !    | / \ |
+        !     \\.//
+
         call stochastic_death((Kii-fold_line)**2, population, tot_population, ndeath)
 
     end subroutine fs_stochastic_death
 
-
     function spawn_from_prob(probability) result(number_spawned)
+
         ! Generate the number spawned from a probability. If probability is greater than
         ! zero, then number spawned = int(probability) + stochastic{0,1} 
         ! where the latter half of the RHS is a stochastic spawning from the remainder
@@ -446,5 +427,3 @@ contains
     end function spawn_from_prob
 
 end module folded_spectrum_utils
-
-
