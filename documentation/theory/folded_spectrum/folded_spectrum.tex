@@ -1,0 +1,441 @@
+\documentclass{article}
+
+\usepackage{amsmath} %for aligned equations
+\usepackage[all]{xy} %for diagrams
+\usepackage{enumerate} %for easy roman numerals
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage[hmargin=3cm,vmargin=3.5cm]{geometry} %simple margin adjustment
+
+\newcommand{\bra}[1]{\langle #1|}
+\newcommand{\ket}[1]{|#1\rangle}
+\newcommand{\braket}[2]{\langle #1|#2\rangle}
+\newcommand{\D}[1]{D\/_{\bf #1 } }
+\newcommand{\ci}[1]{c\/_{\bf #1 } }
+\newcommand{\fij}[2]{F\/_{\bf #1 #2} }
+\newcommand{\Rji}{\fij{j}{k} \fij{k}{i} \Delta t}
+\def\sign{\mathop{\rm sign}}
+
+
+
+
+\newcommand{\Pgji}[2]{
+P\/_{\text{gen}}^{(s)}({\bf #1}|{\bf #2})
+}
+
+
+
+\newcommand{\nn}[3]{
+\resizebox{!}{0.8\baselineskip}{
+\xy 
+(0,0)*+{#1};(16,0)*+{#2}
+**\crv{(4,4)&(12,4)}
+?>*\dir{>};
+(16,0) *+{#2};(32,0)*+{#3}
+**\crv{(20,4)&(28,4)}
+?>*\dir{>};
+(0,7)*+{}
+\endxy
+}
+}
+
+\newcommand{\Pikj}{ P\/_{\text{gen}}( \nn{\bf i}{\bf k}{\bf j} ) }
+\newcommand{\Pikjg}{ P( \nn{\bf i}{\bf k}{\bf j} | \nn{\bullet}{\bullet}{\bullet} ) }
+\newcommand{\Pnn}{ P( \nn{\bullet}{\bullet}{\bullet} ) }
+
+
+\newcommand{\no}[2]{ 
+\resizebox{!}{0.8\baselineskip}{
+\xy 
+(0,0)*+{#1};(16,0)*+{#2}
+**\crv{(4,4)&(12,4)}
+?>*\dir{>};
+(16,0)*+{#2};(16,0)*+{#2}
+**\crv{(6,8)&(26,8)}
+?>*\dir{>};
+\endxy
+}
+}
+
+\newcommand{\Pikkg}{ P( \no{\bf i}{\bf k, j} | \no{\bullet}{\bullet} ) }
+\newcommand{\Pno}{ P( \no{\bullet}{\bullet} ) }
+\newcommand{\Pikk}{ P\/_{\text{gen}}( \no{\bf i}{\bf k,j} ) }
+
+
+
+\newcommand{\on}[2]{ 
+\resizebox{!}{0.8\baselineskip}{
+\xy 
+(0,0)*+{#1};(0,0)*+{#1}
+**\crv{(-10,8)&(10,8)}
+?>*\dir{>};
+(0,0)*+{#1};(16,0)*+{#2}
+**\crv{(4,4)&(12,4)}
+?>*\dir{>};
+\endxy
+}
+}
+
+\newcommand{\Piijg}{ P( \on{\bf i,k}{\bf j} | \on{\bullet}{\bullet} ) }
+\newcommand{\Pon}{ P( \on{\bullet}{\bullet} ) }
+\newcommand{\Piij}{ P\/_{\text{gen}}( \on{\bf i,k}{\bf j} ) }
+
+
+
+
+
+\begin{document}
+\title{Folded Spectrum Full Configuration Interaction Quantum Monte Carlo}
+\author{Will Handley}
+\maketitle
+\section{Introduction}
+A method for utilising folded spectrum methods in Full Configuration Interaction Quantum Monte Carlo Algorithms has been shown to be effective in finding exact excited states of real and model systems. The principle advantage of this method is that it can easily be added to existing code with very few modifications. The cost of finding an excited state when compared to the ground state is predominantly in the need to square the time step $\tau$. 
+
+
+
+
+
+\section{Folded Spectrum Theory}
+Full Configuration Interaction Quantum Monte Carlo (FCIQMC) methods use a projector DMC method to obtain the ground state of a Hamiltonian. The principle of Folded Spectrum methods is that by applying the transformation:
+\begin{equation}
+\hat{H} \longmapsto (\hat{H} - \epsilon )^2,
+\end{equation}
+we ``fold'' the Hamiltonian about a number $\epsilon$. If $\hat{H}$ has a spectrum of eigenvalues of $\{E_{i},E\}$
+\footnote{where we include the possibility of the eigenvalues being discrete ($E_{i}$) or continuous ($E$).}
+and eigenstates $\{\ket{E_{i}},\ket{E}\}$ then the folded Hamiltonian $(\hat{H} - \epsilon )^2$:
+\begin{enumerate}[(i)]
+\item shares the eigenstates of $\hat{H}$
+\item has eigenvalues $\{(E_{i}-\epsilon)^2,(E-\epsilon)^2\}$.
+\end{enumerate}
+Thus, the ground state of the folded Hamiltonian is now the state closest to the fold line $\epsilon$. If we apply FCIQMC to this Hamiltonian then we will obtain not the ground state but potentially an excited state. See Figure \ref{spectrumfolding} for a visual representation of this.
+
+\begin{figure}
+\centering
+
+\setlength{\unitlength}{20cm}
+\begin{picture}(0.12,0.4)(0.16,0)
+%set up axis
+%\put( 0,0){\vector(1,0){.1}}
+\put( 0,0.02){\vector(0,1){.38}}
+\multiput(0,0)(0,0.007){3}{\line(0,1){0.003}}
+%put in energy levels
+\put( 0,.11906903){\line(1,0){.1}}
+\put( 0,.17082587){\line(1,0){.1}}
+\put( 0,.21538001){\line(1,0){.1}}
+\put( 0,.34805262){\line(1,0){.1}}
+%put in fold line
+\multiput(0,.25)(0.018,0){6}
+{\line(1,0){0.008}}
+%labels
+ %title
+\put(0,.4){\text{Energy Level/eV}}
+ %energy levels
+\put(.11,.11906903){\makebox(0,0){$E_1$}}
+\put(.11,.17082587){\makebox(0,0){$E_2$}}
+\put(.11,.21538001){\makebox(0,0){$E_3$}}
+\put(.11,.34805262){\makebox(0,0){$E_4$}}
+ %fold line
+\put(.11,.25){\makebox(0,0){$\epsilon$}}
+%axis tics
+\put(0,.05){\line(-1,0){.005}}
+\put(-.025, .05){\makebox(0,0){$16.55$}}
+\put(0,.20){\line(-1,0){.005}}
+\put(-.025, .20){\makebox(0,0){$16.70$}}
+\put(0,.35){\line(-1,0){.005}}
+\put(-.025, .35){\makebox(0,0){$16.85$}}
+
+
+%bezier curves
+\qbezier(.13,.11906903)(.19,.11906903)(.215,.230963515)
+\qbezier(.215,.230963515)(.24,0.342858)(.3,0.342858)
+
+\qbezier(.13,.17082587)(.19,.17082587)(.215,.148098435)
+\qbezier(.215,.148098435)(.24,0.125371)(.3,0.125371)
+
+\qbezier(.13,.21538001)(.19,.21538001)(.215,.119675455)
+\qbezier(.215,.119675455)(.24,0.0239709)(.3,0.0239709)
+
+\qbezier(.13,.34805262)(.19,.34805262)(.215,.27016931)
+\qbezier(.215,.27016931)(.24,0.192286)(.3,0.192286)
+
+%ends
+\put(0.13,.11406903){\line(0,1){0.01}}
+\put(0.13,.16582587){\line(0,1){0.01}}
+\put(0.13,.21038001){\line(0,1){0.01}}
+\put(0.13,.34305262){\line(0,1){0.01}}
+%arrowheads
+\put(.3,0.342858){\vector(1,0){0.0}}
+\put(.3,0.125371){\vector(1,0){0.0}}
+\put(.3,0.0239709){\vector(1,0){0.0}}
+\put(.3,0.192286){\vector(1,0){0.0}}
+
+%set up axis
+%\put( .46,0){\vector(-1,0){.1}}
+\put( .46,0){\vector(0,1){.4}}
+%put in energy levels
+\put( .46,0.342858){\line(-1,0){.1}}
+\put( .46,0.125371){\line(-1,0){.1}}
+\put( .46,0.0239709){\line(-1,0){.1}}
+\put( .46,0.192286){\line(-1,0){.1}}
+%labels
+ %title
+\put(.252,0.4){\text{Folded Energy Level/$\text{(eV)}^{2}$}}
+ %energy levels
+\put(.33,0.342858){\makebox(0,0){$f_{\epsilon}(E_1)$}}
+\put(.33,0.125371){\makebox(0,0){$f_{\epsilon}(E_2)$}}
+\put(.33,0.0239709){\makebox(0,0){$f_{\epsilon}(E_3)$}}
+\put(.33,0.192286){\makebox(0,0){$f_{\epsilon}(E_4)$}}
+%axis tics
+\put(.455,0.0){\line(1,0){.01}}
+\put(.485, 0.0){\makebox(0,0){$0.00$}}
+\put(.46,0.1){\line(1,0){.005}}
+\put(.485, 0.1){\makebox(0,0){$0.05$}}
+\put(.46,0.2){\line(1,0){.005}}
+\put(.485, 0.2){\makebox(0,0){$0.10$}}
+\put(.46,0.3){\line(1,0){.005}}
+\put(.485, 0.3){\makebox(0,0){$0.15$}}
+\end{picture}
+
+\caption{A spectrum being ``folded'' about an energy $\epsilon$, using the function $f_{\epsilon}(E)=(E-\epsilon)^2$. Data is taken from a section of the Neon I spectrum \cite{NIST}}.
+\label{spectrumfolding}
+
+\end{figure}
+
+
+
+\section{Method}
+We aim to solve the imaginary time Schr\"{o}dinger equation for the folded Hamiltonian:
+\begin{equation}
+\frac{d}{dt} \ket{\psi(t)} = -(\hat{H} - \epsilon)^{2} \ket{\psi(t)}.
+\end{equation}
+If we work in the configuration representation\footnote{where in the second step we utilise the resolution of the identity into Slater determinants}$\{ \ket{\D{i} } \} $,
+\begin{align}
+\frac{d}{dt} \braket{\D{j}}{\psi(t)} &= -\sum\limits_{\bf i}\bra{\D{j}}(\hat{H} - \epsilon)^{2} \ket{\D{i}}\braket{\D{i}}{\psi(t)} \nonumber \\
+ &=  -\sum\limits_{{\bf i},{\bf k}} \bra{\D{j}}(\hat{H} - \epsilon)\ket{\D{k}}\bra{\D{k}}(\hat{H} - \epsilon) \ket{\D{i}}\braket{\D{i}}{\psi(t)} ,
+\end{align}
+ and we let $\ci{j}(t) = \braket{\D{j}}{\psi(t)}$ and $\fij{i}{j} = \bra{\D{i}}(\hat{H} - \epsilon)\ket{\D{j}}$ then we obtain the matrix equation:
+\begin{equation}
+\frac{d\ci{j}}{dt}= - \sum\limits_{{\bf i }{ \bf k } } \fij{j}{k} \fij{k}{i} \ci{i}(t).
+\end{equation}
+Now we apply a first-order Euler finite-difference approximation to this equation so that we obtain:
+\begin{equation}
+\ci{j}(t+\Delta t)= \ci{j}(t) - \sum\limits_{{\bf i }{ \bf k } } [\fij{j}{k} \fij{k}{i} \Delta t]\ci{i}(t).
+\end{equation}
+In the same manner as FCIQMC we then discretise the coefficients $\ci{j}$, making them integers and changing the real numbers $[\fij{j}{k} \fij{k}{i} \Delta t]$ into stochastic probabilities. The coefficients are markers distributed over the space of configurations $\{\ket{\D{i}}\}$, henceforth called {\em psips\/}\footnote{standing for ``psi particles''}. Every psip has a location $\bf i$ and a ``charge'' $q = \pm 1$. Following the style of \cite{FoulkesSpencer} the ``brute force'' algorithm is as follows:
+
+\hspace{10pt}
+
+\noindent\makebox[\textwidth][c]{
+\fbox{
+\begin{minipage}[t]{0.8\textwidth}
+In one time step $\Delta t$, we loop over the population of psips and allow each to ``spawn'' children (new psips)  at other locations\footnote{which may be the same or different from the parent's location} for each value of $\bf k$, according to the following rules:
+
+\begin{enumerate}
+\item{The probability that a psip at $\bf i$ spawns a child at $\bf j$ is $|\Rji|$.\footnote{The interpretation of $|\Rji|$ as a probability requires that $|\Rji| \leq 1 \forall {\bf i},{\bf j}, {\bf k}$, limiting the value of $\Delta t$; this restriction may be overcome at the cost of complicating the description of the algorithm.}}
+
+\item{If a parent of charge $q\/_{\text{parent}}$ at location $\bf i$ spawns a child at location $\bf j$, the charge of the child is given by 
+\begin{equation}
+q\/_{\text{child}} = \sign(\Rji) q\/_{\text{parent}} \nonumber .
+\end{equation}
+}
+\end{enumerate}
+At the end of the time step, after every psip has spawned as many children as it wants, pairs of psips of opposite charge on the same configuration annihilate each other and are removed from the simulation. Thus, although psips on different configurations may have different signs, all psips on any configuration $\bf i$ at the end of the time step have the same sign.
+\end{minipage}}
+}%end of fbox
+
+
+
+\section{Optimisation}
+This algorithm would be incredibly time intensive, since it would scale as $\mathcal{O}(MN^2)$ where $N$ is the size of the determinant space and $M$ is the number of psips. We can reduce this to $\mathcal{O}(M)$ using the same trick as in ordinary FCIQMC. Instead of each psip at $\bf i$ trying to spawn at every location $\bf j$ for each value of $\bf k$ we generate one specific value of $({\bf j},{\bf k})$ for each $\bf i$ with a probability $P\/_{\text{gen}}({\bf j},{\bf k}|{\bf i})$ and spawn at this site with probability
+\[P\/_{\text{spawn}} =\frac{|\Rji|}{P\/_{\text{gen}}({\bf j},{\bf k}|{\bf i})}.\]
+Moreover, we can limit the number of possible locations $\bf j$ and $\bf k$ by noting that since the Hamiltonian is at most a $2$-particle operator, $\fij{p}{q} = \bra{\D{p}}(\hat{H} - \epsilon)\ket{\D{q}}$ is only non-zero when $\ket{\D{q}}$ and $\ket{\D{p}}$ are separated by a single or double excitation. We can thus generate the possible $\bf p$ if we know $\bf q$ by considering only those positions which are separated by these excitations.
+
+In ordinary FCIQMC this method is employed for each position $\bf i$ by spawning once on the same site $\ket{\D{i}}$ and then generating a doubly or singly excited determinant not equal to $\ket{\D{i}}$. The rationale being that because Hamiltonians in Slater determinant space are diagonally dominant, we have $H\/_{\bf i i} \ll H\/_{\bf i j}$ if ${\bf i} \ne {\bf j} $, whereas $H\/_{\bf i i} \approx {H\/_{\bf i j}}/{P\/_{\text{gen}}}$. This results in a much more uniform rate of spawning.
+
+\begin{table}
+\caption{The four possible types of matrix element $\Rji$}
+\centering
+\label{4types}
+
+\begin{tabular}[c]{|c|c|c|c|}
+\hline
+(1) & (2) & (3) & (4) \\
+\hline
+{$
+\xy
+(0,0)*+{\bullet};(0,0)*+{\bullet}
+**\crv{(-20,20)&(20,20)}
+?>*\dir{>};
+(0,0)*+{\bullet};(0,0)*+{\bullet}
+**\crv{(-10,10)&(10,10)}
+?>*\dir{>};
+(0,-4)*+{\bf i,k,j}
+\endxy
+$}
+&
+{$
+\xy 
+(0,0)*+{\bullet};(0,0)*+{\bullet}
+**\crv{(-10,10)&(10,10)}
+?>*\dir{>};
+(0,0)*+{\bullet};(16,0)*+{\bullet}
+**\crv{(4,4)&(12,4)}
+?>*\dir{>};
+(0,-4)*+{\bf i,k}; (16,-4)*+{\bf j}
+\endxy
+$}
+&
+{$
+\xy 
+(0,0)*+{\bullet};(16,0)*+{\bullet}
+**\crv{(4,4)&(12,4)}
+?>*\dir{>};
+(16,0)*+{\bullet};(16,0)*+{\bullet}
+**\crv{(6,10)&(26,10)}
+?>*\dir{>};
+(0,-4)*+{\bf i}; (16,-4)*+{\bf k,j}
+\endxy
+$}
+&
+{$
+\xy 
+(0,0)*+{\bullet};(16,0)*+{\bullet}
+**\crv{(4,4)&(12,4)}
+?>*\dir{>};
+(16,0) *+{\bullet};(32,0)*+{\bullet}
+**\crv{(20,4)&(28,4)}
+?>*\dir{>};
+(0,-4)*+{\bf i}; (16,-4)*+{\bf k}; (32,-4)*+{\bf j}
+\endxy
+$}
+\\
+\hline
+$\fij{i}{i}\fij{i}{i}$ &
+$\fij{i}{j}\fij{j}{j}$ & 
+$\fij{i}{i}\fij{i}{j}$ &
+$\fij{i}{k}\fij{k}{j}$ 
+\\
+${\bf i} = {\bf k} = {\bf j} $ &
+${\bf i} = {\bf k} \ne {\bf j} $ &
+${\bf i} \ne {\bf k} = {\bf j} $ & 
+${\bf i} \ne {\bf k} \ne {\bf j} $ 
+\\
+\hline
+\end{tabular}
+\end{table}
+A similar idea is employed in FSFCIQMC. We can split the possible ``dual elements'' $|\Rji|$ into four groups as seen in Table \ref{4types}. There are two reasons for choosing these four. First, all elements within a group are of roughly the same order of magnitude. $\fij{i}{j}$ is a diagonally dominant matrix (for the same reason that the Hamiltonian is). This means that (1) $\gg$ (2) $\approx$ (3) $\gg$ (4). Splitting them into these groups allows the code to be optimised by tailoring $P\/_{\text{gen}}$ to a value appropriate to the given dual element.
+
+The second reason, which is more important, is that by choosing these groups we can utilise the excitation generation routines present in standard FCIQMC code. Any sensibly designed software will include a means for generating a random, non-self excitation along with a probability $P\/_{\text{gen}}$ of generating this excitation. If we are exciting from $\ket{\D{i}}$ to $\ket{\D{j}}$, this will also generate a probability $\Pgji{j}{i}$, where the $(s)$ superscript denotes standard FCIQMC. If we choose our type of dual excitation first, then the probability of a specific set of $({\bf i},{\bf j},{\bf k})$ {\em given\/} that we have chosen a type of dual excitation is easily expressible in terms of these probabilities.
+We are free to specify the probabilities with which we choose our type of dual excitation, which allows us to optimise as was suggested in discussing the first reason.
+
+Finally, as in normal FCIQMC methods, an additional shift $-S$ has to be added to the Hamiltonian to keep the normalisation constant.
+
+The optimised algorithm is thus:
+
+\hspace{10pt}
+
+\noindent\makebox[\textwidth][c]{
+\fbox{
+\begin{minipage}[t]{0.8\textwidth}
+In one time step $\Delta t$, we loop over the population of psips and allow each to ``spawn'' children (new psips) on itself and at one other location thus:
+
+
+\begin{description}
+\item[Self-spawning:]
+{
+Each psip at $\bf i$ attempts to spawn on itself a child of charge  $\sign{(\fij{i}{i}\fij{i}{i} -S)}q\/_{\text{parent}}$ with probability
+\[P\/_{\text{self-spawn}}=|\fij{i}{i}\fij{i}{i} -S|\Delta t\]
+}
+\item[Other-spawning:]
+{
+Each psip then picks a single type of dual spawning event with probability:
+\[P\/_{\text{choose}} \in \{\Pnn,\Pno,\Pon\}\]
+and then generates the corresponding dual excitation with generation probability $P\/_{\text{gen}}$ in:
+\begin{align}
+\Pikj &= \Pikjg \times \Pnn, \nonumber\\
+\Pikk &= \Pikkg \times \Pno, \nonumber\\
+\Piij &= \Piijg \times \Pon, \nonumber
+\end{align}
+where
+\begin{align}
+\Pikjg &= \Pgji{j}{k} \times \Pgji{k}{i}, \nonumber \\
+\Pikkg &= \Pgji{j}{i}, \nonumber \\
+\Piijg &= \Pgji{j}{i}. \nonumber 
+\end{align}
+
+
+
+The probability of spawning a psip on site $\bf j$ given that we have gone through $\bf k$ is thus
+\[ P\/_{\text{spawn}} = \frac{|\fij{j}{k}\fij{k}{i}|}{P\/_{\text{gen}}}\Delta t,  \]
+where $P\/_{\text{gen}}=P\/_{\text{choose}}\Pgji{j}{i}$ or $P\/_{\text{choose}}\Pgji{j}{k}\Pgji{k}{i}$.
+
+The charge of the child is simply: $q\/_{\text{parent}}\times\sign{(\fij{j}{k}\fij{k}{i})}$.
+}
+\end{description}
+
+At the end of the time step, after every psip has attempted this spawning procedure, pairs of psips of opposite charge on the same configuration annihilate each other and are removed from the simulation. Thus, although psips on different configurations may have different signs, all psips on any configuration $\bf i$ at the end of the time step have the same sign.
+\end{minipage}
+}%end of fbox
+}
+
+\hspace{10pt}
+
+
+
+
+
+
+\section{Daughter and Granddaughter Spawning}
+I shall now introduce some nomenclature. Each ``Other-spawning'' event may be split up into two steps, which I shall call {\em daughter\/} and {\em granddaughter\/} spawning. In cases (2) and (3) a daughter or granddaughter spawning respectively is actually a self spawning, but one can think of these as a special case of (4).
+
+The algorithm may be further optimised by splitting the ``Other-spawning'' procedure into daughter and granddaughter parts, since
+\begin{align}
+P\/_{\text{spawn}} &=\frac{|\fij{j}{k}\fij{k}{i}|}{P\/_{\text{choose}}\Pgji{j}{k}\Pgji{k}{i}}  \Delta t \nonumber \\
+&= \sqrt{\frac{\Delta t}{P\/_{\text{choose}}}}\frac{|\fij{k}{i}|}{\Pgji{k}{i}} \times \sqrt{\frac{\Delta t}{P\/_{\text{choose}}}}\frac{|\fij{j}{k}|}{\Pgji{j}{k}}    \nonumber \\
+&= P\/_{\text{spawn}}^{(d)}  P\/_{\text{spawn}}^{(g)}, \nonumber 
+\end{align}
+where the $(d)$ and $(g)$ superscripts denote daughter and granddaughter spawning. The revised algorithm for the ``Other-spawning'' section is thus:
+
+\hspace{10pt}
+
+\noindent\makebox[\textwidth][c]{
+\fbox{
+\begin{minipage}[t]{0.8\textwidth}
+\begin{description}
+\item[Other-spawning:]
+{
+Each psip at $\bf i$ picks a single type of dual spawning event with probability $P\/_{\text{choose}}$ as before.
+
+It then generates a daughter spawning event at to $\bf k$ with probability \[P\/_{\text{spawn}}^{(d)} =\sqrt{\frac{\Delta t}{P\/_{\text{choose}}}}\frac{|\fij{k}{i}|}{\Pgji{k}{i}}.\] 
+From this a number of psips $n\/_{\bf k i}$ is generated,\footnote{In most FCIQMC algorithms there is a capacity for spawning more than one particle in the rare case that $P\/_{\text{spawn}} > 1$.} but no children are spawned onto $\bf k$, since this is only the route to the determinant $\bf j$ that we will spawn on.
+
+It then generates a granddaughter spawning event to $\bf j$ from $\bf k$ with probability
+\[ P\/_{\text{spawn}}^{(g)}=\sqrt{\frac{\Delta t}{P\/_{\text{choose}}}}\frac{|\fij{j}{k}|}{\Pgji{j}{k}}.\]
+From this a number $n\/_{\bf j k}$ is generated as before. The final number of children that are spawned onto $\bf j$ is; \[n\/_{\text{spawned}}=n\/_{\bf k i}\times n\/_{\bf j k}.\]
+The charge of the children is as before; 
+\[q\/_{\text{child}}=q\/_{\text{parent}}\times\sign{(\fij{j}{k}\fij{k}{i})}.\]
+
+It should be noted that for type (2) $\Pgji{k}{i}=1$ and ${\bf i}={\bf k}$, and for type (3) $\Pgji{j}{k}=1$ and ${\bf k}={\bf j}$. Other than this the spawning routines are identical.  
+}
+\end{description}
+
+\end{minipage}
+}%end of fbox
+}
+
+\hspace{10pt}
+ 
+It has been found that for Hubbard models, the increase in speed due to this splitting is approximately $75\%$.\footnote{
+Data found by running a $3\times3$ eight-electron Hubbard lattice on one node. Splitting the probabilities gave a run time of $3018.04$s, compared to $5297.24$s for the simpler code running on an identical system.
+}
+The dramatic speedup comes from the fact that generating excitations is computationally time intensive. By generating excitations separately, if we find $n\/_{\bf k i} = 0$ after the first stage, we can avoid generating the second excitation by halting the calculation at that point. This time saving more than makes up for the increased complexity of the algorithm. 
+
+
+
+\section{Results}
+Coming in the not too distant future\ldots\footnote{\ldots hopefully}
+
+
+\bibliography{folded_spectrum}
+\bibliographystyle{plain}
+\end{document}
