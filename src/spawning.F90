@@ -101,8 +101,8 @@ contains
             call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b)
 
             connection%nexcit = 2
-            connection%from_orb = (/ i,j /)
-            connection%to_orb = (/ a,b /)
+            connection%from_orb(1:2) = (/ i,j /)
+            connection%to_orb(1:2) = (/ a,b /)
 
             ! 5. Is connecting matrix element positive (in which case we spawn with
             ! negative walkers) or negative (in which case we spawn with positive
@@ -220,7 +220,7 @@ contains
 
     end subroutine spawn_hub_k_no_renorm
 
-    subroutine gen_excit_hub_k(cdet, pgen, connection)
+    subroutine gen_excit_hub_k(cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -239,9 +239,10 @@ contains
         use excitations, only: calc_pgen_hub_k, excit
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
+        use hamiltonian, only: slater_condon2_hub_k_excit
 
         type(det_info), intent(in) :: cdet
-        real(p), intent(out) :: pgen
+        real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
         integer :: i, j, a, b, ij_sym
@@ -265,6 +266,10 @@ contains
         ! 3. Calculate the generation probability of the excitation.
         ! For two-band systems this depends only upon the orbitals excited from.
         pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
+
+
+        ! 4. find the connecting matrix element.
+        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
 
     end subroutine gen_excit_hub_k
 
@@ -297,17 +302,14 @@ contains
 
         real(p) :: psuccess, pspawn, pgen, hmatel
 
-        ! 1. Generate random excitation from cdet and probability of spawning
-        ! there.
-        call gen_excit_hub_real(cdet, pgen, connection)
+        ! 1. Generate random excitation from cdet as well as both the probability 
+        ! of spawning there and the connecting matrix element.
+        call gen_excit_hub_real(cdet, pgen, connection, hmatel)
 
-        ! 2. find the connecting matrix element.
-        call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
-
-        ! 3. Probability of gening...
+        ! 2. Calculate P_gen
         pspawn = tau*abs(hmatel)/pgen
 
-        ! 4. Attempt spawning.
+        ! 3. Attempt spawning.
         psuccess = genrand_real2()
 
         ! Need to take into account the possibilty of a spawning attempt
@@ -321,7 +323,7 @@ contains
 
         if (nspawn > 0) then
 
-            ! 5. If H_ij is positive, then the spawned walker is of opposite
+            ! 4. If H_ij is positive, then the spawned walker is of opposite
             ! sign to the parent, otherwise the spawned walkers if of the same
             ! sign as the parent.
             if (hmatel > 0.0_p) then
@@ -435,10 +437,10 @@ contains
 
     end subroutine spawn_hub_real_no_renorm
 
-    subroutine gen_excit_hub_real(cdet, pgen, connection)
+    subroutine gen_excit_hub_real(cdet, pgen, connection, hmatel)
 
-        ! Create a random excitation from cdet and calculate the probability of
-        ! selecting that excitation.
+        ! Create a random excitation from cdet and calculate both the probability 
+        ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
         !    cdet: info on the current determinant (cdet) that we will gen
@@ -449,12 +451,16 @@ contains
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    determinant and a single excitation of it in the real space
+        !    formulation of the Hubbard model.
 
         use determinants, only: det_info
         use excitations, only: calc_pgen_hub_real, excit
+        use hamiltonian, only: slater_condon1_hub_real_excit
 
         type(det_info), intent(in) :: cdet
-        real(p), intent(out) :: pgen
+        real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
         integer :: nvirt_avail
@@ -468,6 +474,9 @@ contains
 
         ! 2. Find probability of generating this excited determinant.
         pgen = calc_pgen_hub_real(cdet%occ_list, cdet%f, nvirt_avail)
+
+        ! 3. find the connecting matrix element.
+        call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
 
     end subroutine gen_excit_hub_real
 

@@ -1,6 +1,6 @@
 module proc_pointers
 
-use const, only: i0, p
+use const, only: i0, p, dp, lint
 use determinants, only: det_info
 use excitations, only: excit
 
@@ -29,6 +29,20 @@ abstract interface
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
     end subroutine i_spawner
+    subroutine i_gen_excit(d, pgen, connection,hmatel)
+        import :: det_info, excit, p
+        implicit none
+        type(det_info), intent(in) :: d
+        real(p), intent(out) :: pgen, hmatel
+        type(excit), intent(out) :: connection
+    end subroutine i_gen_excit
+    subroutine i_death(mat, pop, tot_pop, ndeath)
+        import :: p, lint
+        implicit none
+        real(p), intent(in) :: mat
+        integer, intent(inout) :: pop, ndeath
+        integer(lint), intent(inout) :: tot_pop
+    end subroutine i_death
     function i_sc0(f) result(hmatel)
         use basis, only: basis_length
         import :: p, i0
@@ -61,6 +75,8 @@ end interface
 procedure(i_decoder), pointer :: decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
 procedure(i_spawner), pointer :: spawner_ptr => null()
+procedure(i_gen_excit), pointer :: gen_excit_ptr => null()
+procedure(i_death), pointer :: death_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
 procedure(i_sub), pointer :: annihilate_spawned_list_ptr => null()

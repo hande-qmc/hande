@@ -138,6 +138,8 @@ contains
             case('ESTIMATE_HILBERT_SPACE')
                 calc_type = calc_type + mc_hilbert_space
                 call readi(nhilbert_cycles)
+            case('FOLDED_SPECTRUM')
+                calc_type = calc_type + folded_spectrum
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -202,6 +204,17 @@ contains
                 end do
             case('NO_RENORM')
                 no_renorm = .true.
+
+            ! Calculation options: Folded spectrum.
+            case('FOLD_LINE')
+                call readf(fold_line)
+            case('P__')
+                call readf(P__)
+            case('Po_')
+                call readf(Po_)
+            case('P_o')
+                call readf(P_o)
+
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
             case('RESTART')
@@ -435,6 +448,11 @@ contains
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
+        call mpi_bcast(fold_line, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(P__, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(Po_, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(P_o, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
 #endif
 

@@ -27,12 +27,13 @@ contains
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, av_proj_energy, av_D0_population, shift, av_shift, &
                                vary_shift, start_vary_shift, vary_shift_from,                  &
-                               vary_shift_from_proje, D0_population
+                               vary_shift_from_proje, D0_population,                           &
+                               fold_line
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
-        use calc, only: doing_calc, hfs_fciqmc_calc
+        use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
         use parallel
-
+        
         integer, intent(in) :: ireport
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
@@ -67,8 +68,14 @@ contains
                 vary_shift = .true.
                 start_vary_shift = ireport
                 if (vary_shift_from_proje) then
-                    ! Set shift to be instantaneous projected energy.
-                    shift = proj_energy/D0_population
+                    if(doing_calc(folded_spectrum)) then
+                      !if running a folded spectrum calculation, set the shift to
+                      !instantaneously be the projected energy of the folded hamiltonian
+                      shift = (proj_energy/D0_population - fold_line)**2
+                    else
+                      ! Set shift to be instantaneous projected energy.
+                      shift = proj_energy/D0_population
+                    endif
                 else
                     shift = vary_shift_from
                 end if
@@ -85,8 +92,14 @@ contains
                 vary_shift = .true.
                 start_vary_shift = ireport
                 if (vary_shift_from_proje) then
+                    if(doing_calc(folded_spectrum)) then
+                    !if running a folded spectrum calculation, set the shift to
+                    !instantaneously be the projected energy of the folded hamiltonian
+                    shift = (proj_energy/D0_population - fold_line)**2
+                    else
                     ! Set shift to be instantaneous projected energy.
                     shift = proj_energy/D0_population
+                    endif
                 else
                     shift = vary_shift_from
                 end if
@@ -131,12 +144,17 @@ contains
         !    nparticles: N_w(beta).
 
         use fciqmc_data, only: shift, tau, shift_damping, av_shift
+        use calc, only: doing_calc, folded_spectrum
 
         integer(lint), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
         shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(tau*nupdate_steps)
-        av_shift = av_shift + shift
+        if(doing_calc(folded_spectrum)) then
+            if(shift .ge. 0.0_p ) av_shift = av_shift + sqrt(shift)
+        else
+            av_shift = av_shift + shift
+        endif
 
     end subroutine update_shift
 

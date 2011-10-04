@@ -70,7 +70,7 @@ contains
   
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
-        use death, only: stochastic_death, stochastic_hf_cloning
+        use death, only: stochastic_hf_cloning
         use determinants, only:det_info, alloc_det_info 
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
@@ -187,10 +187,10 @@ contains
                     end do
 
                     ! Clone or die: Hamiltonian walkers.
-                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call stochastic_death(walker_energies(1,idet), walker_population(2,idet), nparticles(2), ndeath)
+                    call death_ptr(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! CHECK

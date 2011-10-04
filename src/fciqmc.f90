@@ -22,12 +22,16 @@ contains
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
                             spawn_hub_k_no_renorm, spawn_hub_real_no_renorm
+        use death, only: stochastic_death
 
-        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, doing_calc
+        use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, folded_spectrum, doing_calc
 
         use ct_fciqmc, only: do_ct_fciqmc
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
         use ifciqmc, only: init_ifciqmc, set_parent_flag, set_parent_flag_dummy
+
+        use folded_spectrum_utils
+        use spawning, only: gen_excit_hub_k, gen_excit_hub_real
 
         real(dp) :: hub_matel
 
@@ -43,6 +47,9 @@ contains
             end if
             sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
+            spawner_ptr => spawn_hub_k
+            death_ptr => stochastic_death
+            if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_k
         case (hub_real)
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_hub_real
@@ -53,7 +60,12 @@ contains
             end if
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
+            spawner_ptr => spawn_hub_real
+            death_ptr => stochastic_death
+            if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_real
         end select
+
+        if(doing_calc(folded_spectrum)) call init_folded_spectrum()
 
         if (doing_calc(initiator_fciqmc)) then
             call init_ifciqmc()
@@ -89,7 +101,7 @@ contains
   
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, bit_lookup, nbasis
-        use death, only: stochastic_death
+        use calc, only: folded_spectrum, doing_calc
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
@@ -99,6 +111,7 @@ contains
         use spawning, only: create_spawned_particle_initiator
         use fciqmc_common
         use ifciqmc, only: set_parent_flag
+        use folded_spectrum_utils, only: cdet_excit
 
         integer :: i, idet, ireport, icycle, iparticle
         integer(lint) :: nparticles_old(sampling_size)
@@ -115,6 +128,7 @@ contains
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
+        if (doing_calc(folded_spectrum)) call alloc_det_info(cdet_excit)
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -175,7 +189,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
@@ -222,6 +236,7 @@ contains
         if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
 
         call dealloc_det_info(cdet)
+        if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)
 
     end subroutine do_fciqmc
 

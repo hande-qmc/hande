@@ -471,6 +471,10 @@ Note that multiple calculations can be specified within a single input, but are 
     The overall spin must be set using **ms**.  Currently symmetry is only
     available for the momentum formulation of the Hubbard model.  The symmetry block
     can be selected by specifying a reference determinant.
+**folded_spectrum**
+    Perform a folded spectrum (FSFCIQMC) calculation. This involves mapping the
+    Hamiltonian :math:`H \rightarrow (H-\eps)^2`. This will compute the excited
+    state closest to :math:`\eps`.
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -815,6 +819,51 @@ the result but can have a significant impact on performance.
     sub-matrices, where :math:`n` is the block size, which are the distributed
     over the processors in a cyclic fashion.  Applicable only to FCI
     calculations.
+
+Calculation options: folded spectrum options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These options are valid when performing a folded spectrum calculation
+
+**fold_line** *fold_line*
+    Real.
+
+    Default: 0.0
+
+    Choose the point about which to fold the hamiltonian, i.e. the value of
+    :math:`\eps` in :math:`(H-\eps)^2`. In the case of convergence the psips
+    settle on a stochastic representation of the eigenstate(s) with energy
+    closest to :math:`\eps`.
+
+**P__** *P_*
+    Real.
+
+    Default: 0.05
+
+    Manually choose the split generation probabilities. Best to choose them such that 
+    the ratio of: 
+
+    ,, math::
+
+        \frac{*P__*}{*P_o*} = \frac{*P__*}{*Po_*} \approx frac{H_{off_diag}}{H_{on_diag}},
+
+    where :math:`H_{on(off)_diag}` are the rough magnitudes of the on(off)
+    diagonal elements of the Hamiltonian. Code automatically renormalises the
+    probabilities.
+
+**Po_** *Po_*
+    Real.
+
+    Default: 0.475
+
+    See above.
+
+**P_o** *P_o*
+    Real.
+
+    Default: 0.475
+
+    See above.
 
 output options
 ^^^^^^^^^^^^^^
