@@ -4,8 +4,7 @@
 4.  checktest.
 5.  parallel direct lanczos.
 6.  UEG.
-7.  Better name?
-8.  CuO2? t-J?
+7.  Better name? A: DANGERMOUSE.  PENFOLD.
 
 FCIQMC
 ------
@@ -27,20 +26,37 @@ Hellmann--Feynmann
 FCIQMC parallelisation
 ----------------------
 
-a) Investigate load-balancing issues.
+1. Investigate load-balancing issues.
 
 Optimisations
 -------------
 
-a) sym_table in terms of basis functions
-b) Macros to force inlining?
+1. sym_table in terms of basis functions
 
-1D real space w/out sign problem?
----------------------------------
+FS merge
+--------
 
-test but i think all that needs to be changed is:
+1. merge (easy to fix conflicts)
+2. implement no_renorm excit generators
 
-basis_lookup tables
-order of basis_fns
-f0
-get_coulomb_matel_real
+Heisenberg merge
+----------------
+
+1. go through code
+2. merge (but see notes on importance sampling)
+
+Importance sampling
+-------------------
+
+1. Implement infrastructure
+
+Real systems
+------------
+
+So much...
+
+Cleanup
+-------
+
+1. function pointer init
+2. system specific modules: spawning, hamiltonian matrix elements
