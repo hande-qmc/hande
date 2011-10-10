@@ -75,6 +75,10 @@ contains
                 system_type = hub_real
             case('K_SPACE','MOMENTUM_SPACE')
                 system_type = hub_k
+            case('READ')
+                system_type = read_in
+                if (item /= nitems) call reada(fcidump)
+                ndim = 1 ! Used to store minimal information.
 
             ! System information.
             case('LATTICE')
@@ -376,6 +380,7 @@ contains
         logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fcidump, len(fcidump), mpi_character, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)

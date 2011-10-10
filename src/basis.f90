@@ -6,21 +6,27 @@ use kpoints
 
 implicit none
 
-! The kpoint type is used to specify a spin orbital in momentum space.
+! Define a spin orbital.
 type basis_fn
-    ! l is used in two different contexts depending upon whether a momentum
-    ! space description or real space description is being used.
+    ! l is a (set of) quantum number(s) describing the basis function.
+    ! l is used in three different contexts depending upon whether the orbitals
+    ! are defined using point group symmetry, in momentum space or in real
+    ! space.  The latter two only apply to model Hamiltonians (e.g. Hubbard
+    ! model).
+    ! Point group:
+    !     l is the index of the irreducible representation spanned by the
+    !     orbital.
     ! Momentum space:
     !     l is the wavevector in terms of the reciprocal lattice vectors of the crystal cell.
     ! Real space:
     !     l is the position of the basis function within the crystal cell in
     !     units of the lattice vectors of the primitive unit cell.
-    ! Obviously we should not convert between the two descritions within one
+    ! Obviously we should not convert between descriptions within one
     ! calculation! ;-)
     integer, pointer :: l(:) => NULL()
     ! Spin of the electron (1 or -1).
     integer :: ms
-    ! Kinetic energy.
+    ! Kinetic energy.  Used only in model Hamiltonians defined in momentum space.
     real(p) :: kinetic
 end type basis_fn
 
@@ -31,8 +37,9 @@ end type basis_fn
 ! fortran numbers bits from 0...
 type(basis_fn), allocatable :: basis_fns(:) ! (nbasis)
 
-! number of basis functions.  Equal to 2*number of sites as there are
-! 2 spin orbitals per site.
+! number of basis functions.
+! For model Hamiltonians (e.g. Hubbard or Heisenberg) this is equal to 2*number
+! of sites as there are 2 spin orbitals per site.
 integer :: nbasis
 
 ! The determinants are stored as a bit string.  Each element of an array is
@@ -103,7 +110,7 @@ contains
 
         if (present(l)) then
             b%l = l
-            if (system_type /= hub_real) then
+            if (system_type == hub_k) then
                 b%kinetic = calc_kinetic(l)
             else
                 b%kinetic = 0.0_p
