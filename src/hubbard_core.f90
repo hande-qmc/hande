@@ -27,7 +27,7 @@ contains
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
         use hubbard_real, only: init_real_space_hub
-        use symmetry, only: init_symmetry
+        use momentum_symmetry, only: init_momentum_symmetry
         use calc
 
         call init_parallel()
@@ -55,7 +55,7 @@ contains
 
         call init_excitations()
 
-        call init_symmetry()
+        call init_momentum_symmetry()
 
         if (system_type == hub_real) call init_real_space_hub()
 
@@ -116,14 +116,14 @@ contains
         use fciqmc_data, only: end_fciqmc
         use parallel, only: parent, end_parallel
         use hubbard_real, only: end_real_space_hub
-        use symmetry, only: end_symmetry
+        use momentum_symmetry, only: end_momentum_symmetry
         use report, only: end_report
 
         real :: end_time
 
         call end_system()
         call end_basis_fns()
-        call end_symmetry()
+        call end_momentum_symmetry()
         call end_determinants()
         call end_excitations()
         call end_hamil()

@@ -23,7 +23,7 @@ contains
         use lanczos
         use full_diagonalisation
         use hamiltonian, only: get_hmatel
-        use symmetry, only: nsym
+        use momentum_symmetry, only: nsym
 
         use utils, only: int_fmt
         use m_mrgref, only: mrgref

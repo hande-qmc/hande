@@ -495,7 +495,7 @@ contains
         !        alpha.
 
         use basis, only: basis_fns
-        use symmetry, only: sym_table
+        use momentum_symmetry, only: sym_table
         use system, only: nel
         use dSFMT_interface, only: genrand_real2
 
@@ -581,7 +581,7 @@ contains
         !    i, j: randomly selected spin-orbitals.
         !    ij_sym: symmetry label of the (i,j) combination.
 
-        use symmetry, only: sym_table
+        use momentum_symmetry, only: sym_table
         use system, only: nalpha, nbeta
         use dSFMT_interface, only: genrand_real2
 
@@ -682,7 +682,7 @@ contains
         use basis, only: basis_length, bit_lookup, nbasis
         use dSFMT_interface, only:  genrand_real2
         use system, only: nvirt_alpha
-        use symmetry, only: sym_table, inv_sym
+        use momentum_symmetry, only: sym_table, inv_sym
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_list_alpha(nvirt_alpha)

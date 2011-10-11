@@ -24,7 +24,7 @@ contains
         use determinants, only: decode_det, set_spin_polarisation
         use dSFMT_interface, only: genrand_real2
         use fciqmc_data, only: occ_list0, set_reference_det
-        use symmetry, only: sym_table, gamma_sym
+        use momentum_symmetry, only: sym_table, gamma_sym
         use system
         use parallel
         use utils, only: binom_r

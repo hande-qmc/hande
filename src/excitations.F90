@@ -402,7 +402,7 @@ contains
 
         use basis, only: basis_length, bit_lookup, nbasis
         use system, only: nvirt, nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
-        use symmetry, only: sym_table, inv_sym
+        use momentum_symmetry, only: sym_table, inv_sym
 
         real(p) :: pgen
         integer, intent(in) :: ab_sym
@@ -632,7 +632,7 @@ contains
 
         use basis, only: bit_lookup
         use determinants, only: det_info
-        use symmetry, only: sym_table, inv_sym
+        use momentum_symmetry, only: sym_table, inv_sym
         use system, only: ndim, nel, nalpha, nvirt_alpha, nbeta
 
         type(det_info), intent(in) :: cdet

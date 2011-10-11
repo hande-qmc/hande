@@ -1,4 +1,4 @@
-module symmetry
+module momentum_symmetry
 
 implicit none
 
@@ -17,7 +17,7 @@ integer, allocatable :: inv_sym(:) ! nsym
 
 contains
 
-    subroutine init_symmetry()
+    subroutine init_momentum_symmetry()
 
         ! Construct the symmetry tables.
 
@@ -51,7 +51,7 @@ contains
             do i = 1, nsym
                 if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
             end do
-            if (gamma_sym == 0) call stop_all('init_symmetry', 'Gamma-point symmetry not found.')
+            if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
             do i = 1, nsym
                 do j = i, nsym
@@ -97,9 +97,9 @@ contains
 
         end if
 
-    end subroutine init_symmetry
+    end subroutine init_momentum_symmetry
 
-    subroutine end_symmetry
+    subroutine end_momentum_symmetry
 
         ! Clean up after symmetry.
 
@@ -116,6 +116,6 @@ contains
             call check_deallocate('inv_sym',ierr)
         end if
 
-    end subroutine end_symmetry
+    end subroutine end_momentum_symmetry
 
-end module symmetry
+end module momentum_symmetry

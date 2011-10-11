@@ -30,7 +30,7 @@ contains
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use fciqmc_restart, only: read_restart
         use system, only: nel, system_type, hub_real, hub_k
-        use symmetry, only: gamma_sym, sym_table
+        use momentum_symmetry, only: gamma_sym, sym_table
 
         integer :: ierr
         integer :: i
