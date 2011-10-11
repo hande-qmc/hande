@@ -4,6 +4,8 @@ use const
 
 implicit none
 
+real(p) :: Ecore
+
 contains
 
     subroutine read_in_fcidump
@@ -13,13 +15,19 @@ contains
         ! File format (partially) defined in Comp. Phys. Commun. 54 (1989) 75.
         ! See also notes below.
 
+        use basis, only: nbasis, basis_fns, init_basis_fn
         use system, only: fcidump
 
         use utils, only: get_free_unit
+        use checking, only: check_allocate
         use errors, only: stop_all
 
         ! System data
-        integer :: norb, nelec, ms2, orbsym(1000), isym
+        ! We don't know how many orbitals we have until we read in the FCI
+        ! namelist, so have to hardcode the array sizes.
+        ! It's reasonably safe to assume that we'll never use more than 1000
+        ! orbitals!
+        integer :: norb, nelec, ms2, orbsym(1000), isym, syml(1000), symlz(1000)
         logical :: uhf = .false.
 
         ! Integrals
@@ -27,10 +35,16 @@ contains
         real(dp) :: x
 
         ! reading in...
-        integer :: ir, ios
+        integer :: ir, ios, ierr
         logical :: t_exists
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf
+
+        ! avoid annoying compiler warnings over unused variables in FCI namelist
+        ! that are present for NECI compatibility.
+        isym = 0
+        syml = 0
+        symlz = 0
 
         ! FCIDUMP file format is as follows:
 
@@ -45,10 +59,19 @@ contains
         !  * NELEC: number of electrons in system.
         !  * MS2: spin polarisation.
         !  * ORBSYM: array containing symmetry label of each orbital.  See
-        !    symmetry notes.
+        !    symmetry notes below and in pg_symmetry.
         !  * UHF: true if FCIDUMP file was produced from an unrestricted
         !    Hartree-Fock calculation.  See note on basis indices below.
-        !  * ISYM: unused.  Defined solely for compatibility with NECI FCIDUMP files.
+        !  * ISYM: currently unused.  Defined solely for compatibility with NECI
+        !    FCIDUMP files.  Gives the symmetry of the wavefunction formed by
+        !    occupied the NELEC lowest energy spin-orbitals.
+        !  * SYML: currently unused.  Defined solely for compatibility with NECI
+        !    FCIDUMP files.  Array containing L (angular momentum) for each orbital.
+        !    Set to -1 if L is not a good quantum number.
+        !  * SYMLZ: currently unused.  Defined solely for compatibility with NECI
+        !    FCIDUMP files.  Array containing Lz (angular momentum along the
+        !    z-axis) for each orbital.
+        !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
 
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
@@ -56,23 +79,37 @@ contains
         !    Hamiltonian.
         !  * if a = j = b = 0, \epsilon_i = x, the single-particle eigenvalue
         !    of the i-th orbital.
-        !  * if j = b = 0, < i | T | a > = x, the one-body Hamiltonian matrix element
-        !    between the i-th and a-th orbitals.
+        !  * if j = b = 0, < i | h | a > = x, the one-body Hamiltonian matrix element
+        !    between the i-th and a-th orbitals, where h = T+V_ext.
         !  * otherwise < i j | 1/r_12 | a b > = x, the Coulomb integral between
         !    the i-a co-density and the j-b codensity.  Note the Coulomb
-        !    integrals are given in Chemist's notation, a rare instance that
+        !    integrals are given in Chemists' notation, a rare instance that
         !    Chemists are wrong and Physicists correct.
 
         ! Basis indices:
-        ! RHF: All indices are in terms of spatial orbitals.  NORBS is the
+        ! RHF: All indices are in terms of spatial orbitals.  NORB is the
         ! number of spatial orbitals.
-        ! UHF: All indices are in terms of spin orbitals.  NORBS is the
+        ! UHF: All indices are in terms of spin orbitals.  NORB is the
         ! number of spin orbitals.
         ! Basis functions (as stored by basis_fns) are always stored as spin
         ! orbitals (the memory saving involved in storing only spatial orbitals
         ! is not worth the additional overhead/headache, as FCIQMC involves
         ! working in spin orbitals).  Integrals are expensive to store, so we
         ! store them in as compressed format as possible.
+
+        ! Symmetry:
+        ! Molecular orbitals are defined by the D2h point group (or a subgroup
+        ! thereof)by the quantum chemistry packages (QChem, MOLPRO) used to
+        ! produce FCIDUMP files , so we need only concern ourselves with Abelian
+        ! symmetries.
+        ! If ORBSYM(i) = 0, then the symmetry of the i-th orbital is not
+        ! well-defined.  In this case, we can only resort to turning off all
+        ! symmetry (i.e. set all orbitals to be totally symmetric).  Note that
+        ! this has memory implications for the integral storage.
+        ! ORBSYM(i) = S+1, where S is the symmetry label defining the
+        ! irreducible representation spanned by the i-th orbital.
+        ! See notes in pg_symmetry about the symmetry label for Abelian point
+        ! groups.
 
         ir = get_free_unit()
         inquire(file=fcidump, exist=t_exists)
@@ -84,27 +121,57 @@ contains
         read (ir, FCI)
 
         if (uhf) then
-            nbasis = norbs
+            nbasis = norb
         else
-            nbasis = 2*norbs
+            nbasis = 2*norb
         end if
 
         allocate(basis_fns(nbasis), stat=ierr)
         call check_allocate('basis_fns', nbasis, ierr)
 
-        ! avoid annoying compiler warnings over unused variables in FCI namelist
-        ! that are present for NECI compatibility.
-        isym = 0
+        do i = 1, nbasis
+            if (uhf) then
+                if (mod(i,2) == 0) then
+                    call init_basis_fn(basis_fns(i), (/orbsym(i)-1/), -1)
+                else
+                    call init_basis_fn(basis_fns(i), (/orbsym(i)-1/), 1)
+                end if
+            else
+                ! Need to initialise both up- and down-spin basis functions.
+                call init_basis_fn(basis_fns(2*i-1), (/orbsym(i)-1/), -1)
+                call init_basis_fn(basis_fns(2*i), (/orbsym(i)-1/), -1)
+            end if
+        end do
 
         ! read integrals and eigenvalues
-        do 
+        do
             ! loop over lines.
             read (ir,*) x, i, a, j, b
             if (ios < 0) exit ! end of file
+            if (i == 0 .and. j == 0 .and. a == 0 .and. b == 0) then
+                ! Ecore
+                Ecore = x
+            else if (j == 0 .and. a == 0 .and. b == 0) then
+                ! \epsilon_i
+                if (uhf) then
+                    basis_fn(i)%kinetic = x
+                else
+                    basis_fn(2*i-1)%kinetic = x
+                    basis_fn(2*i)%kinetic = x
+                end if
+            else if (j == 0 .and. b == 0) then
+                ! < i | h | a >
+            else
+                ! < i j | 1/r_12 | a b >
+            end if
         end do
 
         if (ios > 0) call stop_all('read_input','Problem reading input.')
         close(ir, status='keep')
+
+        do i = 1, nbasis
+            write (6,*) basis_fns(i)
+        end do
 
     end subroutine read_in_fcidump
 
