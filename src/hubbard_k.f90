@@ -23,7 +23,7 @@ contains
 
         ! T is diagonal in the basis of momentum-space functions.
         if (phi1 == phi2) then
-            one_e_int = basis_fns(phi1)%kinetic
+            one_e_int = basis_fns(phi1)%sp_eigv
         else
             one_e_int = 0.0_p
         end if

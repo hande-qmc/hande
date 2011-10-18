@@ -16,6 +16,7 @@ contains
         ! See also notes below.
 
         use basis, only: nbasis, basis_fns, init_basis_fn
+        use basis, only: write_basis_fn
         use system, only: fcidump
 
         use utils, only: get_free_unit
@@ -154,10 +155,10 @@ contains
             else if (j == 0 .and. a == 0 .and. b == 0) then
                 ! \epsilon_i
                 if (uhf) then
-                    basis_fn(i)%kinetic = x
+                    basis_fns(i)%sp_eigv = x
                 else
-                    basis_fn(2*i-1)%kinetic = x
-                    basis_fn(2*i)%kinetic = x
+                    basis_fns(2*i-1)%sp_eigv = x
+                    basis_fns(2*i)%sp_eigv = x
                 end if
             else if (j == 0 .and. b == 0) then
                 ! < i | h | a >
@@ -170,7 +171,7 @@ contains
         close(ir, status='keep')
 
         do i = 1, nbasis
-            write (6,*) basis_fns(i)
+            call write_basis_fn(basis_fns(i), new_line=.true.)
         end do
 
     end subroutine read_in_fcidump

@@ -111,7 +111,7 @@ contains
         ! Rank by kinetic energy (applies to momentum space formulation only).
         select case(system_type)
         case(hub_k)
-            call mrgref(tmp_basis_fns(:)%kinetic, basis_fns_ranking)
+            call mrgref(tmp_basis_fns(:)%sp_eigv, basis_fns_ranking)
         case(hub_real)
             forall (i=1:nbasis/2) basis_fns_ranking(i) = i
         end select

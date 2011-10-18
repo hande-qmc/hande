@@ -8,14 +8,10 @@ implicit none
 
 ! Define a spin orbital.
 type basis_fn
-    ! l is a (set of) quantum number(s) describing the basis function.
-    ! l is used in three different contexts depending upon whether the orbitals
-    ! are defined using point group symmetry, in momentum space or in real
-    ! space.  The latter two only apply to model Hamiltonians (e.g. Hubbard
-    ! model).
-    ! Point group:
-    !     l is the index of the irreducible representation spanned by the
-    !     orbital.
+    ! Set of quantum numbers describing the basis function.
+    ! l is used in two different contexts depending upon whether the orbitals
+    ! are defined in momentum space or in real space.  Applies only to model
+    ! Hamiltonians (e.g. Hubbard model).
     ! Momentum space:
     !     l is the wavevector in terms of the reciprocal lattice vectors of the crystal cell.
     ! Real space:
@@ -24,10 +20,25 @@ type basis_fn
     ! Obviously we should not convert between descriptions within one
     ! calculation! ;-)
     integer, pointer :: l(:) => NULL()
+    ! Index of the irreducible representation spanned by the orbital.  Used only
+    ! in systems where point group symmetry is used (e.g.  molecules).  See
+    ! notes in pg_symmetry.
+    integer :: sym = 0
+    ! Index of the irreducible representation spanned by the orbital.  Used only
+    ! in systems where point group symmetry is used (e.g.  molecules).  See
+    ! notes in pg_symmetry.
+    integer :: sym_index = 0
     ! Spin of the electron (1 or -1).
     integer :: ms
-    ! Kinetic energy.  Used only in model Hamiltonians defined in momentum space.
-    real(p) :: kinetic
+    ! single-particle energy of basis function.
+    ! model Hamiltonians in momentum space:
+    !     sp_eigv is the kinetic energy of the basis function.
+    ! model Hamiltonians in real space:
+    !     sp_eigv is not set/used.
+    ! molecular systems:
+    !     sp_eigv is the single-particle energy read in from the FCIDUMP file
+    !     (e.g. Hartree--Fock or Kohn--Sham eigenvalue).
+    real(p) :: sp_eigv 
 end type basis_fn
 
 ! Store of information about the (spin) basis functions of the system.
@@ -111,9 +122,9 @@ contains
         if (present(l)) then
             b%l = l
             if (system_type == hub_k) then
-                b%kinetic = calc_kinetic(l)
+                b%sp_eigv = calc_kinetic(l)
             else
-                b%kinetic = 0.0_p
+                b%sp_eigv = 0.0_p
             end if
         end if
 
@@ -165,7 +176,7 @@ contains
         write (io,'(")")', advance='no')
         if (print_all) then
             write (io,'(5X,i2)', advance='no') b%ms
-            if (system_type /= hub_real) write (io,'(4X,f12.8)', advance='no') b%kinetic
+            if (system_type /= hub_real) write (io,'(4X,f12.8)', advance='no') b%sp_eigv
         end if
         if (present(new_line)) then
             if (new_line) write (io,'()')

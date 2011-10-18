@@ -78,7 +78,6 @@ contains
             case('READ')
                 system_type = read_in
                 if (item /= nitems) call reada(fcidump)
-                ndim = 1 ! Used to store minimal information.
 
             ! System information.
             case('LATTICE')

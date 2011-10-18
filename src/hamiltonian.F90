@@ -213,7 +213,7 @@ contains
         ! One electron operator
         ! Get directly rather than incur the cost of the if test in get_one_e_int_k.
         do i = 1, nel
-            hmatel = hmatel + basis_fns(occ_list(i))%kinetic
+            hmatel = hmatel + basis_fns(occ_list(i))%sp_eigv
         end do
 
     end function slater_condon0_hub_k
