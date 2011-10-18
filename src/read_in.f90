@@ -133,14 +133,14 @@ contains
         do i = 1, nbasis
             if (uhf) then
                 if (mod(i,2) == 0) then
-                    call init_basis_fn(basis_fns(i), (/orbsym(i)-1/), -1)
+                    call init_basis_fn(basis_fns(i), sym=orbsym(i)-1, ms=-1)
                 else
-                    call init_basis_fn(basis_fns(i), (/orbsym(i)-1/), 1)
+                    call init_basis_fn(basis_fns(i), sym=orbsym(i)-1, ms=1)
                 end if
             else
                 ! Need to initialise both up- and down-spin basis functions.
-                call init_basis_fn(basis_fns(2*i-1), (/orbsym(i)-1/), -1)
-                call init_basis_fn(basis_fns(2*i), (/orbsym(i)-1/), -1)
+                call init_basis_fn(basis_fns(2*i-1), sym=orbsym(i)-1, ms=-1)
+                call init_basis_fn(basis_fns(2*i), sym=orbsym(i)-1, ms=-1)
             end if
         end do
 

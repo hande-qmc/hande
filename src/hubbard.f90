@@ -99,7 +99,7 @@ contains
                             ! Have found an allowed wavevector/site.
                             ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
-                            call init_basis_fn(tmp_basis_fns(ibasis), kp(1:ndim), 1)
+                            call init_basis_fn(tmp_basis_fns(ibasis), l=kp(1:ndim), ms=1)
                         end if
                     end if
                 end do
@@ -122,8 +122,8 @@ contains
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
-            call init_basis_fn(basis_fns(2*i-1), basis_fn_p%l, basis_fn_p%ms)
-            call init_basis_fn(basis_fns(2*i), basis_fn_p%l, -basis_fn_p%ms)
+            call init_basis_fn(basis_fns(2*i-1), l=basis_fn_p%l, ms=basis_fn_p%ms)
+            call init_basis_fn(basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
             call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
         end do

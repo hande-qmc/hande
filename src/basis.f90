@@ -85,23 +85,28 @@ integer, allocatable :: basis_lookup(:,:) ! (i0_length, basis_length)
 
 contains
 
-    subroutine init_basis_fn(b, l, ms)
+    subroutine init_basis_fn(b, l, sym, ms)
 
         ! Initialise a variable of type basis_fn.
         ! In:
-        !    k (optional): quantum numbers of the basis function.
-        !                  Momentum space formulation:
-        !                      wavevector in units of the reciprocal lattice vectors
-        !                      of the crystal cell.
-        !                  Real space formulation:
-        !                      position of basis function within the crystal cell
-        !                      in units of the primitive lattice vectors.
+        !    l (optional): quantum numbers of the basis function.  Used only in
+        !        model Hamiltonians.
+        !        Momentum space formulation:
+        !            wavevector in units of the reciprocal lattice vectors of
+        !            the crystal cell.
+        !        Real space formulation:
+        !            position of basis function within the crystal cell in units
+        !            of the primitive lattice vectors.
+        !    sym (optional): symmetry label of the basis function.  Used only in
+        !        systems with point group symmetry (i.e. read in from an FCIDUMP
+        !        file).
         !    ms (optional): set spin of an electron occupying the basis function.
         ! Out:
-        !    b: initialsed basis function.  The wavevector and kinetic energy
-        !      components are set if the k arguments is given and the ms component
-        !      is set if the ms argument is given.  If no optional arguments are
-        !      specified then a completely blank variable is returned.
+        !    b: initialsed basis function.  The wavevector and (if appropriate
+        !      to the system) single-particle eigenvalue components are set if
+        !      the l arguments is given and the ms component is set if the ms
+        !      argument is given.  If no optional arguments are specified then
+        !      a completely blank variable is returned.
         !
         ! This should be called even if l and ms are not specified so that the
         ! l component can be correctly allocated.
@@ -111,7 +116,7 @@ contains
 
         type(basis_fn), intent(out) :: b
         integer, intent(in), optional  :: l(ndim)
-        integer, intent(in), optional  :: ms
+        integer, intent(in), optional  :: sym, ms
         integer :: ierr
 
         if (.not.associated(b%l)) then
@@ -127,6 +132,8 @@ contains
                 b%sp_eigv = 0.0_p
             end if
         end if
+
+        if (present(sym)) b%sym = sym
 
         if (present(ms)) b%ms = ms
 
