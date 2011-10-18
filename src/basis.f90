@@ -142,10 +142,10 @@ contains
         !    new_line (optional): if true, then a new line is written at
         !        the end of the list of occupied orbitals.  Default: no
         !        new line.
-        !    print_full (optional): if true (default) then the quantum numbers,
-        !         spin and (for momentum space models) kinetic energy associated
-        !         with the basis function are printed.  If false, only the
-        !         quantum numbers are printed.
+        !    print_full (optional): if true (default) then the symmetry and spin
+        !        quantum numbers and (if appropriate) single-particle energy
+        !        associated with the basis function are printed.  If false, only
+        !        the quantum numbers are printed.
 
         use system, only: system_type, hub_real
 
@@ -168,12 +168,16 @@ contains
             print_all = .true.
         end if
 
-        write (io,'(1X,"(")', advance='no')
-        write (io,'(i3)',advance='no') b%l(1)
-        do i = 2,ndim
-            write (io,'(",",i3)',advance='no') b%l(i)
-        end do
-        write (io,'(")")', advance='no')
+        if (system_type == read_in) then
+            write (io, '(1X, i2, 3X, i2)') b%sym, b%sym_index
+        else
+            write (io,'(1X,"(")', advance='no')
+            write (io,'(i3)',advance='no') b%l(1)
+            do i = 2,ndim
+                write (io,'(",",i3)',advance='no') b%l(i)
+            end do
+            write (io,'(")")', advance='no')
+        end if
         if (print_all) then
             write (io,'(5X,i2)', advance='no') b%ms
             if (system_type /= hub_real) write (io,'(4X,f12.8)', advance='no') b%sp_eigv
