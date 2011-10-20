@@ -17,6 +17,7 @@ contains
 
         use basis, only: nbasis, basis_fns, init_basis_fn
         use basis, only: write_basis_fn
+        use point_group_symmetry, only: init_pg_symmetry
         use system, only: fcidump
 
         use utils, only: get_free_unit
@@ -130,6 +131,7 @@ contains
         allocate(basis_fns(nbasis), stat=ierr)
         call check_allocate('basis_fns', nbasis, ierr)
 
+        ! Set up basis functions.
         do i = 1, nbasis
             if (uhf) then
                 if (mod(i,2) == 0) then
@@ -143,6 +145,19 @@ contains
                 call init_basis_fn(basis_fns(2*i), sym=orbsym(i)-1, ms=-1)
             end if
         end do
+
+        ! Was a symmetry found for all basis functions?  If not, then we must
+        ! turn symmetry off.
+        if (minval(orbsym) < 0) then
+            write (6,'(1X,a62)') 'Unconverged symmetry found.  Turning point group symmetry off.'
+            forall (i=1:nbasis) basis_fns(i)%sym = 0
+        end if
+
+        ! Set up symmetry information.
+        call init_pg_symmetry()
+
+        ! Initialise integral stores.
+        !call init_molecular_integrals()
 
         ! read integrals and eigenvalues
         do

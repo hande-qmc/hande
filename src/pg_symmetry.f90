@@ -39,9 +39,10 @@ module point_group_symmetry
 ! Thus the totally symmetric representation is always labelled by the 0 bit
 ! string.
 !
-! Direct products are easily evaluated: even \cross even = even,
-! odd \cross odd = even and odd \cross even = odd.  Hence the direct product can
-! be found by taking XOR of the representations involved.
+! Direct products are easily evaluated by considering the characters of the
+! generator operations in the product: even \cross even = even, odd \cross odd = even 
+! and odd \cross even = odd.  Hence the direct product can be found by
+! taking XOR of the representations involved.
 !
 ! As we consider (at most) D2h (3 generators) we can just use a standard integer
 ! to represent the irreducible representations.  The higher bits are wasted, but
@@ -51,6 +52,55 @@ use const
 
 implicit none
 
+! Following the above discussion, the totally symmetric representation is given
+! by the null bit string.
+integer, parameter :: gamma_sym = 0
+
+! nbasis_sym(i) gives the number of (spin) basis functions in the i-th symmetry,
+! where i is the bit string describing the irreducible representation.
+integer, allocatable :: nbasis_sym(:)
+
 contains
+
+    subroutine init_pg_symmetry()
+
+        ! Initialise point group symmetry information.
+        ! *Must* be called after basis functions are initialised and have their
+        ! symmetries set from the FCIDUMP file.
+
+        use checking, only: check_allocate
+
+        use basis, only: basis_fns, nbasis
+        use symmetry, only: nsym
+
+        integer :: i, ierr
+
+        nsym = maxval(basis_fns(:)%sym) + 1
+        
+        allocate(nbasis_sym(0:nsym-1), stat=ierr)
+        call check_allocate('nbasis_sym', nsym, ierr)
+        nbasis_sym = 0
+
+        do i = 1, nbasis
+            nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
+            basis_fns(i)%sym_index = nbasis_sym(basis_fns(i)%sym)
+        end do
+
+    end subroutine init_pg_symmetry
+
+    subroutine end_pg_symmetry()
+
+        ! Deallocate arrays containing point group symmetry information.
+
+        use checking, only: check_deallocate
+
+        integer :: ierr
+
+        if (allocated(nbasis_sym)) then
+            deallocate(nbasis_sym, stat=ierr)
+            call check_deallocate('nbasis_sym', ierr)
+        end if
+
+    end subroutine end_pg_symmetry
 
 end module point_group_symmetry
