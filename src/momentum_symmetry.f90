@@ -1,10 +1,15 @@
 module momentum_symmetry
 
-implicit none
+! Module for handling crystal momentum symmetry.
 
-! Number of symmetries.
-! Currently only crystal momentum is implemented.
-integer :: nsym
+! NOTE:
+! Currently implemented assuming that there is one band per k-point (as in the
+! Hubbard model or UEG, for instance).  Generalising to multiple bands would be
+! relatively straightforward.
+
+use symmetry, only: nsym
+
+implicit none
 
 ! Index of the symmetry corresponding to the Gamma-point.
 integer :: gamma_sym
