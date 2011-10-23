@@ -6,6 +6,9 @@ implicit none
 
 real(p) :: Ecore
 
+! UHF or RHF orbitals?
+logical :: uhf
+
 contains
 
     subroutine read_in_fcidump
@@ -30,7 +33,6 @@ contains
         ! It's reasonably safe to assume that we'll never use more than 1000
         ! orbitals!
         integer :: norb, nelec, ms2, orbsym(1000), isym, syml(1000), symlz(1000)
-        logical :: uhf = .false.
 
         ! Integrals
         integer :: i, j, a, b
