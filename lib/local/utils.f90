@@ -183,7 +183,7 @@ contains
 
     end subroutine get_unique_filename
 
-    function tri_ind(i,j) result(indx)
+    elemental function tri_ind(i,j) result(indx)
 
         ! Find the index corresponding to the (i,j)-th element of a lower
         ! triangular array.  This maps:
