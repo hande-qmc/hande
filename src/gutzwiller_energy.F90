@@ -110,7 +110,7 @@ contains
                                         bra = ibclr(ket(iel_ket), ipos_ket)
                                         bra = ibset(bra(iel_bra), ipos_bra)
                                         spin_sum_2 = diagonal_element_heisenberg(bra)/J_coupling
-                                        exp_energy = exp_energy - 2.0_dp*J_coupling*&
+                                        exp_energy = exp_energy + 2.0_dp*J_coupling*&
                                               exp(b_parameter*(spin_sum_1+spin_sum_2))
                                         counter = counter - 1
                                         if (counter == 0) then

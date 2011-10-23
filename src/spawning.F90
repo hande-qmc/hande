@@ -377,11 +377,11 @@ contains
         
             bit_position = bit_lookup(1,connection%from_orb(1))
             bit_element = bit_lookup(2,connection%from_orb(1))
-            bitstring_j = ibclr(bitstring_j(bit_element),bit_position)
+            bitstring_j(bit_element) = ibclr(bitstring_j(bit_element),bit_position)
             
             bit_position = bit_lookup(1,connection%to_orb(1))
             bit_element = bit_lookup(2,connection%to_orb(1))
-            bitstring_j = ibset(bitstring_j(bit_element),bit_position)
+            bitstring_j(bit_element) = ibset(bitstring_j(bit_element),bit_position)
             
             amp_j = diagonal_element_heisenberg(bitstring_j)/J_coupling
             amp_j = exp(gutzwiller_parameter*amp_j)
@@ -389,7 +389,7 @@ contains
             amp_i = walker_energies(1,cdet%idet)/J_coupling
             amp_i = exp(gutzwiller_parameter*amp_i)
             
-            hmatel = (amp_j*hmatel)/amp_i
+            hmatel = -(amp_j*hmatel)/amp_i
         
         end if
 
