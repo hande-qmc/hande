@@ -24,10 +24,16 @@ type basis_fn
     ! in systems where point group symmetry is used (e.g.  molecules).  See
     ! notes in pg_symmetry.
     integer :: sym = 0
-    ! Index of the irreducible representation spanned by the orbital.  Used only
-    ! in systems where point group symmetry is used (e.g.  molecules).  See
-    ! notes in pg_symmetry.
+    ! Index of basis function within the symmetry block.  sym_index = n
+    ! indicates the basis function is the fifth in basis_fns array to have the
+    ! symmetry given by sym.
+    ! Used only with point_group symmetry.
     integer :: sym_index = 0
+    ! Index of basis function within the symmetry block.  sym_spin_index = n
+    ! indicates the basis function is the fifth in basis_fns array to have the
+    ! symmetry given by sym *and* with the spin given by ms.
+    ! Used only with point_group symmetry.
+    integer :: sym_spin_index = 0
     ! Spin of the electron (1 or -1).
     integer :: ms
     ! single-particle energy of basis function.

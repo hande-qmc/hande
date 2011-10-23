@@ -47,6 +47,10 @@ module point_group_symmetry
 ! As we consider (at most) D2h (3 generators) we can just use a standard integer
 ! to represent the irreducible representations.  The higher bits are wasted, but
 ! the memory used is minimal.
+!
+! For a point group containing n generators, there are 2^n irreducible
+! representations.  Due to the bit representation described above, these
+! representations are labelled by the set of integers {0,1,...2^n-1}.
 
 use const
 
@@ -59,6 +63,12 @@ integer, parameter :: gamma_sym = 0
 ! nbasis_sym(i) gives the number of (spin) basis functions in the i-th symmetry,
 ! where i is the bit string describing the irreducible representation.
 integer, allocatable :: nbasis_sym(:)
+
+! nbasis_sym_spin(1,i) gives the number of spin-down basis functions in the i-th
+! symmetry where i is the bit string describing the irreducible representation.
+! Similarly, j=2 gives the analagous quantity for spin-up basis functions.
+! For RHF calculations nbasis_sym_spin(:,i) = nbasis_sym(i)/2.
+integer, allocatable :: nbasis_sym_spin(:,:)
 
 contains
 
@@ -79,11 +89,22 @@ contains
         
         allocate(nbasis_sym(0:nsym-1), stat=ierr)
         call check_allocate('nbasis_sym', nsym, ierr)
+        allocate(nbasis_sym_spin(2,0:nsym-1), stat=ierr)
+        call check_allocate('nbasis_sym_spin', 2*nsym, ierr)
+
         nbasis_sym = 0
+        nbasis_sym_spin = 0
 
         do i = 1, nbasis
             nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
             basis_fns(i)%sym_index = nbasis_sym(basis_fns(i)%sym)
+            if (basis_fns(i)%ms == -1) then
+                nbasis_sym_spin(1,basis_fns(i)%sym) = nbasis_sym_spin(1,basis_fns(i)%sym) + 1
+                basis_fns(i)%sym_spin_index = nbasis_sym_spin(1,basis_fns(i)%sym)
+            else
+                nbasis_sym_spin(2,basis_fns(i)%sym) = nbasis_sym_spin(2,basis_fns(i)%sym) + 1
+                basis_fns(i)%sym_spin_index = nbasis_sym_spin(2,basis_fns(i)%sym)
+            end if
         end do
 
     end subroutine init_pg_symmetry
