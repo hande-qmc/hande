@@ -124,4 +124,54 @@ contains
 
     end subroutine end_pg_symmetry
 
+    elemental function cross_product_pg_basis(i, j) result(sym_ij)
+
+        ! In:
+        !    i,j: (indices of) spin-orbitals.
+        ! Returns:
+        !    The bit string representation of the irreducible representation
+        !    formed from the direct product i%sym \cross j%sym, where i%sym is
+        !    the irreducible representation spanned by the i-th spin-orbital.
+
+        use basis, only: basis_fns
+
+        integer :: sym_ij
+        integer, intent(in) :: i, j
+
+        sym_ij = ieor(basis_fns(i)%sym, basis_fns(j)%sym)
+
+    end function cross_product_pg_basis
+
+    elemental function cross_product_pg_sym(sym_i, sym_j) result(sym_ij)
+
+        ! In:
+        !    sym_i,sym_j: bit string representations of irreducible
+        !    representations of a point group.
+        ! Returns:
+        !    The bit string representation of the irreducible representation
+        !    formed from the direct product sym_i \cross sym_j.
+
+        integer :: sym_ij
+        integer, intent(in) :: sym_i, sym_j
+
+        sym_ij = ieor(sym_i, sym_j)
+
+    end function cross_product_pg_sym
+
+    elemental function is_gamma_irrep_pg_sym(sym) result(is_gamma)
+
+        ! In:
+        !    sym: bit string representation of an irreducible representation of
+        !    a point group.
+        ! Returns:
+        !    True if sym represents the Gamma_1 (totally symmetric) irreducible
+        !    representation.
+
+        logical :: is_gamma
+        integer, intent(in) :: sym
+
+        is_gamma = gamma_sym == sym
+
+    end function is_gamma_irrep_pg_sym
+
 end module point_group_symmetry
