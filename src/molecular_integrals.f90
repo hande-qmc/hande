@@ -1,6 +1,6 @@
 module moulecular_integrals
 
-! 
+!
 
 use const, only: p
 use base_types, only: alloc_rp1d
@@ -31,12 +31,11 @@ contains
         integer :: nspin
 
         ! TODO:
-        ! * in UHF can compress integral stores by ensuring spin is conserved.
         ! * can compress coulomb integral store by ensuring integrand is totally
         !   symmetric.
 
         ! if rhf then need to store only integrals for spatial orbitals.
-        ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha > 
+        ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
         if (uhf) then
             nspin = 2
         else
@@ -98,125 +97,125 @@ contains
 ! TODO:
 ! fast and specific 'get' functions for UHF and RHF cases
 
-   subroutine store_one_e_int_mol(i, j, intgrl) 
+    subroutine store_one_e_int_mol(i, j, intgrl)
 
-       ! Store <i|h|j> in the appropriate slot in one_e_int.
-       ! one_e_int does not have room for non-zero integrals, so it is assumed
-       ! that <i|h|j> is non-zero by spin and spatial symmetry.
-       !
-       ! In:
-       !    i,j: (indices of) spin-orbitals.
-       !    intgrl: <i|h|j>, where h is the one-body Hamiltonian operator.
+        ! Store <i|h|j> in the appropriate slot in one_e_int.
+        ! one_e_int does not have room for non-zero integrals, so it is assumed
+        ! that <i|h|j> is non-zero by spin and spatial symmetry.
+        !
+        ! In:
+        !    i,j: (indices of) spin-orbitals.
+        !    intgrl: <i|h|j>, where h is the one-body Hamiltonian operator.
 
-       use basis, only: basis_fns
-       use read_in, only: uhf
+        use basis, only: basis_fns
+        use read_in, only: uhf
 
-       use const, only: depsilon
-       use errors, only: stop_all
-       use utils, only: tri_ind
+        use const, only: depsilon
+        use errors, only: stop_all
+        use utils, only: tri_ind
 
-       integer, intent(in) :: i, j
-       real(p), intent(in) :: intgrl
+        integer, intent(in) :: i, j
+        real(p), intent(in) :: intgrl
 
-       integer :: ii, jj, spin
-       character(255) :: error
+        integer :: ii, jj, spin
+        character(255) :: error
 
-       if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
-           ! Integral is (should be!) non-zero by symmetry.
-           if (uhf) then
-               if (basis_fns(i)%ms > 0) then
-                   spin = 1
-               else
-                   spin = 2
-               end if
-           else
-               spin = 1
-           end if
-           ii = basis_fns(i)%sym_spin_index
-           jj = basis_fns(j)%sym_spin_index
-           if (ii >= jj) then
-               one_e_int(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
-           else
-               one_e_int(spin,basis_fns(i)%sym)%v(tri_ind(jj,ii)) = intgrl
-           end if
-       else if (abs(intgrl) > depsilon) then
-           write (error, '("<i|h|j> should be non-zero by symmetry: &
-                           &<",i3,"|h|",i3,"> =",f16.10)') i, j, intgrl
-           call stop_all('store_one_e_int_mol', error)
-       end if
+        if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+            ! Integral is (should be!) non-zero by symmetry.
+            if (uhf) then
+                if (basis_fns(i)%ms > 0) then
+                    spin = 1
+                else
+                    spin = 2
+                end if
+            else
+                spin = 1
+            end if
+            ii = basis_fns(i)%sym_spin_index
+            jj = basis_fns(j)%sym_spin_index
+            if (ii >= jj) then
+                one_e_int(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
+            else
+                one_e_int(spin,basis_fns(i)%sym)%v(tri_ind(jj,ii)) = intgrl
+            end if
+        else if (abs(intgrl) > depsilon) then
+            write (error, '("<i|h|j> should be non-zero by symmetry: &
+                            &<",i3,"|h|",i3,"> =",f16.10)') i, j, intgrl
+            call stop_all('store_one_e_int_mol', error)
+        end if
 
-   end subroutine store_one_e_int_mol
+    end subroutine store_one_e_int_mol
 
-   elemental function get_one_e_int_mol(i, j) result(intgrl) 
+    elemental function get_one_e_int_mol(i, j) result(intgrl)
 
-       ! In:
-       !    i,j: (indices of) spin-orbitals.
-       ! Returns:
-       !    <i|h|j>, the corresponding one-body matrix element, where h is the
-       !    one-body Hamiltonian operator.
-       !
-       ! NOTE:
-       !    If <i|h|j> is known the be non-zero by spin and spatial symmetry,
-       !    then it is faster to call get_one_e_int_mol_nonzero.
-       !    It is also faster to call RHF- or UHF-specific routines.
+        ! In:
+        !    i,j: (indices of) spin-orbitals.
+        ! Returns:
+        !    <i|h|j>, the corresponding one-body matrix element, where h is the
+        !    one-body Hamiltonian operator.
+        !
+        ! NOTE:
+        !    If <i|h|j> is known the be non-zero by spin and spatial symmetry,
+        !    then it is faster to call get_one_e_int_mol_nonzero.
+        !    It is also faster to call RHF- or UHF-specific routines.
 
-       use basis, only: basis_fns
+        use basis, only: basis_fns
 
-       real(p) :: intgrl 
-       integer, intent(in) :: i, j
+        real(p) :: intgrl
+        integer, intent(in) :: i, j
 
-       if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
-           intgrl = get_one_e_int_mol_nonzero(i, j)
-       else
-           intgrl = 0.0_p
-       end if
+        if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+            intgrl = get_one_e_int_mol_nonzero(i, j)
+        else
+            intgrl = 0.0_p
+        end if
 
-   end function get_one_e_int_mol
+    end function get_one_e_int_mol
 
-   elemental function get_one_e_int_mol_nonzero(i, j) result(intgrl) 
+    elemental function get_one_e_int_mol_nonzero(i, j) result(intgrl)
 
-       ! In:
-       !    i,j: (indices of) spin-orbitals.
-       ! Returns:
-       !    <i|h|j>, the corresponding one-body matrix element, where h is the
-       !    one-body Hamiltonian operator.
-       !
-       ! NOTE:
-       !    This assumes that <i|h|j> is known the be non-zero by spin and
-       !    spatial symmetry.  If this is not true then this routine will return
-       !    either an incorrect value or cause an array-bounds error.  If
-       !    <i|h|j> might be zero by symmetry, get_one_e_int_mol must be called
-       !    instead.
-       !    It is faster to call RHF- or UHF-specific routines.
+        ! In:
+        !    i,j: (indices of) spin-orbitals.
+        ! Returns:
+        !    <i|h|j>, the corresponding one-body matrix element, where h is the
+        !    one-body Hamiltonian operator.
+        !
+        ! NOTE:
+        !    This assumes that <i|h|j> is known the be non-zero by spin and
+        !    spatial symmetry.  If this is not true then this routine will return
+        !    either an incorrect value or cause an array-bounds error.  If
+        !    <i|h|j> might be zero by symmetry, get_one_e_int_mol must be called
+        !    instead.
+        !    It is faster to call RHF- or UHF-specific routines.
 
-       use basis, only: basis_fns
-       use read_in, only: uhf
+        use basis, only: basis_fns
+        use read_in, only: uhf
 
-       use utils, only: tri_ind
+        use utils, only: tri_ind
 
-       real(p) :: intgrl
-       integer, intent(in) :: i, j
+        real(p) :: intgrl
+        integer, intent(in) :: i, j
 
-       integer :: ii, jj, spin
+        integer :: ii, jj, spin
 
-       if (uhf) then
-           if (basis_fns(i)%ms > 0) then
-               spin = 1
-           else
-               spin = 2
-           end if
-       else
-           spin = 1
-       end if
-       ii = basis_fns(i)%sym_spin_index
-       jj = basis_fns(j)%sym_spin_index
+        if (uhf) then
+            if (basis_fns(i)%ms > 0) then
+                spin = 1
+            else
+                spin = 2
+            end if
+        else
+            spin = 1
+        end if
+        ii = basis_fns(i)%sym_spin_index
+        jj = basis_fns(j)%sym_spin_index
 
-       if (ii >= jj) then
-           intgrl = one_e_int(spin, basis_fns(i)%sym)%v(tri_ind(ii,jj))
-       else
-           intgrl = one_e_int(spin, basis_fns(i)%sym)%v(tri_ind(jj,ii))
-       end if
+        if (ii >= jj) then
+            intgrl = one_e_int(spin, basis_fns(i)%sym)%v(tri_ind(ii,jj))
+        else
+            intgrl = one_e_int(spin, basis_fns(i)%sym)%v(tri_ind(jj,ii))
+        end if
 
-   end function get_one_e_int_mol_nonzero
+    end function get_one_e_int_mol_nonzero
 
 end module moulecular_integrals
