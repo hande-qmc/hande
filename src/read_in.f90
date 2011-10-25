@@ -1,13 +1,10 @@
-module read_in
+module read_in_system
 
 use const
 
 implicit none
 
 real(p) :: Ecore
-
-! UHF or RHF orbitals?
-logical :: uhf
 
 contains
 
@@ -20,8 +17,10 @@ contains
 
         use basis, only: nbasis, basis_fns, init_basis_fn
         use basis, only: write_basis_fn
+        use molecular_integrals, only: init_molecular_integrals, store_one_e_int_mol, &
+                                       store_two_e_int_mol
         use point_group_symmetry, only: init_pg_symmetry
-        use system, only: fcidump
+        use system, only: fcidump, uhf
 
         use utils, only: get_free_unit
         use checking, only: check_allocate
@@ -42,7 +41,7 @@ contains
         integer :: ir, ios, ierr
         logical :: t_exists
 
-        namelist /FCI/ norb, nelec, ms2, orbsym, uhf
+        namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz
 
         ! avoid annoying compiler warnings over unused variables in FCI namelist
         ! that are present for NECI compatibility.
@@ -119,7 +118,7 @@ contains
         inquire(file=fcidump, exist=t_exists)
         if (.not.t_exists) call stop_all('read_in_fcidump', 'FCIDUMP does not &
                                                            &exist:'//trim(fcidump))
-        open (ir, file=fcidump, status='old', form='formatted', iostat=ios)
+        open (ir, file=fcidump, status='old', form='formatted')
 
         ! read system data
         read (ir, FCI)
@@ -142,19 +141,19 @@ contains
                     call init_basis_fn(basis_fns(i), sym=orbsym(i)-1, ms=1)
                 end if
                 ! Assume orbitals are ordered appropriately in FCIDUMP...
-                basis_fns(i)%spatial = (i+1)/2
+                basis_fns(i)%spatial_index = (i+1)/2
             else
                 ! Need to initialise both up- and down-spin basis functions.
                 call init_basis_fn(basis_fns(2*i-1), sym=orbsym(i)-1, ms=-1)
                 call init_basis_fn(basis_fns(2*i), sym=orbsym(i)-1, ms=-1)
-                basis_fns(2*i-1)%spatial = i
-                basis_fns(2*i)%spatial = i
+                basis_fns(2*i-1)%spatial_index = i
+                basis_fns(2*i)%spatial_index = i
             end if
         end do
 
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
-        if (minval(orbsym) < 0) then
+        if (minval(orbsym(:norb)) < 0) then
             write (6,'(1X,a62)') 'Unconverged symmetry found.  Turning point group symmetry off.'
             forall (i=1:nbasis) basis_fns(i)%sym = 0
         end if
@@ -163,12 +162,21 @@ contains
         call init_pg_symmetry()
 
         ! Initialise integral stores.
-        !call init_molecular_integrals()
+        call init_molecular_integrals()
 
         ! read integrals and eigenvalues
         do
             ! loop over lines.
-            read (ir,*) x, i, a, j, b
+            read (ir,*, iostat=ios) x, i, a, j, b
+            write (6,*) x, i, a, j, b
+            if (ios < 0) exit ! reached end of file
+            if (.not.uhf) then
+                ! Working in spin-orbitals but FCIDUMP is in spatial orbitals.
+                i = i*2
+                j = j*2
+                a = a*2
+                b = b*2
+            end if
             if (ios < 0) exit ! end of file
             if (i == 0 .and. j == 0 .and. a == 0 .and. b == 0) then
                 ! Ecore
@@ -178,13 +186,15 @@ contains
                 if (uhf) then
                     basis_fns(i)%sp_eigv = x
                 else
-                    basis_fns(2*i-1)%sp_eigv = x
-                    basis_fns(2*i)%sp_eigv = x
+                    basis_fns(i-1)%sp_eigv = x
+                    basis_fns(i)%sp_eigv = x
                 end if
             else if (j == 0 .and. b == 0) then
                 ! < i | h | a >
+                call store_one_e_int_mol(i, a, x)
             else
                 ! < i j | 1/r_12 | a b >
+                call store_two_e_int_mol(i, j, a, b, x)
             end if
         end do
 
@@ -197,4 +207,4 @@ contains
 
     end subroutine read_in_fcidump
 
-end module read_in
+end module read_in_system

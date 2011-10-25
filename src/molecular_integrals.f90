@@ -1,4 +1,4 @@
-module moulecular_integrals
+module molecular_integrals
 
 ! TODO:
 ! * comment start of module and module-level variables
@@ -33,7 +33,7 @@ contains
 
         use basis, only: nbasis
         use point_group_symmetry, only: nbasis_sym_spin
-        use read_in, only: uhf
+        use system, only: uhf
 
         use checking, only: check_allocate
 
@@ -133,7 +133,7 @@ contains
         !    intgrl: <i|h|j>, where h is the one-body Hamiltonian operator.
 
         use basis, only: basis_fns
-        use read_in, only: uhf
+        use system, only: uhf
 
         use const, only: depsilon
         use errors, only: stop_all
@@ -214,7 +214,7 @@ contains
         !    It is faster to call RHF- or UHF-specific routines.
 
         use basis, only: basis_fns
-        use read_in, only: uhf
+        use system, only: uhf
 
         use utils, only: tri_ind
 
@@ -254,7 +254,7 @@ contains
         !    <ij|ab> integral.
 
         use basis, only: basis_fns
-        use read_in, only: uhf
+        use system, only: uhf
 
         use utils, only: tri_ind
 
@@ -431,4 +431,4 @@ contains
 
     end function get_two_e_int_mol_nonzero
 
-end module moulecular_integrals
+end module molecular_integrals

@@ -69,6 +69,9 @@ real(p) :: hub_k_coulomb
 ! FCIDUMP filename
 character(255) :: fcidump = 'FCIDUMP'
 
+! UHF or RHF orbitals?
+logical :: uhf = .false.
+
 contains
 
     subroutine init_system()
