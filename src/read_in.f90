@@ -134,7 +134,7 @@ contains
         call check_allocate('basis_fns', nbasis, ierr)
 
         ! Set up basis functions.
-        do i = 1, nbasis
+        do i = 1, norb
             if (uhf) then
                 if (mod(i,2) == 0) then
                     call init_basis_fn(basis_fns(i), sym=orbsym(i)-1, ms=-1)
