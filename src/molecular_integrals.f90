@@ -1,15 +1,24 @@
 module moulecular_integrals
 
-!
+! TODO:
+! * comment start of module and module-level variables
+! * (compile-time option) allocate arrays using shmem.
 
 use const, only: p
 use base_types, only: alloc_rp1d
 
 implicit none
 
+type int_indx
+    integer :: spin_channel, indx
+end type
+
 type(alloc_rp1d), allocatable :: one_e_int(:,:)
 
-real(p), allocatable :: two_e_int(:)
+! TODO:
+! * can compress coulomb integral store by ensuring integrand is totally
+!   symmetric.
+type(alloc_rp1d), allocatable :: two_e_int(:)
 
 contains
 
@@ -22,17 +31,14 @@ contains
 
         ! *Must* be called after point group symmetry is initialised.
 
+        use basis, only: nbasis
         use point_group_symmetry, only: nbasis_sym_spin
         use read_in, only: uhf
 
         use checking, only: check_allocate
 
         integer :: ierr, i, s, ispin
-        integer :: nspin
-
-        ! TODO:
-        ! * can compress coulomb integral store by ensuring integrand is totally
-        !   symmetric.
+        integer :: nspin, npairs, nintgrls
 
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
@@ -62,8 +68,25 @@ contains
             end do
         end do
 
-        ! TODO:
-        ! two-electron integral store.
+        ! Allocate general store for the two-electron integrals.
+        allocate(two_e_int(nspin**2), stat=ierr)
+        call check_allocate('two_e_int', nspin**2, ierr)
+
+        ! Allocate component of two_e_int for each spin-channel.
+        ! The spatial parts are identical in RHF, thus need store only one
+        ! spin-channel.
+        ! In UHF need to store <a a|a a>, <a b|a b>, <b a|b a> and <b b|b b>
+        ! (where a==alpha spin-orbital and b==beta spin-orbital).
+        ! For the integral <i j|a b>, where (i,j,a,b) are spatial-orbitals,
+        ! there are M(M+1)/2=N_p (i,a) pairs (and similarly for (j,b) pairs).
+        ! Due to permutation symmetry there are thus N_p(N_p+1)/2 integrals per
+        ! spin-channel, where 2M is the number of spin-orbitals.
+        npairs = ((nbasis/2)*(nbasis/2 + 1))/2
+        nintgrls = (npairs*(npairs+1))/2
+        do ispin = 1, nspin**2
+            allocate(two_e_int(ispin)%v(nintgrls), stat=ierr)
+            call check_allocate('two_e_int_component', nintgrls, ierr)
+        end do
 
     end subroutine init_molecular_integrals
 
@@ -96,6 +119,8 @@ contains
 
 ! TODO:
 ! fast and specific 'get' functions for UHF and RHF cases
+
+! 1. < i | h | j >
 
     subroutine store_one_e_int_mol(i, j, intgrl)
 
@@ -217,5 +242,193 @@ contains
         end if
 
     end function get_one_e_int_mol_nonzero
+
+! 2. < i j | a b >
+
+    elemental function two_e_int_indx(i, j, a, b) result(indx)
+
+        ! In:
+        !    i,j,a,b: (indices of) spin-orbitals.
+        ! Returns:
+        !    indx: spin-channel and index of two_e_int store which contains the
+        !    <ij|ab> integral.
+
+        use basis, only: basis_fns
+        use read_in, only: uhf
+
+        use utils, only: tri_ind
+
+        type(int_indx) :: indx
+        integer, intent(in) :: i, j, a, b
+
+        integer :: ii, jj, aa, bb, tmp
+
+        ii = i
+        jj = j
+        aa = a
+        bb = b
+
+        ! Use permutation symmetry to find unique integral.
+        ! Require i<a and j<b.
+        if (ii > aa) then
+            tmp = aa
+            aa = ii
+            ii = tmp
+        end if
+        if (jj > bb) then
+            tmp = bb
+            bb = jj
+            jj = tmp
+        end if
+        ! Require (i,a) < (j,b), i.e. i<j || (i==j && a<b)
+        if (ii > jj .or. (ii==jj .and. aa > bb) ) then
+            tmp = ii
+            ii = jj
+            jj = tmp
+            tmp = aa
+            aa = bb
+            bb = tmp
+        end if
+
+        ! Find spin channel.
+        if (uhf) then
+            if (basis_fns(ii)%ms == -1) then
+                if (basis_fns(jj)%ms == -1) then
+                    ! down down down down
+                    indx%spin_channel = 1
+                else
+                    ! down up down up
+                    indx%spin_channel = 3
+                end if
+            else
+                if (basis_fns(jj)%ms == 1) then
+                    ! up up up up
+                    indx%spin_channel = 2
+                else
+                    ! up down up down
+                    indx%spin_channel = 4
+                end if
+            end if
+        else
+            indx%spin_channel = 1
+        end if
+
+        ! Convert to spatial indices
+        ii = basis_fns(ii)%spatial_index
+        jj = basis_fns(jj)%spatial_index
+        aa = basis_fns(aa)%spatial_index
+        bb = basis_fns(bb)%spatial_index
+
+        ! Find index.
+        indx%indx = tri_ind(tri_ind(ii,aa),tri_ind(jj,bb))
+
+    end function two_e_int_indx
+
+    subroutine store_two_e_int_mol(i, j, a, b, intgrl)
+
+        ! Store <ij|1/r_12|ab> in the appropriate slot in two_e_int.
+        ! two_e_int does not have room for non-zero integrals, so it is assumed
+        ! that <ij|1/r_12|ab> is non-zero by spin and spatial symmetry.
+        !
+        ! (Note that compression by spatial symmetry is currently not
+        ! implemented.)
+        !
+        ! In:
+        !    i,j,a,b: (indices of) spin-orbitals.
+        !    intgrl: <ij|1/r_12|ab>, where 1/r_12 is the two-electron Coulomb
+        !    operator.  Note the integral is expressed in *PHYSICIST'S
+        !    NOTATION*.
+
+        use basis, only: basis_fns
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
+
+        use const, only: depsilon
+        use errors, only: stop_all
+
+        integer, intent(in) :: i, j, a, b
+        real(p), intent(in) :: intgrl
+
+        integer :: sym_ij, sym_ab
+        type(int_indx) :: indx
+        character(255) :: error
+
+        ! Should integral be non-zero by symmetry?
+        sym_ij = cross_product_pg_basis(i, j)
+        sym_ab = cross_product_pg_basis(a, b)
+        if (is_gamma_irrep_pg_sym(cross_product_pg_sym(sym_ij, sym_ab)) &
+            .and. basis_fns(i)%ms == basis_fns(a)%ms &
+            .and. basis_fns(j)%ms == basis_fns(b)%ms) then
+            ! Store integral
+            indx = two_e_int_indx(i, j, a, b)
+            two_e_int(indx%spin_channel)%v(indx%indx) = intgrl
+        else if (abs(intgrl) > depsilon) then
+            write (error, '("<ij|ab> should be non-zero by symmetry: &
+                            &<",2i3,"|",2i3,"> =",f16.10)') i, j, a, b, intgrl
+        end if
+
+        indx = two_e_int_indx(i, j, a, b)
+
+    end subroutine store_two_e_int_mol
+
+    elemental function get_two_e_int_mol(i, j, a, b) result(intgrl)
+
+        ! In:
+        !    i,j,a,b: (indices of) spin-orbitals.
+        ! Returns:
+        !    intgrl: < i j | 1/r_12 | a b >, the Coulomb integral between the
+        !    (i,a) co-density and the (j,b) co-density.
+        !
+        ! NOTE:
+        !    If <ij|ab> is known the be non-zero by spin and spatial symmetry,
+        !    then it is faster to call get_one_e_int_mol_nonzero.
+        !    It is also faster to call RHF- or UHF-specific routines.
+
+        use basis, only: basis_fns
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
+
+        real(p) :: intgrl
+        integer, intent(in) :: i, j, a, b
+
+        integer :: sym_ij, sym_ab
+
+        sym_ij = cross_product_pg_basis(i, j)
+        sym_ab = cross_product_pg_basis(a, b)
+        if (is_gamma_irrep_pg_sym(cross_product_pg_sym(sym_ij, sym_ab)) &
+            .and. basis_fns(i)%ms == basis_fns(a)%ms &
+            .and. basis_fns(j)%ms == basis_fns(b)%ms) then
+            intgrl = get_two_e_int_mol_nonzero(i, j, a, b)
+        else
+            intgrl = 0.0_p
+        end if
+
+    end function get_two_e_int_mol
+
+    elemental function get_two_e_int_mol_nonzero(i, j, a, b) result(intgrl)
+
+        ! In:
+        !    i,j,a,b: (indices of) spin-orbitals.
+        ! Returns:
+        !    intgrl: < i j | 1/r_12 | a b >, the Coulomb integral between the
+        !    (i,a) co-density and the (j,b) co-density.
+        !
+        ! NOTE:
+        !    This assumes that <ij|ab> is known the be non-zero by spin and
+        !    spatial symmetry.  If this is not true then this routine will return
+        !    either an incorrect value or cause an array-bounds error.  If
+        !    <ij|ab> might be zero by symmetry, get_two_e_int_mol must be called
+        !    instead.
+        !    It is faster to call RHF- or UHF-specific routines.
+
+        use basis, only: basis_fns
+
+        real(p) :: intgrl
+        integer, intent(in) :: i, j, a, b
+
+        type(int_indx) :: indx
+
+        indx = two_e_int_indx(i, j, a, b)
+        intgrl = two_e_int(indx%spin_channel)%v(indx%indx)
+
+    end function get_two_e_int_mol_nonzero
 
 end module moulecular_integrals

@@ -20,6 +20,7 @@ type basis_fn
     ! Obviously we should not convert between descriptions within one
     ! calculation! ;-)
     integer, pointer :: l(:) => NULL()
+    integer :: spatial_index
     ! Index of the irreducible representation spanned by the orbital.  Used only
     ! in systems where point group symmetry is used (e.g.  molecules).  See
     ! notes in pg_symmetry.

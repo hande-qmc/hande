@@ -141,10 +141,14 @@ contains
                 else
                     call init_basis_fn(basis_fns(i), sym=orbsym(i)-1, ms=1)
                 end if
+                ! Assume orbitals are ordered appropriately in FCIDUMP...
+                basis_fns(i)%spatial = (i+1)/2
             else
                 ! Need to initialise both up- and down-spin basis functions.
                 call init_basis_fn(basis_fns(2*i-1), sym=orbsym(i)-1, ms=-1)
                 call init_basis_fn(basis_fns(2*i), sym=orbsym(i)-1, ms=-1)
+                basis_fns(2*i-1)%spatial = i
+                basis_fns(2*i)%spatial = i
             end if
         end do
 
