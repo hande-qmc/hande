@@ -298,20 +298,25 @@ contains
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
 
-        if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
+        if (system_type /= read_in) then
 
-        if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
+            if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
+
+            if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
+
+            if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
+
+            do ivec = 1, ndim
+                do jvec = ivec+1, ndim
+                    if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
+                        call stop_all(this, 'Lattice vectors are not orthogonal.')
+                    end if
+                end do
+            end do
+
+        end if
 
         if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
-        if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
-
-        do ivec = 1, ndim
-            do jvec = ivec+1, ndim
-                if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
-                    call stop_all(this, 'Lattice vectors are not orthogonal.')
-                end if
-            end do
-        end do
 
         if (doing_calc(lanczos_diag)) then
             if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
