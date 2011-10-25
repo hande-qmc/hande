@@ -21,13 +21,14 @@ contains
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, hub_real
+        use system, only: init_system, system_type, hub_real, read_in
         use hubbard, only: init_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
         use hubbard_real, only: init_real_space_hub
         use momentum_symmetry, only: init_momentum_symmetry
+        use read_in_system, only: read_in_fcidump
         use calc
 
         call init_parallel()
@@ -49,7 +50,11 @@ contains
 
         call check_input()
 
-        call init_basis_fns()
+        if (system_type == read_in) then
+            call read_in_fcidump()
+        else
+            call init_basis_fns()
+        end if
 
         call init_determinants()
 
