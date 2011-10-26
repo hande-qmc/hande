@@ -17,8 +17,9 @@ contains
         ! See also notes below.
 
         use basis, only: nbasis, basis_fns, init_basis_fn, end_basis_fns, write_basis_fn
-        use molecular_integrals, only: init_molecular_integrals, store_one_e_int_mol, &
-                                       store_two_e_int_mol
+        use molecular_integrals, only: init_molecular_integrals, store_one_body_int_mol, &
+                                       store_two_body_int_mol, one_e_h_integrals,        &
+                                       coulomb_integrals
         use point_group_symmetry, only: init_pg_symmetry
         use system, only: fcidump, uhf, ecore
 
@@ -29,7 +30,7 @@ contains
         use, intrinsic :: iso_fortran_env
 
         logical, intent(in), optional :: store_in
-        logical :: store
+        logical :: t_store
 
         ! System data
         ! We don't know how many orbitals we have until we read in the FCI
@@ -55,9 +56,9 @@ contains
         symlz = 0
 
         if (present(store_in)) then
-            store = store_in
+            t_store = store_in
         else
-            store = .false.
+            t_store = .false.
         end if
 
         ! FCIDUMP file format is as follows:
@@ -170,10 +171,10 @@ contains
         end if
 
         ! Set up symmetry information.
-        if (store) call init_pg_symmetry()
+        if (t_store) call init_pg_symmetry()
 
         ! Initialise integral stores.
-        if (store) call init_molecular_integrals()
+        if (t_store) call init_molecular_integrals()
 
         ! read integrals and eigenvalues
         ios = 0
@@ -205,10 +206,10 @@ contains
                 end if
             else if (j == 0 .and. b == 0) then
                 ! < i | h | a >
-                if (store) call store_one_e_int_mol(i, a, x)
+                if (t_store) call store_one_body_int_mol(i, a, x, one_e_h_integrals)
             else
                 ! < i j | 1/r_12 | a b >
-                if (store) call store_two_e_int_mol(i, j, a, b, x)
+                if (t_store) call store_two_body_int_mol(i, j, a, b, x, coulomb_integrals)
             end if
         end do
 
@@ -218,7 +219,7 @@ contains
             call write_basis_fn(basis_fns(i), new_line=.true.)
         end do
 
-        if (.not.store) then
+        if (.not.t_store) then
             ! Should tidy up and deallocate everything we allocated.
             call end_basis_fns()
         end if
