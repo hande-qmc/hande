@@ -1,7 +1,10 @@
 module molecular_integrals
 
+! Module for storing and accessing integrals for molecular systems.
+! These integrals are previously calculated using a quantum chemistry package
+! (e.g. MOLPRO or QChem).
+
 ! TODO:
-! * comment start of module and module-level variables
 ! * (compile-time option) allocate arrays using shmem.
 
 use const, only: p
@@ -9,15 +12,38 @@ use base_types, only: alloc_rp1d
 
 implicit none
 
+! Indexing type for two_e_int store.
 type int_indx
     integer :: spin_channel, indx
 end type
 
+! Interaction with the integral stores is best done using the store_* and get_*
+! procedures provided below rather than directly accessing them.
+
+! Store for one-body integrals, <i|h|j>, where i,j are spin basis functions and
+! h is the one-electron operator.
+! one_e_int(ispin, isym)%v(indx) corresponds to the <i|h|j> integral (assuming
+! i,j conserve spin and spatial symmetry), where ispin and isym index the spin
+! and spatial symmetry of i and j and indx is the combined (triangular) index of
+! i and j within that spin and symmetry block.
+! See access procedures for this in practice.
+! This data structure makes it possible and relative easy to only store the
+! integrals which are non-zero by symmetry (ie a small fraction of the possible
+! integrals).
+! Note that only one spin channel is needed (and stored) in RHF calculations.
 type(alloc_rp1d), allocatable :: one_e_int(:,:)
 
+! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
+! functions and 1/r_12 is the Coulomb operator.
+! two_e_int(ispin)%v(indx) gives the integral <ij|ab>, where ispin depends upon
+! the spin combination (ie all alpha, all beta, and haf alpha, half beta) and
+! indx is related to i,j,a,b.  As we deal with real orbitals only, we can use
+! permutation symmetry to reduce the number of integrals by a factor of 8.
+! See access procedures for this in action.
+! Note that only one spin channel is needed (and stored) in RHF calculations.
 ! TODO:
 ! * can compress coulomb integral store by ensuring integrand is totally
-!   symmetric.
+!   symmetric, as is done for the one-body integrals.
 type(alloc_rp1d), allocatable :: two_e_int(:)
 
 contains
