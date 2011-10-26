@@ -266,4 +266,23 @@ contains
 
     end subroutine set_orb_mask
 
+    subroutine end_basis_fns()
+
+        ! Clean up basis functions.
+
+        use checking, only: check_deallocate
+
+        integer :: ierr, i
+
+        if (allocated(basis_fns)) then
+            do i = 1, nbasis
+                deallocate(basis_fns(i)%l, stat=ierr)
+                call check_deallocate('basis_fns(i',ierr)
+            end do
+            deallocate(basis_fns, stat=ierr)
+            call check_deallocate('basis_fns',ierr)
+        end if
+
+    end subroutine end_basis_fns
+
 end module basis

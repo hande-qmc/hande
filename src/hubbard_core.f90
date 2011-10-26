@@ -114,7 +114,7 @@ contains
 
         use calc
         use system, only: end_system, system_type, hub_real
-        use hubbard, only: end_basis_fns
+        use basis, only: end_basis_fns
         use determinants, only: end_determinants
         use excitations, only: end_excitations
         use diagonalisation, only: end_hamil
