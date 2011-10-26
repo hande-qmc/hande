@@ -9,25 +9,27 @@ implicit none
 
 contains
 
-    subroutine read_in_fcidump
+    subroutine read_in_fcidump(store_in)
 
         ! Read in a FCIDUMP file, which contains the kinetic and coulomb
         ! integrals, one-particle eigenvalues and other system information.
         ! File format (partially) defined in Comp. Phys. Commun. 54 (1989) 75.
         ! See also notes below.
 
-        use basis, only: nbasis, basis_fns, init_basis_fn
-        use basis, only: write_basis_fn
+        use basis, only: nbasis, basis_fns, init_basis_fn, end_basis_fns, write_basis_fn
         use molecular_integrals, only: init_molecular_integrals, store_one_e_int_mol, &
                                        store_two_e_int_mol
         use point_group_symmetry, only: init_pg_symmetry
-        use system, only: fcidump, uhf
+        use system, only: fcidump, uhf, ecore
 
         use utils, only: get_free_unit
         use checking, only: check_allocate
         use errors, only: stop_all
 
         use, intrinsic :: iso_fortran_env
+
+        logical, intent(in), optional :: store_in
+        logical :: store
 
         ! System data
         ! We don't know how many orbitals we have until we read in the FCI
@@ -51,6 +53,12 @@ contains
         isym = 0
         syml = 0
         symlz = 0
+
+        if (present(store_in)) then
+            store = store_in
+        else
+            store = .false.
+        end if
 
         ! FCIDUMP file format is as follows:
 
@@ -162,10 +170,10 @@ contains
         end if
 
         ! Set up symmetry information.
-        call init_pg_symmetry()
+        if (store) call init_pg_symmetry()
 
         ! Initialise integral stores.
-        call init_molecular_integrals()
+        if (store) call init_molecular_integrals()
 
         ! read integrals and eigenvalues
         ios = 0
@@ -197,10 +205,10 @@ contains
                 end if
             else if (j == 0 .and. b == 0) then
                 ! < i | h | a >
-                call store_one_e_int_mol(i, a, x)
+                if (store) call store_one_e_int_mol(i, a, x)
             else
                 ! < i j | 1/r_12 | a b >
-                call store_two_e_int_mol(i, j, a, b, x)
+                if (store) call store_two_e_int_mol(i, j, a, b, x)
             end if
         end do
 
@@ -209,6 +217,11 @@ contains
         do i = 1, nbasis
             call write_basis_fn(basis_fns(i), new_line=.true.)
         end do
+
+        if (.not.store) then
+            ! Should tidy up and deallocate everything we allocated.
+            call end_basis_fns()
+        end if
 
     end subroutine read_in_fcidump
 
