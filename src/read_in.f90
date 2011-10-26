@@ -168,8 +168,8 @@ contains
         do
             ! loop over lines.
             read (ir,*, iostat=ios) x, i, a, j, b
-            write (6,*) x, i, a, j, b
             if (ios < 0) exit ! reached end of file
+            if (ios > 0) call stop_all('read_input','Problem reading input.')
             if (.not.uhf) then
                 ! Working in spin-orbitals but FCIDUMP is in spatial orbitals.
                 i = i*2
@@ -198,7 +198,6 @@ contains
             end if
         end do
 
-        if (ios > 0) call stop_all('read_input','Problem reading input.')
         close(ir, status='keep')
 
         do i = 1, nbasis
