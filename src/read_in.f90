@@ -1,5 +1,8 @@
 module read_in_system
 
+! Module for reading in and manipulating integral files which entirely define
+! the Hamiltonian corresponding to a 'real' system.
+
 use const
 
 implicit none
@@ -25,6 +28,8 @@ contains
         use utils, only: get_free_unit
         use checking, only: check_allocate
         use errors, only: stop_all
+
+        use, intrinsic :: iso_fortran_env
 
         ! System data
         ! We don't know how many orbitals we have until we read in the FCI
@@ -165,13 +170,16 @@ contains
         call init_molecular_integrals()
 
         ! read integrals and eigenvalues
+        ios = 0
         do
             ! loop over lines.
             read (ir,*, iostat=ios) x, i, a, j, b
-            if (ios < 0) exit ! reached end of file
-            if (ios > 0) call stop_all('read_input','Problem reading input.')
+            if (ios == iostat_end) exit ! reached end of file
+            if (ios /= 0) call stop_all('read_input','Problem reading input.')
             if (.not.uhf) then
                 ! Working in spin-orbitals but FCIDUMP is in spatial orbitals.
+                ! Need to only store integrals in one spin-channel in RHF, so
+                ! can just with (e.g.) beta orbitals.
                 i = i*2
                 j = j*2
                 a = a*2
