@@ -72,6 +72,9 @@ character(255) :: fcidump = 'FCIDUMP'
 ! UHF or RHF orbitals?
 logical :: uhf = .false.
 
+! Core energy (e.g. nuclear-nuclear terms, contributions from frozen orbitals...
+real(p) :: Ecore
+
 contains
 
     subroutine init_system()

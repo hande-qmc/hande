@@ -7,8 +7,6 @@ use const
 
 implicit none
 
-real(p) :: Ecore
-
 contains
 
     subroutine read_in_fcidump
