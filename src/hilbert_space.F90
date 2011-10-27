@@ -75,6 +75,7 @@ contains
                 f = 0
                 do i = 1, nalpha
                     do
+                        ! generate random number 1,3,5,...
                         a = 2*nint(genrand_real2()*(nsites-1))+1
                         a_pos = bit_lookup(1,a)
                         a_el = bit_lookup(2,a)
@@ -88,6 +89,7 @@ contains
                 ! Beta electrons.
                 do i = 1, nbeta
                     do
+                        ! generate random number 2,4,6,...
                         b = 2*nint(genrand_real2()*(nsites-1))+2
                         b_pos = bit_lookup(1,b)
                         b_el = bit_lookup(2,b)
