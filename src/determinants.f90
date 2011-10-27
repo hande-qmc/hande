@@ -154,11 +154,11 @@ contains
 
         if (parent) then
             fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
-            write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
+            write (6,'(/,1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
             if (doing_calc(exact_diag+lanczos_diag)) &
                 write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
-            write (6,'(1X,a61,'//fmt1(4)//',/)') 'Bit-length of integers used to store determinant bit-strings:', i0_length
+            write (6,'(/,1X,a61,'//fmt1(4)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
             write (6,'(1X,a57,'//fmt1(5)//',/)') 'Number of integers used to store determinant bit-strings:', basis_length
         end if
 
