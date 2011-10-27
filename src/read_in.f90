@@ -162,7 +162,7 @@ contains
             else
                 ! Need to initialise both up- and down-spin basis functions.
                 call init_basis_fn(basis_fns(2*i-1), sym=orbsym(i)-1, ms=-1)
-                call init_basis_fn(basis_fns(2*i), sym=orbsym(i)-1, ms=-1)
+                call init_basis_fn(basis_fns(2*i), sym=orbsym(i)-1, ms=1)
                 basis_fns(2*i-1)%spatial_index = i
                 basis_fns(2*i)%spatial_index = i
             end if
