@@ -133,36 +133,9 @@ contains
         call check_deallocate('basis_fns_ranking',ierr)
 
         if (parent) then
-            write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
-            write (6,'(1X,a27)') 'Spin given in units of 1/2.'
-            if (system_type == hub_real) then
-                write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
-                write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
-            else
-                write (6,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
-                if (any(abs(ktwist) > 0.0_p)) then
-                    write (6,'(1X,a26)', advance='no') 'Applying a twist angle of:'
-                    write (6,'(1X,"(",f6.4)', advance='no') ktwist(1)
-                    do i = 2, ndim
-                        write (6,'(",",f6.4)', advance='no') ktwist(i)
-                    end do
-                    write (6,'(").")')
-                end if
-                write (6,'()')
-                write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
-            end if
-            do i = 1, ndim
-                write (6,'(4X)', advance='no')
-            end do
-            write (6,'(a2)', advance='no') 'ms'
-            if (system_type == hub_real) then
-                write(6,'()')
-            else
-                write(6,'(5X,a14)') 'kinetic energy'
-            end if
+            call write_basis_fn_header()
             do i = 1, nbasis
-                write (6,'(1X,i5,2X)',advance='no') i
-                call write_basis_fn(basis_fns(i), new_line=.true.)
+                call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'()')
         end if

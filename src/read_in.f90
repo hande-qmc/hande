@@ -21,7 +21,9 @@ contains
         !    in.  Otherwise the basis defined by the FCIDUMP file is simply
         !    printed out.
 
-        use basis, only: nbasis, basis_fns, init_basis_fn, end_basis_fns, write_basis_fn
+
+        use basis, only: nbasis, basis_fns, init_basis_fn, end_basis_fns, write_basis_fn, &
+                         write_basis_fn_header
         use molecular_integrals, only: init_molecular_integrals, store_one_body_int_mol, &
                                        store_two_body_int_mol, one_e_h_integrals,        &
                                        coulomb_integrals
@@ -220,8 +222,9 @@ contains
 
         close(ir, status='keep')
 
+        call write_basis_fn_header()
         do i = 1, nbasis
-            call write_basis_fn(basis_fns(i), new_line=.true.)
+            call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
         end do
 
         if (.not.t_store) then

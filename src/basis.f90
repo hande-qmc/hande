@@ -146,11 +146,99 @@ contains
 
     end subroutine init_basis_fn
 
-    subroutine write_basis_fn(b, iunit, new_line, print_full)
+    subroutine write_basis_fn_header(iunit, print_full)
+
+        ! Print out header for a table of basis functions.
+        ! Format in line with write_basis_fn.
+        !
+        ! In:
+        !    iunit (optional): io unit to which the output is written.
+        !        Default: 6 (stdout).
+        !    print_full (optional): if true (default) then print out header info
+        !        for the symmetry and spin quantum numbers and (if appropriate)
+        !        single-particle energy associated with the basis function.
+        !        If false, only information about the quantum numbers is
+        !        printed.
+
+        use system, only: system_type, read_in, hub_k, hub_real
+
+        integer, intent(in), optional :: iunit
+        logical, intent(in), optional :: print_full
+
+        integer :: io, i
+        logical :: print_long
+
+        if (present(iunit)) then
+            io = iunit
+        else
+            io = 6
+        end if
+
+        ! If print_full is false, then the spin and single-particle eigenvalues
+        ! are also printed out.
+        if (present(print_full)) then
+            print_long = print_full
+        else
+            print_long = .true.
+        end if
+
+        ! Title
+        write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
+
+        ! Describe information.
+        write (6,'(1X,a27)') 'Spin given in units of 1/2.'
+
+        select case(system_type)
+        case(hub_real)
+            write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
+            write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
+        case(hub_k)
+            write (6,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
+            if (any(abs(ktwist) > 0.0_p)) then
+                write (6,'(1X,a26)', advance='no') 'Applying a twist angle of:'
+                write (6,'(1X,"(",f6.4)', advance='no') ktwist(1)
+                do i = 2, ndim
+                    write (6,'(",",f6.4)', advance='no') ktwist(i)
+                end do
+                write (6,'(").")')
+            end if
+            write (6,'()')
+            write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
+        case(read_in)
+            write (6,'(1X,a5,2X,a7,X,a8,X,a9,2X)', advance='no') 'index','spatial','symmetry','sym_index'
+        end select
+
+        if (system_type /= read_in) then
+            do i = 1, ndim
+                write (6,'(4X)', advance='no')
+            end do
+        end if
+
+        if (print_long) then
+            write (6,'(a2)', advance='no') 'ms'
+
+            if (system_type == hub_real) then
+                write(6,'()')
+            else
+                write(6,'(5X,a7)') '<i|h|i>'
+            end if
+        else
+            write (6,'()')
+        end if
+
+    end subroutine write_basis_fn_header
+
+    subroutine write_basis_fn(b, ind, iunit, new_line, print_full)
 
         ! Print out information stored in b.
+        ! Format in line with write_basis_fn_header.
+        ! Please ensure formats are changed in both write_basis_fn and
+        ! write_basis_fn_header.
+        !
         ! In:
         !    b: basis_fn variable.
+        !    ind: index of basis function.  Only printed out if present and
+        !        positive.
         !    iunit (optional): io unit to which the output is written.
         !        Default: 6 (stdout).
         !    new_line (optional): if true, then a new line is written at
@@ -164,6 +252,7 @@ contains
         use system, only: system_type, hub_real
 
         type(basis_fn), intent(in) :: b
+        integer, intent(in), optional :: ind
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
         logical, intent(in), optional :: print_full
@@ -182,8 +271,12 @@ contains
             print_all = .true.
         end if
 
+        if (present(ind)) then
+            if (ind >= 0) write (6,'(1X,i5,2X)',advance='no') ind
+        end if
+
         if (system_type == read_in) then
-            write (io, '(1X, i2, 3X, i2)') b%sym, b%sym_index
+            write (io, '(i5,2(3X,i5),X)',advance='no') b%spatial_index, b%sym, b%sym_index
         else
             write (io,'(1X,"(")', advance='no')
             write (io,'(i3)',advance='no') b%l(1)
