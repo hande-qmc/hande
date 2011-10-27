@@ -21,7 +21,7 @@ contains
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, hub_real, read_in
+        use system, only: init_system, system_type, hub_real, hub_k, read_in
         use hubbard, only: init_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
@@ -50,19 +50,27 @@ contains
 
         call check_input()
 
+        ! Initialise basis functions.
         if (system_type == read_in) then
             call read_in_fcidump()
         else
             call init_basis_fns()
         end if
 
+        ! Todo:
+        ! Freezing.
+
         call init_determinants()
 
         call init_excitations()
 
-        call init_momentum_symmetry()
-
-        if (system_type == hub_real) call init_real_space_hub()
+        ! System specific.
+        select case(system_type)
+        case(hub_k)
+            call init_momentum_symmetry()
+        case(hub_real) 
+            call init_real_space_hub()
+        end select
 
     end subroutine init_calc
 
@@ -126,19 +134,21 @@ contains
 
         real :: end_time
 
+        ! Deallocation routines.
+        ! NOTE:
+        !   end_ routines should surround every deallocate statement with a test
+        !   that the array is allocated.
         call end_system()
         call end_basis_fns()
         call end_momentum_symmetry()
         call end_determinants()
         call end_excitations()
         call end_hamil()
+        call end_real_space_hub()
+        call end_fciqmc()
 
-        if (system_type == hub_real) call end_real_space_hub()
-
-        if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc)) call end_fciqmc()
-
+        ! Calculation time.
         call cpu_time(end_time)
-
         if (parent) call end_report(end_time-start_time)
 
         call end_parallel()
