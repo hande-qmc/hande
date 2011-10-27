@@ -85,7 +85,15 @@ contains
 
         integer :: i, ierr
 
-        nsym = maxval(basis_fns(:)%sym) + 1
+        ! Given n generators, there must be 2^n irreducible representations.
+        ! in the working space.  (Note that the wavefunctions might only span
+        ! a subspace of the point group considered by the generating quantum
+        ! chemistry package.)
+        ! Set nsym to be 2^n so that we always work in the smallest group
+        ! spanned by the wavefunctions.
+        ! +1 comes from the fact that the basis_fn%sym gives the bit string
+        ! representation.
+        nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
         
         allocate(nbasis_sym(0:nsym-1), stat=ierr)
         call check_allocate('nbasis_sym', nsym, ierr)
@@ -123,6 +131,41 @@ contains
         end if
 
     end subroutine end_pg_symmetry
+
+    subroutine print_pg_symmetry_info()
+
+        ! Write out point group symmetry information.
+
+        use symmetry, only: nsym
+
+        use parallel, only: parent
+
+        integer :: i, j
+
+        if (parent) then
+            write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
+
+            write (6,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
+            ! Note that we never actually store this.
+            do i = 0, nsym-1
+                do j = 0, nsym-1
+                    write (6,'(1X,i2)',advance='no') cross_product_pg_sym(i,j)
+                end do
+                write (6,'()')
+            end do
+
+            write (6,'(/,1X,a93,/)') 'The table below gives the number of basis functions spanning each irreducible representation.'
+
+            write (6,'(1X,"irrep  nbasis  nbasis_up  nbasis_down")')
+            do i = 0, nsym-1
+                write (6,'(1X,i3,4X,i5,3X,i5,6X,i5)') i, nbasis_sym(i), nbasis_sym_spin(:,i)
+            end do
+
+            write (6,'()')
+
+        end if
+
+    end subroutine print_pg_symmetry_info
 
     elemental function cross_product_pg_basis(i, j) result(sym_ij)
 

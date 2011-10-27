@@ -28,6 +28,7 @@ contains
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
         use hubbard_real, only: init_real_space_hub
         use momentum_symmetry, only: init_momentum_symmetry
+        use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_fcidump
         use calc
 
@@ -70,6 +71,8 @@ contains
             call init_momentum_symmetry()
         case(hub_real) 
             call init_real_space_hub()
+        case(read_in)
+            call print_pg_symmetry_info()
         end select
 
     end subroutine init_calc
