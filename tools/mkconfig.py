@@ -230,7 +230,7 @@ qtests:
 
 # Perform sanity tests on the source code.
 check:
-\ttools/check_keywords.sh
+\ttools/check_keywords.py
 \t@echo
 \ttools/check_distribute.py
 
