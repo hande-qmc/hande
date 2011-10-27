@@ -9,12 +9,17 @@ implicit none
 
 contains
 
-    subroutine read_in_fcidump(store_in)
+    subroutine read_in_fcidump(store_info)
 
         ! Read in a FCIDUMP file, which contains the kinetic and coulomb
         ! integrals, one-particle eigenvalues and other system information.
         ! File format (partially) defined in Comp. Phys. Commun. 54 (1989) 75.
         ! See also notes below.
+        !
+        ! In:
+        !    store_info (optional): if true (default) then store the data read
+        !    in.  Otherwise the basis defined by the FCIDUMP file is simply
+        !    printed out.
 
         use basis, only: nbasis, basis_fns, init_basis_fn, end_basis_fns, write_basis_fn
         use molecular_integrals, only: init_molecular_integrals, store_one_body_int_mol, &
@@ -29,7 +34,7 @@ contains
 
         use, intrinsic :: iso_fortran_env
 
-        logical, intent(in), optional :: store_in
+        logical, intent(in), optional :: store_info
         logical :: t_store
 
         ! System data
@@ -55,10 +60,10 @@ contains
         syml = 0
         symlz = 0
 
-        if (present(store_in)) then
-            t_store = store_in
+        if (present(store_info)) then
+            t_store = store_info
         else
-            t_store = .false.
+            t_store = .true.
         end if
 
         ! FCIDUMP file format is as follows:
