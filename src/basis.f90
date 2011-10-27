@@ -205,7 +205,7 @@ contains
             write (6,'()')
             write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
         case(read_in)
-            write (6,'(1X,a5,2X,a7,X,a8,X,a9,2X)', advance='no') 'index','spatial','symmetry','sym_index'
+            write (6,'(/,1X,a5,2X,a7,X,a8,X,a9,2X)', advance='no') 'index','spatial','symmetry','sym_index'
         end select
 
         if (system_type /= read_in) then
