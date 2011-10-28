@@ -123,4 +123,24 @@ contains
 
     end subroutine end_momentum_symmetry
 
+    pure function symmetry_orb_list_k(orb_list) result(isym)
+
+        ! In:
+        !    orb_list: list of orbitals (e.g. determinant).
+        ! Returns:
+        !    symmetry index of list (i.e. direct product of the representations
+        !    of all the orbitals in the list).
+
+        integer :: isym
+        integer, intent(in) :: orb_list(:)
+
+        integer :: i
+
+        isym = gamma_sym
+        do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
+            isym = sym_table((orb_list(i)+1)/2, isym)
+        end do
+
+    end function symmetry_orb_list_k
+
 end module momentum_symmetry

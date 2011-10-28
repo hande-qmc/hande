@@ -217,4 +217,26 @@ contains
 
     end function is_gamma_irrep_pg_sym
 
+    pure function symmetry_orb_list_mol(orb_list) result(isym)
+
+        ! In:
+        !    orb_list: list of orbitals (e.g. determinant).
+        ! Returns:
+        !    symmetry index of list (i.e. direct product of the representations
+        !    of all the orbitals in the list).
+
+        use basis, only: basis_fns
+
+        integer :: isym
+        integer, intent(in) :: orb_list(:)
+
+        integer :: i
+
+        isym = gamma_sym
+        do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
+            isym = cross_product_pg_sym(isym, basis_fns(orb_list(i))%sym)
+        end do
+
+    end function symmetry_orb_list_mol
+
 end module point_group_symmetry
