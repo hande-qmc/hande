@@ -32,6 +32,9 @@ integer :: nalpha, nbeta
 ! # number of virtual alpha, beta spin-orbitals
 integer :: nvirt_alpha, nvirt_beta
 
+! Number of symmetries.
+integer :: nsym
+
 ! --- Model Hamiltonians ---
 
 ! 1, 2 or 3 dimensions.

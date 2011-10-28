@@ -338,7 +338,8 @@ contains
         use utils, only: binom_i
         use utils, only: int_fmt
         use bit_utils, only: first_perm, bit_permutation
-        use momentum_symmetry, only: nsym, gamma_sym, sym_table
+        use system, only: nsym
+        use momentum_symmetry, only: gamma_sym, sym_table
 
         integer :: i, j, ierr, ibit
         integer :: nalpha_combinations, nbeta_combinations
@@ -436,7 +437,8 @@ contains
         use errors, only: stop_all
         use utils, only: get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation
-        use momentum_symmetry, only: nsym, gamma_sym, sym_table
+        use system, only: nsym
+        use momentum_symmetry, only: gamma_sym, sym_table
 
         integer, intent(in) :: ksum
 

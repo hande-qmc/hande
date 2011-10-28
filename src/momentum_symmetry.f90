@@ -7,7 +7,7 @@ module momentum_symmetry
 ! Hubbard model or UEG, for instance).  Generalising to multiple bands would be
 ! relatively straightforward.
 
-use symmetry, only: nsym
+use system, only: nsym
 
 implicit none
 

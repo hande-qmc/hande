@@ -1,10 +1,11 @@
 module symmetry
 
-! Module for symmetry information and routines common to all symmetries.
+! Module for symmetry routines common to all symmetries.
+
+! This depends upon system-specific symmetry modules, so take care not to
+! introduce circular dependencies by USEing it in the system-specific symmetry
+! modules.
 
 implicit none
-
-! Number of symmetries.
-integer :: nsym
 
 end module symmetry

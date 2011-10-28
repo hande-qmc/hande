@@ -81,7 +81,7 @@ contains
         use checking, only: check_allocate
 
         use basis, only: basis_fns, nbasis
-        use symmetry, only: nsym
+        use system, only: nsym
 
         integer :: i, ierr
 
@@ -136,7 +136,7 @@ contains
 
         ! Write out point group symmetry information.
 
-        use symmetry, only: nsym
+        use system, only: nsym
 
         use parallel, only: parent
 
