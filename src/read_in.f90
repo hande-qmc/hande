@@ -84,6 +84,9 @@ contains
         !    symmetry notes below and in pg_symmetry.
         !  * UHF: true if FCIDUMP file was produced from an unrestricted
         !    Hartree-Fock calculation.  See note on basis indices below.
+        !    NOTE:
+        !         We assume that in UHF calculations the number of spin-up basis
+        !         functions is equal to the number of spin-down basis functions.
         !  * ISYM: currently unused.  Defined solely for compatibility with NECI
         !    FCIDUMP files.  Gives the symmetry of the wavefunction formed by
         !    occupied the NELEC lowest energy spin-orbitals.
