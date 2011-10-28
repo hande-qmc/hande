@@ -126,6 +126,20 @@ contains
 
     end subroutine end_momentum_symmetry
 
+    elemental function cross_product_k(s1, s2) result(prod)
+
+        ! In:
+        !    s1, s2: irreducible representation labels/momentum labels.
+        ! Returns:
+        !    s1 \cross s2, the direct product of the two symmetries.
+
+        integer :: prod
+        integer, intent(in) :: s1, s2
+
+        prod = sym_table(s1, s2)
+
+    end function cross_product_k
+
     pure function symmetry_orb_list_k(orb_list) result(isym)
 
         ! In:
