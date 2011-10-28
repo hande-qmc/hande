@@ -27,7 +27,7 @@ contains
         ! Construct the symmetry tables.
 
         use basis, only: nbasis, basis_fns, write_basis_fn
-        use system, only: ndim, system_type, hub_real
+        use system, only: ndim, system_type, hub_real, sym0
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
@@ -37,6 +37,9 @@ contains
         integer :: i, j, k, ierr
         integer :: ksum(ndim)
         character(4) :: fmt1
+
+        ! model systems use symmetry indices starting from 1.
+        sym0 = 1
 
         if (system_type == hub_real) then
 

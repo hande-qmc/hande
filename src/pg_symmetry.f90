@@ -81,9 +81,12 @@ contains
         use checking, only: check_allocate
 
         use basis, only: basis_fns, nbasis
-        use system, only: nsym
+        use system, only: nsym, sym0
 
         integer :: i, ierr
+
+        ! molecular systems use symmetry indices starting from 0.
+        sym0 = 0
 
         ! Given n generators, there must be 2^n irreducible representations.
         ! in the working space.  (Note that the wavefunctions might only span

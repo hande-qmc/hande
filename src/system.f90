@@ -35,6 +35,9 @@ integer :: nvirt_alpha, nvirt_beta
 ! Number of symmetries.
 integer :: nsym
 
+! Index of lowest symmetry (normally 0 or 1).
+integer :: sym0
+
 ! --- Model Hamiltonians ---
 
 ! 1, 2 or 3 dimensions.
