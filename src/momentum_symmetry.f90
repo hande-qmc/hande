@@ -40,69 +40,61 @@ contains
 
         ! model systems use symmetry indices starting from 1.
         sym0 = 1
+        nsym = nbasis/2
 
-        if (system_type == hub_real) then
+        allocate(sym_table(nsym, nsym), stat=ierr)
+        call check_allocate('sym_table',nsym*nsym,ierr)
+        allocate(inv_sym(nsym), stat=ierr)
+        call check_allocate('inv_sym',nsym,ierr)
 
-            nsym = 1
+        fmt1 = int_fmt(nsym)
 
-        else
+        gamma_sym = 0
+        do i = 1, nsym
+            if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
+        end do
+        if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
-            nsym = nbasis/2
-            allocate(sym_table(nsym, nsym), stat=ierr)
-            call check_allocate('sym_table',nsym*nsym,ierr)
-            allocate(inv_sym(nsym), stat=ierr)
-            call check_allocate('inv_sym',nsym,ierr)
-
-            fmt1 = int_fmt(nsym)
-
-            gamma_sym = 0
-            do i = 1, nsym
-                if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
-            end do
-            if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
-
-            do i = 1, nsym
-                do j = i, nsym
-                    ksum = basis_fns(i*2)%l + basis_fns(j*2)%l
-                    do k = 1, nsym
-                        if (is_reciprocal_lattice_vector(ksum - basis_fns(k*2)%l)) then
-                            sym_table(i,j) = k
-                            sym_table(j,i) = k
-                            if (k == gamma_sym) then
-                                inv_sym(i) = j
-                                inv_sym(j) = i
-                            end if
-                            exit
+        do i = 1, nsym
+            do j = i, nsym
+                ksum = basis_fns(i*2)%l + basis_fns(j*2)%l
+                do k = 1, nsym
+                    if (is_reciprocal_lattice_vector(ksum - basis_fns(k*2)%l)) then
+                        sym_table(i,j) = k
+                        sym_table(j,i) = k
+                        if (k == gamma_sym) then
+                            inv_sym(i) = j
+                            inv_sym(j) = i
                         end if
-                    end do
+                        exit
+                    end if
                 end do
             end do
+        end do
 
-            if (parent) then
-                write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
-                write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
-                write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
-                do i = 1, ndim
-                    write (6,'(3X)', advance='no')
-                end do
-                write (6,'(a7)') 'Inverse'
-                do i = 1, nsym
-                    write (6,'(i4,5X)', advance='no') i
-                    call write_basis_fn(basis_fns(2*i), new_line=.false., print_full=.false.)
-                    write (6,'(5X,i4)') inv_sym(i)
+        if (parent) then
+            write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
+            write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
+            write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
+            do i = 1, ndim
+                write (6,'(3X)', advance='no')
+            end do
+            write (6,'(a7)') 'Inverse'
+            do i = 1, nsym
+                write (6,'(i4,5X)', advance='no') i
+                call write_basis_fn(basis_fns(2*i), new_line=.false., print_full=.false.)
+                write (6,'(5X,i4)') inv_sym(i)
+            end do
+            write (6,'()')
+            write (6,'(1X,a83,/)') &
+                "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
+            do i = 1, nsym
+                do j = 1, nsym
+                    write (6,'('//fmt1//')', advance='no') sym_table(j,i)
                 end do
                 write (6,'()')
-                write (6,'(1X,a83,/)') &
-                    "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
-                do i = 1, nsym
-                    do j = 1, nsym
-                        write (6,'('//fmt1//')', advance='no') sym_table(j,i)
-                    end do
-                    write (6,'()')
-                end do
-                write (6,'()')
-            end if
-
+            end do
+            write (6,'()')
         end if
 
     end subroutine init_momentum_symmetry

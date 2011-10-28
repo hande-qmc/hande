@@ -63,7 +63,7 @@ contains
 
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use determinants, only: decode_det
-        use system, only: lattice, ndim, box_length
+        use system, only: lattice, ndim, box_length, nsym, sym0
         use bit_utils
         use checking, only: check_allocate
         use errors, only: stop_all
@@ -72,6 +72,9 @@ contains
         integer :: r(ndim)
 
         integer :: lvecs(ndim, 3**ndim)
+
+        nsym = 1
+        sym0 = 1
 
         t_self_images = any(abs(box_length-1.0_p) < depsilon)
 
