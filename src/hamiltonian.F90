@@ -26,6 +26,8 @@ contains
         ! but enables us to use only one test for the system type.  A small
         ! efficiency for not much effort. :-)
 
+        use hamiltonian_molecular, only: get_hmatel_mol
+
         real(p) :: hmatel
         integer, intent(in) :: d1, d2
 
@@ -34,6 +36,8 @@ contains
             hmatel = get_hmatel_k(dets_list(:,d1), dets_list(:,d2))
         case(hub_real)
             hmatel = get_hmatel_real(dets_list(:,d1), dets_list(:,d2))
+        case(read_in)
+            hmatel = get_hmatel_mol(dets_list(:,d1), dets_list(:,d2))
         end select
 
     end function get_hmatel
