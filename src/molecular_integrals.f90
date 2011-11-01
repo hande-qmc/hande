@@ -433,33 +433,48 @@ contains
         type(int_indx) :: indx
         integer, intent(in) :: i, j, a, b
 
-        integer :: ii, jj, aa, bb, tmp
+        integer :: ii, jj, aa, bb, tmp, ia, jb
 
         ii = i
         jj = j
         aa = a
         bb = b
 
-        ! Use permutation symmetry to find unique integral.
-        ! Require i<a and j<b.
-        if (ii > aa) then
+        ! Use permutation symmetry to find unique indices corresponding to the
+        ! desired integral.
+        ! As orbitals and integrals are real, <ij|o_2|ab> = <ji|o_2|ba> = <ab|o_2|ij> = <ba|o_2|ji>
+        !                                                 = <ib|o_2|aj> = <bi|o_2|ja> = <aj|o_2|ib> = <ja|o_2|bi>
+        ! Obviously we wish to use this permutation symmetry to reduce the
+        ! storage space required by a factor of 8.
+
+        ! Require i>=a and j>=b.
+        if (ii < aa) then
             tmp = aa
             aa = ii
             ii = tmp
         end if
-        if (jj > bb) then
+        if (jj < bb) then
             tmp = bb
             bb = jj
             jj = tmp
         end if
-        ! Require (i,a) < (j,b), i.e. i<j || (i==j && a<b)
-        if (ii > jj .or. (ii==jj .and. aa > bb) ) then
-            tmp = ii
-            ii = jj
-            jj = tmp
-            tmp = aa
-            aa = bb
-            bb = tmp
+
+        ! Convert to spatial indices
+        ii = basis_fns(ii)%spatial_index
+        jj = basis_fns(jj)%spatial_index
+        aa = basis_fns(aa)%spatial_index
+        bb = basis_fns(bb)%spatial_index
+
+        ! Find pair indices.
+        ia = tri_ind(ii,aa)
+        jb = tri_ind(jj,bb)
+
+        ! Require (i,a) > (j,b), i.e. i>j || (i==j && a>b)
+        ! Hence find overall index after applying 3-fold permutation symmetry.
+        if (ia < jb) then
+            indx%indx = tri_ind(jb, ia)
+        else
+            indx%indx = tri_ind(ia, jb)
         end if
 
         ! Find spin channel.
@@ -484,15 +499,6 @@ contains
         else
             indx%spin_channel = 1
         end if
-
-        ! Convert to spatial indices
-        ii = basis_fns(ii)%spatial_index
-        jj = basis_fns(jj)%spatial_index
-        aa = basis_fns(aa)%spatial_index
-        bb = basis_fns(bb)%spatial_index
-
-        ! Find index.
-        indx%indx = tri_ind(tri_ind(ii,aa),tri_ind(jj,bb))
 
     end function two_body_int_indx
 
