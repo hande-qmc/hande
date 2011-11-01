@@ -92,9 +92,10 @@ contains
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
 
+        hmatel = 0.0_p
         do iel = 1, nel
             i = occ_list(iel)
-            hmatel = get_one_body_int_mol(one_e_h_integrals, i, i)
+            hmatel = hmatel + get_one_body_int_mol(one_e_h_integrals, i, i)
             do jel = iel, nel
                 j = occ_list(jel)
                 hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j) &
