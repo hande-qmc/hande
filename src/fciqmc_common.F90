@@ -217,8 +217,8 @@ contains
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
             if (doing_calc(initiator_fciqmc)) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
-                write (6,'(1X,a36,1X,"(",'//int_fmt(CAS(1),0)//',",",'//int_fmt(CAS(2),0)//'")")')  &
-                    'CAS space of initiator determinants:',CAS
+                write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
+                    'CAS space of initiator determinants:',initiator_CAS
                 write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
                     'Population for a determinant outside CAS space to be an initiator:', initiator_population
             end if

@@ -247,9 +247,9 @@ contains
                 call readf(D0_population)
 
             ! Calculation options: initiator-fciqmc.
-            case('CAS')
-                call readi(CAS(1))
-                call readi(CAS(2))
+            case('INITIATOR_CAS')
+                call readi(initiator_cas(1))
+                call readi(initiator_cas(2))
             case('INITIATOR_POPULATION')
                 call readi(initiator_population)
 
@@ -334,7 +334,7 @@ contains
                 if (size(occ_list0) /= nel) call stop_all(this,'Number of electrons specified is different from &
                                                            &number of electrons used in the reference determinant.')
             end if
-            if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
+            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
          
@@ -448,7 +448,7 @@ contains
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lmag2, 1, mpi_integer, 0, mpi_comm_world, ierr)

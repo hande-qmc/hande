@@ -33,8 +33,11 @@ logical :: no_renorm = .false.
 
 !--- Input data: initiator-FCIQMC ---
 
-integer :: CAS(2) = (/ 0,0 /)
+! Complete active space within which a determinant is an initiator.
+! (0,0) corresponds to the reference determinant only.
+integer :: initiator_cas(2) = (/ 0,0 /)
 
+! Population above which a determinant is an initiator.
 integer :: initiator_population = 3
 
 !--- Energy data ---
