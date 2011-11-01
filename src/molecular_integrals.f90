@@ -262,6 +262,50 @@ contains
 
     end subroutine end_molecular_integrals
 
+!--- Zeroing ---
+
+     subroutine zero_one_body_int_store(store)
+
+        ! Zero a one-body integral store.
+
+        ! In:
+        !    store: one-body integral store with components allocated to hold
+        !    interals.
+        ! Out:
+        !    store: one-body integral store with integral array now set to zero.
+
+        type(one_body), intent(inout) :: store
+
+        integer :: i, ispin
+
+        do i = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
+            do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
+                store%integrals(ispin,i)%v = 0.0_p
+            end do
+        end do
+
+     end subroutine zero_one_body_int_store
+
+     subroutine zero_two_body_int_store(store)
+
+        ! Zero a two-body integral store.
+
+        ! In:
+        !    store: two-body integral store with components allocated to hold
+        !    interals.
+        ! Out:
+        !    store: two-body integral store with integral array now set to zero.
+
+        type(two_body), intent(inout) :: store
+
+        integer :: ispin
+
+        do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
+            store%integrals(ispin)%v = 0.0_p
+        end do
+
+     end subroutine zero_two_body_int_store
+
 !--- Integral access ---
 
 ! TODO:
