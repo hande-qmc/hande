@@ -202,7 +202,6 @@ contains
                 a = a*2
                 b = b*2
             end if
-            if (ios < 0) exit ! end of file
             if (i == 0 .and. j == 0 .and. a == 0 .and. b == 0) then
                 ! Ecore
                 Ecore = x
