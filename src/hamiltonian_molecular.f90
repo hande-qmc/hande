@@ -135,8 +135,9 @@ contains
         hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
 
         do iel = 1, nel
-            hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
-                            - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
+            if (occ_list(iel) /= i) &
+                hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
+                                - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
         end do
 
         if (perm) hmatel = -hmatel
