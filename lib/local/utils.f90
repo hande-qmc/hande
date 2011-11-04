@@ -211,4 +211,38 @@ contains
 
     end function tri_ind
 
+    elemental function tri_ind_reorder(i,j) result(indx)
+
+        ! Find the index corresponding to the (i,j)-th element of a lower
+        ! triangular array.
+        !
+        ! We assume that i >= j.  If this is not the case (i.e. (i,j) refers to
+        ! an element in the upper triangular array) then the index of the
+        ! transpose element (i.e. (j,i)) is returned.
+        !
+        ! This maps:
+        !
+        !   1,1 1,2 1,3 1,4        1  2  4  7
+        !   2,1 2,2 2,3 2,4        2  3  5  8
+        !   3,1 3,2 3,3 3,4   to   4  5  6  9
+        !   4,1 4,2 4,3 4,4        7  8  9 10
+        !
+        ! In:
+        !    i: (1-indexed) index
+        !    j: (1-indexed) index
+        ! Returns:
+        !    A combined (1-indexed) index for the corresponding element in
+        !    a lower triangular array.
+
+        integer :: indx
+        integer, intent(in) :: i, j
+
+        if (i>=j) then
+            indx = tri_ind(i,j)
+        else
+            indx = tri_ind(j,i)
+        end if
+
+    end function tri_ind_reorder
+
 end module utils
