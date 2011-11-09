@@ -21,8 +21,8 @@ contains
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, hub_real, hub_k, read_in
-        use hubbard, only: init_basis_fns
+        use system, only: init_system, system_type, hub_real, hub_k, read_in, cas
+        use hubbard, only: init_model_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
@@ -53,13 +53,10 @@ contains
 
         ! Initialise basis functions.
         if (system_type == read_in) then
-            call read_in_fcidump()
+            call read_in_fcidump(cas_info=cas)
         else
-            call init_basis_fns()
+            call init_model_basis_fns()
         end if
-
-        ! Todo:
-        ! Freezing.
 
         call init_determinants()
 

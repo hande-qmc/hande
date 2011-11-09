@@ -113,6 +113,10 @@ contains
                 end do
             case('SEPARATE_STRINGS')
                 separate_strings = .true.
+            case('CAS')
+                do i = 1,2
+                    call readi(CAS(i))
+                end do
 
             ! Select symmetry of wavefunction.
             case('MS')
@@ -407,6 +411,7 @@ contains
             call mpi_bcast(ktwist, ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(cas, 2, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)

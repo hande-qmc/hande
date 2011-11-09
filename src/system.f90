@@ -38,6 +38,11 @@ integer :: nsym
 ! Index of lowest symmetry (normally 0 or 1).
 integer :: sym0
 
+! Complete active space of basis.  Valid only in systems where the
+! single-particle basis can be ordered by the single-particle eigenvalues (e.g.
+! not in the real-space formulation of the Hubbard model)
+integer :: CAS(2) = (/ -1, -1 /)
+
 ! --- Model Hamiltonians ---
 
 ! 1, 2 or 3 dimensions.
