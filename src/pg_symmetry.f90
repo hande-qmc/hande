@@ -98,9 +98,6 @@ contains
         ! representation.
         nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
         
-        write (6,*) 'nsym', nsym
-        write (6,*) 'sym', basis_fns(:)%sym
-
         allocate(nbasis_sym(0:nsym-1), stat=ierr)
         call check_allocate('nbasis_sym', nsym, ierr)
         allocate(nbasis_sym_spin(2,0:nsym-1), stat=ierr)
