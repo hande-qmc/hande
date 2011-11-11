@@ -33,7 +33,7 @@ contains
         use point_group_symmetry, only: init_pg_symmetry
         use system, only: fcidump, uhf, ecore, nel
 
-        use utils, only: get_free_unit, tri_ind_reorder
+        use utils, only: get_free_unit, tri_ind_reorder, int_fmt
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
 
@@ -62,7 +62,8 @@ contains
         integer :: ir, ios, ierr
         logical :: t_exists
         integer :: active_basis_offset, rhf_fac
-        integer, allocatable :: seen_ij(:), seen_iab(:,:)
+        integer, allocatable :: seen_ijij(:), seen_iaib(:,:)
+        logical, allocatable :: seen_iha(:)
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz
 
@@ -181,8 +182,9 @@ contains
 
         ! From CAS work out the start of the active basis functions, the number
         ! of active basis functions and the number of active electrons.
-        active_basis_offset = 2*(nel-cas(1)) 
-        ! Note that nbasis is spin-orbitals whereas cas is in spatial orbitals
+        active_basis_offset = nel-cas(1) ! number of core *spin* orbitals
+        ! Note that nbasis is spin-orbitals whereas cas(2)=M is in spatial orbitals
+        ! (as we use the conventional CAS definition).
         nbasis = min(nbasis, 2*cas(2))
         nel = nel - ( nel - cas(1) )
         if (uhf) then
@@ -195,7 +197,7 @@ contains
         call check_allocate('basis_fns', nbasis, ierr)
 
         ! Set up basis functions.
-        call init_basis_fns_read_in(norb, uhf, orbsym(active_basis_offset+1:norb+active_basis_offset), basis_fns) 
+        call init_basis_fns_read_in(norb, uhf, orbsym(active_basis_offset/rhf_fac+1:norb+active_basis_offset/rhf_fac), basis_fns) 
 
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
@@ -229,7 +231,7 @@ contains
         ! quantities above.  Hence we must zero them:
 
         Ecore = 0.0_p
-        call zero_one_body_int_store(one_e_h_integrals)
+        if (t_store) call zero_one_body_int_store(one_e_h_integrals)
 
         ! Now, there is no guarantee that FCIDUMP files will include all
         ! permutation symmetry and so we must avoid double-counting when
@@ -247,10 +249,18 @@ contains
         ! can do better if needed---see integral stores in molecular_integrals
         ! for inspiration).
 
-        allocate(seen_ij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
-        call check_allocate('seen_ij', size(seen_ij), ierr)
-        allocate(seen_iab(active_basis_offset,(nbasis*(nbasis+1))/2), stat=ierr)
-        call check_allocate('seen_iab', size(seen_iab), ierr)
+        ! We similarly need to remember if we've seen <i|h|a> or <a|h|i> as we
+        ! only store one of the pair.
+
+        allocate(seen_iha((nbasis*(nbasis+1))/2), stat=ierr)
+        call check_allocate('seen_iha', size(seen_ijij), ierr)
+        allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
+        call check_allocate('seen_ijij', size(seen_ijij), ierr)
+        allocate(seen_iaib(active_basis_offset,(nbasis*(nbasis+1))/2), stat=ierr)
+        call check_allocate('seen_iaib', size(seen_iaib), ierr)
+        seen_iha = .false.
+        seen_ijij = 0
+        seen_iaib = 0
 
         ! Freezing virtual orbitals amounts to simply not exciting into them,
         ! which can easily be enforced by removing them from the basis set.
@@ -294,12 +304,12 @@ contains
             if (max(ii,jj,aa,bb) <= nbasis) then
 
                 ! Have integrals involving only core or active orbitals.
-                if (ii == 0 .and. jj == 0 .and. aa == 0 .and. bb == 0) then
+                if (i == 0 .and. j == 0 .and. a == 0 .and. b == 0) then
 
                     ! Nuclear energy.
                     Ecore = Ecore + x
 
-                else if (ii > 0 .and. jj == 0 .and. aa == 0 .and. bb == 0) then
+                else if (ii > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
 
                     ! \epsilon_i
                     if (uhf) then
@@ -309,7 +319,7 @@ contains
                         basis_fns(ii)%sp_eigv = x
                     end if
 
-                else if (jj == 0 .and. bb == 0) then
+                else if (j == 0 .and. b == 0) then
 
                     ! < i | h | a >
                     if (t_store) then
@@ -317,9 +327,12 @@ contains
                             ! Have <i|h|i> from a core orbital.  Add
                             ! contribution to Ecore.
                             Ecore = Ecore + x*rhf_fac
-                        else
-                            x = x + get_one_body_int_mol(one_e_h_integrals, ii, aa)
-                            call store_one_body_int_mol(ii, aa, x, one_e_h_integrals)
+                        else if (all( (/ ii, aa /) > 0)) then
+                            if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
+                                x = x + get_one_body_int_mol(one_e_h_integrals, ii, aa)
+                                call store_one_body_int_mol(ii, aa, x, one_e_h_integrals)
+                                seen_iha(tri_ind_reorder(ii,aa)) = .true.
+                            end if
                         end if
                     end if
 
@@ -327,55 +340,58 @@ contains
 
                     ! < i j | 1/r_12 | a b >
                     if (t_store) then
-                        if (min(ii,jj,aa,bb) <= 0) then
-                            write (6,*) 'hit', ii, jj, aa, bb, active_basis_offset
-                            ! Have <ij|ab> involving at least one core orbital.
+                        if (all( (/ ii,jj,aa,bb /) <= 0)) then
+                            ! Have <ij|ab> involving only core orbitals.
                             if (ii == aa .and. jj == bb .and. ii == jj) then
                                 ! RHF calculations: need to include <i,up i,down|i,up i,down>
-                                if (.not.uhf .and. mod(seen_ij(tri_ind_reorder(i,j)),2) == 0) then
+                                if (.not.uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                     Ecore = Ecore + x
-                                    seen_ij(tri_ind_reorder(i,j)) = seen_ij(tri_ind_reorder(i,j)) + 1
+                                    seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                 end if
-                            else if (ii == aa .and. jj == bb .and. ii /= jj) then
-                                if (mod(seen_ij(tri_ind_reorder(i,j)),2) == 0) then
+                            else if (ii == aa .and. jj == bb .and. ii < jj) then
+                                if (mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                     Ecore = Ecore + x*rhf_fac
-                                    seen_ij(tri_ind_reorder(i,j)) = seen_ij(tri_ind_reorder(i,j)) + 1
+                                    seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                 end if
-                            else if (ii == bb .and. jj == aa .and. ii /= jj) then
-                                if (seen_ij(tri_ind_reorder(i,j)) < 2) then
+                            else if (ii == bb .and. jj == aa .and. ii < jj) then
+                                if (seen_ijij(tri_ind_reorder(i,j)) < 2) then
                                     Ecore = Ecore - x
-                                    seen_ij(tri_ind_reorder(i,j)) = seen_ij(tri_ind_reorder(i,j)) + 2
+                                    seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 2
                                 end if
-                            else if (ii == aa .and. min(jj,bb) >= 1) then
+                            end if
+                        else if (min(ii,jj,aa,bb) <= 0) then
+                            ! Have an integral involving some core and some
+                            ! active orbitals.
+                            if (ii == aa .and. min(jj,bb) >= 1) then
                                 ! Update <j|h|b> with contribution <ij|ib>.
-                                if (mod(seen_iab(i, tri_ind_reorder(jj,bb)),2) == 0) then
+                                if (mod(seen_iaib(i, tri_ind_reorder(jj,bb)),2) == 0) then
                                     x = get_one_body_int_mol(one_e_h_integrals, jj, bb) + x*rhf_fac
                                     call store_one_body_int_mol(jj, bb, x, one_e_h_integrals)
-                                    seen_iab(i, tri_ind_reorder(jj,bb)) = seen_iab(i, tri_ind_reorder(jj,bb)) + 1
+                                    seen_iaib(i, tri_ind_reorder(jj,bb)) = seen_iaib(i, tri_ind_reorder(jj,bb)) + 1
                                 end if
                             else if (jj == bb .and. min(ii,aa) >= 1) then
                                 ! Update <i|h|a> with contribution <ij|aj>
-                                if (mod(seen_iab(j, tri_ind_reorder(ii,aa)),2) == 0) then
+                                if (mod(seen_iaib(j, tri_ind_reorder(ii,aa)),2) == 0) then
                                     x = get_one_body_int_mol(one_e_h_integrals, ii, aa) + x*rhf_fac
                                     call store_one_body_int_mol(ii, aa, x, one_e_h_integrals)
-                                    seen_iab(j, tri_ind_reorder(ii,aa)) = seen_iab(j, tri_ind_reorder(ii,aa)) + 1
+                                    seen_iaib(j, tri_ind_reorder(ii,aa)) = seen_iaib(j, tri_ind_reorder(ii,aa)) + 1
                                 end if
                             else if (ii == bb .and. min(jj,aa) >= 1) then
                                 ! Update <j|h|a> with contribution <ij|ai>.
-                                if (mod(seen_iab(i, tri_ind_reorder(jj,aa)),2) == 0) then
+                                if (seen_iaib(i, tri_ind_reorder(jj,aa)) < 2) then
                                     x = get_one_body_int_mol(one_e_h_integrals, jj, aa) - x
                                     call store_one_body_int_mol(jj, aa, x, one_e_h_integrals)
-                                    seen_iab(i, tri_ind_reorder(jj,aa)) = seen_iab(j, tri_ind_reorder(jj,aa)) + 1
+                                    seen_iaib(i, tri_ind_reorder(jj,aa)) = seen_iaib(j, tri_ind_reorder(jj,aa)) + 2
                                 end if
                             else if (jj == aa .and. min(ii,bb) >= 1) then
                                 ! Update <i|h|b> with contribution <ij|jb>
-                                if (mod(seen_iab(j, tri_ind_reorder(ii,bb)),2) == 0) then
+                                if (seen_iaib(j, tri_ind_reorder(ii,bb)) < 2) then
                                     x = get_one_body_int_mol(one_e_h_integrals, ii, bb) - x
                                     call store_one_body_int_mol(ii, bb, x, one_e_h_integrals)
-                                    seen_iab(j, tri_ind_reorder(ii,bb)) = seen_iab(j, tri_ind_reorder(ii,bb)) + 1
+                                    seen_iaib(j, tri_ind_reorder(ii,bb)) = seen_iaib(j, tri_ind_reorder(ii,bb)) + 2
                                 end if
                             end if
-                        else
+                        else if (all( (/ ii,jj,aa,bb /) > 0)) then
                             ! Have <ij|ab> involving active orbitals.
                             call store_two_body_int_mol(ii, jj, aa, bb, x, coulomb_integrals)
                         end if
@@ -387,10 +403,12 @@ contains
 
         end do
 
-        deallocate(seen_ij, stat=ierr)
-        call check_deallocate('seen_ij', ierr)
-        deallocate(seen_iab, stat=ierr)
-        call check_deallocate('seen_iab', ierr)
+        deallocate(seen_iha, stat=ierr)
+        call check_deallocate('seen_iha', ierr)
+        deallocate(seen_ijij, stat=ierr)
+        call check_deallocate('seen_ijij', ierr)
+        deallocate(seen_iaib, stat=ierr)
+        call check_deallocate('seen_iaib', ierr)
 
         close(ir, status='keep')
 
@@ -401,6 +419,8 @@ contains
             do i = 1, size(all_basis_fns)
                 call write_basis_fn(all_basis_fns(i), ind=i, new_line=.true.)
             end do
+            write (6,'(/,1X,"Freezing...",/,1X,"Using complete active space: (",' &
+                      //int_fmt(cas(1),0)//',",",'//int_fmt(cas(2),0)//',")",/)') cas
         end if
 
         do i = 1, size(all_basis_fns)
@@ -414,6 +434,7 @@ contains
         do i = 1, nbasis
             call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
         end do
+        write (6,'(/,1X,a8,f18.12)') 'E_core =', Ecore
 
         if (.not.t_store) then
             ! Should tidy up and deallocate everything we allocated.
