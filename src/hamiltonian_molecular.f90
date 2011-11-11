@@ -83,16 +83,16 @@ contains
         use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
                                        get_two_body_int_mol_nonzero, one_e_h_integrals, &
                                        coulomb_integrals
-        use system, only: nel
+        use system, only: nel, Ecore
 
         real(p) :: hmatel
         integer, intent(in) :: occ_list(nel)
 
         integer :: iel, jel, i, j
 
-        ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+        ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
 
-        hmatel = 0.0_p
+        hmatel = Ecore
         do iel = 1, nel
             i = occ_list(iel)
             hmatel = hmatel + get_one_body_int_mol(one_e_h_integrals, i, i)
