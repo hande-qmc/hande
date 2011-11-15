@@ -33,9 +33,11 @@ contains
         use point_group_symmetry, only: init_pg_symmetry
         use system, only: fcidump, uhf, ecore, nel
 
-        use utils, only: get_free_unit, tri_ind_reorder, int_fmt
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
+        use parallel, only: parent
+        use ranking, only: insertion_rank_rp
+        use utils, only: get_free_unit, tri_ind_reorder, int_fmt
 
         use, intrinsic :: iso_fortran_env
 
@@ -55,15 +57,17 @@ contains
         type(basis_fn), allocatable :: all_basis_fns(:)
 
         ! Integrals
-        integer :: i, j, a, b, ii, jj, aa, bb
+        integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb
         real(dp) :: x
 
         ! reading in...
         integer :: ir, ios, ierr
         logical :: t_exists
         integer :: active_basis_offset, rhf_fac
-        integer, allocatable :: seen_ijij(:), seen_iaib(:,:)
+        integer, allocatable :: seen_ijij(:), seen_iaib(:,:), sp_eigv_rank(:), sp_fcidump_rank(:)
         logical, allocatable :: seen_iha(:)
+        real(p), allocatable :: sp_eigv(:)
+        logical :: not_found_sp_eigv
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz
 
@@ -164,12 +168,6 @@ contains
             rhf_fac = 2  ! need to double count some integrals.
         end if
 
-        allocate(all_basis_fns(nbasis), stat=ierr)
-        call check_allocate('all_basis_fns', nbasis, ierr)
-
-        ! Set up basis functions, including those which are subsequently frozen.
-        call init_basis_fns_read_in(norb, uhf, orbsym(1:norb), all_basis_fns) 
-
         if (present(cas_info)) then
             if (any(cas_info < 1)) then
                 cas = (/ nel, nbasis/2 /)
@@ -179,6 +177,57 @@ contains
         else
             cas = (/ nel, nbasis/2 /)
         end if
+
+        ! Read in FCIDUMP file to get single-particle eigenvalues.
+        not_found_sp_eigv = .true.
+        allocate(sp_eigv(norb), stat=ierr)
+        call check_allocate('sp_eigv', nbasis, ierr)
+        ios = 0
+        do
+            ! loop over lines.
+            read (ir,*, iostat=ios) x, i, a, j, b
+            if (ios == iostat_end) exit ! reached end of file
+            if (ios /= 0) call stop_all('read_input','Problem reading input.')
+            if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
+                ! \epsilon_i --- temporarily store for all basis functions,
+                ! including inactive (frozen) orbitals.
+                not_found_sp_eigv = .false.
+                sp_eigv(i) = x
+            end if
+        end do
+
+        if (not_found_sp_eigv) &
+            call stop_all('read_in_fcidump',fcidump//' file does not contain &
+                          &single-particle eigenvalues.  Please implement &
+                          &calculating them from the integrals.')
+
+        ! Rank basis functions by single-particle energy.
+        ! Note that we use a *stable* ranking algorithm.
+        allocate(sp_eigv_rank(0:norb), stat=ierr)
+        call check_allocate('sp_eigv_rank', nbasis+1, ierr)
+        allocate(sp_fcidump_rank(0:norb), stat=ierr)
+        call check_allocate('sp_fcidump_rank', nbasis+1, ierr)
+
+        call insertion_rank_rp(sp_eigv, sp_eigv_rank(1:))
+        ! the 0 index is used as a null entry in the FCIDUMP file, so need
+        ! to handle that...
+        sp_eigv_rank(0) = 0
+        ! sp_eigv_rank(i) = i' takes us from the {i'} basis (as ordered in
+        ! the FCIDUMP file) to the {i} basis (ordered by energy).  We also
+        ! need the inverse.
+        do i = 0, norb
+            do j = 0, norb
+                if (sp_eigv_rank(j) == i) then
+                    sp_fcidump_rank(i) = j
+                    exit
+                end if
+            end do
+        end do
+
+        ! Set up basis functions, including those which are subsequently frozen.
+        allocate(all_basis_fns(nbasis), stat=ierr)
+        call check_allocate('all_basis_fns', nbasis, ierr)
+        call init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank(1:), all_basis_fns) 
 
         ! From CAS work out the start of the active basis functions, the number
         ! of active basis functions and the number of active electrons.
@@ -193,16 +242,18 @@ contains
             norb = nbasis/2
         end if
 
+        ! Set up basis functions used in calculation.
         allocate(basis_fns(nbasis), stat=ierr)
         call check_allocate('basis_fns', nbasis, ierr)
+        call init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank(1+active_basis_offset/rhf_fac:), basis_fns) 
 
-        ! Set up basis functions.
-        call init_basis_fns_read_in(norb, uhf, orbsym(active_basis_offset/rhf_fac+1:norb+active_basis_offset/rhf_fac), basis_fns) 
+        deallocate(sp_eigv, stat=ierr)
+        call check_deallocate('sp_eigv', ierr)
 
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
-        if (minval(orbsym(:norb+active_basis_offset/rhf_fac)) < 0) then
-            write (6,'(1X,a62)') 'Unconverged symmetry found.  Turning point group symmetry off.'
+        if (minval(basis_fns(:)%sym) < 0) then
+            if (parent) write (6,'(1X,a62)') 'Unconverged symmetry found.  Turning point group symmetry off.'
             forall (i=1:nbasis) basis_fns(i)%sym = 0
         end if
 
@@ -211,6 +262,14 @@ contains
 
         ! Initialise integral stores.
         if (t_store) call init_molecular_integrals()
+
+        ! Now, read in FCIDUMP again to get the integrals.
+        rewind(ir)
+        ! Have to re-read the FCI namelist.
+        ! ***WARNING***
+        ! This will, e.g. overwrite norb, but we don't need those variables any
+        ! more.
+        read(ir,FCI)
 
         ! Freezing core orbitals amounts to changing the Hamiltonian.  In
         ! particular:
@@ -256,7 +315,7 @@ contains
         call check_allocate('seen_iha', size(seen_ijij), ierr)
         allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
         call check_allocate('seen_ijij', size(seen_ijij), ierr)
-        allocate(seen_iaib(active_basis_offset,(nbasis*(nbasis+1))/2), stat=ierr)
+        allocate(seen_iaib(-active_basis_offset+1:0,(nbasis*(nbasis+1))/2), stat=ierr)
         call check_allocate('seen_iaib', size(seen_iaib), ierr)
         seen_iha = .false.
         seen_ijij = 0
@@ -274,28 +333,22 @@ contains
             if (ios == iostat_end) exit ! reached end of file
             if (ios /= 0) call stop_all('read_input','Problem reading input.')
 
-            if (.not.uhf) then
-                ! Working in spin-orbitals but FCIDUMP is in spatial orbitals.
-                ! Need to only store integrals in one spin-channel in RHF, so
-                ! can just with (e.g.) beta orbitals.
-                i = i*2
-                j = j*2
-                a = a*2
-                b = b*2
-            end if
+            ! Working in spin orbitals but FCIDUMP is in spatial orbitals in RHF
+            ! calculations and spin orbitals in UHF calculations, and te basis
+            ! is ! not necessarily ordered by energy.  We wish to work in spin
+            ! orbitals ordered by energy.
+            ! Need to only store integrals in one spin-channel in RHF, so
+            ! can just get away with referring (e.g.) beta orbitals, hence the
+            ! factor of 2 in RHF.  The integral store routines convert the
+            ! indices further to compress the integral stores as much as
+            ! possible.
+            i = rhf_fac*sp_fcidump_rank(i)
+            j = rhf_fac*sp_fcidump_rank(j)
+            a = rhf_fac*sp_fcidump_rank(a)
+            b = rhf_fac*sp_fcidump_rank(b)
 
-            if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
-                ! \epsilon_i --- temporarily store for all basis functions,
-                ! including inactive (frozen) orbitals.
-                if (uhf) then
-                    all_basis_fns(i)%sp_eigv = x
-                else
-                    all_basis_fns(i-1)%sp_eigv = x
-                    all_basis_fns(i)%sp_eigv = x
-                end if
-            end if
-
-            ! Adjust indices to take into account frozen core orbitals.
+            ! Adjust indices to take into account frozen core orbitals and to
+            ! convert to an energy ordering.
             ii = i - active_basis_offset
             jj = j - active_basis_offset
             aa = a - active_basis_offset
@@ -309,15 +362,10 @@ contains
                     ! Nuclear energy.
                     Ecore = Ecore + x
 
-                else if (ii > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
+                else if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
 
                     ! \epsilon_i
-                    if (uhf) then
-                        basis_fns(ii)%sp_eigv = x
-                    else
-                        basis_fns(ii-1)%sp_eigv = x
-                        basis_fns(ii)%sp_eigv = x
-                    end if
+                    ! Already dealt with in previous pass over FCIDUMP.
 
                 else if (j == 0 .and. b == 0) then
 
@@ -340,7 +388,9 @@ contains
 
                     ! < i j | 1/r_12 | a b >
                     if (t_store) then
-                        if (all( (/ ii,jj,aa,bb /) <= 0)) then
+                        orbs = (/ ii, jj, aa, bb /)
+                        select case(count(orbs > 0))
+                        case(0)
                             ! Have <ij|ab> involving only core orbitals.
                             if (ii == aa .and. jj == bb .and. ii == jj) then
                                 ! RHF calculations: need to include <i,up i,down|i,up i,down>
@@ -359,42 +409,47 @@ contains
                                     seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 2
                                 end if
                             end if
-                        else if (min(ii,jj,aa,bb) <= 0) then
-                            ! Have an integral involving some core and some
-                            ! active orbitals.
-                            if (ii == aa .and. min(jj,bb) >= 1) then
-                                ! Update <j|h|b> with contribution <ij|ib>.
-                                if (mod(seen_iaib(i, tri_ind_reorder(jj,bb)),2) == 0) then
-                                    x = get_one_body_int_mol(one_e_h_integrals, jj, bb) + x*rhf_fac
-                                    call store_one_body_int_mol(jj, bb, x, one_e_h_integrals)
-                                    seen_iaib(i, tri_ind_reorder(jj,bb)) = seen_iaib(i, tri_ind_reorder(jj,bb)) + 1
+                        case(2)
+                            ! Have an integral involving two core and two active orbitals.
+                            ic = 1
+                            ia = 1
+                            do iorb = 1, 4
+                                if (orbs(iorb) > 0) then
+                                    active(ia) = orbs(iorb)
+                                    ia = ia +1
+                                else
+                                    core(ic) = orbs(iorb)
+                                    ic = ic + 1
                                 end if
-                            else if (jj == bb .and. min(ii,aa) >= 1) then
-                                ! Update <i|h|a> with contribution <ij|aj>
-                                if (mod(seen_iaib(j, tri_ind_reorder(ii,aa)),2) == 0) then
-                                    x = get_one_body_int_mol(one_e_h_integrals, ii, aa) + x*rhf_fac
-                                    call store_one_body_int_mol(ii, aa, x, one_e_h_integrals)
-                                    seen_iaib(j, tri_ind_reorder(ii,aa)) = seen_iaib(j, tri_ind_reorder(ii,aa)) + 1
-                                end if
-                            else if (ii == bb .and. min(jj,aa) >= 1) then
-                                ! Update <j|h|a> with contribution <ij|ai>.
-                                if (seen_iaib(i, tri_ind_reorder(jj,aa)) < 2) then
-                                    x = get_one_body_int_mol(one_e_h_integrals, jj, aa) - x
-                                    call store_one_body_int_mol(jj, aa, x, one_e_h_integrals)
-                                    seen_iaib(i, tri_ind_reorder(jj,aa)) = seen_iaib(j, tri_ind_reorder(jj,aa)) + 2
-                                end if
-                            else if (jj == aa .and. min(ii,bb) >= 1) then
-                                ! Update <i|h|b> with contribution <ij|jb>
-                                if (seen_iaib(j, tri_ind_reorder(ii,bb)) < 2) then
-                                    x = get_one_body_int_mol(one_e_h_integrals, ii, bb) - x
-                                    call store_one_body_int_mol(ii, bb, x, one_e_h_integrals)
-                                    seen_iaib(j, tri_ind_reorder(ii,bb)) = seen_iaib(j, tri_ind_reorder(ii,bb)) + 2
+                            end do
+                            if (core(1) == core(2)) then
+                                ! Have integral of type < i a | i b > or < i a | b i >,
+                                ! where i is a core orbital and a and b are
+                                ! active orbitals.
+                                if ((ii == core(1) .and. aa == core(1)) .or. (jj == core(1) .and. bb == core(1))) then
+                                    ! < i a | i b >
+                                    if (mod(seen_iaib(core(1), tri_ind_reorder(active(1),active(2))),2) == 0) then
+                                        ! Update <a|h|b> with contribution <ia|ib>.
+                                        x = get_one_body_int_mol(one_e_h_integrals, active(1), active(2)) + x*rhf_fac
+                                        call store_one_body_int_mol(active(1), active(2), x, one_e_h_integrals)
+                                        seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
+                                            seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 1
+                                    end if
+                                else
+                                    ! < i a | b i > (or a permutation thereof)
+                                    if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2) then
+                                        ! Update <j|h|a> with contribution <ij|ai>.
+                                        x = get_one_body_int_mol(one_e_h_integrals, active(1), active(2)) - x
+                                        call store_one_body_int_mol(active(1), active(2), x, one_e_h_integrals)
+                                        seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
+                                            seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
+                                    end if
                                 end if
                             end if
-                        else if (all( (/ ii,jj,aa,bb /) > 0)) then
+                        case(4)
                             ! Have <ij|ab> involving active orbitals.
                             call store_two_body_int_mol(ii, jj, aa, bb, x, coulomb_integrals)
-                        end if
+                        end select
                     end if
 
                 end if
@@ -403,6 +458,10 @@ contains
 
         end do
 
+        deallocate(sp_eigv_rank, stat=ierr)
+        call check_deallocate('sp_eigv_rank', ierr)
+        deallocate(sp_fcidump_rank, stat=ierr)
+        call check_deallocate('sp_fcidump_rank', ierr)
         deallocate(seen_iha, stat=ierr)
         call check_deallocate('seen_iha', ierr)
         deallocate(seen_ijij, stat=ierr)
@@ -415,12 +474,14 @@ contains
         if (size(basis_fns) /= size(all_basis_fns)) then
             ! We froze some orbitals...
             ! Print out entire original basis.
-            call write_basis_fn_header()
-            do i = 1, size(all_basis_fns)
-                call write_basis_fn(all_basis_fns(i), ind=i, new_line=.true.)
-            end do
-            write (6,'(/,1X,"Freezing...",/,1X,"Using complete active space: (",' &
-                      //int_fmt(cas(1),0)//',",",'//int_fmt(cas(2),0)//',")",/)') cas
+            if (parent) then
+                call write_basis_fn_header()
+                do i = 1, size(all_basis_fns)
+                    call write_basis_fn(all_basis_fns(i), ind=i, new_line=.true.)
+                end do
+                write (6,'(/,1X,"Freezing...",/,1X,"Using complete active space: (",' &
+                          //int_fmt(cas(1),0)//',",",'//int_fmt(cas(2),0)//',")",/)') cas
+            end if
         end if
 
         do i = 1, size(all_basis_fns)
@@ -430,11 +491,13 @@ contains
         deallocate(all_basis_fns, stat=ierr)
         call check_deallocate('all_basis_fns',ierr)
 
-        call write_basis_fn_header()
-        do i = 1, nbasis
-            call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
-        end do
-        write (6,'(/,1X,a8,f18.12)') 'E_core =', Ecore
+        if (parent) then
+            call write_basis_fn_header()
+            do i = 1, nbasis
+                call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
+            end do
+            write (6,'(/,1X,a8,f18.12)') 'E_core =', Ecore
+        end if
 
         if (.not.t_store) then
             ! Should tidy up and deallocate everything we allocated.
@@ -443,17 +506,19 @@ contains
 
     end subroutine read_in_fcidump
 
-    subroutine init_basis_fns_read_in(norb, uhf, orbsym, basis_arr)
+    subroutine init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank, basis_arr)
 
         ! Initialise list of basis functions based upon the FCI namelist`data
         ! read in from an FCIDUMP file.
 
         ! In:
-        !    norb: number of orbitals/functions in the FCIDUMP file.
+        !    norb: number of orbitals/functions to initialise.
         !    uhf: true if FCIDUMP file was produced from an unrestricted (UHF)
         !         calculation.  norb refers to spatial orbitals in a RHF-based
         !         FCIDUMP file and spin orbitals in a UHF-based FCIDUMP file.
         !    orbsym: list of symmetries of each orbital/function.
+        !    sp_eigv:
+        !    sp_eigv_rank:
         ! In/Out:
         !    basis_arr: array of basis functions.  On entry it is allocated to
         !    (at least) the size of the basis.  On exit the individual basis_fn
@@ -465,25 +530,31 @@ contains
         integer, intent(in) :: norb
         logical, intent(in) :: uhf
         integer, intent(in) :: orbsym(:)
+        real(p), intent(in) :: sp_eigv(:)
+        integer, intent(in) :: sp_eigv_rank(:)
         type(basis_fn), intent(inout) :: basis_arr(:)
 
-        integer :: i
+        integer :: i, rank
 
         do i = 1, norb
+            rank = sp_eigv_rank(i)
             if (uhf) then
                 if (mod(i,2) == 0) then
-                    call init_basis_fn(basis_arr(i), sym=orbsym(i)-1, ms=-1)
+                    call init_basis_fn(basis_arr(i), sym=orbsym(rank)-1, ms=-1)
                 else
-                    call init_basis_fn(basis_arr(i), sym=orbsym(i)-1, ms=1)
+                    call init_basis_fn(basis_arr(i), sym=orbsym(rank)-1, ms=1)
                 end if
                 ! Assume orbitals are ordered appropriately in FCIDUMP...
                 basis_arr(i)%spatial_index = (i+1)/2
+                basis_arr(i)%sp_eigv = sp_eigv(rank)
             else
                 ! Need to initialise both up- and down-spin basis functions.
-                call init_basis_fn(basis_arr(2*i-1), sym=orbsym(i)-1, ms=-1)
-                call init_basis_fn(basis_arr(2*i), sym=orbsym(i)-1, ms=1)
+                call init_basis_fn(basis_arr(2*i-1), sym=orbsym(rank)-1, ms=-1)
+                call init_basis_fn(basis_arr(2*i), sym=orbsym(rank)-1, ms=1)
                 basis_arr(2*i-1)%spatial_index = i
                 basis_arr(2*i)%spatial_index = i
+                basis_arr(2*i-1)%sp_eigv = sp_eigv(rank)
+                basis_arr(2*i)%sp_eigv = sp_eigv(rank)
             end if
         end do
 
