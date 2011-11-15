@@ -3,7 +3,6 @@ module folded_spectrum_utils
 !TO DO:
 ! tau finder.
 ! calculating P__, P_o, Po_.
-! auto-adjust reference determinant.
 ! use spawn_from_prob everywhere.
 ! optimise diagonal matrix element evaluation.
 

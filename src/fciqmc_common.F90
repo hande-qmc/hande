@@ -3,6 +3,7 @@ module fciqmc_common
 ! Module containing routines common to different fciqmc algorithms.
 
 use fciqmc_data
+
 implicit none
 
 contains
@@ -234,6 +235,96 @@ contains
         end if
         
     end subroutine init_fciqmc
+
+    subroutine select_ref_det()
+
+        ! Change the reference determinant to be the determinant with the
+        ! greatest population if it exceeds some threshold relative to the
+        ! current reference determinant.
+
+        ! TODO: make compatible with HFS.
+
+        use basis, only: basis_length
+        use determinants, only: decode_det, write_det
+
+        use parallel
+
+        integer, parameter :: particle_type = 1
+        integer :: in_data(2), out_data(2), i, fmax(basis_length), max_pop, ierr
+        real(p) :: H00_max
+        logical :: updated
+
+        updated = .false.
+        ! Find determinant with largest population.
+        max_pop = 0
+        do i = 1, tot_walkers
+            if (abs(walker_population(particle_type,i)) > abs(max_pop)) then
+                max_pop = walker_population(particle_type,i)
+                fmax = walker_dets(:,i)
+                H00_max = walker_energies(particle_type, i)
+            end if
+        end do
+
+        ! Only change reference determinant if the population is larger than the
+        ! reference determinant by a given factor to avoid switching
+        ! continuously between degenerate determinants.
+
+        ! Note we don't broadcast the population of the new reference det as
+        ! that is reset at the start of the next report loop anyway (and this
+        ! routine should only be called at the end of the report loop).
+
+#ifdef PARALLEL
+
+        if (abs(max_pop) > ref_det_factor*abs(D0_population)) then
+            in_data = (/ max_pop, iproc /)
+        else if (iproc == D0_proc) then
+            ! Ensure that D0_proc has the correct (average) population.
+            in_data = (/ nint(D0_population), iproc /)
+        else
+            ! No det with sufficient population to become reference det on this
+            ! processor.
+            in_data = (/ 0, iproc /)
+        end if
+
+        call mpi_allreduce(in_data, out_data, 1, MPI_2INTEGER, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
+
+        if (out_data(1) /= nint(D0_population) .and. all(fmax /= f0)) then
+            write (6,*) 'MPI_MAXLOC', out_data
+            max_pop = out_data(1)
+            updated = .true.
+            D0_proc = out_data(2)
+            f0 = fmax
+            H00 = H00_max
+            ! Broadcast updated data
+            call mpi_bcast(f0, basis_length, mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(H00, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
+        end if
+
+#else
+
+        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. all(fmax /= f0)) then
+            updated = .true.
+            f0 = fmax
+            H00 = H00_max
+        end if
+        
+#endif
+
+        if (updated) then
+            ! Update occ_list. 
+            call decode_det(f0, occ_list0)
+            if (parent) then
+                write (6,'(1X,"#",1X,62("-"))')
+                write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
+                call write_det(f0, new_line=.true.)
+                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
+                write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
+                write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
+                write (6,'(1X,"#",1X,62("-"))')
+            end if
+        end if
+
+    end subroutine select_ref_det
 
     subroutine initial_fciqmc_status()
 

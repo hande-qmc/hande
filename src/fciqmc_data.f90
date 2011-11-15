@@ -181,6 +181,15 @@ real(p) :: H00
 ! Processor on which the reference determinant is kept.
 integer :: D0_proc
 
+! How often do we change the reference determinant to the determinant with
+! greatest population?
+! Default: we don't.
+integer :: select_ref_det_every_nreports = huge(1)
+! Factor by which the population on a determinant must exceed the reference
+! determinant's population in order to be accepted as the new reference
+! determinant.
+real(p) :: ref_det_factor = 1.50_p
+
 !--- Simple FCIQMC ---
 
 ! Data used *only* in the simple_fciqmc algorithm.

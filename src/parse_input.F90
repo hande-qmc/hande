@@ -204,6 +204,9 @@ contains
                 end do
             case('NO_RENORM')
                 no_renorm = .true.
+            case('CHANGE_REFERENCE_DET')
+                call readi(select_ref_det_every_nreports)
+                if (item /= nitems) call readf(ref_det_factor)
 
             ! Calculation options: Folded spectrum.
             case('FOLD_LINE')
@@ -398,6 +401,8 @@ contains
             call mpi_bcast(ktwist, ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
