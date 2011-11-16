@@ -533,10 +533,10 @@ contains
         !        the determinant in this position is the same as f, else
         !        this is where f should go to keep the main walker list sorted.
 
-        use basis, only: basis_length
+        use basis, only: total_basis_length
         use determinants, only: det_compare
 
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(total_basis_length)
         integer, intent(in) :: istart, iend
         logical, intent(out) :: hit
         integer, intent(out) :: pos

@@ -157,6 +157,12 @@ contains
             basis_length = ceiling(real(nbasis)/i0_length)
             last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
         end if
+ 
+        if(doing_calc(dmqmc_calc)) then
+            total_basis_length = 2*basis_length
+        else
+            total_basis_length = basis_length
+        end if
 
         if (parent) then
             fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
@@ -1010,12 +1016,12 @@ contains
         !    corresponding element in f2;
 
         integer :: compare
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(total_basis_length), f2(total_basis_length)
 
         integer :: i
 
         compare = 0
-        do i = 1, basis_length
+        do i = 1, total_basis_length
             if (f1(i) < f2(i)) then
                 compare = 1
                 exit
