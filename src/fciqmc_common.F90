@@ -24,8 +24,9 @@ contains
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
                                 annihilate_main_list_initiator,                &
                                 annihilate_spawned_list_initiator
-        use basis, only: basis_length, basis_fns, write_basis_fn, basis_lookup
-        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
+        use basis, only: basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup
+        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
+        use calc, only: dmqmc_calc, doing_calc
         use gutzwiller_energy, only: plot_gutzwiller_energy
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
@@ -46,7 +47,7 @@ contains
 
         ! Array sizes depending upon FCIQMC algorithm.
         sampling_size = 1
-        spawned_size = basis_length + 1
+        spawned_size = total_basis_length + 1
         spawned_pop = spawned_size
         if (doing_calc(hfs_fciqmc_calc)) then
             spawned_size = spawned_size + 1
@@ -73,6 +74,9 @@ contains
         nwalker_int = sampling_size
         nwalker_real = sampling_size
         if (trial_function == neel_singlet) nwalker_int = nwalker_int + 2
+         ! For DMQMC store an extra energy due to extra index.
+        ! Length of bitstring is also doubled, see below!
+        if (doing_calc(dmqmc_calc)) nwalker_real = nwalker_real + 1
 
         ! Thus the number of bits occupied by each determinant in the main
         ! walker list is given by basis_length*i0_length+nwalker_int*32+nwalker_real*32
@@ -184,10 +188,10 @@ contains
             ! ignored.
             call set_reference_det()
 
-            call encode_det(occ_list0, walker_dets(:,tot_walkers))
+            call encode_det(occ_list0, f0)
 
             ! Reference det
-            f0 = walker_dets(:,tot_walkers)
+            if (.not.doing_calc(dmqmc_calc)) then walker_dets(:,tot_walkers) = f0
             ! Energy of reference determinant.
             select case(system_type)
             case(hub_k)
@@ -205,27 +209,34 @@ contains
                     end if
                 end if
             end select
-            ! By definition, when using a single determinant as a reference state:
-            walker_energies(1,tot_walkers) = 0.0_p
-            ! Or if not using a single determinant:
-            if (trial_function /= single_basis) walker_energies(1,tot_walkers) = &
-                                                 diagonal_element_heisenberg(f0)
-            ! Set the Neel state data for the reference state, if it is being used.
-            if (allocated(walker_reference_data)) then
-                walker_reference_data(1,tot_walkers) = nsites/2
-                ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
-                ! The Neel state cannot be used for non-bipartite lattices.
-                walker_reference_data(2,tot_walkers) = ndim*nsites
-            end if
 
-            ! Finally, we need to check if the reference determinant actually
-            ! belongs on this processor.
-            ! If it doesn't, set the walkers array to be empty.
-            if (nprocs > 1) then
-                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
-                if (D0_proc /= iproc) tot_walkers = 0
-            else
-                D0_proc = iproc
+            ! Determine and set properties for the reference state which we start on.
+            ! (For DMQMC, we do not start on the reference state, and so this is not
+            ! required. Psips are initialised along the diagonal in DMQMC. See
+            ! dmqmc_procedures).
+            if (.not.doing_calc(dmqmc_calc))
+                ! By definition, when using a single determinant as a reference state:
+                walker_energies(1,tot_walkers) = 0.0_p
+                ! Or if not using a single determinant:
+                if (trial_function /= single_basis) walker_energies(1,tot_walkers) = &
+                                                 diagonal_element_heisenberg(f0)
+                ! Set the Neel state data for the reference state, if it is being used.
+                if (allocated(walker_reference_data)) then
+                    walker_reference_data(1,tot_walkers) = nsites/2
+                    ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
+                    ! The Neel state cannot be used for non-bipartite lattices.
+                    walker_reference_data(2,tot_walkers) = ndim*nsites
+                end if
+
+                ! Finally, we need to check if the reference determinant actually
+                ! belongs on this processor.
+                ! If it doesn't, set the walkers array to be empty.
+                if (nprocs > 1) then
+                    D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+                    if (D0_proc /= iproc) tot_walkers = 0
+                else
+                    D0_proc = iproc
+                end if
             end if
         end if
         
@@ -303,6 +314,29 @@ contains
         ! Plot the Gutzwiller energy as a function of the paramater b, if the user has
         ! asked for this.
         if (find_gutzwiller_parameter) call plot_gutzwiller_energy
+
+        ! When doing a DMQMC calculation, allocate the requested arrays in order
+        ! to store the thermal quantities which are to be calculated.
+        if (doing_calc(dmqmc_calc)) then
+            allocate(trace(:ncycles, stat=ierr)
+            call check_allocate('trace',ncycles,ierr)
+            trace = 0
+            allocate(thermal_energy(0:ncycles), stat=ierr)
+            call check_allocate('thermal_energy',ncycles,ierr)
+            thermal_energy = 0
+            if (parent) then
+                allocate(total_trace(0:ncycles), stat=ierr)
+                call check_allocate('total_trace',ncycles,ierr)
+                total_trace = 0
+                allocate(total_thermal_energy(0:ncycles), stat=ierr)
+                call check_allocate('total_thermal_energy',ncycles,ierr)
+                total_thermal_energy = 0
+            end if
+            ! Set the dmqmc_factor to 0.5, so that spawning probabilities
+            ! are altered by a factor of 0.5, to account for spawning from
+            ! both ends.
+            dmqmc_factor = 0.5
+        end if
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
