@@ -1,0 +1,151 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{overcite}
+\usepackage{subfigure}
+\usepackage{braket}
+\usepackage{ulem}
+\usepackage{array}
+\usepackage{bbold}
+\usepackage[version=3]{mhchem}
+\usepackage[font=small,format=plain,labelfont=bf,up,textfont=it,up]{caption}
+\usepackage[left=1.5cm,top=2cm,bottom = 2cm, right=2cm,nohead]{geometry}
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\renewcommand{\thefootnote}{\roman{footnote}}
+\begin{document}
+
+\title{\bfseries \LARGE Density Matrix Quantum Monte Carlo}
+\author{T. W. Rogers}
+\maketitle
+
+\section{The Density Matrix}
+\nocite{Isham}
+In quantum mechanics the density matrix is any operator $\hat{\rho}$ that satisfies three properties:
+\begin{enumerate}
+\item $\hat{\rho} = \hat{\rho}^{\dag}$
+\item $\hat{\rho}$ is a positive, semi-definite operator, i.e., $\bra{\psi}\hat\rho\ket{\psi} \geq 0\; \; \forall\; \ket{\psi}\in\mathcal{H}$ 
+\item $\mbox{tr}(\hat{\rho})=1$
+\end{enumerate}
+As $\hat{\rho}$ is hermitian the spectral theorem can be applied.
+\begin{equation}
+\hat{\rho} = \sum_{j=1}p_j\ket{\psi_j}\bra{\psi_j}.
+\end{equation}
+Where $p_j$ are the eigenvalues of $\hat{\rho}$ and is also the probability that the vector state is $\ket{\psi_i}$. A density matrix comes in useful when attepting to describe and calculate properties of a mixed state. A mixed state is a statistical ensemble of several quantum states and arise in situations where there is classical uncertainty (which is different to quantum uncertainty). 
+
+One major benefit of constructing a density matrix is that it allows for very simple calculations for any quantum mechanical observable,
+\begin{equation}
+\langle\hat{O}\rangle=\sum_i p_i\bra{\psi_i}\hat{O}\ket{\psi_i}
+=\sum_i \bra{\psi_i}\hat{\rho}\ket{\psi_i}\bra{\psi_i}\hat{O}\ket{\psi_i}
+=\sum_i \bra{\psi_i}\hat{\rho}\hat{O}\ket{\psi_i}
+=\mbox{Tr}(\hat{\rho}\hat{O}).
+\end{equation}
+Hence calculating the density matrix should be of major importance.
+
+One important mixed state is the thermal state which describes a quantum statistical system at temperature $T$ and has a density matrix which obeys the Boltzmann distribution,
+\begin{equation}
+\label{eq:thermalState}
+\hat{\rho} = \frac{e^{-\beta\hat{H}}}{Z(\beta)}.
+\end{equation}
+Where $\beta=1/k_bT$ and $Z(\beta) = \mbox{tr}(e^{-\beta\hat{H}})$ is the partition function of the system. Using the spectral theorem on the hamiltonian Eq.~\ref{eq:thermalState} becomes
+\begin{equation}
+\hat{\rho} = \sum_j{\frac{e^{-\beta E_j}}{Z(\beta)}\ket{E_j}\bra{E_j}}. 
+\end{equation}
+This reflects the a classical uncertainty induced by thermal fluctuations of the energy state that the system is in. Now the canonical partition function can be calculated as,
+\begin{equation}
+\label{eq:PartitionFunction}
+Z(\beta) = \sum_{j=1}e^{-\beta E_j} = \mbox{Tr}\left(e^{-\beta \hat{H}} \right)
+\end{equation}
+\section{The density matrix and FCIQMC}
+Now from the form of the density matrix in Eq.~\ref{eq:thermalState} it is evident that the numerator, $\hat{\xi} = e^{-\beta\hat{H}}$, obeys the differential equation:
+\begin{equation}
+\label{eq:numeratorPDE}
+\frac{\partial\hat{\xi}}{\partial\beta} = -\hat{H}\hat{\xi}.
+\end{equation}
+We must also enforce the initial condition that 
+\begin{equation}
+\hat{\xi}\left(\beta = 0\right) = \hat{\mathbb{1}}.
+\end{equation}
+Now as the partition function is simply the trace of $\hat{\xi}$, Eq.~\ref{eq:numeratorPDE} provides all the information required to calculate the density matrix, $\hat{\rho}$.
+
+Eq.~\ref{eq:numeratorPDE} equation is analogous to imaginary-time Schr\"{o}dinger equation,
+\begin{equation}
+\label{eq:imaginaryTimeSchrodinger}
+\frac{\partial\Psi}{\partial\beta} = -\hat{H}\Psi,
+\end{equation}
+and we can see that the ground state density matrix emerges for low temperatures.
+
+In fact the Eq,~\ref{eq:numeratorPDE} can be written in a symmetric way that still has $\hat{\xi}$ as a solution:
+\begin{equation}
+\label{eq:numeratorPDE}
+\frac{\partial\hat{\xi}}{\partial\beta} = -\frac{1}{2}\left(\hat{H}\hat{\xi}+\hat{\xi}\hat{H}\right).
+\end{equation}
+blah blah blah...
+\section{DMQMC Algorithm}
+So drawing upon the analogy between  Eq.~\ref{eq:imaginaryTimeSchrodinger} and Eq.~\ref{eq:numeratorPDE} we should be able to adapt the FCIQMC method such that it solves for the density matrix. Because the solution to Eq.~\ref{eq:numeratorPDE} is a matrix we now have walkers that have two ends. One end can spawn in one direction and the other end can spawn in a direction that is perpendicular. The walker now moves in a space that has squared in size.The algorithm for the symmetric DMQMC can be summarised as follows:
+
+In one inverse-temperature step $\Delta\beta$, we loop over the population of walkers and allow each end, $a$ and $b$, of the walker to spawn a ``child'' at other locations according to the following set of rules: 
+\begin{enumerate}
+\item The probability that end $a$ of a walker at $(i,k)$ spawning a child at $(l,k)$ is $\frac{1}{2}\left|T_{li}\right|\Delta\beta$
+\item The probability that end $b$ of a walker at $(i,k)$ spawning a child at $(i,m)$ is $\frac{1}{2}\left|T_{km}\right|\Delta\beta$
+\item If end $a$ of a parent with charge $q_{parent}$ at location $(i,k)$ spawns a child at $(l,k)$, the charge of the child is given by $q_{child | a}=\mbox{sign}(T_{li})q_{parent}$
+\item If end $b$ of a parent with charge $q_{parent}$ at location $(i,k)$ spawns a child at $(i,m)$, the charge of the child is given by $q_{child | b}=\mbox{sign}(T_{km})q_{parent}$
+\end{enumerate}
+At the end of each inverse-temperature step, after each walker has spawned as many times as it can, pairs of walkers of opposite charge on the same site annihilate each other and are removed from the simulation.
+
+The motivation for this algorithm is that the dynamics satisfy a first-order Euler finite-difference approximation of Eq.~\ref{eq:numeratorPDE}. The expected charge $\bar{q}_{lm}\left(\beta+\Delta\beta\right)$ on site $(l,m)$ at inverse-temperature $\beta + \Delta\beta$ is related to the expected charges $\bar{q}_{jm}\left(\beta\right)$ and  $\bar{q}_{li}\left(\beta\right)$ at inverse-temperature at $\beta$ by
+\begin{equation}
+\bar{q}_{lm}\left(\beta+\Delta\beta\right) = \bar{q}_{lm}\left(\beta\right)+\frac{1}{2}\sum_{i,j}\left(T_{ij}\bar{q}_{jm}+\bar{q}_{li}T_{im}\right)\Delta\beta.
+\end{equation}
+The first term on the right-hand side describes the total charge of the walkers that were at $(l,m)$ at inverse-temperature $\beta$. The second term describes the spawning of walkers onto $(l,m)$ over the time interval $\Delta\beta$. As this is a first-order Euler finite approximation the distribution of charges is proportional to the density matrix. 
+
+\section{Calculating half the density matrix and operators}
+A property of the density matrix is that it is hermitian. Therefore, for systems in which the density matrix elements are all real, the density matrix is symmetric. This means that in a calculation it could be possible and more efficient to only calculate only one diagonal half of the density matrix. This half can then be duplicated by reflecting in the diagonal when calculations need to be made via the density matrix.
+
+The DMQMC algorithm can therefore be adapted by only looping over the top diagonal half of the density matrix and adding an extra condition on the spawning from ends $a$ and $b$ of a walker on site $(l,m)$. This condition is that if a walker attempts to spawn offspring below the diagonal of the density matrix, $l>m$, you interchange the co-ordinates of the site it is spawned onto to $(m,l)$ in effect reflecting it back onto the top half of the density matrix.
+
+\section{Uses of the density matrix}
+-- Von Neumann Entropy
+\section{Heisenberg Model}
+The Heisenberg model is a statistical mechanical model that is often exploited in the study of critical points and phase transitions of magnetic systems, in which the spin of the system is treated quantum mechanically. Assuming that magnetic interactions only occur between adjacent dipoles the Hamiltonian is
+\begin{equation}
+\hat{H} = -J\sum_{j=1}{N}\sigma_j\sigma_{j+1}-h\sum_{j=1}{N}\sigma_j
+\label{eq:classicalSpinHamiltonian}
+\end{equation}
+for a 1-dimensional model consisting of N dipoles represented by classical spins $\sigma_j$ with periodic boundary conditions $\sigma{N+1}=\sigma{1}$. The Heisenberg model treats these spins quantum-mechanically by instead representing the spin by the Pauli spin matrices. The Hamiltonian for a 3-dimensional Heisenberg model is given by
+\begin{equation}
+\label{3dHeisenburgHamiltonian}
+\hat{H}=-\frac{1}{2}\sum_{j=1}^{N}\left(J_x\sigma^x_j\sigma^x_{j+1}+J_y\sigma^y_j\sigma^y_{j+1}+J_z\sigma^z_j\sigma^z_{j+1}-h\sigma^z_j\right).
+\end{equation}
+
+Here $h$ represents an external magnetic field and the boundary conditions are again periodic. $\sigma_i$ are the Pauli spin $1/2$ matrices,
+\begin{equation}
+\label{eq:PauliMatrixX}
+\sigma^x =  
+    \begin{pmatrix} 
+     0 & 1 \\ 
+      1 & 0
+    \end{pmatrix} \;\;\;\;\;
+    \sigma^y =  
+    \begin{pmatrix} 
+     0 & -i \\ 
+      i & 0
+    \end{pmatrix} \;\;\;\;\;
+    \sigma^z =  
+    \begin{pmatrix} 
+     1 & 0 \\ 
+     0 & -1
+    \end{pmatrix}.
+\end{equation}
+
+The physics of the Heisenberg model depends strongly on the sign go the coupling constant $J$ and the dimension of the space. For $J> 0$ the ground state is always ferromagnetic. At $J< 0$ the ground state is antiferromagnetic in 2 and 3 dimensions and it is from this ground state that the Hubbard model is given. In one dimension the nature of the correlations in the antiferromagnetic Heisenberg model depends on the spin of the magnetic dipoles. 
+
+\section{Hubbard Model}
+
+
+\bibliography{misc}
+\bibliographystyle{unsrt}
+
+
+
+\end{document}
