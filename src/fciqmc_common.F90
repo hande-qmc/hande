@@ -174,13 +174,6 @@ contains
             end if
             call read_restart()
         else
-            tot_walkers = 1
-            ! Zero all populations...
-            walker_population(:,tot_walkers) = 0
-            ! Set initial population of Hamiltonian walkers.
-            walker_population(1,tot_walkers) = nint(D0_population)
-
-
             ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
             ! kinetic energy which satisfy the spin polarisation.
@@ -190,8 +183,22 @@ contains
 
             call encode_det(occ_list0, f0)
 
-            ! Reference det
-            if (.not.doing_calc(dmqmc_calc)) then walker_dets(:,tot_walkers) = f0
+            ! In general FCIQMC, we start with psips only on the
+            ! reference determinant, so set tot_walkers = 1 and
+            ! initialise walker_population. For DMQMC, this is
+            ! not required, as psips are spawned along the diagonal
+            ! initially.
+            if (.not.doing_calc(dmqmc_calc)) then
+                tot_walkers = 1
+                ! Zero all populations...
+                walker_population(:,tot_walkers) = 0
+                ! Set initial population of Hamiltonian walkers.
+                walker_population(1,tot_walkers) = nint(D0_population)
+                ! Set the bitstring of this psip to be that of the
+                ! reference state.
+                walker_dets(:,tot_walkers) = f0
+            end if
+
             ! Energy of reference determinant.
             select case(system_type)
             case(hub_k)
@@ -214,7 +221,7 @@ contains
             ! (For DMQMC, we do not start on the reference state, and so this is not
             ! required. Psips are initialised along the diagonal in DMQMC. See
             ! dmqmc_procedures).
-            if (.not.doing_calc(dmqmc_calc))
+            if (.not.doing_calc(dmqmc_calc)) then
                 ! By definition, when using a single determinant as a reference state:
                 walker_energies(1,tot_walkers) = 0.0_p
                 ! Or if not using a single determinant:
@@ -318,17 +325,17 @@ contains
         ! When doing a DMQMC calculation, allocate the requested arrays in order
         ! to store the thermal quantities which are to be calculated.
         if (doing_calc(dmqmc_calc)) then
-            allocate(trace(:ncycles, stat=ierr)
+            allocate(trace(:ncycles), stat=ierr)
             call check_allocate('trace',ncycles,ierr)
             trace = 0
-            allocate(thermal_energy(0:ncycles), stat=ierr)
+            allocate(thermal_energy(:ncycles), stat=ierr)
             call check_allocate('thermal_energy',ncycles,ierr)
             thermal_energy = 0
             if (parent) then
-                allocate(total_trace(0:ncycles), stat=ierr)
+                allocate(total_trace(:ncycles), stat=ierr)
                 call check_allocate('total_trace',ncycles,ierr)
                 total_trace = 0
-                allocate(total_thermal_energy(0:ncycles), stat=ierr)
+                allocate(total_thermal_energy(:ncycles), stat=ierr)
                 call check_allocate('total_thermal_energy',ncycles,ierr)
                 total_thermal_energy = 0
             end if

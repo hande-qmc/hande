@@ -20,6 +20,7 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
 
+        use energy_evaluation, only: update_shift
         use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn
         use fciqmc_data, only: shift, av_shift, vary_shift, start_vary_shift
         use fciqmc_data, only: nreport, ncycles, trace, thermal_energy

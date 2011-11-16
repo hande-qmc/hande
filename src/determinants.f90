@@ -140,6 +140,7 @@ contains
         ! they are stored as bit strings, lookup arrays for converting from
         ! integer list of orbitals to bit strings and vice versa.
 
+        use calc, only: doing_calc, dmqmc_calc
         use checking, only: check_allocate
         use utils, only: binom_i
         use utils, only: get_free_unit, int_fmt

@@ -198,7 +198,7 @@ contains
             end do
             
             ! Update the shift and desired thermal quantites.
-            call update_dmqmc_estimators(ireport, nparticles_old, beta_index)
+            call update_dmqmc_estimators(ireport, nparticles_old)
 
             call cpu_time(t2)
 
