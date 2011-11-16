@@ -15,6 +15,10 @@ integer :: ncycles
 ! at the end of each report cycle.
 integer :: nreport
 
+! For DMQMC, beta_loops specifies the number of times
+! the program will loop over each value of beta in the main loop.
+integer :: beta_loops = 100
+
 ! timestep
 real(p) :: tau
 
@@ -184,10 +188,35 @@ real(p) :: D0_population = 10.0_p
 ! reference state flipped.
 real(p) :: D0_not_population = 0.0_p
 
+! In DMQMC, because we spawn from both ends with half probability
+! instead of just one end with the full probability, we have to
+! introduce a factor of 0.5 into the probabilities when using
+! DMQMC. Hence, dmqmc_factor = 0.5 when using DMQMC or equals
+! 1.0 when using standard FCIQMC.
+real :: dmqmc_factor = 1.0
+
+integer :: dmqmc_npsips = 0
+
 ! The modulus squared of the wavefunction which the psips represent
 ! This is used in calculating the expectation value of the
 ! staggered magnetisation.
 real(p) :: population_squared = 0.0_p
+
+! In DMQMC, we need to accumulate the trace at each temperature (beta)
+! over several runs so that we can average it later. This array
+! stores this data (only allocated if doing DMQMC), Tr(\rho), where
+! rho is the density matrix which we calculate.
+integer(i0), allocatable :: trace(:) !ncycles
+! total_trace will store the combined values of the traces from
+! each of the processors when these are merged together, and can be
+! output to the screen.
+integer(i0), allocatable :: total_trace(:) !ncycles
+
+! In DMQMC, as above, we will have to store other quantities at
+! each beta value. The below array stores Tr(\rho*H), which is
+! the numerator when calculating the average energy.
+real(p), allocatable :: thermal_energy(:) !ncycles
+real(p), allocatable :: total_thermal_energy(:) !ncycles
 
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
