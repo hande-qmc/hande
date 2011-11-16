@@ -144,6 +144,8 @@ contains
                 calc_type = calc_type + initiator_fciqmc
             case('CT_FCIQMC')
                 calc_type = calc_type + ct_fciqmc_calc
+            case('DMQMC')
+                calc_type = calc_type + dmqmc_calc
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
@@ -168,6 +170,8 @@ contains
             case('NREPORTS')
                 call readi(nreport)
                 if (nreport < 0) nreport = huge(nreport)
+            case('BETA_LOOPS')
+                call readi(beta_loops)
             case('WALKER_LENGTH')
                 call readi(walker_length)
                 if (item /= nitems) then
@@ -194,6 +198,8 @@ contains
                 call readf(shift)
             case('VARYSHIFT_TARGET')
                 call readi(target_particles)
+            case('DMQMC_INIT_POP')
+                call readi(dmqmc_npsips)
             case('REFERENCE_DET')
                 allocate(occ_list0(nitems-1), stat=ierr)
                 call check_allocate('occ_list0',nitems-1,ierr)
@@ -469,11 +475,13 @@ contains
 
         call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_npsips, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
