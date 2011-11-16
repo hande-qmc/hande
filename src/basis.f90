@@ -45,6 +45,16 @@ integer :: nbasis
 ! strings separately, and so basis_length is 2*ceiling(nbasis/(2*i0_length)).
 integer :: basis_length
 
+! total_basis_length is 2*basis_length for DMQMC and just equal to basis_length
+! for standard FCIQMC.
+! For DMQMC, the bitstring stored contains two bitstrings of length
+! basis_length. Sometimes we only want one of these bitstrings so just use
+! basis_length. But when we want to refer to the whole bitstring, and are using
+! a routine which is also used for standard FCIQMC, we need to have a routine
+! which is correct for both FCIQMC and DMQMC. In these situations,
+! total_basis_length is often useful.
+integer :: total_basis_length
+
 ! All bits in the determinant bit array correspond to a basis function apart
 ! from the last element in the bit array (which can contain some excess).
 ! last_basis_ind is the index of the last basis function in the last element of

@@ -2,6 +2,7 @@ module annihilation
 
 use const
 use fciqmc_data
+use basis, only: basis_length, total_basis_length
 
 implicit none
 
@@ -65,8 +66,6 @@ contains
 #ifdef PARALLEL
 
         use parallel
-
-        use basis, only: basis_length
 
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
@@ -147,8 +146,6 @@ contains
         ! looping through the list and adding consective walker populations
         ! together if they're the same walker.
 
-        use basis, only: basis_length
-
         integer :: islot, k
 
         ! islot is the current element in the spawned walkers lists.
@@ -162,7 +159,7 @@ contains
             compress: do
                 k = k + 1
                 if (k > spawning_head(0)) exit self_annihilate
-                if (all(spawned_walkers(:basis_length,k) == spawned_walkers(:basis_length,islot))) then
+                if (all(spawned_walkers(:total_basis_length,k) == spawned_walkers(:total_basis_length,islot))) then
                     ! Add the populations of the subsequent identical walkers.
                     spawned_walkers(spawned_pop:spawned_hf_pop,islot) =    &
                          spawned_walkers(spawned_pop:spawned_hf_pop,islot) &
@@ -201,8 +198,6 @@ contains
         ! take care of the parent flag (ie handle the origin of the spawned
         ! walkers).
 
-        use basis, only: basis_length
-
         integer :: islot, k, pop_sign
 
         ! islot is the current element in the spawned walkers lists.
@@ -216,7 +211,7 @@ contains
             compress: do
                 k = k + 1
                 if (k > spawning_head(0)) exit self_annihilate
-                if (all(spawned_walkers(:basis_length,k) == spawned_walkers(:basis_length,islot))) then
+                if (all(spawned_walkers(:total_basis_length,k) == spawned_walkers(:total_basis_length,islot))) then
                     ! Update the parent flag.
                     ! Note we ignore the possibility of multiple spawning events
                     ! onto the same unoccupied determinant.  Such events become
@@ -263,17 +258,15 @@ contains
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.
 
-        use basis, only: basis_length
-
         integer :: i, pos, k, nannihilate, istart, iend, old_pop(sampling_size)
-        integer(i0) :: f(basis_length)
+        integer(i0) :: f(total_basis_length)
         logical :: hit
 
         nannihilate = 0
         istart = 1
         iend = tot_walkers
         do i = 1, spawning_head(0)
-            f = spawned_walkers(:basis_length,i)
+            f = spawned_walkers(:total_basis_length,i)
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
@@ -310,17 +303,15 @@ contains
         ! discard spawned walkers which are on previously unoccupied determinants
         ! and which are from non-initiator or non-sign-coherent events.
 
-        use basis, only: basis_length
-
         integer :: i, pos, k, nannihilate, istart, iend, old_pop
-        integer(i0) :: f(basis_length)
+        integer(i0) :: f(total_basis_length)
         logical :: hit
 
         nannihilate = 0
         istart = 1
         iend = tot_walkers
         do i = 1, spawning_head(0)
-            f = spawned_walkers(:basis_length,i)
+            f = spawned_walkers(:total_basis_length,i)
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
@@ -393,8 +384,7 @@ contains
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
 
-        use basis, only: basis_length
-        use calc, only: doing_calc, hfs_fciqmc_calc
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use determinants, only: decode_det
         use system, only: nel, trial_function, neel_singlet
         use hamiltonian, only: slater_condon0_hub_real
@@ -428,7 +418,7 @@ contains
         iend = tot_walkers
         do i = spawning_head(0), 1, -1
             ! spawned det is not in the main walker list
-            call search_walker_list(spawned_walkers(:basis_length,i), istart, iend, hit, pos)
+            call search_walker_list(spawned_walkers(:total_basis_length,i), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
@@ -441,14 +431,17 @@ contains
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
-            walker_dets(:,k) = spawned_walkers(:basis_length,i)
+            walker_dets(:,k) = spawned_walkers(:total_basis_length,i)
             walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
-            walker_energies(1,k) = sc0_ptr(walker_dets(:,k)) - H00
+            walker_energies(1,k) = sc0_ptr(walker_dets(:basis_length,k)) - H00
             if (trial_function == neel_singlet) walker_reference_data(:,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_energies(2:,k) = <D_i|O|D_i>.
                 walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00
+            else if (doing_calc(dmqmc_calc)) then
+                ! Set second bitstring to have its own correct energy.
+                walker_energies(2,k) = sc0_ptr(walker_dets((basis_length+1):(2*basis_length),k)) - H00
             end if
             ! Next walker will be inserted below this one.
             iend = pos - 1
