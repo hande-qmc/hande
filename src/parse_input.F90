@@ -211,6 +211,9 @@ contains
                 end do
             case('NO_RENORM')
                 no_renorm = .true.
+            case('ATTEMPT_SPAWN_PROB')
+                call readf(pattempt_single)
+                call readf(pattempt_double)
 
             ! Calculation options: Folded spectrum.
             case('FOLD_LINE')
@@ -452,6 +455,8 @@ contains
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)

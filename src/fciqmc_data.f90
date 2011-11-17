@@ -31,6 +31,10 @@ integer(lint) :: target_particles = 10000
 ! excitations to be generated and then rejected.
 logical :: no_renorm = .false.
 
+! probability of attempting single or double excitations...
+! set to be nonsense value so can easily detect if it's given as an input option
+real(p) :: pattempt_single = -1, pattempt_double = -1
+
 !--- Input data: initiator-FCIQMC ---
 
 ! Complete active space within which a determinant is an initiator.
