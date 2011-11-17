@@ -664,4 +664,60 @@ contains
 
     end function get_two_body_int_mol_nonzero
 
+!--- Parallel broadcasting ---
+
+    subroutine broadcast_one_body_int(store, data_proc)
+
+        ! Broadcast the integral store from data_proc to all processors.
+        ! In/Out:
+        !    store: one-body integral store.  On input the integrals are only
+        !    stored on data_proc.  On output all processors have an identical copy of
+        !    the integral store.
+        ! In:
+        !    data_proc: processor on which the integral store is already filled.
+
+        use parallel
+
+        type(one_body), intent(inout) :: store
+        integer, intent(in) :: data_proc
+        integer :: i, j, ierr 
+
+#ifdef PARALLEL
+        ! Yes, I know I *could* use an MPI derived type, but coding this took 10
+        ! minutes rather than several hours and the loss of elegance is minimal.
+        do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
+            do j = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
+                call MPI_BCast(store%integrals(i,j)%v, size(store%integrals(i,j)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+            end do
+        end do
+#endif
+
+    end subroutine broadcast_one_body_int
+
+    subroutine broadcast_two_body_int(store, data_proc)
+
+        ! Broadcast the integral store from data_proc to all processors.
+        ! In/Out:
+        !    store: two-body integral store.  On input the integrals are only
+        !    stored on data_proc.  On output all processors have an identical copy of
+        !    the integral store.
+        ! In:
+        !    data_proc: processor on which the integral store is already filled.
+
+        use parallel
+
+        type(two_body), intent(inout) :: store
+        integer, intent(in) :: data_proc
+        integer :: i, j, ierr 
+
+#ifdef PARALLEL
+        ! Yes, I know I *could* use an MPI derived type, but coding this took 10
+        ! minutes rather than several hours and the loss of elegance is minimal.
+        do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
+            call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+        end do
+#endif
+
+    end subroutine broadcast_two_body_int
+
 end module molecular_integrals
