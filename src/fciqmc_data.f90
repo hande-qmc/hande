@@ -239,7 +239,7 @@ contains
         ! a reference determinant.
 
         use checking, only: check_allocate
-        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, nsites
+        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, nsites
         
         integer :: i, ierr
 
@@ -249,8 +249,9 @@ contains
             allocate(occ_list0(nel), stat=ierr)
             call check_allocate('occ_list0',nel,ierr)
             select case(system_type)
-            case(hub_k)
-                ! Occupy the Fermi sphere.
+            case(hub_k,read_in)
+                ! Orbitals are ordered by their single-particle eigenvalues.
+                ! Occupy the Fermi sphere/HF det.
                 forall (i=1:nalpha) occ_list0(i) = 2*i-1
                 forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
             case(hub_real)
