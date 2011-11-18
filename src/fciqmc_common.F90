@@ -113,19 +113,25 @@ contains
                 'Number of elements per core in spawned walker list:', spawned_walker_length
         end if
 
-        ! Allocate main walker lists.
+       ! Allocate main walker lists.
         allocate(nparticles(sampling_size), stat=ierr)
         call check_allocate('nparticles', sampling_size, ierr)
-        allocate(walker_dets(basis_length,walker_length), stat=ierr)
+        if (doing_calc(dmqmc_calc)) then
+            allocate(walker_energies(sampling_size*2,walker_length), stat=ierr)
+            call check_allocate('walker_energies', sampling_size*walker_length, ierr)
+        else
+            allocate(walker_energies(sampling_size,walker_length), stat=ierr)
+            call check_allocate('walker_energies', sampling_size*walker_length, ierr)
+        end if
+        allocate(walker_dets(total_basis_length,walker_length), stat=ierr)
         call check_allocate('walker_dets', basis_length*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
-        allocate(walker_energies(sampling_size,walker_length), stat=ierr)
-        call check_allocate('walker_energies', sampling_size*walker_length, ierr)
         if (trial_function == neel_singlet) then
             allocate(walker_reference_data(2,walker_length), stat=ierr)
             call check_allocate('walker_reference_data', 2*walker_length, ierr)
         end if
+
 
         ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
         if (mod(spawned_walker_length, nprocs) /= 0) then
