@@ -788,6 +788,22 @@ contains
             deallocate(neel_singlet_amp, stat=ierr)
             call check_deallocate('neel_singlet_amp',ierr)
         end if
+        if (allocated(trace)) then
+            deallocate(trace, stat=ierr)
+            call check_deallocate('trace', ierr)
+        end if
+        if (allocated(total_trace)) then
+            deallocate(total_trace, stat=ierr)
+            call check_deallocate('total_trace', ierr)
+        end if
+        if (allocated(thermal_energy)) then
+            deallocate(thermal_energy, stat=ierr)
+            call check_deallocate('thermal_energy', ierr)
+        end if
+        if (allocated(total_thermal_energy)) then
+            deallocate(total_thermal_energy, stat=ierr)
+            call check_deallocate('total_thermal_energy', ierr)
+        end if
 
     end subroutine end_fciqmc
 

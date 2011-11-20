@@ -136,7 +136,8 @@ contains
 
         if (.not.momentum_space) call end_real_space()
 
-        if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc)) call end_fciqmc()
+        if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc&
+                                   +dmqmc_calc)) call end_fciqmc()
 
         call cpu_time(end_time)
 
