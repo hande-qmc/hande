@@ -331,17 +331,17 @@ contains
         ! When doing a DMQMC calculation, allocate the requested arrays in order
         ! to store the thermal quantities which are to be calculated.
         if (doing_calc(dmqmc_calc)) then
-            allocate(trace(:ncycles), stat=ierr)
+            allocate(trace(1:ncycles), stat=ierr)
             call check_allocate('trace',ncycles,ierr)
             trace = 0
-            allocate(thermal_energy(:ncycles), stat=ierr)
+            allocate(thermal_energy(1:ncycles), stat=ierr)
             call check_allocate('thermal_energy',ncycles,ierr)
             thermal_energy = 0
             if (parent) then
-                allocate(total_trace(:ncycles), stat=ierr)
+                allocate(total_trace(1:ncycles), stat=ierr)
                 call check_allocate('total_trace',ncycles,ierr)
                 total_trace = 0
-                allocate(total_thermal_energy(:ncycles), stat=ierr)
+                allocate(total_thermal_energy(1:ncycles), stat=ierr)
                 call check_allocate('total_thermal_energy',ncycles,ierr)
                 total_thermal_energy = 0
             end if

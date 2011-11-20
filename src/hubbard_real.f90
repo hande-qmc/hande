@@ -278,25 +278,6 @@ contains
             end do
         end do
         
-        
-        ! Testing for triangular lattice - Print out connections of each site
-        ! Remember to remove this later!
-        if (parent) then
-            do i = 1, nbasis
-                print *, "Site position:"
-                print *, basis_fns(i)%l
-                print *, "Connected sites:"
-                do ind = 1, basis_length
-                    do pos = 0, i0_end
-                        if (btest(connected_orbs(ind,i),pos)) then 
-                            basis_find = basis_lookup(pos, ind)
-                            print *, basis_fns(basis_find)%l
-                        end if
-                    end do
-                end do
-            end do
-        end if   
-        
     end subroutine init_real_space
 
     subroutine end_real_space()

@@ -48,6 +48,15 @@ contains
                                                                      sampling_size+1+(2*ncycles))
             end if
 
+            if (vary_shift) then
+                call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
+            end if
+            ntot_particles_old = ntot_particles
+            if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
+                vary_shift = .true.
+                start_vary_shift = ireport
+            end if
+
 #else
             if (vary_shift) call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
             ntot_particles_old = nparticles
