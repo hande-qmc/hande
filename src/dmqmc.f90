@@ -100,9 +100,10 @@ contains
         call initial_fciqmc_status()
         ! Initialise timer.
         call cpu_time(t1)
-
+ 
         do beta_cycle = 1, beta_loops
-
+        ! Write to ouput that beta is being reset preceded with "#" to help with post-run analysis
+        if (beta_cycle .ne. 1 .and. parent)  write (6,'(a19)') "# Resetting beta..."
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
         spawning_head = spawning_block_start
