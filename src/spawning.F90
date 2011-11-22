@@ -480,11 +480,14 @@ contains
 
     end subroutine gen_excit_hub_real
 
-    subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
+    subroutine choose_ij_k(occ_list, i ,j, ij_sym, ij_spin)
 
-        ! Randomly choose a pair of spin-orbitals.
+        ! Randomly choose a pair of spin-orbitals for 1-band systems with
+        ! Bloch orbitals.
+        !
         ! See choose_ij_hub_k for a specific procedure for the momentum space
         ! formulation of the hubbard model.
+        !
         ! In:
         !    occ_list: integer list of occupied spin-orbitals in a determinant.
         ! Out:
@@ -563,7 +566,7 @@ contains
             ij_spin = -1
         end select
 
-    end subroutine choose_ij
+    end subroutine choose_ij_k
 
     subroutine choose_ij_hub_k(occ_list_alpha, occ_list_beta, i ,j, ij_sym)
 
