@@ -37,8 +37,8 @@ contains
             ! Need to sum the number of particles and other quantites over all processors.
             ir(1:sampling_size) = nparticles
             ir(sampling_size+1) = rspawn
-            ir(sampling_size+2:sampling_size+1+ncycles) = thermal_energy
-            ir(sampling_size+2+ncycles:sampling_size+1+(2*ncycles)) = trace
+            ir(sampling_size+2:sampling_size+1+ncycles) = trace
+            ir(sampling_size+2+ncycles:sampling_size+1+(2*ncycles)) = thermal_energy
             call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
             rspawn = ir_sum(sampling_size+1)

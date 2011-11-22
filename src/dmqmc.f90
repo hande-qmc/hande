@@ -70,7 +70,7 @@ contains
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use dmqmc_procedures, only: random_distribution_heisenberg
+        use dmqmc_procedures, only: random_distribution_heisenberg, initial_dmqmc_status
         use dmqmc_estimators, only: update_dmqmc_estimators
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
@@ -97,18 +97,20 @@ contains
 
         ! Main DMQMC loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
         ! Initialise timer.
         call cpu_time(t1)
  
         do beta_cycle = 1, beta_loops
         ! Write to ouput that beta is being reset preceded with "#" to help with post-run analysis
-        if (beta_cycle .ne. 1 .and. parent)  write (6,'(a19)') "# Resetting beta..."
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
         spawning_head = spawning_block_start
         tot_walkers = 0
         nparticles = 0
+        shift = 0
+        av_shift =0
+        start_vary_shift = 0
+        vary_shift = .false.
  
         ! Need to place psips randomly along the diagonal at the
         ! start of every iteration. Pick orbitals randomly, each
@@ -117,6 +119,9 @@ contains
         call random_distribution_heisenberg()
 
         call direct_annihilation()
+
+        if (beta_cycle .ne. 1 .and. parent) write (6,'(a19)') "# Resetting beta..." 
+        call initial_dmqmc_status()
 
         nparticles_old = dmqmc_npsips
 

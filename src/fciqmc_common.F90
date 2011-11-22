@@ -391,8 +391,6 @@ contains
 
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
-        use calc, only: doing_calc, dmqmc_calc
-        use fciqmc_data, only: total_trace, total_thermal_energy
         integer :: idet
         integer :: ntot_particles
 #ifdef PARALLEL
@@ -423,12 +421,7 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            if (doing_calc(dmqmc_calc)) then
-            write (6,'(1X,"#",3X,i8,2(2X,es17.10),4X,i8,4X,es17.10,4X,i11,6X,a3,3X,a3)') &
-                                             mc_cycles_done, shift,   &
-                                             0.0_p, 0, 0.0_p,       &
-                                             ntot_particles, 'n/a', 'n/a'
-            else if (calculate_magnetisation) then
+            if (calculate_magnetisation) then
                 write (6,'(1X,"#",3X,i8,4(2X,es17.10),2X,f11.4,5X,i9,2X,es17.10,3X,es17.10,7X,a3,4X,a3)') &
                     mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, D0_population, ntot_particles, &
                     average_magnetisation, population_squared, 'n/a','n/a'
