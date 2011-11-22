@@ -1,30 +1,30 @@
 #!/usr/bin/env python2
-#
-# Usage:
-# send_softexit.py [options] walltime &
-# 
-# This is a version of watchdog which will work on computers without a
-# queueing system or using a queueing system other than Torque.
-#
-# send_softexit must run in the same working directory as the NECI calculation.
-# 
-# Care must be taken that the send_softexit is terminated when the job finishes
-# (rather than waiting for the send_softexit to finish!).  send_softexit
-# does, however, listen out for the interrupt signal.  Recommended use in a
-# script is:
-#     
-# send_softexit.py [options] walltime &
-# [Job commands]
-# killall -2 send_softexit.py
-# 
-# or
-# 
-# send_softexit.py [options] walltime &
-# send_softexit_ps=$!
-# [Job commands]
-# kill -2 $send_softexit_ps
-# 
-# The latter should be used if multiple calculations are run on one computer.
+'''Usage:
+send_softexit.py [options] walltime &
+
+This is a version of watchdog which will work on computers without a
+queueing system or using a queueing system other than Torque.
+
+send_softexit must run in the same working directory as the NECI calculation.
+
+Care must be taken that the send_softexit is terminated when the job finishes
+(rather than waiting for the send_softexit to finish!).  send_softexit
+does, however, listen out for the interrupt signal.  Recommended use in a
+script is:
+    
+send_softexit.py [options] walltime &
+[Job commands]
+killall -2 send_softexit.py
+
+or
+
+send_softexit.py [options] walltime &
+send_softexit_ps=$!
+[Job commands]
+kill -2 $send_softexit_ps
+
+The latter should be used if multiple calculations are run on one computer.
+'''
 
 __author__ = 'James Spencer'
 

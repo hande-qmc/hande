@@ -1,6 +1,8 @@
 #!/usr/bin/env python2
 '''Examine variables set by parsing input files and determine if they are being distributed to the other nodes or not.
 
+A non-zero exit code indicates that not all variables are distributed.
+
 This is exceptionally useful for sanity-checking when debugging parallel code.'''
 
 import os
@@ -139,6 +141,7 @@ def test_restart():
 
     return check_distributed(input_file, variables, distributed)
 
-exit = test_input('parse_input.F90') + 10*test_input('interact.F90') + 100*test_restart()
 
-sys.exit(exit)
+if __name__ == '__main__':
+    exit = test_input('parse_input.F90') + 10*test_input('interact.F90') + 100*test_restart()
+    sys.exit(exit)
