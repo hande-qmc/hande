@@ -424,9 +424,9 @@ contains
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
             if (doing_calc(dmqmc_calc)) then
-            write (6,'(1X,"#",3X,i8,3(2X,es17.10),4X,es17.10,4X,i11,6X,a3,3X,a3)') &
+            write (6,'(1X,"#",3X,i8,2(2X,es17.10),4X,i8,4X,es17.10,4X,i11,6X,a3,3X,a3)') &
                                              mc_cycles_done, shift,   &
-                                             0.0_p, 0.0_p, 0.0_p,       &
+                                             0.0_p, 0, 0.0_p,       &
                                              ntot_particles, 'n/a', 'n/a'
             else if (calculate_magnetisation) then
                 write (6,'(1X,"#",3X,i8,4(2X,es17.10),2X,f11.4,5X,i9,2X,es17.10,3X,es17.10,7X,a3,4X,a3)') &
