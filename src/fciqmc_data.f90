@@ -654,8 +654,8 @@ contains
     subroutine write_fciqmc_report_header()
     use calc, only: doing_calc, dmqmc_calc
         if (doing_calc(dmqmc_calc)) then
-           write (6,'(1X,a12,3X,a13,6X,a9,15X,a11,1X,a20,4X,a11,2X,a7,2X,a4)') &
-           '# iterations','Instant shift','Av. shift','Total Trace', 'Tot. Therm. Energy',   &
+           write (6,'(1X,a12,3X,a13,6X,a16,7X,a5,3X,a18,4X,a11,2X,a7,2X,a4)') &
+           '# iterations','Instant shift','Av. shift','Trace', '\sum\rho{ij}H_{ij}',   &
            '# particles','R_spawn','time'
         else if (calculate_magnetisation) then
             write (6,'(1X,a12,6X,a13,6X,a9,9X,a12,7X,a11,12X,a4,3X,a11,3X,a16,11X,a9,3X,a7,3X,a4)') &
@@ -687,9 +687,9 @@ contains
 
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
-           write (6,'(5X,i8,3(2X,es17.10),4X,es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
+           write (6,'(5X,i8,2(2X,es17.10),2X,i10,4X,es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
-                                             av_shift/vary_shift_reports, total_trace, total_thermal_energy,       &
+                                             av_shift/vary_shift_reports, total_trace(1), total_thermal_energy(1),       &
                                              ntot_particles, rspawn, elapsed_time/ncycles
         else if (calculate_magnetisation) then
             write (6,'(5X,i8,4(2X,es17.10),2X,f11.4,5X,i9,2X,es17.10,3X,es17.10,4X,f6.4,3X,f4.2)') &
