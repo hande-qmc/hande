@@ -34,36 +34,38 @@ contains
         real(dp) :: ir(sampling_size+1+(2*ncycles)), ir_sum(sampling_size+1+(2*ncycles))
         integer :: ntot_particles(sampling_size), ierr
 
-            ! Need to sum the number of particles and other quantites over all processors.
-            ir(1:sampling_size) = nparticles
-            ir(sampling_size+1) = rspawn
-            ir(sampling_size+2:sampling_size+1+ncycles) = trace
-            ir(sampling_size+2+ncycles:sampling_size+1+(2*ncycles)) = thermal_energy
-            call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            ntot_particles = nint(ir_sum(1:sampling_size))
-            rspawn = ir_sum(sampling_size+1)
-            if (parent) then
-                total_trace = total_trace + ir_sum(sampling_size+2:sampling_size+1+ncycles)
-                total_thermal_energy = total_thermal_energy + ir_sum(sampling_size+2+ncycles:&
+        ! Need to sum the number of particles and other quantites over all processors.
+        ir(1:sampling_size) = nparticles
+        ir(sampling_size+1) = rspawn
+        ir(sampling_size+2:sampling_size+1+ncycles) = trace
+        ir(sampling_size+2+ncycles:sampling_size+1+(2*ncycles)) = thermal_energy
+        call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        ntot_particles = nint(ir_sum(1:sampling_size))
+        rspawn = ir_sum(sampling_size+1)
+        if (parent) then
+            total_trace = total_trace + ir_sum(sampling_size+2:sampling_size+1+ncycles)
+            total_thermal_energy = total_thermal_energy + ir_sum(sampling_size+2+ncycles:&
                                                                      sampling_size+1+(2*ncycles))
-            end if
+        end if
 
-            if (vary_shift) then
-                call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
-            end if
-            ntot_particles_old = ntot_particles
-            if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
-                start_vary_shift = ireport
-            end if
+        if (vary_shift) then
+            call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
+        end if
+        ntot_particles_old = ntot_particles
+        if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
+            vary_shift = .true.
+            start_vary_shift = ireport
+        end if
 
 #else
-            if (vary_shift) call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
-            ntot_particles_old = nparticles
-            if (nparticles(1) > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
-                start_vary_shift = ireport
-            end if
+        total_trace = trace
+        total_thermal_energy = thermal_energy
+        if (vary_shift) call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
+        ntot_particles_old = nparticles
+        if (nparticles(1) > target_particles .and. .not.vary_shift) then
+            vary_shift = .true.
+            start_vary_shift = ireport
+        end if        
 #endif
 
             rspawn = rspawn/(ncycles*nprocs)

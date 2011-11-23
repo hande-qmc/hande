@@ -130,9 +130,9 @@ contains
         use fciqmc_data, only: tot_walkers
         integer :: idet
         integer :: ntot_particles
-#ifdef PARALLEL
         integer(i0) :: combined_trace
         real(p) :: combined_energy
+#ifdef PARALLEL
         integer :: ierr
 #endif
 
@@ -150,8 +150,8 @@ contains
         call mpi_allreduce(thermal_energy(1), combined_energy, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
-        total_trace(1) = trace(1)
-        total_thermal_energy(1) = thermal_energy(1)
+        combined_trace = trace(1)
+        combined_energy = thermal_energy(1)
         ntot_particles = nparticles(1)
 #endif 
         

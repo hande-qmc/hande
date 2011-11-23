@@ -101,7 +101,6 @@ contains
         call cpu_time(t1)
  
         do beta_cycle = 1, beta_loops
-        ! Write to ouput that beta is being reset preceded with "#" to help with post-run analysis
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
         spawning_head = spawning_block_start
@@ -120,7 +119,8 @@ contains
 
         call direct_annihilation()
 
-        if (beta_cycle .ne. 1 .and. parent) write (6,'(a19)') "# Resetting beta..." 
+        if (beta_cycle .ne. 1 .and. parent) write (6,'(a32,i7)') &
+                                      " # Resetting beta... Beta loop =", beta_cycle
         call initial_dmqmc_status()
 
         nparticles_old = dmqmc_npsips
@@ -233,10 +233,6 @@ contains
 
         call dealloc_det_info(cdet1)
         call dealloc_det_info(cdet2)
-
-        do icycle=0,(ncycles*nreport)-1
-            print *, icycle, thermal_energy(icycle)/trace(icycle)
-        end do
 
     end subroutine do_dmqmc
 
