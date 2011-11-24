@@ -132,6 +132,10 @@ contains
             deallocate(nbasis_sym, stat=ierr)
             call check_deallocate('nbasis_sym', ierr)
         end if
+        if (allocated(nbasis_sym_spin)) then
+            deallocate(nbasis_sym_spin, stat=ierr)
+            call check_deallocate('nbasis_sym_spin', ierr)
+        end if
 
     end subroutine end_pg_symmetry
 
