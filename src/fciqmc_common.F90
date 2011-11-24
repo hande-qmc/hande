@@ -285,11 +285,8 @@ contains
             ! Count number of basis functions in each symmetry.
             occ_syms = 0
             do i = 1, nel
-                if (basis_fns(i)%ms == -1) then
-                    ims1 = 1
-                else
-                    ims1 = 2
-                end if
+                ! Convert -1->1 and 1->2 for spin index in arrays.
+                ims1 = (basis_fns(i)%ms+3)/2
                 occ_syms(ims1,basis_fns(occ_list(i))%sym) = occ_syms(ims1,basis_fns(occ_list(i))%sym) + 1
             end do
 
@@ -298,11 +295,8 @@ contains
             ! Symmetry and spin must be conserved. 
             nsingles = 0
             do i = 1, nel
-                if (basis_fns(i)%ms == -1) then
-                    ims1 = 1
-                else
-                    ims1 = 2
-                end if
+                ! Convert -1->1 and 1->2 for spin index in arrays.
+                ims1 = (basis_fns(i)%ms+3)/2
                 ! Can't excite into already occupied orbitals.
                 nsingles = nsingles + nbasis_sym_spin(ims1,basis_fns(occ_list(i))%sym) - occ_syms(ims1,basis_fns(occ_list(i))%sym)
             end do
@@ -311,17 +305,11 @@ contains
             ! determinant.
             ndoubles = 0
             do i = 1, nel
-                if (basis_fns(occ_list(i))%ms == -1) then
-                    ims1 = 1
-                else
-                    ims1 = 2
-                end if
+                ! Convert -1->1 and 1->2 for spin index in arrays.
+                ims1 = (basis_fns(i)%ms+3)/2
                 do j = i+1, nel
-                    if (basis_fns(occ_list(j))%ms == -1) then
-                        ims2 = 1
-                    else
-                        ims2 = 2
-                    end if
+                    ! Convert -1->1 and 1->2 for spin index in arrays.
+                    ims2 = (basis_fns(j)%ms+3)/2
                     do isyma = sym0, nsym+(sym0-1)
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
