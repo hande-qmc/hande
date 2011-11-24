@@ -62,13 +62,19 @@ integer, parameter :: gamma_sym = 0
 
 ! nbasis_sym(i) gives the number of (spin) basis functions in the i-th symmetry,
 ! where i is the bit string describing the irreducible representation.
-integer, allocatable :: nbasis_sym(:)
+integer, allocatable :: nbasis_sym(:) ! (sym0:nsym+(sym0-1))
 
 ! nbasis_sym_spin(1,i) gives the number of spin-down basis functions in the i-th
 ! symmetry where i is the bit string describing the irreducible representation.
 ! Similarly, j=2 gives the analagous quantity for spin-up basis functions.
 ! For RHF calculations nbasis_sym_spin(:,i) = nbasis_sym(i)/2.
-integer, allocatable :: nbasis_sym_spin(:,:)
+integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sym0:nsym+(sym0-1))
+
+! sym_spin_basis_fns(:,ims,isym) gives the list of spin functions (ims=1 for
+! down, ims=2 for up) with symmetry isym.  We merrily waste some memory (not all
+! symmetries will have the same number of basis functions), so a 0 entry
+! indicates no more basis functions with the given spin and spatial symmetries.
+integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0:nsym+(sym0-1))
 
 contains
 
@@ -83,7 +89,7 @@ contains
         use basis, only: basis_fns, nbasis
         use system, only: nsym, sym0
 
-        integer :: i, ierr
+        integer :: i, ierr, ims, ind
 
         ! molecular systems use symmetry indices starting from 0.
         sym0 = 0
@@ -107,15 +113,25 @@ contains
         nbasis_sym_spin = 0
 
         do i = 1, nbasis
+
             nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
             basis_fns(i)%sym_index = nbasis_sym(basis_fns(i)%sym)
-            if (basis_fns(i)%ms == -1) then
-                nbasis_sym_spin(1,basis_fns(i)%sym) = nbasis_sym_spin(1,basis_fns(i)%sym) + 1
-                basis_fns(i)%sym_spin_index = nbasis_sym_spin(1,basis_fns(i)%sym)
-            else
-                nbasis_sym_spin(2,basis_fns(i)%sym) = nbasis_sym_spin(2,basis_fns(i)%sym) + 1
-                basis_fns(i)%sym_spin_index = nbasis_sym_spin(2,basis_fns(i)%sym)
-            end if
+
+            ims = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
+
+            nbasis_sym_spin(ims,basis_fns(i)%sym) = nbasis_sym_spin(ims,basis_fns(i)%sym) + 1
+            basis_fns(i)%sym_spin_index = nbasis_sym_spin(ims,basis_fns(i)%sym)
+
+        end do
+
+        allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,0:nsym-1), stat=ierr)
+        call check_allocate('sym_spin_basis_fns', size(sym_spin_basis_fns), ierr)
+        sym_spin_basis_fns = 0
+
+        do i = 1, nbasis
+            ims = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
+            ind = minloc(sym_spin_basis_fns(:,ims,basis_fns(i)%sym), dim=1) ! first non-zero element
+            sym_spin_basis_fns(ind, ims, basis_fns(i)%sym) = i
         end do
 
     end subroutine init_pg_symmetry
@@ -135,6 +151,10 @@ contains
         if (allocated(nbasis_sym_spin)) then
             deallocate(nbasis_sym_spin, stat=ierr)
             call check_deallocate('nbasis_sym_spin', ierr)
+        end if
+        if (allocated(sym_spin_basis_fns)) then
+            deallocate(sym_spin_basis_fns, stat=ierr)
+            call check_deallocate('sym_spin_basis_fns', ierr)
         end if
 
     end subroutine end_pg_symmetry
