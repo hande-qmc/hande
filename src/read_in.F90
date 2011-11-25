@@ -29,7 +29,7 @@ contains
                          write_basis_fn_header
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry
-        use system, only: fcidump, uhf, ecore, nel
+        use system, only: fcidump, uhf, ecore, nel, nvirt
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -255,6 +255,7 @@ contains
         ! (as we use the conventional CAS definition).
         nbasis = min(nbasis, 2*cas(2))
         nel = nel - ( nel - cas(1) )
+        nvirt = nbasis - nel
         if (uhf) then
             norb =  nbasis
         else

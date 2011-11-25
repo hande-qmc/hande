@@ -117,8 +117,6 @@ contains
 
         end if
 
-        nvirt = 2*nsites - nel
-
     end subroutine init_system
 
     subroutine end_system()

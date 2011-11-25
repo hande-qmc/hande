@@ -33,6 +33,7 @@ contains
         integer, allocatable :: basis_fns_ranking(:)
 
         nbasis = 2*nsites
+        nvirt = nbasis - nel
 
         ! Find basis functions.
 
