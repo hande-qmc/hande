@@ -33,7 +33,7 @@ contains
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
 
         type(excit) :: excitation
-        integer :: occ(nel)
+        integer :: occ_list(nel)
 
         hmatel = 0.0_p
 
@@ -49,14 +49,13 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                call decode_det(f1, occ)
-                hmatel = slater_condon0_mol(occ)
+                hmatel = slater_condon0_mol(f1)
 
             case(1)
 
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
-                call decode_det(f1, occ)
-                hmatel = slater_condon1_mol(occ, excitation%from_orb(1), &
+                call decode_det(f1, occ_list)
+                hmatel = slater_condon1_mol(occ_list, excitation%from_orb(1), &
                                             excitation%to_orb(1), excitation%perm)
 
             case(2)
@@ -72,25 +71,29 @@ contains
 
     end function get_hmatel_mol
 
-    pure function slater_condon0_mol(occ_list) result(hmatel)
+    pure function slater_condon0_mol(f) result(hmatel)
 
         ! In:
-        !    occ_list: list of orbitals occupied in a Slater Determinant, D.
+        !    f: bit string representation of a Slater determinant, |D>.
         ! Returns:
         !    <D|H|D>, the diagonal Hamiltonian matrix element involving D for
         !    systems defined by integrals read in from an FCIDUMP file.
 
+        use basis, only: basis_length
+        use determinants, only: decode_det
         use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
                                        get_two_body_int_mol_nonzero, one_e_h_integrals, &
                                        coulomb_integrals
         use system, only: nel, Ecore
 
         real(p) :: hmatel
-        integer, intent(in) :: occ_list(nel)
+        integer(i0), intent(in) :: f(basis_length)
 
+        integer :: occ_list(nel)
         integer :: iel, jel, i, j
 
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+        call decode_det(f, occ_list)
 
         hmatel = Ecore
         do iel = 1, nel
