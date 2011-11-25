@@ -100,7 +100,7 @@ contains
         use parallel
   
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length, bit_lookup, nbasis
+        use basis, only: basis_length, nbasis
         use calc, only: folded_spectrum, doing_calc
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
@@ -113,14 +113,12 @@ contains
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
 
-        integer :: i, idet, ireport, icycle, iparticle
+        integer :: idet, ireport, icycle, iparticle
         integer(lint) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, nattempts, ndeath
         type(excit) :: connection
-
-        integer :: bit_pos, bit_element
 
         logical :: soft_exit
 
