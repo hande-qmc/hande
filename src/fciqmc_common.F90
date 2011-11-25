@@ -27,7 +27,7 @@ contains
         use basis, only: basis_length, basis_fns, write_basis_fn
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
-        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
+        use hamiltonian, only: get_hmatel
         use fciqmc_restart, only: read_restart
         use system, only: nel, system_type, hub_real, hub_k
         use symmetry, only: symmetry_orb_list
@@ -170,12 +170,7 @@ contains
             ! Reference det
             f0 = walker_dets(:,tot_walkers)
             ! Energy of reference determinant.
-            select case(system_type)
-            case(hub_k)
-                H00 = slater_condon0_hub_k(f0)
-            case(hub_real)
-                H00 = slater_condon0_hub_real(f0)
-            end select
+            H00 = get_hmatel(f0,f0)
             ! By definition:
             walker_energies(1,tot_walkers) = 0.0_p
 
