@@ -264,7 +264,7 @@ contains
         integer, intent(in) :: occ_list(nel)
         real(p), intent(out) :: psingle, pdouble
 
-        integer :: i, j, occ_syms(2, sym0:nsym), nsingles, ndoubles, isyma, isymb, ims1, ims2
+        integer :: i, j, occ_syms(2, sym0:nsym+(sym0-1)), nsingles, ndoubles, isyma, isymb, ims1, ims2
 
         select case(system_type)
         case(hub_k)
@@ -281,7 +281,7 @@ contains
             occ_syms = 0
             do i = 1, nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_fns(i)%ms+3)/2
+                ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 occ_syms(ims1,basis_fns(occ_list(i))%sym) = occ_syms(ims1,basis_fns(occ_list(i))%sym) + 1
             end do
 
@@ -291,7 +291,7 @@ contains
             nsingles = 0
             do i = 1, nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_fns(i)%ms+3)/2
+                ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 ! Can't excite into already occupied orbitals.
                 nsingles = nsingles + nbasis_sym_spin(ims1,basis_fns(occ_list(i))%sym) - occ_syms(ims1,basis_fns(occ_list(i))%sym)
             end do
@@ -301,10 +301,10 @@ contains
             ndoubles = 0
             do i = 1, nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_fns(i)%ms+3)/2
+                ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 do j = i+1, nel
                     ! Convert -1->1 and 1->2 for spin index in arrays.
-                    ims2 = (basis_fns(j)%ms+3)/2
+                    ims2 = (basis_fns(occ_list(j))%ms+3)/2
                     do isyma = sym0, nsym+(sym0-1)
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
