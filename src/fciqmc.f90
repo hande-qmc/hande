@@ -14,14 +14,17 @@ contains
         ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
 
-        use system, only: system_type, hub_k, hub_real, hub_k_coulomb, hubt
+        use system, only: system_type, hub_k, hub_real, read_in, hub_k_coulomb, hubt
         use hellmann_feynman_sampling
 
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
+        use hamiltonian_molecular, only: slater_condon0_mol
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
-        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
+        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, & 
+                                     update_proj_energy_hub_real, update_proj_energy_mol
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
                             spawn_hub_k_no_renorm, spawn_hub_real_no_renorm
+        use spawning_mol_system
         use death, only: stochastic_death
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, folded_spectrum, doing_calc
@@ -47,7 +50,6 @@ contains
             end if
             sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
-            spawner_ptr => spawn_hub_k
             death_ptr => stochastic_death
             if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_k
         case (hub_real)
@@ -60,9 +62,20 @@ contains
             end if
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
-            spawner_ptr => spawn_hub_real
             death_ptr => stochastic_death
             if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_real
+        case (read_in)
+            decoder_ptr => decode_det_occ
+            update_proj_energy_ptr => update_proj_energy_mol
+            if (no_renorm) then
+                spawner_ptr => spawn_mol_no_renorm
+            else
+                spawner_ptr => spawn_mol
+            end if
+            sc0_ptr => slater_condon0_mol
+            hub_matel = hubt
+            death_ptr => stochastic_death
+            if (doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_mol
         end select
 
         if(doing_calc(folded_spectrum)) call init_folded_spectrum()
