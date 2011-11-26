@@ -264,7 +264,7 @@ contains
         integer, intent(in) :: occ_list(nel)
         real(p), intent(out) :: psingle, pdouble
 
-        integer :: i, j, occ_syms(2, sym0:nsym+(sym0-1)), nsingles, ndoubles, isyma, isymb, ims1, ims2
+        integer :: i, j, virt_syms(2, sym0:nsym+(sym0-1)), nsingles, ndoubles, isyma, isymb, ims1, ims2
 
         select case(system_type)
         case(hub_k)
@@ -278,13 +278,13 @@ contains
         case(read_in)
 
             ! Count number of basis functions in each symmetry.
-            occ_syms = 0
+            virt_syms = nbasis_sym_spin
             do i = 1, nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
-                occ_syms(ims1,basis_fns(occ_list(i))%sym) = occ_syms(ims1,basis_fns(occ_list(i))%sym) + 1
+                virt_syms(ims1,basis_fns(occ_list(i))%sym) = virt_syms(ims1,basis_fns(occ_list(i))%sym) - 1
             end do
-
+            
             ! Count number of possible single excitations from the supplied
             ! determinant.
             ! Symmetry and spin must be conserved. 
@@ -293,7 +293,7 @@ contains
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 ! Can't excite into already occupied orbitals.
-                nsingles = nsingles + nbasis_sym_spin(ims1,basis_fns(occ_list(i))%sym) - occ_syms(ims1,basis_fns(occ_list(i))%sym)
+                nsingles = nsingles + virt_syms(ims1,basis_fns(occ_list(i))%sym)
             end do
 
             ! Count number of possible double excitations from the supplied
@@ -309,12 +309,23 @@ contains
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
                         isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j)))
-                        if (isyma == isymb .and. ims1 == ims2) then
-                            ! Take into account the case where a and b are of the
-                            ! same symmetry and i and j have the same spin.
-                            ndoubles = ndoubles + nbasis_sym_spin(ims1,isyma)*(nbasis_sym_spin(ims2,isymb)-1)
-                        else
-                            ndoubles = ndoubles + nbasis_sym_spin(ims1,isyma)*nbasis_sym_spin(ims2,isymb)
+                        if (isyma == isymb) then
+                            if (ims1 == ims2) then
+                                ! Cannot excit 2 electrons into the same spin-orbital.
+                                ! Need to avoid double counting.
+                                !  => number of unique pairs is identical to
+                                !  number of elements in the strictly lower
+                                !  triangle of a square matrix.
+                                ndoubles = ndoubles + (virt_syms(ims1,isyma)*(virt_syms(ims2,isymb)-1))/2
+                            else
+                                ndoubles = ndoubles + virt_syms(ims1,isyma)*virt_syms(ims2,isymb)
+                            end if
+                        else if (isyma < isymb) then
+                            ! isyma < isymb to avoid double counting.
+                            ndoubles = ndoubles + virt_syms(ims1,isyma)*virt_syms(ims2,isymb)
+                            ! can also have the opposite spin structure of
+                            ! occupied orbitals have different spins.
+                            if (ims1 /= ims2) ndoubles = ndoubles + virt_syms(ims2,isyma)*virt_syms(ims1,isymb)
                         end if
                     end do
                 end do
