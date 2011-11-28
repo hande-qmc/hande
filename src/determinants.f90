@@ -319,8 +319,8 @@ contains
         nbeta = (nel - Ms)/2
         nalpha = (nel + Ms)/2
 
-        nvirt_alpha = nsites - nalpha
-        nvirt_beta = nsites - nbeta
+        nvirt_alpha = nbasis/2 - nalpha
+        nvirt_beta = nbasis/2 - nbeta
 
     end subroutine set_spin_polarisation
 
