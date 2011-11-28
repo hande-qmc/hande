@@ -114,6 +114,10 @@ type det_info
     integer, pointer :: occ_list_alpha(:), occ_list_beta(:)
     ! List of unoccupied alpha/beta spin-orbitals
     integer, pointer :: unocc_list_alpha(:), unocc_list_beta(:)
+    ! Number of unoccupied orbitals with each spin and symmetry.
+    ! The first index maps to spin using (Ms+3)/2, where Ms=-1 is spin-down and
+    ! Ms=1 is spin-up.
+    integer, pointer :: symunocc(:,:) ! (2,sym0:sym_max)
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC).
     integer :: initiator_flag
@@ -260,6 +264,8 @@ contains
         call check_allocate('det_info_t%unocc_list_alpha',nvirt_alpha,ierr)
         allocate(det_info_t%unocc_list_beta(nvirt_beta), stat=ierr)
         call check_allocate('det_info_t%unocc_list_beta',nvirt_beta,ierr)
+        allocate(det_info_t%symunocc(2,sym0:nsym+(sym0-1)), stat=ierr)
+        call check_allocate('det_info_t%symunocc',size(det_info_t%symunocc),ierr)
 
     end subroutine alloc_det_info
 
@@ -286,6 +292,8 @@ contains
         call check_deallocate('det_info_t%unocc_list_alpha',ierr)
         deallocate(det_info_t%unocc_list_beta, stat=ierr)
         call check_deallocate('det_info_t%unocc_list_beta',ierr)
+        deallocate(det_info_t%symunocc, stat=ierr)
+        call check_deallocate('det_info_t%symunocc',ierr)
 
     end subroutine dealloc_det_info
 
@@ -792,6 +800,49 @@ contains
         end do
 
     end subroutine decode_det_spinocc_spinunocc
+
+    pure subroutine decode_det_occ_symunocc(f, d)
+
+        !0 Decode determinant bit string into integer list containing the
+        ! occupied orbitals.
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Out:
+        !    d: det_info variable.  The following components are set:
+        !        occ_list(nel): integer list of occupied spin-orbitals in the
+        !            Slater determinant.
+        !        symunocc(2, sym0:symmax): number of unoccupied orbitals of each
+        !            spin/symmetry.  The same indexing scheme is used for
+        !            nbasis_sym_spin.
+
+        use point_group_symmetry, only: nbasis_sym_spin
+
+        integer(i0), intent(in) :: f(basis_length)
+        type(det_info), intent(inout) :: d
+        integer :: i, j, iocc, iunocc_a, iunocc_b, orb, ims, isym
+
+        iocc = 0
+        iunocc_a = 0
+        iunocc_b = 0
+
+        d%symunocc = nbasis_sym_spin
+
+        do i = 1, basis_length
+            do j = 0, i0_end
+                if (btest(f(i), j)) then
+                    orb = basis_lookup(j, i)
+                    ims = (basis_fns(orb)%ms+3)/2
+                    isym = basis_fns(orb)%sym
+                    iocc = iocc + 1
+                    d%occ_list(iocc) = orb
+                    d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
+                end if
+                if (iocc == nel) exit
+            end do
+        end do
+
+    end subroutine decode_det_occ_symunocc
 
     pure function det_momentum(occ_list) result(ksum)
 
