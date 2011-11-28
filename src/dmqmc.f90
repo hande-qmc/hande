@@ -78,7 +78,10 @@ contains
         use fciqmc_restart, only: dump_restart
         use interact, only: fciqmc_interact
         use system, only: nel
-
+        use calc, only: seed
+        use dSFMT_interface, only: dSFMT_init
+        use utils, only: int_fmt
+        
         integer :: i, idet, ireport, icycle, iparticle
         integer :: beta_cycle, nparticles_old(sampling_size)
         type(det_info) :: cdet1, cdet2
@@ -119,8 +122,14 @@ contains
 
         call direct_annihilation()
 
-        if (beta_cycle .ne. 1 .and. parent) write (6,'(a32,i7)') &
-                                      " # Resetting beta... Beta loop =", beta_cycle
+        if (beta_cycle .ne. 1 .and. parent) then
+           write (6,'(a32,i7)') &
+                   " # Resetting beta... Beta loop =", beta_cycle
+        ! Reset the random number generator with seed = seed + 1
+           seed = seed + 1
+           call dSFMT_init(seed + iproc)   
+           write (6,'(a52,'//int_fmt(seed,1)//',a1)') ' # Resetting random number generator with a seed of:', seed, '.'
+        end if
         call initial_dmqmc_status()
 
         nparticles_old = dmqmc_npsips
