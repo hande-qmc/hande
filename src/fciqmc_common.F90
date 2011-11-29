@@ -26,7 +26,7 @@ contains
                                 annihilate_spawned_list_initiator
         use basis, only: basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
-        use calc, only: dmqmc_calc, doing_calc
+        use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use gutzwiller_energy, only: plot_gutzwiller_energy
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
@@ -334,16 +334,25 @@ contains
             allocate(trace(1:ncycles), stat=ierr)
             call check_allocate('trace',ncycles,ierr)
             trace = 0
-            allocate(thermal_energy(1:ncycles), stat=ierr)
-            call check_allocate('thermal_energy',ncycles,ierr)
-            thermal_energy = 0
+            if (doing_dmqmc_calc(dmqmc_energy)) then
+                number_dmqmc_estimators = number_dmqmc_estimators + 1 
+                allocate(thermal_energy(1:ncycles), stat=ierr)
+                call check_allocate('thermal_energy',ncycles,ierr)
+                thermal_energy = 0
+            end if
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+                number_dmqmc_estimators = number_dmqmc_estimators + 1
+                allocate(thermal_staggered_mag(1:ncycles), stat=ierr)
+                call check_allocate('thermal_staggered_mag',ncycles,ierr)
+                thermal_staggered_mag = 0
+            end if
             if (parent) then
                 allocate(total_trace(1:ncycles), stat=ierr)
                 call check_allocate('total_trace',ncycles,ierr)
                 total_trace = 0
-                allocate(total_thermal_energy(1:ncycles), stat=ierr)
-                call check_allocate('total_thermal_energy',ncycles,ierr)
-                total_thermal_energy = 0
+                allocate(total_estimator_numerators(1:ncycles,1:number_dmqmc_estimators), stat=ierr)
+                call check_allocate('total_estimator_numerators',ncycles*number_dmqmc_estimators,ierr)
+                total_estimator_numerators = 0
             end if
             ! Set the dmqmc_factor to 0.5, so that spawning probabilities
             ! are altered by a factor of 0.5, to account for spawning from
@@ -373,10 +382,23 @@ contains
             write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
             write (6,'(1X,a88)') 'Average shift: the running average & 
                                                     &of the shift from when the shift was allowed to vary.'
-            write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
-                                 &Calculated at the end of each cycle.'
-            write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
-            write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+            if (.not. doing_calc(dmqmc_calc)) then
+                write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
+                                     &Calculated at the end of each cycle.'
+                write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
+                write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+            else
+                write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
+                                     &density matrix.'
+                if (doing_dmqmc_calc(dmqmc_energy)) then
+                write (6, '(1X,a92)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+                                     &value of the energy.'
+                end if
+                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+                write (6, '(1X,a109)') '\sum\rho_{ii}M_{ii}: The numerator of the estimator for the expectation &
+                                     &value of the staggered magnetisation.'
+                end if
+            end if
             write (6,'(1X,a49)') '# particles: current total population of walkers.'
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
         end if

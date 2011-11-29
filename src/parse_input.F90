@@ -152,6 +152,13 @@ contains
                 calc_type = calc_type + mc_hilbert_space
                 call readi(nhilbert_cycles)
 
+            ! DMQMC expectation values to be calculated
+            case('DMQMC_ENERGY')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
+            case('DMQMC_STAGGERED_MAGNETISATION')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
+                
+
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
                 call readi(lanczos_basis_length)
@@ -464,6 +471,7 @@ contains
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 

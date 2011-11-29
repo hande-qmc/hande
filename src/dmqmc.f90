@@ -19,13 +19,13 @@ contains
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use hamiltonian, only: diagonal_element_heisenberg
         use heisenberg_estimators, only: update_proj_energy_heisenberg_basic
-        use dmqmc_estimators, only: call_dmqmc_estimators
+        use dmqmc_estimators, only: dmqmc_energy_heisenberg, dmqmc_stag_mag_heisenberg
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k
         use energy_evaluation, only: update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle_density_matrix
         use spawning, only: spawn_heisenberg
-        use calc, only: dmqmc_calc
+        use calc, only: dmqmc_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
 
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
 
@@ -48,7 +48,9 @@ contains
         case (heisenberg)
             ! Only need occupied orbitals list, as for the real Hubbard case.
             decoder_ptr => decode_det_occ
-            update_dmqmc_energy_ptr => call_dmqmc_estimators
+            if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_heisenberg
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
+                         update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             spawner_ptr => spawn_heisenberg
             sc0_ptr => diagonal_element_heisenberg
         end select
@@ -70,15 +72,16 @@ contains
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use dmqmc_procedures, only: random_distribution_heisenberg, initial_dmqmc_status
-        use dmqmc_estimators, only: update_dmqmc_estimators
+        use dmqmc_procedures, only: random_distribution_heisenberg
+        use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
         use energy_evaluation, only: update_energy_estimators
-        use excitations, only: excit
+        use excitations, only: excit, get_excitation
         use fciqmc_common
         use fciqmc_restart, only: dump_restart
         use interact, only: fciqmc_interact
         use system, only: nel
-        use calc, only: seed
+        use calc, only: seed, doing_dmqmc_calc, dmqmc_energy
+        use calc, only: dmqmc_staggered_magnetisation
         use dSFMT_interface, only: dSFMT_init
         use utils, only: int_fmt
         
@@ -130,7 +133,7 @@ contains
            call dSFMT_init(seed + iproc)   
            write (6,'(a52,'//int_fmt(seed,1)//',a1)') ' # Resetting random number generator with a seed of:', seed, '.'
         end if
-        call initial_dmqmc_status()
+        !call initial_dmqmc_status()
 
         nparticles_old = dmqmc_npsips
 
@@ -141,8 +144,9 @@ contains
             beta_index = 0
             trace = 0
             total_trace = 0
-            thermal_energy = 0
-            total_thermal_energy = 0
+            if (doing_dmqmc_calc(dmqmc_energy)) thermal_energy = 0
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) thermal_staggered_mag = 0 
+            total_estimator_numerators = 0
 
             do icycle = 1, ncycles
                 beta_index = beta_index + 1
@@ -169,10 +173,9 @@ contains
                     call decoder_ptr(cdet1%f, cdet1)
                     call decoder_ptr(cdet2%f, cdet2)
 
-                    ! Add the contributions from this particular density matrix
-                    ! element to the quantites required to calculate the desired 
-                    ! properties, such as the trace of the density matrix.
-                    call update_dmqmc_energy_ptr(idet, beta_index)
+                    ! Call wrapper function which calls all requested estimators
+                    ! to be updated, and also always updates the trace separately.
+                    call call_dmqmc_estimators(idet, beta_index)
 
                     do iparticle = 1, abs(walker_population(1,idet))
                         ! Spawn from the first end.

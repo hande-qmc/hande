@@ -202,6 +202,10 @@ integer :: dmqmc_npsips = 0
 ! staggered magnetisation.
 real(p) :: population_squared = 0.0_p
 
+! This variable stores the number of estimators which are to be
+! calculated and printed out in a DMQMC calculation.
+integer :: number_dmqmc_estimators = 0
+
 ! In DMQMC, we need to accumulate the trace at each temperature (beta)
 ! over several runs so that we can average it later. This array
 ! stores this data (only allocated if doing DMQMC), Tr(\rho), where
@@ -213,10 +217,12 @@ integer(i0), allocatable :: trace(:) !ncycles
 integer(i0), allocatable :: total_trace(:) !ncycles
 
 ! In DMQMC, as above, we will have to store other quantities at
-! each beta value. The below array stores Tr(\rho*H), which is
-! the numerator when calculating the average energy.
+! each beta value. The below array store the numerators of the
+! estimators. For a general operator O, these will have the form
+! \sum_{i,j} \rho_{ij} * O_{ji}.
 real(p), allocatable :: thermal_energy(:) !ncycles
-real(p), allocatable :: total_thermal_energy(:) !ncycles
+real(p), allocatable :: thermal_staggered_mag(:) !ncycles
+real(p), allocatable :: total_estimator_numerators(:,:) ! (ncycles, number_dmqmc_estimators)
 
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
@@ -652,11 +658,23 @@ contains
     !--- Output procedures ---
 
     subroutine write_fciqmc_report_header()
-    use calc, only: doing_calc, dmqmc_calc
+
+        use calc, only: doing_calc, dmqmc_calc, doing_dmqmc_calc
+        use calc, only: dmqmc_energy, dmqmc_staggered_magnetisation
+
         if (doing_calc(dmqmc_calc)) then
-           write (6,'(1X,a12,3X,a13,6X,a16,7X,a5,3X,a18,4X,a11,2X,a7,2X,a4)') &
-           '# iterations','Instant shift','Av. shift','Trace', '\sum\rho{ij}H_{ij}',   &
-           '# particles','R_spawn','time'
+           write (6,'(1X,a12,3X,a13,6X,a16,5X,a5)', advance = 'no') &
+           '# iterations','Instant shift','Av. shift','Trace'
+
+            if (doing_dmqmc_calc(dmqmc_energy)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
+            end if
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ii}M_{ii}'
+            end if
+
+            write (6, '(2X,a11,2X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
+
         else if (calculate_magnetisation) then
             write (6,'(1X,a12,6X,a13,6X,a9,9X,a12,7X,a11,12X,a4,3X,a11,3X,a16,11X,a9,3X,a7,3X,a4)') &
             '# iterations','Instant shift','Av. shift','\sum H_0j Nj', &
@@ -679,7 +697,7 @@ contains
 
         integer, intent(in) :: ireport, ntot_particles
         real, intent(in) :: elapsed_time
-        integer :: mc_cycles, vary_shift_reports
+        integer :: mc_cycles, vary_shift_reports, i
 
         mc_cycles = ireport*ncycles
 
@@ -687,10 +705,15 @@ contains
 
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
-           write (6,'(5X,i8,2(2X,es17.10),2X,i10,4X,es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
+            write (6,'(5X,i8,2(2X,es17.10),i10)',advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift,   &
-                                             av_shift/vary_shift_reports, total_trace(1), total_thermal_energy(1),       &
-                                             ntot_particles, rspawn, elapsed_time/ncycles
+                                             av_shift/vary_shift_reports, total_trace(1)
+            do i = 1, number_dmqmc_estimators
+                write (6, '(4X,es17.10)', advance = 'no') total_estimator_numerators(1,i)
+            end do
+            write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
+
+
         else if (calculate_magnetisation) then
             write (6,'(5X,i8,4(2X,es17.10),2X,f11.4,5X,i9,2X,es17.10,3X,es17.10,4X,f6.4,3X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift, &
@@ -809,9 +832,13 @@ contains
             deallocate(thermal_energy, stat=ierr)
             call check_deallocate('thermal_energy', ierr)
         end if
-        if (allocated(total_thermal_energy)) then
-            deallocate(total_thermal_energy, stat=ierr)
-            call check_deallocate('total_thermal_energy', ierr)
+        if (allocated(thermal_staggered_mag)) then
+            deallocate(thermal_staggered_mag, stat=ierr)
+            call check_deallocate('thermal_staggered_mag', ierr)
+        end if
+        if (allocated(total_estimator_numerators)) then
+            deallocate(total_estimator_numerators, stat=ierr)
+            call check_deallocate('total_estimator_numerators', ierr)
         end if
 
     end subroutine end_fciqmc

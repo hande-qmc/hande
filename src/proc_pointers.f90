@@ -21,10 +21,12 @@ abstract interface
         implicit none
         integer, intent(in) :: idet
     end subroutine i_update_proj_energy
-    subroutine i_update_dmqmc_energy(idet,beta_index)
+    subroutine i_update_dmqmc_estimators(idet,beta_index,excitation)
+        import :: excit
         implicit none
         integer, intent(in) :: idet, beta_index
-    end subroutine i_update_dmqmc_energy
+        type(excit), intent(in) :: excitation
+    end subroutine i_update_dmqmc_estimators
     subroutine i_spawner(d, parent_sign, nspawned, connection)
         import :: det_info, excit
         implicit none
@@ -73,7 +75,8 @@ end interface
 
 procedure(i_decoder), pointer :: decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
-procedure(i_update_dmqmc_energy), pointer :: update_dmqmc_energy_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
 procedure(i_spawner), pointer :: spawner_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sub), pointer :: annihilate_main_list_ptr => null()

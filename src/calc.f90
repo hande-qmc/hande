@@ -28,6 +28,17 @@ integer, parameter :: mc_hilbert_space = 2**7
 ! Doing Density Matrix Monte Carlo?
 integer, parameter :: dmqmc_calc = 2**8
 
+! For DMQMC, the user may want to calculate many different combinations
+! of estimators. The above variable, calc-type, does a similar thing
+! for the types of calculation used. dmqmc_calc_type is a variable
+! which works in the same way, to allow the user to choose any combination
+! of estimators in a general way. The new function doing_dmqmc_calc works
+! in exactly the same way to doing_calc.
+integer :: dmqmc_calc_type = 0
+integer, parameter :: dmqmc_energy = 2**0
+integer, parameter :: dmqmc_staggered_magnetisation = 2**1
+
+
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
 integer :: ms_in = huge(1)
@@ -101,5 +112,23 @@ contains
         doing = iand(calc_param, calc_type) /= 0
 
     end function doing_calc
+
+    function doing_dmqmc_calc(calc_param) result(doing)
+
+        ! In:
+        !    calc_param: integer corresponding to a type of calculation, e.g.
+        !      lanczos diagonalisation or FCIQMC.
+        !      It is possible to test to see if one or more out of a group of
+        !      calculation types are being performed by setting calc_param to be
+        !      the sum of the group of calculation types.
+        ! Returns:
+        !    true if the supplied calculation type is specifed in calc_type.
+
+        logical :: doing
+        integer, intent(in) :: calc_param
+
+        doing = iand(calc_param, dmqmc_calc_type) /= 0
+
+    end function doing_dmqmc_calc
 
 end module calc
