@@ -422,6 +422,8 @@ Note: Only FCI and FCIQMC options are avaliable for the Heisenberg model.
     terms of CPU and memory resources) algorithm.  This should be used for testing only.
 **fciqmc**
     Perform an FCIQMC calculation [Booth_Thom_Alavi_09]_.
+**dmqmc**
+    Perform a Density Matrix Quantum Monte Carlo (DMQMC) calculation
 **ifciqmc**
     Perform an initiator-FCIQMC calculation [Cleland_Booth_Alavi_10]_.
 **ct_fciqmc**
@@ -446,6 +448,8 @@ Note: Only FCI and FCIQMC options are avaliable for the Heisenberg model.
     For the real space formulation of the Hubbard model and the Heisenberg
     model, the exact size of the space (at least to the first 8 significant
     figures) is found by simple combinatorics.
+
+
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -833,6 +837,34 @@ The following options are valid for FCIQMC calculations.
     will be plotted as a function of the parameter b, from -5 to +5 in steps of 0.1. This may be used
     to determine the best value of b for a particular lattice.
 
+Calculation options: DMQMC options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In addition to the options for FCIQMC calculations, the following options are additional to the 
+configuration of a Density Matrix Quantum Monte Carlo (DMQMC) calculation
+
+**dmqmc_init_pop**
+   Integer.
+   
+   Default: 1000.
+
+   Set the initial (unsigned) walker population to be placed (at random)  on the diagonal of the 
+   density matrix.
+
+**beta_loops**
+   Integer.
+
+   Default: 100.
+
+   Set the number of loops in beta for the estimators (at each beta) to be averaged over.
+
+**dmqmc_energy**
+   
+   Perform DMQMC calculation on the expectation value of the Hamiltonian.
+
+**dmqmc_staggered_magnetisation**
+
+   Perform DMQMC calculation on the staggered magnetisation
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

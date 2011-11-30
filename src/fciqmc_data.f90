@@ -195,7 +195,7 @@ real(p) :: D0_not_population = 0.0_p
 ! 1.0 when using standard FCIQMC.
 real :: dmqmc_factor = 1.0
 
-integer :: dmqmc_npsips = 0
+integer :: dmqmc_npsips = 1000
 
 ! The modulus squared of the wavefunction which the psips represent
 ! This is used in calculating the expectation value of the
