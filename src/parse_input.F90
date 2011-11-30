@@ -348,6 +348,11 @@ contains
                                   call stop_all(this, 'Cannot use this trial function with this guiding function.')                                     
             if (abs(D0_not_population) > 0.0_p .and. ms_in /= 0) call stop_all(this, 'Flipping this reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.bipartite_lattice)) then
+                call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
+                                      & This is not a bipartite lattice. Changing options so that it will not be calculated.')
+                dmqmc_calc_type = dmqmc_calc_type - dmqmc_staggered_magnetisation
+            end if
         end if
         
         if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
@@ -368,6 +373,11 @@ contains
             if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
+
+        if (.not.doing_calc(dmqmc_calc)) then
+            if (dmqmc_calc_type /= 0 .or. ) call warning('check_input','You are not performing a DMQMC calculation&
+                                      & but have requested DMQMC options to be calculated.')
+        else
 
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
