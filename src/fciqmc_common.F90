@@ -331,10 +331,14 @@ contains
         ! When doing a DMQMC calculation, allocate the requested arrays in order
         ! to store the thermal quantities which are to be calculated.
         if (doing_calc(dmqmc_calc)) then
+            ! Always allocate the trace, since thi will always be calculated.
             allocate(trace(1:ncycles), stat=ierr)
             call check_allocate('trace',ncycles,ierr)
             trace = 0
             if (doing_dmqmc_calc(dmqmc_energy)) then
+                ! Calculate the total number of different quantities
+                ! to be calculated, so that this can be stored as
+                ! number_dmqmc_estimators and used elsewhere.
                 number_dmqmc_estimators = number_dmqmc_estimators + 1 
                 allocate(thermal_energy(1:ncycles), stat=ierr)
                 call check_allocate('thermal_energy',ncycles,ierr)
@@ -347,6 +351,9 @@ contains
                 thermal_staggered_mag = 0
             end if
             if (parent) then
+                ! These quantities store the combined values from all processors,
+                ! which are output. Only the parent needs to output this data, so
+                ! only the parent stores them, for efficiency.
                 allocate(total_trace(1:ncycles), stat=ierr)
                 call check_allocate('total_trace',ncycles,ierr)
                 total_trace = 0

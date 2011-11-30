@@ -144,6 +144,8 @@ contains
             beta_index = 0
             trace = 0
             total_trace = 0
+            ! Set the below estimators to 0, only if they are being used and hence are
+            ! allocated.
             if (doing_dmqmc_calc(dmqmc_energy)) thermal_energy = 0
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) thermal_staggered_mag = 0 
             total_estimator_numerators = 0

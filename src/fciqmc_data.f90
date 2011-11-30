@@ -217,11 +217,18 @@ integer(i0), allocatable :: trace(:) !ncycles
 integer(i0), allocatable :: total_trace(:) !ncycles
 
 ! In DMQMC, as above, we will have to store other quantities at
-! each beta value. The below array store the numerators of the
+! each beta value. The below arrays store the numerators of the
 ! estimators. For a general operator O, these will have the form
 ! \sum_{i,j} \rho_{ij} * O_{ji}.
 real(p), allocatable :: thermal_energy(:) !ncycles
 real(p), allocatable :: thermal_staggered_mag(:) !ncycles
+! total_estimator_numerators stores all the values of all the
+! above numerators for the thermal estimators, combined to include
+! the values from all processor cores, at the end of the each
+! report loop. So, total_estimator_numerators(:,1) will store the
+! values of the first estimator at each iteration in the report
+! loop. total_estimator_numerators(:,2) will store the values
+! corresponding to the seoncd estimator, etc...
 real(p), allocatable :: total_estimator_numerators(:,:) ! (ncycles, number_dmqmc_estimators)
 
 ! When using the Neel singlet trial wavefunction, it is convenient
@@ -688,12 +695,14 @@ contains
     end subroutine write_fciqmc_report_header
 
     subroutine write_fciqmc_report(ireport, ntot_particles, elapsed_time)
-        use calc, only: doing_calc, dmqmc_calc
+
         ! Write the report line at the end of a report loop.
         ! In:
         !    ireport: index of the report loop.
         !    ntot_particles: total number of particles in main walker list.
         !    elapsed_time: time taken for the report loop.
+
+        use calc, only: doing_calc, dmqmc_calc
 
         integer, intent(in) :: ireport, ntot_particles
         real, intent(in) :: elapsed_time
@@ -708,6 +717,8 @@ contains
             write (6,'(5X,i8,2(2X,es17.10),i10)',advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, total_trace(1)
+            ! Perform a loop which outputs the numerators for each of the different
+            ! estimators, as stored in total_estimator_numerators.
             do i = 1, number_dmqmc_estimators
                 write (6, '(4X,es17.10)', advance = 'no') total_estimator_numerators(1,i)
             end do
