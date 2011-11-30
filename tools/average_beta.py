@@ -26,32 +26,78 @@ class Stats:
         self.se = se
 
 class Data:
-    def __init__(self, shift, Tr_Hrho, Tr_rho, init_lists=True):
+    def __init__(self, shift, Tr_rho, numerators, init_lists=True):
         if init_lists:
             self.shift = [shift]
-            self.Tr_Hrho = [Tr_Hrho]
             self.Tr_rho = [Tr_rho]
+            self.numerators = [numerators]
         else:
             self.shift = shift
-            self.Tr_Hrho = Tr_Hrho
             self.Tr_rho = Tr_rho
-    def append(self, shift, Tr_Hrho, Tr_rho):
+            self.numerators = numerators
+    def append(self, shift, Tr_rho, numerators):
         self.shift.append(shift)
-        self.Tr_Hrho.append(Tr_Hrho)
         self.Tr_rho.append(Tr_rho)
+        self.numerators.append(numerators)
     def calculate_stats(self):
         s = Data(0,0,0,False)
-        for attr in ('shift', 'Tr_Hrho', 'Tr_rho'):
+        for attr in ('shift', 'Tr_rho'):
             mean = scipy.mean(getattr(self, attr))
             se = scipy.stats.sem(getattr(self, attr))
             setattr(s, attr, Stats(mean, se))
+       # print 
+        mean = scipy.mean(self.numerators,0) 
+        se = scipy.stats.sem(self.numerators,0)
+       # print [mean[0],mean[1]]
+       # print se
+        setattr(s, 'numerators', Stats(mean,se))
+
         return s
+
+def get_estimator_headings(data_files):
+    # start of data table
+    start_regex = '^ # iterations'
+    data_file = data_files[0]
+    n_numerators = calc_num_numerators(data_file)
+    in_file = open(data_file)
+    estimator_headings = []
+    while in_file:
+       line = in_file.next()
+       if re.search(start_regex, line): 
+           headings = line.split()
+           for i in range(7,7+n_numerators):
+              estimator_headings.append(headings[i])
+           for j in range(0,len(estimator_headings)):
+              estimator_headings[j] = 'Tr['+estimator_headings[j][13]+'p]/Tr[p]'
+           break
+           
+    return estimator_headings
+
+def calc_num_numerators(data_file):
+    # start of data table
+    start_regex = '^ # iterations'
+    in_file = open(data_file)
+    n_numerators = 0
+    while in_file:
+       line = in_file.next()
+       if re.search(start_regex, line):
+           line = in_file.next()   
+           n_columns = len(line.split())
+           n_numerators = n_columns - 7
+           break
+    return n_numerators
         
 def stats_ratio(s1, s2):
     mean = s1.mean/s2.mean
     se = scipy.sqrt( (s1.se/s1.mean)**2 + (s2.se/s2.mean)**2 )*mean
     return Stats(mean, se)
-
+def stats_array_ratio(numerator_array,denominator):
+    mean = []
+    se = []
+    for i in range(0,numerator_array.mean.size):
+       mean.append(numerator_array.mean[i]/denominator.mean)
+       se.append(scipy.sqrt( (numerator_array.se[i]/numerator_array.mean[i])**2 + (denominator.se/denominator.mean)**2 )*mean[i])
+    return Stats(mean,se)
 def extract_data(data_files):
 
     data = {}
@@ -66,7 +112,8 @@ def extract_data(data_files):
     tau_regex = r'(?<=\btau\b)(.*)'
 
     for data_file in data_files:
-
+       
+        num_numerators = calc_num_numerators(data_file)
         f = open(data_file)
 
         have_data = False
@@ -82,12 +129,15 @@ def extract_data(data_files):
                     words = line.split()
                     beta = tau*float(words[BETA_COL])
                     shift = float(words[SHIFT_COL])
-                    Tr_Hrho = float(words[TR_HRHO_COL])
+                    numerators = []
+                    for i in range(4,4+num_numerators):
+                       numerators.append(float(words[i])) 
+                    
                     Tr_rho = float(words[TR_RHO_COL])
                     if beta in data:
-                        data[beta].append(shift, Tr_Hrho, Tr_rho)
+                        data[beta].append(shift, Tr_rho, numerators)
                     else:
-                        data[beta] = Data(shift, Tr_Hrho, Tr_rho)
+                        data[beta] = Data(shift, Tr_rho, numerators)
             elif re.search(start_regex, line):
                 have_data = True
             elif re.search(tau_regex, line):
@@ -105,26 +155,27 @@ def get_data_stats(data):
 
         stats[beta] = data_values.calculate_stats()
         # Bonus!  Now calculate ratio Tr[H\rho]/Tr[\rho]
-        stats[beta].E = stats_ratio(stats[beta].Tr_Hrho, stats[beta].Tr_rho)
-
+        stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho)
     return stats
 
-def print_stats(stats, trace=True, shift=False):
+def print_stats(stats, estimator_headings, trace=True, shift=False):
 
-    print r'#     \beta     ',
+    print r'#          \beta    ',
     if shift:
-        print '      shift           shift s.e.',
+        print 'shift           shift s.e.    ',
     if trace:
-        print '      Tr[Hp]/Tr[p]    Tr[Hp]/Tr[p] s.e.',
+        for i in range(0,len(estimator_headings)):
+            print estimator_headings[i]+'            s.e.    ',
     print
     for beta in sorted(stats.iterkeys()):
 
         data = stats[beta]
-        print '%16.8f' % (beta) , 
+        print '%16.8f' % (beta) ,
         if shift:
             print '%16.8f%16.8f' % (data.shift.mean, data.shift.se) ,
         if trace:
-            print '%16.8f%16.8f' % (data.E.mean, data.E.se) ,
+            for i in range(0,len(data.estimators.mean)):
+                print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
         print
 
 def plot_stats(stats, trace=True, shift=False):
@@ -167,8 +218,10 @@ def parse_options(args):
 if __name__ == '__main__':
 
     (options, data_files) = parse_options(sys.argv[1:])
+    estimator_headings = get_estimator_headings(data_files)
+    print estimator_headings
     data = extract_data(data_files)
     stats = get_data_stats(data)
-    print_stats(stats, options.with_trace, options.with_shift)
+    print_stats(stats, estimator_headings, options.with_trace, options.with_shift)
     if options.plot:
         plot_stats(stats, options.with_trace, options.with_shift)
