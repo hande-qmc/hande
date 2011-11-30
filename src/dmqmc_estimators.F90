@@ -185,6 +185,45 @@ contains
 
    end subroutine dmqmc_energy_heisenberg
 
+   subroutine dmqmc_energy_hub_real(idet, beta_index, excitation)
+
+       ! For the Heisenberg model only.
+       ! Add the contribution from the current density matrix element
+       ! to the thermal energy estimate.
+
+       ! In:
+       !    idet: Current position in the main bitsrting list.
+       !    beta_index: Current iteration within the report loop.
+       !    excitation: excit type variable which stores information on
+       !    the excitation between the two bitstring ends, corresponding
+       !    to the two labels for the density matrix element.
+
+       use basis, only: basis_length, total_basis_length
+       use excitations, only: excit
+       use fciqmc_data, only: walker_dets, walker_population
+       use fciqmc_data, only: walker_energies, thermal_energy, H00
+       use hamiltonian, only: slater_condon1_hub_real        
+
+       integer, intent(in) :: idet, beta_index
+       type(excit), intent(in) :: excitation
+       integer :: bit_element, bit_position
+       real(p) :: hmatel
+
+       ! If no excitation, we have a diagonal element, so add elements
+       ! which involve the diagonal element of the Hamiltonian.
+       if (excitation%nexcit == 0) then
+           thermal_energy(beta_index)=thermal_energy(beta_index) + &
+                             (walker_energies(1,idet)+H00)*walker_population(1,idet)
+       else if (excitation%nexcit == 1) then
+       ! If not a diagonal element, but only a single excitation, then the corresponding
+       ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
+       ! neighbours on the lattice, and if so, add the contirbution from this site.
+           hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+           thermal_energy(beta_index)=thermal_energy(beta_index) + (hmatel*walker_population(1,idet))
+       end if
+
+   end subroutine dmqmc_energy_hub_real
+
    subroutine dmqmc_stag_mag_heisenberg(idet, beta_index, excitation)
 
        ! For the Heisenberg model only.

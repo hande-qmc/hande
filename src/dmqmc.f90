@@ -20,9 +20,10 @@ contains
         use hamiltonian, only: diagonal_element_heisenberg
         use heisenberg_estimators, only: update_proj_energy_heisenberg_basic
         use dmqmc_estimators, only: dmqmc_energy_heisenberg, dmqmc_stag_mag_heisenberg
+        use dmqmc_estimators, only: dmqmc_energy_hub_real
+        use dmqmc_procedures, only: random_distribution_heisenberg, random_distribution_entire_space
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k
-        use energy_evaluation, only: update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle_density_matrix
         use spawning, only: spawn_heisenberg
         use calc, only: dmqmc_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
@@ -41,10 +42,11 @@ contains
             hub_matel = hub_k_coulomb
         case (hub_real)
             decoder_ptr => decode_det_occ
-            update_proj_energy_ptr => update_proj_energy_hub_real
+            if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_hub_real
             spawner_ptr => spawn_hub_real
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
+            dmqmc_initial_distribution_ptr => random_distribution_entire_space
         case (heisenberg)
             ! Only need occupied orbitals list, as for the real Hubbard case.
             decoder_ptr => decode_det_occ
@@ -53,6 +55,7 @@ contains
                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             spawner_ptr => spawn_heisenberg
             sc0_ptr => diagonal_element_heisenberg
+            dmqmc_initial_distribution_ptr => random_distribution_heisenberg
         end select
 
         create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
@@ -120,8 +123,8 @@ contains
         ! Need to place psips randomly along the diagonal at the
         ! start of every iteration. Pick orbitals randomly, each
         ! with equal probability, so that when electrons are placed
-        ! one these orbitals they will have the correct spin and symmetry.
-        call random_distribution_heisenberg()
+        ! on these orbitals they will have the correct spin and symmetry.
+        call dmqmc_initial_distribution_ptr()
 
         call direct_annihilation()
 
@@ -133,7 +136,6 @@ contains
            call dSFMT_init(seed + iproc)   
            write (6,'(a52,'//int_fmt(seed,1)//',a1)') ' # Resetting random number generator with a seed of:', seed, '.'
         end if
-        !call initial_dmqmc_status()
 
         nparticles_old = dmqmc_npsips
 

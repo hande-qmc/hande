@@ -374,10 +374,8 @@ contains
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
 
-        if (.not.doing_calc(dmqmc_calc)) then
-            if (dmqmc_calc_type /= 0 .or. ) call warning('check_input','You are not performing a DMQMC calculation&
-                                      & but have requested DMQMC options to be calculated.')
-        else
+        if ((.not.doing_calc(dmqmc_calc)) .and. dmqmc_calc_type /= 0) call warning('check_input',&
+               'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
 
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
