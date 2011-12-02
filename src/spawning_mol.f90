@@ -409,27 +409,37 @@ contains
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
 
-        integer :: ims, isym, ind, shift
+        integer :: ims, isym, ind, shift, na, fac
 
         ! Select a virtual orbital at random.
         ! Ensure spin can be conserved...
         select case(spin)
-        case(-2,0)
-            ! a must be down or we can arbitrarily require it to be down.
+        case(-2)
+            ! a must be down.
+            fac = 2
             shift = 1
+            na = nbasis/2
+        case(0)
+            ! a must be down or we can arbitrarily require it to be down.
+            fac = 1
+            shift = 0
+            na = nbasis
         case(2)
             ! a must be up.
+            fac = 2
             shift = 0
+            na = nbasis/2
         end select
         do
             ! We assume that the user is not so crazy that he/she is
             ! running a calculation where there exists no virtual 
             ! orbitals of a given spin.
-            ! random integer between 1 and nbasis/2.
-            a = int(genrand_real2()*nbasis/2) + 1
+            ! random integer between 1 and # possible a orbitals.
+            a = int(genrand_real2()*na) + 1
             ! convert to down orbital (ie odd integer between 1 and
             ! nbasis-1) or up orbital (ie even integer between 2 and nbasis)
-            a = 2*a-shift
+            ! or to any orbital.
+            a = fac*a-shift
             ! If a is unoccupied, then have found first orbital to excite into.
             if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) exit
         end do
@@ -461,8 +471,8 @@ contains
             ! It is useful to return a,b ordered (e.g. for the find_excitation_permutation2 routine).
             if (a > b) then
                 ind = a
-                b = a
-                a = ind
+                a = b
+                b = ind
             end if
         end if
 
@@ -494,6 +504,15 @@ contains
     end function calc_pgen_single_mol_no_renorm
 
     function calc_pgen_double_mol_no_renorm(a, b, spin) result(pgen)
+
+        ! WARNING: We assume that the excitation is actually valid. 
+        ! This routine does *not* calculate the correct probability that
+        ! a forbidden excitation (e.g. due to a or b actually being occupied) is
+        ! generated.  The correct way to handle those excitations is to set
+        ! hmatel to be zero.  The generation probabilites of allowed excitations
+        ! correctly take into account events where a/b is occupied.  This
+        ! problem arises because if a or b are actually occpied, then p(a|ijb)
+        ! or p(b|ijb) = 0.  We do not handle such cases.
 
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_double
@@ -544,7 +563,7 @@ contains
             p_bija = 1.0_p/nbasis_sym_spin(imsb, isymb)
         end if
 
-        pgen = pattempt_double/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
+        pgen = 2*pattempt_double/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
 
     end function calc_pgen_double_mol_no_renorm
             
