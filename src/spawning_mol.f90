@@ -148,41 +148,66 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
+        logical :: allowed_excitation
 
         integer :: ij_sym, ij_spin
 
         ! 1. Select single or double.
         
         if (genrand_real2() < pattempt_single) then
-        
+
             ! 2a. Select orbital to excite from and orbital to excit into.
-            call choose_ia_mol(cdet%f, cdet%occ_list, connection%from_orb(1), connection%to_orb(1))
+            call choose_ia_mol(cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
+                               connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
             
-            ! 3a. Probability of generating this excitation.
+            if (allowed_excitation) then
+                ! 3a. Probability of generating this excitation.
+                pgen = calc_pgen_single_mol(cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
-            ! 4a. Parity of permutation required to line up determinants.
-            call find_excitation_permutation1(cdet%f, connection)
+                ! 4a. Parity of permutation required to line up determinants.
+                call find_excitation_permutation1(cdet%f, connection)
 
-            ! 5a. Find the connecting matrix element.
-            hmatel = slater_condon1_mol(cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                ! 5a. Find the connecting matrix element.
+                hmatel = slater_condon1_mol(cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+            else
+                ! We have a highly restrained system and this det has no single
+                ! excitations at all.  To avoid reweighting pattempt_single and
+                ! pattempt_double (an O(N^3) operation), we simply return a null
+                ! excitation
+                hmatel = 0.0_p
+                pgen = 1.0_p
+            end if
 
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
             call choose_ij_mol(cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
-            call choose_ab_mol(cdet%f, ij_sym, ij_spin, connection%to_orb(1), connection%to_orb(2))
+            call choose_ab_mol(cdet%f, ij_sym, ij_spin, cdet%symunocc, connection%to_orb(1), &
+                               connection%to_orb(2), allowed_excitation)
             connection%nexcit = 2
-            
-            ! 3b. Probability of generating this excitation.
 
-            ! 4b. Parity of permutation required to line up determinants.
-            ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
-            call find_excitation_permutation2(cdet%f, connection)
+            if (allowed_excitation) then
+                
+                ! 3b. Probability of generating this excitation.
+                pgen = calc_pgen_double_mol(ij_sym, connection%to_orb(1), connection%to_orb(2), &
+                                            ij_spin, cdet%symunocc)
 
-            ! 5b. Find the connecting matrix element.
-            hmatel = slater_condon2_mol(connection%from_orb(1), connection%from_orb(2), &
-                                        connection%to_orb(1), connection%to_orb(2), connection%perm)
+                ! 4b. Parity of permutation required to line up determinants.
+                ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
+                call find_excitation_permutation2(cdet%f, connection)
+
+                ! 5b. Find the connecting matrix element.
+                hmatel = slater_condon2_mol(connection%from_orb(1), connection%from_orb(2), &
+                                            connection%to_orb(1), connection%to_orb(2), connection%perm)
+            else
+                ! Carelessly selected ij with no possible excitations.  Such
+                ! events are not worth the cost of renormalising the generation
+                ! probabilities.
+                ! Return a null excitation.
+                hmatel = 0.0_p
+                pgen = 1.0_p
+            end if
 
         end if
 
@@ -224,7 +249,7 @@ contains
         ! 1. Select single or double.
         
         if (genrand_real2() < pattempt_single) then
-        
+
             ! 2a. Select orbital to excite from and orbital to excit into.
             call find_ia_mol(cdet%f, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
@@ -274,7 +299,7 @@ contains
 
 !--- Select random orbitals involved in a valid single excitation ---
 
-    subroutine choose_ia_mol(f, occ_list, i, a)
+    subroutine choose_ia_mol(f, occ_list, symunocc, i, a, allowed_excitation)
 
         ! Randomly choose a single excitation, i->a, of a determinant for
         ! molecular systems.
@@ -285,19 +310,33 @@ contains
         !    occ_list: integer list of occupied spin-orbitals in the determinant.
         ! Out:
 
-        use basis, only: basis_length
-        use system, only: nel
+        use basis, only: basis_length, basis_fns
+        use system, only: nel, sym0
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: occ_list(nel)
+        integer, intent(in) :: occ_list(nel), symunocc(:,sym0:)
         integer, intent(out) :: i, a
+        logical, intent(out) :: allowed_excitation
 
-        logical :: allowed_excitation
-        
+        integer :: ims, isym
+
+        ! Does this determinant have any possible single excitations?
         allowed_excitation = .false.
-        do while (.not.allowed_excitation)
-            call find_ia_mol(f, occ_list, i, a, allowed_excitation)
+        do i = 1, nel
+            ims = (basis_fns(occ_list(i))%Ms+3)/2
+            isym = basis_fns(occ_list(i))%sym
+            if (symunocc(ims, isym) /= 0) then
+                allowed_excitation = .true.
+                exit
+            end if
         end do
+        
+        if (allowed_excitation) then
+            allowed_excitation = .false.
+            do while (.not.allowed_excitation)
+                call find_ia_mol(f, occ_list, i, a, allowed_excitation)
+            end do
+        end if
 
     end subroutine choose_ia_mol
 
@@ -340,21 +379,62 @@ contains
 
     end subroutine choose_ij_mol
 
-    subroutine choose_ab_mol(f, sym, spin, a, b)
+    subroutine choose_ab_mol(f, sym, spin, symunocc, a, b, allowed_excitation)
 
         use basis, only: basis_length
-        use system, only: nel
+        use system, only: nel, sym0, nsym
+        use point_group_symmetry, only: cross_product_pg_sym
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: sym, spin
+        integer, intent(in) :: sym, spin, symunocc(:,sym0:)
         integer, intent(out) :: a, b
+        logical, intent(out) :: allowed_excitation
 
-        logical :: allowed_excitation
-        
+        integer :: isyma, isymb, imsa, imsb, ims_min, ims_max
+
+        ! Is there a possible (a,b) pair which conserves symmetry once the (i,j)
+        ! pair has been selected?
+        ! We don't renormalise the probability generators for such instances, so
+        ! need to return a null excitation.
+        select case(spin)
+        case(-2)
+            ims_min = 1
+            ims_max = 1
+        case(0)
+            ims_min = 1
+            ims_max = 2
+        case(2)
+            ims_min = 2
+            ims_max = 2
+        end select
+
         allowed_excitation = .false.
-        do while (.not.allowed_excitation)
-            call find_ab_mol(f, sym, spin, a, b, allowed_excitation)
-        end do
+        allowed: do isyma = sym0, nsym+(sym0-1)
+            isymb = cross_product_pg_sym(isyma, sym)
+            do imsa = ims_min, ims_max
+                if (spin == 0) then
+                    imsb = mod(imsa,2)+1
+                else
+                    imsb = imsa
+                end if
+                if  (spin /= 0 .and. isyma == isymb) then
+                    if (symunocc(imsa, isyma) > 1) then
+                          allowed_excitation = .true.
+                          exit allowed
+                    end if
+                else if  (symunocc(imsa,isyma) > 0 .and. symunocc(imsb,isymb) > 0) then
+                      allowed_excitation = .true.
+                      exit allowed
+                  end if
+              end do
+        end do allowed
+
+        if (allowed_excitation) then
+            allowed_excitation = .false.
+            do while (.not.allowed_excitation)
+                call find_ab_mol(f, sym, spin, a, b, allowed_excitation)
+            end do
+        end if
 
     end subroutine choose_ab_mol
 
@@ -479,6 +559,109 @@ contains
     end subroutine find_ab_mol
 
 !--- Excitation generation probabilities ---
+
+    function calc_pgen_single_mol(occ_list, symunocc, a) result(pgen)
+
+        use basis, only: basis_fns
+        use fciqmc_data, only: pattempt_single
+        use system, only: nel, sym0
+
+        real(p) :: pgen
+        integer, intent(in) :: occ_list(nel), symunocc(:,sym0:), a
+
+        integer :: ims, isym, i, ni
+
+        ! The generation probability, pgen, is:
+        !   pgen = p_single p(i) p(a|i)
+        !        = p_single 1/nel 1/symunocc(ms_i, sym_i)
+
+        ni = nel
+        do i = 1, nel
+            ims = (basis_fns(occ_list(i))%Ms+3)/2
+            isym = basis_fns(occ_list(i))%sym
+            if (symunocc(ims,isym) == 0) ni = ni - 1
+        end do
+
+        ims = (basis_fns(a)%Ms+3)/2
+        isym = basis_fns(a)%sym
+        pgen = pattempt_single/(ni*symunocc(ims,isym))
+
+    end function calc_pgen_single_mol
+
+    function calc_pgen_double_mol(ij_sym, a, b, spin, symunocc) result(pgen)
+
+        use basis, only: basis_fns
+        use fciqmc_data, only: pattempt_double
+        use system, only: nel, nvirt, nvirt_alpha, nvirt_beta, sym0, nsym
+        use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym
+
+        real(p) :: pgen
+        integer, intent(in) :: ij_sym, a, b, spin, symunocc(:,sym0:)
+
+        integer :: imsa, isyma, imsb, isymb, n_aij, ims_min, ims_max
+        real(p) :: p_bija, p_aijb
+
+        ! p(i,j) = 1/binom(nel,2) = 2/(nel*(nel-1))
+        ! p(a|i,j) = | 1/(nbasis-nel) if i,j are (up,down) or (down,up)
+        !            | 1/(nbasis/2-nalpha) if i,j are (up,up)
+        !            | 1/(nbasis/2-nbeta) if i,j are (down,down)
+        ! p(b|i,j,a) = 1/symunocc(ms_b, sym_b), where ms_b and sym_b are
+        ! such that spin and spatial symmetry are conserved
+        ! p(b|i,j) = p(a|i,j) by symmetry.
+        ! p(a|i,j,b) = 1/symunocc(ms_a, sym_a), where ms_a and sym_a are
+        ! such that spin and spatial symmetry are conserved.
+        ! n.b. p(a|i,j,b) =/= p(b|i,j,a) in general.
+
+        select case(spin)
+        case(-2)
+            n_aij = nvirt_beta
+            ims_min = 1
+            ims_max = 1
+        case(0)
+            n_aij = nvirt
+            ims_min = 1
+            ims_max = 2
+        case(2)
+            n_aij = nvirt_alpha
+            ims_min = 2
+            ims_max = 2
+        end select
+
+        do isyma = sym0, nsym+(sym0-1)
+            ! find corresponding isymb.
+            isymb = cross_product_pg_sym(isyma, ij_sym)
+            do imsa = ims_min, ims_max
+                if (spin == 0) then
+                    imsb = mod(imsa,2)+1
+                else
+                    imsb = imsa
+                end if
+                if (symunocc(imsb, isymb) == 0) then
+                    n_aij = n_aij - symunocc(imsa,isyma)
+                else if (spin /= 0 .and. isyma == isymb .and. symunocc(imsb, isymb) == 1) then
+                    ! if up,up / down,down
+                    n_aij = n_aij - symunocc(imsa,isyma)
+                end if
+            end do
+        end do
+
+        imsa = (basis_fns(a)%ms+3)/2
+        isyma = basis_fns(a)%sym
+        imsb = (basis_fns(b)%ms+3)/2
+        isymb = basis_fns(b)%sym
+
+        if (isyma == isymb .and. imsa == imsb) then
+            ! b cannot be the same as a.
+            p_aijb = 1.0_p/(symunocc(imsa, isyma)-1)
+            p_bija = 1.0_p/(symunocc(imsb, isymb)-1)
+        else
+            p_aijb = 1.0_p/symunocc(imsa, isyma)
+            p_bija = 1.0_p/symunocc(imsb, isymb)
+        end if
+
+        pgen = 2*pattempt_double/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
+
+    end function calc_pgen_double_mol
 
     function calc_pgen_single_mol_no_renorm(a) result(pgen)
 

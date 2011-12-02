@@ -19,7 +19,7 @@ contains
 
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use hamiltonian_molecular, only: slater_condon0_mol
-        use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
+        use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ, decode_det_occ_symunocc
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, & 
                                      update_proj_energy_hub_real, update_proj_energy_mol
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
@@ -65,12 +65,13 @@ contains
             death_ptr => stochastic_death
             if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_real
         case (read_in)
-            decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_mol
             if (no_renorm) then
                 spawner_ptr => spawn_mol_no_renorm
+                decoder_ptr => decode_det_occ
             else
                 spawner_ptr => spawn_mol
+                decoder_ptr => decode_det_occ_symunocc
             end if
             sc0_ptr => slater_condon0_mol
             hub_matel = hubt
