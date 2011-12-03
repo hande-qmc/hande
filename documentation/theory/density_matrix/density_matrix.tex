@@ -104,6 +104,47 @@ A property of the density matrix is that it is hermitian. Therefore, for systems
 
 The DMQMC algorithm can therefore be adapted by only looping over the top diagonal half of the density matrix and adding an extra condition on the spawning from ends $a$ and $b$ of a walker on site $(l,m)$. This condition is that if a walker attempts to spawn offspring below the diagonal of the density matrix, $l>m$, you interchange the co-ordinates of the site it is spawned onto to $(m,l)$ in effect reflecting it back onto the top half of the density matrix.
 
+\section{Calculating the heat capacity in a constant magnetic field}
+The fundamental equation of thermodynamics for a system that is subject to magnetic work can be written,
+\begin{equation}
+dE = TdS-\vec{M}.\vec{dH},
+\end{equation}
+where $dE$ is the change in internal energy of the system, $Tds$ is the amount of heat flowing in and $\vec{M}.\vec{dH}$ is the work done on the system by an external magnetic field $\vec{H}$.
+
+By using the definition of the heat capacity $Q=CdT=TdS$ and assuming that the external magnetic field is constant then,
+\begin{equation}
+dE = C_{H}dT,	
+\end{equation}
+where $C_{H}$ is now the heat capacity at constant $H$.
+
+Now in terms of our $\beta = 1/k_{B}T$ we find,
+\begin{equation}
+\frac{dE}{dT} = \frac{dE}{d\beta}\frac{d\beta}{dT} = -k_{B}\beta^2\frac{dE}{d\beta}.
+\end{equation}
+Therefore,
+\begin{equation}
+C_{H} = -k_{B}\beta^2\frac{dE}{d\beta}.
+\end{equation}
+
+Now because we can calculate the total internal energy by,
+\begin{equation}
+E = \frac{\mbox{Tr}(\hat{\rho}\hat{H})}{\mbox{Tr}(\hat{\rho})} = \frac{\sum_{i}\bra{E_i}\hat{\rho}\hat{H}\ket{E_i}}{\sum_{i}\bra{E_i}\hat{\rho}\ket{E_i}} 
+= \frac{\sum_{i}\bra{E_i}e^{-\beta E_i}E_i\ket{E_i}}{\sum_{i}\bra{E_i}e^{-\beta E_i}\ket{E_i}}
+,
+\end{equation}
+where $\{\ket{E_i}\}$ is some orthonormal basis of energy eigenstates, it is simple to calculate a value of $C_H$ using only the density matrix and the hamiltonian;
+\newpage
+\begin{equation}
+C_H =  -k_{B}\beta^2\frac{d}{d\beta}\left[ \frac{\sum_{i}\bra{E_i}e^{-\beta E_i}E_i\ket{E_i}}{\sum_{i}\bra{E_i}e^{-\beta E_i}\ket{E_i}} \right] 
+\end{equation}
+\begin{equation}
+= -k_{B}\beta^2\frac{\left(-\sum_{i}\bra{E_i}e^{-\beta E_i}E_i^2\ket{E_i} \sum_{j}\bra{E_j}e^{-\beta E_j}\ket{E_j}\right)-\left(-\sum_{i}\bra{E_i}e^{-\beta E_i}E_i\ket{E_i} \sum_{j}\bra{E_j}e^{-\beta E_j}E_J\ket{E_j}\right)}{(\sum_{i}\bra{E_i}e^{-\beta E_i}\ket{E_i})^2} 
+\end{equation}
+\begin{equation}
+= k_B\beta^2\frac{\mbox{Tr}(\hat{\rho}\hat{H}^2)\mbox{Tr}(\hat{\rho})-\mbox{Tr}(\hat{\rho}\hat{H})^2}{\mbox{Tr}(\hat{\rho})^2}.
+\end{equation}
+Where the differentiation is performed using the quotient rule.
+
 \section{Uses of the density matrix}
 -- Von Neumann Entropy
 \section{Heisenberg Model}
