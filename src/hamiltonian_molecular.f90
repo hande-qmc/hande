@@ -79,11 +79,10 @@ contains
         !    <D|H|D>, the diagonal Hamiltonian matrix element involving D for
         !    systems defined by integrals read in from an FCIDUMP file.
 
-        use basis, only: basis_length
+        use basis, only: basis_length, basis_fns
         use determinants, only: decode_det
-        use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
-                                       get_two_body_int_mol_nonzero, one_e_h_integrals, &
-                                       coulomb_integrals
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
+                                       one_e_h_integrals, coulomb_integrals
         use system, only: nel, Ecore
 
         real(p) :: hmatel
@@ -98,11 +97,12 @@ contains
         hmatel = Ecore
         do iel = 1, nel
             i = occ_list(iel)
-            hmatel = hmatel + get_one_body_int_mol(one_e_h_integrals, i, i)
+            hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_h_integrals, i, i)
             do jel = iel, nel
                 j = occ_list(jel)
-                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j) &
-                                - get_two_body_int_mol(coulomb_integrals, i, j, j, i)
+                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j) 
+                if (basis_fns(i)%Ms == basis_fns(j)%Ms) &
+                              hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, j, i)
             end do
         end do
 
@@ -147,6 +147,53 @@ contains
 
     end function slater_condon1_mol
 
+    pure function slater_condon1_mol_excit(occ_list, i, a, perm) result(hmatel)
+
+        ! In:
+        !    occ_list: list of orbitals occupied in a Slater Determinant, D.
+        !    i: the spin-orbital from which an electron is excited in
+        !       the reference determinant.
+        !    a: the spin-orbital into which an electron is excited in
+        !       the excited determinant.
+        !    perm: true if an odd number of permutations are required for
+        !       D and D_i^a to be maximally coincident.
+        ! Returns:
+        !    < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !        determinant and a single excitation of it for systems defined
+        !        by integrals read in from an FCIDUMP file.
+
+        ! WARNING: This function assumes that the D_i^a is a symmetry allowed
+        ! excitation from D (and so the matrix element is *not* zero by
+        ! symmetry).  This is less safe that slater_condon1_mol but much faster
+        ! as it allows symmetry checking to be skipped in the integral lookups.
+
+        use basis, only: basis_fns
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
+                                       one_e_h_integrals, coulomb_integrals
+        use system, only: nel
+
+        real(p) :: hmatel
+        integer, intent(in) :: occ_list(nel), i, a
+        logical, intent(in) :: perm
+
+        integer :: iel
+
+        ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+
+        hmatel = get_one_body_int_mol_nonzero(one_e_h_integrals, i, a)
+
+        do iel = 1, nel
+            if (occ_list(iel) /= i) then
+                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), a, occ_list(iel))
+                if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
+                    hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
+            end if
+        end do
+
+        if (perm) hmatel = -hmatel
+
+    end function slater_condon1_mol_excit
+
     elemental function slater_condon2_mol(i, j, a, b, perm) result(hmatel)
 
         ! In:
@@ -159,9 +206,9 @@ contains
         !    b: the spin-orbital into which an electron is excited in
         !       the excited determinant.
         !    perm: true if an odd number of permutations are required for
-        !       D and D_i^a to be maximally coincident.
+        !       D and D_{ij}^{ab} to be maximally coincident.
         ! Returns:
-        !    < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    < D | H | D_{ij}^{ab} >, the Hamiltonian matrix element between a 
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
         !
@@ -181,5 +228,51 @@ contains
         if (perm) hmatel = -hmatel
 
     end function slater_condon2_mol
+
+    elemental function slater_condon2_mol_excit(i, j, a, b, perm) result(hmatel)
+
+        ! In:
+        !    i: the spin-orbital from which an electron is excited in
+        !       the reference determinant.
+        !    j: the spin-orbital from which an electron is excited in
+        !       the reference determinant.
+        !    a: the spin-orbital into which an electron is excited in
+        !       the excited determinant.
+        !    b: the spin-orbital into which an electron is excited in
+        !       the excited determinant.
+        !    perm: true if an odd number of permutations are required for
+        !       D and D_{ij}^{ab} to be maximally coincident.
+        ! Returns:
+        !    < D | H | D_{ij}^{ab} >, the Hamiltonian matrix element between a 
+        !        determinant and a single excitation of it for systems defined
+        !        by integrals read in from an FCIDUMP file.
+        !
+        ! Note that we don't actually need to directly refer to |D>.
+        !
+        ! WARNING: This function assumes that the D_{ij}^{ab} is a symmetry allowed
+        ! excitation from D (and so the matrix element is *not* zero by
+        ! symmetry).  This is less safe that slater_condon1_mol but much faster
+        ! as it allows symmetry checking to be skipped in the integral lookups.
+
+        use basis, only: basis_fns
+        use molecular_integrals, only: get_two_body_int_mol_nonzero, coulomb_integrals
+        use system, only: nel
+
+        real(p) :: hmatel
+        integer, intent(in) :: i, j, a, b
+        logical, intent(in) :: perm
+
+        ! < D | H | D_{ij}^{ab} > = < ij || ab >
+
+        hmatel = 0.0_p
+
+        if (basis_fns(i)%Ms == basis_fns(a)%Ms) &
+            hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, a, b) 
+        if (basis_fns(i)%Ms == basis_fns(b)%Ms) &
+            hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, b, a)
+
+        if (perm) hmatel = -hmatel
+
+    end function slater_condon2_mol_excit
 
 endmodule hamiltonian_molecular
