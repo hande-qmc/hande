@@ -439,14 +439,14 @@ contains
             shift = 1
             na = nbasis/2
         case(0)
-            allowed: do isyma = sym0, nsym+(sym0-1)
+            do isyma = sym0, nsym+(sym0-1)
                 isymb = cross_product_pg_sym(isyma, sym)
                 if ( (symunocc(1,isyma) > 0 .and. symunocc(2,isymb) > 0) .or. &
                      (symunocc(2,isyma) > 0 .and. symunocc(1,isymb) > 0) ) then
                     allowed_excitation = .true.
-                    exit allowed
+                    exit 
                 end if
-            end do allowed
+            end do
 
             fac = 1
             shift = 0
@@ -685,52 +685,73 @@ contains
         ! such that spin and spatial symmetry are conserved.
         ! n.b. p(a|i,j,b) =/= p(b|i,j,a) in general.
 
+        imsa = (basis_fns(a)%ms+3)/2
+        imsb = (basis_fns(b)%ms+3)/2
+
+        ! Count number of possible choices of a, given the choice of (i,j).
+        ! Find number of possible b, given the choice of (i,j,a).
+        ! It is more efficient to deal with the different spin cases separately
+        ! and explicitly.
         select case(spin)
         case(-2)
+            ! # a.
             n_aij = nvirt_beta
-            ims_min = 1
-            ims_max = 1
-        case(0)
-            n_aij = nvirt
-            ims_min = 1
-            ims_max = 2
-        case(2)
-            n_aij = nvirt_alpha
-            ims_min = 2
-            ims_max = 2
-        end select
-
-        do isyma = sym0, nsym+(sym0-1)
-            ! find corresponding isymb.
-            isymb = cross_product_pg_sym(isyma, ij_sym)
-            do imsa = ims_min, ims_max
-                if (spin == 0) then
-                    imsb = mod(imsa,2)+1
-                else
-                    imsb = imsa
-                end if
-                if (symunocc(imsb, isymb) == 0) then
-                    n_aij = n_aij - symunocc(imsa,isyma)
-                else if (spin /= 0 .and. isyma == isymb .and. symunocc(imsb, isymb) == 1) then
+            do isyma = sym0, nsym+(sym0-1)
+                ! find corresponding isymb.
+                isymb = cross_product_pg_sym(isyma, ij_sym)
+                if (symunocc(1, isymb) == 0) then
+                    n_aij = n_aij - symunocc(1,isyma)
+                else if (isyma == isymb .and. symunocc(1, isymb) == 1) then
                     ! if up,up / down,down
-                    n_aij = n_aij - symunocc(imsa,isyma)
+                    n_aij = n_aij - symunocc(1,isyma)
                 end if
             end do
-        end do
-
-        imsa = (basis_fns(a)%ms+3)/2
-        isyma = basis_fns(a)%sym
-        imsb = (basis_fns(b)%ms+3)/2
-        isymb = basis_fns(b)%sym
-
-        if (isyma == isymb .and. imsa == imsb) then
-            ! b cannot be the same as a.
-            p_aijb = 1.0_p/(symunocc(imsa, isyma)-1)
-            p_bija = 1.0_p/(symunocc(imsb, isymb)-1)
-        else
-            p_aijb = 1.0_p/symunocc(imsa, isyma)
-            p_bija = 1.0_p/symunocc(imsb, isymb)
-        end if
+            ! # b.
+            if (basis_fns(a)%sym == basis_fns(b)%sym) then
+                p_aijb = 1.0_p/(symunocc(imsa,basis_fns(a)%sym)-1)
+                p_bija = 1.0_p/(symunocc(imsb,basis_fns(b)%sym)-1)
+            else
+                p_aijb = 1.0_p/symunocc(imsa,basis_fns(a)%sym)
+                p_bija = 1.0_p/symunocc(imsb,basis_fns(b)%sym)
+            end if
+        case(0)
+            ! # a.
+            n_aij = nvirt
+            do isyma = sym0, nsym+(sym0-1)
+                ! find corresponding isymb.
+                isymb = cross_product_pg_sym(isyma, ij_sym)
+                if (symunocc(1, isymb) == 0) then
+                    n_aij = n_aij - symunocc(2,isyma)
+                end if
+                if (symunocc(2, isymb) == 0) then
+                    n_aij = n_aij - symunocc(1,isyma)
+                end if
+            end do
+            ! # b.  b cannot have same spin and symmetry as a.
+            p_aijb = 1.0_p/symunocc(imsa,basis_fns(a)%sym)
+            p_bija = 1.0_p/symunocc(imsb,basis_fns(b)%sym)
+        case(2)
+            ! # a.
+            n_aij = nvirt_alpha
+            do isyma = sym0, nsym+(sym0-1)
+                ! find corresponding isymb.
+                isymb = cross_product_pg_sym(isyma, ij_sym)
+                if (symunocc(2, isymb) == 0) then
+                    n_aij = n_aij - symunocc(2,isyma)
+                else if (isyma == isymb .and. symunocc(2, isymb) == 1) then
+                    ! if up,up / down,down
+                    n_aij = n_aij - symunocc(2,isyma)
+                end if
+            end do
+            ! # b.
+            if (basis_fns(a)%sym == basis_fns(b)%sym) then
+                p_aijb = 1.0_p/(symunocc(imsa,basis_fns(a)%sym)-1)
+                p_bija = 1.0_p/(symunocc(imsb,basis_fns(b)%sym)-1)
+            else
+                p_aijb = 1.0_p/symunocc(imsa,basis_fns(a)%sym)
+                p_bija = 1.0_p/symunocc(imsb,basis_fns(b)%sym)
+            end if
+        end select
 
         pgen = 2*pattempt_double/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
 
