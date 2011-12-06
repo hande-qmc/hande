@@ -633,7 +633,7 @@ contains
 
 !--- Excitation generation probabilities ---
 
-    function calc_pgen_single_mol(occ_list, symunocc, a) result(pgen)
+    pure function calc_pgen_single_mol(occ_list, symunocc, a) result(pgen)
 
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_single
@@ -661,7 +661,7 @@ contains
 
     end function calc_pgen_single_mol
 
-    function calc_pgen_double_mol(ij_sym, a, b, spin, symunocc) result(pgen)
+    pure function calc_pgen_double_mol(ij_sym, a, b, spin, symunocc) result(pgen)
 
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_double
@@ -757,7 +757,7 @@ contains
 
     end function calc_pgen_double_mol
 
-    function calc_pgen_single_mol_no_renorm(a) result(pgen)
+    pure function calc_pgen_single_mol_no_renorm(a) result(pgen)
 
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_single
@@ -780,7 +780,7 @@ contains
 
     end function calc_pgen_single_mol_no_renorm
 
-    function calc_pgen_double_mol_no_renorm(a, b, spin) result(pgen)
+    pure function calc_pgen_double_mol_no_renorm(a, b, spin) result(pgen)
 
         ! WARNING: We assume that the excitation is actually valid. 
         ! This routine does *not* calculate the correct probability that

@@ -264,7 +264,7 @@ contains
 
 !--- Zeroing ---
 
-     subroutine zero_one_body_int_store(store)
+     pure subroutine zero_one_body_int_store(store)
 
         ! Zero a one-body integral store.
 
@@ -286,7 +286,7 @@ contains
 
      end subroutine zero_one_body_int_store
 
-     subroutine zero_two_body_int_store(store)
+     pure subroutine zero_two_body_int_store(store)
 
         ! Zero a two-body integral store.
 
