@@ -218,4 +218,29 @@ contains
 
     end subroutine create_diagonal_particle
 
+    subroutine decode_dm_bitstring(f, index1, index2)
+
+        use basis, only: total_basis_length, basis_length
+        use fciqmc_data, only: subsystem_A_bit_positions, subsystem_A_bit_positions
+        use fciqmc_data, only: subsystem_A_size
+
+        integer(i0), intent(in) :: f(total_basis_length)
+        integer(i0), intent(out) :: index1, index2
+        integer :: i
+
+        index1 = 0
+        index2 = 0
+        
+        do i = 1, subsystem_A_size
+            if (btest(f(subsystem_A_bit_positions(i,2)),subsystem_A_bit_positions(i,1))) &
+                index1 = ibset(index1,i-1)
+            if (btest(f(subsystem_A_bit_positions(i,2)+basis_length),subsystem_A_bit_positions(i,1))) &
+                index2 = ibset(index2,i-1)
+        end do
+
+        index1 = index1+1
+        index2 = index2+1
+
+    end subroutine decode_dm_bitstring
+
 end module dmqmc_procedures

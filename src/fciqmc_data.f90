@@ -231,6 +231,27 @@ real(p), allocatable :: thermal_staggered_mag(:) !ncycles
 ! corresponding to the seoncd estimator, etc...
 real(p), allocatable :: total_estimator_numerators(:,:) ! (ncycles, number_dmqmc_estimators)
 
+! If true, then the reduced density matrix will be calulated
+! for the subsystem A specified by the user.
+logical :: doing_reduced_dm = .false.
+
+integer :: subsystem_A_size
+! If finding a reduced density matrix for subsystem A, then the
+! following list stores the sites on the lattice which belong
+! to subsystem A, stored in array, as input by the user.
+integer, allocatable :: subsystem_A_list(:)
+! This stores the bit positions and bit elements corresponding
+! to the basis functions which belong to sublattice A, so that
+! these do not have to be calculated the many times they are required.
+integer, allocatable :: subsystem_A_bit_positions(:,:)
+! The two below masks have 1's for all bit positions corresponding
+! to sites which belong to sublattice A or B, respectively. 0's elsewhere.
+integer(i0), allocatable :: subsystem_A_mask(:)
+integer(i0), allocatable :: subsystem_B_mask(:)
+! This stored the reduces matrix, which is slowly accumulated over time
+! (on each processor).
+integer, allocatable :: reduced_density_matrix(:,:)
+
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate

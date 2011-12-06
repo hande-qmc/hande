@@ -24,7 +24,7 @@ contains
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
                                 annihilate_main_list_initiator,                &
                                 annihilate_spawned_list_initiator
-        use basis, only: basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup
+        use basis, only: basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
         use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use gutzwiller_energy, only: plot_gutzwiller_energy
@@ -42,6 +42,7 @@ contains
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_not(basis_length)
+        integer :: bit_position, bit_element
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -365,6 +366,57 @@ contains
             ! are altered by a factor of 0.5, to account for spawning from
             ! both ends.
             dmqmc_factor = 0.5
+
+            ! If doing a reduced density matrix calculation, then allocate and define the
+            ! bit masks that have 1's at the positions referring to either subsystems A or B.
+            if (doing_reduced_dm) then
+                subsystem_A_size = ubound(subsystem_A_list,1)
+                allocate(subsystem_A_mask(1:basis_length), stat=ierr)
+                call check_allocate('subsystem_A_mask',basis_length,ierr)
+                allocate(subsystem_B_mask(1:basis_length), stat=ierr)
+                call check_allocate('subsystem_B_mask',basis_length,ierr)
+                allocate(subsystem_A_bit_positions(subsystem_A_size,2), stat=ierr)
+                call check_allocate('subsystem_A_bit_positions',2*subsystem_A_size,ierr)
+                subsystem_A_mask = 0
+                subsystem_B_mask = 0
+                subsystem_A_bit_positions = 0
+                ! For the Heisenberg model only currently.
+                if (system_type==heisenberg) then
+                    subsystem_A_mask = 0
+                    do i = 1, subsystem_A_size
+                        bit_position = bit_lookup(1,subsystem_A_list(i))
+                        bit_element = bit_lookup(2,subsystem_A_list(i))
+                        subsystem_A_mask(bit_element) = ibset(subsystem_A_mask(bit_element), bit_position)
+                    end do
+                    subsystem_B_mask = subsystem_A_mask
+                    ! We cannot just flip the mask for system A to get that for system B, because
+                    ! there the trailing bits on the end don't refer to anything and should be
+                    ! set to 0. So, first set these to 1 and then flip all the bits.
+                    do ipos = 0, i0_end
+                        basis_find = basis_lookup(ipos, basis_length)
+                        if (basis_find == 0) then
+                            subsystem_B_mask(basis_length) = ibset(subsystem_B_mask(basis_length),ipos)
+                        end if
+                    end do
+                    subsystem_B_mask = not(subsystem_B_mask)
+                end if
+                if (subsystem_A_size <= int(nsites/2)) then
+                    ! In this case, for an ms = 0 subspace (as the ground state of the Heisenberg model
+                    ! will be) then any combination of spins can occur in the subsystem, from all spins
+                    ! down to all spins up. Hence the total size of the reduced density matrix will be
+                    ! 2**(number of spins in subsystem A).
+                    allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
+                    call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
+                    reduced_density_matrix = 0
+                end if
+                do i = 1, subsystem_A_size
+                    bit_position = bit_lookup(1,subsystem_A_list(i))
+                    bit_element = bit_lookup(2,subsystem_A_list(i))
+                    subsystem_A_bit_positions(i,1) = bit_position
+                    subsystem_A_bit_positions(i,2) = bit_element
+                end do
+            end if
+
         end if
 
         if (parent) then

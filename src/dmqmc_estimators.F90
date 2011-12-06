@@ -123,7 +123,7 @@ contains
        use basis, only: basis_length, total_basis_length
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
        use excitations, only: get_excitation, excit
-       use fciqmc_data, only: walker_dets, walker_population, trace
+       use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
 
        integer, intent(in) :: idet, beta_index
@@ -139,6 +139,7 @@ contains
        if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr(idet, beta_index, excitation)
        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                                      call update_dmqmc_stag_mag_ptr(idet, beta_index, excitation)
+       if (doing_reduced_dm) call update_reduced_density_matrix(idet)
 
    end subroutine call_dmqmc_estimators
 
@@ -271,5 +272,27 @@ contains
        end if
 
    end subroutine dmqmc_stag_mag_heisenberg
+
+   subroutine update_reduced_density_matrix(idet)
+
+       use basis, only: basis_length, total_basis_length
+       use dmqmc_procedures, only: decode_dm_bitstring
+       use fciqmc_data, only: subsystem_B_mask, reduced_density_matrix
+       use fciqmc_data, only: walker_dets, walker_population
+
+       integer, intent(in) :: idet
+       integer(i0) :: f1(basis_length), f2(basis_length)
+       integer(i0) :: end1, end2
+
+       f1 = iand(subsystem_B_mask,walker_dets(:basis_length,idet))
+       f2 = iand(subsystem_B_mask,walker_dets(basis_length+1:total_basis_length,idet))
+
+       if (sum(abs(f1-f2)) == 0) then
+           call decode_dm_bitstring(walker_dets(:,idet),end1,end2)
+           reduced_density_matrix(end1,end2) = reduced_density_matrix(end1,end2) + walker_population(1,idet)
+       end if
+
+    end subroutine update_reduced_density_matrix
+
 
 end module dmqmc_estimators

@@ -157,7 +157,15 @@ contains
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
-                
+            ! Calculate a reduced density matrix
+            case('REDUCED_DENSITY_MATRIX')
+                doing_reduced_dm = .true.
+            case('SUBSYSTEM_SITES')
+                allocate(subsystem_A_list(nitems-1), stat=ierr)
+                call check_allocate('subsystem_A_list',nitems-1,ierr)
+                do i = 1, nitems-1
+                    call readi(subsystem_A_list(i))
+                end do
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -438,7 +446,7 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        integer :: ierr, occ_list_size
+        integer :: ierr, occ_list_size, subsystem_size
         logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -498,6 +506,9 @@ contains
         call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_npsips, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        subsystem_size = size(subsystem_A_list)
+        call mpi_bcast(subsystem_A_list, subsystem_size, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
