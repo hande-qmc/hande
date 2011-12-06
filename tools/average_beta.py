@@ -157,9 +157,31 @@ def get_data_stats(data):
         # Bonus!  Now calculate ratio Tr[H\rho]/Tr[\rho]
         stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho)
     return stats
+def calculate_energy_fit(energies, betas, order):
+    poly_coeffs = scipy.polyfit(betas, energies, order)
+    energy_fit = scipy.polyval(poly_coeffs,betas)
+
+    return energy_fit
+
+def calculate_specific_heat(energies, betas, order):
+    poly_coeffs = scipy.polyfit(betas, energies, order)
+    print poly_coeffs
+    diff_poly_coeffs = differentiate_polynomial(poly_coeffs)
+    print diff_poly_coeffs
+    specific_heat = scipy.polyval(diff_poly_coeffs,betas)
+    for i in range(0,len(specific_heat)):
+        specific_heat[i] = -1.*betas[i]*betas[i]*specific_heat[i]
+    return specific_heat
 
 def print_stats(stats, estimator_headings, trace=True, shift=False):
-
+    energies = []
+    betas = []
+    for beta in sorted(stats.iterkeys()):
+      data = stats[beta]
+      betas.append(beta)
+      energies.append(data.estimators.mean[0]) 
+    energy_fit = calculate_energy_fit(energies,betas,6)
+    gradient = calculate_specific_heat(energies, betas,6)
     print r'#          \beta    ',
     if shift:
         print 'shift           shift s.e.    ',
@@ -167,6 +189,7 @@ def print_stats(stats, estimator_headings, trace=True, shift=False):
         for i in range(0,len(estimator_headings)):
             print estimator_headings[i]+'            s.e.    ',
     print
+    counter = 0
     for beta in sorted(stats.iterkeys()):
 
         data = stats[beta]
@@ -176,7 +199,15 @@ def print_stats(stats, estimator_headings, trace=True, shift=False):
         if trace:
             for i in range(0,len(data.estimators.mean)):
                 print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
+        print '%16.8f%16.8f' % (energy_fit[counter],gradient[counter]) ,
+        counter = counter + 1
         print
+def differentiate_polynomial(poly_coeffs):
+    diff_poly_coeffs = []
+    for i in range(0,len(poly_coeffs)-1):   
+        diff_poly_coeffs.append(poly_coeffs[i]*(len(poly_coeffs)-i-1))
+    return diff_poly_coeffs
+
 
 def plot_stats(stats, trace=True, shift=False):
 
