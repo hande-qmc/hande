@@ -479,11 +479,6 @@ contains
 
         integer :: ii, jj, aa, bb, tmp, ia, jb
 
-        ii = i
-        jj = j
-        aa = a
-        bb = b
-
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
         ! As orbitals and integrals are real, <ij|o_2|ab> = <ji|o_2|ba> = <ab|o_2|ij> = <ba|o_2|ji>
@@ -492,26 +487,16 @@ contains
         ! storage space required by a factor of 8.
 
         ! Require i>=a and j>=b.
-        if (ii < aa) then
-            tmp = aa
-            aa = ii
-            ii = tmp
+        if (i < a) then
+            ia = tri_ind(basis_fns(a)%spatial_index, basis_fns(i)%spatial_index)
+        else
+            ia = tri_ind(basis_fns(i)%spatial_index, basis_fns(a)%spatial_index)
         end if
-        if (jj < bb) then
-            tmp = bb
-            bb = jj
-            jj = tmp
+        if (j < b) then
+            jb = tri_ind(basis_fns(b)%spatial_index, basis_fns(j)%spatial_index)
+        else
+            jb = tri_ind(basis_fns(j)%spatial_index, basis_fns(b)%spatial_index)
         end if
-
-        ! Convert to spatial indices
-        ii = basis_fns(ii)%spatial_index
-        jj = basis_fns(jj)%spatial_index
-        aa = basis_fns(aa)%spatial_index
-        bb = basis_fns(bb)%spatial_index
-
-        ! Find pair indices.
-        ia = tri_ind(ii,aa)
-        jb = tri_ind(jj,bb)
 
         ! Require (i,a) > (j,b), i.e. i>j || (i==j && a>b)
         ! Hence find overall index after applying 3-fold permutation symmetry.
