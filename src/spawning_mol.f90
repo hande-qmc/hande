@@ -310,15 +310,18 @@ contains
         !    occ_list: integer list of occupied spin-orbitals in the determinant.
         ! Out:
 
-        use basis, only: basis_length, basis_fns
+        use basis, only: basis_length, basis_fns, bit_lookup
+        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns
         use system, only: nel, sym0
+        
+        use dSFMT_interface, only: genrand_real2
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: occ_list(nel), symunocc(:,sym0:)
         integer, intent(out) :: i, a
         logical, intent(out) :: allowed_excitation
 
-        integer :: ims, isym
+        integer :: ims, isym, ind
 
         ! Does this determinant have any possible single excitations?
         allowed_excitation = .false.
@@ -332,10 +335,31 @@ contains
         end do
         
         if (allowed_excitation) then
-            allowed_excitation = .false.
-            do while (.not.allowed_excitation)
-                call find_ia_mol(f, occ_list, i, a, allowed_excitation)
+            ! We could wrap around find_ia_mol, but it's more efficient to have
+            ! a custom generator instead.  The cost of an extra few lines is worth
+            ! the speed...
+
+            do
+                ! Select an occupied orbital at random.
+                i = occ_list(int(genrand_real2()*nel)+1)
+                ! Conserve symmetry (spatial and spin) in selecting a.
+                ims = (basis_fns(i)%Ms+3)/2 
+                isym = basis_fns(i)%sym
+                if (symunocc(ims, isym) /= 0) then
+                    ! Found i.  Now find a...
+                        ! It's cheaper to draw additional random numbers than
+                        ! decode the full list of unoccupied orbitals,
+                        ! especially as the number of basis functions is usually
+                        ! much larger than the number of electrons.
+                        do
+                            ind = int(nbasis_sym_spin(ims,isym)*genrand_real2())+1
+                            a = sym_spin_basis_fns(ind,ims,isym)
+                            if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) exit
+                        end do
+                    exit
+                end if
             end do
+
         end if
 
     end subroutine choose_ia_mol
@@ -381,59 +405,107 @@ contains
 
     subroutine choose_ab_mol(f, sym, spin, symunocc, a, b, allowed_excitation)
 
-        use basis, only: basis_length
+        use basis, only: basis_length, basis_fns, bit_lookup, nbasis
         use system, only: nel, sym0, nsym
-        use point_group_symmetry, only: cross_product_pg_sym
+        use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns
+
+        use dSFMT_interface, only: genrand_real2
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: sym, spin, symunocc(:,sym0:)
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
 
-        integer :: isyma, isymb, imsa, imsb, ims_min, ims_max
+        integer :: isyma, isymb, imsa, imsb, ims_min, ims_max, fac, shift, na, ind
 
         ! Is there a possible (a,b) pair which conserves symmetry once the (i,j)
         ! pair has been selected?
         ! We don't renormalise the probability generators for such instances, so
         ! need to return a null excitation.
+        allowed_excitation = .false.
         select case(spin)
         case(-2)
-            ims_min = 1
-            ims_max = 1
+            do isyma = sym0, nsym+(sym0-1)
+                isymb = cross_product_pg_sym(isyma, sym)
+                if ( symunocc(1,isyma) > 0 .and. &
+                        ( symunocc(1,isymb) > 1 .or. &
+                        ( symunocc(1,isymb) == 1 .and. (isyma /= isymb))) ) then
+                    allowed_excitation = .true.
+                    exit
+                end if
+            end do
+
+            fac = 2
+            shift = 1
+            na = nbasis/2
         case(0)
-            ims_min = 1
-            ims_max = 2
+            allowed: do isyma = sym0, nsym+(sym0-1)
+                isymb = cross_product_pg_sym(isyma, sym)
+                if ( (symunocc(1,isyma) > 0 .and. symunocc(2,isymb) > 0) .or. &
+                     (symunocc(2,isyma) > 0 .and. symunocc(1,isymb) > 0) ) then
+                    allowed_excitation = .true.
+                    exit allowed
+                end if
+            end do allowed
+
+            fac = 1
+            shift = 0
+            na = nbasis
         case(2)
-            ims_min = 2
-            ims_max = 2
+            do isyma = sym0, nsym+(sym0-1)
+                isymb = cross_product_pg_sym(isyma, sym)
+                if ( symunocc(2,isyma) > 0 .and. &
+                        ( symunocc(2,isymb) > 1 .or. &
+                        ( symunocc(2,isymb) == 1 .and. (isyma /= isymb))) ) then
+                    allowed_excitation = .true.
+                    exit
+                end if
+            end do
+
+            fac = 2
+            shift = 0
+            na = nbasis/2
         end select
 
-        allowed_excitation = .false.
-        allowed: do isyma = sym0, nsym+(sym0-1)
-            isymb = cross_product_pg_sym(isyma, sym)
-            do imsa = ims_min, ims_max
-                if (spin == 0) then
-                    imsb = mod(imsa,2)+1
-                else
-                    imsb = imsa
-                end if
-                if  (spin /= 0 .and. isyma == isymb) then
-                    if (symunocc(imsa, isyma) > 1) then
-                          allowed_excitation = .true.
-                          exit allowed
-                    end if
-                else if  (symunocc(imsa,isyma) > 0 .and. symunocc(imsb,isymb) > 0) then
-                      allowed_excitation = .true.
-                      exit allowed
-                  end if
-              end do
-        end do allowed
-
         if (allowed_excitation) then
-            allowed_excitation = .false.
-            do while (.not.allowed_excitation)
-                call find_ab_mol(f, sym, spin, a, b, allowed_excitation)
+            ! We could wrap around find_ab_mol, but it's more efficient to have
+            ! a custom generator instead.  The cost of an extra few lines is worth
+            ! the speed...
+
+            do
+                ! Find a.  See notes in find_ab_mol.
+                a = int(genrand_real2()*na) + 1
+                ! convert to down or up orbital 
+                a = fac*a-shift
+                ! If a is unoccupied and there's a possbible b, then have found
+                ! first orbital to excite into.
+                if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) then
+                    ! b must conserve spatial and spin symmetry.
+                    imsb = (spin-basis_fns(a)%Ms+3)/2
+                    isymb = cross_product_pg_sym(sym, basis_fns(a)%sym)
+                    ! Is there a possible b?
+                    if ( (symunocc(imsb,isymb) > 1) .or. &
+                            (symunocc(imsb,isymb) == 1 .and. (isymb /= basis_fns(a)%sym .or. spin == 0)) ) then
+                        ! Possible b.  Find it.
+                        do
+                            ind = int(nbasis_sym_spin(imsb,isymb)*genrand_real2())+1
+                            b = sym_spin_basis_fns(ind,imsb,isymb)
+                            ! If b is unoccupied and is different from a then
+                            ! we've found the excitation.
+                            if ( b /= a .and. .not.btest(f(bit_lookup(2,b)),bit_lookup(1,b)) ) exit
+                        end do
+                        exit
+                    end if
+                end if
             end do
+
+            ! It is useful to return a,b ordered (e.g. for the find_excitation_permutation2 routine).
+            if (a > b) then
+                ind = a
+                a = b
+                b = ind
+            end if
+
         end if
 
     end subroutine choose_ab_mol
@@ -510,6 +582,7 @@ contains
             shift = 0
             na = nbasis/2
         end select
+
         do
             ! We assume that the user is not so crazy that he/she is
             ! running a calculation where there exists no virtual 
