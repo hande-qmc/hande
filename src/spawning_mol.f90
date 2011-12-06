@@ -141,7 +141,7 @@ contains
         use excitations, only: excit
         use fciqmc_data, only: pattempt_single
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
-        use hamiltonian_molecular, only: slater_condon1_mol, slater_condon2_mol
+        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
 
         use dSFMT_interface, only: genrand_real2
 
@@ -169,7 +169,7 @@ contains
                 call find_excitation_permutation1(cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol(cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_mol_excit(cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
             else
                 ! We have a highly restrained system and this det has no single
                 ! excitations at all.  To avoid reweighting pattempt_single and
@@ -198,8 +198,8 @@ contains
                 call find_excitation_permutation2(cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol(connection%from_orb(1), connection%from_orb(2), &
-                                            connection%to_orb(1), connection%to_orb(2), connection%perm)
+                hmatel = slater_condon2_mol_excit(connection%from_orb(1), connection%from_orb(2), &
+                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
                 ! events are not worth the cost of renormalising the generation
@@ -235,7 +235,7 @@ contains
         use excitations, only: excit
         use fciqmc_data, only: pattempt_single
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
-        use hamiltonian_molecular, only: slater_condon1_mol, slater_condon2_mol
+        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
 
         use dSFMT_interface, only: genrand_real2
 
@@ -262,7 +262,7 @@ contains
                 call find_excitation_permutation1(cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol(cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_mol_excit(cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
             else
                 ! Forbidden---connection%to_orb(1) is already occupied.
                 hmatel = 0.0_p
@@ -285,8 +285,8 @@ contains
                 call find_excitation_permutation2(cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol(connection%from_orb(1), connection%from_orb(2), &
-                                            connection%to_orb(1), connection%to_orb(2), connection%perm)
+                hmatel = slater_condon2_mol_excit(connection%from_orb(1), connection%from_orb(2), &
+                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Forbidden---connection%to_orb(2) is already occupied.
                 hmatel = 0.0_p
