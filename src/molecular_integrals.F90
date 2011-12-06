@@ -523,8 +523,8 @@ contains
 
         ! Find spin channel.
         if (uhf) then
-            if (basis_fns(ii)%ms == -1) then
-                if (basis_fns(jj)%ms == -1) then
+            if (basis_fns(i)%ms == -1) then
+                if (basis_fns(j)%ms == -1) then
                     ! down down down down
                     indx%spin_channel = 1
                 else
@@ -532,7 +532,7 @@ contains
                     indx%spin_channel = 3
                 end if
             else
-                if (basis_fns(jj)%ms == 1) then
+                if (basis_fns(j)%ms == 1) then
                     ! up up up up
                     indx%spin_channel = 2
                 else
