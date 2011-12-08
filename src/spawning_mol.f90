@@ -306,9 +306,18 @@ contains
 
         ! In:
         !    f: bit string representation of the Slater determinant from which
-        !    an electron is excited.
+        !        an electron is excited.
         !    occ_list: integer list of occupied spin-orbitals in the determinant.
+        !    symunocc: number of unoccupied orbitals of each spin and
+        !        irreducible representation.  The same indexing scheme as
+        !        nbasis_sym_spin (in the point_group_symmetry module) is used.
         ! Out:
+        !    i: orbital in determinant from which an electron is excited.
+        !    a: previously unoccupied orbital into which an electron is excited.
+        !        Not set if allowed_excitation is false.
+        !    allowed_excitation: false if there are no possible single
+        !        excitations from the determinant which conserve spin and spatial
+        !        symmetry.
 
         use basis, only: basis_length, basis_fns, bit_lookup
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns
@@ -368,6 +377,21 @@ contains
 
     subroutine choose_ij_mol(occ_list, i, j, ij_sym, ij_spin)
 
+        ! Randomly select two occupied orbitals in a determinant from which
+        ! electrons are excited as part of a double excitation.
+        !
+        ! In:
+        !    occ_list: integer list of occupied spin-orbitals in the determinant.
+        ! Out:
+        !    i, j: orbitals in determinant from which two electrons are excited.
+        !        Note that i,j are ordered such that i<j.
+        !    ij_sym: irreducible representation spanned by the codensity
+        !        \phi_i*\phi_j.
+        !    ij_spin: spin label of the combined ij codensity.
+        !        ij_spin = -2   i,j both down
+        !                =  0   i up and j down or vice versa
+        !                =  2   i,j both up
+
         use basis, only: basis_fns
         use system, only: nel
         use point_group_symmetry, only: cross_product_pg_basis
@@ -404,6 +428,27 @@ contains
     end subroutine choose_ij_mol
 
     subroutine choose_ab_mol(f, sym, spin, symunocc, a, b, allowed_excitation)
+
+        ! Select a random pair of orbitals to excite into as part of a double
+        ! excitation, given that the (i,j) pair of orbitals to excite from have
+        ! already been selected.
+        ! 
+        ! In:
+        !    f: bit string representation of the Slater determinant from which
+        !        an electron is excited.
+        !    sym: irreducible representation spanned by the (i,j) codensity.
+        !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
+        !        and j are down, +2 if both are up and 0 otherwise.
+        !    symunocc: number of unoccupied orbitals of each spin and
+        !        irreducible representation.  The same indexing scheme as
+        !        nbasis_sym_spin (in the point_group_symmetry module) is used.
+        ! Out:
+        !    a, b: unoccupied orbitals into which electrons are excited.
+        !        Note that a,b are ordered such that a<b.
+        !        Not set if allowed_excitation is false.
+        !    allowed_excitation: false if there are no possible (a,b) pairs
+        !        which conserve spin and spatial symmetry given the choice of
+        !        (i,j).
 
         use basis, only: basis_length, basis_fns, bit_lookup, nbasis
         use system, only: nel, sym0, nsym
@@ -514,6 +559,25 @@ contains
 
     subroutine find_ia_mol(f, occ_list, i, a, allowed_excitation)
 
+        ! Randomly choose a single excitation, i->a, of a determinant for
+        ! molecular systems.  This routine does not reject a randomly selected
+        ! a if that orbital is already occupied, which makes the excitation
+        ! generation and calculation of the generation probability simpler and
+        ! faster.  The downside is that the sampling is substantially more
+        ! inefficient for small/symmetry constrained systems.
+        !
+        ! In:
+        !    f: bit string representation of the Slater determinant from which
+        !        an electron is excited.
+        !    occ_list: integer list of occupied spin-orbitals in the determinant.
+        ! Out:
+        !    i: orbital in determinant from which an electron is excited.
+        !    a: previously unoccupied orbital into which an electron is excited.
+        !        Not necessarily set if allowed_excitation is false.
+        !    allowed_excitation: false if there are no possible single
+        !        excitations from the determinant which conserve spin and spatial
+        !        symmetry or if a is already occupied.
+
         use basis, only: basis_length, basis_fns, bit_lookup
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns
         use system, only: nel
@@ -549,6 +613,42 @@ contains
 !--- Select random orbitals in double excitations ---
 
     subroutine find_ab_mol(f, sym, spin, a, b, allowed_excitation)
+
+        ! Select a random pair of orbitals to excite into as part of a double
+        ! excitation, given that the (i,j) pair of orbitals to excite from have
+        ! already been selected.  The spin and irreducible representation
+        ! spanned by the fourth orbital is completely determined by the choice
+        ! of the first three orbitals in the double excitation.  This routine
+        ! does not explicitly reject excitations where the fourth orbital chosen
+        ! is already occupied, instead returning allowed_excitation as false.
+        ! This makes the excitation generation and calculation of the generation
+        ! probability simpler and faster at the cost of makin the sampling
+        ! substantially more inefficient.  Nevertheless, this approach can be
+        ! useful in large systems.
+        ! 
+        ! In:
+        !    f: bit string representation of the Slater determinant from which
+        !        an electron is excited.
+        !    sym: irreducible representation spanned by the (i,j) codensity.
+        !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
+        !        and j are down, +2 if both are up and 0 otherwise.
+        ! Out:
+        !    a, b: unoccupied orbitals into which electrons are excited.
+        !        Note that a,b are ordered such that a<b.
+        !        Not necessarily set if allowed_excitation is false.
+        !    allowed_excitation: false if there are no possible (a,b) pairs
+        !        which conserve spin and spatial symmetry given the choice of
+        !        (i,j) or given the choice of (i,j,a).
+
+        use basis, only: basis_length, basis_fns, bit_lookup, nbasis
+        use system, only: nel, sym0, nsym
+        use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns
+
+        use dSFMT_interface, only: genrand_real2
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: sym, spin, symunocc(:,sym0:)
+        integer, intent(out) :: a, b
 
         use basis, only: basis_length, basis_fns, bit_lookup, nbasis
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym
@@ -635,6 +735,26 @@ contains
 
     pure function calc_pgen_single_mol(occ_list, symunocc, a) result(pgen)
 
+        ! In:
+        !    occ_list: integer list of occupied spin-orbitals in the determinant.
+        !    symunocc: number of unoccupied orbitals of each spin and
+        !        irreducible representation.  The same indexing scheme as
+        !        nbasis_sym_spin (in the point_group_symmetry module) is used.
+        !    a: previously unoccupied orbital into which an electron is excited.
+        ! Returns:
+        !    The probability of generating the excitation i->a, where we select
+        !    i uniformly from the list of occupied orbitals with allowed
+        !    excitations (i.e. at least one single excitation exists involving
+        !    those orbitals) and a is selected from the list of unoccupied
+        !    orbitals which conserve spin and spatial symmetry.
+
+        ! WARNING: We assume that the excitation is actually valid. 
+        ! This routine does *not* calculate the correct probability that
+        ! a forbidden excitation (e.g. no possible single excitations exist) is
+        ! generated.  The correct way to handle those excitations is to
+        ! explicitly reject them.  The generation probabilites of allowed
+        ! excitations correctly take into account such rejected events.
+
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_single
         use system, only: nel, sym0
@@ -662,6 +782,33 @@ contains
     end function calc_pgen_single_mol
 
     pure function calc_pgen_double_mol(ij_sym, a, b, spin, symunocc) result(pgen)
+
+        ! In:
+        !    ij_sym: irreducible representation spanned by the (i,j) codensity.
+        !        As symmetry is conserved in allowed excitations, this is also
+        !        the irreducible representation spanned by the (a, b) codensity.
+        !    a, b: unoccupied orbitals into which electrons are excited.
+        !    spin: spin label of the selected (a,b) pair.  Set to -2 if both ia
+        !        and j are down, +2 if both are up and 0 otherwise.  As spin is
+        !        conserved, this is also the spin label of the selected (i,j)
+        !        pair in the double excitation (i,j) -> (a,b).
+        !    symunocc: number of unoccupied orbitals of each spin and
+        !        irreducible representation.  The same indexing scheme as
+        !        nbasis_sym_spin (in the point_group_symmetry module) is used.
+        ! Returns:
+        !    The probability, p(D_{ij}^{ab}|D), of selecting to excite to
+        !    determinant D_{ij}^{ab} from determinant D, assuming that (i,j)
+        !    have been selected from the occupied orbitals, a is selected from
+        !    an unoccupied orbital and b is selected from the set of unoccupied
+        !    orbitals which conserve spin and spatial symmetry.
+
+        ! WARNING: We assume that the excitation is actually valid. 
+        ! This routine does *not* calculate the correct probability that
+        ! a forbidden excitation (e.g. due to no possible a orbitals given the
+        ! choice of (i,j)) is generated.  The correct way to handle those
+        ! excitations is to explicitly reject them.  The generation probabilites
+        ! of allowed excitations correctly take into account such rejected
+        ! events.
 
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_double
@@ -759,6 +906,22 @@ contains
 
     pure function calc_pgen_single_mol_no_renorm(a) result(pgen)
 
+        ! In:
+        !    a: previously unoccupied orbital into which an electron is excited.
+        ! Returns:
+        !    The probability of generating the excitation i->a, where we select
+        !    i uniformly from the list of occupied orbitals and a is selected
+        !    from the list of orbitals (both occupied and unoccupied) which
+        !    conserve spin and spatial symmetry.  Note that the probability is
+        !    actually independent of i due to the uniform selection of i.
+
+        ! WARNING: We assume that the excitation is actually valid. 
+        ! This routine does *not* calculate the correct probability that
+        ! a forbidden excitation (e.g. due to a actually being occupied) is
+        ! generated.  The correct way to handle those excitations is to
+        ! explicitly reject them.  The generation probabilites of allowed
+        ! excitations correctly take into account such rejected events.
+
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_single
         use system, only: nel
@@ -782,14 +945,28 @@ contains
 
     pure function calc_pgen_double_mol_no_renorm(a, b, spin) result(pgen)
 
+        ! In:
+        !    a, b: unoccupied orbitals into which electrons are excited.
+        !    spin: spin label of the selected (a,b) pair.  Set to -2 if both ia
+        !        and j are down, +2 if both are up and 0 otherwise.  As spin is
+        !        conserved, this is also the spin label of the selected (i,j)
+        !        pair in the double excitation (i,j) -> (a,b).
+        ! Returns:
+        !    The probability, p(D_{ij}^{ab}|D), of selecting to excite to
+        !    determinant D_{ij}^{ab} from determinant D, assuming that (i,j)
+        !    have been selected from the occupied orbitals, a is selected from
+        !    an unoccupied orbital and b is selected from the set of orbitals
+        !    which conserve spin and spatial symmetry.  (Note: in this scheme,
+        !    b is not necessarily unoccupied.)
+
         ! WARNING: We assume that the excitation is actually valid. 
         ! This routine does *not* calculate the correct probability that
         ! a forbidden excitation (e.g. due to a or b actually being occupied) is
-        ! generated.  The correct way to handle those excitations is to set
-        ! hmatel to be zero.  The generation probabilites of allowed excitations
-        ! correctly take into account events where a/b is occupied.  This
-        ! problem arises because if a or b are actually occpied, then p(a|ijb)
-        ! or p(b|ijb) = 0.  We do not handle such cases.
+        ! generated.  The correct way to handle those excitations is to
+        ! explicitly reject them.  The generation probabilites of allowed
+        ! excitations correctly take into account rejected events where a/b is
+        ! occupied.  This problem arises because if a or b are actually occpied,
+        ! then p(a|ijb) or p(b|ijb) = 0.  We do not handle such cases here.
 
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_double
