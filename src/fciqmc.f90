@@ -154,8 +154,6 @@ contains
             proj_energy = 0.0_p
             rspawn = 0.0_p
             D0_population = 0.0_p
-            average_magnetisation = 0.0_p
-            population_squared = 0.0_p
 
             do icycle = 1, ncycles
 

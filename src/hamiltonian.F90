@@ -476,7 +476,6 @@ contains
         ! Includes an uniform external field, if one is added.
         
         use basis, only: basis_length, basis_lookup
-        use determinants, only: lattice_mask
         use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits

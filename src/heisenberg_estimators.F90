@@ -6,7 +6,7 @@ implicit none
 
 contains
 
-subroutine update_proj_energy_heisenberg_basic(idet)
+    subroutine update_proj_energy_heisenberg_basic(idet)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -24,7 +24,7 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         !    idet: index of current determinant in the main walker list.
 
         use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, &
-                               proj_energy, calculate_magnetisation
+                               proj_energy
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
         use system, only: J_coupling
@@ -50,8 +50,6 @@ subroutine update_proj_energy_heisenberg_basic(idet)
                      proj_energy = proj_energy - 2.0_p*J_coupling*walker_population(1,idet)
         end if
         
-        if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
-
     end subroutine update_proj_energy_heisenberg_basic
     
     subroutine update_proj_energy_heisenberg_positive(idet)
@@ -69,7 +67,7 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         !    idet: index of current determinant in the main walker list.
 
         use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
-                               proj_energy, calculate_magnetisation, D0_population
+                               proj_energy, D0_population
         use system, only: J_coupling, nbonds
 
         integer, intent(in) :: idet
@@ -79,8 +77,6 @@ subroutine update_proj_energy_heisenberg_basic(idet)
                                      
         D0_population = D0_population + walker_population(1,idet)
         
-        if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
-
     end subroutine update_proj_energy_heisenberg_positive
     
     subroutine update_proj_energy_heisenberg_neel_singlet(idet)
@@ -99,8 +95,7 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         !    idet: index of current determinant in the main walker list.
 
         use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
-                               walker_reference_data, calculate_magnetisation, &
-                               proj_energy, neel_singlet_amp, D0_population
+                               walker_reference_data, proj_energy, neel_singlet_amp, D0_population
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
         integer, intent(in) :: idet
@@ -170,8 +165,6 @@ subroutine update_proj_energy_heisenberg_basic(idet)
         D0_population = D0_population + &
                           walker_population(1,idet)*neel_singlet_amp(n)*importance_sampling_factor
         
-        if (calculate_magnetisation) call update_magnetisation_heisenberg(idet)
-
     end subroutine update_proj_energy_heisenberg_neel_singlet
     
     pure function neel_singlet_data(f) result(spin_config_data)
@@ -222,39 +215,4 @@ subroutine update_proj_energy_heisenberg_basic(idet)
     
     end function neel_singlet_data
     
-    subroutine update_magnetisation_heisenberg(idet)
-
-        ! Add the contribution of the current determinant to the projected
-        ! magnetisation. This is only run when calculate_magnetisation
-        ! is true, and only in the Heisenberg model.
-        ! The staggered magnetisation squared in the z direction is:
-        !   \sum_{i} <D_i|M_z^2|D_i> N_i^2/Magnitude^2
-        ! where N_i is the population on the i-th basis function,
-        ! and Magnitude^2 is the sum of the squares of the components
-        ! of the wavefunction, ie, the sum of the squares of the psips.
-        ! During a MC cycle we store
-        !   \sum_{i} <D_i|M_z^2|D_i> N_i^2 and Magnitude^2
-        ! This procedure is for the Heisenberg model only
-        ! In:
-        !    idet: index of current determinant in the main walker list.
-        
-        use fciqmc_data, only: walker_dets, population_squared, &
-                               walker_population, average_magnetisation
-        use basis, only: basis_length
-        use determinants, only: lattice_mask
-        use system, only: nel
-        use bit_utils, only: count_set_bits
-
-        integer, intent(in) :: idet
-        integer(i0) :: f_mask(basis_length)
-        integer :: sublattice1_up_spins
-
-        f_mask = iand(walker_dets(:,idet), lattice_mask)
-        sublattice1_up_spins = sum(count_set_bits(f_mask))
-        average_magnetisation = average_magnetisation + &
-             (walker_population(1,idet)**2)*((4*sublattice1_up_spins - 2*nel)**2)
-        population_squared = population_squared + walker_population(1,idet)**2
-
-    end subroutine update_magnetisation_heisenberg
-
 end module heisenberg_estimators

@@ -26,8 +26,7 @@ contains
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn
         use fciqmc_data, only: proj_energy, av_proj_energy, av_D0_population, shift, av_shift
-        use fciqmc_data, only: vary_shift, start_vary_shift, D0_population, average_magnetisation
-        use fciqmc_data, only: calculate_magnetisation, population_squared
+        use fciqmc_data, only: vary_shift, start_vary_shift, D0_population
         use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc
 
@@ -37,7 +36,7 @@ contains
         integer, intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
-        real(dp) :: ir(sampling_size+6), ir_sum(sampling_size+6)
+        real(dp) :: ir(sampling_size+4), ir_sum(sampling_size+4)
         integer :: ntot_particles(sampling_size), ierr
 
             ! Need to sum the number of particles and the projected energy over
@@ -47,16 +46,12 @@ contains
             ir(sampling_size+2) = proj_hf_expectation
             ir(sampling_size+3) = D0_population
             ir(sampling_size+4) = rspawn
-            ir(sampling_size+5) = average_magnetisation
-            ir(sampling_size+6) = population_squared
             call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
             ntot_particles = nint(ir_sum(1:sampling_size))
             proj_energy = ir_sum(sampling_size+1)
             proj_hf_expectation = ir_sum(sampling_size+2)
             D0_population = ir_sum(sampling_size+3)
             rspawn = ir_sum(sampling_size+4)
-            average_magnetisation = ir_sum(sampling_size+5)
-            population_squared = ir_sum(sampling_size+6)
             
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
@@ -98,10 +93,6 @@ contains
             ! average energy quantities over report loop.
             proj_energy = proj_energy/ncycles
             D0_population = D0_population/ncycles
-            if (calculate_magnetisation) then
-                average_magnetisation = average_magnetisation/ncycles
-                population_squared = population_squared/ncycles
-            end if
             ! Similarly for the HFS estimator
             av_proj_hf_expectation = av_proj_hf_expectation + proj_hf_expectation
             proj_hf_expectation = proj_hf_expectation/ncycles

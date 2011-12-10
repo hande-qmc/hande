@@ -62,11 +62,6 @@ real(p) :: gutzwiller_parameter = 0.0_p
 ! accordingly.
 real(p) :: proj_energy
 
-! This is \sum_{i/=0} <D_i|M_z^2|D_i> N_i^2 which is numerator of the expectation
-! value of the staggered magnetisation squared (this is normalised by dividing
-! through by population_squared).
-real(p) :: average_magnetisation = 0.0_p
-
 ! projected energy averaged over the calculation.
 ! This is really a running total of \sum_{i/=0} <D_0|H|D_i> N_i: the average is
 ! only taken at output time (in write_fciqmc_report) by considering the ratio
@@ -184,11 +179,6 @@ real(p) :: D0_population = 10.0_p
 ! reference state flipped.
 real(p) :: D0_not_population = 0.0_p
 
-! The modulus squared of the wavefunction which the psips represent
-! This is used in calculating the expectation value of the
-! staggered magnetisation.
-real(p) :: population_squared = 0.0_p
-
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
@@ -214,8 +204,6 @@ integer :: ref_det
 logical :: vary_shift = .false.
 ! The number of report loops after which vary_shift mode was entered.
 integer :: start_vary_shift
-! True if the staggered magnetisation is to be calculated in the Heisenberg model
-logical :: calculate_magnetisation = .false.
 ! If set to true, then the Gutzwiller energy will be plotted at the start of the
 ! calculation
 logical :: find_gutzwiller_parameter
@@ -624,15 +612,9 @@ contains
 
     subroutine write_fciqmc_report_header()
         
-        if (calculate_magnetisation) then
-            write (6,'(1X,a12,6X,a13,6X,a9,9X,a12,7X,a11,12X,a4,3X,a11,3X,a16,11X,a9,3X,a7,3X,a4)') &
-           '# iterations','Instant shift','Av. shift','\sum H_0j Nj', &
-           'Av. Proj. E','# D0','# particles','\sum M_ii^2 Ni^2','\sum Ni^2','R_spawn','time'
-       else
-           write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,8X,a4,16X,a11,2X,a7,2X,a4)') &
+       write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,8X,a4,16X,a11,2X,a7,2X,a4)') &
            '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
            'Av. Proj. E','# D0','# particles','R_spawn','time'
-       end if
 
     end subroutine write_fciqmc_report_header
 
@@ -653,20 +635,11 @@ contains
         vary_shift_reports = ireport - start_averaging_from - start_vary_shift
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        if (calculate_magnetisation) then
-            write (6,'(5X,i8,4(2X,es17.10),2X,f11.4,5X,i9,2X,es17.10,3X,es17.10,4X,f6.4,3X,f4.2)') &
-                                             mc_cycles_done+mc_cycles, shift, &
-                                             av_shift/vary_shift_reports, proj_energy, &
-                                             av_proj_energy/av_D0_population, D0_population, &
-                                             ntot_particles,average_magnetisation, &
-                                             population_squared, rspawn, elapsed_time/ncycles
-        else if (.not.calculate_magnetisation) then                                    
-            write (6,'(5X,i8,2X,4(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
-                                             mc_cycles_done+mc_cycles, shift,   &
-                                             av_shift/vary_shift_reports, proj_energy,       &
-                                             av_proj_energy/av_D0_population, D0_population, & 
-                                             ntot_particles, rspawn, elapsed_time/ncycles
-        end if
+        write (6,'(5X,i8,2X,4(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
+                                         mc_cycles_done+mc_cycles, shift,   &
+                                         av_shift/vary_shift_reports, proj_energy,       &
+                                         av_proj_energy/av_D0_population, D0_population, & 
+                                         ntot_particles, rspawn, elapsed_time/ncycles
 
     end subroutine write_fciqmc_report
 

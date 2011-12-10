@@ -262,9 +262,6 @@ contains
             case('TRIANGULAR_LATTICE')
                 triangular_lattice = .true.
             
-            case('CALCULATE_MAGNETISATION')
-                calculate_magnetisation = .true.
-                
             case('UNIFORM_COMBINATION')
                 trial_function = uniform_combination
                 unitary_factor = -1
@@ -431,7 +428,6 @@ contains
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calculate_magnetisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(guiding_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(find_gutzwiller_parameter, 1, mpi_logical, 0, mpi_comm_world, ierr)
