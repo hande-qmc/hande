@@ -15,7 +15,7 @@ contains
         ! that are to be called for the current fciqmc calculation.
 
         use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_field
-        use system, only: trial_function, single_basis, uniform_combination, neel_singlet
+        use system, only: trial_function, single_basis, neel_singlet
         use system, only: guiding_function, no_guiding, gutzwiller_guiding, neel_singlet_guiding
         use hellmann_feynman_sampling
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
@@ -57,8 +57,6 @@ contains
             select case(trial_function)
             case (single_basis)
                 update_proj_energy_ptr => update_proj_energy_heisenberg_basic
-            case (uniform_combination)
-                update_proj_energy_ptr => update_proj_energy_heisenberg_positive
             case (neel_singlet)
                 update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
             end select

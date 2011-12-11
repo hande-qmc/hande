@@ -262,9 +262,6 @@ contains
             case('TRIANGULAR_LATTICE')
                 triangular_lattice = .true.
             
-            case('UNIFORM_COMBINATION')
-                trial_function = uniform_combination
-                unitary_factor = -1
             case('NEEL_SINGLET_ESTIMATOR')
                 trial_function = neel_singlet
             case('NEEL_SINGLET_GUIDING')
