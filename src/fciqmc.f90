@@ -193,7 +193,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call stochastic_death(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 

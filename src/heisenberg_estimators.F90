@@ -66,13 +66,13 @@ contains
         ! In:
         !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
+        use fciqmc_data, only: walker_dets, walker_population, walker_data, &
                                proj_energy, D0_population
         use system, only: J_coupling, nbonds
 
         integer, intent(in) :: idet
         
-        proj_energy = proj_energy + (J_coupling*nbonds+2*walker_energies(1,idet))* &
+        proj_energy = proj_energy + (J_coupling*nbonds+2*walker_data(1,idet))* &
                                      walker_population(1,idet)
                                      
         D0_population = D0_population + walker_population(1,idet)
@@ -94,7 +94,7 @@ contains
         ! In:
         !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, walker_energies, &
+        use fciqmc_data, only: walker_dets, walker_population, walker_data, &
                                walker_reference_data, proj_energy, neel_singlet_amp, D0_population
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
@@ -123,7 +123,7 @@ contains
         ! This means we can avoid calculating n(0-1) again, which is expensive.
         ! We know the number of 0-1 bonds where the 1 (the spin up) is on sublattice 1,
         ! so can then deduce the number where the 1 is on sublattice 2.
-        lattice_2_up = ((nbonds) + nint(walker_energies(1,idet)/J_coupling))/2 - lattice_1_up
+        lattice_2_up = ((nbonds) + nint(walker_data(1,idet)/J_coupling))/2 - lattice_1_up
         
         ! There are three contributions to add to the projected energy from
         ! the current basis function. Consider the Neel singlet state:
@@ -134,7 +134,7 @@ contains
         
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
-        proj_energy = proj_energy + (neel_singlet_amp(n) * walker_energies(1,idet) * &
+        proj_energy = proj_energy + (neel_singlet_amp(n) * walker_data(1,idet) * &
                                           walker_population(1,idet) * importance_sampling_factor)
         
         ! Now, to find all other basis functions connected to |D_j>, we find 0-1 bonds

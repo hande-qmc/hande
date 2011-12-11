@@ -130,7 +130,7 @@ contains
                 ! This overwrites the root processor's walkers
                 call mpi_recv(walker_population, nwalkers(i), mpi_integer, i, comm_tag, mpi_comm_world, stat, ierr)
                 call mpi_recv(walker_dets, nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
-                call mpi_recv(walker_energies, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_data, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
                 ! Write out walkers from all other processors.
                 call write_walkers(io, nwalkers(i)) 
             end do
@@ -177,7 +177,7 @@ contains
             ! Send walker info to root processor.
             call mpi_send(walker_population, tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, ierr)
             call mpi_send(walker_dets, tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, ierr)
-            call mpi_send(walker_energies, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_data, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
 
@@ -281,7 +281,7 @@ contains
             call mpi_scatter(send_counts, 1, mpi_integer, nread, 1, mpi_integer, root, mpi_comm_world, ierr)
             ! send walkers to their appropriate processor.
             call mpi_scatterv(scratch_energies, send_counts, send_displacements, mpi_preal,   &
-                              walker_energies(:,tot_walkers+1:), nread, mpi_preal, root,      &
+                              walker_data(:,tot_walkers+1:), nread, mpi_preal, root,      &
                               mpi_comm_world, ierr)
             send_counts = send_counts*spawned_size
             send_displacements = send_displacements*spawned_size
@@ -334,7 +334,7 @@ contains
         do iwalker = 1, my_nwalkers
             call write_out(iunit,walker_dets(:,iwalker),&
                            walker_population(1,iwalker),&
-                           walker_energies(1,iwalker))
+                           walker_data(1,iwalker))
         end do
 
     end subroutine write_walkers
@@ -347,7 +347,7 @@ contains
         do iwalker = 1, my_nwalkers
             call read_in(iunit,walker_dets(:,iwalker),&
                          walker_population(1,iwalker),&
-                         walker_energies(1,iwalker))
+                         walker_data(1,iwalker))
         end do
 
     end subroutine read_walkers

@@ -115,8 +115,8 @@ contains
         call check_allocate('walker_dets', basis_length*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
-        allocate(walker_energies(sampling_size,walker_length), stat=ierr)
-        call check_allocate('walker_energies', sampling_size*walker_length, ierr)
+        allocate(walker_data(sampling_size,walker_length), stat=ierr)
+        call check_allocate('walker_data', sampling_size*walker_length, ierr)
         if (trial_function == neel_singlet) then
             allocate(walker_reference_data(2,walker_length), stat=ierr)
             call check_allocate('walker_reference_data', 2*walker_length, ierr)
@@ -204,9 +204,9 @@ contains
                 end if
             end select
             ! By definition, when using a single determinant as a reference state:
-            walker_energies(1,tot_walkers) = 0.0_p
+            walker_data(1,tot_walkers) = 0.0_p
             ! Or if not using a single determinant:
-            if (trial_function /= single_basis) walker_energies(1,tot_walkers) = &
+            if (trial_function /= single_basis) walker_data(1,tot_walkers) = &
                                                  diagonal_element_heisenberg(f0)
             ! Set the Neel state data for the reference state, if it is being used.
             if (allocated(walker_reference_data)) then
@@ -280,17 +280,17 @@ contains
                     ! after merging other development branches.
                     select case(system_type)
                     case(hub_k)
-                        walker_energies(1,tot_walkers) = slater_condon0_hub_k(f0) - H00
+                        walker_data(1,tot_walkers) = slater_condon0_hub_k(f0) - H00
                     case(hub_real)
-                        walker_energies(1,tot_walkers) = slater_condon0_hub_real(f0) - H00
+                        walker_data(1,tot_walkers) = slater_condon0_hub_real(f0) - H00
                     case(heisenberg)
                         if (abs(staggered_field) > 0.0_p) then
-                            walker_energies(1,tot_walkers) = diagonal_element_heisenberg_staggered(f0) - H00
+                            walker_data(1,tot_walkers) = diagonal_element_heisenberg_staggered(f0) - H00
                         else
                             if (trial_function /= single_basis) then
-                                walker_energies(1,tot_walkers) = 0
+                                walker_data(1,tot_walkers) = 0
                             else
-                                walker_energies(1,tot_walkers) = diagonal_element_heisenberg(f0) - H00
+                                walker_data(1,tot_walkers) = diagonal_element_heisenberg(f0) - H00
                             end if
                         end if
                     end select

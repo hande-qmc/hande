@@ -302,7 +302,7 @@ contains
         use excitations, only: calc_pgen_real, excit
         use fciqmc_data, only: tau
         use fciqmc_data, only: neel_singlet_amp
-        use fciqmc_data, only: walker_reference_data, walker_energies
+        use fciqmc_data, only: walker_reference_data, walker_data
         use hamiltonian, only: slater_condon1_hub_real_excit
         use hamiltonian, only: diagonal_element_heisenberg
         use system, only: J_coupling, guiding_function

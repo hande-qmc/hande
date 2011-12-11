@@ -93,7 +93,7 @@ integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
 ! c) Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 ! K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
 ! reference determinant.
-real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
+real(p), allocatable :: walker_data(:,:) ! (sampling_size,walker_length)
 ! When calculating the projected energy with various trial wavefunctions, it
 ! is useful to store quantites which are expensive to calculate and which are
 ! instead of recalculating them. For the Neel singlet state, the first component
@@ -692,9 +692,9 @@ contains
             deallocate(walker_population, stat=ierr)
             call check_deallocate('walker_population',ierr)
         end if
-        if (allocated(walker_energies)) then
-            deallocate(walker_energies, stat=ierr)
-            call check_deallocate('walker_energies',ierr)
+        if (allocated(walker_data)) then
+            deallocate(walker_data, stat=ierr)
+            call check_deallocate('walker_data',ierr)
         end if
         if (allocated(walker_reference_data)) then
             deallocate(walker_reference_data, stat=ierr)

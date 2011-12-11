@@ -377,7 +377,7 @@ contains
                 k = i - nzero
                 walker_dets(:,k) = walker_dets(:,i)
                 walker_population(:,k) = walker_population(:,i)
-                walker_energies(:,k) = walker_energies(:,i)
+                walker_data(:,k) = walker_data(:,i)
                 if (trial_function == neel_singlet) then
                     walker_reference_data(:,k) = walker_reference_data(:,i)
                 end if
@@ -435,7 +435,7 @@ contains
                 k = j + i
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(:,k) = walker_population(:,j)
-                walker_energies(:,k) = walker_energies(:,j)
+                walker_data(:,k) = walker_data(:,j)
                 if (trial_function == neel_singlet) walker_reference_data(:,k) = walker_reference_data(:,j)
             end do
             ! Insert new walker into pos and shift it to accommodate the number
@@ -444,11 +444,11 @@ contains
             walker_dets(:,k) = spawned_walkers(:basis_length,i)
             walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
-            walker_energies(1,k) = sc0_ptr(walker_dets(:,k)) - H00
+            walker_data(1,k) = sc0_ptr(walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_reference_data(:,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
-                ! Set walker_energies(2:,k) = <D_i|O|D_i>.
-                walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00
+                ! Set walker_data(2:,k) = <D_i|O|D_i>.
+                walker_data(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00
             end if
             ! Next walker will be inserted below this one.
             iend = pos - 1
