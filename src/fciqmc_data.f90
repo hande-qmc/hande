@@ -173,11 +173,10 @@ integer, allocatable :: occ_list0(:)
 ! The initial value can be overridden by a restart file or input option.
 real(p) :: D0_population = 10.0_p
 
-! For the Heisenberg model, it is often useful to start with psips on both
-! of the Neel states in the basis set. If this varibale is set non-zero, then
-! this population is placed on the basis fucntion with every spin in the
-! reference state flipped.
-real(p) :: D0_not_population = 0.0_p
+! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
+! operator.  This is only done if no restart file is used *and* |D_0> is not
+! a closed shell determinant.
+logical :: init_spin_inv_D0 = .false.
 
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since

@@ -200,8 +200,6 @@ contains
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
-            case('FLIPPED_REFERENCE_POPULATION')
-                call readf(D0_not_population)
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
             case('RESTART')
@@ -229,6 +227,8 @@ contains
                 call readf(shift_damping)
             case('REFERENCE_DET_POPULATION')
                 call readf(D0_population)
+            case('INIT_SPIN_INVERSE_REFERENCE_DET')
+                init_spin_inv_D0 = .true.
 
             ! Calculation options: initiator-fciqmc.
             case('CAS')
@@ -310,8 +310,6 @@ contains
                                                  & state for this system. Other trial functions are not avaliable.')
             if (guiding_function /= no_guiding) call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
                                                             currently.')
-            if (abs(D0_not_population) > 0.0_p) call stop_all(this, 'The flipped_reference_population option is only avaliable&
-                                                 & for the Heisenberg model.')
         end if
         
         if (system_type == heisenberg) then
@@ -330,8 +328,12 @@ contains
                                                      &as an energy estimator.') 
             if ((guiding_function==gutzwiller_guiding) .and. trial_function /= uniform_combination) &
                                   call stop_all(this, 'Cannot use this trial function with this guiding function.')                                     
-            if (abs(D0_not_population) > 0.0_p .and. ms_in /= 0) call stop_all(this, 'Flipping this reference state will give &
+        end if
+
+        if (init_spin_inv_D0 .and. ms_in /= 0) then
+            call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
+            init_spin_inv_D0 = .false.
         end if
         
         if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
@@ -489,7 +491,7 @@ contains
         call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(D0_not_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
 

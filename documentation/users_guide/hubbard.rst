@@ -645,16 +645,12 @@ The following options are valid for FCIQMC calculations.
 
     Set the initial walker population on the reference determinant.  This will
     be overridden by a restart file.
-**flipped_reference_population** *pop*
-    Integer
-    
-    Default: 0
-    
-    For the Heisenberg model only. If a population is set, this many psips will
-    initially be placed on the state which we get to by flipping all the spins
-    in the reference state. If the reference state has total spin Ms then the
-    flipped state will have -Ms, and so this can only be used when Ms=0.
+**init_spin_inverse_reference_det**
+    Default: false.
 
+    In addition to initialsing the reference determinant with an initial
+    population, initialise the spin-inversed determinant (if different) with
+    the same population.  This will be overridden by a restart file.
 **walker_length** *walker_length* [**MB**]
     Integer.
 

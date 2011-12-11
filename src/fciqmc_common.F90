@@ -24,7 +24,7 @@ contains
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
                                 annihilate_main_list_initiator,                &
                                 annihilate_spawned_list_initiator
-        use basis, only: basis_length, basis_fns, write_basis_fn, basis_lookup
+        use basis, only: nbasis, basis_length, basis_fns, write_basis_fn, bit_lookup
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use gutzwiller_energy, only: plot_gutzwiller_energy
         use determinants, only: encode_det, set_spin_polarisation, write_det
@@ -37,10 +37,10 @@ contains
         use utils, only: factorial_combination_1
 
         integer :: ierr
-        integer :: i, D0_not_proc, ipos, basis_find
+        integer :: i, D0_inv_proc, ipos, basis_find, occ_list0_inv(nel)
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
-        integer(i0) :: f0_not(basis_length)
+        integer(i0) :: f0_inv(basis_length)
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -176,7 +176,6 @@ contains
             ! Set initial population of Hamiltonian walkers.
             walker_population(1,tot_walkers) = nint(D0_population)
 
-
             ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
             ! kinetic energy which satisfy the spin polarisation.
@@ -227,49 +226,86 @@ contains
             else
                 D0_proc = iproc
             end if
-        end if
         
-        ! For the Heisenberg model it is often useful to have psips on both Neel
-        ! states initially. If the user has asked for this then the code below
-        ! initialises these psips on the correct processor.
-        if (D0_not_population > 0.0_p) then
-            ! Flip all spins in f0 to get f0_not - Note, there are generally left
-            ! over bits in the bit strings which do not refer to a spin, and must
-            ! all be set to 0. If they are not, errors occur. Therefore, we
-            ! first set these spins up, so that when all spins are flipped these
-            ! are flipped back down, so that the corresponding bits are not set.
-            f0_not = f0
-            do i = 1, basis_length
-                do ipos = 0, i0_end
-                    basis_find = basis_lookup(ipos, i)
-                    if (basis_find == 0) then
-                        f0_not(i) = ibset(f0_not(i),ipos)
-                    end if
-                end do
-            end do
+            ! For the Heisenberg model and open shell systems, it is often useful to
+            ! have psips start on both the reference state and the spin-flipped version. 
+            if (init_spin_inv_D0) then
+
+                ! Need to handle the Heisenberg model (consisting of spinors on
+                ! lattice sites) and electron systems differently, as the
+                ! Heisenberg model has no concept of unoccupied basis
+                ! functions/holes.
+                select case (system_type)
+                case (heisenberg)
+                    ! Flip all spins in f0 to get f0_inv
+                    f0_inv = not(f0)
+                    ! In general, the basis bit string has some padding at the
+                    ! end which must be unset.  We need to clear this...
+                    ! Loop over all bits after the last basis function.
+                    i = bit_lookup(2,nbasis)
+                    do ipos = bit_lookup(1,nbasis)+1, i0_end
+                        f0_inv(i) = ibclr(f0_inv(i), ipos)
+                    end do
+                case default
+                    ! Swap each basis function for its spin-inverse
+                    ! This looks somewhat odd, but relies upon basis
+                    ! functions alternating down (Ms=-1) and up (Ms=1).
+                    do i = 1, nel
+                        if (mod(occ_list0(i),2) == 1) then
+                            occ_list0_inv(i) = occ_list0(i) + 1
+                        else
+                            occ_list0_inv(i) = occ_list0(i) - 1
+                        end if
+                    end do
+                write (6,'(a,64i4)') 'inv', occ_list0_inv
+                    call encode_det(occ_list0_inv, f0_inv)
+                    ! TODO: this needs to be checked for UHF upon merging
+                    ! development branches.
+!                    if (uhf) call stop_all('init_fciqmc','Check inversion for UHF systems.')
+                end select
             
-            ! Now flip all spins to get the second Neel state.
-            f0_not = not(f0_not)
-            
-            if (nprocs > 1) then
-                D0_not_proc = modulo(murmurhash_bit_string(f0_not, basis_length), nprocs)
-                if (D0_not_proc == iproc) then
+                if (nprocs > 1) then
+                    D0_inv_proc = modulo(murmurhash_bit_string(f0_inv, basis_length), nprocs)
+                else
+                    D0_inv_proc = iproc
+                end if
+
+                ! Store if not identical to reference det.
+                if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
                     tot_walkers = tot_walkers + 1
-                    ! Zero all populations...
+                    ! Zero all populations for this determinant.
                     walker_population(:,tot_walkers) = 0.
-                    ! Set all the data for this basis function.
-                    walker_population(1,tot_walkers) = nint(D0_not_population)
-                    walker_energies(1,tot_walkers) = diagonal_element_heisenberg(f0_not)-H00
-                    walker_dets(:,tot_walkers) = f0_not
-                    ! If we are using the Neel state as a reference, set the
-                    ! required data.
+                    ! Set the population for this basis function.
+                    walker_population(1,tot_walkers) = nint(D0_population)
+                    ! TODO: use generic get_hmatel function for all systems
+                    ! after merging other development branches.
+                    select case(system_type)
+                    case(hub_k)
+                        walker_energies(1,tot_walkers) = slater_condon0_hub_k(f0) - H00
+                    case(hub_real)
+                        walker_energies(1,tot_walkers) = slater_condon0_hub_real(f0) - H00
+                    case(heisenberg)
+                        if (abs(staggered_field) > 0.0_p) then
+                            walker_energies(1,tot_walkers) = diagonal_element_heisenberg_staggered(f0) - H00
+                        else
+                            if (trial_function /= single_basis) then
+                                walker_energies(1,tot_walkers) = 0
+                            else
+                                walker_energies(1,tot_walkers) = diagonal_element_heisenberg(f0) - H00
+                            end if
+                        end if
+                    end select
+                    walker_dets(:,tot_walkers) = f0_inv
+                    ! If we are using the Neel state as a reference in the
+                    ! Heisenberg model, then set the required data.
                     if (allocated(walker_reference_data)) then
                         walker_reference_data(1,tot_walkers) = 0
                         walker_reference_data(2,tot_walkers) = 0
                     end if
                 end if
             end if
-        end if
+
+        end if ! End of initialisation of reference state(s)/restarting from previous calculations
 
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
