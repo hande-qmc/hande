@@ -220,7 +220,7 @@ contains
         use excitations, only: calc_pgen_real, excit
         use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
-        use system, only: J_coupling, unitary_factor
+        use system, only: J_coupling
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -247,12 +247,7 @@ contains
         connection%to_orb(1) = a
 
         ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-        ! However, for bipartite lattices a unitary transformation can make all
-        ! off-diagonal elements of H negative. This also transforms the ground
-        ! state so that all components are positive. This is useful when using
-        ! certain trial functions. If the unitary transformation is applied
-        ! to H, then unitary_factor = -1
-        hmatel = -2.0_p*J_coupling*unitary_factor
+        hmatel = -2.0_p*J_coupling
 
         ! 4. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen
@@ -306,12 +301,12 @@ contains
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: calc_pgen_real, excit
         use fciqmc_data, only: tau
-        use fciqmc_data, only: neel_singlet_amp, gutzwiller_parameter
+        use fciqmc_data, only: neel_singlet_amp
         use fciqmc_data, only: walker_reference_data, walker_energies
         use hamiltonian, only: slater_condon1_hub_real_excit
         use hamiltonian, only: diagonal_element_heisenberg
-        use system, only: J_coupling, unitary_factor, guiding_function
-        use system, only: neel_singlet_guiding, gutzwiller_guiding
+        use system, only: J_coupling, guiding_function
+        use system, only: neel_singlet_guiding
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -340,59 +335,30 @@ contains
         connection%to_orb(1) = a
 
         ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-        ! However, for bipartite lattices a unitary transformation can make all
-        ! off-diagonal elements of H negative. This also transforms the ground
-        ! state so that all components are positive. This is useful when using
-        ! certain trial functions. If the unitary transformation is applied
-        ! to H, then unitary_factor = -1
-        hmatel = -2.0_p*J_coupling*unitary_factor
+        hmatel = -2.0_p*J_coupling
         
-        if (guiding_function==neel_singlet_guiding) then
-        
-            ! Find the number of up spins on sublattice 1.
-            up_spins_from = walker_reference_data(1,cdet%idet)
-            ! For the spin up which was flipped to create the connected
-            ! basis function, find whether this spin was on sublattice 1 or 2.
-            ! If it was on sublattice 1, the basis function we go to has 1 less
-            ! up spin on sublattice 1, else it will have one more spin up here.
-            bit_position = bit_lookup(1,connection%from_orb(1))
-            bit_element = bit_lookup(2,connection%from_orb(1))
-            if (btest(lattice_mask(bit_element), bit_position)) then
-                up_spins_to = up_spins_from-1
-            else
-                up_spins_to = up_spins_from+1
-            end if
-        
-            ! When using a trial function |psi_T> = \sum{i} a_i|D_i>, the Hamiltonian
-            ! used in importance sampling is 
-            ! H_ji^T = a_j * H_ji * (1/a_i)
-            ! For a given number of spins up on sublattice 1, n, the corresponding
-            ! ampltidue of this basis function in the trial function is stored as
-            ! neel_singlet_amp(n), for this particular trial function. Hence we have:
-            hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
-        
-        else if(guiding_function==gutzwiller_guiding) then
-        
-            bitstring_j = cdet%f
-        
-            bit_position = bit_lookup(1,connection%from_orb(1))
-            bit_element = bit_lookup(2,connection%from_orb(1))
-            bitstring_j(bit_element) = ibclr(bitstring_j(bit_element),bit_position)
-            
-            bit_position = bit_lookup(1,connection%to_orb(1))
-            bit_element = bit_lookup(2,connection%to_orb(1))
-            bitstring_j(bit_element) = ibset(bitstring_j(bit_element),bit_position)
-            
-            amp_j = diagonal_element_heisenberg(bitstring_j)/J_coupling
-            amp_j = exp(gutzwiller_parameter*amp_j)
-            
-            amp_i = walker_energies(1,cdet%idet)/J_coupling
-            amp_i = exp(gutzwiller_parameter*amp_i)
-            
-            hmatel = -(amp_j*hmatel)/amp_i
-        
+        ! Find the number of up spins on sublattice 1.
+        up_spins_from = walker_reference_data(1,cdet%idet)
+        ! For the spin up which was flipped to create the connected
+        ! basis function, find whether this spin was on sublattice 1 or 2.
+        ! If it was on sublattice 1, the basis function we go to has 1 less
+        ! up spin on sublattice 1, else it will have one more spin up here.
+        bit_position = bit_lookup(1,connection%from_orb(1))
+        bit_element = bit_lookup(2,connection%from_orb(1))
+        if (btest(lattice_mask(bit_element), bit_position)) then
+            up_spins_to = up_spins_from-1
+        else
+            up_spins_to = up_spins_from+1
         end if
-
+        
+        ! When using a trial function |psi_T> = \sum{i} a_i|D_i>, the Hamiltonian
+        ! used in importance sampling is 
+        ! H_ji^T = a_j * H_ji * (1/a_i)
+        ! For a given number of spins up on sublattice 1, n, the corresponding
+        ! ampltidue of this basis function in the trial function is stored as
+        ! neel_singlet_amp(n), for this particular trial function. Hence we have:
+        hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
+        
         ! 4. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen
         psuccess = genrand_real2()

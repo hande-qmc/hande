@@ -47,10 +47,6 @@ real(p) :: av_shift = 0.0_p
 ! shift.
 real(p) :: shift_damping = 0.050_dp
 
-! Gutzwiller parameter b, used in the gutzwiller function which may be used
-! as a guiding function for the Heisenberg model.
-real(p) :: gutzwiller_parameter = 0.0_p
-
 ! projected energy
 ! This stores during an FCIQMC report loop
 !   \sum_{i/=0} <D_0|H|D_i> N_i
@@ -203,9 +199,6 @@ integer :: ref_det
 logical :: vary_shift = .false.
 ! The number of report loops after which vary_shift mode was entered.
 integer :: start_vary_shift
-! If set to true, then the Gutzwiller energy will be plotted at the start of the
-! calculation
-logical :: find_gutzwiller_parameter
 
 !--- Restart data ---
 

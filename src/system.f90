@@ -26,8 +26,7 @@ logical :: bipartite_lattice = .false.
 ! For the Heisenberg model, several different trial functions can be used in the
 ! energy estimator. Only a single determinant can be used for the Hubbard model.
 integer, parameter :: single_basis = 0
-integer, parameter :: uniform_combination = 1
-integer, parameter :: neel_singlet = 2
+integer, parameter :: neel_singlet = 1
 
 ! Which trial function are we using? Only relevant to the Heisneberg model.
 ! trial_function will always be 0 for other models to represent a single determinant.
@@ -41,7 +40,6 @@ integer, parameter :: no_guiding = 0
 ! Note that when we use the Neel singlet state as a guiding function, it must also
 ! be used as the trial function in calculating the projected energy.
 integer, parameter :: neel_singlet_guiding = 1
-integer, parameter :: gutzwiller_guiding = 2
 
 ! If we are not using importance sampling, this is set to 0. Else it is set to one
 ! of the above values to specify the corresponding guiding function being used.
@@ -112,15 +110,6 @@ real(p) :: h_field = 0
 ! \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - 
 !                      staggered_field \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
 real(p) :: staggered_field = 0
-
-! For the Heisenberg model applied to bipartite lattices,
-! a unitary transformation can be applied which rotates
-! all spins on one of the sublattices by 180 degrees around the
-! z axis. When working in a basis of spins in the z direction, this
-! transformation does not affect the diagonal elements, but multiplies 
-! all off-diagonal elements by -1 to make all elements either 0 or -2.
-! unitary_factor is -1 if this transformation is applied or +1 if not.
-integer :: unitary_factor = 1
 
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
 ! is constant, so it's convenient to store it.

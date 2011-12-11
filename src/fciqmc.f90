@@ -16,7 +16,7 @@ contains
 
         use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_field
         use system, only: trial_function, single_basis, neel_singlet
-        use system, only: guiding_function, no_guiding, gutzwiller_guiding, neel_singlet_guiding
+        use system, only: guiding_function, no_guiding, neel_singlet_guiding
         use hellmann_feynman_sampling
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
@@ -65,8 +65,6 @@ contains
             case (no_guiding)
                 spawner_ptr => spawn_heisenberg
             case (neel_singlet_guiding)
-                spawner_ptr => spawn_heisenberg_importance_sampling
-            case (gutzwiller_guiding)
                 spawner_ptr => spawn_heisenberg_importance_sampling
             end select             
             ! Set whether the staggered magnetisation is to be calculated.

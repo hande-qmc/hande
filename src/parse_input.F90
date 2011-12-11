@@ -109,8 +109,6 @@ contains
                 call readf(J_coupling)
             case('H_FIELD')
                 call readf(h_field)
-            case('GUTZWILLER_PARAMETER')
-                call readf(gutzwiller_parameter)
             case('STAGGERED_FIELD')
                 call readf(staggered_field)
             case('TWIST')
@@ -266,13 +264,6 @@ contains
                 trial_function = neel_singlet
             case('NEEL_SINGLET_GUIDING')
                 guiding_function = neel_singlet_guiding
-            case('GUTZWILLER_GUIDING')
-                guiding_function = gutzwiller_guiding
-                ! Just choose this energy estimator for now. This won't work
-                ! but the population growth can still be studied correctly.
-                trial_function = uniform_combination
-            case('PLOT_GUTZWILLER_ENERGY')
-                find_gutzwiller_parameter = .true.
 
             case('END')
                 exit
@@ -317,14 +308,9 @@ contains
                                                        & for this lattice because it is frustrated.')
             if (staggered_field /= 0.0 .and. h_field /= 0.0) call stop_all(this, 'Cannot set a uniform and a staggered&
                                                        & field at the same time.')
-            if ((.not.bipartite_lattice) .and. trial_function /= single_basis .and. guiding_function /= gutzwiller_guiding) &
-                                                  call stop_all(this, 'This trial function can only be used for &
-                                                  bipartite lattices. Please use a single basis function instead.')
             if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
                                                      &guiding function is only avaliable when using the Neel singlet state &
                                                      &as an energy estimator.') 
-            if ((guiding_function==gutzwiller_guiding) .and. trial_function /= uniform_combination) &
-                                  call stop_all(this, 'Cannot use this trial function with this guiding function.')                                     
         end if
 
         if (init_spin_inv_D0 .and. ms_in /= 0) then
@@ -429,15 +415,12 @@ contains
         call mpi_bcast(triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(guiding_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(find_gutzwiller_parameter, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(gutzwiller_parameter, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(J_coupling, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(h_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(staggered_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(unitary_factor, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
