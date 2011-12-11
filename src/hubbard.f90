@@ -130,7 +130,7 @@ contains
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
             if (system_type == heisenberg) then
-                call init_basis_fn(basis_fns(i), basis_fn_p%l)
+                call init_basis_fn(basis_fns(i), basis_fn_p%l, 0)
             else
                 call init_basis_fn(basis_fns(2*i-1), basis_fn_p%l, basis_fn_p%ms)
                 call init_basis_fn(basis_fns(2*i), basis_fn_p%l, -basis_fn_p%ms)
