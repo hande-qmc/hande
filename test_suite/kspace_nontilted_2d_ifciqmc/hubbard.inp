@@ -1,4 +1,4 @@
-k_space
+hubbard_k
 
 ifciqmc
 ( By setting the initiator population to 0, i.e. the population at which we )
