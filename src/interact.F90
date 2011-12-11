@@ -133,6 +133,7 @@ contains
             call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
             call mpi_bcast(av_proj_energy, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(av_shift, 1, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(av_D0_population, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(target_particles, 1, mpi_integer, proc, mpi_comm_world, ierr)
             call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
