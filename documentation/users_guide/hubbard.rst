@@ -773,7 +773,7 @@ The following options are valid for FCIQMC calculations.
     where a_i is a component of the Neel state, as specified above.
     
     When this guiding function is used, the Neel singlet must be used in the projected energy, so
-    the neel_singlet_estimator keyword must be specified also.
+    the neel_singlet_estimator option is automatically turned on.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

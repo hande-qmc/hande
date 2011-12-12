@@ -264,6 +264,7 @@ contains
                 trial_function = neel_singlet
             case('NEEL_SINGLET_GUIDING')
                 guiding_function = neel_singlet_guiding
+                trial_function = neel_singlet
 
             case('END')
                 exit
