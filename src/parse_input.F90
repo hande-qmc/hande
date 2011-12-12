@@ -110,7 +110,7 @@ contains
             case('H_FIELD')
                 call readf(magnetic_field)
             case('STAGGERED_FIELD')
-                call readf(staggered_field)
+                call readf(staggered_magnetic_field)
             case('TWIST')
                 allocate(ktwist(nitems-item), stat=ierr)
                 call check_allocate('ktwist',nitems-item,ierr)
@@ -305,10 +305,10 @@ contains
             if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
             if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
             if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice.')
-            if (staggered_field /= 0.0 .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
+            if (staggered_magnetic_field /= 0.0 .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
                                                        & for this lattice because it is frustrated.')
-            if (staggered_field /= 0.0 .and. magnetic_field /= 0.0) call stop_all(this, 'Cannot set a uniform and a staggered&
-                                                       & field at the same time.')
+            if (staggered_magnetic_field /= 0.0 .and. magnetic_field /= 0.0) &
+                call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
             if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
                                                      &guiding function is only avaliable when using the Neel singlet state &
                                                      &as an energy estimator.') 
@@ -421,7 +421,7 @@ contains
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(J_coupling, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(staggered_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(staggered_magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then

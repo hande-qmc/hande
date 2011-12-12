@@ -30,7 +30,7 @@ contains
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use fciqmc_restart, only: read_restart
-        use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_field
+        use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
         use system, only: trial_function, neel_singlet, single_basis
         use symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
@@ -193,7 +193,7 @@ contains
             case(hub_real)
                 H00 = slater_condon0_hub_real(f0)
             case(heisenberg)
-                if (abs(staggered_field) > 0.0_p) then
+                if (abs(staggered_magnetic_field) > 0.0_p) then
                     H00 = diagonal_element_heisenberg_staggered(f0)
                 else
                     if (trial_function /= single_basis) then
@@ -284,7 +284,7 @@ contains
                     case(hub_real)
                         walker_data(1,tot_walkers) = slater_condon0_hub_real(f0) - H00
                     case(heisenberg)
-                        if (abs(staggered_field) > 0.0_p) then
+                        if (abs(staggered_magnetic_field) > 0.0_p) then
                             walker_data(1,tot_walkers) = diagonal_element_heisenberg_staggered(f0) - H00
                         else
                             if (trial_function /= single_basis) then

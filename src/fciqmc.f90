@@ -14,7 +14,7 @@ contains
         ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
 
-        use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_field
+        use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_magnetic_field
         use system, only: trial_function, single_basis, neel_singlet
         use system, only: guiding_function, no_guiding, neel_singlet_guiding
         use hellmann_feynman_sampling
@@ -68,7 +68,7 @@ contains
                 spawner_ptr => spawn_heisenberg_importance_sampling
             end select             
             ! Set whether the staggered magnetisation is to be calculated.
-            if (abs(staggered_field) > 0.0_p) then
+            if (abs(staggered_magnetic_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
             else
                 sc0_ptr => diagonal_element_heisenberg

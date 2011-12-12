@@ -535,7 +535,7 @@ contains
         use determinants, only: lattice_mask
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: nbonds, nel, J_coupling, magnetic_field, staggered_field
+        use system, only: nbonds, nel, J_coupling, magnetic_field, staggered_magnetic_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -576,14 +576,14 @@ contains
         
         ! Contibution to Hamiltonian from staggered field term.
         ! Split the lattice into a (+) sublattice and a (-) sublattice.
-        ! For every up spin on a (+) site, add one to the hmatel. (add staggered_field * 1)
+        ! For every up spin on a (+) site, add one to the hmatel. (add staggered_magnetic_field * 1)
         ! For every down spin on a (+) site, minus one.
         ! For every up spin on a (-) site, minus one.
         ! For every down spin on a (-) site, add one.
         ! sublattice1_up_spins gives the number of up spins on the (+) lattice, so there are
         ! (nel-sublattice1_up_spins) up spins on the (-) lattice, and a total of (nsites/2)
         ! sites on each sublattice. Putting all this together gives the following:
-        hmatel = hmatel - staggered_field*(4*sublattice1_up_spins - 2*nel)
+        hmatel = hmatel - staggered_magnetic_field*(4*sublattice1_up_spins - 2*nel)
 
     end function diagonal_element_heisenberg_staggered
 

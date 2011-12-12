@@ -106,10 +106,10 @@ real(p) :: J_coupling = 1
 real(p) :: magnetic_field = 0
 
 ! This parameter allows a staggered magnetisation operator to be added
-! to the Hamiltonian. staggered_field gives the constant of proportionality:
+! to the Hamiltonian. staggered_magnetic_field gives the constant of proportionality:
 ! \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - 
-!                      staggered_field \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
-real(p) :: staggered_field = 0
+!                      staggered_magnetic_field \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
+real(p) :: staggered_magnetic_field = 0
 
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
 ! is constant, so it's convenient to store it.
