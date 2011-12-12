@@ -641,16 +641,6 @@ contains
         !        (i,j) or given the choice of (i,j,a).
 
         use basis, only: basis_length, basis_fns, bit_lookup, nbasis
-        use system, only: nel, sym0, nsym
-        use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns
-
-        use dSFMT_interface, only: genrand_real2
-
-        integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: sym, spin, symunocc(:,sym0:)
-        integer, intent(out) :: a, b
-
-        use basis, only: basis_length, basis_fns, bit_lookup, nbasis
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym
         use system, only: nel
 
