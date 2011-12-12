@@ -340,19 +340,26 @@ These options describe the system which is to be investigated.
 
     .. math::
 
-        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_z\sum_{i}\sigma_{i}^{z}
+        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_z\sum_{i}\sigma_{i}^{z} - k_z\sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
 
-    and :math:`h_z` is the external magetic field.
-        
+    and :math:`h_z` is the constant external magetic field and :math:`k_z` the
+    staggered external magnetic field.
 **magnetic_field** *h_z*
     Real.
     
     Default: 0.
     
-    Set a uniform external field for the Heisenberg model. The z direction is defined to be in the same direction
-    as the external field. The spins in the basis functions point in this direction.
-    
-    Applicable only in the Heisenberg model.
+    Set the uniform external field for the Heisenberg model. The z direction is
+    defined to be in the same direction as the external field. The spins in the
+    basis functions point in this direction.
+**staggered_magnetic_field** *hs_z*
+    Real.
+
+    Default: 0.
+
+    Set the staggered magnetic field for the Heisenberg field.  Only valid for
+    bipartite lattices.  Currently only one of **magnetic_field** and
+    **staggered_magnetic_field** can be non-zero.
 **twist** *t1 [t2 [t3]]*
     Real.
 
