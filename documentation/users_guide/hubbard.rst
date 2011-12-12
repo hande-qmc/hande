@@ -340,9 +340,11 @@ These options describe the system which is to be investigated.
 
     .. math::
 
-        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_field\sum_{i}\sigma_{i}^{z}
+        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_z\sum_{i}\sigma_{i}^{z}
+
+    and :math:`h_z` is the external magetic field.
         
-**h_field** *h_field*
+**magnetic_field** *h_z*
     Real.
     
     Default: 0.

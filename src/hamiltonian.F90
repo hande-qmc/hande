@@ -479,7 +479,7 @@ contains
         use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: nbonds, J_coupling, h_field
+        use system, only: nbonds, J_coupling, magnetic_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -512,11 +512,11 @@ contains
         hmatel = -J_coupling*(nbonds-2*counter)
         
         ! Contribution to Hamiltonian from external field:
-        ! Each spin up (bit set) up gives a contirbution of -h_field. Each spin down
-        ! gives a contirbution of +h_field. There are bits_set spins up, and 
+        ! Each spin up (bit set) up gives a contirbution of -magnetic_field. Each spin down
+        ! gives a contirbution of +magnetic_field. There are bits_set spins up, and 
         ! (nsites - bits_set) spins down, so the total contirbution is
-        ! -h_field*(2*bits_set-nsites) = -h_field*ms_in
-        hmatel = hmatel - h_field*ms_in
+        ! -magnetic_field*(2*bits_set-nsites) = -h_field*ms_in
+        hmatel = hmatel - magnetic_field*ms_in
 
     end function diagonal_element_heisenberg
     
@@ -535,7 +535,7 @@ contains
         use determinants, only: lattice_mask
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: nbonds, nel, J_coupling, h_field, staggered_field
+        use system, only: nbonds, nel, J_coupling, magnetic_field, staggered_field
         
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)

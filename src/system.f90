@@ -103,7 +103,7 @@ real(p) :: J_coupling = 1
 
 ! External magnetic field h in the Heisenberg model, in the z direction
 ! (the z direction is defined the same direction as the external field).
-real(p) :: h_field = 0
+real(p) :: magnetic_field = 0
 
 ! This parameter allows a staggered magnetisation operator to be added
 ! to the Hamiltonian. staggered_field gives the constant of proportionality:
