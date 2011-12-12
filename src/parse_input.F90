@@ -305,9 +305,9 @@ contains
             if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
             if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
             if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice.')
-            if (staggered_magnetic_field /= 0.0 .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
+            if (staggered_magnetic_field /= 0.0_p .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
                                                        & for this lattice because it is frustrated.')
-            if (staggered_magnetic_field /= 0.0 .and. magnetic_field /= 0.0) &
+            if (staggered_magnetic_field /= 0.0_p .and. magnetic_field /= 0.0_p) &
                 call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
             if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
                                                      &guiding function is only avaliable when using the Neel singlet state &
