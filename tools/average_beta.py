@@ -7,6 +7,7 @@ import optparse
 import re
 import scipy
 import scipy.stats
+import scipy.interpolate
 import sys
 try:
     import matplotlib.pyplot as pyplot
@@ -45,11 +46,8 @@ class Data:
             mean = scipy.mean(getattr(self, attr))
             se = scipy.stats.sem(getattr(self, attr))
             setattr(s, attr, Stats(mean, se))
-       # print 
         mean = scipy.mean(self.numerators,0) 
         se = scipy.stats.sem(self.numerators,0)
-       # print [mean[0],mean[1]]
-       # print se
         setattr(s, 'numerators', Stats(mean,se))
 
         return s
@@ -91,15 +89,17 @@ def stats_ratio(s1, s2):
     mean = s1.mean/s2.mean
     se = scipy.sqrt( (s1.se/s1.mean)**2 + (s2.se/s2.mean)**2 )*mean
     return Stats(mean, se)
+
 def stats_array_ratio(numerator_array,denominator):
     mean = []
     se = []
     for i in range(0,numerator_array.mean.size):
        mean.append(numerator_array.mean[i]/denominator.mean)
-       se.append(scipy.sqrt( (numerator_array.se[i]/numerator_array.mean[i])**2 + (denominator.se/denominator.mean)**2 )*mean[i])
+       se.append(scipy.sqrt( (numerator_array.se[i]/numerator_array.mean[i])**2 + (denominator.se/denominator.mean)**2 )*abs(mean[i]))
+        
     return Stats(mean,se)
-def extract_data(data_files):
 
+def extract_data(data_files):
     data = {}
     
     # ignore lines beginning with # as the first non-whitespace character.
@@ -157,37 +157,49 @@ def get_data_stats(data):
         # Bonus!  Now calculate ratio Tr[H\rho]/Tr[\rho]
         stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho)
     return stats
-def calculate_energy_fit(energies, betas, order):
-    poly_coeffs = scipy.polyfit(betas, energies, order)
-    energy_fit = scipy.polyval(poly_coeffs,betas)
 
-    return energy_fit
+#def calculate_energy_fit(energies, betas, order):
+#    poly_coeffs = scipy.polyfit(betas, energies, order)
+#    energy_fit = scipy.polyval(poly_coeffs,betas)
+#    return energy_fit
 
-def calculate_specific_heat(energies, betas, order):
-    poly_coeffs = scipy.polyfit(betas, energies, order)
-    print poly_coeffs
-    diff_poly_coeffs = differentiate_polynomial(poly_coeffs)
-    print diff_poly_coeffs
-    specific_heat = scipy.polyval(diff_poly_coeffs,betas)
+def calculate_spline_fit(energies, betas, weights):
+    smoothing_condition = len(energies)-scipy.sqrt(2*len(energies))
+    tck = scipy.interpolate.splrep(betas, energies, weights, k=3, s=smoothing_condition)
+    
+    spline_fit = scipy.interpolate.splev(betas,tck)
+    spline_fit_deriv = scipy.interpolate.splev(betas,tck,der=1)
+    
+    return spline_fit, spline_fit_deriv
+
+def calculate_specific_heat(energies, betas, weights):
+#    poly_coeffs = scipy.polyfit(betas, energies, order)
+#    diff_poly_coeffs = differentiate_polynomial(poly_coeffs)
+#    specific_heat = scipy.polyval(diff_poly_coeffs,betas)
+    energy_fit, specific_heat = calculate_spline_fit(energies, betas, weights)
     for i in range(0,len(specific_heat)):
         specific_heat[i] = -1.*betas[i]*betas[i]*specific_heat[i]
-    return specific_heat
+    return energy_fit, specific_heat
 
-def print_stats(stats, estimator_headings, trace=True, shift=False):
+def print_stats(stats, estimator_headings, trace=True, shift=False, heat_capacity=False):
     energies = []
     betas = []
-    for beta in sorted(stats.iterkeys()):
-      data = stats[beta]
-      betas.append(beta)
-      energies.append(data.estimators.mean[0]) 
-    energy_fit = calculate_energy_fit(energies,betas,6)
-    gradient = calculate_specific_heat(energies, betas,6)
-    print r'#          \beta    ',
+    weights = []
+    if heat_capacity:
+        for beta in sorted(stats.iterkeys()):
+            data = stats[beta]
+            weights.append(1./data.estimators.se[0])
+            betas.append(beta)
+            energies.append(data.estimators.mean[0]) 
+        energy_fit, specific_heats = calculate_specific_heat(energies, betas, weights)
+    print '#           beta    ',
     if shift:
         print 'shift           shift s.e.    ',
     if trace:
         for i in range(0,len(estimator_headings)):
             print estimator_headings[i]+'            s.e.    ',
+    if heat_capacity:    
+        print '  Energy Fit   Heat Capacity'
     print
     counter = 0
     for beta in sorted(stats.iterkeys()):
@@ -199,14 +211,16 @@ def print_stats(stats, estimator_headings, trace=True, shift=False):
         if trace:
             for i in range(0,len(data.estimators.mean)):
                 print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
-        print '%16.8f%16.8f' % (energy_fit[counter],gradient[counter]) ,
+        if heat_capacity:
+            print '%16.8f%16.8f' % (energy_fit[counter], specific_heats[counter]) ,
         counter = counter + 1
         print
-def differentiate_polynomial(poly_coeffs):
-    diff_poly_coeffs = []
-    for i in range(0,len(poly_coeffs)-1):   
-        diff_poly_coeffs.append(poly_coeffs[i]*(len(poly_coeffs)-i-1))
-    return diff_poly_coeffs
+
+#def differentiate_polynomial(poly_coeffs):
+#    diff_poly_coeffs = []
+#    for i in range(0,len(poly_coeffs)-1):   
+#        diff_poly_coeffs.append(poly_coeffs[i]*(len(poly_coeffs)-i-1))
+#    return diff_poly_coeffs
 
 
 def plot_stats(stats, trace=True, shift=False):
@@ -222,9 +236,9 @@ def plot_stats(stats, trace=True, shift=False):
             pyplot.errorbar(beta, data, yerr=err, label='S')
         if trace:
             # data
-            data = [stats[b].E.mean for b in beta] 
+            data = [stats[b].estimators.mean[0] for b in beta] 
             # errorbars
-            err = [stats[b].E.se for b in beta] 
+            err = [stats[b].estimators.se[0] for b in beta] 
             pyplot.errorbar(beta, data, yerr=err, label='Tr[Hp]/Tr[p]')
             pyplot.legend()
             pyplot.show()
@@ -237,7 +251,8 @@ def parse_options(args):
     parser.add_option('--without-shift', action='store_false', dest='with_shift', help='Do not analyse shift data.  Default.')
     parser.add_option('--with-trace', action='store_true', dest='with_trace', default=True, help='Analyse trace data.  Default.')
     parser.add_option('--without-trace', action='store_false', dest='with_trace', help='Do not analyse trace data.')
-
+    parser.add_option('--with-heat_capacity', action='store_true', dest='with_heat_capacity', default=False, help='Calculate heat capacity')
+    parser.add_option('--without-heat_capacity', action='store_false', dest='with_heat_capacity', help='Do not calcualate heat capacity. Default')
     (options, filenames) = parser.parse_args(args)
     
     if len(filenames) == 0:
@@ -253,6 +268,6 @@ if __name__ == '__main__':
     print estimator_headings
     data = extract_data(data_files)
     stats = get_data_stats(data)
-    print_stats(stats, estimator_headings, options.with_trace, options.with_shift)
+    print_stats(stats, estimator_headings, options.with_trace, options.with_shift, options.with_heat_capacity)
     if options.plot:
         plot_stats(stats, options.with_trace, options.with_shift)
