@@ -75,6 +75,7 @@ contains
             ! Reset the pointer to the current position in the spawning array to 
             ! be the slot preceding the first
             spawning_head = spawning_block_start
+            ! This is used for accounting later, not for controlling the spawning.
             nattempts = nparticles(1)
             ndeath = 0
 
