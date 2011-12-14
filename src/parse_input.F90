@@ -155,6 +155,8 @@ contains
             ! DMQMC expectation values to be calculated
             case('DMQMC_ENERGY')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
+            case('DMQMC_ENERGY_SQUARED')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy_squared
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             ! Calculate a reduced density matrix

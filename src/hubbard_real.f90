@@ -74,9 +74,8 @@ contains
         ! the matrix elements < i | T | j > where i and j are real space basis functions.
 
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
-        use calc, only: doing_dmqmc_calc, dmqmc_heat_capacity
+        use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
         use determinants, only: decode_det
-        use dmqmc_procedures, only: create_next_nearest_orbs
         use system, only: lattice, ndim, box_length, system_type
         use system, only: heisenberg, triangular_lattice
         use bit_utils
@@ -106,7 +105,7 @@ contains
             allocate(connected_sites(2*ndim,nbasis), stat=ierr)
             call check_allocate('connected_sites',basis_length*2*ndim,ierr)
         end if
-        if (doing_dmqmc_calc(dmqmc_heat_capacity)) then
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             allocate(next_nearest_orbs(nbasis,nbasis), stat=ierr)
             call check_allocate('next_nearest_orbs',nbasis*nbasis,ierr)
         end if
@@ -395,5 +394,34 @@ contains
         umatel = hubu*umatel
 
     end function get_coulomb_matel_real
+
+    subroutine create_next_nearest_orbs()
+
+        use basis, only: basis_length, nbasis, bit_lookup, basis_fns
+        use parallel
+
+        integer :: ibasis, jbasis, kbasis
+        integer :: bit_position, bit_element
+
+        next_nearest_orbs = 0
+
+        do ibasis = 1, nbasis
+            do jbasis = 1, nbasis
+                bit_position = bit_lookup(1,jbasis)
+                bit_element = bit_lookup(2,jbasis)
+                if (btest(connected_orbs(bit_element,ibasis),bit_position)) then
+                    do kbasis = 1, nbasis
+                        bit_position = bit_lookup(1,kbasis)
+                        bit_element = bit_lookup(2,kbasis)
+                        if (btest(connected_orbs(bit_element,jbasis),bit_position)) then
+                            next_nearest_orbs(ibasis,kbasis) = next_nearest_orbs(ibasis,kbasis)+1
+                        end if
+                    end do
+                end if
+            end do
+            next_nearest_orbs(ibasis,ibasis) = 0
+        end do
+
+    end subroutine create_next_nearest_orbs
 
 end module hubbard_real

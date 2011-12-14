@@ -21,11 +21,13 @@ contains
         !        next report loop.
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
+        use calc, only: dmqmc_energy_squared
         use energy_evaluation, only: update_shift
         use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn
         use fciqmc_data, only: shift, av_shift, vary_shift, start_vary_shift
-        use fciqmc_data, only: nreport, ncycles, trace, thermal_energy, thermal_staggered_mag
         use fciqmc_data, only: total_trace, total_estimator_numerators, number_dmqmc_estimators
+        use fciqmc_data, only: nreport, ncycles, trace, thermal_energy, thermal_staggered_mag
+        use fciqmc_data, only: thermal_energy_squared
         use parallel
 
         integer, intent(in) :: ireport
@@ -51,6 +53,10 @@ contains
             ! a total of ncycle components, one for each iteration, so the components
             ! which need to be filled for each estimator, is as below.
             ir( sampling_size+2+(counter*ncycles):sampling_size+1+((counter+1)*ncycles) )=thermal_energy
+        end if
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+            counter = counter + 1
+            ir( sampling_size+2+(counter*ncycles):sampling_size+1+((counter+1)*ncycles) )=thermal_energy_squared
         end if
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
             counter = counter + 1
@@ -90,6 +96,10 @@ contains
             counter = counter+1
             total_estimator_numerators(:,counter) = thermal_energy
         end if
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+            counter = counter+1
+            total_estimator_numerators(:,counter) = thermal_energy_squared
+        end if
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
             counter = counter+1
             total_estimator_numerators(:,counter) = thermal_staggered_mag
@@ -122,9 +132,11 @@ contains
 
        use basis, only: basis_length, total_basis_length
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
+       use calc, only: dmqmc_energy_squared
        use excitations, only: get_excitation, excit
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
+       use proc_pointers, only: update_dmqmc_energy_squared_ptr
 
        integer, intent(in) :: idet, beta_index
        type(excit) :: excitation     
@@ -137,6 +149,7 @@ contains
        if (excitation%nexcit == 0) trace(beta_index)=trace(beta_index) + walker_population(1,idet)
        ! See which estimators are to be calculated, and call the corresponding procedures.
        if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr(idet, beta_index, excitation)
+       if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr(idet, beta_index, excitation)
        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                                      call update_dmqmc_stag_mag_ptr(idet, beta_index, excitation)
        if (doing_reduced_dm) call update_reduced_density_matrix(idet)
@@ -186,7 +199,7 @@ contains
 
    end subroutine dmqmc_energy_heisenberg
 
-   subroutine dmqmc_energy_squared_heisenberg(idet, beta_index,excitation)
+   subroutine dmqmc_energy_squared_heisenberg(idet, beta_index, excitation)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -205,13 +218,12 @@ contains
        use fciqmc_data, only: walker_dets, walker_population
        use fciqmc_data, only: walker_energies, thermal_energy_squared, H00
        use hubbard_real, only: connected_orbs, next_nearest_orbs
-       use hubbard_real, only: double_next_nearest_orbs
-       use system, only: J_coupling
+       use system, only: J_coupling, nbonds
 
        integer, intent(in) :: idet, beta_index
        type(excit), intent(in) :: excitation
-       integer :: bit_element1, bit_position1, bit_element2, bit_position_2
-       integer :: sum_H1_H2
+       integer :: bit_element1, bit_position1, bit_element2, bit_position2
+       real(p) :: sum_H1_H2
 
        sum_H1_H2 = 0
 
@@ -271,17 +283,17 @@ contains
            bit_position2 = bit_lookup(1,excitation%from_orb(2))
            bit_element2 = bit_lookup(2,excitation%from_orb(2))
            if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1) .and. &
-           btest(connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2) then
+           btest(connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2)) then
                sum_H1_H2 = -4.0*J_coupling
            else if (btest(connected_orbs(bit_element1, excitation%to_orb(2)), bit_position1) .and. &
            btest(connected_orbs(bit_element2, excitation%to_orb(1)), bit_position2)) then
                sum_H1_H2 = -4.0*J_coupling
            end if
 
-           thermal_energy_squared(beta_index) = thermal_energy_squared(beta_index) + &
-               sum_H1_H2*walker_population(1,idet)
-
        end if
+
+       thermal_energy_squared(beta_index) = thermal_energy_squared(beta_index) + &
+               sum_H1_H2*walker_population(1,idet)
 
    end subroutine dmqmc_energy_squared_heisenberg
 

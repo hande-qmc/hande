@@ -222,6 +222,7 @@ integer(i0), allocatable :: total_trace(:) !ncycles
 ! \sum_{i,j} \rho_{ij} * O_{ji}.
 real(p), allocatable :: thermal_energy(:) !ncycles
 real(p), allocatable :: thermal_staggered_mag(:) !ncycles
+real(p), allocatable :: thermal_energy_squared(:) !ncycles
 ! total_estimator_numerators stores all the values of all the
 ! above numerators for the thermal estimators, combined to include
 ! the values from all processor cores, at the end of the each
@@ -688,7 +689,7 @@ contains
     subroutine write_fciqmc_report_header()
 
         use calc, only: doing_calc, dmqmc_calc, doing_dmqmc_calc
-        use calc, only: dmqmc_energy, dmqmc_staggered_magnetisation
+        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
 
         if (doing_calc(dmqmc_calc)) then
            write (6,'(1X,a12,3X,a13,6X,a16,5X,a5)', advance = 'no') &
@@ -696,6 +697,9 @@ contains
 
             if (doing_dmqmc_calc(dmqmc_energy)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
+            end if
+            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H2{ji}'
             end if
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ii}M_{ii}'
@@ -863,6 +867,10 @@ contains
         if (allocated(thermal_energy)) then
             deallocate(thermal_energy, stat=ierr)
             call check_deallocate('thermal_energy', ierr)
+        end if
+        if (allocated(thermal_energy_squared)) then
+            deallocate(thermal_energy_squared, stat=ierr)
+            call check_deallocate('thermal_energy_squared', ierr)
         end if
         if (allocated(thermal_staggered_mag)) then
             deallocate(thermal_staggered_mag, stat=ierr)
