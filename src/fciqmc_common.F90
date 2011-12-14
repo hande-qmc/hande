@@ -197,7 +197,7 @@ contains
         ! excitations based upon the reference determinant and assume other
         ! determinants have a roughly similar ratio of single:double
         ! excitations.
-        if (pattempt_single < 0 .or. pattempt_double > 0) then
+        if (pattempt_single < 0 .or. pattempt_double < 0) then
             call find_single_double_prob(occ_list0, pattempt_single, pattempt_double)
         else
             ! renormalise just in case input wasn't
