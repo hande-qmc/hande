@@ -480,6 +480,10 @@ contains
                 end if
             end do
 
+            ! nbasis/2 functions of this spin.
+            ! all basis functions of this spin are odd.
+            ! Convert number, x, in range [1,nbasis/2] to odd number in range
+            ! [1,nbasis] using 2*x-1
             fac = 2
             shift = 1
             na = nbasis/2
@@ -493,6 +497,9 @@ contains
                 end if
             end do
 
+            ! Can select from any of the nbasis functions.
+            ! Convert number, x, in range [1,nbasis] to any number in range
+            ! [1,nbasis] using simply x (for compatibility with spin=-2,2).
             fac = 1
             shift = 0
             na = nbasis
@@ -507,6 +514,10 @@ contains
                 end if
             end do
 
+            ! nbasis/2 functions of this spin.
+            ! all basis functions of this spin are even.
+            ! Convert number, x, in range [1,nbasis/2] to even number in range
+            ! [1,nbasis] using 2*x
             fac = 2
             shift = 0
             na = nbasis/2
@@ -658,16 +669,22 @@ contains
         select case(spin)
         case(-2)
             ! a must be down.
+            ! Convert number, x, in range [1,nbasis/2] to odd number in range
+            ! [1,nbasis] using 2*x-1
             fac = 2
             shift = 1
             na = nbasis/2
         case(0)
-            ! a must be down or we can arbitrarily require it to be down.
+            ! a can be up or down.
+            ! Convert number, x, in range [1,nbasis] to any number in range
+            ! [1,nbasis] using simply x (for compatibility with spin=-2,2).
             fac = 1
             shift = 0
             na = nbasis
         case(2)
             ! a must be up.
+            ! Convert number, x, in range [1,nbasis/2] to even number in range
+            ! [1,nbasis] using 2*x
             fac = 2
             shift = 0
             na = nbasis/2
