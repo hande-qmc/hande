@@ -75,7 +75,7 @@ integer, target :: dets_Ms
 
 ! Symmetry of the occupied orbitals in each Slater determinant stored
 ! in det_list.
-integer(i0), target :: dets_sym
+integer, target :: dets_sym
 
 ! Number of determinants stored in dets.
 ! This is the number of determinants enumerated in enumerate_determinants with
