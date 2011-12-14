@@ -33,10 +33,10 @@ integer :: nalpha, nbeta
 integer :: nvirt_alpha, nvirt_beta
 
 ! Number of symmetries.
-integer :: nsym
+integer :: nsym = 1
 
 ! Index of lowest symmetry (normally 0 or 1).
-integer :: sym0
+integer :: sym0 = 1
 
 ! Complete active space of basis.  Valid only in systems where the
 ! single-particle basis can be ordered by the single-particle eigenvalues (e.g.
