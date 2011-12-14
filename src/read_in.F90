@@ -227,7 +227,21 @@ contains
         allocate(sp_fcidump_rank(0:norb), stat=ierr)
         call check_allocate('sp_fcidump_rank', nbasis+1, ierr)
 
-        call insertion_rank_rp(sp_eigv, sp_eigv_rank(1:))
+        ! Cannot simply naively sort all basis functions by energy as that
+        ! causes basis functions to be labelled with the incorrect spin.
+        ! Further we assume that basis functions have alternating alpha, beta
+        ! spins.  To overcome this we sort by energy within each spin and then
+        ! merge the two ranking orders.
+        ! Yes, this the calls to insertion_rank_rp do result in array copies,
+        ! but the arrays are small and the elegance and brevity of the code is
+        ! more than aadequate compensation.
+        call insertion_rank_rp(sp_eigv(::2), sp_eigv_rank(1::2))
+        call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2))
+        ! Interweave so the basis functions remain with alternating spins.
+        forall (i = 1:nbasis-1:2)
+            sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
+            sp_eigv_rank(i+1) = 2*sp_eigv_rank(i+1)
+        end forall
         ! the 0 index is used as a null entry in the FCIDUMP file, so need
         ! to handle that...
         sp_eigv_rank(0) = 0
