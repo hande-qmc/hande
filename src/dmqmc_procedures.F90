@@ -243,4 +243,34 @@ contains
 
     end subroutine decode_dm_bitstring
 
+    subroutine create_next_nearest_orbs()
+
+        use hubbard_real, only: connected_orbs, next_nearest_orbs
+        use basis, only: basis_length, nbasis, bit_lookup
+
+        integer :: ibasis, jbasis, kbasis
+        integer :: bit_position, bit_element
+
+        next_nearest_orbs = 0
+
+        do ibasis = 1, nbasis
+            do jbasis = 1, nbasis
+                bit_position = bit_lookup(1,jbasis)
+                bit_element = bit_lookup(2,jbasis)
+                if (btest(connected_orbs(bit_element,ibasis),bit_position)) then
+                    do kbasis = 1, nbasis
+                        bit_position = bit_lookup(1,kbasis)
+                        bit_element = bit_lookup(2,kbasis)
+                        if (btest(connected_orbs(bit_element,jbasis),bit_position)) then
+                            next_nearest_orbs(ibasis,kbasis) = next_nearest_orbs(ibasis,kbasis)+1
+                            next_nearest_orbs(kbasis,ibasis) = next_nearest_orbs(ibasis,kbasis)
+                        end if
+                    end do
+                end if
+            end do
+            next_nearest_orbs(ibasis,ibasis) = 0
+        end do
+
+    end subroutine create_next_nearest_orbs
+
 end module dmqmc_procedures

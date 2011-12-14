@@ -38,6 +38,18 @@ integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 ! so each site is connected to 6.
 integer, allocatable :: connected_sites(:,:) ! (2ndim, nbasis) or (6, nbasis)
 
+! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
+! are next nearest neighbors. For example, on a square lattice in the
+! Heisenberg model, if we consider a spin, we can get to a next-nearest
+! neighbor spin by going one right then one up, or to the same spin by going
+! one up and then one right - there are two different paths, so the correpsonding
+! value of next_nearest_orbs would be 2 for these spins. This is an important
+! number to know when calculating the thermal energy squared in DMQMC.
+! If two spins are not next-nearest neighbors by any path then this quantity is 0.
+! By next nearest neighbors, it is meant sites which can be joined by exactly two
+! bonds - any notion one may have of where the spins are located spatially is unimportant.
+integer(i0), allocatable :: next_nearest_orbs(:,:) ! (nbasis, nbasis)
+
 ! True if any site is its own periodic image.
 ! This is the case if one dimension (or more) has only one site per crystalisystem
 ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
@@ -62,7 +74,9 @@ contains
         ! the matrix elements < i | T | j > where i and j are real space basis functions.
 
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
+        use calc, only: doing_dmqmc_calc, dmqmc_heat_capacity
         use determinants, only: decode_det
+        use dmqmc_procedures, only: create_next_nearest_orbs
         use system, only: lattice, ndim, box_length, system_type
         use system, only: heisenberg, triangular_lattice
         use bit_utils
@@ -91,6 +105,10 @@ contains
         else
             allocate(connected_sites(2*ndim,nbasis), stat=ierr)
             call check_allocate('connected_sites',basis_length*2*ndim,ierr)
+        end if
+        if (doing_dmqmc_calc(dmqmc_heat_capacity)) then
+            allocate(next_nearest_orbs(nbasis,nbasis), stat=ierr)
+            call check_allocate('next_nearest_orbs',nbasis*nbasis,ierr)
         end if
 
         tmat = 0
@@ -263,6 +281,8 @@ contains
                 end do
             end do
         end do
+
+        if (allocated(next_nearest_orbs)) call create_next_nearest_orbs()
 
         ! Decode connected_orbs to store list of connections.
         connected_sites = 0

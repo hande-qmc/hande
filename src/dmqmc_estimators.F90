@@ -186,6 +186,105 @@ contains
 
    end subroutine dmqmc_energy_heisenberg
 
+   subroutine dmqmc_energy_squared_heisenberg(idet, beta_index,excitation)
+
+       ! For the Heisenberg model only.
+       ! Add the contribution from the current density matrix element
+       ! to the thermal energy squared estimate.
+
+       ! In:
+       !    idet: Current position in the main bitsrting list.
+       !    beta_index: Current iteration within the report loop.
+       !    excitation: excit type variable which stores information on
+       !    the excitation between the two bitstring ends, corresponding
+       !    to the two labels for the density matrix element.
+
+       use basis, only: basis_length, total_basis_length
+       use basis, only: bit_lookup
+       use excitations, only: excit
+       use fciqmc_data, only: walker_dets, walker_population
+       use fciqmc_data, only: walker_energies, thermal_energy_squared, H00
+       use hubbard_real, only: connected_orbs, next_nearest_orbs
+       use hubbard_real, only: double_next_nearest_orbs
+       use system, only: J_coupling
+
+       integer, intent(in) :: idet, beta_index
+       type(excit), intent(in) :: excitation
+       integer :: bit_element1, bit_position1, bit_element2, bit_position_2
+       integer :: sum_H1_H2
+
+       sum_H1_H2 = 0
+
+       if (excitation%nexcit == 0) then
+           ! If there are 0 excitations then either nothing happens twice, or we
+           ! flip the same pair of spins twice. The Hamiltonian element for doing nothing
+           ! is just the diagonal element. For each possible pairs of spins which can be
+           ! flipped, there is a mtarix element of -2*J_coupling, so we just need to count
+           ! the number of such pairs, which can be found simply from the diagonal element.
+
+           sum_H1_H2 = (walker_energies(1,idet)+H00)**2
+           sum_H1_H2 = sum_H1_H2 - J_coupling*nbonds - (walker_energies(1,idet)+H00)
+
+       else if (excitation%nexcit == 1) then
+           ! If there is only one excitation (2 spins flipped) then the contribution to H^2
+           ! depend on the positions of the spins relative to one another.
+           ! If the the spins are nearest neighbors then we could either do nothing and then
+           ! flip the pair, or flip the pair and then do nothing.
+           ! If next nearest neighbors and there is only one two-bond path to get from one
+           ! spin to the other, we first flip the pair on the first bond, then flip the pair
+           ! on the second bond. This flipping can only be done in exactly one order, not both -
+           ! the two spins which change are opposite, so the middle spin will initially only
+           ! be the same as one or the other spin. This is nice, because we don't have check
+           ! which way up the intermeddiate spin is - there will always be one order which contributes.
+           ! If there are two such paths, then this could happen by either paths, but again, the two
+           ! intermeddiate spins will only allow one order of spin flipping for each path, no
+           ! matter which way up they are, so we only need to check if there are two possible paths.
+
+           if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0) then
+               ! Contribution for next nearest neighbors
+               sum_H1_H2 = -2.0*J_coupling*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
+           else
+               ! Contributions for nearest neighbors
+               bit_position1 = bit_lookup(1,excitation%from_orb(1))
+               bit_element1 = bit_lookup(2,excitation%from_orb(1))
+               if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
+                   sum_H1_H2 = -2.0*J_coupling*(walker_energies(1,idet)+walker_energies(2,idet)+(2*H00))
+           end if
+
+       else if (excitation%nexcit == 2) then
+           ! If there are two excitations (4 spins flipped) then, once again, the contribution
+           ! to the thermal energy squared will depend on the positions of the spins. If there
+           ! are two pairs of spins flipped which are separated then there is one way
+           ! for this to happen - by flipping one pair, and then the other (this also requires
+           ! that the two spins within each neighboring pair are opposite, as ever for the
+           ! Heisenberg model). These two flips can happen in either order.
+           ! If the you can draw a path from the first spin which goes through every
+           ! spin and comes back to the original spin, then there are two ways to pair the
+           ! four spins - however, once again, only one way to pair them such that the spins
+           ! within a pair are opposite. This is because the four spins must have a total spin of
+           ! ms=0 (else flipping them all will give a configuration with a different total ms)
+           ! so there must be two up and two down. So for a square lattice, they can only be
+           ! paired in one way. Again, the flipping can be done in either order, giving a factor of 2.
+
+           bit_position1 = bit_lookup(1,excitation%from_orb(1))
+           bit_element1 = bit_lookup(2,excitation%from_orb(1))
+           bit_position2 = bit_lookup(1,excitation%from_orb(2))
+           bit_element2 = bit_lookup(2,excitation%from_orb(2))
+           if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1) .and. &
+           btest(connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2) then
+               sum_H1_H2 = -4.0*J_coupling
+           else if (btest(connected_orbs(bit_element1, excitation%to_orb(2)), bit_position1) .and. &
+           btest(connected_orbs(bit_element2, excitation%to_orb(1)), bit_position2)) then
+               sum_H1_H2 = -4.0*J_coupling
+           end if
+
+           thermal_energy_squared(beta_index) = thermal_energy_squared(beta_index) + &
+               sum_H1_H2*walker_population(1,idet)
+
+       end if
+
+   end subroutine dmqmc_energy_squared_heisenberg
+
    subroutine dmqmc_energy_hub_real(idet, beta_index, excitation)
 
        ! For the Heisenberg model only.
