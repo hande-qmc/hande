@@ -20,13 +20,14 @@ contains
         use hamiltonian, only: diagonal_element_heisenberg
         use heisenberg_estimators, only: update_proj_energy_heisenberg_basic
         use dmqmc_estimators, only: dmqmc_energy_heisenberg, dmqmc_stag_mag_heisenberg
-        use dmqmc_estimators, only: dmqmc_energy_hub_real
+        use dmqmc_estimators, only: dmqmc_energy_hub_real, dmqmc_energy_squared_heisenberg
         use dmqmc_procedures, only: random_distribution_heisenberg, random_distribution_entire_space
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle_density_matrix
         use spawning, only: spawn_heisenberg
         use calc, only: dmqmc_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
+        use calc, only: dmqmc_energy_squared
 
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
 
@@ -51,6 +52,8 @@ contains
             ! Only need occupied orbitals list, as for the real Hubbard case.
             decoder_ptr => decode_det_occ
             if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_heisenberg
+            if (doing_dmqmc_calc(dmqmc_energy_squared)) update_dmqmc_energy_squared_ptr => &
+                                                           dmqmc_energy_squared_heisenberg
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             spawner_ptr => spawn_heisenberg
@@ -84,7 +87,7 @@ contains
         use interact, only: fciqmc_interact
         use system, only: nel
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy
-        use calc, only: dmqmc_staggered_magnetisation
+        use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
         use dSFMT_interface, only: dSFMT_init
         use utils, only: int_fmt
         
@@ -149,6 +152,7 @@ contains
             ! Set the below estimators to 0, only if they are being used and hence are
             ! allocated.
             if (doing_dmqmc_calc(dmqmc_energy)) thermal_energy = 0
+            if (doing_dmqmc_calc(dmqmc_energy_squared)) thermal_energy_squared = 0
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) thermal_staggered_mag = 0 
             total_estimator_numerators = 0
 

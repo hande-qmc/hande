@@ -27,6 +27,7 @@ contains
         use basis, only: basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
         use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
+        use calc, only: dmqmc_energy_squared
         use gutzwiller_energy, only: plot_gutzwiller_energy
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
@@ -345,6 +346,12 @@ contains
                 call check_allocate('thermal_energy',ncycles,ierr)
                 thermal_energy = 0
             end if
+            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+                number_dmqmc_estimators = number_dmqmc_estimators + 1
+                allocate(thermal_energy_squared(1:ncycles), stat=ierr)
+                call check_allocate('thermal_energy_squared',ncycles,ierr)
+                thermal_energy_squared = 0
+            end if
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 number_dmqmc_estimators = number_dmqmc_estimators + 1
                 allocate(thermal_staggered_mag(1:ncycles), stat=ierr)
@@ -452,6 +459,10 @@ contains
                 if (doing_dmqmc_calc(dmqmc_energy)) then
                 write (6, '(1X,a92)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
                                      &value of the energy.'
+                end if
+                if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+                write (6, '(1X,a100)') '\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
+                                     &value of the energy squared.'
                 end if
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 write (6, '(1X,a109)') '\sum\rho_{ii}M_{ii}: The numerator of the estimator for the expectation &

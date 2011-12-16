@@ -76,6 +76,7 @@ end interface
 procedure(i_decoder), pointer :: decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
 procedure(i_spawner), pointer :: spawner_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()

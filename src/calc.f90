@@ -37,6 +37,7 @@ integer, parameter :: dmqmc_calc = 2**8
 integer :: dmqmc_calc_type = 0
 integer, parameter :: dmqmc_energy = 2**0
 integer, parameter :: dmqmc_staggered_magnetisation = 2**1
+integer, parameter :: dmqmc_energy_squared = 2**2
 
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
