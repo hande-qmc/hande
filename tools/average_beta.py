@@ -19,7 +19,10 @@ except ImportError:
 BETA_COL = 0
 SHIFT_COL = 1
 TR_HRHO_COL = 4
+TR_H2RHO_COL = 5
 TR_RHO_COL = 3
+H2_is_present = False
+H_is_present = False
 
 class Stats:
     def __init__(self, mean, se):
@@ -53,53 +56,84 @@ class Data:
         return s
 
 def get_estimator_headings(data_files):
-    # start of data table
+# Get collumn headings from input file
     start_regex = '^ # iterations'
     data_file = data_files[0]
-    n_numerators = calc_num_numerators(data_file)
     in_file = open(data_file)
     estimator_headings = []
+    estimator_col_no = []
     while in_file:
        line = in_file.next()
        if re.search(start_regex, line): 
            headings = line.split()
-           for i in range(7,7+n_numerators):
-              estimator_headings.append(headings[i])
-           for j in range(0,len(estimator_headings)):
-              estimator_headings[j] = 'Tr['+estimator_headings[j][13]+'p]/Tr[p]'
+           index = 0
+           for k in range(0,len(headings)):
+               if headings[k] == '\\sum\\rho_{ij}H_{ji}':
+                   estimator_col_no.append(k-3)
+                   estimator_headings.append('Tr[Hp]/Tr[p]')
+                   H_is_present = True
+                   TR_HRHO_INDEX = index
+                   index = index + 1
+               elif headings[k] == '\\sum\\rho_{ij}S_{ji}':
+                   estimator_col_no.append(k-3)
+                   estimator_headings.append('Tr[Sp]/Tr[p]')
+                   index = index + 1
+               elif headings[k] == '\\sum\\rho_{ij}H2_{ji}':
+                   estimator_col_no.append(k-3)
+                   estimator_headings.append('Tr[H2p]/Tr[p]')
+                   H2_is_present = True
+                   TR_H2RHO_INDEX = index
+                   index = index + 1
+               else:
+                   print '# Warning: Column name, '+headings[k]+', not recognised...'
            break
+           #for i in range(7,7+n_numerators):
+           #   estimator_headings.append(headings[i])
+           #for j in range(0,len(estimator_headings)):
+           #   # Constuct name of estimator assuming it is of form Tr[pp]/Tr[p]
+           #   estimator_headings[j] = 'Tr['+estimator_headings[j][13]+'p]/Tr[p]'
+           #break
            
-    return estimator_headings
+    return estimator_headings, estimator_col_no
 
-def calc_num_numerators(data_file):
+#def calc_num_numerators(data_file):
+# Calculate the numer of estimator numerators from size of table in input data
     # start of data table
-    start_regex = '^ # iterations'
-    in_file = open(data_file)
-    n_numerators = 0
-    while in_file:
-       line = in_file.next()
-       if re.search(start_regex, line):
-           line = in_file.next()   
-           n_columns = len(line.split())
-           n_numerators = n_columns - 7
-           break
-    return n_numerators
+#    start_regex = '^ # iterations'
+#    in_file = open(data_file)
+#    n_numerators = 0
+#    while in_file:
+#       line = in_file.next()
+#       if re.search(start_regex, line):
+#           line = in_file.next()   
+#           n_columns = len(line.split())
+#           n_numerators = n_columns - 7
+#           break
+#    return n_numerators
         
 def stats_ratio(s1, s2):
     mean = s1.mean/s2.mean
-    se = scipy.sqrt( (s1.se/s1.mean)**2 + (s2.se/s2.mean)**2 )*mean
+    se = scipy.sqrt( (s1.se/s1.mean)**2 + (s2.se/s2.mean)**2 )*abs(mean)
     return Stats(mean, se)
 
 def stats_array_ratio(numerator_array,denominator):
+# Calculate the new stats for numerators divided by tr(rho)
     mean = []
     se = []
+    # Loop over numerators and calculate s.e and mean for this estimator
     for i in range(0,numerator_array.mean.size):
        mean.append(numerator_array.mean[i]/denominator.mean)
        se.append(scipy.sqrt( (numerator_array.se[i]/numerator_array.mean[i])**2 + (denominator.se/denominator.mean)**2 )*abs(mean[i]))
         
     return Stats(mean,se)
 
-def extract_data(data_files):
+def stats_stochastic_specific_heat(beta, estimator_array):
+    stochastic_specific_heats = []
+    mean = (beta**2)*(estimator_array.mean[TR_H2RHO_INDEX]-estimator_array.mean[TR_HRHO_INDEX]**2)
+    se = scipy.sqrt((beta**4)*(estimator_array.se[TR_H2RHO_INDEX]**2+4*(estimator_array.mean[TR_HRHO_INDEX]**2)*estimator_array.se[TR_HRHO_INDEX]**2))
+    return Stats(mean,se)
+
+def extract_data(data_files, estimtor_col_no):
     data = {}
     
     # ignore lines beginning with # as the first non-whitespace character.
@@ -113,7 +147,6 @@ def extract_data(data_files):
 
     for data_file in data_files:
        
-        num_numerators = calc_num_numerators(data_file)
         f = open(data_file)
 
         have_data = False
@@ -130,8 +163,8 @@ def extract_data(data_files):
                     beta = tau*float(words[BETA_COL])
                     shift = float(words[SHIFT_COL])
                     numerators = []
-                    for i in range(4,4+num_numerators):
-                       numerators.append(float(words[i])) 
+                    for i in range(0,len(estimtor_col_no)):
+                       numerators.append(float(words[estimtor_col_no[i]])) 
                     
                     Tr_rho = float(words[TR_RHO_COL])
                     if beta in data:
@@ -156,26 +189,31 @@ def get_data_stats(data):
         stats[beta] = data_values.calculate_stats()
         # Bonus!  Now calculate ratio Tr[H\rho]/Tr[\rho]
         stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho)
+        if H2_is_present and H_is_present:
+            stats[beta].stochastic_specific_heat = stats_stochastic_specific_heat(beta,stats[beta].estimators)
+  
     return stats
 
-#def calculate_energy_fit(energies, betas, order):
-#    poly_coeffs = scipy.polyfit(betas, energies, order)
-#    energy_fit = scipy.polyval(poly_coeffs,betas)
-#    return energy_fit
-
 def calculate_spline_fit(energies, betas, weights):
-    smoothing_condition = len(energies)-scipy.sqrt(2*len(energies))
-    tck = scipy.interpolate.splrep(betas, energies, weights, k=3, s=smoothing_condition)
+# Perform a cubic spline best fit on the energy data. 
+# weights: array of 1/(the standard deviations for each E(beta)), Used for calculating
+#          the least-squares spline fit
     
+    # Choose default smoothing parameter m-sqrt(2*m) < s < m+sqrt(2*m). 
+    # Where m is number of data points. 
+    # Defaults is s = m - sqrt(2*m)
+
+    # Caluclate knots, spline co-efficients and degree of spline (t,c,k=3)
+    tck = scipy.interpolate.splrep(betas, energies, weights, k=3)
+    # Calculate the spline fit using (t,c,k)
     spline_fit = scipy.interpolate.splev(betas,tck)
+    # Calculate the first derivateive of spline fit using (t,c,k) 
     spline_fit_deriv = scipy.interpolate.splev(betas,tck,der=1)
     
     return spline_fit, spline_fit_deriv
 
 def calculate_specific_heat(energies, betas, weights):
-#    poly_coeffs = scipy.polyfit(betas, energies, order)
-#    diff_poly_coeffs = differentiate_polynomial(poly_coeffs)
-#    specific_heat = scipy.polyval(diff_poly_coeffs,betas)
+    # Calculate energy spline fit and first derivative
     energy_fit, specific_heat = calculate_spline_fit(energies, betas, weights)
     for i in range(0,len(specific_heat)):
         specific_heat[i] = -1.*betas[i]*betas[i]*specific_heat[i]
@@ -192,12 +230,15 @@ def print_stats(stats, estimator_headings, trace=True, shift=False, heat_capacit
             betas.append(beta)
             energies.append(data.estimators.mean[0]) 
         energy_fit, specific_heats = calculate_specific_heat(energies, betas, weights)
+            
     print '#           beta    ',
     if shift:
         print 'shift           shift s.e.    ',
     if trace:
         for i in range(0,len(estimator_headings)):
             print estimator_headings[i]+'            s.e.    ',
+    if H2_is_present and H_is_present:
+       print 'Stoch. Spec. Heat  s.e.    '
     if heat_capacity:    
         print '  Energy Fit   Heat Capacity'
     print
@@ -211,17 +252,12 @@ def print_stats(stats, estimator_headings, trace=True, shift=False, heat_capacit
         if trace:
             for i in range(0,len(data.estimators.mean)):
                 print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
+        if H2_is_present and H_is_present:
+            print '%16.8f%16.8f' % (data.stochastic_specific_heat.mean, stochastic_specific_heat.se) ,
         if heat_capacity:
             print '%16.8f%16.8f' % (energy_fit[counter], specific_heats[counter]) ,
         counter = counter + 1
         print
-
-#def differentiate_polynomial(poly_coeffs):
-#    diff_poly_coeffs = []
-#    for i in range(0,len(poly_coeffs)-1):   
-#        diff_poly_coeffs.append(poly_coeffs[i]*(len(poly_coeffs)-i-1))
-#    return diff_poly_coeffs
-
 
 def plot_stats(stats, trace=True, shift=False):
 
@@ -264,9 +300,8 @@ def parse_options(args):
 if __name__ == '__main__':
 
     (options, data_files) = parse_options(sys.argv[1:])
-    estimator_headings = get_estimator_headings(data_files)
-    print estimator_headings
-    data = extract_data(data_files)
+    estimator_headings, estimtor_col_no = get_estimator_headings(data_files)
+    data = extract_data(data_files, estimtor_col_no)
     stats = get_data_stats(data)
     print_stats(stats, estimator_headings, options.with_trace, options.with_shift, options.with_heat_capacity)
     if options.plot:
