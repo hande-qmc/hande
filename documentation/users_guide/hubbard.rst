@@ -340,10 +340,11 @@ These options describe the system which is to be investigated.
 
     .. math::
 
-        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_z\sum_{i}\sigma_{i}^{z} - k_z\sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
+        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_z\sum_{i}\sigma_{i}^{z} - k_z\sum_{i}(-1)^{\zeta(i)}\sigma_{i,z}
 
-    and :math:`h_z` is the constant external magetic field and :math:`k_z` the
-    staggered external magnetic field.
+    where :math:`h_z` is the constant external magetic field, :math:`k_z` the
+    staggered external magnetic field and :math:`\zeta(i)` gives :math:`\pm1`
+    depending upon which sublattice contains site :math:`i`.
 **magnetic_field** *h_z*
     Real.
     

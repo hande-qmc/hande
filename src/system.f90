@@ -108,7 +108,9 @@ real(p) :: magnetic_field = 0
 ! This parameter allows a staggered magnetisation operator to be added
 ! to the Hamiltonian. staggered_magnetic_field gives the constant of proportionality:
 ! \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - 
-!                      staggered_magnetic_field \sum_{i}(-1)^{i}\sigma_{i,z}
+!                      staggered_magnetic_field \sum_{i}(-1)^{\zeta(i)}\sigma_{i,z}
+! where \zeta(i) gives \pm 1 depending upon which sublattice site i is on.
+! Applicable only to bipartite lattices.
 real(p) :: staggered_magnetic_field = 0
 
 ! The Coulomb integral in the momentum space formulation of the Hubbard model
