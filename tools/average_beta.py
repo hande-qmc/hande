@@ -54,6 +54,12 @@ class Data:
         setattr(s, 'numerators', Stats(mean,se))
 
         return s
+    def calculate_covs(self):
+        covs = []
+        for i in range(0,len(self.numerators[0])):
+            covariance_matrix = scipy.cov(scipy.vstack((scipy.array(self.numerators)[:,i],self.Tr_rho)))
+            covs.append(covariance_matrix[0][1]/len(self.numerators))
+        return covs
 
 def get_estimator_headings(data_files):
 # Get collumn headings from input file
@@ -87,44 +93,22 @@ def get_estimator_headings(data_files):
                else:
                    print '# Warning: Column name, '+headings[k]+', not recognised...'
            break
-           #for i in range(7,7+n_numerators):
-           #   estimator_headings.append(headings[i])
-           #for j in range(0,len(estimator_headings)):
-           #   # Constuct name of estimator assuming it is of form Tr[pp]/Tr[p]
-           #   estimator_headings[j] = 'Tr['+estimator_headings[j][13]+'p]/Tr[p]'
-           #break
            
     return estimator_headings, estimator_col_no
 
-#def calc_num_numerators(data_file):
-# Calculate the numer of estimator numerators from size of table in input data
-    # start of data table
-#    start_regex = '^ # iterations'
-#    in_file = open(data_file)
-#    n_numerators = 0
-#    while in_file:
-#       line = in_file.next()
-#       if re.search(start_regex, line):
-#           line = in_file.next()   
-#           n_columns = len(line.split())
-#           n_numerators = n_columns - 7
-#           break
-#    return n_numerators
-        
 def stats_ratio(s1, s2):
     mean = s1.mean/s2.mean
     se = scipy.sqrt( (s1.se/s1.mean)**2 + (s2.se/s2.mean)**2 )*abs(mean)
     return Stats(mean, se)
 
-def stats_array_ratio(numerator_array,denominator):
+def stats_array_ratio(numerator_array,denominator, covs):
 # Calculate the new stats for numerators divided by tr(rho)
     mean = []
     se = []
     # Loop over numerators and calculate s.e and mean for this estimator
     for i in range(0,numerator_array.mean.size):
        mean.append(numerator_array.mean[i]/denominator.mean)
-       se.append(scipy.sqrt( (numerator_array.se[i]/numerator_array.mean[i])**2 + (denominator.se/denominator.mean)**2 )*abs(mean[i]))
-        
+       se.append(scipy.sqrt( (numerator_array.se[i]/numerator_array.mean[i])**2 + (denominator.se/denominator.mean)**2 - (2*covs[i]/(numerator_array.mean[i]*denominator.mean)) )*abs(mean[i]))
     return Stats(mean,se)
 
 def stats_stochastic_specific_heat(beta, estimator_array):
@@ -185,10 +169,11 @@ def get_data_stats(data):
 
     stats = {}
     for (beta,data_values) in data.iteritems():
-
+        covariances = data_values.calculate_covs()
         stats[beta] = data_values.calculate_stats()
+        
         # Bonus!  Now calculate ratio Tr[H\rho]/Tr[\rho]
-        stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho)
+        stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho, covariances)
         if H2_is_present and H_is_present:
             stats[beta].stochastic_specific_heat = stats_stochastic_specific_heat(beta,stats[beta].estimators)
   
