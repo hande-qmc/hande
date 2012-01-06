@@ -40,7 +40,7 @@ contains
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: calc_pgen_hub_k, excit
         use hamiltonian, only: slater_condon2_hub_k_excit
-        use fciqmc_data, only: tau, dmqmc_factor
+        use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
 
         type(det_info), intent(in) :: cdet
@@ -83,7 +83,7 @@ contains
         ! so
         !   |H_ij| = U/\Omega
         ! for allowed excitations.
-        pspawn = tau*abs(hub_k_coulomb)*dmqmc_factor/pgen
+        pspawn = tau*abs(hub_k_coulomb)/pgen
         psuccess = genrand_real2()
 
         ! Need to take into account the possibilty of a spawning attempt
@@ -142,7 +142,7 @@ contains
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: calc_pgen_real, excit
-        use fciqmc_data, only: tau, dmqmc_factor
+        use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
 
         type(det_info), intent(in) :: cdet
@@ -172,7 +172,7 @@ contains
         call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
 
         ! 4. Attempt spawning.
-        pspawn = tau*abs(hmatel)*dmqmc_factor/pgen
+        pspawn = tau*abs(hmatel)/pgen
         psuccess = genrand_real2()
 
         ! Need to take into account the possibilty of a spawning attempt
@@ -218,7 +218,7 @@ contains
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: calc_pgen_real, excit
-        use fciqmc_data, only: tau, dmqmc_factor
+        use fciqmc_data, only: tau
         use hamiltonian, only: slater_condon1_hub_real_excit
         use system, only: J_coupling, unitary_factor
 
@@ -252,7 +252,7 @@ contains
         ! state so that all components are positive. This is useful when using
         ! certain trial functions. If the unitary transformation is applied
         ! to H, then unitary_factor = -1
-        hmatel = -2.0_p*J_coupling*dmqmc_factor*unitary_factor
+        hmatel = -2.0_p*J_coupling*unitary_factor
 
         ! 4. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen
@@ -305,7 +305,7 @@ contains
         use determinants, only: det_info, lattice_mask
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: calc_pgen_real, excit
-        use fciqmc_data, only: tau, dmqmc_factor
+        use fciqmc_data, only: tau
         use fciqmc_data, only: neel_singlet_amp, gutzwiller_parameter
         use fciqmc_data, only: walker_reference_data, walker_energies
         use hamiltonian, only: slater_condon1_hub_real_excit
@@ -345,7 +345,7 @@ contains
         ! state so that all components are positive. This is useful when using
         ! certain trial functions. If the unitary transformation is applied
         ! to H, then unitary_factor = -1
-        hmatel = -2.0_p*J_coupling*dmqmc_factor*unitary_factor
+        hmatel = -2.0_p*J_coupling*unitary_factor
         
         if (guiding_function==neel_singlet_guiding) then
         

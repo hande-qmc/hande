@@ -141,7 +141,7 @@ contains
                     " # Resetting random number generator with a seed of:", seed, "."
             end if
 
-            nparticles_old = dmqmc_npsips
+            nparticles_old = D0_population
 
             do ireport = 1, nreport
 

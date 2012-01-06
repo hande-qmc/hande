@@ -125,11 +125,11 @@ contains
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
 
-        use fciqmc_data, only: shift, tau, shift_damping, av_shift
+        use fciqmc_data, only: shift, tau, shift_damping, av_shift, dmqmc_factor
 
         integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
 
-        shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(tau*nupdate_steps)
+        shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
         av_shift = av_shift + shift
 
     end subroutine update_shift

@@ -180,6 +180,8 @@ integer, allocatable :: occ_list0(:)
 
 ! Population of walkers on reference determinant.
 ! The initial value can be overridden by a restart file or input option.
+! For DMQMC, this variable stores the initial number of psips to be
+! randomly distributed along the diagonal elements of the density matrix.
 real(p) :: D0_population = 10.0_p
 
 ! For the Heisenberg model, it is often useful to start with psips on both
@@ -193,9 +195,7 @@ real(p) :: D0_not_population = 0.0_p
 ! introduce a factor of 0.5 into the probabilities when using
 ! DMQMC. Hence, dmqmc_factor = 0.5 when using DMQMC or equals
 ! 1.0 when using standard FCIQMC.
-real :: dmqmc_factor = 1.0
-
-integer :: dmqmc_npsips = 1000
+real :: dmqmc_factor = 1.0_p
 
 ! The modulus squared of the wavefunction which the psips represent
 ! This is used in calculating the expectation value of the

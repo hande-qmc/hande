@@ -15,7 +15,7 @@ contains
          use fciqmc_data, only: thermal_staggered_mag, total_estimator_numerators, subsystem_A_size
          use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
          use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
-         use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm
+         use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
          use parallel, only: parent
          use system, only: system_type, heisenberg, nsites
 
@@ -58,10 +58,16 @@ contains
              call check_allocate('total_estimator_numerators',ncycles*number_dmqmc_estimators,ierr)
              total_estimator_numerators = 0
          end if
-         ! Set the dmqmc_factor to 0.5, so that spawning probabilities
-         ! are altered by a factor of 0.5, to account for spawning from
-         ! both ends.
-         dmqmc_factor = 0.5
+         ! In DMQMC we want the spawning probabilities to have an extra factor of a half,
+         ! because we spawn from two different ends with half probability. To avoid having
+         ! to multiply by an extra variable in every spawning routine to account for this, we
+         ! multiply the time step by 0.5 instead, then correct this in the death step (see below).
+         tau = tau*0.5_p
+         ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are multiplied
+         ! by this factor it cancels the factor of 0.5 introduced into the timestep in DMQMC.
+         ! Every system uses the same death routine, so this factor only needs to be added once.
+         ! This factor is also used in updated the shift, where the true tau is needed.
+         dmqmc_factor = 2.0_p
 
          ! If doing a reduced density matrix calculation, then allocate and define the
          ! bit masks that have 1's at the positions referring to either subsystems A or B.
@@ -137,7 +143,7 @@ contains
 
         use basis, only: nbasis, basis_length, bit_lookup, basis_lookup
         use dSFMT_interface, only:  genrand_real2
-        use fciqmc_data, only: dmqmc_npsips
+        use fciqmc_data, only: D0_population
         use parallel
         use utils, only: binom_r
       
@@ -149,7 +155,7 @@ contains
         real :: rand_num
   
         total_hilbert_space = 2**(nbasis)
-        npsips = int(dmqmc_npsips/nprocs)
+        npsips = int(D0_population/nprocs)
 
         do i = 1, npsips
 
@@ -233,7 +239,7 @@ contains
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
         use dSFMT_interface, only:  genrand_real2
-        use fciqmc_data, only: dmqmc_npsips
+        use fciqmc_data, only: D0_population
         use parallel
         use system, only: nsites
 
@@ -243,7 +249,7 @@ contains
         real :: rand_num
 
         up_spins = (ms_in+nsites)/2
-        npsips = int(dmqmc_npsips/nprocs)
+        npsips = int(D0_population/nprocs)
         
         do i = 1, npsips
           

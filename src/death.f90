@@ -44,7 +44,7 @@ contains
         ! the number that definitely die and the fractional part of p_d is the
         ! probability of an additional death.
 
-        pd = tau*(Kii-shift)
+        pd = tau*(Kii-shift)*dmqmc_factor
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.
