@@ -2,7 +2,6 @@ module annihilation
 
 use const
 use fciqmc_data
-use basis, only: basis_length, total_basis_length
 
 implicit none
 
@@ -146,6 +145,8 @@ contains
         ! looping through the list and adding consective walker populations
         ! together if they're the same walker.
 
+        use basis, only: total_basis_length
+
         integer :: islot, k
 
         ! islot is the current element in the spawned walkers lists.
@@ -197,6 +198,8 @@ contains
         ! This version is for the initiator algorithm, whereby we also need to
         ! take care of the parent flag (ie handle the origin of the spawned
         ! walkers).
+
+        use basis, only: total_basis_length
 
         integer :: islot, k, pop_sign
 
@@ -258,6 +261,8 @@ contains
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.
 
+        use basis, only: total_basis_length
+
         integer :: i, pos, k, nannihilate, istart, iend, old_pop(sampling_size)
         integer(i0) :: f(total_basis_length)
         logical :: hit
@@ -302,6 +307,8 @@ contains
         ! This version is for the initiator algorithm, where we also need to
         ! discard spawned walkers which are on previously unoccupied determinants
         ! and which are from non-initiator or non-sign-coherent events.
+
+        use basis, only: total_basis_length
 
         integer :: i, pos, k, nannihilate, istart, iend, old_pop
         integer(i0) :: f(total_basis_length)
@@ -356,6 +363,7 @@ contains
         ! Remove any determinants with 0 population.
         ! This can be done in a more efficient manner by doing it only when necessary...
 
+        use basis, only: total_basis_length
         use system, only: trial_function, neel_singlet
         
         integer :: nzero, i, k
@@ -384,6 +392,7 @@ contains
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
 
+        use basis, only: basis_length, total_basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use determinants, only: decode_det
         use system, only: nel, trial_function, neel_singlet

@@ -182,12 +182,12 @@ contains
         !           element upon which a new psip shall be placed.
 
         use hashing
-        use basis, only: basis_length
+        use basis, only: basis_length, total_basis_length
         use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop
         use parallel
 
         integer(i0), intent(in) :: f_new(basis_length)
-        integer(i0) :: f_new_diagonal(basis_length*2)
+        integer(i0) :: f_new_diagonal(total_basis_length)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -197,12 +197,12 @@ contains
         ! Create the bitstring of a psip on a diagonal element.
         f_new_diagonal = 0
         f_new_diagonal(:basis_length) = f_new
-        f_new_diagonal((basis_length+1):(2*basis_length)) = f_new
+        f_new_diagonal((basis_length+1):(total_basis_length)) = f_new
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned walker should be sent to.
         iproc_spawn = modulo(murmurhash_bit_string(f_new_diagonal, &
-                                (2*basis_length)), nprocs)
+                                (total_basis_length)), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
