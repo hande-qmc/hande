@@ -28,6 +28,7 @@ contains
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
         use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared
+        use dmqmc_procedures, only: init_dmqmc
         use gutzwiller_energy, only: plot_gutzwiller_energy
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
@@ -329,100 +330,11 @@ contains
         ! asked for this.
         if (find_gutzwiller_parameter) call plot_gutzwiller_energy
 
-        ! When doing a DMQMC calculation, allocate the requested arrays in order
-        ! to store the thermal quantities which are to be calculated.
+        ! When doing a DMQMC calculation, call a routine to initialise all the required
+        ! arrays, ie to store thermal quantities, and to initalise reduced density matrix
+        ! quantities if necessary.
         if (doing_calc(dmqmc_calc)) then
-            ! Always allocate the trace, since thi will always be calculated.
-            allocate(trace(1:ncycles), stat=ierr)
-            call check_allocate('trace',ncycles,ierr)
-            trace = 0
-            if (doing_dmqmc_calc(dmqmc_energy)) then
-                ! Calculate the total number of different quantities
-                ! to be calculated, so that this can be stored as
-                ! number_dmqmc_estimators and used elsewhere.
-                number_dmqmc_estimators = number_dmqmc_estimators + 1 
-                allocate(thermal_energy(1:ncycles), stat=ierr)
-                call check_allocate('thermal_energy',ncycles,ierr)
-                thermal_energy = 0
-            end if
-            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                number_dmqmc_estimators = number_dmqmc_estimators + 1
-                allocate(thermal_energy_squared(1:ncycles), stat=ierr)
-                call check_allocate('thermal_energy_squared',ncycles,ierr)
-                thermal_energy_squared = 0
-            end if
-            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                number_dmqmc_estimators = number_dmqmc_estimators + 1
-                allocate(thermal_staggered_mag(1:ncycles), stat=ierr)
-                call check_allocate('thermal_staggered_mag',ncycles,ierr)
-                thermal_staggered_mag = 0
-            end if
-            if (parent) then
-                ! These quantities store the combined values from all processors,
-                ! which are output. Only the parent needs to output this data, so
-                ! only the parent stores them, for efficiency.
-                allocate(total_trace(1:ncycles), stat=ierr)
-                call check_allocate('total_trace',ncycles,ierr)
-                total_trace = 0
-                allocate(total_estimator_numerators(1:ncycles,1:number_dmqmc_estimators), stat=ierr)
-                call check_allocate('total_estimator_numerators',ncycles*number_dmqmc_estimators,ierr)
-                total_estimator_numerators = 0
-            end if
-            ! Set the dmqmc_factor to 0.5, so that spawning probabilities
-            ! are altered by a factor of 0.5, to account for spawning from
-            ! both ends.
-            dmqmc_factor = 0.5
-
-            ! If doing a reduced density matrix calculation, then allocate and define the
-            ! bit masks that have 1's at the positions referring to either subsystems A or B.
-            if (doing_reduced_dm) then
-                subsystem_A_size = ubound(subsystem_A_list,1)
-                allocate(subsystem_A_mask(1:basis_length), stat=ierr)
-                call check_allocate('subsystem_A_mask',basis_length,ierr)
-                allocate(subsystem_B_mask(1:basis_length), stat=ierr)
-                call check_allocate('subsystem_B_mask',basis_length,ierr)
-                allocate(subsystem_A_bit_positions(subsystem_A_size,2), stat=ierr)
-                call check_allocate('subsystem_A_bit_positions',2*subsystem_A_size,ierr)
-                subsystem_A_mask = 0
-                subsystem_B_mask = 0
-                subsystem_A_bit_positions = 0
-                ! For the Heisenberg model only currently.
-                if (system_type==heisenberg) then
-                    subsystem_A_mask = 0
-                    do i = 1, subsystem_A_size
-                        bit_position = bit_lookup(1,subsystem_A_list(i))
-                        bit_element = bit_lookup(2,subsystem_A_list(i))
-                        subsystem_A_mask(bit_element) = ibset(subsystem_A_mask(bit_element), bit_position)
-                    end do
-                    subsystem_B_mask = subsystem_A_mask
-                    ! We cannot just flip the mask for system A to get that for system B, because
-                    ! there the trailing bits on the end don't refer to anything and should be
-                    ! set to 0. So, first set these to 1 and then flip all the bits.
-                    do ipos = 0, i0_end
-                        basis_find = basis_lookup(ipos, basis_length)
-                        if (basis_find == 0) then
-                            subsystem_B_mask(basis_length) = ibset(subsystem_B_mask(basis_length),ipos)
-                        end if
-                    end do
-                    subsystem_B_mask = not(subsystem_B_mask)
-                end if
-                if (subsystem_A_size <= int(nsites/2)) then
-                    ! In this case, for an ms = 0 subspace (as the ground state of the Heisenberg model
-                    ! will be) then any combination of spins can occur in the subsystem, from all spins
-                    ! down to all spins up. Hence the total size of the reduced density matrix will be
-                    ! 2**(number of spins in subsystem A).
-                    allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
-                    call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
-                    reduced_density_matrix = 0
-                end if
-                do i = 1, subsystem_A_size
-                    bit_position = bit_lookup(1,subsystem_A_list(i))
-                    bit_element = bit_lookup(2,subsystem_A_list(i))
-                    subsystem_A_bit_positions(i,1) = bit_position
-                    subsystem_A_bit_positions(i,2) = bit_element
-                end do
-            end if
-
+            call init_dmqmc()
         end if
 
         if (parent) then
