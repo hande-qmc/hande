@@ -45,14 +45,14 @@ contains
 
             ! First we need to decide how many bits will be set, total_bits_set, with
             ! probability equal to prob = fraction of configs with i bits set
-            choose_bits_set: do
+            do
                 rand_num = genrand_real2()
                 total_bits_set = int(rand_num*(nbasis+1))
                 subspace_size = binom_r(nbasis, total_bits_set)
                 prob_of_acceptance = subspace_size/total_hilbert_space
                 rand_num = genrand_real2()
-                if (prob_of_acceptance < rand_num) exit choose_bits_set
-            end do choose_bits_set
+                if (prob_of_acceptance < rand_num) exit
+            end do
 
             ! Now form the initial bitstring, f, which will be modified to create the
             ! final desired bitstring
@@ -76,10 +76,10 @@ contains
             end if               
 
             ! Now create the bitstring.
-            loop1: do
+            do
                 ! If the correct number of bits are set, we have the
                 ! bitstring that we want, so exit the loop.
-                if (bits_set==total_bits_set) exit loop1
+                if (bits_set==total_bits_set) exit
                 ! Choose a random spin to flip.
                 rand_num = genrand_real2()
                 rand_basis = ceiling(rand_num*nbasis)
@@ -95,7 +95,7 @@ contains
                     f(bit_element) = ibset(f(bit_element),bit_position)
                     bits_set = bits_set + 1
                 end if
-            end do loop1
+            end do
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
@@ -141,10 +141,10 @@ contains
             f = 0
             bits_set = 0
 
-            loop1: do
+            do
                 ! If half the spins are now flipped up, we have our basis
                 ! function fully created, so exit the loop. 
-                if (bits_set==up_spins) exit loop1
+                if (bits_set==up_spins) exit
                 ! Choose a random spin to flip.
                 rand_num = genrand_real2()
                 rand_basis = ceiling(rand_num*nbasis)
@@ -160,7 +160,7 @@ contains
                     f(bit_element) = ibset(f(bit_element),bit_position)
                     bits_set = bits_set + 1
                 end if
-            end do loop1
+            end do
 
         ! Now call a routine to add the corresponding diagonal element to
         ! the spawned walkers list.

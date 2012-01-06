@@ -889,7 +889,7 @@ contains
         ! not currently considered, as the density matrix formulation (hopefully!)
         ! won't require it.
 
-        use basis, only: basis_length
+        use basis, only: basis_length, total_basis_length
         use excitations, only: excit, create_excited_det
         use fciqmc_data, only: spawned_walkers, spawning_head
         use fciqmc_data, only: spawned_parent, spawned_pop
@@ -902,7 +902,7 @@ contains
         
         type(excit), intent(in) :: connection
         integer(i0) :: f_new(basis_length)
-        integer(i0) :: f_new_tot(2*basis_length)
+        integer(i0) :: f_new_tot(total_basis_length)
 
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
@@ -916,10 +916,10 @@ contains
         f_new_tot = 0
         if (spawning_end==1) then
             f_new_tot(:basis_length) = f_new
-            f_new_tot((basis_length+1):(2*basis_length)) = f2
+            f_new_tot((basis_length+1):(total_basis_length)) = f2
                 else
             f_new_tot(:basis_length) = f2
-            f_new_tot((basis_length+1):(2*basis_length)) = f_new
+            f_new_tot((basis_length+1):(total_basis_length)) = f_new
         end if
 
 #ifdef PARALLEL
@@ -927,7 +927,7 @@ contains
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (2*basis_length)), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (total_basis_length)), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
@@ -936,8 +936,8 @@ contains
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
         spawned_walkers(:,spawning_head(iproc_spawn)) = 0
-        spawned_walkers(:(2*basis_length),spawning_head(iproc_spawn)) = f_new_tot
-        spawned_walkers((2*basis_length)+1,spawning_head(iproc_spawn)) = nspawn
+        spawned_walkers(:(total_basis_length),spawning_head(iproc_spawn)) = f_new_tot
+        spawned_walkers((total_basis_length)+1,spawning_head(iproc_spawn)) = nspawn
 
     end subroutine create_spawned_particle_density_matrix
 

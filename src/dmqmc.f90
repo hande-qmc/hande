@@ -113,132 +113,133 @@ contains
         call cpu_time(t1)
  
         do beta_cycle = 1, beta_loops
-        ! Reset the current position in the spawning array to be the
-        ! slot preceding the first slot.
-        spawning_head = spawning_block_start
-        tot_walkers = 0
-        nparticles = 0
-        shift = 0
-        av_shift =0
-        start_vary_shift = 0
-        vary_shift = .false.
+            ! Reset the current position in the spawning array to be the
+            ! slot preceding the first slot.
+            spawning_head = spawning_block_start
+            tot_walkers = 0
+            nparticles = 0
+            shift = 0
+            av_shift =0
+            start_vary_shift = 0
+            vary_shift = .false.
  
-        ! Need to place psips randomly along the diagonal at the
-        ! start of every iteration. Pick orbitals randomly, each
-        ! with equal probability, so that when electrons are placed
-        ! on these orbitals they will have the correct spin and symmetry.
-        call dmqmc_initial_distribution_ptr()
+            ! Need to place psips randomly along the diagonal at the
+            ! start of every iteration. Pick orbitals randomly, each
+            ! with equal probability, so that when electrons are placed
+            ! on these orbitals they will have the correct spin and symmetry.
+            call dmqmc_initial_distribution_ptr()
 
-        call direct_annihilation()
+            call direct_annihilation()
 
-        if (beta_cycle .ne. 1 .and. parent) then
-           write (6,'(a32,i7)') &
-                   " # Resetting beta... Beta loop =", beta_cycle
-        ! Reset the random number generator with seed = seed + 1
-           seed = seed + 1
-           call dSFMT_init(seed + iproc)   
-           write (6,'(a52,'//int_fmt(seed,1)//',a1)') ' # Resetting random number generator with a seed of:', seed, '.'
-        end if
+            if (beta_cycle .ne. 1 .and. parent) then
+                write (6,'(a32,i7)') &
+                       " # Resetting beta... Beta loop =", beta_cycle
+                ! Reset the random number generator with seed = seed + 1
+                seed = seed + 1
+                call dSFMT_init(seed + iproc)   
+                write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
+                    " # Resetting random number generator with a seed of:", seed, "."
+            end if
 
-        nparticles_old = dmqmc_npsips
+            nparticles_old = dmqmc_npsips
 
-        do ireport = 1, nreport
+            do ireport = 1, nreport
 
-            ! Zero report cycle quantities.
-            rspawn = 0.0_p
-            beta_index = 0
-            trace = 0
-            total_trace = 0
-            ! Set the below estimators to 0, only if they are being used and hence are
-            ! allocated.
-            if (doing_dmqmc_calc(dmqmc_energy)) thermal_energy = 0
-            if (doing_dmqmc_calc(dmqmc_energy_squared)) thermal_energy_squared = 0
-            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) thermal_staggered_mag = 0 
-            total_estimator_numerators = 0
+                ! Zero report cycle quantities.
+                rspawn = 0.0_p
+                beta_index = 0
+                trace = 0
+                total_trace = 0
+                ! Set the below estimators to 0, only if they are being used and hence are
+                ! allocated.
+                if (doing_dmqmc_calc(dmqmc_energy)) thermal_energy = 0
+                if (doing_dmqmc_calc(dmqmc_energy_squared)) thermal_energy_squared = 0
+                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) thermal_staggered_mag = 0 
+                total_estimator_numerators = 0
 
-            do icycle = 1, ncycles
-                beta_index = beta_index + 1
-                spawning_head = spawning_block_start
+                do icycle = 1, ncycles
+                    beta_index = beta_index + 1
+                    spawning_head = spawning_block_start
+  
+                    ! Number of spawning attempts that will be made.
+                    ! Each particle and each end gets to attempt to 
+                    ! spawn onto a connected determinant and a chance 
+                    ! to die/clone.
+                    nattempts = 4*nparticles(1)
 
-                ! Number of spawning attempts that will be made.
-                ! Each particle and each end gets to attempt to 
-                ! spawn onto a connected determinant and a chance 
-                ! to die/clone.
-                nattempts = 4*nparticles(1)
+                    ! Reset death counter
+                    ndeath = 0
 
-                ! Reset death counter
-                ndeath = 0
+                    do idet = 1, tot_walkers ! loop over walkers/dets
+                        cdet1%f = walker_dets(:basis_length,idet)
+                        cdet2%f = walker_dets((basis_length+1):(2*basis_length),idet)
+                        cdet1%idet = idet
+                        cdet2%idet = idet
 
-                do idet = 1, tot_walkers ! loop over walkers/dets
-                    cdet1%f = walker_dets(:basis_length,idet)
-                    cdet2%f = walker_dets((basis_length+1):(2*basis_length),idet)
-                    cdet1%idet = idet
-                    cdet2%idet = idet
+                        ! Decode and store the the relevant information for
+                        ! both bitstrings. Both of these bitstrings are required
+                        ! to refer to the correct element in the density matrix.
+                        call decoder_ptr(cdet1%f, cdet1)
+                        call decoder_ptr(cdet2%f, cdet2)
 
-                    ! Decode and store the the relevant information for
-                    ! both bitstrings. Both of these bitstrings are required
-                    ! to refer to the correct element in the density matrix.
-                    call decoder_ptr(cdet1%f, cdet1)
-                    call decoder_ptr(cdet2%f, cdet2)
+                        ! Call wrapper function which calls all requested estimators
+                        ! to be updated, and also always updates the trace separately.
+                        call call_dmqmc_estimators(idet, beta_index)
 
-                    ! Call wrapper function which calls all requested estimators
-                    ! to be updated, and also always updates the trace separately.
-                    call call_dmqmc_estimators(idet, beta_index)
+                        do iparticle = 1, abs(walker_population(1,idet))
+                            ! Spawn from the first end.
+                            spawning_end = 1
+                            ! Attempt to spawn.
+                            call spawner_ptr(cdet1, walker_population(1,idet), nspawned, connection)
+                            ! Spawn if attempt was successful.
+                            if (nspawned /= 0) then
+                                call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
+                            end if
 
-                    do iparticle = 1, abs(walker_population(1,idet))
-                        ! Spawn from the first end.
-                        spawning_end = 1
-                        ! Attempt to spawn.
-                        call spawner_ptr(cdet1, walker_population(1,idet), nspawned, connection)
-                        ! Spawn if attempt was successful.
-                        if (nspawned /= 0) then
-                            call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
-                        end if
+                            ! Now attempt to spawn from the second end.
+                            spawning_end = 2
+                            call spawner_ptr(cdet2, walker_population(1,idet), nspawned, connection)
+                            if (nspawned /= 0) then
+                                call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
+                            end if
+                        end do
 
-                        ! Now attempt to spawn from the second end.
-                        spawning_end = 2
-                        call spawner_ptr(cdet2, walker_population(1,idet), nspawned, connection)
-                        if (nspawned /= 0) then
-                            call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
-                        end if
+                        ! Clone or die.
+                        ! We have contirbutions to the clone/death step from both ends of the
+                        ! current walker. We do both of these at once by using
+                        ! (walker_energies(1,idet)+walker_energies(2,idet))/2 as the correct
+                        ! energy. 
+                        call stochastic_death((walker_energies(1,idet)+walker_energies(2,idet))/2, &
+                             walker_population(1,idet), nparticles(1), ndeath)
                     end do
 
-                    ! Clone or die.
-                    ! We have contirbutions to the clone/death step from both ends of the
-                    ! current walker. We do both of these at once by using
-                    ! (walker_energies(1,idet)+walker_energies(2,idet))/2 as the correct
-                    ! energy. 
-                    call stochastic_death((walker_energies(1,idet)+walker_energies(2,idet))/2, &
-                             walker_population(1,idet), nparticles(1), ndeath)
+                    ! Add the spawning rate (for the processor) to the running
+                    ! total.
+                    rspawn = rspawn + spawning_rate(ndeath, nattempts)
+
+                    ! Perform the annihilation step where the spawned walker list is merged with
+                    ! the main walker list, and walkers of opposite sign on the same sites are
+                    ! annihilated.
+                    call direct_annihilation()
+
                 end do
+            
+                ! Update the shift and desired thermal quantites.
+                call update_dmqmc_estimators(ireport, nparticles_old)
 
-                ! Add the spawning rate (for the processor) to the running
-                ! total.
-                rspawn = rspawn + spawning_rate(ndeath, nattempts)
+                call cpu_time(t2)
 
-                ! Perform the annihilation step where the spawned walker list is merged with
-                ! the main walker list, and walkers of opposite sign on the same sites are
-                ! annihilated.
-                call direct_annihilation()
+                ! t1 was the time at the previous iteration, t2 the current time.
+                ! t2-t1 is thus the time taken by this report loop.
+                if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
+
+                ! cpu_time outputs an elapsed time, so update the reference timer.
+                t1 = t2
+
+                call fciqmc_interact(ireport, soft_exit)
+                if (soft_exit) exit
 
             end do
-            
-            ! Update the shift and desired thermal quantites.
-            call update_dmqmc_estimators(ireport, nparticles_old)
-
-            call cpu_time(t2)
-
-            ! t1 was the time at the previous iteration, t2 the current time.
-            ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-
-            ! cpu_time outputs an elapsed time, so update the reference timer.
-            t1 = t2
-
-            call fciqmc_interact(ireport, soft_exit)
-            if (soft_exit) exit
-
-        end do
 
         end do
 
