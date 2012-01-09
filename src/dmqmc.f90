@@ -147,10 +147,7 @@ contains
                 ! Zero report cycle quantities.
                 rspawn = 0.0_p
                 trace = 0
-                thermal_energy = 0
-                thermal_energy_squared = 0
-                thermal_staggered_mag = 0 
-                total_estimator_numerators = 0
+                estimator_numerators = 0
 
                 do icycle = 1, ncycles
                     spawning_head = spawning_block_start

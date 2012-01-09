@@ -216,21 +216,26 @@ integer :: number_dmqmc_estimators = 0
 ! the DMQMC algorithm calculates stochastically.
 integer(i0) :: trace
 
-! In DMQMC, as above, we will have to store other quantities at
-! each beta value. The below arrays store the numerators of the
-! estimators. For a general operator O, these will have the form
-! \sum_{i,j} \rho_{ij} * O_{ji}.
-real(p) :: thermal_energy
-real(p) :: thermal_staggered_mag
-real(p) :: thermal_energy_squared
-! total_estimator_numerators stores all the values of all the
-! above numerators for the thermal estimators, combined to include
-! the values from all processor cores, at the end of the each
-! report loop. So, total_estimator_numerators(:,1) will store the
-! values of the first estimator at each iteration in the report
-! loop. total_estimator_numerators(:,2) will store the values
-! corresponding to the seoncd estimator, etc...
-real(p), allocatable :: total_estimator_numerators(:) !(number_dmqmc_estimators)
+! estimator_numerators stores all the numerators for the estimators in DMQMC
+! which the user has asked to be calculated. These are, for a general
+! operator O which we wish to find the thermal average of:
+! \sum_{i,j} \rho_{ij} * O_{ji}
+! This variabe will store this value from the first iteration of each
+! report loop. At the end of a report loop, the values from each
+! processor are combined and stored in estimator_numerators on the parent
+! processor. This is then output, and the values of estimator_numerators
+! are reset on each processor to start the next report loop.
+real(p), allocatable :: estimator_numerators(:) !(number_dmqmc_estimators)
+! The integers below store the index of the element in the array
+! estimator_numerators, in which the corresponding thermal quantity is
+! stored. In general, a different number and combination of estimators
+! may be calculated, and hence we need a way of knowing which element
+! refers to which operator. These indices give labels to operators.
+! They will be set to 0 if no used, or else their positions in the array,
+! from 1-number_dmqmc_estimators.
+integer :: energy_index = 0
+integer :: energy_squared_index = 0
+integer :: staggered_mag_index = 0
 
 ! If true, then the reduced density matrix will be calulated
 ! for the subsystem A specified by the user.
@@ -745,7 +750,7 @@ contains
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             do i = 1, number_dmqmc_estimators
-                write (6, '(4X,es17.10)', advance = 'no') total_estimator_numerators(i)
+                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
             end do
             write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
 
@@ -856,9 +861,9 @@ contains
             deallocate(neel_singlet_amp, stat=ierr)
             call check_deallocate('neel_singlet_amp',ierr)
         end if
-        if (allocated(total_estimator_numerators)) then
-            deallocate(total_estimator_numerators, stat=ierr)
-            call check_deallocate('total_estimator_numerators', ierr)
+        if (allocated(estimator_numerators)) then
+            deallocate(estimator_numerators, stat=ierr)
+            call check_deallocate('estimator_numerators', ierr)
         end if
 
     end subroutine end_fciqmc

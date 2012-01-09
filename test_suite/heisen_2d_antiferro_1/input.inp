@@ -9,7 +9,7 @@ ms 0
 
 J -0.015625
 
-dmqmc_init_pop 1000
+init_pop 1000
 beta_loops 100
 dmqmc_energy
 

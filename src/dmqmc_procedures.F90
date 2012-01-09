@@ -8,12 +8,11 @@ contains
     subroutine init_dmqmc()
 
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
-         use bit_utils, only: count_set_bits
-         use calc, only: dmqmc_calc_type
+         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
          use calc, only: dmqmc_staggered_magnetisation
          use checking, only: check_allocate
-         use fciqmc_data, only: trace, thermal_energy, thermal_energy_squared
-         use fciqmc_data, only: thermal_staggered_mag, total_estimator_numerators, subsystem_A_size
+         use fciqmc_data, only: trace, energy_index, energy_squared_index
+         use fciqmc_data, only: staggered_mag_index, estimator_numerators, subsystem_A_size
          use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
          use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
          use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
@@ -23,19 +22,26 @@ contains
          integer :: ierr
          integer :: i, ipos, basis_find, bit_position, bit_element
 
-         number_dmqmc_estimators = count_set_bits(dmqmc_calc_type)
+         number_dmqmc_estimators = 0
          trace = 0
-         thermal_energy = 0
-         thermal_energy_squared = 0
-         thermal_staggered_mag = 0
-         if (parent) then
-             ! These quantities store the combined values from all processors,
-             ! which are output. Only the parent needs to output this data, so
-             ! only the parent stores them, for efficiency.
-             allocate(total_estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
-             call check_allocate('total_estimator_numerators',number_dmqmc_estimators,ierr)
-             total_estimator_numerators = 0
+
+         if (doing_dmqmc_calc(dmqmc_energy)) then
+             number_dmqmc_estimators = number_dmqmc_estimators + 1
+             energy_index = number_dmqmc_estimators
          end if
+         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+             number_dmqmc_estimators = number_dmqmc_estimators + 1
+             energy_squared_index = number_dmqmc_estimators
+         end if
+         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+             number_dmqmc_estimators = number_dmqmc_estimators + 1
+             staggered_mag_index = number_dmqmc_estimators
+         end if
+
+         allocate(estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
+         call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
+         estimator_numerators = 0
+
          ! In DMQMC we want the spawning probabilities to have an extra factor of a half,
          ! because we spawn from two different ends with half probability. To avoid having
          ! to multiply by an extra variable in every spawning routine to account for this, we
