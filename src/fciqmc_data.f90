@@ -190,12 +190,16 @@ real(p) :: D0_population = 10.0_p
 ! reference state flipped.
 real(p) :: D0_not_population = 0.0_p
 
-! In DMQMC, because we spawn from both ends with half probability
-! instead of just one end with the full probability, we have to
-! introduce a factor of 0.5 into the probabilities when using
-! DMQMC. Hence, dmqmc_factor = 0.5 when using DMQMC or equals
-! 1.0 when using standard FCIQMC.
-real :: dmqmc_factor = 1.0_p
+! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
+! required because in DMQMC calculations, instead of spawning from one end with
+! the full probability, we spawn from two different ends with half probability each.
+! Hence, tau is set to tau/2 in DMQMC calculations, so that an extra factor is not
+! required in every spawning routine. In the death step however, we use
+! walker_energies(1,idet), which has a factor of 1/2 included for convenience
+! already, for conveniece elsewhere. Hence we have to multiply by an extra factor
+! of 2 to account for the extra 1/2 in tau. dmqmc_factor is set to 1.0 when not
+! performing a DMQMC calculation, and so can be ignored in these cases.
+real(p) :: dmqmc_factor = 1.0_p
 
 ! The modulus squared of the wavefunction which the psips represent
 ! This is used in calculating the expectation value of the

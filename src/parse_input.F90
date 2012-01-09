@@ -215,7 +215,7 @@ contains
                 call readf(shift)
             case('VARYSHIFT_TARGET')
                 call readi(target_particles)
-            case('DMQMC_INIT_POP')
+            case('INIT_POP')
                 call readf(D0_population)
             case('REFERENCE_DET')
                 allocate(occ_list0(nitems-1), stat=ierr)
@@ -250,8 +250,6 @@ contains
                 call readi(seed)
             case('SHIFT_DAMPING')
                 call readf(shift_damping)
-            case('REFERENCE_DET_POPULATION')
-                call readf(D0_population)
 
             ! Calculation options: initiator-fciqmc.
             case('CAS')

@@ -642,13 +642,16 @@ The following options are valid for FCIQMC calculations.
     positions on the lattice of the up spins in the reference basis vector.
     (Note that the number of up spins is deduced from the ms value specified and the
     total number of sites).
-**reference_det_population** *pop*
+**init_pop** *pop*
     Integer.
 
     Default: 10.
 
     Set the initial walker population on the reference determinant.  This will
     be overridden by a restart file.
+
+    For DMQMC calculations this option sets the number of psips which will
+    be randomly distributed along the diagonal at the start of each beta loop.
 **flipped_reference_population** *pop*
     Integer
     
@@ -843,13 +846,13 @@ Calculation options: DMQMC options
 In addition to the options for FCIQMC calculations, the following options are additional to the 
 configuration of a Density Matrix Quantum Monte Carlo (DMQMC) calculation
 
-**dmqmc_init_pop**
+**init_pop**
    Integer.
-   
-   Default: 1000.
 
-   Set the initial (unsigned) walker population to be placed (at random)  on the diagonal of the 
-   density matrix.
+   Default: 10
+
+   Set the number of psips which will be randomly distributed along the diagonal of the
+   density matrix, at the start of each beta loop.
 
 **beta_loops**
    Integer.
@@ -861,6 +864,14 @@ configuration of a Density Matrix Quantum Monte Carlo (DMQMC) calculation
 **dmqmc_energy**
    
    Perform DMQMC calculation on the expectation value of the Hamiltonian.
+
+**dmqmc_energy_squared**
+
+   Perform DMQMC calculation on the expectation value of the Hamiltonian squared.
+
+   Note, the heat capacity can be calculated after a calculation by running average_beta.py
+   in the tools folder, with the option --with-heat_capacity. This requires that both
+   the energy and the energy squared were calculated in the DMQMC run.
 
 **dmqmc_staggered_magnetisation**
 

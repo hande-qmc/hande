@@ -129,6 +129,9 @@ contains
 
         integer, intent(in) :: nparticles_old, nparticles, nupdate_steps
 
+        ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
+        ! DMQMC calculations. In all other calculatio types, it is set to 1, and so can be ignored.
+
         shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
         av_shift = av_shift + shift
 
