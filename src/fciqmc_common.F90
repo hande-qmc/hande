@@ -77,9 +77,6 @@ contains
         nwalker_int = sampling_size
         nwalker_real = sampling_size
         if (trial_function == neel_singlet) nwalker_int = nwalker_int + 2
-        ! For DMQMC store an extra energy due to extra index.
-        ! Length of bitstring is also doubled, see below!
-        if (doing_calc(dmqmc_calc)) nwalker_real = nwalker_real + 1
 
         ! Thus the number of bits occupied by each determinant in the main
         ! walker list is given by basis_length*i0_length+nwalker_int*32+nwalker_real*32
@@ -119,13 +116,8 @@ contains
         ! Allocate main walker lists.
         allocate(nparticles(sampling_size), stat=ierr)
         call check_allocate('nparticles', sampling_size, ierr)
-        if (doing_calc(dmqmc_calc)) then
-            allocate(walker_energies(sampling_size*2,walker_length), stat=ierr)
-            call check_allocate('walker_energies', 2*sampling_size*walker_length, ierr)
-        else
-            allocate(walker_energies(sampling_size,walker_length), stat=ierr)
-            call check_allocate('walker_energies', sampling_size*walker_length, ierr)
-        end if
+        allocate(walker_energies(sampling_size,walker_length), stat=ierr)
+        call check_allocate('walker_energies', sampling_size*walker_length, ierr)
         allocate(walker_dets(total_basis_length,walker_length), stat=ierr)
         call check_allocate('walker_dets', total_basis_length*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)

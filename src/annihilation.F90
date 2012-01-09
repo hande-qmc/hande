@@ -449,8 +449,8 @@ contains
                 ! Set walker_energies(2:,k) = <D_i|O|D_i>.
                 walker_energies(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00
             else if (doing_calc(dmqmc_calc)) then
-                ! Set second bitstring to have its own correct energy.
-                walker_energies(2,k) = sc0_ptr(walker_dets((basis_length+1):(2*basis_length),k)) - H00
+                ! Set the energy to be the average of the two induvidual energies.
+                walker_energies(1,k) = (walker_energies(1,k) + sc0_ptr(walker_dets((basis_length+1):(2*basis_length),k)) - H00)/2
             end if
             ! Next walker will be inserted below this one.
             iend = pos - 1

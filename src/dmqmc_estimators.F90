@@ -260,7 +260,7 @@ contains
                bit_position1 = bit_lookup(1,excitation%from_orb(1))
                bit_element1 = bit_lookup(2,excitation%from_orb(1))
                if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
-                   sum_H1_H2 = -2.0*J_coupling*(walker_energies(1,idet)+walker_energies(2,idet)+(2*H00))
+                   sum_H1_H2 = -4.0*J_coupling*(walker_energies(1,idet)+H00)
            end if
 
        else if (excitation%nexcit == 2) then

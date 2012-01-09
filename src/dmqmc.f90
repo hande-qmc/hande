@@ -206,11 +206,10 @@ contains
 
                         ! Clone or die.
                         ! We have contirbutions to the clone/death step from both ends of the
-                        ! current walker. We do both of these at once by using
-                        ! (walker_energies(1,idet)+walker_energies(2,idet))/2 as the correct
-                        ! energy. 
-                        call stochastic_death((walker_energies(1,idet)+walker_energies(2,idet))/2, &
-                             walker_population(1,idet), nparticles(1), ndeath)
+                        ! current walker. We do both of these at once by using walker_energies(1,idet)
+                        ! which, when running a DMQMC algorithm, stores the average of the two diagonal
+                        ! elements corresponding to the two indicies of the density matrix (the two ends).
+                        call stochastic_death(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
                     end do
 
                     ! Add the spawning rate (for the processor) to the running
