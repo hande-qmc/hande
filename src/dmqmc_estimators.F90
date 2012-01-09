@@ -223,9 +223,10 @@ contains
        integer, intent(in) :: idet, beta_index
        type(excit), intent(in) :: excitation
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
-       real(p) :: sum_H1_H2
+       real(p) :: sum_H1_H2, J_coupling_squared
 
        sum_H1_H2 = 0
+       J_coupling_squared = J_coupling**2
 
        if (excitation%nexcit == 0) then
            ! If there are 0 excitations then either nothing happens twice, or we
@@ -235,7 +236,7 @@ contains
            ! the number of such pairs, which can be found simply from the diagonal element.
 
            sum_H1_H2 = (walker_energies(1,idet)+H00)**2
-           sum_H1_H2 = sum_H1_H2 - J_coupling*nbonds - (walker_energies(1,idet)+H00)
+           sum_H1_H2 = sum_H1_H2 + 2.0*J_coupling_squared*nbonds + 2.0*J_coupling*(walker_energies(1,idet)+H00)
 
        else if (excitation%nexcit == 1) then
            ! If there is only one excitation (2 spins flipped) then the contribution to H^2
@@ -254,7 +255,7 @@ contains
 
            if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0) then
                ! Contribution for next nearest neighbors
-               sum_H1_H2 = -2.0*J_coupling*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
+               sum_H1_H2 = 4.0*J_coupling_squared*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
            else
                ! Contributions for nearest neighbors
                bit_position1 = bit_lookup(1,excitation%from_orb(1))
@@ -284,10 +285,10 @@ contains
            bit_element2 = bit_lookup(2,excitation%from_orb(2))
            if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1) .and. &
            btest(connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2)) then
-               sum_H1_H2 = -4.0*J_coupling
+               sum_H1_H2 = 8.0*J_coupling_squared
            else if (btest(connected_orbs(bit_element1, excitation%to_orb(2)), bit_position1) .and. &
            btest(connected_orbs(bit_element2, excitation%to_orb(1)), bit_position2)) then
-               sum_H1_H2 = -4.0*J_coupling
+               sum_H1_H2 = 8.0*J_coupling_squared
            end if
 
        end if
