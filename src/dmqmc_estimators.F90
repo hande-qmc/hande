@@ -25,7 +25,7 @@ contains
         use energy_evaluation, only: update_shift
         use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn
         use fciqmc_data, only: shift, av_shift, vary_shift, start_vary_shift
-        use fciqmc_data, only: total_trace, total_estimator_numerators, number_dmqmc_estimators
+        use fciqmc_data, only: total_estimator_numerators, number_dmqmc_estimators
         use fciqmc_data, only: nreport, ncycles, trace, thermal_energy, thermal_staggered_mag
         use fciqmc_data, only: thermal_energy_squared
         use parallel
@@ -42,25 +42,19 @@ contains
         ! Need to sum the number of particles and other quantites over all processors.
         ir(1:sampling_size) = nparticles
         ir(sampling_size+1) = rspawn
-        ! The trace is stored for each iteration within the report loop, so will occupy
-        ! components from sampling_size+2 to sampling_size+1+ncycles, since it will
-        ! have a total of ncycle components.
-        ir(sampling_size+2:sampling_size+1+ncycles) = trace
+        ir(sampling_size+2) = trace
         counter = 0
         if (doing_dmqmc_calc(dmqmc_energy)) then
             counter = counter + 1
-            ! Similarly for all the other estimators, as with trace, they will occupy
-            ! a total of ncycle components, one for each iteration, so the components
-            ! which need to be filled for each estimator, is as below.
-            ir( sampling_size+2+(counter*ncycles):sampling_size+1+((counter+1)*ncycles) )=thermal_energy
+            ir(sampling_size + 2 + counter) = thermal_energy
         end if
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             counter = counter + 1
-            ir( sampling_size+2+(counter*ncycles):sampling_size+1+((counter+1)*ncycles) )=thermal_energy_squared
+            ir(sampling_size + 2 + counter) = thermal_energy_squared
         end if
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
             counter = counter + 1
-            ir( sampling_size+2+(counter*ncycles):sampling_size+1+((counter+1)*ncycles) )=thermal_staggered_mag
+            ir(sampling_size + 2 + counter) = thermal_staggered_mag
         end if
         ! Merge the lists from each processor together.
         call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -69,10 +63,9 @@ contains
         if (parent) then
             ! Let the parent processor store the merged data lists, so that these
             ! can be output afterwards by the parent.
-            total_trace = ir_sum(sampling_size+2:sampling_size+1+ncycles)
+            trace = ir_sum(sampling_size+2)
             do counter = 1, number_dmqmc_estimators
-               total_estimator_numerators(:,counter) = &
-                  + ir_sum( sampling_size+2+(counter*ncycles):sampling_size+1+((counter+1)*ncycles) )
+               total_estimator_numerators(counter) = ir_sum(sampling_size + 2 + counter)
             end do
         end if
 
@@ -90,19 +83,18 @@ contains
         ! from several processors, simply let the total values be equal
         ! to the standard values, ready to be output.
 
-        total_trace = trace
         counter = 0
         if (doing_dmqmc_calc(dmqmc_energy)) then
             counter = counter+1
-            total_estimator_numerators(:,counter) = thermal_energy
+            total_estimator_numerators(counter) = thermal_energy
         end if
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             counter = counter+1
-            total_estimator_numerators(:,counter) = thermal_energy_squared
+            total_estimator_numerators(counter) = thermal_energy_squared
         end if
         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
             counter = counter+1
-            total_estimator_numerators(:,counter) = thermal_staggered_mag
+            total_estimator_numerators(counter) = thermal_staggered_mag
         end if
 
         if (vary_shift) call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
@@ -110,14 +102,14 @@ contains
         if (nparticles(1) > target_particles .and. .not.vary_shift) then
             vary_shift = .true.
             start_vary_shift = ireport
-        end if        
+        end if
 #endif
 
             rspawn = rspawn/(ncycles*nprocs)
 
    end subroutine update_dmqmc_estimators
 
-   subroutine call_dmqmc_estimators(idet, beta_index)
+   subroutine call_dmqmc_estimators(idet)
        
        ! This function calls the processes to update the estimators which
        ! have been requested by the user to be calculated.
@@ -128,7 +120,6 @@ contains
 
        ! In:
        !    idet: Current position in the main bitsrting list.
-       !    beta_index: Current iteration within the report loop.
 
        use basis, only: basis_length, total_basis_length
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
@@ -138,7 +129,7 @@ contains
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr
 
-       integer, intent(in) :: idet, beta_index
+       integer, intent(in) :: idet
        type(excit) :: excitation     
    
        ! Get excitation.
@@ -146,17 +137,16 @@ contains
                         walker_dets((1+basis_length):total_basis_length,idet))
 
        ! If diagonal element, add to the trace.
-       if (excitation%nexcit == 0) trace(beta_index)=trace(beta_index) + walker_population(1,idet)
+       if (excitation%nexcit == 0) trace = trace + walker_population(1,idet)
        ! See which estimators are to be calculated, and call the corresponding procedures.
-       if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr(idet, beta_index, excitation)
-       if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr(idet, beta_index, excitation)
-       if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
-                                     call update_dmqmc_stag_mag_ptr(idet, beta_index, excitation)
+       if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr(idet, excitation)
+       if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr(idet, excitation)
+       if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr(idet, excitation)
        if (doing_reduced_dm) call update_reduced_density_matrix(idet)
 
    end subroutine call_dmqmc_estimators
 
-   subroutine dmqmc_energy_heisenberg(idet, beta_index, excitation)
+   subroutine dmqmc_energy_heisenberg(idet, excitation)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -164,7 +154,6 @@ contains
 
        ! In:
        !    idet: Current position in the main bitsrting list.
-       !    beta_index: Current iteration within the report loop.
        !    excitation: excit type variable which stores information on
        !    the excitation between the two bitstring ends, corresponding
        !    to the two labels for the density matrix element.
@@ -177,15 +166,14 @@ contains
        use hubbard_real, only: connected_orbs
        use system, only: J_coupling
 
-       integer, intent(in) :: idet, beta_index
+       integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
        integer :: bit_element, bit_position
 
        ! If no excitation, we have a diagonal element, so add elements
        ! which involve the diagonal element of the Hamiltonian.
        if (excitation%nexcit == 0) then
-           thermal_energy(beta_index)=thermal_energy(beta_index) + &
-                             (walker_energies(1,idet)+H00)*walker_population(1,idet)
+           thermal_energy = thermal_energy + (walker_energies(1,idet)+H00)*walker_population(1,idet)
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! Hamiltonian element may be non-zero. Calculate if the flipped spins are 
@@ -193,13 +181,12 @@ contains
            bit_position = bit_lookup(1,excitation%from_orb(1))
            bit_element = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
-                 thermal_energy(beta_index)=thermal_energy(beta_index) - &
-                             (2.0*J_coupling*walker_population(1,idet))
+                 thermal_energy = thermal_energy - (2.0*J_coupling*walker_population(1,idet))
        end if
 
    end subroutine dmqmc_energy_heisenberg
 
-   subroutine dmqmc_energy_squared_heisenberg(idet, beta_index, excitation)
+   subroutine dmqmc_energy_squared_heisenberg(idet, excitation)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -207,7 +194,6 @@ contains
 
        ! In:
        !    idet: Current position in the main bitsrting list.
-       !    beta_index: Current iteration within the report loop.
        !    excitation: excit type variable which stores information on
        !    the excitation between the two bitstring ends, corresponding
        !    to the two labels for the density matrix element.
@@ -220,7 +206,7 @@ contains
        use hubbard_real, only: connected_orbs, next_nearest_orbs
        use system, only: J_coupling, nbonds
 
-       integer, intent(in) :: idet, beta_index
+       integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        real(p) :: sum_H1_H2, J_coupling_squared
@@ -293,12 +279,12 @@ contains
 
        end if
 
-       thermal_energy_squared(beta_index) = thermal_energy_squared(beta_index) + &
+       thermal_energy_squared = thermal_energy_squared + &
                sum_H1_H2*walker_population(1,idet)
 
    end subroutine dmqmc_energy_squared_heisenberg
 
-   subroutine dmqmc_energy_hub_real(idet, beta_index, excitation)
+   subroutine dmqmc_energy_hub_real(idet, excitation)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -306,7 +292,6 @@ contains
 
        ! In:
        !    idet: Current position in the main bitsrting list.
-       !    beta_index: Current iteration within the report loop.
        !    excitation: excit type variable which stores information on
        !    the excitation between the two bitstring ends, corresponding
        !    to the two labels for the density matrix element.
@@ -317,7 +302,7 @@ contains
        use fciqmc_data, only: walker_energies, thermal_energy, H00
        use hamiltonian, only: slater_condon1_hub_real        
 
-       integer, intent(in) :: idet, beta_index
+       integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
        integer :: bit_element, bit_position
        real(p) :: hmatel
@@ -325,19 +310,18 @@ contains
        ! If no excitation, we have a diagonal element, so add elements
        ! which involve the diagonal element of the Hamiltonian.
        if (excitation%nexcit == 0) then
-           thermal_energy(beta_index)=thermal_energy(beta_index) + &
-                             (walker_energies(1,idet)+H00)*walker_population(1,idet)
+           thermal_energy = thermal_energy + (walker_energies(1,idet)+H00)*walker_population(1,idet)
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
        ! neighbours on the lattice, and if so, add the contirbution from this site.
            hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-           thermal_energy(beta_index)=thermal_energy(beta_index) + (hmatel*walker_population(1,idet))
+           thermal_energy = thermal_energy + (hmatel*walker_population(1,idet))
        end if
 
    end subroutine dmqmc_energy_hub_real
 
-   subroutine dmqmc_stag_mag_heisenberg(idet, beta_index, excitation)
+   subroutine dmqmc_stag_mag_heisenberg(idet, excitation)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -345,7 +329,6 @@ contains
 
        ! In:
        !    idet: Current position in the main bitsrting list.
-       !    beta_index: Current iteration within the report loop.
        !    excitation: excit type variable which stores information on
        !    the excitation between the two bitstring ends, corresponding
        !    to the two labels for the density matrix element.
@@ -357,7 +340,7 @@ contains
        use fciqmc_data, only: walker_dets, walker_population, thermal_staggered_mag
        use system, only: nel
 
-       integer, intent(in) :: idet, beta_index
+       integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
        integer :: bit_element, bit_position, stag_mag_el, sublattice1_up_spins
        integer(i0) :: f_mask(basis_length)
@@ -378,9 +361,7 @@ contains
            sublattice1_up_spins = sum(count_set_bits(f_mask))
            ! Matrix element of staggered magnetisation.
            stag_mag_el = (4*sublattice1_up_spins - 2*nel)
-           thermal_staggered_mag(beta_index)=thermal_staggered_mag(beta_index) + &
-                             stag_mag_el*walker_population(1,idet)
-
+           thermal_staggered_mag = thermal_staggered_mag + stag_mag_el*walker_population(1,idet)
        end if
 
    end subroutine dmqmc_stag_mag_heisenberg

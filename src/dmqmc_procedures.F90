@@ -8,10 +8,11 @@ contains
     subroutine init_dmqmc()
 
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
-         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared
+         use bit_utils, only: count_set_bits
+         use calc, only: dmqmc_calc_type
          use calc, only: dmqmc_staggered_magnetisation
          use checking, only: check_allocate
-         use fciqmc_data, only: trace, thermal_energy, thermal_energy_squared, total_trace
+         use fciqmc_data, only: trace, thermal_energy, thermal_energy_squared
          use fciqmc_data, only: thermal_staggered_mag, total_estimator_numerators, subsystem_A_size
          use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
          use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
@@ -22,40 +23,17 @@ contains
          integer :: ierr
          integer :: i, ipos, basis_find, bit_position, bit_element
 
-         ! Always allocate the trace, since this will always be calculated.
-         allocate(trace(1:ncycles), stat=ierr)
-         call check_allocate('trace',ncycles,ierr)
+         number_dmqmc_estimators = count_set_bits(dmqmc_calc_type)
          trace = 0
-         if (doing_dmqmc_calc(dmqmc_energy)) then
-             ! Calculate the total number of different quantities
-             ! to be calculated, so that this can be stored as
-             ! number_dmqmc_estimators and used elsewhere.
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             allocate(thermal_energy(1:ncycles), stat=ierr)
-             call check_allocate('thermal_energy',ncycles,ierr)
-             thermal_energy = 0
-         end if
-         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             allocate(thermal_energy_squared(1:ncycles), stat=ierr)
-             call check_allocate('thermal_energy_squared',ncycles,ierr)
-             thermal_energy_squared = 0
-         end if
-         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             allocate(thermal_staggered_mag(1:ncycles), stat=ierr)
-             call check_allocate('thermal_staggered_mag',ncycles,ierr)
-             thermal_staggered_mag = 0
-         end if
+         thermal_energy = 0
+         thermal_energy_squared = 0
+         thermal_staggered_mag = 0
          if (parent) then
              ! These quantities store the combined values from all processors,
              ! which are output. Only the parent needs to output this data, so
              ! only the parent stores them, for efficiency.
-             allocate(total_trace(1:ncycles), stat=ierr)
-             call check_allocate('total_trace',ncycles,ierr)
-             total_trace = 0
-             allocate(total_estimator_numerators(1:ncycles,1:number_dmqmc_estimators), stat=ierr)
-             call check_allocate('total_estimator_numerators',ncycles*number_dmqmc_estimators,ierr)
+             allocate(total_estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
+             call check_allocate('total_estimator_numerators',number_dmqmc_estimators,ierr)
              total_estimator_numerators = 0
          end if
          ! In DMQMC we want the spawning probabilities to have an extra factor of a half,

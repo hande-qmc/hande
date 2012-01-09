@@ -98,7 +98,6 @@ contains
         type(excit) :: connection
         integer :: bit_pos, bit_element
         integer :: walker_pop_1, walker_pop_2, spawning_end
-        integer :: beta_index
         logical :: soft_exit
         real :: t1, t2
 
@@ -147,18 +146,13 @@ contains
 
                 ! Zero report cycle quantities.
                 rspawn = 0.0_p
-                beta_index = 0
                 trace = 0
-                total_trace = 0
-                ! Set the below estimators to 0, only if they are being used and hence are
-                ! allocated.
-                if (doing_dmqmc_calc(dmqmc_energy)) thermal_energy = 0
-                if (doing_dmqmc_calc(dmqmc_energy_squared)) thermal_energy_squared = 0
-                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) thermal_staggered_mag = 0 
+                thermal_energy = 0
+                thermal_energy_squared = 0
+                thermal_staggered_mag = 0 
                 total_estimator_numerators = 0
 
                 do icycle = 1, ncycles
-                    beta_index = beta_index + 1
                     spawning_head = spawning_block_start
   
                     ! Number of spawning attempts that will be made.
@@ -184,7 +178,7 @@ contains
 
                         ! Call wrapper function which calls all requested estimators
                         ! to be updated, and also always updates the trace separately.
-                        call call_dmqmc_estimators(idet, beta_index)
+                        if (icycle == 1) call call_dmqmc_estimators(idet)
 
                         do iparticle = 1, abs(walker_population(1,idet))
                             ! Spawn from the first end.

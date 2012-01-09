@@ -206,23 +206,19 @@ real(p) :: population_squared = 0.0_p
 ! calculated and printed out in a DMQMC calculation.
 integer :: number_dmqmc_estimators = 0
 
-! In DMQMC, we need to accumulate the trace at each temperature (beta)
-! over several runs so that we can average it later. This array
-! stores this data (only allocated if doing DMQMC), Tr(\rho), where
-! rho is the density matrix which we calculate.
-integer(i0), allocatable :: trace(:) !ncycles
-! total_trace will store the combined values of the traces from
-! each of the processors when these are merged together, and can be
-! output to the screen.
-integer(i0), allocatable :: total_trace(:) !ncycles
+! In DMQMC the trace of the density matrix is an important quantity
+! used in calculating all thermal estimators. This quantity stores
+! the this value, Tr(\rho), where rho is the density matrix which
+! the DMQMC algorithm calculates stochastically.
+integer(i0) :: trace
 
 ! In DMQMC, as above, we will have to store other quantities at
 ! each beta value. The below arrays store the numerators of the
 ! estimators. For a general operator O, these will have the form
 ! \sum_{i,j} \rho_{ij} * O_{ji}.
-real(p), allocatable :: thermal_energy(:) !ncycles
-real(p), allocatable :: thermal_staggered_mag(:) !ncycles
-real(p), allocatable :: thermal_energy_squared(:) !ncycles
+real(p) :: thermal_energy
+real(p) :: thermal_staggered_mag
+real(p) :: thermal_energy_squared
 ! total_estimator_numerators stores all the values of all the
 ! above numerators for the thermal estimators, combined to include
 ! the values from all processor cores, at the end of the each
@@ -230,7 +226,7 @@ real(p), allocatable :: thermal_energy_squared(:) !ncycles
 ! values of the first estimator at each iteration in the report
 ! loop. total_estimator_numerators(:,2) will store the values
 ! corresponding to the seoncd estimator, etc...
-real(p), allocatable :: total_estimator_numerators(:,:) ! (ncycles, number_dmqmc_estimators)
+real(p), allocatable :: total_estimator_numerators(:) !(number_dmqmc_estimators)
 
 ! If true, then the reduced density matrix will be calulated
 ! for the subsystem A specified by the user.
@@ -741,11 +737,11 @@ contains
         if (doing_calc(dmqmc_calc)) then
             write (6,'(5X,i8,2(2X,es17.10),i10)',advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift,   &
-                                             av_shift/vary_shift_reports, total_trace(1)
+                                             av_shift/vary_shift_reports, trace
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             do i = 1, number_dmqmc_estimators
-                write (6, '(4X,es17.10)', advance = 'no') total_estimator_numerators(1,i)
+                write (6, '(4X,es17.10)', advance = 'no') total_estimator_numerators(i)
             end do
             write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
 
@@ -855,26 +851,6 @@ contains
         if (allocated(neel_singlet_amp)) then
             deallocate(neel_singlet_amp, stat=ierr)
             call check_deallocate('neel_singlet_amp',ierr)
-        end if
-        if (allocated(trace)) then
-            deallocate(trace, stat=ierr)
-            call check_deallocate('trace', ierr)
-        end if
-        if (allocated(total_trace)) then
-            deallocate(total_trace, stat=ierr)
-            call check_deallocate('total_trace', ierr)
-        end if
-        if (allocated(thermal_energy)) then
-            deallocate(thermal_energy, stat=ierr)
-            call check_deallocate('thermal_energy', ierr)
-        end if
-        if (allocated(thermal_energy_squared)) then
-            deallocate(thermal_energy_squared, stat=ierr)
-            call check_deallocate('thermal_energy_squared', ierr)
-        end if
-        if (allocated(thermal_staggered_mag)) then
-            deallocate(thermal_staggered_mag, stat=ierr)
-            call check_deallocate('thermal_staggered_mag', ierr)
         end if
         if (allocated(total_estimator_numerators)) then
             deallocate(total_estimator_numerators, stat=ierr)
