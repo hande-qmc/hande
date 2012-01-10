@@ -106,7 +106,7 @@ integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
 !   gives the total number of spins up on the first sublattice. The second
 !   component gives the number of 0-1 bonds where the 1 is on the first
 !   sublattice.
-real(p), allocatable :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
+real(p), allocatable, target :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
 
 ! Walker information: spawned list.
 ! By combining the info in with the determinant, we can reduce the number of MPI
