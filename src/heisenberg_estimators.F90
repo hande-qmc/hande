@@ -95,15 +95,15 @@ contains
         !    idet: index of current determinant in the main walker list.
 
         use fciqmc_data, only: walker_dets, walker_population, walker_data, &
-                               walker_reference_data, proj_energy, neel_singlet_amp, D0_population
+                               sampling_size, proj_energy, neel_singlet_amp, D0_population
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
         integer, intent(in) :: idet
         integer :: i, n, ipos, lattice_1_up, lattice_2_up
         real(dp) :: importance_sampling_factor = 1.0
         
-        n = walker_reference_data(1,idet)
-        lattice_1_up = walker_reference_data(2,idet)
+        n = nint(walker_data(sampling_size+1,idet))
+        lattice_1_up = nint(walker_data(sampling_size+2,idet))
         
         ! If importance sampling is applied then the psip amplitudes, n_i,
         ! will represent the quantities

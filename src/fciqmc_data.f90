@@ -86,20 +86,27 @@ integer, allocatable :: nparticles(:) ! (sampling_size)
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
 ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
 integer :: sampling_size
+! number of additional elements stored for each determinant in walker_data for
+! (e.g.) importance sampling.
+integer :: info_size
 ! a) determinants
 integer(i0), allocatable :: walker_dets(:,:) ! (basis_length, walker_length)
 ! b) walker population
 integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
-! c) Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
-! K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
-! reference determinant.
-real(p), allocatable :: walker_data(:,:) ! (sampling_size,walker_length)
-! When calculating the projected energy with various trial wavefunctions, it
-! is useful to store quantites which are expensive to calculate and which are
-! instead of recalculating them. For the Neel singlet state, the first component
-! gives stores the total number of spins up on the first sublattice. The second
-! component gives the number of 0-1 bonds where the 1 is on the first sublattice.
-integer, allocatable :: walker_reference_data(:,:) ! (2,walker_length)
+! c) Walker information.  This contains:
+! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
+!   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
+!   reference determinant.  Always the first element.
+! * Diagonal matrix elements for Hellmann--Feynmann sampling in 2:sampling_size
+!   elements.
+! * Further data in sampling_size+1:sampling_size:info_size.  For example, when
+!   calculating the projected energy with various trial wavefunctions, it is
+!   useful to store quantites which are expensive to calculate and which are
+!   instead of recalculating them. For the Neel singlet state, the first component
+!   gives the total number of spins up on the first sublattice. The second
+!   component gives the number of 0-1 bonds where the 1 is on the first
+!   sublattice.
+real(p), allocatable :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
 
 ! Walker information: spawned list.
 ! By combining the info in with the determinant, we can reduce the number of MPI
@@ -695,10 +702,6 @@ contains
         if (allocated(walker_data)) then
             deallocate(walker_data, stat=ierr)
             call check_deallocate('walker_data',ierr)
-        end if
-        if (allocated(walker_reference_data)) then
-            deallocate(walker_reference_data, stat=ierr)
-            call check_deallocate('walker_reference_data',ierr)
         end if
         if (allocated(spawned_walkers1)) then
             deallocate(spawned_walkers1, stat=ierr)

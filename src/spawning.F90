@@ -302,7 +302,7 @@ contains
         use excitations, only: calc_pgen_real, excit
         use fciqmc_data, only: tau
         use fciqmc_data, only: neel_singlet_amp
-        use fciqmc_data, only: walker_reference_data, walker_data
+        use fciqmc_data, only: walker_data, sampling_size
         use hamiltonian, only: slater_condon1_hub_real_excit
         use hamiltonian, only: diagonal_element_heisenberg
         use system, only: J_coupling, guiding_function
@@ -338,7 +338,7 @@ contains
         hmatel = -2.0_p*J_coupling
         
         ! Find the number of up spins on sublattice 1.
-        up_spins_from = walker_reference_data(1,cdet%idet)
+        up_spins_from = nint(walker_data(sampling_size+1,cdet%idet))
         ! For the spin up which was flipped to create the connected
         ! basis function, find whether this spin was on sublattice 1 or 2.
         ! If it was on sublattice 1, the basis function we go to has 1 less

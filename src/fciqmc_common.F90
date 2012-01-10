@@ -67,11 +67,15 @@ contains
         ! Each determinant occupies basis_length kind=i0 integers,
         ! sampling_size integers and sampling_size kind=p reals.
         ! If the Neel singlet state is used as the reference state for the
-        ! projected estimator, then a further 2 integers are used per
+        ! projected estimator, then a further 2 reals are used per
         ! determinant.
+        if (trial_function == neel_singlet) then
+            info_size = 2
+        else
+            info_size = 0
+        end if
         nwalker_int = sampling_size
-        nwalker_real = sampling_size
-        if (trial_function == neel_singlet) nwalker_int = nwalker_int + 2
+        nwalker_real = sampling_size + info_size
 
         ! Thus the number of bits occupied by each determinant in the main
         ! walker list is given by basis_length*i0_length+nwalker_int*32+nwalker_real*32
@@ -115,12 +119,8 @@ contains
         call check_allocate('walker_dets', basis_length*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
-        allocate(walker_data(sampling_size,walker_length), stat=ierr)
-        call check_allocate('walker_data', sampling_size*walker_length, ierr)
-        if (trial_function == neel_singlet) then
-            allocate(walker_reference_data(2,walker_length), stat=ierr)
-            call check_allocate('walker_reference_data', 2*walker_length, ierr)
-        end if
+        allocate(walker_data(sampling_size+info_size,walker_length), stat=ierr)
+        call check_allocate('walker_data', size(walker_data), ierr)
 
         ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
         if (mod(spawned_walker_length, nprocs) /= 0) then
@@ -209,11 +209,11 @@ contains
             if (trial_function /= single_basis) walker_data(1,tot_walkers) = &
                                                  diagonal_element_heisenberg(f0)
             ! Set the Neel state data for the reference state, if it is being used.
-            if (allocated(walker_reference_data)) then
-                walker_reference_data(1,tot_walkers) = nsites/2
+            if (trial_function == neel_singlet) then
+                walker_data(sampling_size+1,tot_walkers) = nsites/2
                 ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
                 ! The Neel state cannot be used for non-bipartite lattices.
-                walker_reference_data(2,tot_walkers) = ndim*nsites
+                walker_data(sampling_size+2,tot_walkers) = ndim*nsites
             end if
 
             ! Finally, we need to check if the reference determinant actually
@@ -297,9 +297,9 @@ contains
                     walker_dets(:,tot_walkers) = f0_inv
                     ! If we are using the Neel state as a reference in the
                     ! Heisenberg model, then set the required data.
-                    if (allocated(walker_reference_data)) then
-                        walker_reference_data(1,tot_walkers) = 0
-                        walker_reference_data(2,tot_walkers) = 0
+                    if (trial_function == neel_singlet) then
+                        walker_data(sampling_size+1,tot_walkers) = 0
+                        walker_data(sampling_size+2,tot_walkers) = 0
                     end if
                 end if
             end if
