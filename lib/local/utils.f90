@@ -55,6 +55,35 @@ contains
         end do
 
     end function binom_r
+    
+    elemental function factorial_combination_1(m,n) result (combination)
+    
+        ! Given m and n input, this function returns
+        ! combination = n!m!/(n+m+1)!
+        ! Required to calculate amplitudes of the Neel singlet
+        ! trial function for the Heisenberg model
+        
+        use const, only: dp
+        
+        real(dp) :: combination
+        integer, intent(in) :: m, n
+        integer :: m1, n1, i
+        
+        ! Choose m1 to be the larger of m and n
+        if (m >= n) then
+            m1 = m
+            n1 = n
+        else
+            m1 = n
+            n1 = m
+        end if
+        combination = 1
+        do i = 1, n1
+            combination = combination * i/(i+m1)
+        end do
+        combination = combination/(m1+n1+1)
+        
+    end function factorial_combination_1
 
     function get_free_unit() result(free_unit)
 

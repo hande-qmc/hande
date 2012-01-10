@@ -71,10 +71,12 @@ contains
             select case(w)
 
             ! System type
-            case('REAL_SPACE')
+            case('HUBBARD_REAL')
                 system_type = hub_real
-            case('K_SPACE','MOMENTUM_SPACE')
+            case('HUBBARD_K','HUBBARD_MOMENTUM')
                 system_type = hub_k
+            case('HEISENBERG')
+                system_type = heisenberg
 
             ! System information.
             case('LATTICE')
@@ -97,11 +99,20 @@ contains
                     end if
                 end do
             case('NEL', 'ELECTRONS')
+                if (system_type == heisenberg) &
+                     call stop_all('read_input', 'Cannot set electron number for Heisenberg. &
+                     &Please enter a Ms value instead.')
                 call readi(nel)
             case('T')
                 call readf(hubt)
             case('U')
                 call readf(hubu)
+            case('J')
+                call readf(J_coupling)
+            case('H_FIELD')
+                call readf(magnetic_field)
+            case('STAGGERED_FIELD')
+                call readf(staggered_magnetic_field)
             case('TWIST')
                 allocate(ktwist(nitems-item), stat=ierr)
                 call check_allocate('ktwist',nitems-item,ierr)
@@ -245,6 +256,8 @@ contains
                 call readf(shift_damping)
             case('REFERENCE_DET_POPULATION')
                 call readf(D0_population)
+            case('INIT_SPIN_INVERSE_REFERENCE_DET')
+                init_spin_inv_D0 = .true.
 
             ! Calculation options: initiator-fciqmc.
             case('CAS')
@@ -275,6 +288,14 @@ contains
                 ! is only used when we are formulating the calculation
                 ! in real-space
                 finite_cluster = .true.   
+            case('TRIANGULAR_LATTICE')
+                triangular_lattice = .true.
+            
+            case('NEEL_SINGLET_ESTIMATOR')
+                trial_function = neel_singlet
+            case('NEEL_SINGLET_GUIDING')
+                guiding_function = neel_singlet_guiding
+                trial_function = neel_singlet
 
             case('END')
                 exit
@@ -302,9 +323,40 @@ contains
 
         if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
 
-        if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
-        if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
+        if (system_type /= heisenberg) then
+            if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
+            if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
+            if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
+                                                 & state for this system. Other trial functions are not avaliable.')
+            if (guiding_function /= no_guiding) call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
+                                                            currently.')
+        end if
+        
+        if (system_type == heisenberg) then
+            if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+            if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
+            if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice.')
+            if (staggered_magnetic_field /= 0.0_p .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
+                                                       & for this lattice because it is frustrated.')
+            if (staggered_magnetic_field /= 0.0_p .and. magnetic_field /= 0.0_p) &
+                call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
+            if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
+                                                     &guiding function is only avaliable when using the Neel singlet state &
+                                                     &as an energy estimator.') 
+        end if
 
+        if (init_spin_inv_D0 .and. ms_in /= 0) then
+            call warning(this, 'Flipping the reference state will give &
+                                            &a state which has a different value of Ms and so cannot be used here.')
+            init_spin_inv_D0 = .false.
+        end if
+        
+        if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
+            call warning('check_input','Periodic boundary conditions may not be applied for these particular &
+                           &triangular lattice. Periodic boundary conditions are being turned off.')
+            finite_cluster = .true.
+        end if
+                                                            
         do ivec = 1, ndim
             do jvec = ivec+1, ndim
                 if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
@@ -326,8 +378,12 @@ contains
             if (tau <= 0) call stop_all(this,'Tau not positive.')
             if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(occ_list0)) then
-                if (size(occ_list0) /= nel) call stop_all(this,'Number of electrons specified is different from &
-                                                           &number of electrons used in the reference determinant.')
+                if (size(occ_list0) /= nel) then
+                    if (system_type /= heisenberg) then
+                        call stop_all(this,'Number of electrons specified is different from &
+                        &number of electrons used in the reference determinant.')
+                    end if
+                end if
             end if
             if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
         end if
@@ -336,7 +392,7 @@ contains
         ! If the FINITE_CLUSTER keyword was detected then make sure that 
         ! we are doing a calculation in real-space. If we're not then
         ! unset finite cluster,tell the user and carry on
-        if(system_type .ne. hub_real) then
+        if(momentum_space) then
             if (finite_cluster .and. parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
             if (separate_strings .and. parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
@@ -375,7 +431,7 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        integer :: ierr
+        integer :: ierr, occ_list_size
         logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -388,9 +444,15 @@ contains
         end if
         call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(guiding_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubt, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(hubu, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(J_coupling, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(staggered_magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
@@ -429,11 +491,14 @@ contains
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
+            ! Have not yet set nel in the Heisenberg model.
+            occ_list_size = size(occ_list0)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(occ_list0(nel), stat=ierr)
-                call check_allocate('occ_list0',nel,ierr)
+                allocate(occ_list0(occ_list_size), stat=ierr)
+                call check_allocate('occ_list0', occ_list_size, ierr)
             end if
-            call mpi_bcast(occ_list0, nel, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
@@ -444,11 +509,11 @@ contains
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
+        call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lmag2, 1, mpi_integer, 0, mpi_comm_world, ierr)
-
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

@@ -14,14 +14,20 @@ contains
         ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
 
-        use system, only: system_type, hub_k, hub_real, hub_k_coulomb, hubt
+        use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_magnetic_field
+        use system, only: trial_function, single_basis, neel_singlet
+        use system, only: guiding_function, no_guiding, neel_singlet_guiding
         use hellmann_feynman_sampling
-
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
+        use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
+        use heisenberg_estimators, only: update_proj_energy_heisenberg_basic, update_proj_energy_&
+                                                                          &heisenberg_neel_singlet
+        use heisenberg_estimators, only: update_proj_energy_heisenberg_positive
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
                             spawn_hub_k_no_renorm, spawn_hub_real_no_renorm
+        use spawning, only: spawn_heisenberg, spawn_heisenberg_importance_sampling
         use death, only: stochastic_death
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, folded_spectrum, doing_calc
@@ -63,6 +69,30 @@ contains
             spawner_ptr => spawn_hub_real
             death_ptr => stochastic_death
             if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_real
+        case (heisenberg)
+            ! Only need occupied orbitals list, as for the real Hubbard case.
+            decoder_ptr => decode_det_occ
+            death_ptr => stochastic_death
+            ! Set which trial wavefunction to use for the energy estimator.
+            select case(trial_function)
+            case (single_basis)
+                update_proj_energy_ptr => update_proj_energy_heisenberg_basic
+            case (neel_singlet)
+                update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
+            end select
+            ! Set which guiding wavefunction to use, if requested.
+            select case(guiding_function)
+            case (no_guiding)
+                spawner_ptr => spawn_heisenberg
+            case (neel_singlet_guiding)
+                spawner_ptr => spawn_heisenberg_importance_sampling
+            end select             
+            ! Set whether the staggered magnetisation is to be calculated.
+            if (abs(staggered_magnetic_field) > 0.0_p) then
+                sc0_ptr => diagonal_element_heisenberg_staggered
+            else
+                sc0_ptr => diagonal_element_heisenberg
+            end if
         end select
 
         if(doing_calc(folded_spectrum)) call init_folded_spectrum()
@@ -134,13 +164,11 @@ contains
         nparticles_old = nparticles_old_restart
 
         ! Main fciqmc loop.
-
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status()
-
         ! Initialise timer.
         call cpu_time(t1)
-
+        
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
@@ -165,6 +193,7 @@ contains
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
                     cdet%f = walker_dets(:,idet)
+                    cdet%idet = idet
 
                     call decoder_ptr(cdet%f, cdet)
 
@@ -189,7 +218,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call death_ptr(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
@@ -202,7 +231,7 @@ contains
                 call direct_annihilation()
 
             end do
-
+            
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 

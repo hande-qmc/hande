@@ -105,7 +105,13 @@ integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
 ! c) Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 ! K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
 ! reference determinant.
-real(p), allocatable :: walker_energies(:,:) ! (sampling_size,walker_length)
+real(p), allocatable :: walker_data(:,:) ! (sampling_size,walker_length)
+! When calculating the projected energy with various trial wavefunctions, it
+! is useful to store quantites which are expensive to calculate and which are
+! instead of recalculating them. For the Neel singlet state, the first component
+! gives stores the total number of spins up on the first sublattice. The second
+! component gives the number of 0-1 bonds where the 1 is on the first sublattice.
+integer, allocatable :: walker_reference_data(:,:) ! (2,walker_length)
 
 ! Walker information: spawned list.
 ! By combining the info in with the determinant, we can reduce the number of MPI
@@ -174,6 +180,16 @@ integer, allocatable :: occ_list0(:)
 ! Population of walkers on reference determinant.
 ! The initial value can be overridden by a restart file or input option.
 real(p) :: D0_population = 10.0_p
+
+! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
+! operator.  This is only done if no restart file is used *and* |D_0> is not
+! a closed shell determinant.
+logical :: init_spin_inv_D0 = .false.
+
+! When using the Neel singlet trial wavefunction, it is convenient
+! to store all possible amplitudes in the wavefunction, since
+! there are relativley few of them and they are expensive to calculate
+real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
 ! Energy of reference determinant.
 real(p) :: H00
@@ -245,13 +261,32 @@ contains
         ! a reference determinant.
 
         use checking, only: check_allocate
-        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, nsites
+        use errors, only: stop_all
+        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, nsites, &
+                          heisenberg, J_coupling
+        use basis, only: bit_lookup
+        use hubbard_real, only: connected_orbs
         
-        integer :: i, ierr
+        integer :: i, j, ierr, spins_set, connections
+        integer :: bit_element, bit_pos
 
         ! Leave the reference determinant unchanged if it's already been
         ! allocated (and presumably set).
-        if (.not.allocated(occ_list0)) then
+        
+        if (allocated(occ_list0)) then
+            if (size(occ_list0) /= nel) then
+                select case(system_type)
+                case(heisenberg)
+                    call stop_all('set_reference_det', &
+                        'Reference determinant supplied does not contain the &
+                        &specified number of up electrons.')
+                case default
+                    call stop_all('set_reference_det', &
+                        'Reference determinant supplied does not contain the &
+                        &specified number of electrons.')
+                end select
+            end if
+        else
             allocate(occ_list0(nel), stat=ierr)
             call check_allocate('occ_list0',nel,ierr)
             select case(system_type)
@@ -273,6 +308,60 @@ contains
                 forall (i=1:min(nbeta,nsites/2)) occ_list0(i+nalpha) = 4*i
                 forall (i=1:nbeta-min(nbeta,nsites/2)) &
                     occ_list0(i+nalpha+min(nbeta,nsites/2)) = 4*i-2
+            case(heisenberg)
+                if (J_coupling >= 0) then
+                    forall (i=1:nel) occ_list0(i) = i
+                ! For the antiferromagnetic case, below. This is messy but should 
+                ! give a reasonable reference determinant for general cases, even
+                ! for bizarre lattices. For bipartite lattices (eg 4x4, 6x6...)
+                ! it will give the best possible reference determinant.
+                else if (J_coupling < 0) then
+                    ! Always set the first spin up
+                    occ_list0(1) = 1
+                    spins_set = 1
+                    ! Loop over other sites to find orbitals which are not connected to
+                    ! the other sites previously chosen.
+                    do i=2,nsites
+                        bit_pos = bit_lookup(1,i)
+                        bit_element = bit_lookup(2,i)
+                        connections = 0
+                        ! Loop over all chosen sites to see if they neighbour this site.
+                        do j=1,spins_set
+                            if (btest(connected_orbs(bit_element, occ_list0(j)), bit_pos)) then
+                                  connections = connections + 1
+                            end if
+                        end do
+                        ! If this site has no neighbours which have been previously added
+                        ! to the reference determinant, then we include it.
+                        if (connections == 0) then
+                            spins_set = spins_set + 1
+                            occ_list0(spins_set) = i
+                        end if
+                    end do
+                    ! If, after finding all the sites which are not connected, we still haven't
+                    ! chosen enough sites, we accept that we must have some neigbouring sites
+                    ! included in the reference determinant and start choosing the remaining sites.
+                    if (spins_set /= nel) then
+                        ! Loop over all sites looking for extra spins to include in the
+                        ! reference detereminant.
+                        fill_sites: do i=2,nsites
+                            connections = 0
+                            ! Check if this site is already included.
+                            do j=1,spins_set
+                                if (occ_list0(j) == i) connections = connections + 1
+                            end do
+                            ! If connection = 0, this site is not currently included in the
+                            ! reference determinant, so add it.
+                            if (connections == 0) then
+                                spins_set = spins_set + 1
+                                occ_list0(spins_set) = i
+                            end if
+                            ! When the correct number of spins have been chosen to be up,
+                            ! we are finished.
+                            if (spins_set == nel) exit fill_sites
+                        end do fill_sites
+                    end if
+                end if
             end select
         end if
 
@@ -547,6 +636,7 @@ contains
     !--- Output procedures ---
 
     subroutine write_fciqmc_report_header()
+
         use calc, only: doing_calc, folded_spectrum
 
         ! If we are doing folded spectrum the third column is not the average shift,
@@ -561,7 +651,6 @@ contains
               '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
               'Av. Proj. E','# D0','# particles','R_spawn','time'
         endif
-
 
     end subroutine write_fciqmc_report_header
 
@@ -583,11 +672,11 @@ contains
         vary_shift_reports = ireport - start_averaging_from - start_vary_shift
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,2X,4(es17.10,2X),f11.4,4X,i11,3X,f6.4,2X,f4.2)') &
-                                             mc_cycles_done+mc_cycles, shift,   &
-                                             av_shift/vary_shift_reports, proj_energy,       &
-                                             av_proj_energy/av_D0_population, D0_population, & 
-                                             ntot_particles, rspawn, elapsed_time/ncycles
+        write (6,'(5X,i8,2X,4(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
+                                         mc_cycles_done+mc_cycles, shift,   &
+                                         av_shift/vary_shift_reports, proj_energy,       &
+                                         av_proj_energy/av_D0_population, D0_population, & 
+                                         ntot_particles, rspawn, elapsed_time/ncycles
 
     end subroutine write_fciqmc_report
 
@@ -663,9 +752,13 @@ contains
             deallocate(walker_population, stat=ierr)
             call check_deallocate('walker_population',ierr)
         end if
-        if (allocated(walker_energies)) then
-            deallocate(walker_energies, stat=ierr)
-            call check_deallocate('walker_energies',ierr)
+        if (allocated(walker_data)) then
+            deallocate(walker_data, stat=ierr)
+            call check_deallocate('walker_data',ierr)
+        end if
+        if (allocated(walker_reference_data)) then
+            deallocate(walker_reference_data, stat=ierr)
+            call check_deallocate('walker_reference_data',ierr)
         end if
         if (allocated(spawned_walkers1)) then
             deallocate(spawned_walkers1, stat=ierr)
@@ -686,6 +779,10 @@ contains
         if (allocated(f0)) then
             deallocate(f0, stat=ierr)
             call check_deallocate('f0',ierr)
+        end if
+        if (allocated(neel_singlet_amp)) then
+            deallocate(neel_singlet_amp, stat=ierr)
+            call check_deallocate('neel_singlet_amp',ierr)
         end if
 
     end subroutine end_fciqmc

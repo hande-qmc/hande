@@ -2,7 +2,7 @@
 fc = mpif90
 cxx = mpiCC
 ld = mpif90
-cppdefs = -DHAVE_SSE2 -DPARALLEL
+cppdefs = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64
 libs = -ltrlan_mpi -lmkl_scalapack_lp64 -Wl,--start-group -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -Wl,--end-group -lpthread -lstdc++
 module_flag = -J
 

@@ -18,7 +18,7 @@ contains
         ! sampled.
 
         use basis, only: basis_length, set_orb_mask
-        use fciqmc_data, only: D0_proc, f0, walker_energies, tot_walkers
+        use fciqmc_data, only: D0_proc, f0, walker_data, tot_walkers
         use hfs_data, only: lmask
         use operators, only: calc_orb_occ
 
@@ -36,7 +36,7 @@ contains
         end if
 
         if (iproc == D0_proc) then
-            walker_energies(2,tot_walkers) = 0.0_p
+            walker_data(2,tot_walkers) = 0.0_p
         end if
 
         O00 = calc_orb_occ(f0, lmask)
@@ -187,14 +187,14 @@ contains
                     end do
 
                     ! Clone or die: Hamiltonian walkers.
-                    call death_ptr(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call death_ptr(walker_energies(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! CHECK
-                    call stochastic_hf_cloning(walker_energies(1,idet), walker_population(1,idet), &
+                    call stochastic_hf_cloning(walker_data(1,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
                 end do

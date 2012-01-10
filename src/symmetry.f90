@@ -22,7 +22,7 @@ contains
         ! Construct the symmetry tables.
 
         use basis, only: nbasis, basis_fns, write_basis_fn
-        use system, only: ndim, system_type, hub_real
+        use system, only: ndim, system_type, hub_real, heisenberg
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
@@ -33,7 +33,7 @@ contains
         integer :: ksum(ndim)
         character(4) :: fmt1
 
-        if (system_type == hub_real) then
+        if (system_type == hub_real .or. system_type == heisenberg) then
 
             nsym = 1
 

@@ -43,7 +43,7 @@ def test_input(input_file):
     start = re.compile('^ *do ! loop over lines', re.I)
     end = re.compile('^ *end do ! end reading.', re.I)
     read = re.compile('^.*? *call read[aifl]|^.*? *call get[aifl]', re.I)
-    setvar = re.compile('^ *[a-z_]+ ?=', re.I)
+    setvar = re.compile('^ *[a-z0-9_]+ ?=', re.I)
     parentheses = re.compile('(?<=\()(.*?)(?=\(|\))')
     data_in = False
 
@@ -83,8 +83,8 @@ def test_input(input_file):
     for v in ['hamiltonian_file', 'determinant_file', 'binary_fmt_in', 'binary_fmt_out']:
         if v in variables:
             variables.remove(v)
-    # special case: option_set is used only for some book-keeping in distribute_input; comms_read is similarly used in fciqmc_interact.
-    for v in ['option_set', 'comms_read']:
+    # special case: option_set is used only for some book-keeping in distribute_input; comms_read is similarly used in fciqmc_interact; occ_list_size is used when nel is not yet determined.
+    for v in ['option_set', 'occ_list_size', 'comms_read']:
         if v in distributed:
             distributed.remove(v)
 

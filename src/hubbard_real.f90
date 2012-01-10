@@ -30,16 +30,18 @@ integer(i0), allocatable :: tmat(:,:) ! (basis_length, nbasis)
 ! excitations.
 integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 
-! connected_orbs(0,i) contains the number of unique sites connected to i.
+! connected_sites(0,i) contains the number of unique sites connected to i.
 ! connected_sites(1:,i) contains the list of sites connected to site i (ie is the
 ! decoded/non-bit list form of connected_orbs).
 ! If connected_orbs(j,i) is 0 then it means there are fewer than 2ndim unique sites
 ! that are connected to i that are not a periodic image of i (or connected to
 ! i both directly and via periodic boundary conditions).
-integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis)
+! For the triangular lattice, there are 3ndim bonds, and ndim must equal 2,
+! so each site is connected to 6.
+integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
 
 ! True if any site is its own periodic image.
-! This is the case if one dimension (or more) has only one site per crystal
+! This is the case if one dimension (or more) has only one site per crystalisystem
 ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
 ! This is the only way that the integral < i | T | i >, where i is a basis
 ! function centred on a lattice site, can be non-zero.
@@ -56,22 +58,28 @@ logical :: finite_cluster = .false. ! default to infinite crystals
 
 contains
 
-    subroutine init_real_space_hub()
+    subroutine init_real_space()
 
-        ! Initialise real space Hubbard model: find and store the matrix
-        ! elements < i | T | j > where i and j are real space basis functions.
+        ! Initialise real space Hubbard model and Heisenberg model: find and store 
+        ! the matrix elements < i | T | j > where i and j are real space basis functions.
 
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use determinants, only: decode_det
-        use system, only: lattice, ndim, box_length
+        use system, only: lattice, ndim, box_length, system_type
+        use system, only: heisenberg, triangular_lattice
         use bit_utils
         use checking, only: check_allocate
         use errors, only: stop_all
+        use parallel, only: parent
 
-        integer :: i, j, k, ierr, pos, ind, ivec, v
+        integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
+        integer :: basis_find, row_1, row_2
         integer :: r(ndim)
 
         integer :: lvecs(ndim, 3**ndim)
+        integer :: difference_vec(2), shifted_vec(2), unshifted_vec(2)
+        
+        logical :: connected = .false.
 
         t_self_images = any(abs(box_length-1.0_p) < depsilon)
 
@@ -79,11 +87,29 @@ contains
         call check_allocate('tmat',basis_length*nbasis,ierr)
         allocate(connected_orbs(basis_length,nbasis), stat=ierr)
         call check_allocate('connected_orbs',basis_length*nbasis,ierr)
-        allocate(connected_sites(0:2*ndim,nbasis), stat=ierr)
-        call check_allocate('connected_sites',basis_length*2*ndim,ierr)
+        if (triangular_lattice) then
+            allocate(connected_sites(0:2*ndim,nbasis), stat=ierr)
+            call check_allocate('connected_sites', size(connected_sites), ierr)
+        else
+            allocate(connected_sites(0:2*ndim,nbasis), stat=ierr)
+            call check_allocate('connected_sites', size(connected_sites), ierr)
+        end if
 
         tmat = 0
         connected_orbs = 0
+        
+        ! For the Hubbard model, each orbital can have spin up or down, so 
+        ! basis_fns(i) refers to alternating alpha and beta orbitals.
+        ! In the do loop we therefore loop over every *second* orbital (because  
+        ! spin must be the same for orbitals to be connected in this case).
+        ! For Heisenberg, we just want to loop over every component of
+        ! basis_fns, so we set isystem = 1
+        if (system_type == heisenberg) then
+            isystem = 1
+        else
+            isystem = 2
+        endif
+            
 
         ! Form all lattice vectors
         select case(ndim)
@@ -108,8 +134,8 @@ contains
         end select
 
         ! Construct how the lattice is connected.
-        do i = 1, nbasis-1, 2
-            do j = i, nbasis-1, 2
+        do i = 1, nbasis-(isystem-1), isystem
+            do j = i, nbasis-(isystem-1), isystem
                 ! Loop only over one spin: the other spin is identical so can be
                 ! filled in automatically.
                 ! All matrix elements between different spins are zero
@@ -121,11 +147,11 @@ contains
                         if (all(lvecs(:,ivec) == 0)) then
                             ! Nearest neighbours within unit cell.
                             call set_orb(tmat(:,i),j)
-                            call set_orb(tmat(:,i+1),j+1)
+                            if (isystem == 2) call set_orb(tmat(:,i+1),j+1)
                         else if (.not. finite_cluster) then ! if we want inf. lattice
                             ! Nearest neighbours due to periodic boundaries.
                             call set_orb(tmat(:,j),i)
-                            call set_orb(tmat(:,j+1),i+1) 
+                            if (isystem == 2) call set_orb(tmat(:,j+1),i+1) 
                             ! else we just want connections to other cells to
                             ! stay as 0 
                         end if        
@@ -142,12 +168,100 @@ contains
                                 ! connected_orbs does not contain self-connections 
                                 ! due to the periodic boundary conditions.
                                 call set_orb(connected_orbs(:,i),j)
-                                call set_orb(connected_orbs(:,i+1),j+1)                      
+                                if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)                      
                                 call set_orb(connected_orbs(:,j),i)
-                                call set_orb(connected_orbs(:,j+1),i+1)
+                                if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
                             end if
                         end if
                     end if
+                    
+                    if (triangular_lattice) then
+                        
+                        ! We want to find all the connected sites for the triangular lattice.
+                        ! We already have some connections - all connections from the
+                        ! square lattice are still present in the triangular lattice,
+                        ! just with some potential extra ones. We find these below.
+                        
+                        ! We can treat a triangular lattice as a 2d rectangular lattice
+                        ! by taking a triangular lattice (with n rows of m columns) and
+                        ! shifting every other row across, to get a n by m rectangular
+                        ! lattice. The only difference to a rectangular lattice are the
+                        ! extra connections. So long as we keep these, we still have a
+                        ! have a triangular lattice for all purposes.
+                        
+                        ! The picture below shows (very roughly!) the various connections
+                        ! for a (4 by 4) triangular lattice. The extra conectons are the 
+                        ! zig-zag ones.
+                        !    _ _ _
+                        !   |/|/|/|
+                        !   |\|\|\|
+                        !   |/|/|/|
+                        !   |\|\|\|
+
+                        ! Once all the appropriate vectors have been taken away,
+                        ! we will want their difference to be the vector below. In this case,
+                        ! the two sites will be connected.
+                        difference_vec = (/1,0/)
+                        ! Depending on whether we are on an odd or even numbered row (if we
+                        ! number the rows 1,2,3...) the extra connected sites will be in different
+                        ! positions relative to the site - either both to the right of it
+                        ! or both to the left of it (see picture above).
+                        ! It is important to distinguish between these two cases, by taking
+                        ! mod(row_1,2) and mod(row_2,2) to see which of the two cases each row is.
+                        row_1 = basis_fns(i)%l(1)-basis_fns(1)%l(1)
+                        row_2 = basis_fns(j)%l(1)-basis_fns(1)%l(1)
+                        
+                        ! If the two sites are on these different types of rows, the corresponding
+                        ! sites may be connected.
+                        ! If on same types, they won't be (atleast not via the new connections
+                        ! which we are adding)...
+                        if (mod(row_1,2) == 0 .and. mod(row_2,2) == 0) then
+                            connected = .false.
+                        ! If the first sites is on the correct row type, we shift it, and also
+                        ! take the lvec away to allow for periodic boundaries.
+                        else if (mod(row_1,2) == 0) then
+                            shifted_vec = basis_fns(i)%l
+                            shifted_vec(2) = shifted_vec(2) - 1
+                            shifted_vec = shifted_vec - lvecs(:,ivec)
+                            unshifted_vec = basis_fns(j)%l
+                            connected = .true.
+                        ! If the second site is on the correct row type, shift this.
+                        else if (mod(row_2,2) == 0) then
+                            shifted_vec = basis_fns(j)%l
+                            shifted_vec(2) = shifted_vec(2) - 1
+                            shifted_vec = shifted_vec - lvecs(:,ivec)
+                            unshifted_vec = basis_fns(i)%l
+                            connected = .true.
+                        end if
+
+                        ! If the two are on the correct rows to have a possible extra
+                        ! connection on the triangular lattice then...
+                        if (connected) then
+                            ! If connected not through boundary conditions:
+                            if (all(lvecs(:,ivec) == 0)) then
+                                ! If, after the shifting, the sites are vertically above each
+                                ! other by one position, then there is an extra connection.       
+                                if (sum(abs(shifted_vec-unshifted_vec)-difference_vec) == 0) then
+                                    call set_orb(connected_orbs(:,i),j)
+                                    if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)                      
+                                    call set_orb(connected_orbs(:,j),i)
+                                    if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
+                                    end if
+                            ! If connected through boundary conditions, and boundary conditions
+                            ! are turned on:
+                            else if (.not.finite_cluster) then
+                                if (sum(abs(shifted_vec-unshifted_vec)-difference_vec) == 0) then
+                                    call set_orb(connected_orbs(:,i),j)
+                                    if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)                      
+                                    call set_orb(connected_orbs(:,j),i)
+                                    if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
+                                end if
+                            end if 
+                        end if
+                        ! For triangular lattice, just set tmat and connected orbs to be the same...
+                        tmat = connected_orbs
+                    end if
+                    
                 end do
             end do
         end do
@@ -166,10 +280,29 @@ contains
             end do
             connected_sites(0,i) = v
         end do
+        
+        
+        ! Testing for triangular lattice - Print out connections of each site
+        ! Remember to remove this later!
+        if (parent) then
+            do i = 1, nbasis
+                print *, "Site position:"
+                print *, basis_fns(i)%l
+                print *, "Connected sites:"
+                do ind = 1, basis_length
+                    do pos = 0, i0_end
+                        if (btest(connected_orbs(ind,i),pos)) then 
+                            basis_find = basis_lookup(pos, ind)
+                            print *, basis_fns(basis_find)%l
+                        end if
+                    end do
+                end do
+            end do
+        end if   
+        
+    end subroutine init_real_space
 
-    end subroutine init_real_space_hub
-
-    subroutine end_real_space_hub()
+    subroutine end_real_space()
 
         ! Clean up hubbard_real specific allocations.
 
@@ -190,7 +323,7 @@ contains
             call check_deallocate('connected_sites',ierr)
         end if
 
-    end subroutine end_real_space_hub
+    end subroutine end_real_space
 
     elemental function get_one_e_int_real(i, j) result(one_e_int)
 

@@ -44,13 +44,29 @@ contains
 
         call set_spin_polarisation(ms_in)
 
-        if (system_type == hub_real) then
+        select case(system_type)
+
+        case(hub_real)
 
             ! Symmetry not currently implemented for the real space Hubbard
             ! code.
+            ! Just a case of how we arrange the alpha and beta electrons across
+            ! the alpha orbitals and beta orbitals.  As we're dealing with the
+            ! simplest possible Hubbard model, the number of orbitals of each
+            ! spin is equal to the number of sites.
             if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', binom_r(nsites, nalpha)*binom_r(nsites, nbeta)
 
-        else if (system_type == hub_k) then
+        case(heisenberg)
+
+            ! Symmetry not currently implemented for the Heisenberg code.
+            ! There is one spin per site, so it's just a case of how many ways
+            ! there are to arrange the nalpha spins across the nsites (or
+            ! equivalently the nbeta spins across the nsites).
+            ! See comments in system for how nel and nvirt are used in the
+            ! Heisenberg model.
+            if (parent) write (6,'(1X,a,g8.4,/)') 'Size of space is', binom_r(nsites, nel)
+
+        case(hub_k)
 
             ! Perform a Monte Carlo sampling of the space.
 
@@ -135,7 +151,7 @@ contains
 
             if (parent) write (6,'()')
 
-        end if
+        end select
 
     end subroutine estimate_hilbert_space
 

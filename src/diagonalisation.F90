@@ -18,7 +18,8 @@ contains
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use system, only: nel
-        use determinants, only: enumerate_determinants, find_sym_space_size, set_spin_polarisation
+        use determinants, only: enumerate_determinants, find_sym_space_size, &
+                                set_spin_polarisation
         use determinants, only: tot_ndets, ndets, sym_space_size
         use lanczos
         use full_diagonalisation

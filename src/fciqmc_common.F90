@@ -25,18 +25,22 @@ contains
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
                                 annihilate_main_list_initiator,                &
                                 annihilate_spawned_list_initiator
-        use basis, only: basis_length, basis_fns, write_basis_fn
+        use basis, only: nbasis, basis_length, basis_fns, write_basis_fn, bit_lookup
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
+        use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use fciqmc_restart, only: read_restart
-        use system, only: nel, system_type, hub_real, hub_k
+        use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
+        use system, only: trial_function, neel_singlet, single_basis
         use symmetry, only: gamma_sym, sym_table
+        use utils, only: factorial_combination_1
 
         integer :: ierr
-        integer :: i
-        integer :: step, size_main_walker, size_spawned_walker
+        integer :: i, D0_inv_proc, ipos, basis_find, occ_list0_inv(nel)
+        integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
+        integer(i0) :: f0_inv(basis_length)
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -63,10 +67,20 @@ contains
 
         ! Each determinant occupies basis_length kind=i0 integers,
         ! sampling_size integers and sampling_size kind=p reals.
+        ! If the Neel singlet state is used as the reference state for the
+        ! projected estimator, then a further 2 integers are used per
+        ! determinant.
+        nwalker_int = sampling_size
+        nwalker_real = sampling_size
+        if (trial_function == neel_singlet) nwalker_int = nwalker_int + 2
+
+        ! Thus the number of bits occupied by each determinant in the main
+        ! walker list is given by basis_length*i0_length+nwalker_int*32+nwalker_real*32
+        ! (*64 if double precision).  The number of bytes is simply 1/8 this.
 #ifdef SINGLE_PRECISION
-        size_main_walker = basis_length*i0_length/8 + sampling_size*8
+        size_main_walker = basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*4
 #else
-        size_main_walker = basis_length*i0_length/8 + sampling_size*12
+        size_main_walker = basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*8
 #endif
         if (walker_length < 0) then
             ! Given in MB.  Convert.  Note: important to avoid overflow in the
@@ -102,8 +116,12 @@ contains
         call check_allocate('walker_dets', basis_length*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
-        allocate(walker_energies(sampling_size,walker_length), stat=ierr)
-        call check_allocate('walker_energies', sampling_size*walker_length, ierr)
+        allocate(walker_data(sampling_size,walker_length), stat=ierr)
+        call check_allocate('walker_data', sampling_size*walker_length, ierr)
+        if (trial_function == neel_singlet) then
+            allocate(walker_reference_data(2,walker_length), stat=ierr)
+            call check_allocate('walker_reference_data', 2*walker_length, ierr)
+        end if
 
         ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
         if (mod(spawned_walker_length, nprocs) /= 0) then
@@ -138,8 +156,8 @@ contains
         step = spawned_walker_length/nprocs
         forall (i=0:nprocs-1) spawning_block_start(i) = i*step
 
-        ! Set spin variables.
-        call set_spin_polarisation(ms_in)
+        ! Set spin variables for non-Heisenberg systems
+        if (system_type /= heisenberg) call set_spin_polarisation(ms_in)
 
         ! Set initial walker population.
         ! occ_list could be set and allocated in the input.
@@ -175,9 +193,29 @@ contains
                 H00 = slater_condon0_hub_k(f0)
             case(hub_real)
                 H00 = slater_condon0_hub_real(f0)
+            case(heisenberg)
+                if (abs(staggered_magnetic_field) > 0.0_p) then
+                    H00 = diagonal_element_heisenberg_staggered(f0)
+                else
+                    if (trial_function /= single_basis) then
+                        H00 = 0
+                    else
+                        H00 = diagonal_element_heisenberg(f0)
+                    end if
+                end if
             end select
-            ! By definition:
-            walker_energies(1,tot_walkers) = 0.0_p
+            ! By definition, when using a single determinant as a reference state:
+            walker_data(1,tot_walkers) = 0.0_p
+            ! Or if not using a single determinant:
+            if (trial_function /= single_basis) walker_data(1,tot_walkers) = &
+                                                 diagonal_element_heisenberg(f0)
+            ! Set the Neel state data for the reference state, if it is being used.
+            if (allocated(walker_reference_data)) then
+                walker_reference_data(1,tot_walkers) = nsites/2
+                ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
+                ! The Neel state cannot be used for non-bipartite lattices.
+                walker_reference_data(2,tot_walkers) = ndim*nsites
+            end if
 
             ! Finally, we need to check if the reference determinant actually
             ! belongs on this processor.
@@ -188,7 +226,86 @@ contains
             else
                 D0_proc = iproc
             end if
-        end if
+        
+            ! For the Heisenberg model and open shell systems, it is often useful to
+            ! have psips start on both the reference state and the spin-flipped version. 
+            if (init_spin_inv_D0) then
+
+                ! Need to handle the Heisenberg model (consisting of spinors on
+                ! lattice sites) and electron systems differently, as the
+                ! Heisenberg model has no concept of unoccupied basis
+                ! functions/holes.
+                select case (system_type)
+                case (heisenberg)
+                    ! Flip all spins in f0 to get f0_inv
+                    f0_inv = not(f0)
+                    ! In general, the basis bit string has some padding at the
+                    ! end which must be unset.  We need to clear this...
+                    ! Loop over all bits after the last basis function.
+                    i = bit_lookup(2,nbasis)
+                    do ipos = bit_lookup(1,nbasis)+1, i0_end
+                        f0_inv(i) = ibclr(f0_inv(i), ipos)
+                    end do
+                case default
+                    ! Swap each basis function for its spin-inverse
+                    ! This looks somewhat odd, but relies upon basis
+                    ! functions alternating down (Ms=-1) and up (Ms=1).
+                    do i = 1, nel
+                        if (mod(occ_list0(i),2) == 1) then
+                            occ_list0_inv(i) = occ_list0(i) + 1
+                        else
+                            occ_list0_inv(i) = occ_list0(i) - 1
+                        end if
+                    end do
+                write (6,'(a,64i4)') 'inv', occ_list0_inv
+                    call encode_det(occ_list0_inv, f0_inv)
+                    ! TODO: this needs to be checked for UHF upon merging
+                    ! development branches.
+!                    if (uhf) call stop_all('init_fciqmc','Check inversion for UHF systems.')
+                end select
+            
+                if (nprocs > 1) then
+                    D0_inv_proc = modulo(murmurhash_bit_string(f0_inv, basis_length), nprocs)
+                else
+                    D0_inv_proc = iproc
+                end if
+
+                ! Store if not identical to reference det.
+                if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
+                    tot_walkers = tot_walkers + 1
+                    ! Zero all populations for this determinant.
+                    walker_population(:,tot_walkers) = 0.
+                    ! Set the population for this basis function.
+                    walker_population(1,tot_walkers) = nint(D0_population)
+                    ! TODO: use generic get_hmatel function for all systems
+                    ! after merging other development branches.
+                    select case(system_type)
+                    case(hub_k)
+                        walker_data(1,tot_walkers) = slater_condon0_hub_k(f0) - H00
+                    case(hub_real)
+                        walker_data(1,tot_walkers) = slater_condon0_hub_real(f0) - H00
+                    case(heisenberg)
+                        if (abs(staggered_magnetic_field) > 0.0_p) then
+                            walker_data(1,tot_walkers) = diagonal_element_heisenberg_staggered(f0) - H00
+                        else
+                            if (trial_function /= single_basis) then
+                                walker_data(1,tot_walkers) = 0
+                            else
+                                walker_data(1,tot_walkers) = diagonal_element_heisenberg(f0) - H00
+                            end if
+                        end if
+                    end select
+                    walker_dets(:,tot_walkers) = f0_inv
+                    ! If we are using the Neel state as a reference in the
+                    ! Heisenberg model, then set the required data.
+                    if (allocated(walker_reference_data)) then
+                        walker_reference_data(1,tot_walkers) = 0
+                        walker_reference_data(2,tot_walkers) = 0
+                    end if
+                end if
+            end if
+
+        end if ! End of initialisation of reference state(s)/restarting from previous calculations
 
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
@@ -204,7 +321,21 @@ contains
                 ref_sym = sym_table((occ_list0(i)+1)/2,ref_sym)
             end do
         end if
-
+        
+        ! Calculate all the possible different amplitudes for the Neel singlet state
+        ! and store them in an array
+        if (trial_function == neel_singlet) then
+            allocate(neel_singlet_amp(-1:(nsites/2)+1), stat=ierr)
+            call check_allocate('neel_singlet_amp',(nsites/2)+1,ierr)
+            
+            neel_singlet_amp(-1) = 0
+            neel_singlet_amp((nsites/2)+1) = 0
+            do i=0,(nsites/2)
+                neel_singlet_amp(i) = factorial_combination_1( (nsites/2)-i , i )
+                neel_singlet_amp(i) = -(2*mod(i,2)-1) * neel_singlet_amp(i)
+            end do
+        end if
+        
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
@@ -225,7 +356,8 @@ contains
             end if
             write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
             write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
-            write (6,'(1X,a88)') 'Average shift: the running average of the shift from when the shift was allowed to vary.'
+            write (6,'(1X,a88)') 'Average shift: the running average & 
+                                                    &of the shift from when the shift was allowed to vary.'
             write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
                                  &Calculated at the end of each cycle.'
             write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
@@ -261,7 +393,7 @@ contains
             if (abs(walker_population(particle_type,i)) > abs(max_pop)) then
                 max_pop = walker_population(particle_type,i)
                 fmax = walker_dets(:,i)
-                H00_max = walker_energies(particle_type, i)
+                H00_max = walker_data(particle_type, i)
             end if
         end do
 
@@ -365,7 +497,7 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            write (6,'(1X,"#",3X,i8,2X,4(es17.10,2X),f11.4,4X,i11,6X,a3,3X,a3)') &
+            write (6,'(1X,"#",3X,i8,2X,4(es17.10,2X),es17.10,4X,i11,6X,a3,3X,a3)') &
                     mc_cycles_done, shift, 0.0_p, proj_energy, 0.0_p, D0_population, ntot_particles,'n/a','n/a'
         end if
 

@@ -101,12 +101,12 @@ contains
                         ! We pass R to the timestep generator. Luckily all R_ij,
                         ! i/=j are the same for the hubbard model (U or
                         ! t - stored in matel),  and there are nexcitations of them.
-                        R = abs(walker_energies(1,idet) - shift) + sum_off_diag
+                        R = abs(walker_data(1,idet) - shift) + sum_off_diag
                         time = time + timestep(R)
 
                         if ( time > t_barrier ) exit
                         
-                        call ct_spawn(cdet, walker_energies(1,idet), walker_population(1,idet), &
+                        call ct_spawn(cdet, walker_data(1,idet), walker_population(1,idet), &
                                       R, nspawned, connection)
 
                         if (nspawned /= 0) then

@@ -6,10 +6,11 @@ Introduction
 
 hubbard_fciqmc can currently perform Full Configuration Interaction (FCI) and
 Full Configuration Interaction Quantum Monte Carlo calculations of the Hubbard
-model using either the real space or momentum space formulation.
+model using either the real space or momentum space formulation, and can also
+perform FCIQMC for the Heisenberg model.
 
-Full and Lanczos diagonalisation methods are implemented using external
-libraries (lapack/scalapack and TRLan respectively) and can be performed in
+Full and Lanczos diagonalisation methods are implemented for the Hubbard model using
+external libraries (lapack/scalapack and TRLan respectively) and can be performed in
 both serial and parallel.  Lanczos diagonalisation can be performed with or
 without precomputing the Hamiltonian matrix.
 
@@ -343,7 +344,7 @@ System type
 
 These options select the type of system to use.
 
-**k_space**
+**hubbard_k**
     Default system type.
 
     Use the momentum space formulation of the Hubbard model.  Slater
@@ -354,13 +355,21 @@ These options select the type of system to use.
         \psi_k(r) = e^{ik.r} \sum_i \phi_i(r)
 
     where :math:`\phi_i(r)` is the basis function centred on site :math:`i`.
-**momentum_space**
-    Synonym for **k_space**.
-**real_space**
+**hubbard_momentum**
+    Synonym for **hubbard_k**. 
+**hubbard_real**
     Use the real space formulation of the Hubbard model.  Slater determinants
     are formed from the basis functions, :math:`\phi_i`, which are each centred
     on a lattice site.  Periodic boundary conditions are imposed through the
     kinetic 'hopping' term in the Hamiltonian.
+**heisenberg**
+    Run the Heisenberg model.
+    This is for a lattice of spin 1/2 particles with or without periodic
+    boundary conditions imposed. The coupling constant is denoted by J (see
+    below).
+    
+    Warning: for efficiency reasons it is assumed that the smallest dimension
+    lattice vector is greater than 2 if periodic boundary conditions are used.
 
 System
 ^^^^^^
@@ -370,7 +379,7 @@ These options describe the system which is to be investigated.
 **electrons** *nel*
     Integer.
 
-    Required.
+    Required for systems other than the Heisenberg model.
 
     Set the number of electrons in the system to be *nel*.
 **lattice** *lattice vectors*
@@ -383,6 +392,8 @@ These options describe the system which is to be investigated.
     \times n` matrix containing the lattice vectors of the crystal cell (i.e.
     one lattice vector per line).  1D, 2D and 3D systems can be specified using
     vectors of the appropriate dimensionality.
+
+    
 **nel** *nel*
     Synonym for **electrons**.
 **T** *t*
@@ -390,18 +401,53 @@ These options describe the system which is to be investigated.
 
     Default: 1.
 
-    Set the kinetic term in the Hamiltonian to be *t*, i.e. the kinetic operator is:
+    Set the kinetic term in the Hubbard Hamiltonian to be *t*, i.e. the kinetic operator (in a local/real-space orbital basis) is:
 
     .. math::
 
-        T = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dag} a_{j\sigma}
+        \hat{T} = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dag} a_{j\sigma}.
 
 **U** *U*
     Real.
 
     Default: 1.
 
-    Set the Coulomb term in the Hamiltonian to be *U*.
+    Set the Coulomb term in the Hubbard Hamiltonian to be *U*, i.e. the Coulomb operator (in a local/real-space orbital basis) is:
+
+    .. math::
+
+        \hat{U} = U \sum_i n_{i\uparrow} n_{i\downarrow}.
+
+**J** *J*
+    Real.
+    
+    Default: 1.
+    
+    Set the coupling constant for the Heisenbeg model, where the Hamiltonian is defined as:
+
+    .. math::
+
+        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_z\sum_{i}\sigma_{i}^{z} - k_z\sum_{i}(-1)^{\zeta(i)}\sigma_{i,z}
+
+    where :math:`h_z` is the constant external magetic field, :math:`k_z` the
+    staggered external magnetic field and :math:`\zeta(i)` gives :math:`\pm1`
+    depending upon which sublattice contains site :math:`i`.
+**magnetic_field** *h_z*
+    Real.
+    
+    Default: 0.
+    
+    Set the uniform external field for the Heisenberg model. The z direction is
+    defined to be in the same direction as the external field. The spins in the
+    basis functions point in this direction.
+**staggered_magnetic_field** *hs_z*
+    Real.
+
+    Default: 0.
+
+    Set the staggered magnetic field for the Heisenberg field.  Only valid for
+    bipartite lattices.  Currently only one of **magnetic_field** and
+    **staggered_magnetic_field** can be non-zero.
 **twist** *t1 [t2 [t3]]*
     Real.
 
@@ -415,13 +461,14 @@ These options describe the system which is to be investigated.
     Applicable only in the momentum space formulation of the Hubbard model.
 
 **finite_cluster**
-    The default behaviour for Hubbard is to work on an infinite lattice 
-    constructed out of repeating the user-specified unit cell. If finite_cluster is 
-    specified then Hubbard will only work on the single unit cell and *not*
+    The default behaviour for hubbard.x is to work on an infinite lattice
+    contructed out of repeating the user-specified unit cell. If finite_cluster
+    is specified then Hubbard will only work on the single unit cell and *not*
     the periodic continuation which would give us a lattice.
 
-    Applicable only in the real-space formulation of the Hubbard model,
-    otherwise the user is notified and the keyword is ignored.
+    Applicable only in the real-space formulation of the Hubbard model and
+    Heisenberg model, otherwise the user is notified and the keyword is
+    ignored.
 **separate_strings**
     Use separate bit strings to represent the alpha and beta spin-orbitals in
     a given Slater determinant.  The default behaviour is for the alpha and beta
@@ -431,7 +478,14 @@ These options describe the system which is to be investigated.
 
     Applicable only in the real-space formulation of the Hubbard model,
     otherwise the user is notified and the keyword is ignored.
-
+    
+**triangular_lattice**
+    When using a rectangular lattice, this option will add extra bonds to the
+    lattice so that, in terms of the connectivity of the various sites, the
+    lattice will be identical to a triangular lattice. It will have the same
+    smallest energy eigenvalue as the equivalent the triangular lattice.
+    
+    Periodic boundary conditions may only be applied to bipartite lattices.
 
 Calculation type
 ^^^^^^^^^^^^^^^^
@@ -476,6 +530,10 @@ Note that multiple calculations can be specified within a single input, but are 
     Hamiltonian :math:`H \rightarrow (H-\eps)^2`. This will compute the excited
     state closest to :math:`\eps`.
 
+    For the real space formulation of the Hubbard model and the Heisenberg
+    model, the exact size of the space (at least to the first 8 significant
+    figures) is found by simple combinatorics.
+
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -495,8 +553,14 @@ of the determinant is currently hard-coded.
 
     Diagonalise only blocks containing determinants with the specified value of Ms,
     in units of electron spin (i.e. 1/2).
+    
+    For the Heisenberg model, ms is applied in a similar manner. Here, each site is
+    either spin up or spin down, so ms = #spins_up - #spins_down, the total spin
+    in the block considered.
 **symmetry** *isym*
     Integer.
+    
+    This does not apply to the Heisenberg model
 
     Only relevant for the momentum space formulation.  Diagonalise only blocks
     containing determinants of the same symmetry as the specified symmetry
@@ -649,20 +713,36 @@ The following options are valid for FCIQMC calculations.
 **reference_det** *electron_1 electron_2 ... electron_nel*
     Integer list.
 
-    Default: in the momentum-space formulation of the Hubbard model, use the
-    Hartree--Fock determinant (ie that formed from occupying the nalpha and
-    nbeta spin-orbitals with the lowest kinetic energy); in the real-space
-    formulation of the Hubbard model, attempt to minimise the number of
-    doubly-occupied sites.  Note that this is not guaranteed (especially in the
+    Default: Momentum-space formulation of the Hubbard model
+    Uses the Hartree--Fock determinant (ie that formed from occupying the
+    nalpha and nbeta spin-orbitals with the lowest kinetic energy); 
+    Default: Real-space formulation of the Hubbard model
+    Attempt to minimise the number of doubly-occupied sites.  
+    Note that this is not guaranteed (especially in the
     real-space formulation) to give a reference determinant which is close to
     the ground state.  Further, the default ignores any value of
     the symmetry as defined by the **sym** input option.
-
+    
+    Default: Heisenberg model
+    For ferromagnetic cases (J>0) the default will attempt to group the up
+    spins together, which often will result in the best reference determinant.
+    For antiferromagnetic cases, first it will attempt to choose sites
+    which do not neighbour each other. Then, if more spins are required
+    it will choose the remaining spins in order of site label.
+    This will usually give a good reference determinant, but it is not guaranteed
+    always. For bipartite lattices however, the antiferromagnetic determinant 
+    chosen should be the best one possible.
+    
     Set the reference determinant to occupy the specified spin-orbitals.
     The index of each spin-orbital is printed out in the basis functions
     section of the output.  This will be overridden by a restart file and
     in a simple_fciqmc calculation, where the determinant with the lowest
     energy is set to the reference determinant.
+    
+    For the Heisenberg model, the electron positions will actually represent the
+    positions on the lattice of the up spins in the reference basis vector.
+    (Note that the number of up spins is deduced from the ms value specified and the
+    total number of sites).
 **reference_det_population** *pop*
     Integer.
 
@@ -670,6 +750,12 @@ The following options are valid for FCIQMC calculations.
 
     Set the initial walker population on the reference determinant.  This will
     be overridden by a restart file.
+**init_spin_inverse_reference_det**
+    Default: false.
+
+    In addition to initialsing the reference determinant with an initial
+    population, initialise the spin-inversed determinant (if different) with
+    the same population.  This will be overridden by a restart file.
 **walker_length** *walker_length* [**MB**]
     Integer.
 
@@ -765,6 +851,55 @@ The following options are valid for FCIQMC calculations.
     Furthermore, the current implementation does not allow restart files
     produced with one value of DET_SIZE to be used with binaries produced with
     a different value of DET_SIZE.  However, this is not checked!
+**uniform_combination**
+
+    For the Heisenberg model only. If this keyword is specified, instead of using a single
+    reference detereminant to calculate the projected energy, a linear combination of
+    of basis fucntions with amplitudes 1 is used:
+    |psi> = \sum_{i} |D_i>
+    hence the estimator used is
+    
+            <psi|H|psi_0>
+    E_0 =  ---------------
+             <psi|psi_0>
+              
+           \sum_{i,j} <D_i|H|D_j> c_j
+        = ----------------------------
+                  sum_{i} c_i
+                  
+    A unitary transformation will be applied to the Hamiltonian so that all the
+    off-diagonal elements are multiplied by -1. This has the effect of making
+    the transformed ground state have all positive components, and hence the above
+    trial function has a good overlap with it.
+    
+    This can only be used for bipartite lattices.
+    
+**neel_singlet_estimator**
+
+    For the Heisenberg model only. If this keyword is specified, instead of using a single
+    reference detereminant to calculate the projected energy, the Neel singlet state is used.
+    This is a state |NS> = \sum_{i} a_i * |D_i>
+    where the amplitudes a_i only depend on the number of up spins on either of the sublattices.
+    the Neel state is formed by taking a combination of Neel states pointing in all directions.
+    Hence it is an S = 0 eigenstate. This is also true for the ground state, and hence
+    a the Neel singlet state is an apropriate trial wavefunction.
+    For further details, see the comments in the subroutine update_proj_energy_heisenberg_neel_singlet
+    in heisenberg_estimator.F90, and also see K. Runge, Phys. Rev. B 45, 7229 (1992).
+    
+    This can only be used for bipartite lattices.
+    
+**neel_singlet_guiding**
+
+    For the Heisenberg model only. If this keyword is specified, then the Neel singlet state is used
+    as a guiding state for importance sampling. This means that the the matrix elements of the
+    Hamiltonian, H_ij are replaced by new components
+    
+    H_ij^new = (a_i*H_ij)/a_j
+    
+    where a_i is a component of the Neel state, as specified above.
+    
+    When this guiding function is used, the Neel singlet must be used in the projected energy, so
+    the neel_singlet_estimator option is automatically turned on.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -865,7 +1000,7 @@ These options are valid when performing a folded spectrum calculation
 
     See above.
 
-output options
+Output options
 ^^^^^^^^^^^^^^
 
 These options increase the verbosity but can be useful for debugging.  Note that
@@ -892,7 +1027,7 @@ be used in parallel.
 **hamil** [*filename*]
     Synonym for **hamiltonian**.
 
-other options
+Other options
 ^^^^^^^^^^^^^
 
 **end**

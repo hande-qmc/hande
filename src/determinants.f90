@@ -10,7 +10,7 @@ use parallel
 implicit none
 
 ! Bit masks to reveal the list of alpha basis functions and beta functions
-! occupied in a Slater determinant.
+! occupied in a Slater determinant, required for Hubbard model.
 ! If separate_strings is false, then:
 !     Alpha basis functions are in the even bits.  alpha_mask = 01010101...
 !     Beta basis functions are in the odd bits.    beta_mask  = 10101010...
@@ -18,6 +18,17 @@ implicit none
 !     Alpha basis functions are stored in the first basis_length/2 integers
 !     followed by the beta orbitals in the next basis_length/2 integers.
 integer(i0) :: alpha_mask, beta_mask
+
+! For the Heisenberg model, certain lattices can be split into two
+! sublattices such that all the sites on one sublattice only have neighbors
+! on the other sublattice. This is important when finding the staggered 
+! magnetisation:
+! 
+! \hat{M} = \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
+!
+! Here zeta will be +1 for sites on one sublattice, and -1 for sites on the
+! other sublattice. This is the standard measure of antiferromagnetism.
+integer(i0), allocatable :: lattice_mask(:)
 
 ! If true the determinant bit string is formed from concatenating the strings
 ! for the alpha and beta orbitals rather than interleaving them.
@@ -119,6 +130,8 @@ type det_info
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC).
     integer :: initiator_flag
+    ! Position of the determinant in the main list
+    integer :: idet = 0
 end type det_info
 
 interface operator(.detgt.)
@@ -138,7 +151,7 @@ contains
         use utils, only: get_free_unit, int_fmt
         use calc, only: doing_calc, exact_diag, lanczos_diag
 
-        integer :: i, bit_pos, bit_element, ierr
+        integer :: i, j, k, bit_pos, bit_element, ierr, site_index
         character(4) :: fmt1(5)
 
         tot_ndets = binom_i(nbasis, nel)
@@ -205,6 +218,26 @@ contains
                 beta_mask = ibset(beta_mask,i)
             end if
         end do
+        
+        ! For Heisenberg systems, to include staggered fields and to calculate
+        ! the staggered magnetisation, we require lattice_mask. Here we find
+        ! lattice_mask for a gerenal bipartite lattice.
+        if (system_type == heisenberg .and. bipartite_lattice) then
+            allocate (lattice_mask(basis_length), stat=ierr)
+            call check_allocate('lattice_mask',basis_length,ierr)
+            lattice_mask = 0
+            do k = 1,lattice_size(3)
+                do j = 1,lattice_size(2)
+                    do i = 1,lattice_size(1),2
+                        site_index = (lattice_size(2)*lattice_size(1))*(k-1) + &
+                                      lattice_size(1)*(j-1) + mod(j+k,2) + i
+                        bit_pos = bit_lookup(1, site_index)
+                        bit_element = bit_lookup(2, site_index)
+                        lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
+                    end do
+                end do
+            end do
+        end if             
 
         if (write_determinants) then
             det_unit = get_free_unit()
@@ -233,7 +266,10 @@ contains
             deallocate(sym_space_size, stat=ierr)
             call check_deallocate('sym_space_size',ierr)
         end if
-
+        if (allocated(lattice_mask)) then
+            deallocate(lattice_mask, stat=ierr)
+            call check_deallocate('lattice_mask',ierr)
+        end if
         if (write_determinants) close(det_unit, status='keep')
 
     end subroutine end_determinants
@@ -305,16 +341,27 @@ contains
 
         integer, intent(in) :: Ms
 
-        ! Find the number of determinants with the required spin.
-        if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
-         
-        dets_Ms = Ms
+        select case(system_type)
 
-        nbeta = (nel - Ms)/2
-        nalpha = (nel + Ms)/2
+        case(heisenberg)
 
-        nvirt_alpha = nsites - nalpha
-        nvirt_beta = nsites - nbeta
+            ! Spin polarization is different (see comments in system) as the
+            ! Heisenberg model is a collection of spins rather than electrons.
+
+        case default
+
+            ! Find the number of determinants with the required spin.
+            if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
+             
+            dets_Ms = Ms
+
+            nbeta = (nel - Ms)/2
+            nalpha = (nel + Ms)/2
+
+            nvirt_alpha = nsites - nalpha
+            nvirt_beta = nsites - nbeta
+
+        end select
 
     end subroutine set_spin_polarisation
 
@@ -355,11 +402,19 @@ contains
         nbeta_combinations = binom_i(nbasis/2, nbeta)
         nalpha_combinations = binom_i(nbasis/2, nalpha)
 
-        if (system_type == hub_real) then
+        select case(system_type)
+
+        case(hub_real)
 
             sym_space_size = nalpha_combinations*nbeta_combinations
 
-        else
+        case(heisenberg)
+
+            ! See notes in system about how the Heisenberg model uses nel and
+            ! nvirt.
+            sym_space_size = binom_i(nsites, nel)
+
+        case default 
 
             ! Determinants are assigned a given symmetry by the sum of the
             ! wavevectors of the occupied basis functions.  This is because only
@@ -404,7 +459,7 @@ contains
                 end do
             end do
 
-        end if
+        end select
 
         if (parent) then
             write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
@@ -459,72 +514,95 @@ contains
         allocate(dets_list(basis_length, ndets), stat=ierr)
         call check_allocate('dets_list',basis_length*ndets,ierr)
 
-        ! Assume that we're not attempting to do FCI for more than
-        ! a 2*i0_length spin orbitals, which is quite large... ;-)
-        if (nbasis/2 > i0_length) then
-            call stop_all('enumerate_determinants','Number of alpha spin functions longer than the an i0 integer.')
-        end if
+        select case(system_type)
 
-        idet = 0
-        do i = 1, nbeta_combinations
+        case(heisenberg)
 
-            ! Get beta orbitals.
-            if (i == 1) then
-                f_beta = first_perm(nbeta)
-            else
-                f_beta = bit_permutation(f_beta)
+            ! Just have spin up and spin down sites (no concept of unoccupied
+            ! sites) so just need to arrange nel spin ups.  No need to
+            ! interweave alpha and beta strings.
+
+            ! Assume that we're not attempting to do FCI for more than
+            ! a i0_length sites , which is quite large... ;-)
+            if (nbasis > i0_length) then
+                call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
             end if
 
-            ! Symmetry of the beta orbitals.
-            if (system_type /= hub_real) then
-                k_beta = gamma_sym
-                do ibit = 0, i0_end
-                    if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
-                end do
+            dets_list(1,1) = first_perm(nel)
+            do i = 2, ndets
+                dets_list(1,i) = bit_permutation(dets_list(1,i-1))
+            end do
+
+        case default
+
+            ! Assume that we're not attempting to do FCI for more than
+            ! a 2*i0_length spin orbitals, which is quite large... ;-)
+            if (nbasis/2 > i0_length) then
+                call stop_all('enumerate_determinants','Number of alpha spin functions longer than the an i0 integer.')
             end if
 
-            do j = 1, nalpha_combinations
+            idet = 0
+            do i = 1, nbeta_combinations
 
-                ! Get alpha orbitals.
-                if (j == 1) then
-                    f_alpha = first_perm(nalpha)
+                ! Get beta orbitals.
+                if (i == 1) then
+                    f_beta = first_perm(nbeta)
                 else
-                    f_alpha = bit_permutation(f_alpha)
+                    f_beta = bit_permutation(f_beta)
                 end if
 
-                ! Symmetry of all orbitals.
-                if (system_type /= hub_real) then
-                    k = k_beta
+                ! Symmetry of the beta orbitals.
+                if (system_type == hub_k) then
+                    k_beta = gamma_sym
                     do ibit = 0, i0_end
-                        if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
+                        if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
                     end do
                 end if
 
-                if (system_type == hub_real .or. k == ksum) then
+                do j = 1, nalpha_combinations
 
-                    idet = idet + 1
-
-                    ! Merge alpha and beta sets into determinant list.
-                    if (separate_strings) then
-                        dets_list(:,idet) = (/ f_alpha, f_beta /)
+                    ! Get alpha orbitals.
+                    if (j == 1) then
+                        f_alpha = first_perm(nalpha)
                     else
-                        ! Alpha orbitals are stored in the even bits, beta orbitals in
-                        ! the odd bits (hence the conversion).
-                        dets_list(:,idet) = 0
-                        do ibit = 0, min(nbasis/2, i0_length/2-1)
-                            if (btest(f_alpha,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit)
-                            if (btest(f_beta,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit+1)
-                        end do
-                        do ibit = i0_length/2, max(nbasis/2, i0_end)
-                            if (btest(f_alpha,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit-i0_length)
-                            if (btest(f_beta,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit+1-i0_length)
+                        f_alpha = bit_permutation(f_alpha)
+                    end if
+
+                    ! Symmetry of all orbitals.
+                    if (system_type == hub_k) then
+                        k = k_beta
+                        do ibit = 0, i0_end
+                            if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
                         end do
                     end if
 
-                end if
+                    if (system_type == hub_real .or. k == ksum) then
 
+                        idet = idet + 1
+
+                        ! Merge alpha and beta sets into determinant list.
+                        if (separate_strings) then
+                            dets_list(:,idet) = (/ f_alpha, f_beta /)
+                        else
+                            ! Alpha orbitals are stored in the even bits, beta orbitals in
+                            ! the odd bits (hence the conversion).
+                            dets_list(:,idet) = 0
+                            do ibit = 0, min(nbasis/2, i0_length/2-1)
+                                if (btest(f_alpha,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit)
+                                if (btest(f_beta,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit+1)
+                            end do
+                            do ibit = i0_length/2, max(nbasis/2, i0_end)
+                                if (btest(f_alpha,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit-i0_length)
+                                if (btest(f_beta,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit+1-i0_length)
+                            end do
+                        end if
+
+                    end if
+
+                end do
             end do
-        end do
+
+        end select
 
         dets_ksum = ksum
 
@@ -553,7 +631,7 @@ contains
 
         d%f => dets_list(:,i)
         d%Ms => dets_Ms
-        if (system_type /= hub_real) d%ksum = dets_ksum
+        if (system_type == hub_k) d%ksum = dets_ksum
     
     end function point_to_det
 
@@ -566,11 +644,11 @@ contains
         !        orbitals.   The first element contains the first i0_length basis
         !        functions, the second element the next i0_length and so on.  A basis
         !        function is occupied if the relevant bit is set.
-
+        
         integer, intent(in) :: occ_list(nel)
         integer(i0), intent(out) :: bit_list(basis_length)
         integer :: i, orb, bit_pos, bit_element
-
+        
         bit_list = 0
         do i = 1, nel
             orb = occ_list(i)
