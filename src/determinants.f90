@@ -124,8 +124,8 @@ type det_info
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC).
     integer :: initiator_flag
-    ! Position of the determinant in the main list
-    integer :: idet = 0
+    ! Pointer (never allocated) to corresponding elements in walker_data array.
+    real(p), pointer :: data(:) => NULL()
 end type det_info
 
 interface operator(.detgt.)

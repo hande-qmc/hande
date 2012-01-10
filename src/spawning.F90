@@ -338,7 +338,7 @@ contains
         hmatel = -2.0_p*J_coupling
         
         ! Find the number of up spins on sublattice 1.
-        up_spins_from = nint(walker_data(sampling_size+1,cdet%idet))
+        up_spins_from = nint(cdet%data(sampling_size+1))
         ! For the spin up which was flipped to create the connected
         ! basis function, find whether this spin was on sublattice 1 or 2.
         ! If it was on sublattice 1, the basis function we go to has 1 less
