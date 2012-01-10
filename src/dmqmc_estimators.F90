@@ -74,7 +74,7 @@ contains
         end if
 #endif
 
-            rspawn = rspawn/(ncycles*nprocs)
+        rspawn = rspawn/(ncycles*nprocs)
 
    end subroutine update_dmqmc_estimators
 
@@ -92,11 +92,11 @@ contains
 
        use basis, only: basis_length, total_basis_length
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-       use calc, only: dmqmc_energy_squared
+       use calc, only: dmqmc_energy_squared, dmqmc_correlation
        use excitations, only: get_excitation, excit
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
-       use proc_pointers, only: update_dmqmc_energy_squared_ptr
+       use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
 
        integer, intent(in) :: idet
        type(excit) :: excitation
@@ -110,6 +110,7 @@ contains
        ! See which estimators are to be calculated, and call the corresponding procedures.
        if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr(idet, excitation)
        if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr(idet, excitation)
+       if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr(idet, excitation)
        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr(idet, excitation)
        if (doing_reduced_dm) call update_reduced_density_matrix(idet)
 
@@ -296,6 +297,66 @@ contains
        end if
 
    end subroutine dmqmc_energy_hub_real
+
+   subroutine dmqmc_correlation_function_heisenberg(idet, excitation)
+
+       ! For the Heisenberg model only.
+       ! Add the contribution from the current density matrix element
+       ! to the thermal spin correlation function estimator.
+
+       ! In:
+       !    idet: Current position in the main bitsrting list.
+       !    excitation: excit type variable which stores information on
+       !    the excitation between the two bitstring ends, corresponding
+       !    to the two labels for the density matrix element.
+
+       use basis, only: basis_length, total_basis_length
+       use basis, only: bit_lookup
+       use bit_utils, only: count_set_bits
+       use excitations, only: excit
+       use fciqmc_data, only: walker_dets, walker_population
+       use fciqmc_data, only: walker_energies, H00, correlation_mask
+       use fciqmc_data, only: estimator_numerators, correlation_index
+       use hubbard_real, only: connected_orbs
+       use system, only: J_coupling
+
+       integer, intent(in) :: idet
+       type(excit), intent(in) :: excitation
+       integer(i0) :: f(basis_length)
+       integer :: bit_element1, bit_position1, bit_element2, bit_position2
+       integer :: sign_factor
+
+       ! If no excitation, we want the diagonal element of the correlation function operator.
+       if (excitation%nexcit == 0) then
+           ! If the two spis i and j are the same, the matrix element is +1/4.
+           ! If they are different, the matrix element is -1/4.
+           ! So we want sign_factor to be +1 in the former case, and -1 in the latter case.
+           ! f as calculated below will have 0's at sites other than i and j, and the same values
+           ! as walker_dets at i and j. Hence, if f has two 1's or no 1's, we want
+           ! sign_factor = +1. Else if we have one 1, we want sign_factor = -1.
+           f = iand(walker_dets(:basis_length,idet), correlation_mask)
+           ! Count if we have zero, one or two 1's.
+           sign_factor = sum(count_set_bits(f))
+           ! The operation below will map 0 and 2 to +1, and will map 1 to -1, as is easily checked.
+           sign_factor = (mod(sign_factor+1,2)*2)-1
+           ! Hence sign_factor can be used to find the matrix element, as used below.
+           estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + &
+                                    0.25*sign_factor*walker_population(1,idet)
+       else if (excitation%nexcit == 1) then
+       ! If not a diagonal element, but only a single excitation, then the corresponding
+       ! matrix element will be 1/2 if and only if the two sites which are flipped are
+       ! sites i and j, else it will be 0. We assume that excitations will only be set if
+       ! i and j are opposite (else they could not be flipped, for ms=0).
+           bit_position1 = bit_lookup(1,excitation%from_orb(1))
+           bit_element1 = bit_lookup(2,excitation%from_orb(1))
+           bit_position2 = bit_lookup(1,excitation%to_orb(1))
+           bit_element2 = bit_lookup(2,excitation%to_orb(1))
+           if (btest(correlation_mask(bit_element1), bit_position1).and.btest(correlation_mask(bit_element2), bit_position2)) &
+                 estimator_numerators(correlation_index) = estimator_numerators(correlation_index) - &
+                                   0.5*walker_population(1,idet)
+       end if
+
+   end subroutine dmqmc_correlation_function_heisenberg
 
    subroutine dmqmc_stag_mag_heisenberg(idet, excitation)
 

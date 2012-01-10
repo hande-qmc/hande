@@ -38,7 +38,7 @@ integer :: dmqmc_calc_type = 0
 integer, parameter :: dmqmc_energy = 2**0
 integer, parameter :: dmqmc_staggered_magnetisation = 2**1
 integer, parameter :: dmqmc_energy_squared = 2**2
-
+integer, parameter :: dmqmc_correlation = 2**3
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.

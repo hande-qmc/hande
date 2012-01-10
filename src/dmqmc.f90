@@ -21,13 +21,14 @@ contains
         use heisenberg_estimators, only: update_proj_energy_heisenberg_basic
         use dmqmc_estimators, only: dmqmc_energy_heisenberg, dmqmc_stag_mag_heisenberg
         use dmqmc_estimators, only: dmqmc_energy_hub_real, dmqmc_energy_squared_heisenberg
+        use dmqmc_estimators, only: dmqmc_correlation_function_heisenberg
         use dmqmc_procedures, only: random_distribution_heisenberg, random_distribution_entire_space
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle_density_matrix
         use spawning, only: spawn_heisenberg
         use calc, only: dmqmc_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_energy_squared
+        use calc, only: dmqmc_energy_squared, dmqmc_correlation
 
         use excitations, only: enumerate_all_excitations_hub_k, enumerate_all_excitations_hub_real
 
@@ -54,6 +55,8 @@ contains
             if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_heisenberg
             if (doing_dmqmc_calc(dmqmc_energy_squared)) update_dmqmc_energy_squared_ptr => &
                                                            dmqmc_energy_squared_heisenberg
+            if (doing_dmqmc_calc(dmqmc_correlation)) update_dmqmc_correlation_ptr => &
+                                                           dmqmc_correlation_function_heisenberg
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             spawner_ptr => spawn_heisenberg

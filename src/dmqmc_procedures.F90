@@ -9,13 +9,14 @@ contains
 
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
-         use calc, only: dmqmc_staggered_magnetisation
+         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation
          use checking, only: check_allocate
-         use fciqmc_data, only: trace, energy_index, energy_squared_index
+         use fciqmc_data, only: trace, energy_index, energy_squared_index, correlation_index
          use fciqmc_data, only: staggered_mag_index, estimator_numerators, subsystem_A_size
          use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
          use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
          use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
+         use fciqmc_data, only: correlation_mask, correlation_sites
          use parallel, only: parent
          use system, only: system_type, heisenberg, nsites
 
@@ -32,6 +33,18 @@ contains
          if (doing_dmqmc_calc(dmqmc_energy_squared)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
              energy_squared_index = number_dmqmc_estimators
+         end if
+         if (doing_dmqmc_calc(dmqmc_correlation)) then
+             number_dmqmc_estimators = number_dmqmc_estimators + 1
+             correlation_index = number_dmqmc_estimators
+             allocate(correlation_mask(1:basis_length), stat=ierr)
+             call check_allocate('correlation_mask',basis_length,ierr)
+             correlation_mask = 0
+             do i = 1, 2
+                 bit_position = bit_lookup(1,correlation_sites(i))
+                 bit_element = bit_lookup(2,correlation_sites(i))
+                 correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
+             end do
          end if
          if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
@@ -64,7 +77,7 @@ contains
              allocate(subsystem_A_bit_positions(subsystem_A_size,2), stat=ierr)
              call check_allocate('subsystem_A_bit_positions',2*subsystem_A_size,ierr)
              subsystem_A_mask = 0
-             subsystem_B_mask = 0          
+             subsystem_B_mask = 0       
              subsystem_A_bit_positions = 0
              ! For the Heisenberg model only currently.
              if (system_type==heisenberg) then

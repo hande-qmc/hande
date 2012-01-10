@@ -157,6 +157,14 @@ contains
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
             case('DMQMC_ENERGY_SQUARED')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy_squared
+            case('DMQMC_CORRELATION_FUNCTION')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
+                allocate(correlation_sites(nitems-1), stat=ierr)
+                call check_allocate('correlation_sites',nitems-1,ierr)
+                do i = 1, nitems-1
+                    call readi(correlation_sites(i))
+                end do
+            print *, correlation_sites
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             ! Calculate a reduced density matrix
@@ -368,6 +376,9 @@ contains
                            &triangular lattice. Periodic boundary conditions are being turned off.')
             finite_cluster = .true.
         end if
+
+        if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
+               &sites for the correlation function option.')
                                                             
         do ivec = 1, ndim
             do jvec = ivec+1, ndim
@@ -506,8 +517,31 @@ contains
         call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        subsystem_size = size(subsystem_A_list)
-        call mpi_bcast(subsystem_A_list, subsystem_size, mpi_integer, 0, mpi_comm_world, ierr)
+        option_set = .false.
+        if (parent) option_set = allocated(subsystem_A_list)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            occ_list_size = size(subsystem_A_list)
+            call mpi_bcast(subsystem_A_list, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(subsystem_A_list(occ_list_size), stat=ierr)
+                call check_allocate('subsystem_A_list',occ_list_size,ierr)
+            end if
+            call mpi_bcast(subsystem_A_list, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+        end if
+        option_set = .false.
+        if (parent) option_set = allocated(correlation_sites)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            occ_list_size = size(correlation_sites)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(correlation_sites(occ_list_size), stat=ierr)
+                call check_allocate('correlation_sites',occ_list_size,ierr)
+            end if
+            call mpi_bcast(correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+        end if
+        option_set = .false.
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then

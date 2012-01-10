@@ -235,6 +235,7 @@ real(p), allocatable :: estimator_numerators(:) !(number_dmqmc_estimators)
 ! from 1-number_dmqmc_estimators.
 integer :: energy_index = 0
 integer :: energy_squared_index = 0
+integer :: correlation_index = 0
 integer :: staggered_mag_index = 0
 
 ! If true, then the reduced density matrix will be calulated
@@ -257,6 +258,14 @@ integer(i0), allocatable :: subsystem_B_mask(:)
 ! This stored the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
 integer, allocatable :: reduced_density_matrix(:,:)
+
+! correlation_mask is a bit string with a 1 at positions i and j which
+! are considered when finding the spin correlation function, C(r_{i,j}).
+! All other bits are set to 0. i and j are chosen by the user initially.
+integer(i0), allocatable :: correlation_mask(:)
+! correlation_sites stores the site positions specified by the users
+! initially (as orbital labels).
+integer, allocatable :: correlation_sites(:)
 
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
@@ -693,7 +702,7 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        use calc, only: doing_calc, dmqmc_calc, doing_dmqmc_calc
+        use calc, only: doing_calc, dmqmc_calc, doing_dmqmc_calc, dmqmc_correlation
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
 
         if (doing_calc(dmqmc_calc)) then
@@ -705,6 +714,9 @@ contains
             end if
             if (doing_dmqmc_calc(dmqmc_energy_squared)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H2{ji}'
+            end if
+            if (doing_dmqmc_calc(dmqmc_correlation)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}C_{ji}'
             end if
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ii}M_{ii}'

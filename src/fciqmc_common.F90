@@ -27,7 +27,7 @@ contains
         use basis, only: basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
         use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_energy_squared
+        use calc, only: dmqmc_energy_squared, dmqmc_correlation
         use dmqmc_procedures, only: init_dmqmc
         use gutzwiller_energy, only: plot_gutzwiller_energy
         use determinants, only: encode_det, set_spin_polarisation, write_det
@@ -360,16 +360,20 @@ contains
                 write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
                                      &density matrix.'
                 if (doing_dmqmc_calc(dmqmc_energy)) then
-                write (6, '(1X,a92)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
-                                     &value of the energy.'
+                    write (6, '(1X,a92)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+                                         &value of the energy.'
                 end if
                 if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                write (6, '(1X,a100)') '\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
-                                     &value of the energy squared.'
+                    write (6, '(1X,a100)') '\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
+                                         &value of the energy squared.'
+                end if
+                if (doing_dmqmc_calc(dmqmc_correlation)) then
+                    write (6, '(1X,a106)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+                                         &value of the spin correlation function.'
                 end if
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                write (6, '(1X,a109)') '\sum\rho_{ii}M_{ii}: The numerator of the estimator for the expectation &
-                                     &value of the staggered magnetisation.'
+                    write (6, '(1X,a109)') '\sum\rho_{ii}M_{ii}: The numerator of the estimator for the expectation &
+                                         &value of the staggered magnetisation.'
                 end if
             end if
             write (6,'(1X,a49)') '# particles: current total population of walkers.'
