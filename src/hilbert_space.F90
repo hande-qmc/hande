@@ -64,7 +64,7 @@ contains
             ! equivalently the nbeta spins across the nsites).
             ! See comments in system for how nel and nvirt are used in the
             ! Heisenberg model.
-            if (parent) write (6,'(1X,a,g8.4,/)') 'Size of space is', binom_r(nsites, nel)
+            if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', binom_r(nsites, nel)
 
         case(hub_k)
 
