@@ -756,6 +756,23 @@ The following options are valid for FCIQMC calculations.
     In addition to initialsing the reference determinant with an initial
     population, initialise the spin-inversed determinant (if different) with
     the same population.  This will be overridden by a restart file.
+**select_reference_det** [*N* [*pop_fac*]]
+    Default: off, 20 and 1.5.
+
+    Set the reference determinant to be the determinant with the largest
+    population every *N* cycles if that population is greater than the
+    population on the current reference determinant by a factor larger than
+    *pop_fac*.  *pop_fac* should be greater than 1 to avoid repeated switching
+    between degenerate determinants.  This is useful (particularly in
+    folded-spectrum calculations) if the best reference determinant is not
+    known beforehand. 
+
+    .. warning::
+
+        Care must be taken with averaging quantities when using this option.
+        In particular, one should only average the projected estimator over
+        imaginary time during which the reference determinant is constant.
+
 **walker_length** *walker_length* [**MB**]
     Integer.
 

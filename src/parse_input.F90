@@ -215,8 +215,9 @@ contains
                 end do
             case('NO_RENORM')
                 no_renorm = .true.
-            case('CHANGE_REFERENCE_DET')
-                call readi(select_ref_det_every_nreports)
+            case('SELECT_REFERENCE_DET')
+                select_ref_det_every_nreports = 20
+                if (item /= nitems) call readi(select_ref_det_every_nreports)
                 if (item /= nitems) call readf(ref_det_factor)
 
             ! Calculation options: Folded spectrum.
