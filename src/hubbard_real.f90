@@ -88,7 +88,7 @@ contains
         allocate(connected_orbs(basis_length,nbasis), stat=ierr)
         call check_allocate('connected_orbs',basis_length*nbasis,ierr)
         if (triangular_lattice) then
-            allocate(connected_sites(0:2*ndim,nbasis), stat=ierr)
+            allocate(connected_sites(0:3*ndim,nbasis), stat=ierr)
             call check_allocate('connected_sites', size(connected_sites), ierr)
         else
             allocate(connected_sites(0:2*ndim,nbasis), stat=ierr)

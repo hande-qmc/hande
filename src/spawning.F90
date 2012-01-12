@@ -943,7 +943,7 @@ contains
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(out) :: i, a, nvirt_avail
         integer(i0) :: virt_avail(basis_length)
-        integer :: ivirt, ipos, iel, virt(2*ndim)
+        integer :: ivirt, ipos, iel, virt(3*ndim) ! 3*ndim to allow for triangular lattices; minor memory waste for other cases is irrelevant!
 
         do
             ! Until we find an i orbital which has at least one allowed
