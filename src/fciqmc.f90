@@ -28,6 +28,7 @@ contains
         use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
                             spawn_hub_k_no_renorm, spawn_hub_real_no_renorm
         use spawning, only: spawn_heisenberg, spawn_heisenberg_importance_sampling
+        use spawning, only: gen_excit_hub_k, gen_excit_hub_real, gen_excit_heisenberg
         use death, only: stochastic_death
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, folded_spectrum, doing_calc
@@ -37,7 +38,6 @@ contains
         use ifciqmc, only: init_ifciqmc, set_parent_flag, set_parent_flag_dummy
 
         use folded_spectrum_utils
-        use spawning, only: gen_excit_hub_k, gen_excit_hub_real
 
         real(dp) :: hub_matel
 
@@ -93,6 +93,7 @@ contains
             else
                 sc0_ptr => diagonal_element_heisenberg
             end if
+            if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_heisenberg
         end select
 
         if(doing_calc(folded_spectrum)) call init_folded_spectrum()
