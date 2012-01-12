@@ -504,28 +504,11 @@ contains
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, psuccess, pspawn, hmatel
-        integer :: i, a, n
-        integer :: nvirt_avail
 
-        ! 1. Chose a random connected spin basis vector
-        ! (Use real space hubbard model procedure, since condition for
-        ! connected 'determinants' is the same)
-        call choose_ia_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
+        ! 1. Generate a random excitation
+        call gen_excit_heisenberg(cdet, pgen, connection, hmatel)
 
-        ! 2. Find probability of generating this excited determinant.
-        ! Again, same procedure for Heisenberg as for real space Hubbard
-        pgen = calc_pgen_real(cdet%occ_list, cdet%f, nvirt_avail)
-
-        ! 3. Construct the excited determinant and find the connecting matrix
-        ! element.
-        connection%nexcit = 1
-        connection%from_orb(1) = i
-        connection%to_orb(1) = a
-
-        ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-        hmatel = -2.0_p*J_coupling
-
-        ! 4. Attempt spawning.
+        ! 2. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen
         psuccess = genrand_real2()
 
@@ -540,7 +523,7 @@ contains
 
         if (nspawn > 0) then
 
-            ! 5. If H_ij is positive, then the spawned walker is of opposite
+            ! 3. If H_ij is positive, then the spawned walker is of opposite
             ! sign to the parent, otherwise the spawned walkers if of the same
             ! sign as the parent.
             if (hmatel > 0.0_p) then
@@ -595,24 +578,13 @@ contains
         integer :: bit_position, bit_element
         integer :: nvirt_avail
 
-        ! 1. Chose a random connected spin basis vector
-        ! (Use real space hubbard model procedure, since condition for
-        ! connected 'determinants' is the same)
-        call choose_ia_real(cdet%occ_list, cdet%f, i, a, nvirt_avail)
+        ! 1. Generate a random excitation.
+        call gen_excit_heisenberg(cdet, pgen, connection, hmatel)
 
-        ! 2. Find probability of generating this excited determinant.
-        ! Again, same procedure for Heisenberg as for real space Hubbard
-        pgen = calc_pgen_real(cdet%occ_list, cdet%f, nvirt_avail)
+        ! 2. When using a trial function |psi_T> = \sum{i} a_i|D_i>, the Hamiltonian
+        ! used in importance sampling is H_ji^T = a_j * H_ji * (1/a_i), so we
+        ! need to adjust hmatel returned by gen_excit_heisenberg accordingly.
 
-        ! 3. Construct the excited determinant and find the connecting matrix
-        ! element.
-        connection%nexcit = 1
-        connection%from_orb(1) = i
-        connection%to_orb(1) = a
-
-        ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-        hmatel = -2.0_p*J_coupling
-        
         ! Find the number of up spins on sublattice 1.
         up_spins_from = nint(cdet%data(sampling_size+1))
         ! For the spin up which was flipped to create the connected
@@ -627,15 +599,12 @@ contains
             up_spins_to = up_spins_from+1
         end if
         
-        ! When using a trial function |psi_T> = \sum{i} a_i|D_i>, the Hamiltonian
-        ! used in importance sampling is 
-        ! H_ji^T = a_j * H_ji * (1/a_i)
         ! For a given number of spins up on sublattice 1, n, the corresponding
         ! ampltidue of this basis function in the trial function is stored as
         ! neel_singlet_amp(n), for this particular trial function. Hence we have:
         hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
         
-        ! 4. Attempt spawning.
+        ! 3. Attempt spawning.
         pspawn = tau*abs(hmatel)/pgen
         psuccess = genrand_real2()
 
@@ -650,7 +619,7 @@ contains
 
         if (nspawn > 0) then
 
-            ! 5. If H_ij is positive, then the spawned walker is of opposite
+            ! 4. If H_ij is positive, then the spawned walker is of opposite
             ! sign to the parent, otherwise the spawned walkers if of the same
             ! sign as the parent.
             if (hmatel > 0.0_p) then
