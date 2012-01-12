@@ -1,7 +1,7 @@
 hubbard_real
 lattice
 2 0
-0 1
-electrons 2
+0 4
+electrons 6
 lanczos
 lanczos_solns 6

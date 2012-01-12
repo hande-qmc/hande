@@ -1,9 +1,9 @@
 hubbard_k
 
 lattice
-2 0
-0 2
-electrons 2
+4 0
+0 4
+electrons 4
 lanczos
 lanczos_basis 20
 lanczos_solns 8
