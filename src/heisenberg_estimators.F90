@@ -160,7 +160,7 @@ contains
         ! Now we just need to find the contribution to the denominator. The total
         ! denominator is
         ! \sum_{i} (a_i * n_i)
-        ! Hence from this paritcular basis function, |D_j>, we just add (a_j * n_j)
+        ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
         
         D0_population = D0_population + &
                           walker_population(1,idet)*neel_singlet_amp(n)*importance_sampling_factor
