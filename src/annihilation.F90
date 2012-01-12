@@ -378,9 +378,6 @@ contains
                 walker_dets(:,k) = walker_dets(:,i)
                 walker_population(:,k) = walker_population(:,i)
                 walker_data(:,k) = walker_data(:,i)
-                if (trial_function == neel_singlet) then
-                    walker_reference_data(:,k) = walker_reference_data(:,i)
-                end if
             end if
         end do
         tot_walkers = tot_walkers - nzero
@@ -436,7 +433,6 @@ contains
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(:,k) = walker_population(:,j)
                 walker_data(:,k) = walker_data(:,j)
-                if (trial_function == neel_singlet) walker_reference_data(:,k) = walker_reference_data(:,j)
             end do
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
@@ -445,7 +441,7 @@ contains
             walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
             nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
             walker_data(1,k) = sc0_ptr(walker_dets(:,k)) - H00
-            if (trial_function == neel_singlet) walker_reference_data(:,k) = neel_singlet_data(walker_dets(:,k))
+            if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_data(2:,k) = <D_i|O|D_i>.
                 walker_data(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00

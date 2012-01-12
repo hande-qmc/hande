@@ -193,7 +193,7 @@ contains
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
                     cdet%f = walker_dets(:,idet)
-                    cdet%idet = idet
+                    cdet%data => walker_data(:,idet)
 
                     call decoder_ptr(cdet%f, cdet)
 
