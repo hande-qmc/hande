@@ -347,6 +347,7 @@ contains
 
             ! Spin polarization is different (see comments in system) as the
             ! Heisenberg model is a collection of spins rather than electrons.
+            dets_Ms = Ms
 
         case default
 
