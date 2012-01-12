@@ -1,0 +1,21 @@
+heisenberg
+
+lattice
+10
+ms 0
+
+J -1
+
+fciqmc
+
+neel_singlet_estimator
+init_spin_inverse_reference_det
+
+spawned_walker_length 1500
+walker_length 200
+nreports 500
+mc_cycles 10
+
+tau 0.002
+varyshift_target 200
+vary_shift_from -18

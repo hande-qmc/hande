@@ -28,6 +28,21 @@ override_core_option = True
 
 [kspace_tilted_2d_mchilbert]
 
+[heisenberg_1d_fci]
+
+[heisenberg_1d_ferro_field_fciqmc]
+
+[heisenberg_1d_neel_ref_fciqmc]
+
+[heisenberg_2d_field_fciqmc]
+
+[heisenberg_2d_neel_guide_fciqmc]
+
+[heisenberg_2d_tri_fciqmc]
+
+[heisenberg_2d_tri_lanczos]
+
+
 # Form job categories.
 [categories]
 
@@ -35,11 +50,13 @@ kspace = kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci kspace_nontilted
 
 rspace = rspace_nontilted_2d rspace_rectangle_2d_lanczos
 
-fci =  kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci rspace_nontilted_2d
-lanczos = kspace_1d kspace_nontilted_2d_lanczos rspace_nontilted_2d rspace_rectangle_2d_lanczos
+heisenberg = heisenberg_1d_fci heisenberg_1d_ferro_field_fciqmc heisenberg_1d_neel_ref_fciqmc heisenberg_2d_field_fciqmc heisenberg_2d_neel_guide_fciqmc heisenberg_2d_tri_fciqmc heisenberg_2d_tri_lanczos
+
+fci =  kspace_1d kspace_nontilted_2d_fci kspace_tilted_2d_fci rspace_nontilted_2d heisenberg_1d_fci 
+lanczos = kspace_1d kspace_nontilted_2d_lanczos rspace_nontilted_2d rspace_rectangle_2d_lanczos heisenberg_2d_tri_lanczos
 
 sfciqmc = kspace_nontilted_2d_sfciqmc
-fciqmc = rspace_1d_fciqmc rspace_1d_fciqmc_finite_cluster kspace_nontilted_2d_fciqmc
+fciqmc = rspace_1d_fciqmc rspace_1d_fciqmc_finite_cluster kspace_nontilted_2d_fciqmc heisenberg_1d_ferro_field_fciqmc heisenberg_1d_neel_ref_fciqmc heisenberg_2d_field_fciqmc heisenberg_2d_neel_guide_fciqmc heisenberg_2d_tri_fciqmc
 ifciqmc = kspace_1d_ifciqmc kspace_1d_ifciqmc_cas kspace_nontilted_2d_ifciqmc
 fciqmc_all = kspace_nontilted_2d_sfciqmc fciqmc ifciqmc
 

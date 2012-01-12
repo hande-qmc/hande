@@ -1,0 +1,11 @@
+heisenberg
+
+lattice
+4 0
+0 4
+ms 2
+triangular_lattice
+
+J -1
+
+lanczos

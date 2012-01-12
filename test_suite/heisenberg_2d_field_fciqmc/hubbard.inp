@@ -1,0 +1,22 @@
+heisenberg
+
+lattice
+4 0
+0 4
+ms 0
+
+J -1
+staggered_magnetic_field 0.1
+
+estimate_hilbert_space 
+
+fciqmc
+
+spawned_walker_length 5000
+walker_length 20000
+nreports 100
+mc_cycles 20
+
+tau 0.001
+varyshift_target 10000
+vary_shift_from -10.5
