@@ -334,6 +334,150 @@ contains
         end if
 
     end subroutine spawn_hub_real
+
+    subroutine spawn_hub_real_no_renorm(cdet, parent_sign, nspawn, connection)
+
+        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! real space formulation of the Hubbard model.
+        !
+        ! This doesn't use excitation generators which exclude the case where,
+        ! having selected an occupied orbital (i) there are no possible
+        ! connected orbitals which are unoccupied which can be excited into,
+        ! and so that excitation is impossible.  Whilst it is somewhat wasteful
+        ! (generating excitations which can't be performed), there is a balance
+        ! between the cost of generating forbidden excitations and the O(N) cost
+        ! of renormalising the generation probabilities.
+        !
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use determinants, only: det_info
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: excit
+        use fciqmc_data, only: tau
+        use hamiltonian, only: slater_condon1_hub_real_excit
+        use system, only: nel
+        use hubbard_real, only: connected_sites
+        use basis, only: bit_lookup
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
+
+        integer :: i, iel, ipos
+        real(p) :: psuccess, pspawn, pgen, hmatel
+
+        ! 1. Generate random excitation from cdet and probability of spawning
+        ! there.
+        ! Random selection of i.
+        i = int(genrand_real2()*nel) + 1
+        connection%from_orb(1) = cdet%occ_list(i)
+        ! Select a at random from one of the connected orbitals.
+        i = int(genrand_real2()*connected_sites(0,connection%from_orb(1)) + 1)
+        connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
+
+        ipos = bit_lookup(1, connection%to_orb(1))
+        iel = bit_lookup(2, connection%to_orb(1))
+
+        if (btest(cdet%f(iel),ipos)) then
+
+            ! a is occupied; forbidden excitation
+            nspawn = 0
+
+        else
+
+            connection%nexcit=1
+
+            ! 2. find the connecting matrix element.
+            call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
+
+            ! 3. Probability of spawning...
+            ! For single excitations
+            !   pgen = p(i) p(a|i)
+            !        = 1/(nel*nconnected_sites)
+            pgen = 1.0_dp/(nel*connected_sites(0,i))
+            pspawn = tau*abs(hmatel)/pgen
+
+            ! 4. Attempt spawning.
+            psuccess = genrand_real2()
+
+            ! Need to take into account the possibilty of a spawning attempt
+            ! producing multiple offspring...
+            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+            ! then spawn a particle with probability pspawn-floor(pspawn).
+            nspawn = int(pspawn)
+            pspawn = pspawn - nspawn
+
+            if (pspawn > psuccess) nspawn = nspawn + 1
+
+            if (nspawn > 0) then
+
+                ! 5. If H_ij is positive, then the spawned walker is of opposite
+                ! sign to the parent, otherwise the spawned walkers if of the same
+                ! sign as the parent.
+                if (hmatel > 0.0_p) then
+                    nspawn = -sign(nspawn, parent_sign)
+                else
+                    nspawn = sign(nspawn, parent_sign)
+                end if
+
+            end if
+
+        end if
+
+    end subroutine spawn_hub_real_no_renorm
+
+    subroutine gen_excit_hub_real(cdet, pgen, connection, hmatel)
+
+        ! Create a random excitation from cdet and calculate both the probability 
+        ! of selecting that excitation and the Hamiltonian matrix element.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    determinant and a single excitation of it in the real space
+        !    formulation of the Hubbard model.
+
+        use determinants, only: det_info
+        use excitations, only: calc_pgen_real, excit
+        use hamiltonian, only: slater_condon1_hub_real_excit
+
+        type(det_info), intent(in) :: cdet
+        real(p), intent(out) :: pgen, hmatel
+        type(excit), intent(out) :: connection
+
+        integer :: nvirt_avail
+
+        ! Double excitations are not connected determinants within the 
+        ! real space formulation of the Hubbard model.
+        connection%nexcit = 1
+
+        ! 1. Chose a random connected excitation.
+        call choose_ia_real(cdet%occ_list, cdet%f, connection%from_orb(1), connection%to_orb(1), nvirt_avail)
+
+        ! 2. Find probability of generating this excited determinant.
+        pgen = calc_pgen_real(cdet%occ_list, cdet%f, nvirt_avail)
+
+        ! 3. find the connecting matrix element.
+        call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
+
+    end subroutine gen_excit_hub_real
     
     subroutine spawn_heisenberg(cdet, parent_sign, nspawn, connection)
 
@@ -522,150 +666,6 @@ contains
         end if
 
     end subroutine spawn_heisenberg_importance_sampling
-
-    subroutine spawn_hub_real_no_renorm(cdet, parent_sign, nspawn, connection)
-
-        ! Attempt to spawn a new particle on a connected determinant for the 
-        ! real space formulation of the Hubbard model.
-        !
-        ! This doesn't use excitation generators which exclude the case where,
-        ! having selected an occupied orbital (i) there are no possible
-        ! connected orbitals which are unoccupied which can be excited into,
-        ! and so that excitation is impossible.  Whilst it is somewhat wasteful
-        ! (generating excitations which can't be performed), there is a balance
-        ! between the cost of generating forbidden excitations and the O(N) cost
-        ! of renormalising the generation probabilities.
-        !
-        ! In:
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are spawned.
-
-        use determinants, only: det_info
-        use dSFMT_interface, only:  genrand_real2
-        use excitations, only: excit
-        use fciqmc_data, only: tau
-        use hamiltonian, only: slater_condon1_hub_real_excit
-        use system, only: nel
-        use hubbard_real, only: connected_sites
-        use basis, only: bit_lookup
-
-        type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn
-        type(excit), intent(out) :: connection
-
-        integer :: i, iel, ipos
-        real(p) :: psuccess, pspawn, pgen, hmatel
-
-        ! 1. Generate random excitation from cdet and probability of spawning
-        ! there.
-        ! Random selection of i.
-        i = int(genrand_real2()*nel) + 1
-        connection%from_orb(1) = cdet%occ_list(i)
-        ! Select a at random from one of the connected orbitals.
-        i = int(genrand_real2()*connected_sites(0,connection%from_orb(1)) + 1)
-        connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
-
-        ipos = bit_lookup(1, connection%to_orb(1))
-        iel = bit_lookup(2, connection%to_orb(1))
-
-        if (btest(cdet%f(iel),ipos)) then
-
-            ! a is occupied; forbidden excitation
-            nspawn = 0
-
-        else
-
-            connection%nexcit=1
-
-            ! 2. find the connecting matrix element.
-            call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
-
-            ! 3. Probability of spawning...
-            ! For single excitations
-            !   pgen = p(i) p(a|i)
-            !        = 1/(nel*nconnected_sites)
-            pgen = 1.0_dp/(nel*connected_sites(0,i))
-            pspawn = tau*abs(hmatel)/pgen
-
-            ! 4. Attempt spawning.
-            psuccess = genrand_real2()
-
-            ! Need to take into account the possibilty of a spawning attempt
-            ! producing multiple offspring...
-            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
-            ! then spawn a particle with probability pspawn-floor(pspawn).
-            nspawn = int(pspawn)
-            pspawn = pspawn - nspawn
-
-            if (pspawn > psuccess) nspawn = nspawn + 1
-
-            if (nspawn > 0) then
-
-                ! 5. If H_ij is positive, then the spawned walker is of opposite
-                ! sign to the parent, otherwise the spawned walkers if of the same
-                ! sign as the parent.
-                if (hmatel > 0.0_p) then
-                    nspawn = -sign(nspawn, parent_sign)
-                else
-                    nspawn = sign(nspawn, parent_sign)
-                end if
-
-            end if
-
-        end if
-
-    end subroutine spawn_hub_real_no_renorm
-
-    subroutine gen_excit_hub_real(cdet, pgen, connection, hmatel)
-
-        ! Create a random excitation from cdet and calculate both the probability 
-        ! of selecting that excitation and the Hamiltonian matrix element.
-
-        ! In:
-        !    cdet: info on the current determinant (cdet) that we will gen
-        !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    pgen: probability of generating the excited determinant from cdet.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are gened.
-        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
-        !    determinant and a single excitation of it in the real space
-        !    formulation of the Hubbard model.
-
-        use determinants, only: det_info
-        use excitations, only: calc_pgen_real, excit
-        use hamiltonian, only: slater_condon1_hub_real_excit
-
-        type(det_info), intent(in) :: cdet
-        real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
-
-        integer :: nvirt_avail
-
-        ! Double excitations are not connected determinants within the 
-        ! real space formulation of the Hubbard model.
-        connection%nexcit = 1
-
-        ! 1. Chose a random connected excitation.
-        call choose_ia_real(cdet%occ_list, cdet%f, connection%from_orb(1), connection%to_orb(1), nvirt_avail)
-
-        ! 2. Find probability of generating this excited determinant.
-        pgen = calc_pgen_real(cdet%occ_list, cdet%f, nvirt_avail)
-
-        ! 3. find the connecting matrix element.
-        call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
-
-    end subroutine gen_excit_hub_real
 
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
 
