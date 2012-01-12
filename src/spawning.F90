@@ -663,6 +663,50 @@ contains
 
     end subroutine spawn_heisenberg_importance_sampling
 
+    subroutine gen_excit_heisenberg(cdet, pgen, connection, hmatel)
+
+        ! Create a random excitation from cdet and calculate both the probability 
+        ! of selecting that excitation and the Hamiltonian matrix element.
+
+        ! In:
+        !    cdet: info on the current basis function (equivalent to determinant
+        !        in electron systems) that we will gen from.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    determinant and a single excitation of it in the real space
+        !    formulation of the Hubbard model.
+
+        use determinants, only: det_info
+        use excitations, only: calc_pgen_real, excit
+        use system, only: J_coupling
+
+        type(det_info), intent(in) :: cdet
+        real(p), intent(out) :: pgen, hmatel
+        type(excit), intent(out) :: connection
+
+        integer :: nvirt_avail
+
+        ! Double excitations are not connected.
+        connection%nexcit = 1
+
+        ! 1. Chose a random connected excitation.
+        ! (Use real space hubbard model procedure, since condition for
+        ! connected 'determinants' is the same)
+        call choose_ia_real(cdet%occ_list, cdet%f, connection%from_orb(1), connection%to_orb(1), nvirt_avail)
+
+        ! 2. Find probability of generating this excited determinant.
+        ! Again, same procedure for Heisenberg as for real space Hubbard
+        pgen = calc_pgen_real(cdet%occ_list, cdet%f, nvirt_avail)
+
+        ! 3. find the connecting matrix element.
+        ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
+        hmatel = -2.0_p*J_coupling
+
+    end subroutine gen_excit_heisenberg
+
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
 
         ! Randomly choose a pair of spin-orbitals.
