@@ -208,7 +208,11 @@ contains
         case(0)
 
             ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-            hmatel = diagonal_element_heisenberg(f1)
+            if (abs(staggered_magnetic_field) > depsilon) then
+                hmatel = diagonal_element_heisenberg_staggered(f1)
+            else
+                hmatel = diagonal_element_heisenberg(f1)
+            end if
 
         case(1)
 
