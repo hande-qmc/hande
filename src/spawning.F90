@@ -228,8 +228,6 @@ contains
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -444,8 +442,6 @@ contains
         ! In:
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
