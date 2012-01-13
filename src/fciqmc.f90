@@ -25,10 +25,7 @@ contains
         use heisenberg_estimators, only: update_proj_energy_heisenberg_positive
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
-        use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle, create_spawned_particle_initiator, &
-                            spawn_hub_k_no_renorm, spawn_hub_real_no_renorm
-        use spawning, only: spawn_heisenberg, spawn_heisenberg_importance_sampling
-        use spawning, only: gen_excit_hub_k, gen_excit_hub_real, gen_excit_heisenberg
+        use spawning
         use death, only: stochastic_death
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, folded_spectrum, doing_calc
@@ -81,19 +78,32 @@ contains
                 update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
             end select
             ! Set which guiding wavefunction to use, if requested.
-            select case(guiding_function)
-            case (no_guiding)
-                spawner_ptr => spawn_heisenberg
-            case (neel_singlet_guiding)
-                spawner_ptr => spawn_heisenberg_importance_sampling
-            end select             
+            if (no_renorm) then
+                select case(guiding_function)
+                case (no_guiding)
+                    spawner_ptr => spawn_heisenberg_no_renorm
+                case (neel_singlet_guiding)
+                    spawner_ptr => spawn_heisenberg_importance_sampling_no_renorm
+                end select             
+            else
+                select case(guiding_function)
+                case (no_guiding)
+                    spawner_ptr => spawn_heisenberg
+                case (neel_singlet_guiding)
+                    spawner_ptr => spawn_heisenberg_importance_sampling
+                end select             
+            end if
             ! Set whether the staggered magnetisation is to be calculated.
             if (abs(staggered_magnetic_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
             else
                 sc0_ptr => diagonal_element_heisenberg
             end if
-            if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_heisenberg
+            if (no_renorm) then
+                gen_excit_ptr => gen_excit_heisenberg_no_renorm
+            else
+                gen_excit_ptr => gen_excit_heisenberg
+            end if
         end select
 
         if(doing_calc(folded_spectrum)) call init_folded_spectrum()

@@ -632,6 +632,193 @@ contains
 
     end subroutine spawn_heisenberg_importance_sampling
 
+    subroutine spawn_heisenberg_no_renorm(cdet, parent_sign, nspawn, connection)
+
+        ! Attempt to spawn a new psip on a connected determinant for the 
+        ! Heisenberg model
+        !
+        ! This uses excitation generators which, having selected the spin-up
+        ! site (i), select any site (a) connected to i to exchange spins with i.
+        ! As a might be already spin-up, this is somewhat wasteful (generating
+        ! excitations which can't be performed), there is a balance between the
+        ! cost of generating forbidden excitations and the O(N) cost of
+        ! renormalising the generation probabilities.
+        !
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use determinants, only: det_info
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: calc_pgen_real, excit
+        use fciqmc_data, only: tau
+        use hamiltonian, only: slater_condon1_hub_real_excit
+        use system, only: J_coupling
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
+
+        real(p) :: pgen, psuccess, pspawn, hmatel
+
+        ! 1. Generate a random excitation
+        call gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
+
+        ! 2. Attempt spawning if excitation is allowed.
+        if (abs(hmatel) > depsilon) then
+            pspawn = tau*abs(hmatel)/pgen
+            psuccess = genrand_real2()
+
+            ! Need to take into account the possibilty of a spawning attempt
+            ! producing multiple offspring...
+            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+            ! then spawn a particle with probability pspawn-floor(pspawn).
+            nspawn = int(pspawn)
+            pspawn = pspawn - nspawn
+
+            if (pspawn > psuccess) nspawn = nspawn + 1
+
+            if (nspawn > 0) then
+
+                ! 3. If H_ij is positive, then the spawned walker is of opposite
+                ! sign to the parent, otherwise the spawned walkers if of the same
+                ! sign as the parent.
+                if (hmatel > 0.0_p) then
+                    nspawn = -sign(nspawn, parent_sign)
+                else
+                    nspawn = sign(nspawn, parent_sign)
+                end if
+
+            end if
+
+        else
+
+            ! Generated a forbidden excitation (ie selected 2 spin up sites).
+            nspawn = 0
+
+        end if
+
+    end subroutine spawn_heisenberg_no_renorm
+
+    subroutine spawn_heisenberg_importance_sampling_no_renorm(cdet, parent_sign, nspawn, connection)
+
+        ! Attempt to spawn a new psip on a connected determinant for the 
+        ! Heisenberg model. This subroutine applies a transformed Hamiltonian
+        ! to apply importance sampling. It uses the Neel singlet state as a
+        ! trial function.
+        !
+        ! This uses excitation generators which, having selected the spin-up
+        ! site (i), select any site (a) connected to i to exchange spins with i.
+        ! As a might be already spin-up, this is somewhat wasteful (generating
+        ! excitations which can't be performed), there is a balance between the
+        ! cost of generating forbidden excitations and the O(N) cost of
+        ! renormalising the generation probabilities.
+        !
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use basis, only: bit_lookup, basis_length
+        use determinants, only: det_info, lattice_mask
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: calc_pgen_real, excit
+        use fciqmc_data, only: tau
+        use fciqmc_data, only: neel_singlet_amp
+        use fciqmc_data, only: walker_data, sampling_size
+        use hamiltonian, only: slater_condon1_hub_real_excit
+        use hamiltonian, only: diagonal_element_heisenberg
+        use system, only: J_coupling, guiding_function
+        use system, only: neel_singlet_guiding
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
+
+        real(p) :: pgen, psuccess, pspawn, hmatel, amp_j, amp_i
+        integer(i0) :: bitstring_j(basis_length)
+        integer :: i, a, n, up_spins_to, up_spins_from
+        integer :: bit_position, bit_element
+        integer :: nvirt_avail
+
+        ! 1. Generate a random excitation.
+        call gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
+
+        if (abs(hmatel) < depsilon) then
+
+            ! Generated a forbidden excitation (ie selected two spin up sites)
+            nspawn = 0
+
+        else
+
+            ! 2. When using a trial function |psi_T> = \sum{i} a_i|D_i>, the Hamiltonian
+            ! used in importance sampling is H_ji^T = a_j * H_ji * (1/a_i), so we
+            ! need to adjust hmatel returned by gen_excit_heisenberg accordingly.
+
+            ! Find the number of up spins on sublattice 1.
+            up_spins_from = nint(cdet%data(sampling_size+1))
+            ! For the spin up which was flipped to create the connected
+            ! basis function, find whether this spin was on sublattice 1 or 2.
+            ! If it was on sublattice 1, the basis function we go to has 1 less
+            ! up spin on sublattice 1, else it will have one more spin up here.
+            bit_position = bit_lookup(1,connection%from_orb(1))
+            bit_element = bit_lookup(2,connection%from_orb(1))
+            if (btest(lattice_mask(bit_element), bit_position)) then
+                up_spins_to = up_spins_from-1
+            else
+                up_spins_to = up_spins_from+1
+            end if
+            
+            ! For a given number of spins up on sublattice 1, n, the corresponding
+            ! ampltidue of this basis function in the trial function is stored as
+            ! neel_singlet_amp(n), for this particular trial function. Hence we have:
+            hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
+            
+            ! 3. Attempt spawning.
+            pspawn = tau*abs(hmatel)/pgen
+            psuccess = genrand_real2()
+
+            ! Need to take into account the possibilty of a spawning attempt
+            ! producing multiple offspring...
+            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+            ! then spawn a particle with probability pspawn-floor(pspawn).
+            nspawn = int(pspawn)
+            pspawn = pspawn - nspawn
+
+            if (pspawn > psuccess) nspawn = nspawn + 1
+
+            if (nspawn > 0) then
+
+                ! 4. If H_ij is positive, then the spawned walker is of opposite
+                ! sign to the parent, otherwise the spawned walkers if of the same
+                ! sign as the parent.
+                if (hmatel > 0.0_p) then
+                    nspawn = -sign(nspawn, parent_sign)
+                else
+                    nspawn = sign(nspawn, parent_sign)
+                end if
+
+            end if
+
+        end if
+
+    end subroutine spawn_heisenberg_importance_sampling_no_renorm
+
     subroutine gen_excit_heisenberg(cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability 
@@ -675,6 +862,86 @@ contains
         hmatel = -2.0_p*J_coupling
 
     end subroutine gen_excit_heisenberg
+
+    subroutine gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
+
+        ! Create a random excitation from cdet and calculate both the probability 
+        ! of selecting that excitation and the Hamiltonian matrix element.
+        !
+        ! This selects the spin-up site (i) and then selects any site (a)
+        ! connected to i to exchange spins with i.  As a might be already
+        ! spin-up, this is somewhat wasteful (generating excitations which can't
+        ! be performed), there is a balance between the cost of generating
+        ! forbidden excitations and the O(N) cost of renormalising the
+        ! generation probabilities.
+        !
+        ! If a forbidden excitation is generated, then hmatel is set to 0 and
+        ! pgen to 1.
+        !
+        ! In:
+        !    cdet: info on the current basis function (equivalent to determinant
+        !        in electron systems) that we will gen from.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    determinant and a single excitation of it in the real space
+        !    formulation of the Hubbard model.
+
+        use basis, only: bit_lookup
+        use determinants, only: det_info
+        use excitations, only: calc_pgen_real, excit
+        use hubbard_real, only: connected_sites
+        use system, only: J_coupling, nel
+
+        use dSFMT_interface
+
+        type(det_info), intent(in) :: cdet
+        real(p), intent(out) :: pgen, hmatel
+        type(excit), intent(out) :: connection
+
+        integer :: i, ipos, iel
+
+        ! 1. Chose a random connected excitation.
+        ! Random selection of i (an up spin).
+        i = int(genrand_real2()*nel) + 1
+        connection%from_orb(1) = cdet%occ_list(i)
+        ! Select a at random from one of the connected sites.
+        ! nb: a might already be up.
+        i = int(genrand_real2()*connected_sites(0,connection%from_orb(1)) + 1)
+        connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
+        
+        ! Is a already up?  If so, not an allowed excitation: return a null
+        ! event.
+        ipos = bit_lookup(1, connection%to_orb(1))
+        iel = bit_lookup(2, connection%to_orb(1))
+
+        if (btest(cdet%f(iel),ipos)) then
+
+            ! null event means setting hmatel = 0.
+            ! also set pgen to avoid potential division by an undefined quantity
+            ! causing issues.
+            hmatel = 0.0_p
+            pgen = 1.0_p
+
+        else
+
+            connection%nexcit = 1
+
+            ! 2. Generation probability
+            ! For single excitations
+            !   pgen = p(i) p(a|i)
+            !        = 1/(nel*nconnected_sites)
+            pgen = 1.0_dp/(nel*connected_sites(0,i))
+
+            ! 3. find the connecting matrix element.
+            ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
+            hmatel = -2.0_p*J_coupling
+
+        end if
+
+    end subroutine gen_excit_heisenberg_no_renorm
 
     subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
 
