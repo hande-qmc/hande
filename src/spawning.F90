@@ -338,13 +338,13 @@ contains
         ! Attempt to spawn a new particle on a connected determinant for the 
         ! real space formulation of the Hubbard model.
         !
-        ! This doesn't use excitation generators which exclude the case where,
-        ! having selected an occupied orbital (i) there are no possible
-        ! connected orbitals which are unoccupied which can be excited into,
-        ! and so that excitation is impossible.  Whilst it is somewhat wasteful
-        ! (generating excitations which can't be performed), there is a balance
-        ! between the cost of generating forbidden excitations and the O(N) cost
-        ! of renormalising the generation probabilities.
+        ! This uses excitation generators which, having selected the occupied
+        ! orbital (i) to excite from, select any orbital (a) connected to
+        ! i which conserves spin to excite to.  As a might be occupied, this
+        ! is somewhat wasteful (generating excitations which can't be
+        ! performed), there is a balance between the cost of generating
+        ! forbidden excitations and the O(N) cost of renormalising the
+        ! generation probabilities.
         !
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
