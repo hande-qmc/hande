@@ -25,7 +25,8 @@ contains
         use dmqmc_procedures, only: random_distribution_heisenberg, random_distribution_entire_space
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
         use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k
-        use spawning, only: spawn_hub_k, spawn_hub_real, create_spawned_particle_density_matrix
+        use spawning, only: spawn_hub_k, spawn_hub_real
+        use spawning, only: create_spawned_particle_density_matrix, create_spawned_particle_truncated_density_matrix
         use spawning, only: spawn_heisenberg
         use calc, only: dmqmc_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation
@@ -64,7 +65,11 @@ contains
             dmqmc_initial_distribution_ptr => random_distribution_heisenberg
         end select
 
-        create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+        if (truncate_space) then
+            create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix
+        else
+            create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+        end if
 
         call do_dmqmc()
 
@@ -84,7 +89,7 @@ contains
         use dmqmc_procedures, only: random_distribution_heisenberg
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
         use energy_evaluation, only: update_energy_estimators
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit, get_excitation_level
         use fciqmc_common
         use fciqmc_restart, only: dump_restart
         use interact, only: fciqmc_interact

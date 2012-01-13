@@ -877,6 +877,11 @@ configuration of a Density Matrix Quantum Monte Carlo (DMQMC) calculation
 
    Perform DMQMC calculation on the staggered magnetisation
 
+**truncate_space** *truncation_level*
+
+    Consider only elements of the density matrix where the determinants differ
+    by at most *truncation_level* excitations.
+
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

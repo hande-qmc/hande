@@ -37,6 +37,14 @@ integer :: CAS(2) = (/ 0,0 /)
 
 integer :: initiator_population = 3
 
+!--- Input data: Hilbert space truncation ---
+
+! Currently only implemented for DMQMC.
+! If true, truncate the density matrix space such that it only contains elements which
+! differ by at most truncation_level excitations.
+logical :: truncate_space = .false.
+integer :: truncation_level
+
 !--- Energy data ---
 
 ! shift

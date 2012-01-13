@@ -176,6 +176,10 @@ contains
                 do i = 1, nitems-1
                     call readi(subsystem_A_list(i))
                 end do
+            ! calculation options: DMQMC
+            case('TRUNCATION_LEVEL')
+                truncate_space = .true.
+                call readi(truncation_level)
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -542,6 +546,8 @@ contains
             call mpi_bcast(correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
+        call mpi_bcast(truncate_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(truncation_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
