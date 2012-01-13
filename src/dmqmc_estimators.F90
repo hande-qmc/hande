@@ -341,7 +341,7 @@ contains
            sign_factor = (mod(sign_factor+1,2)*2)-1
            ! Hence sign_factor can be used to find the matrix element, as used below.
            estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + &
-                                    0.25*sign_factor*walker_population(1,idet)
+                                    (sign_factor*walker_population(1,idet)/4)
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! matrix element will be 1/2 if and only if the two sites which are flipped are
@@ -352,8 +352,8 @@ contains
            bit_position2 = bit_lookup(1,excitation%to_orb(1))
            bit_element2 = bit_lookup(2,excitation%to_orb(1))
            if (btest(correlation_mask(bit_element1), bit_position1).and.btest(correlation_mask(bit_element2), bit_position2)) &
-                 estimator_numerators(correlation_index) = estimator_numerators(correlation_index) - &
-                                   0.5*walker_population(1,idet)
+                 estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + &
+                                   (walker_population(1,idet)/2)
        end if
 
    end subroutine dmqmc_correlation_function_heisenberg
