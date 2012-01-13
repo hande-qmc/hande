@@ -275,9 +275,9 @@ contains
                 end if
             end do
 
-        ! Now call a routine to add the corresponding diagonal element to
-        ! the spawned walkers list.
-        call create_diagonal_particle(f)
+            ! Now call a routine to add the corresponding diagonal element to
+            ! the spawned walkers list.
+            call create_diagonal_particle(f)
 
         end do
 
