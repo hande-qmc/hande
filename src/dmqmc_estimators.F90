@@ -231,25 +231,25 @@ contains
            ! for this to happen - by flipping one pair, and then the other (this also requires
            ! that the two spins within each neighboring pair are opposite, as ever for the
            ! Heisenberg model). These two flips can happen in either order.
-           ! If the you can draw a path from the first spin which goes through every
-           ! spin and comes back to the original spin, then there are two ways to pair the
-           ! four spins - however, once again, only one way to pair them such that the spins
-           ! within a pair are opposite. This is because the four spins must have a total spin of
-           ! ms=0 (else flipping them all will give a configuration with a different total ms)
-           ! so there must be two up and two down. So for a square lattice, they can only be
-           ! paired in one way. Again, the flipping can be done in either order, giving a factor of 2.
+           ! In some cases the spins may be such that we may pair the spins in more than one way.
+           ! For example, if the four spins are in a square shape, or for a 4-by-4 Heisenberg
+           ! model, the spins could be connected across the whole lattice, forming a ring due
+           ! to the periodic boundaries. In these cases it may be possible to perform the spin
+           ! flips by pairing them in either of two ways. To account for this possibility we
+           ! have to try and pair the spins in both ways, so we always check both if statements
+           ! below. Again, once these pairings have been chosen, the flips can be performed in
+           ! either order.
 
            bit_position1 = bit_lookup(1,excitation%from_orb(1))
            bit_element1 = bit_lookup(2,excitation%from_orb(1))
            bit_position2 = bit_lookup(1,excitation%from_orb(2))
            bit_element2 = bit_lookup(2,excitation%from_orb(2))
            if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1) .and. &
-           btest(connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2)) then
+           btest(connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2)) &
                sum_H1_H2 = 8.0*J_coupling_squared
-           else if (btest(connected_orbs(bit_element1, excitation%to_orb(2)), bit_position1) .and. &
-           btest(connected_orbs(bit_element2, excitation%to_orb(1)), bit_position2)) then
-               sum_H1_H2 = 8.0*J_coupling_squared
-           end if
+           if (btest(connected_orbs(bit_element1, excitation%to_orb(2)), bit_position1) .and. &
+           btest(connected_orbs(bit_element2, excitation%to_orb(1)), bit_position2)) &
+               sum_H1_H2 = sum_H1_H2 + 8.0*J_coupling_squared
 
        end if
 
