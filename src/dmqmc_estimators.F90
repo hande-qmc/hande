@@ -370,38 +370,58 @@ contains
        !    the excitation between the two bitstring ends, corresponding
        !    to the two labels for the density matrix element.
 
-       use basis, only: basis_length, total_basis_length
+       use basis, only: basis_length, total_basis_length, bit_lookup
        use bit_utils, only: count_set_bits
        use determinants, only: lattice_mask
        use excitations, only: excit
        use fciqmc_data, only: walker_dets, walker_population
        use fciqmc_data, only: estimator_numerators, staggered_mag_index
-       use system, only: nel
+       use system, only: nel, nsites
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
-       integer :: bit_element, bit_position, stag_mag_el, sublattice1_up_spins
-       integer(i0) :: f_mask(basis_length)
+       integer :: bit_element1, bit_position1, bit_element2, bit_position2
+       integer(i0) :: f(basis_length)
+       integer :: n_up_plus
+       integer :: total_sum = 0
 
-       ! The staggered magnetisation operator in the z-direction is diagonal
-       ! in a basis of spins which are eigenstates of the z-direction spin
-       ! operator. Hence, we only have contributions from the diagonal
-       ! elements, where there is no excitation.
+       ! This is for the staggered magnetisation squared. This is given by
+       ! M^2 = M_x^2 + M_y^2 + M_z^2
+       ! where M_x = \sum{i}(-1)^i S_i^x, etc... and S_i^x is the spin operator
+       ! at site i, in the x direction.
        if (excitation%nexcit == 0) then
-           ! Calculate the number of up spins on sublattice 1. From this, and
-           ! the total number of spins up, nel, we may calculate the matrix
-           ! element for the staggered magnetisation operator for this spin
-           ! configuartion.
-           ! See the function 'diagonal_element_heisenberg_staggered' in
-           ! hamiltonian.f90 for an explnation of why the matrix element is
-           ! 4*sublattice1_ip_spins - 2*nel.
-           f_mask = iand(walker_dets(:basis_length,idet), lattice_mask)
-           sublattice1_up_spins = sum(count_set_bits(f_mask))
-           ! Matrix element of staggered magnetisation.
-           stag_mag_el = (4*sublattice1_up_spins - 2*nel)
-           estimator_numerators(staggered_mag_index) = estimator_numerators(staggered_mag_index) + &
-                                  stag_mag_el*walker_population(1,idet)
+           ! Need to calculate the number of spins up on sublattice 1:
+           ! N_u(+) - Number up on + sublattice (where (-1)^i above is +1)
+           ! Note the number of down spins on a sublattice is easily obtained from
+           ! N_u(+) since there are N/2 spins on each - and the number of spins up on 
+           ! a different sublattice is easily obtained since there are nel spins
+           ! up in total. Hence the matrix element will be written only in terms
+           ! of the number of up spins on sublattice 1, to save computation.
+           f = iand(walker_dets(:basis_length,idet), lattice_mask)
+           n_up_plus = sum(count_set_bits(f))
+           ! Below, the term in brackets and middle term come from the z component (the
+           ! z operator is diagonal) and one nsites/4 factor comes from the x operator,
+           ! the other nsites/4 factor from the y operator.
+           total_sum = n_up_plus*(3*n_up_plus-4*nel) + nel**2 + (nsites/2)
+       else if (excitation%nexcit == 1) then
+           ! Off-diagonal elements from the y and z operators. For the pair of spins
+           ! that are flipped, if they are on the same sublattice, we get a factor of
+           ! 1, or if on different sublattices, a factor of -1.
+           bit_position1 = bit_lookup(1,excitation%from_orb(1))
+           bit_element1 = bit_lookup(2,excitation%from_orb(1))
+           bit_position2 = bit_lookup(1,excitation%to_orb(1))
+           bit_element2 = bit_lookup(2,excitation%to_orb(1))
+           if (btest(lattice_mask(bit_element1), bit_position1)) total_sum = total_sum+1
+           if (btest(lattice_mask(bit_element2), bit_position2)) total_sum = total_sum+1
+           ! The operation below will map 0 and 2 to +1, and will map 1 to -1, as is easily checked.
+           ! We want this - if both or no spins on this sublattice, then both on same sublattice
+           ! either way, so plus one. Else they are on different sublattices, so we want a factor
+           ! of -1, as we get.
+           total_sum = (mod(total_sum+1,2)*2)-1
        end if
+       
+       estimator_numerators(staggered_mag_index) = estimator_numerators(staggered_mag_index) + &
+                                  total_sum*walker_population(1,idet)
 
    end subroutine dmqmc_stag_mag_heisenberg
 
