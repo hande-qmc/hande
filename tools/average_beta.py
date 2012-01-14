@@ -85,6 +85,7 @@ def get_estimator_headings(data_files):
                    estimator_headings.append('Tr[Hp]/Tr[p]')
                    H_is_present = True
                    TR_HRHO_INDEX = index
+                   print index
                    index = index + 1
                elif headings[k] == '\\sum\\rho_{ij}S_{ji}':
                    estimator_col_no.append(k-3)
@@ -99,6 +100,7 @@ def get_estimator_headings(data_files):
                    estimator_headings.append('Tr[H2p]/Tr[p]')
                    H2_is_present = True
                    TR_H2RHO_INDEX = index
+                   print index
                    index = index + 1
                else:
                    print '# Warning: Column name, '+headings[k]+', not recognised...'
@@ -123,8 +125,69 @@ def stats_array_ratio(numerator_array,denominator, covs):
 
 def stats_stochastic_specific_heat(beta, estimator_array):
     stochastic_specific_heats = []
-    mean = (beta**2)*(estimator_array.mean[TR_H2RHO_INDEX]-estimator_array.mean[TR_HRHO_INDEX]**2)
+    mean = (beta**2)*(estimator_array.mean[TR_H2RHO_INDEX]-(estimator_array.mean[TR_HRHO_INDEX])**2)
     se = scipy.sqrt((beta**4)*(estimator_array.se[TR_H2RHO_INDEX]**2+4*(estimator_array.mean[TR_HRHO_INDEX]**2)*estimator_array.se[TR_HRHO_INDEX]**2))
+    return Stats(mean,se)
+
+def extract_data(data_files, estimtor_col_no):
+    data = {}
+    
+    # ignore lines beginning with # as the first non-whitespace character.
+    comment = '^ *#'
+    # start of data table
+    start_regex = '^ # iterations'
+    # end of data table is a blank line
+    end_regex = '^ *$'
+    # timestep value from echoed input data
+    tau_regex = r'(?<=\btau\b)(.*)'
+
+    for data_file in data_files:
+       
+        f = open(data_file)
+
+        have_data = False
+        for line in f:
+
+            if re.search(end_regex, line):
+                have_data = False
+            elif have_data:
+                # extract data!
+                # data structure:
+                #   data[beta] = ( [data from runs], [data item from runs], ...., )
+                if not re.match(comment, line):
+                    words = line.split()
+                    beta = tau*float(words[BETA_COL])
+                    shift = float(words[SHIFT_COL])
+                    numerators = []
+                    for i in range(0,len(estimtor_col_no)):
+                       numerators.append(float(words[estimtor_col_no[i]])) 
+                    
+                    Tr_rho = float(words[TR_RHO_COL])
+                    if beta in data:
+                        data[beta].append(shift, Tr_rho, numerators)
+                    else:
+                        data[beta] = Data(shift, Tr_rho, numerators)
+            elif re.search(start_regex, line):
+                have_data = True
+            elif re.search(tau_regex, line):
+                # get tau
+                tau = float(re.search(tau_regex, line).group())
+
+        f.close()
+
+    return data
+
+def get_data_stats(data):
+
+    stats = {}
+    for (beta,data_values) in data.iteritems():
+        covariances = data_values.calculate_covs()
+        stats[beta] = data_values.calculate_stats()
+        
+        # Bonus!  Now calculate ratio Tr[H\rho]/Tr[\rho]
+        stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho, covariances)
+        if H2_is_present and H_is_present:
+            stats[beta].stochastic_specific_heat = stats_stochastic_specific_heat(beta,stats[beta].estimators)
     return stats
 
 def calculate_spline_fit(energies, betas, weights):
@@ -152,7 +215,7 @@ def calculate_specific_heat(energies, betas, weights):
         specific_heat[i] = -1.*betas[i]*betas[i]*specific_heat[i]
     return energy_fit, specific_heat
 
-def print_stats(stats, estimator_headings, shift=False, heat_capacity=False):
+def print_stats(stats, estimator_headings, trace=False,  shift=False, heat_capacity=False):
     energies = []
     betas = []
     weights = []
@@ -165,6 +228,8 @@ def print_stats(stats, estimator_headings, shift=False, heat_capacity=False):
         energy_fit, specific_heats = calculate_specific_heat(energies, betas, weights)
             
     print '#           beta    ',
+    if trace:
+        print 'trace     trace s.e.',
     if shift:
         print 'shift           shift s.e.    ',
     for i in range(0,len(estimator_headings)):
@@ -179,6 +244,8 @@ def print_stats(stats, estimator_headings, shift=False, heat_capacity=False):
 
         data = stats[beta]
         print '%16.8f' % (beta) ,
+        if trace:
+            print '%16.8f%16.8f' % (data.Tr_rho.mean, data.Tr_rho.se) ,
         if shift:
             print '%16.8f%16.8f' % (data.shift.mean, data.shift.se) ,
         for i in range(0,len(data.estimators.mean)):
@@ -216,8 +283,8 @@ def parse_options(args):
     parser.add_option('--plot', action='store_true', default=False, help='Plot averaged data.')
     parser.add_option('--with-shift', action='store_true', dest='with_shift', default=False, help='Analyse shift data.')
     parser.add_option('--without-shift', action='store_false', dest='with_shift', help='Do not analyse shift data.  Default.')
-  #   parser.add_option('--with-trace', action='store_true', dest='with_trace', default=True, help='Analyse trace data.  Default.')
-  #   parser.add_option('--without-trace', action='store_false', dest='with_trace', help='Do not analyse trace data.')
+    parser.add_option('--with-trace', action='store_true', dest='with_trace', default=False, help='Analyse trace data.  Default.')
+    parser.add_option('--without-trace', action='store_false', dest='with_trace', help='Do not analyse trace data.')
 #     parser.add_option('--with-heat_capacity', action='store_true', dest='with_heat_capacity', default=False, help='Calculate heat capacity')
   #   parser.add_option('--without-heat_capacity', action='store_false', dest='with_heat_capacity', help='Do not calcualate heat capacity. Default')
     (options, filenames) = parser.parse_args(args)
@@ -234,6 +301,6 @@ if __name__ == '__main__':
     estimator_headings, estimtor_col_no = get_estimator_headings(data_files)
     data = extract_data(data_files, estimtor_col_no)
     stats = get_data_stats(data)
-    print_stats(stats, estimator_headings, options.with_shift)
+    print_stats(stats, estimator_headings, options.with_trace, options.with_shift)
     if options.plot:
         plot_stats(stats, options.with_shift)
