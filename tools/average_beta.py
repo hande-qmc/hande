@@ -125,69 +125,6 @@ def stats_stochastic_specific_heat(beta, estimator_array):
     stochastic_specific_heats = []
     mean = (beta**2)*(estimator_array.mean[TR_H2RHO_INDEX]-estimator_array.mean[TR_HRHO_INDEX]**2)
     se = scipy.sqrt((beta**4)*(estimator_array.se[TR_H2RHO_INDEX]**2+4*(estimator_array.mean[TR_HRHO_INDEX]**2)*estimator_array.se[TR_HRHO_INDEX]**2))
-    print 'cal spec heat function'
-    return Stats(mean,se)
-
-def extract_data(data_files, estimtor_col_no):
-    data = {}
-    
-    # ignore lines beginning with # as the first non-whitespace character.
-    comment = '^ *#'
-    # start of data table
-    start_regex = '^ # iterations'
-    # end of data table is a blank line
-    end_regex = '^ *$'
-    # timestep value from echoed input data
-    tau_regex = r'(?<=\btau\b)(.*)'
-
-    for data_file in data_files:
-       
-        f = open(data_file)
-
-        have_data = False
-        for line in f:
-
-            if re.search(end_regex, line):
-                have_data = False
-            elif have_data:
-                # extract data!
-                # data structure:
-                #   data[beta] = ( [data from runs], [data item from runs], ...., )
-                if not re.match(comment, line):
-                    words = line.split()
-                    beta = tau*float(words[BETA_COL])
-                    shift = float(words[SHIFT_COL])
-                    numerators = []
-                    for i in range(0,len(estimtor_col_no)):
-                       numerators.append(float(words[estimtor_col_no[i]])) 
-                    
-                    Tr_rho = float(words[TR_RHO_COL])
-                    if beta in data:
-                        data[beta].append(shift, Tr_rho, numerators)
-                    else:
-                        data[beta] = Data(shift, Tr_rho, numerators)
-            elif re.search(start_regex, line):
-                have_data = True
-            elif re.search(tau_regex, line):
-                # get tau
-                tau = float(re.search(tau_regex, line).group())
-
-        f.close()
-
-    return data
-
-def get_data_stats(data):
-
-    stats = {}
-    for (beta,data_values) in data.iteritems():
-        covariances = data_values.calculate_covs()
-        stats[beta] = data_values.calculate_stats()
-        
-        # Bonus!  Now calculate ratio Tr[H\rho]/Tr[\rho]
-        stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho, covariances)
-        if H2_is_present and H_is_present:
-            stats[beta].stochastic_specific_heat = stats_stochastic_specific_heat(beta,stats[beta].estimators)
-            print 'Entering stoch spec heat function'
     return stats
 
 def calculate_spline_fit(energies, betas, weights):
