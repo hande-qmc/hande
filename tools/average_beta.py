@@ -23,6 +23,8 @@ TR_H2RHO_COL = 5
 TR_RHO_COL = 3
 H2_is_present = False
 H_is_present = False
+TR_HRHO_INDEX = -1
+TR_H2RHO_INDEX = -1
 
 class Stats:
     def __init__(self, mean, se):
@@ -62,6 +64,10 @@ class Data:
         return covs
 
 def get_estimator_headings(data_files):
+    global H_is_present
+    global H2_is_present
+    global TR_HRHO_INDEX
+    global TR_H2RHO_INDEX
 # Get collumn headings from input file
     start_regex = '^ # iterations'
     data_file = data_files[0]
@@ -88,7 +94,7 @@ def get_estimator_headings(data_files):
                    estimator_col_no.append(k-3)
                    estimator_headings.append('Tr[Cp]/Tr[p]')
                    index = index + 1 
-               elif headings[k] == '\\sum\\rho_{ij}H2_{ji}':
+               elif headings[k] == '\\sum\\rho_{ij}H2{ji}':
                    estimator_col_no.append(k-3)
                    estimator_headings.append('Tr[H2p]/Tr[p]')
                    H2_is_present = True
@@ -119,6 +125,7 @@ def stats_stochastic_specific_heat(beta, estimator_array):
     stochastic_specific_heats = []
     mean = (beta**2)*(estimator_array.mean[TR_H2RHO_INDEX]-estimator_array.mean[TR_HRHO_INDEX]**2)
     se = scipy.sqrt((beta**4)*(estimator_array.se[TR_H2RHO_INDEX]**2+4*(estimator_array.mean[TR_HRHO_INDEX]**2)*estimator_array.se[TR_HRHO_INDEX]**2))
+    print 'cal spec heat function'
     return Stats(mean,se)
 
 def extract_data(data_files, estimtor_col_no):
@@ -180,7 +187,7 @@ def get_data_stats(data):
         stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho, covariances)
         if H2_is_present and H_is_present:
             stats[beta].stochastic_specific_heat = stats_stochastic_specific_heat(beta,stats[beta].estimators)
-  
+            print 'Entering stoch spec heat function'
     return stats
 
 def calculate_spline_fit(energies, betas, weights):
@@ -208,7 +215,7 @@ def calculate_specific_heat(energies, betas, weights):
         specific_heat[i] = -1.*betas[i]*betas[i]*specific_heat[i]
     return energy_fit, specific_heat
 
-def print_stats(stats, estimator_headings, trace=True, shift=False, heat_capacity=False):
+def print_stats(stats, estimator_headings, shift=False, heat_capacity=False):
     energies = []
     betas = []
     weights = []
@@ -223,9 +230,8 @@ def print_stats(stats, estimator_headings, trace=True, shift=False, heat_capacit
     print '#           beta    ',
     if shift:
         print 'shift           shift s.e.    ',
-    if trace:
-        for i in range(0,len(estimator_headings)):
-            print estimator_headings[i]+'            s.e.    ',
+    for i in range(0,len(estimator_headings)):
+        print estimator_headings[i]+'            s.e.    ',
     if H2_is_present and H_is_present:
        print 'Stoch. Spec. Heat  s.e.    '
     if heat_capacity:    
@@ -238,17 +244,16 @@ def print_stats(stats, estimator_headings, trace=True, shift=False, heat_capacit
         print '%16.8f' % (beta) ,
         if shift:
             print '%16.8f%16.8f' % (data.shift.mean, data.shift.se) ,
-        if trace:
-            for i in range(0,len(data.estimators.mean)):
-                print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
+        for i in range(0,len(data.estimators.mean)):
+            print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
         if H2_is_present and H_is_present:
-            print '%16.8f%16.8f' % (data.stochastic_specific_heat.mean, stochastic_specific_heat.se) ,
+            print '%16.8f%16.8f' % (data.stochastic_specific_heat.mean, data.stochastic_specific_heat.se) ,
         if heat_capacity:
             print '%16.8f%16.8f' % (energy_fit[counter], specific_heats[counter]) ,
         counter = counter + 1
         print
 
-def plot_stats(stats, trace=True, shift=False):
+def plot_stats(stats, shift=False):
 
     if USE_MATPLOTLIB:
 
@@ -259,14 +264,14 @@ def plot_stats(stats, trace=True, shift=False):
             # errorbars
             err = [stats[b].shift.se for b in beta] 
             pyplot.errorbar(beta, data, yerr=err, label='S')
-        if trace:
-            # data
-            data = [stats[b].estimators.mean[0] for b in beta] 
-            # errorbars
-            err = [stats[b].estimators.se[0] for b in beta] 
-            pyplot.errorbar(beta, data, yerr=err, label='Tr[Hp]/Tr[p]')
-            pyplot.legend()
-            pyplot.show()
+       
+        # data
+        data = [stats[b].estimators.mean[0] for b in beta] 
+        # errorbars
+        err = [stats[b].estimators.se[0] for b in beta] 
+        pyplot.errorbar(beta, data, yerr=err, label='Tr[Hp]/Tr[p]')
+        pyplot.legend()
+        pyplot.show()
 
 def parse_options(args):
 
@@ -274,10 +279,10 @@ def parse_options(args):
     parser.add_option('--plot', action='store_true', default=False, help='Plot averaged data.')
     parser.add_option('--with-shift', action='store_true', dest='with_shift', default=False, help='Analyse shift data.')
     parser.add_option('--without-shift', action='store_false', dest='with_shift', help='Do not analyse shift data.  Default.')
-    parser.add_option('--with-trace', action='store_true', dest='with_trace', default=True, help='Analyse trace data.  Default.')
-    parser.add_option('--without-trace', action='store_false', dest='with_trace', help='Do not analyse trace data.')
-    parser.add_option('--with-heat_capacity', action='store_true', dest='with_heat_capacity', default=False, help='Calculate heat capacity')
-    parser.add_option('--without-heat_capacity', action='store_false', dest='with_heat_capacity', help='Do not calcualate heat capacity. Default')
+  #   parser.add_option('--with-trace', action='store_true', dest='with_trace', default=True, help='Analyse trace data.  Default.')
+  #   parser.add_option('--without-trace', action='store_false', dest='with_trace', help='Do not analyse trace data.')
+#     parser.add_option('--with-heat_capacity', action='store_true', dest='with_heat_capacity', default=False, help='Calculate heat capacity')
+  #   parser.add_option('--without-heat_capacity', action='store_false', dest='with_heat_capacity', help='Do not calcualate heat capacity. Default')
     (options, filenames) = parser.parse_args(args)
     
     if len(filenames) == 0:
@@ -292,6 +297,6 @@ if __name__ == '__main__':
     estimator_headings, estimtor_col_no = get_estimator_headings(data_files)
     data = extract_data(data_files, estimtor_col_no)
     stats = get_data_stats(data)
-    print_stats(stats, estimator_headings, options.with_trace, options.with_shift, options.with_heat_capacity)
+    print_stats(stats, estimator_headings, options.with_shift)
     if options.plot:
-        plot_stats(stats, options.with_trace, options.with_shift)
+        plot_stats(stats, options.with_shift)
