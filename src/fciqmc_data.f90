@@ -727,7 +727,7 @@ contains
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}C_{ji}'
             end if
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ii}M_{ii}'
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
             end if
 
             write (6, '(2X,a11,2X,a7,2X,a4)') '# particles', 'R_spawn', 'time'

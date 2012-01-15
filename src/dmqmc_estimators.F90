@@ -383,7 +383,9 @@ contains
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer(i0) :: f(basis_length)
        integer :: n_up_plus
-       integer :: total_sum = 0
+       integer :: total_sum
+
+       total_sum = 0
 
        ! This is for the staggered magnetisation squared. This is given by
        ! M^2 = M_x^2 + M_y^2 + M_z^2
@@ -402,7 +404,7 @@ contains
            ! Below, the term in brackets and middle term come from the z component (the
            ! z operator is diagonal) and one nsites/4 factor comes from the x operator,
            ! the other nsites/4 factor from the y operator.
-           total_sum = n_up_plus*(3*n_up_plus-4*nel) + nel**2 + (nsites/2)
+           total_sum = (2*n_up_plus-nel)**2 + (nsites/2)
        else if (excitation%nexcit == 1) then
            ! Off-diagonal elements from the y and z operators. For the pair of spins
            ! that are flipped, if they are on the same sublattice, we get a factor of
@@ -421,7 +423,7 @@ contains
        end if
        
        estimator_numerators(staggered_mag_index) = estimator_numerators(staggered_mag_index) + &
-                                  total_sum*walker_population(1,idet)
+                                  (real(total_sum)/real(nsites**2))*walker_population(1,idet)
 
    end subroutine dmqmc_stag_mag_heisenberg
 

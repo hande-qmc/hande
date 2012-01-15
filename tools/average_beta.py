@@ -95,6 +95,10 @@ def get_estimator_headings(data_files):
                    estimator_col_no.append(k-3)
                    estimator_headings.append('Tr[Cp]/Tr[p]')
                    index = index + 1 
+               elif headings[k] == '\\sum\\rho_{ij}M2{ji}':
+                   estimator_col_no.append(k-3)
+                   estimator_headings.append('Tr[Mp]/Tr[p]')
+                   index = index + 1
                elif headings[k] == '\\sum\\rho_{ij}H2{ji}':
                    estimator_col_no.append(k-3)
                    estimator_headings.append('Tr[H2p]/Tr[p]')

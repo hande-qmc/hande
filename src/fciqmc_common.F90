@@ -372,7 +372,7 @@ contains
                                          &value of the spin correlation function.'
                 end if
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                    write (6, '(1X,a109)') '\sum\rho_{ii}M_{ii}: The numerator of the estimator for the expectation &
+                    write (6, '(1X,a109)') '\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
                                          &value of the staggered magnetisation.'
                 end if
             end if
