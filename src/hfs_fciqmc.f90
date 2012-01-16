@@ -143,6 +143,7 @@ contains
                 ! Number of spawning attempts that will be made.
                 ! Each particle gets to attempt to spawn onto a connected
                 ! determinant and a chance to die/clone.
+                ! This is used for accounting later, not for controlling the spawning.
                 nattempts = 2*nparticles(1)
 
                 ! Reset death counter.

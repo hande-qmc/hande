@@ -42,4 +42,5 @@ if __name__ == '__main__':
         colormap(sys.argv[1], int(sys.argv[2]))
     else:
         print 'Usage: hamil_colormap.py hamil_file N'
+        print 'Converts a matrix (as produced by the HAMILTONIAN option) to an image with one pixel per matrix element.'
         sys.exit(1)

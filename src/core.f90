@@ -21,13 +21,15 @@ contains
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, hub_real, heisenberg, momentum_space
-        use hubbard, only: init_basis_fns
+        use system, only: init_system, system_type, hub_real, hub_k, heisenberg, momentum_space, read_in, cas
+        use hubbard, only: init_model_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
         use hubbard_real, only: init_real_space
-        use symmetry, only: init_symmetry
+        use momentum_symmetry, only: init_momentum_symmetry
+        use point_group_symmetry, only: print_pg_symmetry_info
+        use read_in_system, only: read_in_fcidump
         use calc
 
         call init_parallel()
@@ -49,16 +51,26 @@ contains
 
         call check_input()
 
-        call init_basis_fns()
+        ! Initialise basis functions.
+        if (system_type == read_in) then
+            call read_in_fcidump(cas_info=cas)
+        else
+            call init_model_basis_fns()
+        end if
 
         call init_determinants()
 
         call init_excitations()
 
-        call init_symmetry()
-
-        ! For real space systems
-        if (.not.momentum_space) call init_real_space()
+        ! System specific.
+        select case(system_type)
+        case(hub_k)
+            call init_momentum_symmetry()
+        case(hub_real, heisenberg) 
+            call init_real_space()
+        case(read_in)
+            call print_pg_symmetry_info()
+        end select
 
     end subroutine init_calc
 
@@ -109,33 +121,34 @@ contains
         ! Clean up time!
 
         use calc
-        use system, only: end_system, system_type, hub_real, heisenberg, &
-                          momentum_space
-        use hubbard, only: end_basis_fns
+        use system, only: end_system
+        use basis, only: end_basis_fns
         use determinants, only: end_determinants
         use excitations, only: end_excitations
         use diagonalisation, only: end_hamil
         use fciqmc_data, only: end_fciqmc
         use parallel, only: parent, end_parallel
         use hubbard_real, only: end_real_space
-        use symmetry, only: end_symmetry
+        use momentum_symmetry, only: end_momentum_symmetry
         use report, only: end_report
 
         real :: end_time
 
+        ! Deallocation routines.
+        ! NOTE:
+        !   end_ routines should surround every deallocate statement with a test
+        !   that the array is allocated.
         call end_system()
         call end_basis_fns()
-        call end_symmetry()
+        call end_momentum_symmetry()
         call end_determinants()
         call end_excitations()
         call end_hamil()
+        call end_real_space()
+        call end_fciqmc()
 
-        if (.not.momentum_space) call end_real_space()
-
-        if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc)) call end_fciqmc()
-
+        ! Calculation time.
         call cpu_time(end_time)
-
         if (parent) call end_report(end_time-start_time)
 
         call end_parallel()

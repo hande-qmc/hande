@@ -1,6 +1,8 @@
 #!/usr/bin/env python2
 '''Examine variables set by parsing input files and determine if they are being distributed to the other nodes or not.
 
+A non-zero exit code indicates that not all variables are distributed.
+
 This is exceptionally useful for sanity-checking when debugging parallel code.'''
 
 import os
@@ -49,6 +51,7 @@ def test_input(input_file):
 
     variables = set([])
 
+    # Note all values are converted to upper case as Fortran is case-insensitive.
     for line in f:
         if start.match(line):
             data_in = True
@@ -61,12 +64,12 @@ def test_input(input_file):
                     fn_call = line.split('call')[-1].strip()
                     # 2. obtain 'a'.
                     var = parentheses.search(fn_call).group(0)
-                    variables.update([var])
+                    variables.update([var.upper()])
                 elif setvar.match(line):
                     # e.g. a = b 
                     # obtain a.
                     var = line.split('=')[-2].strip()
-                    variables.update([var])
+                    variables.update([var.upper()])
         if end.match(line):
             data_in = False
             break
@@ -74,17 +77,18 @@ def test_input(input_file):
     # Now get variables which are distributed in the source file.
     distributed = set([])
 
+    # Note all values are converted to upper case as Fortran is case-insensitive.
     for line in f:
         bcast_match = BCAST.search(line)
         if bcast_match and not COMMENT.match(line):
-            distributed.update([bcast_match.group(0)])
+            distributed.update([bcast_match.group(0).upper()])
 
     # special case: output filenames are not needed apart from on the head node, reading the restart file is only read on the head node.
-    for v in ['hamiltonian_file', 'determinant_file', 'binary_fmt_in', 'binary_fmt_out']:
+    for v in ['HAMILTONIAN_FILE', 'DETERMINANT_FILE', 'BINARY_FMT_IN', 'BINARY_FMT_OUT']:
         if v in variables:
             variables.remove(v)
     # special case: option_set is used only for some book-keeping in distribute_input; comms_read is similarly used in fciqmc_interact; occ_list_size is used when nel is not yet determined.
-    for v in ['option_set', 'occ_list_size', 'comms_read']:
+    for v in ['OPTION_SET', 'OCC_LIST_SIZE', 'COMMS_READ']:
         if v in distributed:
             distributed.remove(v)
 
@@ -110,6 +114,7 @@ def test_restart():
     distributed = set([])
 
     # Get values read in and distributed.
+    # Note all values are converted to upper case as Fortran is case-insensitive.
     for line in f:
         if start.match(line):
             data_in = True
@@ -118,24 +123,25 @@ def test_restart():
                 read_search = read.search(line)
                 if read_search:
                     data = read_search.group(0).strip().split(',')
-                    data = [re.sub(data_extract, '', d) for d in data]
+                    data = [re.sub(data_extract, '', d.upper()) for d in data]
                     variables.update(data)
                 else:
                     for mpi_regex in [BCAST, SCATTERV]:
                         mpi_match = mpi_regex.search(line)
                         if mpi_match:
-                            distributed.update([mpi_match.group(0)])
+                            distributed.update([mpi_match.group(0).upper()])
         if end.match(line):
             data_in = False
 
     # Remove special cases...
-    for v in ['det', 'pop', 'energy', 'junk', 'tot_walkers']:
+    for v in ['DET', 'POP', 'ENERGY', 'JUNK', 'TOT_WALKERS']:
         variables.remove(v)
-    for v in ['done', 'scratch_energies', 'spawned_walkers']:
+    for v in ['DONE', 'SCRATCH_ENERGIES', 'SPAWNED_WALKERS']:
         distributed.remove(v)
 
     return check_distributed(input_file, variables, distributed)
 
-exit = test_input('parse_input.F90') + 10*test_input('interact.F90') + 100*test_restart()
 
-sys.exit(exit)
+if __name__ == '__main__':
+    exit = test_input('parse_input.F90') + 10*test_input('interact.F90') + 100*test_restart()
+    sys.exit(exit)

@@ -28,12 +28,12 @@ contains
         use basis, only: nbasis, basis_length, basis_fns, write_basis_fn, bit_lookup
         use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
         use determinants, only: encode_det, set_spin_polarisation, write_det
-        use hamiltonian, only: get_hmatel_real, slater_condon0_hub_real, slater_condon0_hub_k
-        use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
+        use hamiltonian, only: get_hmatel
         use fciqmc_restart, only: read_restart
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
         use system, only: trial_function, neel_singlet, single_basis
-        use symmetry, only: gamma_sym, sym_table
+        use symmetry, only: symmetry_orb_list
+        use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
 
         integer :: ierr
@@ -188,29 +188,14 @@ contains
             ! Reference det
             f0 = walker_dets(:,tot_walkers)
             ! Energy of reference determinant.
-            select case(system_type)
-            case(hub_k)
-                H00 = slater_condon0_hub_k(f0)
-            case(hub_real)
-                H00 = slater_condon0_hub_real(f0)
-            case(heisenberg)
-                if (abs(staggered_magnetic_field) > 0.0_p) then
-                    H00 = diagonal_element_heisenberg_staggered(f0)
-                else
-                    if (trial_function /= single_basis) then
-                        H00 = 0
-                    else
-                        H00 = diagonal_element_heisenberg(f0)
-                    end if
-                end if
-            end select
+            H00 = get_hmatel(f0,f0)
             ! By definition, when using a single determinant as a reference state:
             walker_data(1,tot_walkers) = 0.0_p
             ! Or if not using a single determinant:
-            if (trial_function /= single_basis) walker_data(1,tot_walkers) = &
-                                                 diagonal_element_heisenberg(f0)
-            ! Set the Neel state data for the reference state, if it is being used.
             if (trial_function == neel_singlet) then
+                ! Set the Neel state data for the reference state, if it is being used.
+                walker_data(1,tot_walkers) = H00
+                H00 = 0.0_p
                 walker_data(sampling_size+1,tot_walkers) = nsites/2
                 ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
                 ! The Neel state cannot be used for non-bipartite lattices.
@@ -277,23 +262,16 @@ contains
                     walker_population(:,tot_walkers) = 0.
                     ! Set the population for this basis function.
                     walker_population(1,tot_walkers) = nint(D0_population)
-                    ! TODO: use generic get_hmatel function for all systems
-                    ! after merging other development branches.
+                    walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
                     select case(system_type)
-                    case(hub_k)
-                        walker_data(1,tot_walkers) = slater_condon0_hub_k(f0) - H00
-                    case(hub_real)
-                        walker_data(1,tot_walkers) = slater_condon0_hub_real(f0) - H00
                     case(heisenberg)
-                        if (abs(staggered_magnetic_field) > 0.0_p) then
-                            walker_data(1,tot_walkers) = diagonal_element_heisenberg_staggered(f0) - H00
+                        if (trial_function /= single_basis) then
+                            walker_data(1,tot_walkers) = 0
                         else
-                            if (trial_function /= single_basis) then
-                                walker_data(1,tot_walkers) = 0
-                            else
-                                walker_data(1,tot_walkers) = diagonal_element_heisenberg(f0) - H00
-                            end if
+                            walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
                         end if
+                    case default
+                        walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
                     end select
                     walker_dets(:,tot_walkers) = f0_inv
                     ! If we are using the Neel state as a reference in the
@@ -313,13 +291,18 @@ contains
         forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
 
         ! calculate the reference determinant symmetry
-        ! Brought outside if block for clarity.
-        ! Only if we are working in k-space.
-        if(system_type == hub_k) then
-            ref_sym = gamma_sym
-            do i=1,nel
-                ref_sym = sym_table((occ_list0(i)+1)/2,ref_sym)
-            end do
+        ref_sym = symmetry_orb_list(occ_list0)
+
+        ! If not set at input, set probability of selecting single or double
+        ! excitations based upon the reference determinant and assume other
+        ! determinants have a roughly similar ratio of single:double
+        ! excitations.
+        if (pattempt_single < 0 .or. pattempt_double < 0) then
+            call find_single_double_prob(occ_list0, pattempt_single, pattempt_double)
+        else
+            ! renormalise just in case input wasn't
+            pattempt_single = pattempt_single/(pattempt_single+pattempt_double)
+            pattempt_double = 1.0_p - pattempt_single
         end if
         
         ! Calculate all the possible different amplitudes for the Neel singlet state
@@ -340,17 +323,22 @@ contains
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
-            if(system_type == hub_k) then
-                write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+            write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+            select case(system_type)
+            case (hub_k)
                 call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
-            end if
+            case default
+                write(6,'(i2)') ref_sym
+            end select
+            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', pattempt_single
+            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', pattempt_double
             write (6,'(1X,a44,1X,f11.4,/)') &
                               'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
             if (doing_calc(initiator_fciqmc)) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
-                write (6,'(1X,a36,1X,"(",'//int_fmt(CAS(1),0)//',",",'//int_fmt(CAS(2),0)//'")")')  &
-                    'CAS space of initiator determinants:',CAS
+                write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
+                    'CAS space of initiator determinants:',initiator_CAS
                 write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
                     'Population for a determinant outside CAS space to be an initiator:', initiator_population
             end if
@@ -457,6 +445,103 @@ contains
         end if
 
     end subroutine select_ref_det
+
+    subroutine find_single_double_prob(occ_list, psingle, pdouble)
+
+        ! Calculate the probabilities of selecting a single or double excitation
+        ! from a given determinant.  We assume all possible excitations (i.e.
+        ! those with Hamiltonian matrix elements which are not zero by symmetry)
+        ! are equally likely, so this amounts to finding the number of possible
+        ! (symmetry-allowed) single and double excitations.
+        !
+        ! In:
+        !    occ_list: integer list of occupied spin-orbitals in a determinant, D.
+        ! Out:
+        !    psingle: probability of attempting to spawn on a determinant
+        !             connected to D by a single excitation.
+        !    pdouble: probability of attempting to spawn on a determinant
+        !             connected to D by a double excitation.
+
+        use basis, only: basis_fns
+        use system, only: nel, system_type, hub_k, hub_real, heisenberg, read_in, sym0, nsym
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, nbasis_sym_spin
+
+        integer, intent(in) :: occ_list(nel)
+        real(p), intent(out) :: psingle, pdouble
+
+        integer :: i, j, virt_syms(2, sym0:nsym+(sym0-1)), nsingles, ndoubles, isyma, isymb, ims1, ims2
+
+        select case(system_type)
+        case(hub_k)
+            ! Only double excitations
+            psingle = 0.0_p
+            pdouble = 1.0_p
+        case(hub_real,heisenberg)
+            ! Only single excitations
+            psingle = 1.0_p
+            pdouble = 0.0_p
+        case(read_in)
+
+            ! Count number of basis functions in each symmetry.
+            virt_syms = nbasis_sym_spin
+            do i = 1, nel
+                ! Convert -1->1 and 1->2 for spin index in arrays.
+                ims1 = (basis_fns(occ_list(i))%ms+3)/2
+                virt_syms(ims1,basis_fns(occ_list(i))%sym) = virt_syms(ims1,basis_fns(occ_list(i))%sym) - 1
+            end do
+            
+            ! Count number of possible single excitations from the supplied
+            ! determinant.
+            ! Symmetry and spin must be conserved. 
+            nsingles = 0
+            do i = 1, nel
+                ! Convert -1->1 and 1->2 for spin index in arrays.
+                ims1 = (basis_fns(occ_list(i))%ms+3)/2
+                ! Can't excite into already occupied orbitals.
+                nsingles = nsingles + virt_syms(ims1,basis_fns(occ_list(i))%sym)
+            end do
+
+            ! Count number of possible double excitations from the supplied
+            ! determinant.
+            ndoubles = 0
+            do i = 1, nel
+                ! Convert -1->1 and 1->2 for spin index in arrays.
+                ims1 = (basis_fns(occ_list(i))%ms+3)/2
+                do j = i+1, nel
+                    ! Convert -1->1 and 1->2 for spin index in arrays.
+                    ims2 = (basis_fns(occ_list(j))%ms+3)/2
+                    do isyma = sym0, nsym+(sym0-1)
+                        ! Symmetry of the final orbital is determined (for Abelian
+                        ! symmetries) from the symmetry of the first three.
+                        isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j)))
+                        if (isyma == isymb) then
+                            if (ims1 == ims2) then
+                                ! Cannot excit 2 electrons into the same spin-orbital.
+                                ! Need to avoid double counting.
+                                !  => number of unique pairs is identical to
+                                !  number of elements in the strictly lower
+                                !  triangle of a square matrix.
+                                ndoubles = ndoubles + (virt_syms(ims1,isyma)*(virt_syms(ims2,isymb)-1))/2
+                            else
+                                ndoubles = ndoubles + virt_syms(ims1,isyma)*virt_syms(ims2,isymb)
+                            end if
+                        else if (isyma < isymb) then
+                            ! isyma < isymb to avoid double counting.
+                            ndoubles = ndoubles + virt_syms(ims1,isyma)*virt_syms(ims2,isymb)
+                            ! can also have the opposite spin structure of
+                            ! occupied orbitals have different spins.
+                            if (ims1 /= ims2) ndoubles = ndoubles + virt_syms(ims2,isyma)*virt_syms(ims1,isymb)
+                        end if
+                    end do
+                end do
+            end do
+
+            psingle = real(nsingles,p)/(nsingles+ndoubles)
+            pdouble = real(ndoubles,p)/(nsingles+ndoubles)
+
+        end select
+
+    end subroutine find_single_double_prob
 
     subroutine initial_fciqmc_status()
 

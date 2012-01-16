@@ -198,4 +198,38 @@ contains
 
     end function bit_permutation
 
+    pure subroutine decode_bit_string(b, d) 
+
+        ! In:
+        !    b: bit string stored as an integer(i0)
+        ! Out:
+        !    d: list of bits set in b.  It is assumed that d is at least as
+        !    large as the number of bits set in b.  If not, then all elements of
+        !    d are set to -1.
+        !    The bit string is 0-indexed.
+
+        ! NOTE:
+        !    This is a simple and rather naive algorithm and should not be used
+        !    in performance-critical code.  It can be greatly improved by using
+        !    a chunk-wise loop coupled a data table.
+
+        integer(i0), intent(in) :: b
+        integer, intent(out) :: d(:)
+
+        integer :: ipos, i
+
+        i = lbound(d, dim=1) - 1
+        do ipos = 0, i0_end
+            if (btest(b, ipos)) then
+                i = i + 1
+                if (i > ubound(d, dim=1)) then
+                    d = -1
+                    exit
+                end if
+                d(i) = ipos
+            end if
+        end do
+
+    end subroutine decode_bit_string
+
 end module bit_utils

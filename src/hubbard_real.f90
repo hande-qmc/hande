@@ -65,7 +65,7 @@ contains
 
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use determinants, only: decode_det
-        use system, only: lattice, ndim, box_length, system_type
+        use system, only: lattice, ndim, box_length, system_type, nsym, sym0
         use system, only: heisenberg, triangular_lattice
         use bit_utils
         use checking, only: check_allocate
@@ -80,6 +80,9 @@ contains
         integer :: difference_vec(2), shifted_vec(2), unshifted_vec(2)
         
         logical :: connected = .false.
+
+        nsym = 1
+        sym0 = 1
 
         t_self_images = any(abs(box_length-1.0_p) < depsilon)
 

@@ -9,11 +9,32 @@ implicit none
 
 contains
 
-    elemental function get_hmatel(d1, d2) result(hmatel)
+    elemental function get_hmatel_dets(d1, d2) result(hmatel)
 
         ! In:
         !    d1, d2: integer labels of two determinants, as stored in the
         !            dets array.
+        ! Returns:
+        !    Hamiltonian matrix element between the two determinants, 
+        !    < D1 | H | D2 >.
+
+        ! This is just a wrapper around get_hmatel (which is itself a wrapper
+        ! around system-specific functions) but is handy for computing matrix
+        ! elements (slowly!) when we have the entire Hilbert space of
+        ! determinants stored in dets_list.
+
+        real(p) :: hmatel
+        integer, intent(in) :: d1, d2
+
+        hmatel = get_hmatel(dets_list(:,d1), dets_list(:,d2))
+
+    end function get_hmatel_dets
+
+    pure function get_hmatel(f1, f2) result(hmatel)
+
+        ! In:
+        !    f1, f2: bit string representation of the Slater
+        !        determinants D1 and D2 respectively.
         ! Returns:
         !    Hamiltonian matrix element between the two determinants, 
         !    < D1 | H | D2 >.
@@ -26,16 +47,20 @@ contains
         ! but enables us to use only one test for the system type.  A small
         ! efficiency for not much effort. :-)
 
+        use hamiltonian_molecular, only: get_hmatel_mol
+
         real(p) :: hmatel
-        integer, intent(in) :: d1, d2
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
 
         select case(system_type)
         case(hub_k)
-            hmatel = get_hmatel_k(dets_list(:,d1), dets_list(:,d2))
+            hmatel = get_hmatel_k(f1, f2)
         case(hub_real)
-            hmatel = get_hmatel_real(dets_list(:,d1), dets_list(:,d2))
+            hmatel = get_hmatel_real(f1, f2)
         case(heisenberg)
-            hmatel = get_hmatel_heisenberg(dets_list(:,d1), dets_list(:,d2))
+            hmatel = get_hmatel_heisenberg(f1, f2)
+        case(read_in)
+            hmatel = get_hmatel_mol(f1, f2)
         end select
 
     end function get_hmatel
@@ -262,7 +287,7 @@ contains
         ! One electron operator
         ! Get directly rather than incur the cost of the if test in get_one_e_int_k.
         do i = 1, nel
-            hmatel = hmatel + basis_fns(occ_list(i))%kinetic
+            hmatel = hmatel + basis_fns(occ_list(i))%sp_eigv
         end do
 
     end function slater_condon0_hub_k

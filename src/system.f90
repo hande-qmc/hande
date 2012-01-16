@@ -9,9 +9,12 @@ use const
 
 implicit none
 
+! --- System type ---
+
 ! Parameters to used to specify the system type.
 integer, parameter :: hub_k = 0
 integer, parameter :: hub_real = 1
+integer, parameter :: read_in = 2
 integer, parameter :: heisenberg = 3
 
 ! Which system are we examining?  Hubbard (real space)? Hubbard (k space)? ...?
@@ -22,6 +25,8 @@ logical :: momentum_space = .false.
 
 ! True if the lattice is bipartite. False if it is geometrically frustrated.
 logical :: bipartite_lattice = .false.
+
+! --- QMC reference state and trial (importance-sampling) functions ---
 
 ! For the Heisenberg model, several different trial functions can be used in the
 ! energy estimator. Only a single determinant can be used for the Hubbard model.
@@ -44,6 +49,39 @@ integer, parameter :: neel_singlet_guiding = 1
 ! If we are not using importance sampling, this is set to 0. Else it is set to one
 ! of the above values to specify the corresponding guiding function being used.
 integer :: guiding_function = 0
+
+! --- General System variables ---
+
+! # of electrons
+! *NOTE*: For the Heisenberg model nel refers to the number of spins up in the 
+! basis functions. This is to reuse code for the Hubbard model, where it simply
+! refers to the number of electrons in the system
+integer :: nel = 0 
+! # number of virtual orbitals
+! *NOTE*: For the Heisenberg model nvirt refers to the number of spins down, or
+! the number of 0's in the basis functions
+integer :: nvirt
+
+! Spin polarisation is set in set_spin_polarisation in the determinants module.
+! Only used in Fermionic systems; see note for nel and nvirt for how the spin
+! polarisation is handled in the Heisenberg system.
+! # number of alpha, beta electrons
+integer :: nalpha, nbeta
+! # number of virtual alpha, beta spin-orbitals
+integer :: nvirt_alpha, nvirt_beta
+
+! Number of symmetries.
+integer :: nsym = 1
+
+! Index of lowest symmetry (normally 0 or 1).
+integer :: sym0 = 1
+
+! Complete active space of basis.  Valid only in systems where the
+! single-particle basis can be ordered by the single-particle eigenvalues (e.g.
+! not in the real-space formulation of the Hubbard model or Heisenberg model).
+integer :: CAS(2) = (/ -1, -1 /)
+
+! --- Model Hamiltonians ---
 
 ! 1, 2 or 3 dimensions.
 integer :: ndim 
@@ -76,27 +114,17 @@ real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 ! Twist applied to wavevectors.
 real(p), allocatable :: ktwist(:)
 
-! # of electrons
-! *NOTE*: For the Heisenberg model nel refers to the number of spins up in the 
-! basis functions. This is to reuse code for the Hubbard model, where it simply
-! refers to the number of electrons in the system
-integer :: nel = 0 
-! # number of virtual orbitals
-! *NOTE*: For the Heisenberg model nvirt refers to the number of spins down, or
-! the number of 0's in the basis functions
-integer :: nvirt
-
-! Spin polarisation is set in set_spin_polarisation in the determinants modules
-! Only used in Fermionic systems; see note for nel and nvirt for how the spin
-! polarisation is handled in the Heisenberg system.
-! # number of alpha, beta electrons
-integer :: nalpha, nbeta
-! # number of virtual alpha, beta spin-orbitals
-integer :: nvirt_alpha, nvirt_beta
+! --- Hubbard model ---
 
 ! Hubbard T and U parameters specifying the kinetic energy and Coulomb
 ! interaction respectively.
 real(p) :: hubu = 1, hubt = 1
+
+! The Coulomb integral in the momentum space formulation of the Hubbard model
+! is constant, so it's convenient to store it.
+real(p) :: hub_k_coulomb
+
+! --- Heisenberg model ---
 
 ! Coupling constant J In the Heisenberg model.
 real(p) :: J_coupling = 1
@@ -113,9 +141,16 @@ real(p) :: magnetic_field = 0
 ! Applicable only to bipartite lattices.
 real(p) :: staggered_magnetic_field = 0
 
-! The Coulomb integral in the momentum space formulation of the Hubbard model
-! is constant, so it's convenient to store it.
-real(p) :: hub_k_coulomb
+! --- Read-in system ---
+
+! FCIDUMP filename
+character(255) :: fcidump = 'FCIDUMP'
+
+! UHF or RHF orbitals?
+logical :: uhf = .false.
+
+! Core energy (e.g. nuclear-nuclear terms, contributions from frozen orbitals...
+real(p) :: Ecore
 
 contains
 
@@ -128,64 +163,68 @@ contains
 
         integer :: i, ivec, ierr, counter
 
-        allocate(box_length(ndim), stat=ierr)
-        call check_allocate('box_length',ndim,ierr)
-        allocate(rlattice(ndim,ndim), stat=ierr)
-        call check_allocate('rlattice',ndim*ndim,ierr)
+        if (.not. system_type == read_in) then
 
-        forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),p))
-        nsites = nint(product(box_length))
-        forall (ivec=1:ndim) rlattice(:,ivec) = lattice(:,ivec)/box_length(ivec)**2
+            allocate(box_length(ndim), stat=ierr)
+            call check_allocate('box_length',ndim,ierr)
+            allocate(rlattice(ndim,ndim), stat=ierr)
+            call check_allocate('rlattice',ndim*ndim,ierr)
 
-        if (.not.allocated(ktwist)) then
-            allocate(ktwist(ndim), stat=ierr)
-            call check_allocate('ktwist',ndim,ierr)
-            ktwist = 0.0_p
-        end if
+            forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),p))
+            nsites = nint(product(box_length))
+            forall (ivec=1:ndim) rlattice(:,ivec) = lattice(:,ivec)/box_length(ivec)**2
 
-        hub_k_coulomb = hubu/nsites
+            if (.not.allocated(ktwist)) then
+                allocate(ktwist(ndim), stat=ierr)
+                call check_allocate('ktwist',ndim,ierr)
+                ktwist = 0.0_p
+            end if
 
-        ! For the Heisenberg model, we have ms_in and nsites defined, but nel not.
-        ! Here nel means the number of up spins, nvirt means the number of down spins.
-        ! For other models, both ms_in and nel have already been set, and nel refers
-        ! to the number of electrons in the system.
-        if (system_type == heisenberg) then
-            nel = (nsites+ms_in)/2
-            nvirt = (nsites-ms_in)/2
-        else
-            nvirt = 2*nsites - nel
-        end if
-        
-        ! lattice_size is useful for loops over a general number of dimensions. This
-        ! variable is only concerned with simple lattices which could be bipartite,
-        ! as it is used in init_determinants to split a bipartite lattice into its two parts.
-        lattice_size = 1  
-        lattice_size(1) = ceiling(box_length(1), 2)
-        if (ndim > 1) lattice_size(2) = ceiling(box_length(2), 2)
-        if (ndim > 2) lattice_size(3) = ceiling(box_length(3), 2)
-        
-        ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
-        ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
-        ! to be calculated.
-        counter = 0
-        do i = 1,ndim
-            if ( sum(lattice(:,i)) == box_length(i) .and. mod(lattice_size(i), 2) == 0) counter = counter + 1 
-        end do
-        if (counter == ndim) bipartite_lattice = .true.
-        
-        ! This logical variable is set true if the system being used has basis functions
-        ! in momentum space - the Heisenberg and real Hubbard models are in real space.
-        momentum_space = .not.(system_type == hub_real .or. system_type == heisenberg)
-        
-        if (triangular_lattice) then
-            ! Triangular lattice, only in 2d. Each site has 6 bonds, but each bond is
-            ! connected to 2 sites, so we divide by 2 to avoid counting twice. So there
-            ! are 6*nsites/2 = 3*nsites bonds in total.
-            nbonds = 3*nsites
-        else
-            ! For a simple rectangular lattice, each site has 2*ndim bonds, so there are
-            ! (ndim*nsites) bonds in total.
-            nbonds = ndim*nsites
+            ! For the Heisenberg model, we have ms_in and nsites defined, but nel not.
+            ! Here nel means the number of up spins, nvirt means the number of down spins.
+            ! For other models, both ms_in and nel have already been set, and nel refers
+            ! to the number of electrons in the system.
+            if (system_type == heisenberg) then
+                nel = (nsites+ms_in)/2
+                nvirt = (nsites-ms_in)/2
+            else
+                nvirt = 2*nsites - nel
+            end if
+            
+            ! lattice_size is useful for loops over a general number of dimensions. This
+            ! variable is only concerned with simple lattices which could be bipartite,
+            ! as it is used in init_determinants to split a bipartite lattice into its two parts.
+            lattice_size = 1  
+            lattice_size(1) = ceiling(box_length(1), 2)
+            if (ndim > 1) lattice_size(2) = ceiling(box_length(2), 2)
+            if (ndim > 2) lattice_size(3) = ceiling(box_length(3), 2)
+            
+            ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
+            ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
+            ! to be calculated.
+            counter = 0
+            do i = 1,ndim
+                if ( sum(lattice(:,i)) == box_length(i) .and. mod(lattice_size(i), 2) == 0) counter = counter + 1 
+            end do
+            if (counter == ndim) bipartite_lattice = .true.
+            
+            ! This logical variable is set true if the system being used has basis functions
+            ! in momentum space - the Heisenberg and real Hubbard models are in real space.
+            momentum_space = .not.(system_type == hub_real .or. system_type == heisenberg .or. system_type == read_in)
+            
+            if (triangular_lattice) then
+                ! Triangular lattice, only in 2d. Each site has 6 bonds, but each bond is
+                ! connected to 2 sites, so we divide by 2 to avoid counting twice. So there
+                ! are 6*nsites/2 = 3*nsites bonds in total.
+                nbonds = 3*nsites
+            else
+                ! For a simple rectangular lattice, each site has 2*ndim bonds, so there are
+                ! (ndim*nsites) bonds in total.
+                nbonds = ndim*nsites
+            end if
+
+            hub_k_coulomb = hubu/nsites
+
         end if
 
     end subroutine init_system
@@ -198,14 +237,22 @@ contains
 
         integer :: ierr
 
-        deallocate(box_length, stat=ierr)
-        call check_deallocate('box_length',ierr)
-        deallocate(rlattice, stat=ierr)
-        call check_deallocate('rlattice',ierr)
-        deallocate(lattice, stat=ierr)
-        call check_deallocate('lattice',ierr)
-        deallocate(ktwist, stat=ierr)
-        call check_deallocate('ktwist',ierr)
+        if (allocated(box_length)) then
+            deallocate(box_length, stat=ierr)
+            call check_deallocate('box_length',ierr)
+        end if
+        if (allocated(rlattice)) then
+            deallocate(rlattice, stat=ierr)
+            call check_deallocate('rlattice',ierr)
+        end if
+        if (allocated(lattice)) then
+            deallocate(lattice, stat=ierr)
+            call check_deallocate('lattice',ierr)
+        end if
+        if (allocated(ktwist)) then
+            deallocate(ktwist, stat=ierr)
+            call check_deallocate('ktwist',ierr)
+        end if
 
     end subroutine end_system
 

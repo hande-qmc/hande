@@ -31,10 +31,17 @@ integer(lint) :: target_particles = 10000
 ! excitations to be generated and then rejected.
 logical :: no_renorm = .false.
 
+! probability of attempting single or double excitations...
+! set to be nonsense value so can easily detect if it's given as an input option
+real(p) :: pattempt_single = -1, pattempt_double = -1
+
 !--- Input data: initiator-FCIQMC ---
 
-integer :: CAS(2) = (/ 0,0 /)
+! Complete active space within which a determinant is an initiator.
+! (0,0) corresponds to the reference determinant only.
+integer :: initiator_cas(2) = (/ 0,0 /)
 
+! Population above which a determinant is an initiator.
 integer :: initiator_population = 3
 
 !--- Energy data ---
@@ -268,8 +275,9 @@ contains
         ! a reference determinant.
 
         use checking, only: check_allocate
+
         use errors, only: stop_all
-        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, nsites, &
+        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, nsites, &
                           heisenberg, J_coupling
         use basis, only: bit_lookup
         use hubbard_real, only: connected_orbs
@@ -297,8 +305,9 @@ contains
             allocate(occ_list0(nel), stat=ierr)
             call check_allocate('occ_list0',nel,ierr)
             select case(system_type)
-            case(hub_k)
-                ! Occupy the Fermi sphere.
+            case(hub_k,read_in)
+                ! Orbitals are ordered by their single-particle eigenvalues.
+                ! Occupy the Fermi sphere/HF det.
                 forall (i=1:nalpha) occ_list0(i) = 2*i-1
                 forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
             case(hub_real)

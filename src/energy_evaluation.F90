@@ -252,6 +252,76 @@ contains
 
     end subroutine update_proj_energy_hub_real
 
+    subroutine update_proj_energy_mol(idet)
+
+        ! Add the contribution of the current determinant to the projected
+        ! energy.
+        ! The correlation energy given by the projected energy is:
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
+        ! where N_i is the population on the i-th determinant, D_i,
+        ! and 0 refers to the reference determinant.
+        ! During a MC cycle we store
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
+        ! If the current determinant is the reference determinant, then
+        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! efficient.
+        ! This procedure is for molecular systems (i.e. those defined by an
+        ! FCIDUMP file).
+        !
+        ! In:
+        !    idet: index of current determinant in the main walker list.
+
+        use basis, only: basis_fns
+        use determinants, only: decode_det
+        use excitations, only: excit, get_excitation
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
+        use point_group_symmetry, only: cross_product_pg_basis
+        use system, only: nel
+
+        integer, intent(in) :: idet
+
+        type(excit) :: excitation
+        real(p) :: hmatel
+        integer :: occ_list(nel), ij_sym, ab_sym
+
+        excitation = get_excitation(walker_dets(:,idet), f0)
+
+        select case(excitation%nexcit)
+        case (0)
+            ! Have reference determinant.
+            D0_population = D0_population + walker_population(1,idet)
+        case(1)
+            ! Have a determinant connected to the reference determinant by
+            ! a single excitation: add to projected energy.
+            ! decode
+            ! Is excitation symmetry allowed?
+            if (basis_fns(excitation%from_orb(1))%Ms == basis_fns(excitation%to_orb(1))%Ms .and. &
+                    basis_fns(excitation%from_orb(1))%sym == basis_fns(excitation%to_orb(1))%sym) then
+                call decode_det(walker_dets(:,idet), occ_list)
+                hmatel = slater_condon1_mol_excit(occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                                                  excitation%perm)
+                proj_energy = proj_energy + hmatel*walker_population(1,idet)
+            end if
+        case(2)
+            ! Have a determinant connected to the reference determinant by
+            ! a double excitation: add to projected energy.
+            ! Is excitation symmetry allowed?
+            if (basis_fns(excitation%from_orb(1))%Ms+basis_fns(excitation%from_orb(2))%Ms == &
+                    basis_fns(excitation%to_orb(1))%Ms+basis_fns(excitation%to_orb(2))%Ms) then
+                ij_sym = cross_product_pg_basis(excitation%from_orb(1), excitation%from_orb(2))
+                ab_sym = cross_product_pg_basis(excitation%to_orb(1), excitation%to_orb(2))
+                if (ij_sym == ab_sym) then
+                    hmatel = slater_condon2_mol_excit(excitation%from_orb(1), excitation%from_orb(2), &
+                                                      excitation%to_orb(1), excitation%to_orb(2),     &
+                                                      excitation%perm) 
+                    proj_energy = proj_energy + hmatel*walker_population(1,idet)
+                end if
+            end if
+        end select
+
+    end subroutine update_proj_energy_mol
+
     subroutine update_proj_hfs_hub_k(idet, inst_proj_energy, inst_proj_hf_t1)
 
         ! Add the contribution of the current determinant to the projected

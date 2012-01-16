@@ -63,9 +63,8 @@ type det
     integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
     ! Total spin of the determinant in units of electron spin (1/2).   
     integer, pointer :: Ms => NULL()
-    ! Sum of wavevectors of the occupied orbitals in the Slater determinant.
-    ! Refers to the wavevector of the i-th alpha spin-orbitals.
-    integer, pointer :: ksum => NULL() 
+    ! Symmetry of the occupied orbitals in the Slater determinant.
+    integer, pointer :: sym => NULL()
 end type det
 
 ! Store of determinant information.
@@ -85,10 +84,9 @@ integer(i0), allocatable, target :: dets_list(:,:) ! (basis_length,ndets)
 ! Total spin of each Slater determinant stored in dets_list in units of electron spin (1/2).
 integer, target :: dets_Ms 
 
-! Sum of wavevectors of the occupied orbitals in each Slater determinant stored
-! in det_list.  Sum is to within a reciprocal lattice vector.
-! Refers to the wavevector of the i-th alpha spin-orbitals.
-integer(i0), target :: dets_ksum
+! Symmetry of the occupied orbitals in each Slater determinant stored
+! in det_list.
+integer, target :: dets_sym
 
 ! Number of determinants stored in dets.
 ! This is the number of determinants enumerated in enumerate_determinants with
@@ -127,6 +125,10 @@ type det_info
     integer, pointer :: occ_list_alpha(:), occ_list_beta(:)
     ! List of unoccupied alpha/beta spin-orbitals
     integer, pointer :: unocc_list_alpha(:), unocc_list_beta(:)
+    ! Number of unoccupied orbitals with each spin and symmetry.
+    ! The first index maps to spin using (Ms+3)/2, where Ms=-1 is spin-down and
+    ! Ms=1 is spin-up.
+    integer, pointer :: symunocc(:,:) ! (2,sym0:sym_max)
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC).
     integer :: initiator_flag
@@ -167,11 +169,11 @@ contains
 
         if (parent) then
             fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
-            write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
+            write (6,'(/,1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
             if (doing_calc(exact_diag+lanczos_diag)) &
                 write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
-            write (6,'(1X,a61,'//fmt1(4)//',/)') 'Bit-length of integers used to store determinant bit-strings:', i0_length
+            write (6,'(/,1X,a61,'//fmt1(4)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
             write (6,'(1X,a57,'//fmt1(5)//',/)') 'Number of integers used to store determinant bit-strings:', basis_length
         end if
 
@@ -298,6 +300,8 @@ contains
         call check_allocate('det_info_t%unocc_list_alpha',nvirt_alpha,ierr)
         allocate(det_info_t%unocc_list_beta(nvirt_beta), stat=ierr)
         call check_allocate('det_info_t%unocc_list_beta',nvirt_beta,ierr)
+        allocate(det_info_t%symunocc(2,sym0:nsym+(sym0-1)), stat=ierr)
+        call check_allocate('det_info_t%symunocc',size(det_info_t%symunocc),ierr)
 
     end subroutine alloc_det_info
 
@@ -324,6 +328,8 @@ contains
         call check_deallocate('det_info_t%unocc_list_alpha',ierr)
         deallocate(det_info_t%unocc_list_beta, stat=ierr)
         call check_deallocate('det_info_t%unocc_list_beta',ierr)
+        deallocate(det_info_t%symunocc, stat=ierr)
+        call check_deallocate('det_info_t%symunocc',ierr)
 
     end subroutine dealloc_det_info
 
@@ -359,8 +365,8 @@ contains
             nbeta = (nel - Ms)/2
             nalpha = (nel + Ms)/2
 
-            nvirt_alpha = nsites - nalpha
-            nvirt_beta = nsites - nbeta
+            nvirt_alpha = nbasis/2 - nalpha
+            nvirt_beta = nbasis/2 - nbeta
 
         end select
 
@@ -383,25 +389,32 @@ contains
         ! for large systems where we can't do FCI).
 
         use checking, only: check_allocate, check_deallocate
-        use utils, only: binom_i
-        use utils, only: int_fmt
-        use bit_utils, only: first_perm, bit_permutation
-        use symmetry, only: nsym, gamma_sym, sym_table
+        use utils, only: binom_i, int_fmt
+        use system, only: nsym
+        use symmetry, only: cross_product, symmetry_orb_list
 
-        integer :: i, j, ierr, ibit
+        use bit_utils, only: first_perm, bit_permutation, decode_bit_string
+
+        use momentum_symmetry
+
+        integer :: i, j, ierr
         integer :: nalpha_combinations, nbeta_combinations
-        integer :: k_beta, k
+        integer :: sym_beta, sym
         integer(i0) :: f_alpha, f_beta
+        integer, allocatable :: occ(:)
 
         if (allocated(sym_space_size)) then
             deallocate(sym_space_size, stat=ierr)
             call check_deallocate('sym_space_size',ierr)
         end if
-        allocate(sym_space_size(nsym), stat=ierr)
+        allocate(sym_space_size(sym0:nsym+(sym0-1)), stat=ierr)
         call check_allocate('sym_space_size',nsym,ierr)
 
         nbeta_combinations = binom_i(nbasis/2, nbeta)
         nalpha_combinations = binom_i(nbasis/2, nalpha)
+
+        allocate(occ(max(nalpha, nbeta)), stat=ierr)
+        call check_allocate('occ', max(nalpha, nbeta), ierr)
 
         select case(system_type)
 
@@ -435,10 +448,10 @@ contains
                     f_beta = bit_permutation(f_beta)
                 end if
 
-                k_beta = gamma_sym
-                do ibit = 0, i0_end
-                    if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
-                end do
+                call decode_bit_string(f_beta, occ)
+                ! Convert to beta orbitals.
+                occ = 2*(occ+1)
+                sym_beta = symmetry_orb_list(occ(1:nbeta))
 
                 do j = 1, nalpha_combinations
 
@@ -449,13 +462,13 @@ contains
                         f_alpha = bit_permutation(f_alpha)
                     end if
 
+                    call decode_bit_string(f_alpha, occ)
+                    ! Convert to alpha orbitals.
+                    occ = 2*occ+1
                     ! Symmetry of all orbitals.
-                    k = k_beta
-                    do ibit = 0, i0_end
-                        if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
-                    end do
+                    sym = cross_product(sym_beta, symmetry_orb_list(occ(1:nalpha)))
 
-                    sym_space_size(k) = sym_space_size(k) + 1
+                    sym_space_size(sym) = sym_space_size(sym) + 1
 
                 end do
             end do
@@ -468,39 +481,45 @@ contains
                      'The table below gives the number of determinants for each symmetry with Ms=', &
                      dets_Ms,"."
             write (6,'(1X,a14,6X,a6)') 'Symmetry index','# dets'
-            do i = 1, nsym
+            do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
                 write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
             end do
             write (6,'()')
         end if
 
+        deallocate(occ, stat=ierr)
+        call check_deallocate('occ', ierr)
+
     end subroutine find_sym_space_size
 
-    subroutine enumerate_determinants(ksum)
+    subroutine enumerate_determinants(ref_sym)
     
         ! Find the Slater determinants that can be formed from the
         ! basis functions.  The list of determinants is stored in the
         ! module level dets_list array.
         ! find_sym_space_size must be called first for each value of Ms.
         ! In:
-        !   ksum: index of a wavevector.  Only determinants with the same
-        !         wavevector (up to a reciprocal lattice vector) are stored.
-        !         Ignored for the real space formulation of the Hubbard model.
+        !   ref_sym: index of an irreducible representation.  Only determinants
+        !   with the same symmetry  are stored.
 
         use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i
         use errors, only: stop_all
         use utils, only: get_free_unit, int_fmt
-        use bit_utils, only: first_perm, bit_permutation
-        use symmetry, only: nsym, gamma_sym, sym_table
+        use bit_utils, only: first_perm, bit_permutation, decode_bit_string
+        use symmetry, only: cross_product, symmetry_orb_list
 
-        integer, intent(in) :: ksum
+        integer, intent(in) :: ref_sym
 
         integer :: i, j, idet, ierr, ibit
         integer :: nalpha_combinations, nbeta_combinations
-        integer :: k_beta, k
+        integer :: sym_beta, sym
         character(4) :: fmt1
         integer(i0) :: f_alpha, f_beta
+        integer, allocatable :: occ(:)
+
+        allocate(occ(max(nalpha, nbeta)), stat=ierr)
+        call check_allocate('occ', max(nalpha, nbeta), ierr)
 
         if (allocated(dets_list)) then
             deallocate(dets_list, stat=ierr)
@@ -510,7 +529,7 @@ contains
         nbeta_combinations = binom_i(nbasis/2, nbeta)
         nalpha_combinations = binom_i(nbasis/2, nalpha)
 
-        ndets = sym_space_size(ksum)
+        ndets = sym_space_size(ref_sym)
 
         allocate(dets_list(basis_length, ndets), stat=ierr)
         call check_allocate('dets_list',basis_length*ndets,ierr)
@@ -552,13 +571,11 @@ contains
                     f_beta = bit_permutation(f_beta)
                 end if
 
+                call decode_bit_string(f_beta, occ)
+                ! Convert to beta orbitals.
+                occ = 2*(occ+1)
                 ! Symmetry of the beta orbitals.
-                if (system_type == hub_k) then
-                    k_beta = gamma_sym
-                    do ibit = 0, i0_end
-                        if (btest(f_beta,ibit)) k_beta = sym_table(ibit+1, k_beta)
-                    end do
-                end if
+                sym_beta = symmetry_orb_list(occ(1:nbeta))
 
                 do j = 1, nalpha_combinations
 
@@ -569,15 +586,13 @@ contains
                         f_alpha = bit_permutation(f_alpha)
                     end if
 
+                    call decode_bit_string(f_alpha, occ)
+                    ! Convert to alpha orbitals.
+                    occ = 2*occ+1
                     ! Symmetry of all orbitals.
-                    if (system_type == hub_k) then
-                        k = k_beta
-                        do ibit = 0, i0_end
-                            if (btest(f_alpha,ibit)) k = sym_table(ibit+1, k)
-                        end do
-                    end if
+                    sym = cross_product(sym_beta, symmetry_orb_list(occ(1:nalpha)))
 
-                    if (system_type == hub_real .or. k == ksum) then
+                    if (sym == ref_sym) then
 
                         idet = idet + 1
 
@@ -605,7 +620,7 @@ contains
 
         end select
 
-        dets_ksum = ksum
+        dets_sym = ref_sym
 
         if (write_determinants .and. parent) then
             fmt1 = int_fmt(ndets, padding=1)
@@ -614,6 +629,9 @@ contains
                 call write_det(dets_list(:,i), det_unit, new_line=.true.)
             end do
         end if
+
+        deallocate(occ, stat=ierr)
+        call check_deallocate('occ', ierr)
 
     end subroutine enumerate_determinants
 
@@ -632,7 +650,7 @@ contains
 
         d%f => dets_list(:,i)
         d%Ms => dets_Ms
-        if (system_type == hub_k) d%ksum = dets_ksum
+        if (system_type /= hub_real) d%sym = dets_sym
     
     end function point_to_det
 
@@ -861,6 +879,49 @@ contains
         end do
 
     end subroutine decode_det_spinocc_spinunocc
+
+    pure subroutine decode_det_occ_symunocc(f, d)
+
+        !0 Decode determinant bit string into integer list containing the
+        ! occupied orbitals.
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Out:
+        !    d: det_info variable.  The following components are set:
+        !        occ_list(nel): integer list of occupied spin-orbitals in the
+        !            Slater determinant.
+        !        symunocc(2, sym0:symmax): number of unoccupied orbitals of each
+        !            spin/symmetry.  The same indexing scheme is used for
+        !            nbasis_sym_spin.
+
+        use point_group_symmetry, only: nbasis_sym_spin
+
+        integer(i0), intent(in) :: f(basis_length)
+        type(det_info), intent(inout) :: d
+        integer :: i, j, iocc, iunocc_a, iunocc_b, orb, ims, isym
+
+        iocc = 0
+        iunocc_a = 0
+        iunocc_b = 0
+
+        d%symunocc = nbasis_sym_spin
+
+        do i = 1, basis_length
+            do j = 0, i0_end
+                if (btest(f(i), j)) then
+                    orb = basis_lookup(j, i)
+                    ims = (basis_fns(orb)%ms+3)/2
+                    isym = basis_fns(orb)%sym
+                    iocc = iocc + 1
+                    d%occ_list(iocc) = orb
+                    d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
+                end if
+                if (iocc == nel) exit
+            end do
+        end do
+
+    end subroutine decode_det_occ_symunocc
 
     pure function det_momentum(occ_list) result(ksum)
 

@@ -932,12 +932,12 @@ options are also valid in initiator-FCIQMC calculations:
     Set the (unsigned) population at which a determinant is considered to be an
     initiator determinant.  Setting this value to 0 retrieves the FCIQMC
     result.
-**cas** *N* *M*
+**initiator_cas** *N* *M*
     Integers.
 
     Default: 0 0.
 
-    Set the complete active space (CAS) to be (*N*, *M*), which defines the CAS
+    Set a complete active space (CAS) to be (*N*, *M*), which defines the CAS
     such that the lowest *nel* - *N* spin-orbitals are core (occupied)
     spin-orbitals; precisely *N* electrons occupy the next 2 *M* "active"
     spin-orbitals and the remaining spin-orbitals form the "external" space and

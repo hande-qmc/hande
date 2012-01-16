@@ -23,7 +23,7 @@ contains
 
         ! T is diagonal in the basis of momentum-space functions.
         if (phi1 == phi2) then
-            one_e_int = basis_fns(phi1)%kinetic
+            one_e_int = basis_fns(phi1)%sp_eigv
         else
             one_e_int = 0.0_p
         end if
@@ -87,7 +87,7 @@ contains
         !    True if crystal momentum is conserved in the integral <k_i k_j | U | k_k k_l>
         !    i.e. if k_i + k_j - k_k -k_l = 0 up to a reciprocal lattice vector.
 
-        use symmetry
+        use momentum_symmetry
 
         logical :: conserved
         integer, intent(in) :: i, j, k, l

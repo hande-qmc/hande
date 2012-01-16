@@ -943,11 +943,14 @@ contains
 
     end subroutine gen_excit_heisenberg_no_renorm
 
-    subroutine choose_ij(occ_list, i ,j, ij_sym, ij_spin)
+    subroutine choose_ij_k(occ_list, i ,j, ij_sym, ij_spin)
 
-        ! Randomly choose a pair of spin-orbitals.
+        ! Randomly choose a pair of spin-orbitals for 1-band systems with
+        ! Bloch orbitals.
+        !
         ! See choose_ij_hub_k for a specific procedure for the momentum space
         ! formulation of the hubbard model.
+        !
         ! In:
         !    occ_list: integer list of occupied spin-orbitals in a determinant.
         ! Out:
@@ -958,7 +961,7 @@ contains
         !        alpha.
 
         use basis, only: basis_fns
-        use symmetry, only: sym_table
+        use momentum_symmetry, only: sym_table
         use system, only: nel
         use dSFMT_interface, only: genrand_real2
 
@@ -1026,7 +1029,7 @@ contains
             ij_spin = -1
         end select
 
-    end subroutine choose_ij
+    end subroutine choose_ij_k
 
     subroutine choose_ij_hub_k(occ_list_alpha, occ_list_beta, i ,j, ij_sym)
 
@@ -1044,7 +1047,7 @@ contains
         !    i, j: randomly selected spin-orbitals.
         !    ij_sym: symmetry label of the (i,j) combination.
 
-        use symmetry, only: sym_table
+        use momentum_symmetry, only: sym_table
         use system, only: nalpha, nbeta
         use dSFMT_interface, only: genrand_real2
 
@@ -1145,7 +1148,7 @@ contains
         use basis, only: basis_length, bit_lookup, nbasis
         use dSFMT_interface, only:  genrand_real2
         use system, only: nvirt_alpha
-        use symmetry, only: sym_table, inv_sym
+        use momentum_symmetry, only: sym_table, inv_sym
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_list_alpha(nvirt_alpha)

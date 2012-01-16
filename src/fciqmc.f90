@@ -14,18 +14,21 @@ contains
         ! Wrapper around fciqmc calculation procedures to set the appropriate procedures
         ! that are to be called for the current fciqmc calculation.
 
-        use system, only: system_type, hub_k, hub_real, heisenberg, hub_k_coulomb, hubt, staggered_magnetic_field
+        use system, only: system_type, hub_k, hub_real, heisenberg, read_in, hub_k_coulomb, hubt, staggered_magnetic_field
         use system, only: trial_function, single_basis, neel_singlet
         use system, only: guiding_function, no_guiding, neel_singlet_guiding
         use hellmann_feynman_sampling
         use hamiltonian, only: slater_condon0_hub_k, slater_condon0_hub_real
         use hamiltonian, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
+        use hamiltonian_molecular, only: slater_condon0_mol
         use heisenberg_estimators, only: update_proj_energy_heisenberg_basic, update_proj_energy_&
                                                                           &heisenberg_neel_singlet
         use heisenberg_estimators, only: update_proj_energy_heisenberg_positive
-        use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ
-        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, update_proj_energy_hub_real
+        use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ, decode_det_occ_symunocc
+        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, & 
+                                     update_proj_energy_hub_real, update_proj_energy_mol
         use spawning
+        use spawning_mol_system
         use death, only: stochastic_death
 
         use calc, only: initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, fciqmc_calc, folded_spectrum, doing_calc
@@ -50,7 +53,6 @@ contains
             end if
             sc0_ptr => slater_condon0_hub_k
             hub_matel = hub_k_coulomb
-            spawner_ptr => spawn_hub_k
             death_ptr => stochastic_death
             if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_k
         case (hub_real)
@@ -63,7 +65,6 @@ contains
             end if
             sc0_ptr => slater_condon0_hub_real
             hub_matel = hubt
-            spawner_ptr => spawn_hub_real
             death_ptr => stochastic_death
             if(doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_hub_real
         case (heisenberg)
@@ -104,6 +105,19 @@ contains
             else
                 gen_excit_ptr => gen_excit_heisenberg
             end if
+        case (read_in)
+            update_proj_energy_ptr => update_proj_energy_mol
+            if (no_renorm) then
+                spawner_ptr => spawn_mol_no_renorm
+                decoder_ptr => decode_det_occ
+            else
+                spawner_ptr => spawn_mol
+                decoder_ptr => decode_det_occ_symunocc
+            end if
+            sc0_ptr => slater_condon0_mol
+            hub_matel = hubt
+            death_ptr => stochastic_death
+            if (doing_calc(folded_spectrum)) gen_excit_ptr => gen_excit_mol
         end select
 
         if(doing_calc(folded_spectrum)) call init_folded_spectrum()
@@ -141,7 +155,7 @@ contains
         use parallel
   
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length, bit_lookup, nbasis
+        use basis, only: basis_length, nbasis
         use calc, only: folded_spectrum, doing_calc
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
@@ -154,14 +168,12 @@ contains
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
 
-        integer :: i, idet, ireport, icycle, iparticle
+        integer :: idet, ireport, icycle, iparticle
         integer(lint) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, nattempts, ndeath
         type(excit) :: connection
-
-        integer :: bit_pos, bit_element
 
         logical :: soft_exit
 
@@ -196,6 +208,7 @@ contains
                 ! Number of spawning attempts that will be made.
                 ! Each particle gets to attempt to spawn onto a connected
                 ! determinant and a chance to die/clone.
+                ! This is used for accounting later, not for controlling the spawning.
                 nattempts = 2*nparticles(1)
 
                 ! Reset death counter

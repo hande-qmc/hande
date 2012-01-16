@@ -17,14 +17,13 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
-        use system, only: nel
+        use system, only: nel, nsym, sym0
         use determinants, only: enumerate_determinants, find_sym_space_size, &
                                 set_spin_polarisation
         use determinants, only: tot_ndets, ndets, sym_space_size
         use lanczos
         use full_diagonalisation
-        use hamiltonian, only: get_hmatel
-        use symmetry, only: nsym
+        use hamiltonian, only: get_hmatel_dets
 
         use utils, only: int_fmt
         use m_mrgref, only: mrgref
@@ -69,8 +68,8 @@ contains
         end if
         
         if (sym_in == huge(1)) then
-            sym_min = 1
-            sym_max = nsym
+            sym_min = sym0
+            sym_max = nsym+(sym0-1)
         else
             ! sym was set in input
             sym_min = sym_in
@@ -127,12 +126,12 @@ contains
                     ! The trivial case seems to trip up TRLan and scalapack in
                     ! parallel.
                     if (doing_calc(lanczos_diag)) then
-                        lanczos_solns(nlanczos+1)%energy = get_hmatel(1,1)
+                        lanczos_solns(nlanczos+1)%energy = get_hmatel_dets(1,1)
                         lanczos_solns(nlanczos+1)%ms = ms 
                         nlanczos = nlanczos + 1
                     end if
                     if (doing_calc(exact_diag)) then
-                        exact_solns(nexact+1)%energy = get_hmatel(1,1)
+                        exact_solns(nexact+1)%energy = get_hmatel_dets(1,1)
                         exact_solns(nexact+1)%ms = ms 
                         nexact = nexact + 1
                     end if
@@ -256,7 +255,7 @@ contains
         use errors
         use parallel
 
-        use hamiltonian, only: get_hmatel
+        use hamiltonian, only: get_hmatel_dets
         use hubbard_real
         use determinants, only: ndets
 
@@ -329,7 +328,7 @@ contains
         select case(distribute)
         case(distribute_off)
             forall (i=1:ndets) 
-                forall (j=i:ndets) hamil(i,j) = get_hmatel(i+ind_offset,j+ind_offset)
+                forall (j=i:ndets) hamil(i,j) = get_hmatel_dets(i+ind_offset,j+ind_offset)
             end forall
         case(distribute_blocks, distribute_cols)
             ! blacs divides the matrix up into sub-matrices of size block_size x block_size.
@@ -354,7 +353,7 @@ contains
                         do jj = 1, min(block_size, proc_blacs_info%ncols - j + 1)
                             jlocal = j - 1 + jj
                             jglobal = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj + ind_offset
-                            hamil(ilocal, jlocal) = get_hmatel(iglobal, jglobal)
+                            hamil(ilocal, jlocal) = get_hmatel_dets(iglobal, jglobal)
                         end do
                     end do
                 end do

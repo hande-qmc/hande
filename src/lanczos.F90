@@ -251,7 +251,7 @@ contains
         !    yout: the array to store results of the multiplication.
 
         use determinants, only: ndets
-        use hamiltonian, only: get_hmatel
+        use hamiltonian, only: get_hmatel_dets
  
         integer, intent(in) :: nrow, ncol, ldx, ldy
         real(dp), intent(in) :: xin(ldx,ncol)
@@ -269,11 +269,11 @@ contains
             do j = 1, nrow ! Identical to ndets in serial.
                 tmp = 0.0_dp
                 do i = 1, j-1
-                    hmatel = get_hmatel(i,j) 
+                    hmatel = get_hmatel_dets(i,j) 
                     yout(i,k) = yout(i,k) + hmatel*xin(j, k)
                     tmp = tmp + hmatel*xin(i,k)
                 end do
-                yout(j,k) = get_hmatel(j,j)*xin(j,k) + tmp
+                yout(j,k) = get_hmatel_dets(j,j)*xin(j,k) + tmp
             end do
         end do
 

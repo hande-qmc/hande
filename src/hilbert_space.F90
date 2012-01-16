@@ -10,7 +10,7 @@ contains
 
     subroutine estimate_hilbert_space()
 
-        ! Based on Appendix A in GHB's thesis.
+        ! Based on Appendix A in George Booth's thesis.
 
         ! Find the size of the Hilbert space which is of the same symmetry as
         ! the reference determinant.
@@ -18,13 +18,13 @@ contains
         ! See find_sym_space_size for a dumb but exact enumeration of the size
         ! of the space (which is needed for FCI calculations).
 
-        use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns
+        use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns, nbasis
         use calc, only: ms_in
         use const, only: dp
-        use determinants, only: decode_det, set_spin_polarisation
+        use determinants, only: set_spin_polarisation
         use dSFMT_interface, only: genrand_real2
         use fciqmc_data, only: occ_list0, set_reference_det
-        use symmetry, only: sym_table, gamma_sym
+        use symmetry, only: symmetry_orb_list
         use system
         use parallel
         use utils, only: binom_r
@@ -73,10 +73,7 @@ contains
             call set_reference_det()
 
             ! Symmetry of the reference determinant.
-            ref_sym = gamma_sym
-            do iel = 1, nel
-                ref_sym = sym_table((occ_list0(iel)+1)/2, ref_sym)
-            end do
+            ref_sym = symmetry_orb_list(occ_list0)
 
             if (parent) then
                 write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
@@ -89,15 +86,18 @@ contains
                 ! Generate a random determinant.
                 ! Alpha electrons.
                 f = 0
+                iel = 0
                 do i = 1, nalpha
                     do
                         ! generate random number 1,3,5,...
-                        a = 2*nint(genrand_real2()*(nsites-1))+1
+                        a = 2*nint(genrand_real2()*(nbasis/2-1))+1
                         a_pos = bit_lookup(1,a)
                         a_el = bit_lookup(2,a)
                         if (.not.btest(f(a_el), a_pos)) then
                             ! found unoccupied alpha orbital.
                             f(a_el) = ibset(f(a_el), a_pos)
+                            iel = iel + 1
+                            occ_list(iel) = a
                             exit
                         end if
                     end do
@@ -106,22 +106,20 @@ contains
                 do i = 1, nbeta
                     do
                         ! generate random number 2,4,6,...
-                        b = 2*nint(genrand_real2()*(nsites-1))+2
+                        b = 2*nint(genrand_real2()*(nbasis/2-1))+2
                         b_pos = bit_lookup(1,b)
                         b_el = bit_lookup(2,b)
                         if (.not.btest(f(b_el), b_pos)) then
                             ! found unoccupied beta orbital.
                             f(b_el) = ibset(f(b_el), b_pos)
+                            iel = iel + 1
+                            occ_list(iel) = b
                             exit
                         end if
                     end do
                 end do
                 ! Find the symmetry of the determinant.
-                call decode_det(f, occ_list)
-                det_sym = gamma_sym
-                do iel = 1, nel
-                    det_sym = sym_table((occ_list(iel)+1)/2, det_sym)
-                end do
+                det_sym = symmetry_orb_list(occ_list)
                 ! Is this the same symmetry as the reference determinant?
                 if (det_sym == ref_sym) naccept = naccept + 1
             end do
@@ -129,7 +127,7 @@ contains
             ! Size of the Hilbert space in the desired symmetry block is given
             ! by
             !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons)*naccept/nattempts
-            space_size = (binom_r(nsites, nalpha) * binom_r(nsites, nbeta) * naccept) / nhilbert_cycles
+            space_size = (binom_r(nbasis/2, nalpha) * binom_r(nbasis/2, nbeta) * naccept) / nhilbert_cycles
 
 #ifdef PARALLEL
             ! If we did this on multiple processors then we can get an estimate

@@ -77,6 +77,9 @@ contains
                 system_type = hub_k
             case('HEISENBERG')
                 system_type = heisenberg
+            case('READ')
+                system_type = read_in
+                if (item /= nitems) call reada(fcidump)
 
             ! System information.
             case('LATTICE')
@@ -121,6 +124,10 @@ contains
                 end do
             case('SEPARATE_STRINGS')
                 separate_strings = .true.
+            case('CAS')
+                do i = 1,2
+                    call readi(CAS(i))
+                end do
 
             ! Select symmetry of wavefunction.
             case('MS')
@@ -219,6 +226,9 @@ contains
                 select_ref_det_every_nreports = 20
                 if (item /= nitems) call readi(select_ref_det_every_nreports)
                 if (item /= nitems) call readf(ref_det_factor)
+            case('ATTEMPT_SPAWN_PROB')
+                call readf(pattempt_single)
+                call readf(pattempt_double)
 
             ! Calculation options: Folded spectrum.
             case('FOLD_LINE')
@@ -261,9 +271,9 @@ contains
                 init_spin_inv_D0 = .true.
 
             ! Calculation options: initiator-fciqmc.
-            case('CAS')
-                call readi(CAS(1))
-                call readi(CAS(2))
+            case('INITIATOR_CAS')
+                call readi(initiator_cas(1))
+                call readi(initiator_cas(2))
             case('INITIATOR_POPULATION')
                 call readi(initiator_population)
 
@@ -320,51 +330,56 @@ contains
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
 
-        if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
-
-        if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
-
         if (system_type /= heisenberg) then
             if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
-            if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
-            if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
-                                                 & state for this system. Other trial functions are not avaliable.')
-            if (guiding_function /= no_guiding) call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
-                                                            currently.')
-        end if
-        
-        if (system_type == heisenberg) then
-            if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
-            if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
-            if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice.')
-            if (staggered_magnetic_field /= 0.0_p .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
-                                                       & for this lattice because it is frustrated.')
-            if (staggered_magnetic_field /= 0.0_p .and. magnetic_field /= 0.0_p) &
-                call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
-            if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
-                                                     &guiding function is only avaliable when using the Neel singlet state &
-                                                     &as an energy estimator.') 
+                if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
+                                                     & state for this system. Other trial functions are not avaliable.')
+                if (guiding_function /= no_guiding) call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
+                                                                currently.')
         end if
 
+        if (system_type /= read_in) then
+
+            if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
+
+            if (system_type == heisenberg) then
+                if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+                if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
+                if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice.')
+                if (staggered_magnetic_field /= 0.0_p .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
+                                                           & for this lattice because it is frustrated.')
+                if (staggered_magnetic_field /= 0.0_p .and. magnetic_field /= 0.0_p) &
+                    call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
+                if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
+                                                         &guiding function is only avaliable when using the Neel singlet state &
+                                                         &as an energy estimator.') 
+            else
+                if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
+            end if
+
+            if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
+        
+            if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
+                call warning('check_input','Periodic boundary conditions may not be applied for these particular &
+                               &triangular lattice. Periodic boundary conditions are being turned off.')
+                finite_cluster = .true.
+            end if
+
+            do ivec = 1, ndim
+                do jvec = ivec+1, ndim
+                    if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
+                        call stop_all(this, 'Lattice vectors are not orthogonal.')
+                    end if
+                end do
+            end do
+
+        end if
+        
         if (init_spin_inv_D0 .and. ms_in /= 0) then
             call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
             init_spin_inv_D0 = .false.
         end if
-        
-        if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
-            call warning('check_input','Periodic boundary conditions may not be applied for these particular &
-                           &triangular lattice. Periodic boundary conditions are being turned off.')
-            finite_cluster = .true.
-        end if
-                                                            
-        do ivec = 1, ndim
-            do jvec = ivec+1, ndim
-                if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
-                    call stop_all(this, 'Lattice vectors are not orthogonal.')
-                end if
-            end do
-        end do
 
         if (doing_calc(lanczos_diag)) then
             if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
@@ -386,7 +401,7 @@ contains
                     end if
                 end if
             end if
-            if (any(CAS < 0)) call stop_all(this,'CAS space must be non-negative.')
+            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
          
@@ -436,6 +451,7 @@ contains
         logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fcidump, len(fcidump), mpi_character, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -466,6 +482,7 @@ contains
         call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(cas, 2, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -509,9 +526,11 @@ contains
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lmag2, 1, mpi_integer, 0, mpi_comm_world, ierr)
