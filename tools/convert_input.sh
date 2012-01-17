@@ -19,14 +19,9 @@ fi
 
 for input in $@; do
 
-    # New keywords for system type?  If so, do nothing.
-    if grep -qi "hubbard_k\|hubbard_momentum\|hubbard_real\|heisenberg" $input; then
-
-        echo "New-style input file.  Not changing."
-        
     # Any system type set?  If not, set hubbard_k to be the system type (explicit
     # is better than implicit!)
-    elif ! grep -qi "real_space\|k_space\|momentum_space" $input; then
+    if ! grep -qi "real_space\|k_space\|momentum_space\|heisenberg\|read\|hubbard_" $input; then
 
         echo "Setting system_type to explicitly be hubbard_k in $input."
 
@@ -39,7 +34,7 @@ for input in $@; do
 
         echo "Changing $input to use new keywords."
 
-        perl -pi -e 's/real_space/hubbard_real/i; s/k_space/hubbard_k/i; s/momentum_space/hubbard_momemtum/i' $input
+        perl -pi -e 's/real_space/hubbard_real/i; s/k_space/hubbard_k/i; s/momentum_space/hubbard_momemtum/i; s/reference_det_population/init_pop/i;' $input
 
     fi
 

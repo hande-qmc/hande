@@ -4,7 +4,7 @@ lattice
 0 2
 electrons 2
 simple_fciqmc
-reference_det_population 1
+init_pop 1
 mc_cycles 50
 nreports 220
 tau 0.05

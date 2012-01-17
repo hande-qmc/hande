@@ -15,6 +15,10 @@ integer :: ncycles
 ! at the end of each report cycle.
 integer :: nreport
 
+! For DMQMC, beta_loops specifies the number of times
+! the program will loop over each value of beta in the main loop.
+integer :: beta_loops = 100
+
 ! timestep
 real(p) :: tau
 
@@ -43,6 +47,14 @@ integer :: initiator_cas(2) = (/ 0,0 /)
 
 ! Population above which a determinant is an initiator.
 integer :: initiator_population = 3
+
+!--- Input data: Hilbert space truncation ---
+
+! Currently only implemented for DMQMC.
+! If true, truncate the density matrix space such that it only contains elements which
+! differ by at most truncation_level excitations.
+logical :: truncate_space = .false.
+integer :: truncation_level
 
 !--- Energy data ---
 
@@ -193,12 +205,91 @@ integer, allocatable :: occ_list0(:)
 
 ! Population of walkers on reference determinant.
 ! The initial value can be overridden by a restart file or input option.
+! For DMQMC, this variable stores the initial number of psips to be
+! randomly distributed along the diagonal elements of the density matrix.
 real(p) :: D0_population = 10.0_p
 
 ! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
 ! operator.  This is only done if no restart file is used *and* |D_0> is not
 ! a closed shell determinant.
 logical :: init_spin_inv_D0 = .false.
+
+! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
+! required because in DMQMC calculations, instead of spawning from one end with
+! the full probability, we spawn from two different ends with half probability each.
+! Hence, tau is set to tau/2 in DMQMC calculations, so that an extra factor is not
+! required in every spawning routine. In the death step however, we use
+! walker_energies(1,idet), which has a factor of 1/2 included for convenience
+! already, for conveniece elsewhere. Hence we have to multiply by an extra factor
+! of 2 to account for the extra 1/2 in tau. dmqmc_factor is set to 1.0 when not
+! performing a DMQMC calculation, and so can be ignored in these cases.
+real(p) :: dmqmc_factor = 1.0_p
+
+! The modulus squared of the wavefunction which the psips represent
+! This is used in calculating the expectation value of the
+! staggered magnetisation.
+real(p) :: population_squared = 0.0_p
+
+! This variable stores the number of estimators which are to be
+! calculated and printed out in a DMQMC calculation.
+integer :: number_dmqmc_estimators = 0
+
+! In DMQMC the trace of the density matrix is an important quantity
+! used in calculating all thermal estimators. This quantity stores
+! the this value, Tr(\rho), where rho is the density matrix which
+! the DMQMC algorithm calculates stochastically.
+integer(i0) :: trace
+
+! estimator_numerators stores all the numerators for the estimators in DMQMC
+! which the user has asked to be calculated. These are, for a general
+! operator O which we wish to find the thermal average of:
+! \sum_{i,j} \rho_{ij} * O_{ji}
+! This variabe will store this value from the first iteration of each
+! report loop. At the end of a report loop, the values from each
+! processor are combined and stored in estimator_numerators on the parent
+! processor. This is then output, and the values of estimator_numerators
+! are reset on each processor to start the next report loop.
+real(p), allocatable :: estimator_numerators(:) !(number_dmqmc_estimators)
+! The integers below store the index of the element in the array
+! estimator_numerators, in which the corresponding thermal quantity is
+! stored. In general, a different number and combination of estimators
+! may be calculated, and hence we need a way of knowing which element
+! refers to which operator. These indices give labels to operators.
+! They will be set to 0 if no used, or else their positions in the array,
+! from 1-number_dmqmc_estimators.
+integer :: energy_index = 0
+integer :: energy_squared_index = 0
+integer :: correlation_index = 0
+integer :: staggered_mag_index = 0
+
+! If true, then the reduced density matrix will be calulated
+! for the subsystem A specified by the user.
+logical :: doing_reduced_dm = .false.
+
+integer :: subsystem_A_size
+! If finding a reduced density matrix for subsystem A, then the
+! following list stores the sites on the lattice which belong
+! to subsystem A, stored in array, as input by the user.
+integer, allocatable :: subsystem_A_list(:)
+! This stores the bit positions and bit elements corresponding
+! to the basis functions which belong to sublattice A, so that
+! these do not have to be calculated the many times they are required.
+integer, allocatable :: subsystem_A_bit_positions(:,:)
+! The two below masks have 1's for all bit positions corresponding
+! to sites which belong to sublattice A or B, respectively. 0's elsewhere.
+integer(i0), allocatable :: subsystem_A_mask(:)
+integer(i0), allocatable :: subsystem_B_mask(:)
+! This stored the reduces matrix, which is slowly accumulated over time
+! (on each processor).
+integer, allocatable :: reduced_density_matrix(:,:)
+
+! correlation_mask is a bit string with a 1 at positions i and j which
+! are considered when finding the spin correlation function, C(r_{i,j}).
+! All other bits are set to 0. i and j are chosen by the user initially.
+integer(i0), allocatable :: correlation_mask(:)
+! correlation_sites stores the site positions specified by the users
+! initially (as orbital labels).
+integer, allocatable :: correlation_sites(:)
 
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
@@ -562,10 +653,10 @@ contains
         !        the determinant in this position is the same as f, else
         !        this is where f should go to keep the main walker list sorted.
 
-        use basis, only: basis_length
+        use basis, only: total_basis_length
         use determinants, only: det_compare
 
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(total_basis_length)
         integer, intent(in) :: istart, iend
         logical, intent(out) :: hit
         integer, intent(out) :: pos
@@ -653,12 +744,32 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        use calc, only: doing_calc, folded_spectrum
+        use calc, only: doing_calc, folded_spectrum, dmqmc_calc, doing_dmqmc_calc, dmqmc_correlation
+        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
 
-        ! If we are doing folded spectrum the third column is not the average shift,
-        ! but the average of the square root of the shift, since this is the relevant
-        ! data to average
-        if(doing_calc(folded_spectrum)) then
+        if (doing_calc(dmqmc_calc)) then
+           write (6,'(1X,a12,3X,a13,6X,a16,5X,a5)', advance = 'no') &
+           '# iterations','Instant shift','Av. shift','Trace'
+
+            if (doing_dmqmc_calc(dmqmc_energy)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
+            end if
+            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H2{ji}'
+            end if
+            if (doing_dmqmc_calc(dmqmc_correlation)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}C_{ji}'
+            end if
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
+            end if
+
+            write (6, '(2X,a11,2X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
+
+        else if (doing_calc(folded_spectrum)) then
+            ! If we are doing folded spectrum the third column is not the average shift,
+            ! but the average of the square root of the shift, since this is the relevant
+            ! data to average
             write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
               '# iterations','Instant shift','Av.sqrt S','\sum H_0j Nj',    &
               'Av. Proj. E','# D0','# particles','R_spawn','time'
@@ -666,7 +777,10 @@ contains
             write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
               '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
               'Av. Proj. E','# D0','# particles','R_spawn','time'
-        endif
+            write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,8X,a4,16X,a11,2X,a7,2X,a4)') &
+            '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
+            'Av. Proj. E','# D0','# particles','R_spawn','time'
+        end if
 
     end subroutine write_fciqmc_report_header
 
@@ -678,21 +792,35 @@ contains
         !    ntot_particles: total number of particles in main walker list.
         !    elapsed_time: time taken for the report loop.
 
+        use calc, only: doing_calc, dmqmc_calc
+
         integer, intent(in) :: ireport
         integer(lint), intent(in) :: ntot_particles
         real, intent(in) :: elapsed_time
-        integer :: mc_cycles, vary_shift_reports
+        integer :: mc_cycles, vary_shift_reports, i
 
         mc_cycles = ireport*ncycles
 
         vary_shift_reports = ireport - start_averaging_from - start_vary_shift
 
         ! See also the format used in inital_fciqmc_status if this is changed.
-        write (6,'(5X,i8,2X,4(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
-                                         mc_cycles_done+mc_cycles, shift,   &
-                                         av_shift/vary_shift_reports, proj_energy,       &
-                                         av_proj_energy/av_D0_population, D0_population, & 
-                                         ntot_particles, rspawn, elapsed_time/ncycles
+        if (doing_calc(dmqmc_calc)) then
+            write (6,'(5X,i8,2(2X,es17.10),i10)',advance = 'no') &
+                                             mc_cycles_done+mc_cycles, shift,   &
+                                             av_shift/vary_shift_reports, trace
+            ! Perform a loop which outputs the numerators for each of the different
+            ! estimators, as stored in total_estimator_numerators.
+            do i = 1, number_dmqmc_estimators
+                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
+            end do
+            write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
+        else                                   
+            write (6,'(5X,i8,2X,4(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
+                                             mc_cycles_done+mc_cycles, shift,   &
+                                             av_shift/vary_shift_reports, proj_energy,       &
+                                             av_proj_energy/av_D0_population, D0_population, & 
+                                             ntot_particles, rspawn, elapsed_time/ncycles
+        end if
 
     end subroutine write_fciqmc_report
 
@@ -795,6 +923,10 @@ contains
         if (allocated(neel_singlet_amp)) then
             deallocate(neel_singlet_amp, stat=ierr)
             call check_deallocate('neel_singlet_amp',ierr)
+        end if
+        if (allocated(estimator_numerators)) then
+            deallocate(estimator_numerators, stat=ierr)
+            call check_deallocate('estimator_numerators', ierr)
         end if
 
     end subroutine end_fciqmc

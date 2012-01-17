@@ -26,7 +26,11 @@ contains
                                 annihilate_main_list_initiator,                &
                                 annihilate_spawned_list_initiator
         use basis, only: nbasis, basis_length, basis_fns, write_basis_fn, bit_lookup
-        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc, doing_calc
+        use basis, only: nbasis, basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
+        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
+        use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
+        use calc, only: dmqmc_energy_squared, dmqmc_correlation
+        use dmqmc_procedures, only: init_dmqmc
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel
         use fciqmc_restart, only: read_restart
@@ -41,12 +45,13 @@ contains
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
+        integer :: bit_position, bit_element
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
         ! Array sizes depending upon FCIQMC algorithm.
         sampling_size = 1
-        spawned_size = basis_length + 1
+        spawned_size = total_basis_length + 1
         spawned_pop = spawned_size
         if (doing_calc(hfs_fciqmc_calc)) then
             spawned_size = spawned_size + 1
@@ -82,9 +87,9 @@ contains
         ! walker list is given by basis_length*i0_length+nwalker_int*32+nwalker_real*32
         ! (*64 if double precision).  The number of bytes is simply 1/8 this.
 #ifdef SINGLE_PRECISION
-        size_main_walker = basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*4
+        size_main_walker = total_basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*4
 #else
-        size_main_walker = basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*8
+        size_main_walker = total_basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*8
 #endif
         if (walker_length < 0) then
             ! Given in MB.  Convert.  Note: important to avoid overflow in the
@@ -170,12 +175,6 @@ contains
             end if
             call read_restart()
         else
-            tot_walkers = 1
-            ! Zero all populations...
-            walker_population(:,tot_walkers) = 0
-            ! Set initial population of Hamiltonian walkers.
-            walker_population(1,tot_walkers) = nint(D0_population)
-
             ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
             ! kinetic energy which satisfy the spin polarisation.
@@ -183,33 +182,54 @@ contains
             ! ignored.
             call set_reference_det()
 
-            call encode_det(occ_list0, walker_dets(:,tot_walkers))
+            call encode_det(occ_list0, f0)
 
-            ! Reference det
-            f0 = walker_dets(:,tot_walkers)
-            ! Energy of reference determinant.
-            H00 = get_hmatel(f0,f0)
-            ! By definition, when using a single determinant as a reference state:
-            walker_data(1,tot_walkers) = 0.0_p
-            ! Or if not using a single determinant:
-            if (trial_function == neel_singlet) then
-                ! Set the Neel state data for the reference state, if it is being used.
-                walker_data(1,tot_walkers) = H00
-                H00 = 0.0_p
-                walker_data(sampling_size+1,tot_walkers) = nsites/2
-                ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
-                ! The Neel state cannot be used for non-bipartite lattices.
-                walker_data(sampling_size+2,tot_walkers) = ndim*nsites
+            ! In general FCIQMC, we start with psips only on the
+            ! reference determinant, so set tot_walkers = 1 and
+            ! initialise walker_population. For DMQMC, this is
+            ! not required, as psips are spawned along the diagonal
+            ! initially.
+            if (.not.doing_calc(dmqmc_calc)) then
+                tot_walkers = 1
+                ! Zero all populations...
+                walker_population(:,tot_walkers) = 0
+                ! Set initial population of Hamiltonian walkers.
+                walker_population(1,tot_walkers) = nint(D0_population)
+                ! Set the bitstring of this psip to be that of the
+                ! reference state.
+                walker_dets(:,tot_walkers) = f0
             end if
 
-            ! Finally, we need to check if the reference determinant actually
-            ! belongs on this processor.
-            ! If it doesn't, set the walkers array to be empty.
-            if (nprocs > 1) then
-                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
-                if (D0_proc /= iproc) tot_walkers = 0
-            else
-                D0_proc = iproc
+            ! Energy of reference determinant.
+            H00 = get_hmatel(f0,f0)
+
+            ! Determine and set properties for the reference state which we start on.
+            ! (For DMQMC, we do not start on the reference state, and so this is not
+            ! required. Psips are initialised along the diagonal in DMQMC. See
+            ! dmqmc_procedures).
+            if (.not.doing_calc(dmqmc_calc)) then
+                ! By definition, when using a single determinant as a reference state:
+                walker_data(1,tot_walkers) = 0.0_p
+                ! Or if not using a single determinant:
+                if (trial_function == neel_singlet) then
+                    ! Set the Neel state data for the reference state, if it is being used.
+                    walker_data(1,tot_walkers) = H00
+                    H00 = 0.0_p
+                    walker_data(sampling_size+1,tot_walkers) = nsites/2
+                    ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
+                    ! The Neel state cannot be used for non-bipartite lattices.
+                    walker_data(sampling_size+2,tot_walkers) = ndim*nsites
+                end if
+
+                ! Finally, we need to check if the reference determinant actually
+                ! belongs on this processor.
+                ! If it doesn't, set the walkers array to be empty.
+                if (nprocs > 1) then
+                    D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+                    if (D0_proc /= iproc) tot_walkers = 0
+                else
+                    D0_proc = iproc
+                end if
             end if
         
             ! For the Heisenberg model and open shell systems, it is often useful to
@@ -319,6 +339,13 @@ contains
             end do
         end if
         
+        ! When doing a DMQMC calculation, call a routine to initialise all the required
+        ! arrays, ie to store thermal quantities, and to initalise reduced density matrix
+        ! quantities if necessary.
+        if (doing_calc(dmqmc_calc)) then
+            call init_dmqmc()
+        end if
+
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
@@ -346,10 +373,31 @@ contains
             write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
             write (6,'(1X,a88)') 'Average shift: the running average & 
                                                     &of the shift from when the shift was allowed to vary.'
-            write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
-                                 &Calculated at the end of each cycle.'
-            write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
-            write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+            if (.not. doing_calc(dmqmc_calc)) then
+                write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
+                                     &Calculated at the end of each cycle.'
+                write (6,'(1X,a53)') 'Av. Proj. E: running average of the projected energy.'
+                write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+            else
+                write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
+                                     &density matrix.'
+                if (doing_dmqmc_calc(dmqmc_energy)) then
+                    write (6, '(1X,a92)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+                                         &value of the energy.'
+                end if
+                if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+                    write (6, '(1X,a100)') '\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
+                                         &value of the energy squared.'
+                end if
+                if (doing_dmqmc_calc(dmqmc_correlation)) then
+                    write (6, '(1X,a106)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+                                         &value of the spin correlation function.'
+                end if
+                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+                    write (6, '(1X,a109)') '\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
+                                         &value of the staggered magnetisation.'
+                end if
+            end if
             write (6,'(1X,a49)') '# particles: current total population of walkers.'
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
         end if
@@ -551,7 +599,6 @@ contains
 
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
-
         integer :: idet
         integer :: ntot_particles
 #ifdef PARALLEL

@@ -151,6 +151,8 @@ contains
                 calc_type = calc_type + initiator_fciqmc
             case('CT_FCIQMC')
                 calc_type = calc_type + ct_fciqmc_calc
+            case('DMQMC')
+                calc_type = calc_type + dmqmc_calc
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
@@ -158,6 +160,35 @@ contains
                 call readi(nhilbert_cycles)
             case('FOLDED_SPECTRUM')
                 calc_type = calc_type + folded_spectrum
+
+            ! DMQMC expectation values to be calculated
+            case('DMQMC_ENERGY')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
+            case('DMQMC_ENERGY_SQUARED')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy_squared
+            case('DMQMC_CORRELATION_FUNCTION')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
+                allocate(correlation_sites(nitems-1), stat=ierr)
+                call check_allocate('correlation_sites',nitems-1,ierr)
+                do i = 1, nitems-1
+                    call readi(correlation_sites(i))
+                end do
+            print *, correlation_sites
+            case('DMQMC_STAGGERED_MAGNETISATION')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
+            ! Calculate a reduced density matrix
+            case('REDUCED_DENSITY_MATRIX')
+                doing_reduced_dm = .true.
+            case('SUBSYSTEM_SITES')
+                allocate(subsystem_A_list(nitems-1), stat=ierr)
+                call check_allocate('subsystem_A_list',nitems-1,ierr)
+                do i = 1, nitems-1
+                    call readi(subsystem_A_list(i))
+                end do
+            ! calculation options: DMQMC
+            case('TRUNCATION_LEVEL')
+                truncate_space = .true.
+                call readi(truncation_level)
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -177,6 +208,8 @@ contains
             case('NREPORTS')
                 call readi(nreport)
                 if (nreport < 0) nreport = huge(nreport)
+            case('BETA_LOOPS')
+                call readi(beta_loops)
             case('WALKER_LENGTH')
                 call readi(walker_length)
                 if (item /= nitems) then
@@ -214,6 +247,8 @@ contains
                 end if
             case('VARYSHIFT_TARGET')
                 call readli(target_particles)
+            case('INIT_POP')
+                call readf(D0_population)
             case('REFERENCE_DET')
                 allocate(occ_list0(nitems-1), stat=ierr)
                 call check_allocate('occ_list0',nitems-1,ierr)
@@ -265,8 +300,6 @@ contains
                 call readi(seed)
             case('SHIFT_DAMPING')
                 call readf(shift_damping)
-            case('REFERENCE_DET_POPULATION')
-                call readf(D0_population)
             case('INIT_SPIN_INVERSE_REFERENCE_DET')
                 init_spin_inv_D0 = .true.
 
@@ -353,6 +386,11 @@ contains
                 if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
                                                          &guiding function is only avaliable when using the Neel singlet state &
                                                          &as an energy estimator.') 
+                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.bipartite_lattice)) then
+                    call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
+                                          & This is not a bipartite lattice. Changing options so that it will not be calculated.')
+                    dmqmc_calc_type = dmqmc_calc_type - dmqmc_staggered_magnetisation
+                end if
             else
                 if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
             end if
@@ -374,17 +412,23 @@ contains
             end do
 
         end if
-        
+
         if (init_spin_inv_D0 .and. ms_in /= 0) then
             call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
             init_spin_inv_D0 = .false.
         end if
 
+        if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
+               &sites for the correlation function option.')
+
         if (doing_calc(lanczos_diag)) then
             if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
+
+        if ((.not.doing_calc(dmqmc_calc)) .and. dmqmc_calc_type /= 0) call warning('check_input',&
+               'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
 
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
@@ -447,7 +491,7 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        integer :: ierr, occ_list_size
+        integer :: ierr, occ_list_size, subsystem_size
         logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -488,6 +532,7 @@ contains
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
@@ -499,6 +544,7 @@ contains
 
         call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
@@ -506,6 +552,34 @@ contains
         call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        option_set = .false.
+        if (parent) option_set = allocated(subsystem_A_list)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            occ_list_size = size(subsystem_A_list)
+            call mpi_bcast(subsystem_A_list, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(subsystem_A_list(occ_list_size), stat=ierr)
+                call check_allocate('subsystem_A_list',occ_list_size,ierr)
+            end if
+            call mpi_bcast(subsystem_A_list, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+        end if
+        option_set = .false.
+        if (parent) option_set = allocated(correlation_sites)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            occ_list_size = size(correlation_sites)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(correlation_sites(occ_list_size), stat=ierr)
+                call check_allocate('correlation_sites',occ_list_size,ierr)
+            end if
+            call mpi_bcast(correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+        end if
+        option_set = .false.
+        call mpi_bcast(truncate_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(truncation_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then

@@ -143,13 +143,16 @@ contains
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
 
-        use fciqmc_data, only: shift, tau, shift_damping, av_shift
         use calc, only: doing_calc, folded_spectrum
+        use fciqmc_data, only: shift, tau, shift_damping, av_shift, dmqmc_factor
 
         integer(lint), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
-        shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(tau*nupdate_steps)
+        ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
+        ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
+        shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
+
         if(doing_calc(folded_spectrum)) then
             if(shift .ge. 0.0_p ) av_shift = av_shift + sqrt(shift)
         else

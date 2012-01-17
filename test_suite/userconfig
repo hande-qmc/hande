@@ -6,6 +6,6 @@ vcs = git
 extract = ../../tools/extract.py
 
 [user]
-diff = meld
+diff = vimdiff
 benchfile = benchmark%(INPUTTAG)s-dfd7d8e.out
 

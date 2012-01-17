@@ -45,8 +45,18 @@ contains
         ! This amounts to multplying p_d by the population.  int(p_d) is thus
         ! the number that definitely die and the fractional part of p_d is the
         ! probability of an additional death.
+        
+        ! dmqmc_factor below is set to 1.0 when not performing a DMQMC calculation, and so
+        ! can be ignored in these cases.
+        ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is included
+        ! here because in DMQMC calculations, instead of spawning from one end with
+        ! the full probability, we spawn from two different ends with half probability each.
+        ! Hence, tau is set to tau/2 in DMQMC calculations, so that an extra factor is not
+        ! required in every spawning routine. In this death step however, we use kii, which
+        ! has a factor of 1/2 included for convenience already, for conveniece elsewhere.
+        ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
-        pd = tau*(Kii-shift)
+        pd = tau*(Kii-shift)*dmqmc_factor
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.

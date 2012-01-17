@@ -15,7 +15,7 @@ mc_cycles 10
 tau 0.02
 varyshift_target 100
 
-reference_det_population 2
+init_pop 2
 
 ms 0
 sym 1

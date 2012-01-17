@@ -148,6 +148,7 @@ contains
         ! they are stored as bit strings, lookup arrays for converting from
         ! integer list of orbitals to bit strings and vice versa.
 
+        use calc, only: doing_calc, dmqmc_calc
         use checking, only: check_allocate
         use utils, only: binom_i
         use utils, only: get_free_unit, int_fmt
@@ -165,6 +166,12 @@ contains
         else
             basis_length = ceiling(real(nbasis)/i0_length)
             last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
+        end if
+ 
+        if(doing_calc(dmqmc_calc)) then
+            total_basis_length = 2*basis_length
+        else
+            total_basis_length = basis_length
         end if
 
         if (parent) then
@@ -1038,22 +1045,23 @@ contains
     pure function det_gt(f1, f2) result(gt)
 
         ! In:
-        !    f1(basis_length): bit string representation of the Slater
+        !    f1(total_basis_length): bit string representation of the Slater
         !        determinant.
-        !    f2(basis_length): bit string representation of the Slater
+        !    f2(total_basis_length): bit string representation of the Slater
         !        determinant.
+        !    (For DMQMC this bitstring contains information for both determinants)
         ! Returns:
         !    True if the first element of f1 which is not equal to the
         !    corresponding element of f2 is greater than the corresponding
         !    element in f2.
         
         logical :: gt
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(total_basis_length), f2(total_basis_length)
 
         integer :: i
 
         gt = .false.
-        do i = 1, basis_length
+        do i = 1, total_basis_length
             if (f1(i) > f2(i)) then
                 gt = .true.
                 exit
@@ -1068,10 +1076,11 @@ contains
     pure function det_compare(f1, f2) result(compare)
 
         ! In:
-        !    f1(basis_length): bit string representation of the Slater
+        !    f1(total_basis_length): bit string representation of the Slater
         !        determinant.
-        !    f2(basis_length): bit string representation of the Slater
+        !    f2(total_basis_length): bit string representation of the Slater
         !        determinant.
+        !    (For DMQMC this bitstring contains information for both determinants)
         ! Returns:
         !    0 if f1 and f2 are identical;
         !    1 if the first non-identical element in f1 is smaller than the
@@ -1080,12 +1089,12 @@ contains
         !    corresponding element in f2;
 
         integer :: compare
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(total_basis_length), f2(total_basis_length)
 
         integer :: i
 
         compare = 0
-        do i = 1, basis_length
+        do i = 1, total_basis_length
             if (f1(i) < f2(i)) then
                 compare = 1
                 exit

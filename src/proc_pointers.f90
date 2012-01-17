@@ -21,6 +21,12 @@ abstract interface
         implicit none
         integer, intent(in) :: idet
     end subroutine i_update_proj_energy
+    subroutine i_update_dmqmc_estimators(idet,excitation)
+        import :: excit
+        implicit none
+        integer, intent(in) :: idet
+        type(excit), intent(in) :: excitation
+    end subroutine i_update_dmqmc_estimators
     subroutine i_spawner(d, parent_sign, nspawned, connection)
         import :: det_info, excit
         implicit none
@@ -65,6 +71,15 @@ abstract interface
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawned, spawned_pop
     end subroutine i_create_spawned_particle
+    subroutine i_create_spawned_particle_dm(f1, f2, connection, nspawned, spawning_end)
+        use basis, only: basis_length
+        import :: excit, i0
+        implicit none
+        integer(i0), intent(in) :: f1(basis_length)
+        integer(i0), intent(in) :: f2(basis_length)
+        type(excit), intent(in) :: connection
+        integer, intent(in) :: nspawned, spawning_end
+    end subroutine i_create_spawned_particle_dm
 
     ! generic procedures...
     subroutine i_sub()
@@ -74,13 +89,19 @@ end interface
 
 procedure(i_decoder), pointer :: decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_correlation_ptr => null()
 procedure(i_spawner), pointer :: spawner_ptr => null()
 procedure(i_gen_excit), pointer :: gen_excit_ptr => null()
 procedure(i_death), pointer :: death_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
 procedure(i_sub), pointer :: annihilate_spawned_list_ptr => null()
+procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
+procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
 
 end module proc_pointers

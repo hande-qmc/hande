@@ -505,6 +505,8 @@ Note that multiple calculations can be specified within a single input, but are 
     terms of CPU and memory resources) algorithm.  This should be used for testing only.
 **fciqmc**
     Perform an FCIQMC calculation [Booth_Thom_Alavi_09]_.
+**dmqmc**
+    Perform a Density Matrix Quantum Monte Carlo (DMQMC) calculation
 **ifciqmc**
     Perform an initiator-FCIQMC calculation [Cleland_Booth_Alavi_10]_.
 **ct_fciqmc**
@@ -533,6 +535,8 @@ Note that multiple calculations can be specified within a single input, but are 
     For the real space formulation of the Hubbard model and the Heisenberg
     model, the exact size of the space (at least to the first 8 significant
     figures) is found by simple combinatorics.
+
+
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -743,13 +747,16 @@ The following options are valid for FCIQMC calculations.
     positions on the lattice of the up spins in the reference basis vector.
     (Note that the number of up spins is deduced from the ms value specified and the
     total number of sites).
-**reference_det_population** *pop*
+**init_pop** *pop*
     Integer.
 
     Default: 10.
 
     Set the initial walker population on the reference determinant.  This will
     be overridden by a restart file.
+
+    For DMQMC calculations this option sets the number of psips which will
+    be randomly distributed along the diagonal at the start of each beta loop.
 **init_spin_inverse_reference_det**
     Default: false.
 
@@ -917,6 +924,40 @@ The following options are valid for FCIQMC calculations.
     
     When this guiding function is used, the Neel singlet must be used in the projected energy, so
     the neel_singlet_estimator option is automatically turned on.
+    
+Calculation options: DMQMC options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In addition to the options for FCIQMC calculations, the following options are additional to the 
+configuration of a Density Matrix Quantum Monte Carlo (DMQMC) calculation
+
+**beta_loops**
+   Integer.
+
+   Default: 100.
+
+   Set the number of loops in beta for the estimators (at each beta) to be averaged over.
+
+**dmqmc_energy**
+   
+   Perform DMQMC calculation on the expectation value of the Hamiltonian.
+
+**dmqmc_energy_squared**
+
+   Perform DMQMC calculation on the expectation value of the Hamiltonian squared.
+
+   Note, the heat capacity can be calculated after a calculation by running average_beta.py
+   in the tools folder, with the option --with-heat_capacity. This requires that both
+   the energy and the energy squared were calculated in the DMQMC run.
+
+**dmqmc_staggered_magnetisation**
+
+   Perform DMQMC calculation on the staggered magnetisation
+
+**truncate_space** *truncation_level*
+
+    Consider only elements of the density matrix where the determinants differ
+    by at most *truncation_level* excitations.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
