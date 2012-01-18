@@ -53,6 +53,7 @@ real(p) :: shift = 0.0_p
 ! Initial shift, needed in DMQMC to reset the shift at the start of each
 ! beta loop.
 real(p) :: initial_shift = 0.0_p
+real(p) :: old_shift = 0.0_p
 
 ! shift averaged over the calculation, once varyshift mode has been entered.
 ! This is really a running total: the average is only taken at output time (in
@@ -769,7 +770,7 @@ contains
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(5X,i8,2(2X,es17.10),i10)',advance = 'no') &
-                                             mc_cycles_done+mc_cycles, shift,   &
+                                             (mc_cycles_done+mc_cycles-ncycles), old_shift,   &
                                              av_shift/vary_shift_reports, trace
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.

@@ -101,6 +101,7 @@ contains
         
         integer :: i, idet, ireport, icycle, iparticle
         integer :: beta_cycle, nparticles_old(sampling_size)
+        integer :: nparticles_start_report
         type(det_info) :: cdet1, cdet2
         integer :: nspawned, nattempts, ndeath
         type(excit) :: connection
@@ -120,6 +121,13 @@ contains
         call cpu_time(t1)
 
         initial_shift = shift
+        ! When we accumulate data throughout a run, we are actually accumulating
+        ! results from the psips distribution from the previous iteration.
+        ! For example, in the first iteration, the trace calculated will be that
+        ! of the initial distribution, which corresponds to beta=0. Hence, in the
+        ! output we subtract one from the iteration number, and run for one more
+        ! report loop, asimplemented in the line of code below.
+        nreport = nreport+1
  
         do beta_cycle = 1, beta_loops
             ! Reset the current position in the spawning array to be the
@@ -158,6 +166,7 @@ contains
                 rspawn = 0.0_p
                 trace = 0
                 estimator_numerators = 0
+                nparticles_start_report = nparticles_old(1)
 
                 do icycle = 1, ncycles
                     spawning_head = spawning_block_start
@@ -224,6 +233,7 @@ contains
 
                 end do
             
+                old_shift=shift
                 ! Update the shift and desired thermal quantites.
                 call update_dmqmc_estimators(ireport, nparticles_old)
 
@@ -231,7 +241,7 @@ contains
 
                 ! t1 was the time at the previous iteration, t2 the current time.
                 ! t2-t1 is thus the time taken by this report loop.
-                if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
+                if (parent) call write_fciqmc_report(ireport, nparticles_start_report, t2-t1)
 
                 ! cpu_time outputs an elapsed time, so update the reference timer.
                 t1 = t2
