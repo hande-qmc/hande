@@ -118,15 +118,17 @@ contains
         if (parent) call write_fciqmc_report_header()
         ! Initialise timer.
         call cpu_time(t1)
+
+        initial_shift = shift
  
         do beta_cycle = 1, beta_loops
             ! Reset the current position in the spawning array to be the
             ! slot preceding the first slot.
             spawning_head = spawning_block_start
             tot_walkers = 0
+            shift = initial_shift
+            av_shift = initial_shift
             nparticles = 0
-            shift = 0
-            av_shift =0
             start_vary_shift = 0
             vary_shift = .false.
  

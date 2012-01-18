@@ -50,6 +50,10 @@ integer :: truncation_level
 ! shift
 real(p) :: shift = 0.0_p
 
+! Initial shift, needed in DMQMC to reset the shift at the start of each
+! beta loop.
+real(p) :: initial_shift = 0.0_p
+
 ! shift averaged over the calculation, once varyshift mode has been entered.
 ! This is really a running total: the average is only taken at output time (in
 ! write_fciqmc_report).
