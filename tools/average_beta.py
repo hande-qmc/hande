@@ -85,7 +85,6 @@ def get_estimator_headings(data_files):
                    estimator_headings.append('Tr[Hp]/Tr[p]')
                    H_is_present = True
                    TR_HRHO_INDEX = index
-                   print index
                    index = index + 1
                elif headings[k] == '\\sum\\rho_{ij}S_{ji}':
                    estimator_col_no.append(k-3)
@@ -104,7 +103,6 @@ def get_estimator_headings(data_files):
                    estimator_headings.append('Tr[H2p]/Tr[p]')
                    H2_is_present = True
                    TR_H2RHO_INDEX = index
-                   print index
                    index = index + 1
                else:
                    print '# Warning: Column name, '+headings[k]+', not recognised...'
@@ -202,7 +200,6 @@ def calculate_spline_fit(energies, betas, weights):
     # Choose default smoothing parameter m-sqrt(2*m) < s < m+sqrt(2*m). 
     # Where m is number of data points. 
     # Defaults is s = m - sqrt(2*m)
-
     # Caluclate knots, spline co-efficients and degree of spline (t,c,k=3)
     tck = scipy.interpolate.splrep(betas, energies, weights, k=3)
     # Calculate the spline fit using (t,c,k)
@@ -219,11 +216,11 @@ def calculate_specific_heat(energies, betas, weights):
         specific_heat[i] = -1.*betas[i]*betas[i]*specific_heat[i]
     return energy_fit, specific_heat
 
-def print_stats(stats, estimator_headings, trace=False,  shift=False, heat_capacity=False):
+def print_stats(stats, estimator_headings, trace=False,  shift=False, with_spline=False, with_heat_capacity=False):
     energies = []
     betas = []
     weights = []
-    if heat_capacity:
+    if with_spline:
         for beta in sorted(stats.iterkeys()):
             data = stats[beta]
             weights.append(1./data.estimators.se[0])
@@ -238,10 +235,10 @@ def print_stats(stats, estimator_headings, trace=False,  shift=False, heat_capac
         print 'shift           shift s.e.    ',
     for i in range(0,len(estimator_headings)):
         print estimator_headings[i]+'            s.e.    ',
-    if H2_is_present and H_is_present:
+    if H2_is_present and H_is_present and with_heat_capacity:
        print 'Stoch. Spec. Heat  s.e.    '
-    if heat_capacity:    
-        print '  Energy Fit   Heat Capacity'
+    if with_spline:    
+        print '  Energy Fit    Spline HC'
     print
     counter = 0
     for beta in sorted(stats.iterkeys()):
@@ -254,9 +251,9 @@ def print_stats(stats, estimator_headings, trace=False,  shift=False, heat_capac
             print '%16.8f%16.8f' % (data.shift.mean, data.shift.se) ,
         for i in range(0,len(data.estimators.mean)):
             print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
-        if H2_is_present and H_is_present:
+        if H2_is_present and H_is_present and with_heat_capacity:
             print '%16.8f%16.8f' % (data.stochastic_specific_heat.mean, data.stochastic_specific_heat.se) ,
-        if heat_capacity:
+        if with_spline:
             print '%16.8f%16.8f' % (energy_fit[counter], specific_heats[counter]) ,
         counter = counter + 1
         print
@@ -289,8 +286,10 @@ def parse_options(args):
     parser.add_option('--without-shift', action='store_false', dest='with_shift', help='Do not analyse shift data.  Default.')
     parser.add_option('--with-trace', action='store_true', dest='with_trace', default=False, help='Analyse trace data.  Default.')
     parser.add_option('--without-trace', action='store_false', dest='with_trace', help='Do not analyse trace data.')
-#     parser.add_option('--with-heat_capacity', action='store_true', dest='with_heat_capacity', default=False, help='Calculate heat capacity')
-  #   parser.add_option('--without-heat_capacity', action='store_false', dest='with_heat_capacity', help='Do not calcualate heat capacity. Default')
+    parser.add_option('--with-spline', action='store_true', dest='with_spline', default=False, help='Calculate heat capacity using a spline fit of H2 and H')
+    parser.add_option('--without-spline', action='store_false', dest='with_spline', help='Do not calcualate heat capacity using spline fit. Default')
+    parser.add_option('--with-heat-capacity', action='store_true', dest='with_heat_capacity', default=False, help='Calculate the stochastic heat capacity.')
+    parser.add_option('--without-heat-capacity', action='store_false', dest='with_heat_capacity', help='Do not calculate teh stochastic heat capacity')
     (options, filenames) = parser.parse_args(args)
     
     if len(filenames) == 0:
@@ -305,6 +304,6 @@ if __name__ == '__main__':
     estimator_headings, estimtor_col_no = get_estimator_headings(data_files)
     data = extract_data(data_files, estimtor_col_no)
     stats = get_data_stats(data)
-    print_stats(stats, estimator_headings, options.with_trace, options.with_shift)
+    print_stats(stats, estimator_headings, options.with_trace, options.with_shift, options.with_spline, options.with_heat_capacity)
     if options.plot:
         plot_stats(stats, options.with_shift)
