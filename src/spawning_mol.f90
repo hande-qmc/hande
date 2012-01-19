@@ -29,32 +29,20 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: tau
-
-        use dSFMT_interface, only:  genrand_real2
+        use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, hmatel, pspawn
+        real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
         call gen_excit_mol(cdet, pgen, connection, hmatel)
 
-        ! 2. Calculate P_spawn.
-        pspawn = tau*abs(hmatel)/pgen
-
-        ! 3. Attempt spawning.
-        nspawn = int(pspawn)
-        pspawn = pspawn - nspawn
-        if (pspawn > genrand_real2()) nspawn = nspawn + 1
-        if (hmatel > 0) then
-            nspawn = -sign(nspawn, parent_sign)
-        else
-            nspawn = sign(nspawn, parent_sign)
-        end if
+        ! 2. Attempt spawning.
+        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
     end subroutine spawn_mol
 
@@ -84,32 +72,20 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: tau
-
-        use dSFMT_interface, only:  genrand_real2
+        use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, hmatel, pspawn
+        real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
         call gen_excit_mol_no_renorm(cdet, pgen, connection, hmatel)
 
-        ! 2. Calculate P_spawn.
-        pspawn = tau*abs(hmatel)/pgen
-
-        ! 3. Attempt spawning.
-        nspawn = int(pspawn)
-        pspawn = pspawn - nspawn
-        if (pspawn > genrand_real2()) nspawn = nspawn + 1
-        if (hmatel > 0) then
-            nspawn = -sign(nspawn, parent_sign)
-        else
-            nspawn = sign(nspawn, parent_sign)
-        end if
+        ! 2. Attempt spawning.
+        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
     end subroutine spawn_mol_no_renorm
 
