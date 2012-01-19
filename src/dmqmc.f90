@@ -102,7 +102,7 @@ contains
         integer :: i, idet, ireport, icycle, iparticle
         integer :: beta_cycle
         integer(lint) :: nparticles_old(sampling_size)
-        integer :: nparticles_start_report
+        integer(lint) :: nparticles_start_report
         type(det_info) :: cdet1, cdet2
         integer :: nspawned, nattempts, ndeath
         type(excit) :: connection
