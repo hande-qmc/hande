@@ -235,8 +235,8 @@ contains
         ! Yes, this the calls to insertion_rank_rp do result in array copies,
         ! but the arrays are small and the elegance and brevity of the code is
         ! more than aadequate compensation.
-        call insertion_rank_rp(sp_eigv(::2), sp_eigv_rank(1::2))
-        call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2))
+        call insertion_rank_rp(sp_eigv(::2), sp_eigv_rank(1::2), tolerance=depsilon)
+        call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
         ! Interweave so the basis functions remain with alternating spins.
         forall (i = 1:nbasis-1:2)
             sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
