@@ -303,7 +303,8 @@ contains
         end if
         if (print_all) then
             if (system_type /= heisenberg) write (io,'(5X,i2)', advance='no') b%ms
-            if (system_type == hub_k .or. system_type == ueg .or. system_type == read_in) write (io,'(4X,f12.8)', advance='no') b%sp_eigv
+            if (system_type == hub_k .or. system_type == ueg .or. system_type == read_in) &
+                write (io,'(4X,f12.8)', advance='no') b%sp_eigv
         end if
         if (present(new_line)) then
             if (new_line) write (io,'()')

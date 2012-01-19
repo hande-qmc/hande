@@ -392,8 +392,9 @@ contains
             if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
                 if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
                                                      & state for this system. Other trial functions are not avaliable.')
-                if (guiding_function /= no_guiding) call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
-                                                                currently.')
+                if (guiding_function /= no_guiding) &
+                    call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
+                                         & currently.')
         end if
 
         if (system_type /= read_in) then
@@ -403,9 +404,11 @@ contains
             if (system_type == heisenberg) then
                 if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
                 if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
-                if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice.')
-                if (staggered_magnetic_field /= 0.0_p .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
-                                                           & for this lattice because it is frustrated.')
+                if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not&
+                                                                              & possible for this lattice.')
+                if (staggered_magnetic_field /= 0.0_p .and. (.not.bipartite_lattice)) &
+                    call stop_all(this, 'Cannot set a staggered field&
+                                        & for this lattice because it is frustrated.')
                 if (staggered_magnetic_field /= 0.0_p .and. magnetic_field /= 0.0_p) &
                     call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
                 if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
