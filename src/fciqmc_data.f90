@@ -74,11 +74,6 @@ logical :: vary_shift_from_proje = .false.
 real(p) :: initial_shift = 0.0_p
 real(p) :: old_shift = 0.0_p
 
-! shift averaged over the calculation, once varyshift mode has been entered.
-! This is really a running total: the average is only taken at output time (in
-! write_fciqmc_report).
-real(p) :: av_shift = 0.0_p
-
 ! Factor by which the changes in the population are damped when updating the
 ! shift.
 real(p) :: shift_damping = 0.050_dp
@@ -93,17 +88,6 @@ real(p) :: shift_damping = 0.050_dp
 ! and so proj_energy must be 'normalised' and averaged over the report loops
 ! accordingly.
 real(p) :: proj_energy
-
-! projected energy averaged over the calculation.
-! This is really a running total of \sum_{i/=0} <D_0|H|D_i> N_i: the average is
-! only taken at output time (in write_fciqmc_report) by considering the ratio
-!   av_proj_energy/av_D0_population.
-real(p) :: av_proj_energy = 0.0_p
-! Similarly a running total for the population on the reference determinant.
-real(p) :: av_D0_population = 0.0_p
-
-! Report loop at which the averages are set to 0.
-integer :: start_averaging_from = 0
 
 !--- Walker data ---
 
@@ -328,8 +312,6 @@ integer :: ref_det
 
 ! The shift is updated at the end of each report loop when vary_shift is true.
 logical :: vary_shift = .false.
-! The number of report loops after which vary_shift mode was entered.
-integer :: start_vary_shift
 
 !--- Restart data ---
 
@@ -802,17 +784,14 @@ contains
         integer, intent(in) :: ireport
         integer(lint), intent(in) :: ntot_particles
         real, intent(in) :: elapsed_time
-        integer :: mc_cycles, vary_shift_reports, i
+        integer :: mc_cycles, i
 
         mc_cycles = ireport*ncycles
 
-        vary_shift_reports = ireport - start_averaging_from - start_vary_shift
-
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
-            write (6,'(5X,i8,2(2X,es17.10),i10)',advance = 'no') &
-                                             (mc_cycles_done+mc_cycles-ncycles), old_shift,   &
-                                             av_shift/vary_shift_reports, trace
+            write (6,'(5X,i8,2X,es17.10,i10)',advance = 'no') &
+                                             (mc_cycles_done+mc_cycles-ncycles), old_shift, trace
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             do i = 1, number_dmqmc_estimators
@@ -820,10 +799,9 @@ contains
             end do
             write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
         else
-            write (6,'(5X,i8,2X,4(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
+            write (6,'(5X,i8,2X,2(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
-                                             av_shift/vary_shift_reports, proj_energy,       &
-                                             av_proj_energy/av_D0_population, D0_population, &
+                                             proj_energy, D0_population, &
                                              ntot_particles, rspawn, elapsed_time/ncycles
         end if
 
@@ -850,29 +828,18 @@ contains
             report_cycles_done = nreport
         end if
 
-        av_shift = av_shift/(report_cycles_done - start_vary_shift - start_averaging_from)
-
         if(doing_calc(folded_spectrum)) then
             ! Folded spectrum calculations require a different final output of the shift
             ! since the S tends to (E - fold_line)**2, we average over the square root of the
             ! shift and output the final "unfolded" shift
             write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
             write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy/D0_population
-            write (6,'(1X,a11,12X,f22.12)') 'av. sqrt(shift) =', av_shift
-            write (6,'(1X,a18,5X,f22.12)') 'av. proj. energy =', av_proj_energy/av_D0_population
             write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
-            write (6,'(1X,a12,11X,f22.12)') 'upper unfolded shift =', fold_line+av_shift
-            write (6,'(1X,a12,11X,f22.12)') 'lower unfolded shift =', fold_line-av_shift
-            write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', av_proj_energy/av_D0_population+H00
         else
             write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
             write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy/D0_population
-            write (6,'(1X,a11,12X,f22.12)') 'av. shift =', av_shift
-            write (6,'(1X,a18,5X,f22.12)') 'av. proj. energy =', av_proj_energy/av_D0_population
             write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift+H00
             write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
-            write (6,'(1X,a16,7X,f22.12)') 'E0 + av. shift =', av_shift+H00
-            write (6,'(1X,a23,f22.12)') 'E0 + av. proj. energy =', av_proj_energy/av_D0_population+H00
         endif
 
     end subroutine write_fciqmc_final

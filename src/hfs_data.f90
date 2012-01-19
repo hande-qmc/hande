@@ -21,9 +21,7 @@ integer(i0), allocatable :: lmask(:)
 !--- HFS-specific variables. ---
 
 real(p) :: hf_shift = 0.0_p
-real(p) :: av_hf_shift = 0.0_p
 real(p) :: proj_hf_expectation = 0.0_p
-real(p) :: av_proj_hf_expectation = 0.0_p
 
 integer :: D0_hf_population
 real(p) :: O00

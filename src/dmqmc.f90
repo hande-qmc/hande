@@ -136,9 +136,7 @@ contains
             spawning_head = spawning_block_start
             tot_walkers = 0
             shift = initial_shift
-            av_shift = initial_shift
             nparticles = 0
-            start_vary_shift = 0
             vary_shift = .false.
 
             ! Need to place psips randomly along the diagonal at the

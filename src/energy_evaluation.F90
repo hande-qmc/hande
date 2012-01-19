@@ -25,11 +25,10 @@ contains
         !        next report loop.
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
-                               proj_energy, av_proj_energy, av_D0_population, shift, av_shift, &
-                               vary_shift, start_vary_shift, vary_shift_from,                  &
+                               proj_energy, shift, vary_shift, vary_shift_from,                  &
                                vary_shift_from_proje, D0_population,                           &
                                fold_line
-        use hfs_data, only: proj_hf_expectation, av_proj_hf_expectation
+        use hfs_data, only: proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
         use parallel
@@ -66,7 +65,6 @@ contains
             ntot_particles_old = ntot_particles
             if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
-                start_vary_shift = ireport
                 if (vary_shift_from_proje) then
                     if(doing_calc(folded_spectrum)) then
                       !if running a folded spectrum calculation, set the shift to
@@ -90,7 +88,6 @@ contains
             ntot_particles_old = nparticles
             if (nparticles(1) > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
-                start_vary_shift = ireport
                 if (vary_shift_from_proje) then
                     if(doing_calc(folded_spectrum)) then
                     !if running a folded spectrum calculation, set the shift to
@@ -106,22 +103,10 @@ contains
             end if
 #endif
 
-            ! Running average projected energy
-            ! Note that as proj_energy and D0_population are accumulated over
-            ! the report loop, proj_energy/D0_population is
-            !   \sum_j <D_j|H|D_0> <N_j>/<N_0>,
-            ! where <N_j> is the mean of the population on determinant j over
-            ! the report loop.
-            ! As a result, the running accumulation of the projected energy
-            ! need only be divided by the the number of report loops in order to
-            ! get an estimate of the average projected energy.
-            av_proj_energy = av_proj_energy + proj_energy
-            av_D0_population = av_D0_population + D0_population
             ! average energy quantities over report loop.
             proj_energy = proj_energy/ncycles
             D0_population = D0_population/ncycles
             ! Similarly for the HFS estimator
-            av_proj_hf_expectation = av_proj_hf_expectation + proj_hf_expectation
             proj_hf_expectation = proj_hf_expectation/ncycles
             ! average spawning rate over report loop and processor.
             rspawn = rspawn/(ncycles*nprocs)
@@ -144,7 +129,7 @@ contains
         !    nparticles: N_w(beta).
 
         use calc, only: doing_calc, folded_spectrum
-        use fciqmc_data, only: shift, tau, shift_damping, av_shift, dmqmc_factor
+        use fciqmc_data, only: shift, tau, shift_damping, dmqmc_factor
 
         integer(lint), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
@@ -153,18 +138,12 @@ contains
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
         shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
 
-        if(doing_calc(folded_spectrum)) then
-            if(shift .ge. 0.0_p ) av_shift = av_shift + sqrt(shift)
-        else
-            av_shift = av_shift + shift
-        endif
-
     end subroutine update_shift
 
     subroutine update_hf_shift(nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
 
         use fciqmc_data, only: tau, shift_damping
-        use hfs_data, only: hf_shift, av_hf_shift
+        use hfs_data, only: hf_shift
 
         integer(lint), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
@@ -172,7 +151,6 @@ contains
         hf_shift = hf_shift - &
                  (shift_damping/(tau*nupdate_steps)) &
                  *(real(nhf_particles,p)/nparticles - real(nhf_particles_old,p)/nparticles_old)
-        av_hf_shift = av_hf_shift + hf_shift
 
     end subroutine update_hf_shift
 

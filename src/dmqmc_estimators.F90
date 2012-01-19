@@ -24,7 +24,7 @@ contains
         use calc, only: dmqmc_energy_squared
         use energy_evaluation, only: update_shift
         use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn
-        use fciqmc_data, only: shift, av_shift, vary_shift, start_vary_shift
+        use fciqmc_data, only: shift, vary_shift
         use fciqmc_data, only: estimator_numerators, number_dmqmc_estimators
         use fciqmc_data, only: nreport, ncycles, trace
         use parallel
@@ -59,7 +59,6 @@ contains
         ntot_particles_old = ntot_particles
         if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
             vary_shift = .true.
-            start_vary_shift = ireport
         end if
 
 #else
@@ -70,7 +69,6 @@ contains
         ntot_particles_old = nparticles
         if (nparticles(1) > target_particles .and. .not.vary_shift) then
             vary_shift = .true.
-            start_vary_shift = ireport
         end if
 #endif
 

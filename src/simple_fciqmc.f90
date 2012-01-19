@@ -188,13 +188,8 @@ contains
             nparticles_old = nparticles
             if (nparticles > target_particles .and. .not.vary_shift) then
                 vary_shift = .true.
-                start_vary_shift = ireport
             end if
 
-            ! Running average projected energy and walker population on
-            ! reference determinant.
-            av_proj_energy = av_proj_energy + proj_energy
-            av_D0_population = av_D0_population + D0_population
             ! Average these quantities over the report cycle.
             proj_energy = proj_energy/ncycles
             D0_population = D0_population/ncycles
