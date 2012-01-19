@@ -3,11 +3,6 @@ module spawning_mol_system
 ! Module for spawning routine(s) related to the molecular system (ie one read in
 ! from an FCIDUMP file).
 
-! TODO:
-!  * pgen evaluation
-!  * test!
-!  * comment
-
 use const, only: i0, p
 
 implicit none
