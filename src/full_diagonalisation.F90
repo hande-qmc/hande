@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine exact_diagonalisation(eigv)
-    
+
         ! Perform an exact diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
         ! Note that this destroys the Hamiltonian matrix stored in hamil.
@@ -45,7 +45,7 @@ contains
         if (distribute /= distribute_off .and. distribute /= distribute_blocks) then
             call stop_all('exact_diagonalisation','Incorrect distribution mode used.')
         end if
-        
+
         if (nprocs > 1) then
             allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
             call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)

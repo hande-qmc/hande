@@ -25,7 +25,7 @@ contains
                                                                           &heisenberg_neel_singlet
         use heisenberg_estimators, only: update_proj_energy_heisenberg_positive
         use determinants, only: decode_det_spinocc_spinunocc, decode_det_occ, decode_det_occ_symunocc
-        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, & 
+        use energy_evaluation, only: update_proj_energy_hub_k, update_proj_hfs_hub_k, &
                                      update_proj_energy_hub_real, update_proj_energy_mol
         use spawning
         use spawning_mol_system
@@ -85,14 +85,14 @@ contains
                     spawner_ptr => spawn_heisenberg_no_renorm
                 case (neel_singlet_guiding)
                     spawner_ptr => spawn_heisenberg_importance_sampling_no_renorm
-                end select             
+                end select
             else
                 select case(guiding_function)
                 case (no_guiding)
                     spawner_ptr => spawn_heisenberg
                 case (neel_singlet_guiding)
                     spawner_ptr => spawn_heisenberg_importance_sampling
-                end select             
+                end select
             end if
             ! Set whether the staggered magnetisation is to be calculated.
             if (abs(staggered_magnetic_field) > 0.0_p) then
@@ -153,7 +153,7 @@ contains
         ! in fciqmc_main.
 
         use parallel
-  
+
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
         use calc, only: folded_spectrum, doing_calc
@@ -191,7 +191,7 @@ contains
         call initial_fciqmc_status()
         ! Initialise timer.
         call cpu_time(t1)
-        
+
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
@@ -230,7 +230,7 @@ contains
                     call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)
 
                     do iparticle = 1, abs(walker_population(1,idet))
-                        
+
                         ! Attempt to spawn.
                         call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
 
@@ -255,7 +255,7 @@ contains
                 call direct_annihilation()
 
             end do
-            
+
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(ireport, nparticles_old)
 

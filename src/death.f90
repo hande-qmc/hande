@@ -25,7 +25,7 @@ contains
         !    tot_population: total number of particles.
         ! Out:
         !    ndeath: running total of number of particles died/cloned.
-        
+
         ! Note that population and tot_population refer to a single 'type' of
         ! population, i.e. either a set of Hamiltonian walkers or a set of
         ! Hellmann--Feynman walkers.
@@ -45,7 +45,7 @@ contains
         ! This amounts to multplying p_d by the population.  int(p_d) is thus
         ! the number that definitely die and the fractional part of p_d is the
         ! probability of an additional death.
-        
+
         ! dmqmc_factor below is set to 1.0 when not performing a DMQMC calculation, and so
         ! can be ignored in these cases.
         ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is included
@@ -97,7 +97,7 @@ contains
 
         ! Clone Hellmann--Feynman particles from Hamiltonian particles.
         ! HF particles are created from Hamiltonian particles on the same
-        ! determinant with probability 
+        ! determinant with probability
         !   tau(O_ii - \tilde{S})
         ! where
         !   O_ii = < D_i | O | D_i >

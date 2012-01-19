@@ -44,7 +44,7 @@ contains
 
         real(p), intent(in) :: arr(:)
         real(p), intent(in), optional :: tolerance
-        integer, intent(inout) :: rank(:) ! inout to avoid automatic deallocation 
+        integer, intent(inout) :: rank(:) ! inout to avoid automatic deallocation
                                           ! of an allocatable array on entry
 
         integer :: i, j, tmp

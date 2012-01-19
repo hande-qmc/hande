@@ -33,7 +33,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
         use parallel
-        
+
         integer, intent(in) :: ireport
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
@@ -55,7 +55,7 @@ contains
             proj_hf_expectation = ir_sum(sampling_size+2)
             D0_population = ir_sum(sampling_size+3)
             rspawn = ir_sum(sampling_size+4)
-            
+
             if (vary_shift) then
                 call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
                 if (doing_calc(hfs_fciqmc_calc)) then
@@ -106,9 +106,9 @@ contains
             end if
 #endif
 
-            ! Running average projected energy 
+            ! Running average projected energy
             ! Note that as proj_energy and D0_population are accumulated over
-            ! the report loop, proj_energy/D0_population is 
+            ! the report loop, proj_energy/D0_population is
             !   \sum_j <D_j|H|D_0> <N_j>/<N_0>,
             ! where <N_j> is the mean of the population on determinant j over
             ! the report loop.
@@ -207,7 +207,7 @@ contains
             ! Have reference determinant.
             D0_population = D0_population + walker_population(1,idet)
         else if (excitation%nexcit == 2) then
-            ! Have a determinant connected to the reference determinant: add to 
+            ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
@@ -247,7 +247,7 @@ contains
             ! Have reference determinant.
             D0_population = D0_population + walker_population(1,idet)
         else if (excitation%nexcit == 1) then
-            ! Have a determinant connected to the reference determinant: add to 
+            ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
             proj_energy = proj_energy + hmatel*walker_population(1,idet)
@@ -317,7 +317,7 @@ contains
                 if (ij_sym == ab_sym) then
                     hmatel = slater_condon2_mol_excit(excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
-                                                      excitation%perm) 
+                                                      excitation%perm)
                     proj_energy = proj_energy + hmatel*walker_population(1,idet)
                 end if
             end if
@@ -358,7 +358,7 @@ contains
             D0_population = D0_population + walker_population(1,idet)
             D0_hf_population = D0_hf_population + walker_population(2,idet)
         else if (excitation%nexcit == 2) then
-            ! Have a determinant connected to the reference determinant: add to 
+            ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)

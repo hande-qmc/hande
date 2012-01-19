@@ -75,7 +75,7 @@ contains
         !    of a point group.  See point_group_symmetry.
         ! Out:
         !    store: one-body integral store with components allocated to hold
-        !    interals.  Note that the integral store is *not* zeroed. 
+        !    interals.  Note that the integral store is *not* zeroed.
 
         use basis, only: nbasis
         use point_group_symmetry, only: nbasis_sym_spin
@@ -110,7 +110,7 @@ contains
         ! index.  If \Gamma_o \= \Gamma_1, then i and j are of different
         ! symmetries.  We get around this by arranging index_i=<index_j.  In this
         ! case some memory is wasted (as we store the diagonal elements in both
-        ! the i and j symmetry blocks) and if the number of states with the same 
+        ! the i and j symmetry blocks) and if the number of states with the same
         ! symmetry as i is greater than those with with same symmetry as j, but
         ! this effect will be small.
         !
@@ -165,7 +165,7 @@ contains
         !    of a point group.  See point_group_symmetry.
         ! Out:
         !    store: two-body integral store with components allocated to hold
-        !    interals.  Note that the integral store is *not* zeroed. 
+        !    interals.  Note that the integral store is *not* zeroed.
 
         use basis, only: nbasis
         use point_group_symmetry, only: nbasis_sym_spin
@@ -665,7 +665,7 @@ contains
 
         type(one_body), intent(inout) :: store
         integer, intent(in) :: data_proc
-        integer :: i, j, ierr 
+        integer :: i, j, ierr
 
 #ifdef PARALLEL
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
@@ -693,7 +693,7 @@ contains
 
         type(two_body), intent(inout) :: store
         integer, intent(in) :: data_proc
-        integer :: i, j, ierr 
+        integer :: i, j, ierr
 
 #ifdef PARALLEL
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10

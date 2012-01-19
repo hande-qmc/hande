@@ -67,11 +67,11 @@ contains
         !        existing walker.  See the spawning module.
 
         use parallel
-  
+
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use death, only: stochastic_hf_cloning
-        use determinants, only:det_info, alloc_det_info 
+        use determinants, only:det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use interact, only: fciqmc_interact
@@ -161,7 +161,7 @@ contains
                     call update_proj_energy(idet, proj_energy, inst_proj_hf_t1)
 
                     do iparticle = 1, abs(walker_population(1,idet))
-                        
+
                         ! Attempt to spawn Hamiltonian walkers..
                         call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.

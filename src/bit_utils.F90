@@ -76,7 +76,7 @@ contains
         !   http://graphics.stanford.edu/~seander/bithacks.html
         !   http://gurmeetsingh.wordpress.com/2008/08/05/fast-bit-counting-routines/
         !   Chapter 5 of the excellent Hacker's Delight by Henry S. Warren.
-        
+
         ! The general idea is to use a divide and conquer approach.
         ! * Set each 2 bit field to be the sum of the set bits in the two single
         !   bits originally in that field.
@@ -175,7 +175,7 @@ contains
     function bit_permutation(v) result(w)
 
         ! In:
-        !    v: a bit string. 
+        !    v: a bit string.
         ! Returns:
         !    The next permutation of the bit string in lexicographic order.
         !
@@ -198,7 +198,7 @@ contains
 
     end function bit_permutation
 
-    pure subroutine decode_bit_string(b, d) 
+    pure subroutine decode_bit_string(b, d)
 
         ! In:
         !    b: bit string stored as an integer(i0)

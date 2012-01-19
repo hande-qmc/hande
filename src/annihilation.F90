@@ -156,7 +156,7 @@ contains
         k = 1
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned walker.
-            spawned_walkers(:,islot) = spawned_walkers(:,k) 
+            spawned_walkers(:,islot) = spawned_walkers(:,k)
             compress: do
                 k = k + 1
                 if (k > spawning_head(0)) exit self_annihilate
@@ -210,7 +210,7 @@ contains
         k = 1
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned walker.
-            spawned_walkers(:,islot) = spawned_walkers(:,k) 
+            spawned_walkers(:,islot) = spawned_walkers(:,k)
             compress: do
                 k = k + 1
                 if (k > spawning_head(0)) exit self_annihilate
@@ -365,7 +365,7 @@ contains
 
         use basis, only: total_basis_length
         use system, only: trial_function, neel_singlet
-        
+
         integer :: nzero, i, k
 
         nzero = 0
@@ -414,7 +414,7 @@ contains
         ! move a given walker at most once.
         ! 3. Insert the new walker at the bottom of the shifted block so it
         ! doesn't have to be moved again to accommodate other new walkers.
-        
+
         ! We can make the search faster as we iterate through the spawned
         ! walkers in descending order, so once we know where one walker goes, we
         ! know that the next new walker has to go below it, allowing us to
@@ -451,7 +451,7 @@ contains
             ! Next walker will be inserted below this one.
             iend = pos - 1
         end do
-        
+
         ! Update tot_walkers
         tot_walkers = tot_walkers + spawning_head(0)
 

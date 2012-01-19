@@ -57,7 +57,7 @@ contains
         ! to +n in steps of 2.
         ! The -ms blocks are degenerate with the +ms blocks so only need to
         ! solve for ms >= 0.
-        
+
         if (ms_in == huge(1)) then
             ms_min = mod(nel,2)
             ms_max = min(nel, nbasis-nel)
@@ -66,7 +66,7 @@ contains
             ms_min = ms_in
             ms_max = ms_in
         end if
-        
+
         if (sym_in == huge(1)) then
             sym_min = sym0
             sym_max = nsym+(sym0-1)
@@ -127,12 +127,12 @@ contains
                     ! parallel.
                     if (doing_calc(lanczos_diag)) then
                         lanczos_solns(nlanczos+1)%energy = get_hmatel_dets(1,1)
-                        lanczos_solns(nlanczos+1)%ms = ms 
+                        lanczos_solns(nlanczos+1)%ms = ms
                         nlanczos = nlanczos + 1
                     end if
                     if (doing_calc(exact_diag)) then
                         exact_solns(nexact+1)%energy = get_hmatel_dets(1,1)
-                        exact_solns(nexact+1)%ms = ms 
+                        exact_solns(nexact+1)%ms = ms
                         nexact = nexact + 1
                     end if
 
@@ -149,7 +149,7 @@ contains
                         if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
                         call lanczos_diagonalisation(nfound, lanczos_eigv)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = lanczos_eigv(:nfound)
-                        lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms 
+                        lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms
                         nlanczos = nlanczos + nfound
                         deallocate(lanczos_eigv)
                         call check_deallocate('lanczos_eigv',ierr)
@@ -165,7 +165,7 @@ contains
                         if (nprocs > 1) call generate_hamil(distribute_blocks)
                         call exact_diagonalisation(exact_eigv)
                         exact_solns(nexact+1:nexact+ndets)%energy = exact_eigv
-                        exact_solns(nexact+1:nexact+ndets)%ms = ms 
+                        exact_solns(nexact+1:nexact+ndets)%ms = ms
                         nexact = nexact + ndets
                         deallocate(exact_eigv)
                         call check_deallocate('exact_eigv',ierr)
@@ -327,14 +327,14 @@ contains
         ! Form the Hamiltonian matrix < D_i | H | D_j >.
         select case(distribute)
         case(distribute_off)
-            forall (i=1:ndets) 
+            forall (i=1:ndets)
                 forall (j=i:ndets) hamil(i,j) = get_hmatel_dets(i+ind_offset,j+ind_offset)
             end forall
         case(distribute_blocks, distribute_cols)
             ! blacs divides the matrix up into sub-matrices of size block_size x block_size.
             ! The blocks are distributed in a cyclic fashion amongst the
             ! processors.
-            ! Each processor stores a total of nrows of the matrix. 
+            ! Each processor stores a total of nrows of the matrix.
             ! i gives the index of the first row in the current block.
             ! ii gives the index of the current row within the current block.
             ! The local i index is thus i-1+ii.  This is used to refer to the

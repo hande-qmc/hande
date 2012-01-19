@@ -78,7 +78,7 @@ contains
 
     pure function get_excitation(f1,f2) result(excitation)
 
-        ! In: 
+        ! In:
         !    f1(basis_length): bit string representation of the Slater
         !        determinant.
         !    f2(basis_length): bit string representation of the Slater
@@ -89,7 +89,7 @@ contains
         !
         !    If the excitation is a single or double excitation then it also
         !    includes:
-        ! 
+        !
         !        excitation%from_orb(2): orbitals excited from in f1.
         !        excitation%to_orb(2): orbitals excited to in f2.
         !        excitation%perm: true if an odd number of permutations are
@@ -129,14 +129,14 @@ contains
 
             ! Finding the permutation to align the determinants is non-trivial.
             ! It turns out to be quite easy with bit operations.
-            ! The idea is to do a "dumb" permutation where the determinants are 
+            ! The idea is to do a "dumb" permutation where the determinants are
             ! expressed in two sections: orbitals not involved in the excitation
             ! and those that are.  Each section is stored in ascending index
             ! order.
             ! To obtain such ordering requires (for each orbital that is
             ! involved in the excitation) a total of
             ! nel - iel - nexcit + iexcit
-            ! where nel is the number of electrons, iel is the position of the 
+            ! where nel is the number of electrons, iel is the position of the
             ! orbital within the list of occupied states in the determinant,
             ! nexcit is the total number of excitations and iexcit is the number
             ! of the "current" orbital involved in excitations.
@@ -152,7 +152,7 @@ contains
             ! minimal number for the determinants to align, this is irrelevant
             ! as the Slater--Condon rules only care about whether the number of
             ! permutations is even or odd.
-            shift = nel - excitation%nexcit 
+            shift = nel - excitation%nexcit
 
             if (excitation%nexcit <= 2) then
 
@@ -201,13 +201,13 @@ contains
 
     pure function get_excitation_level(f1, f2) result(level)
 
-        ! In: 
+        ! In:
         !    f1(basis_length): bit string representation of the Slater
         !        determinant.
         !    f2(basis_length): bit string representation of the Slater
         !        determinant.
         ! Returns:
-        !    Excitation level connecting determinants f1 and f2.     
+        !    Excitation level connecting determinants f1 and f2.
 
         use basis, only: basis_length
         use bit_utils, only: count_set_bits
@@ -245,7 +245,7 @@ contains
 
         use basis, only: basis_length
         use bit_utils, only: count_set_bits
-    
+
         integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: excitation
 
@@ -282,7 +282,7 @@ contains
 
         use basis, only: basis_length
         use bit_utils, only: count_set_bits
-    
+
         integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: excitation
 
@@ -341,7 +341,7 @@ contains
 
         ! Generate a determinant from another determinant and the excitation
         ! information connecting the two determinants.
-        ! In: 
+        ! In:
         !    f_in(basis_length): bit string representation of the reference
         !        Slater determinant.
         !    connection: excitation connecting f_in to f_out.  Note that
@@ -414,29 +414,29 @@ contains
         forbidden_excitations = 0
 
         ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
-        ! 
+        !
         ! The number of ways of choosing i,j is
-        ! 
+        !
         !  nalpha*nbeta
-        ! 
+        !
         ! Due to the requirement that crystal momentum is conserved and that the Hubbard
         ! model is a 2-band system:
-        ! 
+        !
         !  p(a|i,j,b) = 1
         !  p(b|i,j,a) = 1
-        ! 
+        !
         ! i.e. once three spin-orbitals are selected, the fourth is fixed.
-        ! 
+        !
         ! We now consider p(a|i,j).  Not all a are possible, as an a virtual spin-orbital
         ! can have an occupied b spin-orbital, as b is fixed by the choice of i,j and a.
-        ! 
+        !
         ! The number of spin-orbitals from which a can be chosen is
-        ! 
+        !
         !  nbasis - nel - delta_d
-        ! 
+        !
         ! where delta_d is the number of a orbitals which are forbidden due to b being occupied.
         ! p(b|i,j) is identical.  Hence:
-        ! 
+        !
         ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel-delta_d) + 1/(basis-nel-delta_d) ]
         !                       2
         !      =  ---------------------------------
@@ -499,7 +499,7 @@ contains
         !    f: bit string representation of the determinant we're exciting
         !        from.
         !    nvirt_avail: the number of available orbitals into which an
-        !        electron can be excited, given the choice of the orbital which 
+        !        electron can be excited, given the choice of the orbital which
         !        is being excited from (i.e. having chosen i, how many
         !        possibilities are there for a, where i is occupied and
         !        a occupied and D_i^a is connected to D.

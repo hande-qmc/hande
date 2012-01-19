@@ -18,7 +18,7 @@ contains
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
-        !    Hamiltonian matrix element between the two determinants, 
+        !    Hamiltonian matrix element between the two determinants,
         !    < D1 | H | D2 >, where the determinants are formed from
         !    molecular orbitals read in from an FCIDUMP file.
         !
@@ -100,7 +100,7 @@ contains
             hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_h_integrals, i, i)
             do jel = iel, nel
                 j = occ_list(jel)
-                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j) 
+                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j)
                 if (basis_fns(i)%Ms == basis_fns(j)%Ms) &
                               hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, j, i)
             end do
@@ -119,7 +119,7 @@ contains
         !    perm: true if an odd number of permutations are required for
         !       D and D_i^a to be maximally coincident.
         ! Returns:
-        !    < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    < D | H | D_i^a >, the Hamiltonian matrix element between a
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
 
@@ -158,7 +158,7 @@ contains
         !    perm: true if an odd number of permutations are required for
         !       D and D_i^a to be maximally coincident.
         ! Returns:
-        !    < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    < D | H | D_i^a >, the Hamiltonian matrix element between a
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
 
@@ -208,7 +208,7 @@ contains
         !    perm: true if an odd number of permutations are required for
         !       D and D_{ij}^{ab} to be maximally coincident.
         ! Returns:
-        !    < D | H | D_{ij}^{ab} >, the Hamiltonian matrix element between a 
+        !    < D | H | D_{ij}^{ab} >, the Hamiltonian matrix element between a
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
         !
@@ -243,7 +243,7 @@ contains
         !    perm: true if an odd number of permutations are required for
         !       D and D_{ij}^{ab} to be maximally coincident.
         ! Returns:
-        !    < D | H | D_{ij}^{ab} >, the Hamiltonian matrix element between a 
+        !    < D | H | D_{ij}^{ab} >, the Hamiltonian matrix element between a
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
         !
@@ -267,7 +267,7 @@ contains
         hmatel = 0.0_p
 
         if (basis_fns(i)%Ms == basis_fns(a)%Ms) &
-            hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, a, b) 
+            hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, a, b)
         if (basis_fns(i)%Ms == basis_fns(b)%Ms) &
             hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, b, a)
 

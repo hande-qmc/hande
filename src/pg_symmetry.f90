@@ -40,7 +40,7 @@ module point_group_symmetry
 ! string.
 !
 ! Direct products are easily evaluated by considering the characters of the
-! generator operations in the product: even \cross even = even, odd \cross odd = even 
+! generator operations in the product: even \cross even = even, odd \cross odd = even
 ! and odd \cross even = odd.  Hence the direct product can be found by
 ! taking XOR of the representations involved.
 !
@@ -103,7 +103,7 @@ contains
         ! +1 comes from the fact that the basis_fn%sym gives the bit string
         ! representation.
         nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
-        
+
         allocate(nbasis_sym(0:nsym-1), stat=ierr)
         call check_allocate('nbasis_sym', nsym, ierr)
         allocate(nbasis_sym_spin(2,0:nsym-1), stat=ierr)

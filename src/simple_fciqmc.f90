@@ -201,7 +201,7 @@ contains
             rspawn = rspawn/ncycles
 
             call cpu_time(t2)
-            
+
             ! Output stats
             call write_fciqmc_report(ireport, nparticles, t2-t1)
 

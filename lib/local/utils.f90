@@ -55,20 +55,20 @@ contains
         end do
 
     end function binom_r
-    
+
     elemental function factorial_combination_1(m,n) result (combination)
-    
+
         ! Given m and n input, this function returns
         ! combination = n!m!/(n+m+1)!
         ! Required to calculate amplitudes of the Neel singlet
         ! trial function for the Heisenberg model
-        
+
         use const, only: dp
-        
+
         real(dp) :: combination
         integer, intent(in) :: m, n
         integer :: m1, n1, i
-        
+
         ! Choose m1 to be the larger of m and n
         if (m >= n) then
             m1 = m
@@ -82,7 +82,7 @@ contains
             combination = combination * i/(i+m1)
         end do
         combination = combination/(m1+n1+1)
-        
+
     end function factorial_combination_1
 
     function get_free_unit() result(free_unit)
@@ -110,7 +110,7 @@ contains
     end function get_free_unit
 
     elemental function int_fmt(i, padding) result(fmt1)
-    
+
         ! In:
         !    i: an integer
         !    padding (optional): amount of padding to add to format statement.
@@ -119,7 +119,7 @@ contains
         ! Returns:
         !    fmt1: a format statement for an integer field which will hold
         !        i perfectly plus an amount of padding.
-        
+
         ! This does take i/o formatting to a slightly OCD level addmittedly...
 
         character(4) :: fmt1

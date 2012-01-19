@@ -5,7 +5,7 @@ module ct_fciqmc
 
 use fciqmc_data
 use const, only: p, lint
- 
+
 implicit none
 
 contains
@@ -66,13 +66,13 @@ contains
 
         ! Main fciqmc loop
         do ireport = 1, nreport
-            
+
             ! Zero cycle quantities
             rspawn = 0.0_p
             proj_energy = 0.0_p
             D0_population = 0.0_p
-            
-            ! Reset the pointer to the current position in the spawning array to 
+
+            ! Reset the pointer to the current position in the spawning array to
             ! be the slot preceding the first
             spawning_head = spawning_block_start
             ! This is used for accounting later, not for controlling the spawning.
@@ -81,17 +81,17 @@ contains
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
-            
+
                 ! Get the determinant bitstring once so we do not need to keep
                 ! doing it. Then find lists of orbitals.
-                cdet%f = walker_dets(:,idet) 
+                cdet%f = walker_dets(:,idet)
                 call decoder_ptr(cdet%f, cdet)
 
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
                 call update_proj_energy_ptr(idet)
-                 
+
                 ! Loop over each walker on the determinant.
                 do iparticle = 1, abs(walker_population(1,idet))
 
@@ -106,7 +106,7 @@ contains
                         time = time + timestep(R)
 
                         if ( time > t_barrier ) exit
-                        
+
                         call ct_spawn(cdet, walker_data(1,idet), walker_population(1,idet), &
                                       R, nspawned, connection)
 
@@ -119,12 +119,12 @@ contains
                             ! onto the next one.
                             if (connection%nexcit == 0 .and. &
                                        walker_population(1,idet)*nspawned < 0.0_p) then
-                                tmp_pop = tmp_pop + nspawned 
+                                tmp_pop = tmp_pop + nspawned
                                 ! abs(nspawned) guaranteed to be 1
-                                nparticles(1) = nparticles(1) - 1 
+                                nparticles(1) = nparticles(1) - 1
                                 ! The walker is dead---no need to continue spawning to barrier.
                                 ndeath = ndeath + 1
-                                exit 
+                                exit
                             end if
 
                             ! If there were some walkers spawned, append them to the
@@ -138,10 +138,10 @@ contains
                     end do
 
                 end do
-               
+
                 ! update the walker population from the death events
                 walker_population(1,idet) = tmp_pop
-            
+
             end do
 
             ! Now we advance all the spawned walkers to the barrier from their
@@ -157,7 +157,7 @@ contains
                     if (current_pos(proc_id) <= spawning_head(proc_id)) then
                         ! Have spawned walkers in the block to be sent to
                         ! processor proc_id.  Need to advance them to the barrier.
-                        
+
                         ! decode the spawned walker bitstring
                         cdet%f = spawned_walkers(:basis_length,current_pos(proc_id))
                         K_ii = sc0_ptr(cdet%f) - H00
@@ -175,14 +175,14 @@ contains
 
                             call ct_spawn(cdet, K_ii, int(spawned_walkers(spawned_pop,current_pos(proc_id))), &
                                           R, nspawned, connection)
-                           
+
                             if (nspawned /= 0) then
 
                                 ! Handle walker death
                                 if(connection%nexcit == 0 .and. &
                                         spawned_walkers(spawned_pop,current_pos(proc_id))*nspawned < 0) then
                                     spawned_walkers(spawned_pop,current_pos(proc_id)) = &
-                                            spawned_walkers(spawned_pop,current_pos(proc_id)) + nspawned 
+                                            spawned_walkers(spawned_pop,current_pos(proc_id)) + nspawned
                                     ndeath = ndeath + 1
                                     exit ! The walker is dead - do not continue
                                 end if
@@ -221,7 +221,7 @@ contains
             call cpu_time(t2)
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            
+
             t1 = t2
 
             call fciqmc_interact(ireport, soft_exit)
@@ -238,7 +238,7 @@ contains
         call load_balancing_report()
 
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
-        
+
         deallocate(current_pos, stat=ierr)
         call check_deallocate('current_pos', ierr)
         deallocate(connection_list, stat=ierr)
@@ -246,14 +246,14 @@ contains
 
     end subroutine do_ct_fciqmc
 
-    
-    subroutine ct_spawn(cdet, K_ii, parent_sgn, R, nspawned, connection)
-    
-        ! Randomly select a (valid) excitation 
 
-        ! In: 
+    subroutine ct_spawn(cdet, K_ii, parent_sgn, R, nspawned, connection)
+
+        ! Randomly select a (valid) excitation
+
+        ! In:
         !    cdet: info on current determinant, |D>, that we will spawn from.
-        !    K_ii: the diagonal matrix element for the determinant |D>, 
+        !    K_ii: the diagonal matrix element for the determinant |D>,
         !        < D | H - E_HF - S | D >.
         !    parent_sgn: sgn on the parent determinant (i.e. +ve or -ve integer)
         ! Out:
@@ -272,10 +272,10 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: K_ii, R
         integer, intent(in) :: parent_sgn
-        
+
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
-        
+
         real(p) :: rand, K_ij
         logical :: allowed_excitation
         integer :: i, j, a, b, ij_sym
@@ -292,7 +292,7 @@ contains
                 ! Choose a random (i,j) pair to excite from.
                 call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
                 ! Choose a random (a,b) pair to attempt to excite to.
-                ! The symmetry of (a,b) is set by the symmetry of (i,j) and 
+                ! The symmetry of (a,b) is set by the symmetry of (i,j) and
                 ! hence b is uniquely determined by the choice of i,j and a.
                 ! We choose a to be an unoccupied alpha spin-orbital and then
                 ! reject the spawning attempt if b is in fact occupied.
@@ -359,7 +359,7 @@ contains
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
-        integer :: iproc_spawn 
+        integer :: iproc_spawn
 #endif
 
         ! Create bit string of new determinant.
@@ -400,7 +400,7 @@ contains
         real(p), intent(in)  :: R
 
         dt = -(1.0_p/R)*log(genrand_real2())
-    
+
     end function timestep
 
 

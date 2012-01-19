@@ -11,7 +11,7 @@ module report
 !   * whether the working directory contains local changes;
 !   * the working directory;
 !   * the host computer.
-! 
+!
 ! Permission is hereby granted, free of charge, to any person
 ! obtaining a copy of this software and associated documentation
 ! files (the "Software"), to deal in the Software without
@@ -51,44 +51,44 @@ contains
 
     ! The VCS information is passed to environment_report via c-preprocessing.  The
     ! following definitions are used:
-    ! 
+    !
     ! * NAGF95: define if using the nag compiler so that certain nag-only modules are
     !   used.
     ! * _WORKING_DIR_CHANGES: define if the working directory contains local
     !   (uncommitted) changes.
     ! * _VCS_VERSION: set to a (quoted!) string containing the VCS revision id of the current
     !   commit.
-    ! 
+    !
     ! The VCS information can be simply obtained via shell commands in the makefile:
     ! see the example provided for the commands needed for git and subversion
     ! repositories.  For instance, if a subversion repository is being used, then the
     ! version id can be obtained using::
     !
     !     VCS_VERSION:=$(shell echo -n \"`svn info | grep 'Revision'| sed -e 's/Revision: //'`\")
-    ! 
+    !
     ! and if the working directory contains local changes, then the command::
-    ! 
+    !
     !     svn st -q | xargs -i test -z {}
-    ! 
-    ! gives a non-zero return code.  Hence the variable WORKING_DIR_CHANGES is 
+    !
+    ! gives a non-zero return code.  Hence the variable WORKING_DIR_CHANGES is
     ! equal to -D_WORKING_DIR_CHANGES or is a null string depending on whether there
     ! are local changes or not::
-    ! 
+    !
     !    WORKING_DIR_CHANGES:=$(shell svn st -q | xargs -i test -z {} || echo -n "-D_WORKING_DIR_CHANGES")
-    ! 
+    !
     ! environment_report.F90 can thus be appropriately compiled with the command::
-    ! 
+    !
     !    $(FC) $(WORKING_DIR_CHANGES) -D_VCS_VERSION='$(VCS_VERSION)' -c environment_report.F90 -o environment_report.o
-    !   
+    !
     ! where $(FC) is defined to be the desired fortran compiler.
-    ! 
+    !
     ! Similarly for git::
-    ! 
+    !
     !     VCS_VERSION:=$(shell echo -n \" && git log --max-count=1 --pretty=format:%H && echo -n \")
     !     WORKING_DIR_CHANGES := $(shell git diff-index --quiet --cached HEAD
     !                             --ignore-submodules -- && git diff-files --quiet
-    !                             --ignore-submodules || echo -n "-D_WORKING_DIR_CHANGES") # on one line. 
-    ! 
+    !                             --ignore-submodules || echo -n "-D_WORKING_DIR_CHANGES") # on one line.
+    !
     ! environment_report has been tested with gfortran, g95, ifort, pgf90, nag and
     ! pathscale.  Note that hostnm and getcwd are intrinsic functions (at least
     ! according to gnu documentation), unless you have to use nag.  There should also
@@ -154,7 +154,7 @@ contains
 
     write (io_unit,'(1X,64("="),/)')
 
-    return 
+    return
 
     end subroutine environment_report
 

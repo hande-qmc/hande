@@ -27,13 +27,13 @@ integer :: write_restart_number = 0
 ! is in binary (.true.) or ASCII (.false.) format;
 ! The latter requires substantially more space ( 1 byte per digit of output
 ! as opposed to 1 integer per integer of output!) but is human-readable
-logical :: binary_fmt_in = .true., binary_fmt_out = .true. 
+logical :: binary_fmt_in = .true., binary_fmt_out = .true.
 
 ! An attempt to do generic programming in Fortran: These functions all print
 ! a variable of a specific type to a given unit, either in binary or ascii
 ! format
 interface write_out
-#if DET_SIZE != 32 
+#if DET_SIZE != 32
     ! for non-32 bit integers, the i0 kind is distinct from the default kind;
     ! thus we need distinct functions to deal with them
     module procedure write_out_int
@@ -49,7 +49,7 @@ interface write_out
     module procedure write_out_i0arr_iarr_2r
 end interface write_out
 
-interface read_in 
+interface read_in
 #if DET_SIZE != 32
     module procedure read_in_int
     module procedure read_in_int_arr
@@ -64,7 +64,7 @@ interface read_in
     module procedure read_in_i0arr_iarr_2r
 end interface read_in
 
-contains 
+contains
 
     subroutine dump_restart(nmc_cycles, nparticles_old)
 
@@ -102,7 +102,7 @@ contains
             end if
 
             call write_out(io,'# restart version')
-            call write_out(io,restart_version) 
+            call write_out(io,restart_version)
             call write_out(io,'# number of cycles')
             call write_out(io,nmc_cycles)
             call write_out(io,'#shift')
@@ -115,11 +115,11 @@ contains
             ! Write out walkers on parent processor to restart file.
             call write_out(io,'# walker info')
             call write_walkers(io,tot_walkers)
-            
+
             ! if writing in binary, there is no character marker telling us
             ! where the root processor's walkers are stored - thus use scratch
             ! so that we can get root's walkers back
-            if (binary_fmt_out) then  
+            if (binary_fmt_out) then
                 scratch = get_free_unit()
                 open(scratch,status="scratch",form='unformatted')
                 call write_walkers(scratch,tot_walkers)
@@ -133,14 +133,14 @@ contains
                 call mpi_recv(walker_dets, nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
                 call mpi_recv(walker_data, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
                 ! Write out walkers from all other processors.
-                call write_walkers(io, nwalkers(i)) 
+                call write_walkers(io, nwalkers(i))
             end do
 
             ! we need to read back from scratch if in binary format
             if (binary_fmt_out) then
                 call flush(scratch)
                 rewind(scratch)
-                ! best to preserve the binary_fmt state in case of 
+                ! best to preserve the binary_fmt state in case of
                 ! alteration of program mechaincs later
                 if (binary_fmt_in) then
                     call read_walkers(scratch,tot_walkers)
@@ -221,7 +221,7 @@ contains
             if (.not.exists) then
                 call stop_all('read_restart','restart file '//trim(restart_file)//' does not exist.')
             end if
-            
+
             if (binary_fmt_in) then
                 open(io,file=restart_file,form='unformatted')
             else
@@ -290,7 +290,7 @@ contains
             ! spawned_walkers_recvd to be allocated for parallel calculations.
             ! :-)
             call mpi_scatterv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
-                              spawned_walkers_recvd, spawned_size*nread, mpi_det_integer, root, mpi_comm_world, ierr) 
+                              spawned_walkers_recvd, spawned_size*nread, mpi_det_integer, root, mpi_comm_world, ierr)
             ! Transfer from spawned arrays to main walker arrays.
             do i = 1, nread
                 walker_dets(:,i+tot_walkers) = spawned_walkers_recvd(:basis_length,i)
@@ -352,77 +352,77 @@ contains
         end do
 
     end subroutine read_walkers
-    
+
 #if DET_SIZE != 32
-    
+
     subroutine write_out_int(wunit, a, fmt_string)
-        
+
         ! write one integer to wunit with optional format string
 
         integer, intent(in) :: a, wunit
         character(*), intent(in), optional :: fmt_string
-        
+
         if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
-        else 
+        else
             write(wunit,*) a
         end if
 
     end subroutine write_out_int
 
     subroutine write_out_int_arr(wunit, a, fmt_string)
-    
+
         !print out an array of integers to wunit with optional format string
 
         integer, intent(in) :: wunit, a(:)
         character(*), intent(in), optional :: fmt_string
-        
+
         if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
-        else 
+        else
             write(wunit,*) a
         end if
     end subroutine write_out_int_arr
 
-#endif     
-    
+#endif
+
     subroutine write_out_int_i0(wunit, a, fmt_string)
-        
+
         ! for non 32-bit integers, the i0 type is distinct and thus needs
         ! its own write_out procedure
 
         integer(i0), intent(in) :: a
         integer, intent(in) :: wunit
         character(*), intent(in), optional :: fmt_string
-        
+
         if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
-        else 
+        else
             write(wunit,*) a
         end if
 
     end subroutine write_out_int_i0
 
     subroutine write_out_int_arr_i0(wunit, a, fmt_string)
-        
-        ! the i0 integer array needs its own procedure for non 32-bit 
+
+        ! the i0 integer array needs its own procedure for non 32-bit
         ! integers
-     
+
         integer, intent(in) ::  wunit
         integer(i0), intent(in) :: a(:)
         character(*), intent(in), optional :: fmt_string
-        
+
         if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
-        else 
+        else
             write(wunit,*) a
         end if
 
@@ -435,12 +435,12 @@ contains
         real(p), intent(in) :: a
         integer, intent(in) :: wunit
         character(*), intent(in), optional :: fmt_string
-        
+
         if (binary_fmt_out) then
             write(wunit) a
         else if(present(fmt_string)) then
             write(wunit,fmt=fmt_string) a
-        else 
+        else
             write(wunit,*) a
         end if
     end subroutine write_out_float
@@ -455,7 +455,7 @@ contains
         character(*), intent(in) :: a
         integer, intent(in) :: wunit
         character(*), intent(in), optional :: fmt_string
-        
+
         ! no character data for the binary format output file
         if (.not. binary_fmt_out) then
             if (present(fmt_string)) then
@@ -467,7 +467,7 @@ contains
     end subroutine write_out_char
 
     subroutine write_out_logical(wunit, a, fmt_string)
-        
+
         ! write a logical variable to wunit with an optional format
 
         logical, intent(in):: a
@@ -486,12 +486,12 @@ contains
     ! we need specific routines for writing more than 1 entry per line
     ! due to lack of proper generic programming in Fortran 90.
     ! For binary format these procedures will do the same task as multiple
-    ! calls to the above procedures, however for ASCII output they are 
+    ! calls to the above procedures, however for ASCII output they are
     ! necessary to have output all on one line
 
     subroutine write_out_i0arr_i_r(wunit, i0arr, i, r, fmt_string)
-        
-        ! Write an i0 array, integer and real out on 1 line in optional format 
+
+        ! Write an i0 array, integer and real out on 1 line in optional format
 
         integer, intent(in) :: i, wunit
         integer(i0), intent(in) :: i0arr(:)
@@ -508,10 +508,10 @@ contains
     end subroutine write_out_i0arr_i_r
 
     subroutine write_out_i_r_l(wunit, i, r, l, fmt_string)
-        
-        ! write out an integer(lint), real(p) and logical all on 1 line 
+
+        ! write out an integer(lint), real(p) and logical all on 1 line
         ! in optional format
-        
+
         integer(lint), intent(in) :: i
         integer, intent(in) :: wunit
         real(p), intent(in) :: r
@@ -528,10 +528,10 @@ contains
     end subroutine write_out_i_r_l
 
     subroutine write_out_i0arr_iarr_2r(wunit, i0arr, iarr, r1, r2, fmt_string)
-        
+
         ! write out i0 array, integer array and 2 real
         ! variables all on 1 line
-        
+
 
         integer, intent(in) :: wunit, iarr(:)
         integer(i0), intent(in) :: i0arr(:)
@@ -550,7 +550,7 @@ contains
 #if DET_SIZE != 32
 
     subroutine read_in_int(runit, a, fmt_string)
-        
+
         ! read in a single integer from runit
 
         integer, intent(out) :: a
@@ -558,7 +558,7 @@ contains
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt_in) then
-            read(runit) a 
+            read(runit) a
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
         else
@@ -568,8 +568,8 @@ contains
 
     subroutine read_in_int_arr(runit, a, fmt_string)
 
-        ! read in an integer array from runit 
-        
+        ! read in an integer array from runit
+
         integer, intent(in) :: runit
         integer, intent(out) :: a(:)
         character(*), intent(in), optional :: fmt_string
@@ -586,7 +586,7 @@ contains
 #endif
 
     subroutine read_in_int_i0(runit, a, fmt_string)
-        
+
         ! Read in a single integer of i0 kind from runit
 
         integer(i0), intent(out) :: a
@@ -594,7 +594,7 @@ contains
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt_in) then
-            read(runit) a 
+            read(runit) a
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
         else
@@ -605,7 +605,7 @@ contains
     subroutine read_in_int_arr_i0(runit, a, fmt_string)
 
         ! Read in an array of i0-kind integers from runit
-        
+
         integer, intent(in) :: runit
         integer(i0), intent(out) :: a(:)
         character(*), intent(in), optional :: fmt_string
@@ -628,7 +628,7 @@ contains
         character(*), intent(in), optional :: fmt_string
 
         if (binary_fmt_in) then
-            read(runit) a 
+            read(runit) a
         else if (present(fmt_string)) then
             read(runit,fmt=fmt_string) a
         else
@@ -638,8 +638,8 @@ contains
 
     subroutine read_in_char(runit, a, fmt_string)
 
-        ! Read in a string with optional format from runit. 
-        ! As there is no character data in the binary restart files, 
+        ! Read in a string with optional format from runit.
+        ! As there is no character data in the binary restart files,
         ! if binary_fmt_in is set, this procedure does nothing
 
         character(*), intent(out) :: a
@@ -656,8 +656,8 @@ contains
     end subroutine read_in_char
 
     subroutine read_in_logical(runit, a, fmt_string)
-        
-        ! Read in a single logical variable from runit 
+
+        ! Read in a single logical variable from runit
 
         integer, intent(in) :: runit
         logical, intent(out) :: a
@@ -674,7 +674,7 @@ contains
 
     subroutine read_in_i0arr_i_r(runit, i0arr, i, r, fmt_string)
 
-        ! Read in an array of i0-kind integers, an integer and a real 
+        ! Read in an array of i0-kind integers, an integer and a real
         ! from runit. If we are reading an ASCII file then this is all
         ! read from a single line
 
@@ -694,7 +694,7 @@ contains
     end subroutine read_in_i0arr_i_r
 
     subroutine read_in_i_r_l(runit, i, r, l, fmt_string)
-        
+
         ! Read in an integer(lint), a real and a logial variable from runit
 
         integer, intent(in) :: runit
@@ -713,8 +713,8 @@ contains
     end subroutine read_in_i_r_l
 
     subroutine read_in_i0arr_iarr_2r(runit, i0arr, iarr, r1, r2,fmt_string)
-       
-        ! Read in an array of i0-kind integers, an array of integers 
+
+        ! Read in an array of i0-kind integers, an array of integers
         ! and 2 reals/ If we are reading an ASCII format file then this is
         ! all read from a single line
 

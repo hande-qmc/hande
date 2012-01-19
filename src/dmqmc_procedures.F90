@@ -77,7 +77,7 @@ contains
              allocate(subsystem_A_bit_positions(subsystem_A_size,2), stat=ierr)
              call check_allocate('subsystem_A_bit_positions',2*subsystem_A_size,ierr)
              subsystem_A_mask = 0
-             subsystem_B_mask = 0       
+             subsystem_B_mask = 0
              subsystem_A_bit_positions = 0
              ! For the Heisenberg model only currently.
              if (system_type==heisenberg) then
@@ -129,10 +129,10 @@ contains
         ! a number of bits to be set, i, out of a total of N = nbasis bits. Then
         ! we set choose i bits to set, each with equal probability. So the
         ! probability that a particular configuration is chosen is
- 
+
         ! prob(config) = prob(config with i bits set) * prob(config | config with i bits set)
         !              = fraction of configs with i bits set * (1/number of configs with i bits set)
-        !              = (number of configs with i bits set/total number of configs) 
+        !              = (number of configs with i bits set/total number of configs)
         !                            * (1/number of configs with i bits set)
         ! => prob(config) =  1/total number of configs
 
@@ -143,14 +143,14 @@ contains
         use fciqmc_data, only: D0_population
         use parallel
         use utils, only: binom_r
-      
+
         integer(i0) :: total_hilbert_space, subspace_size
         integer :: i, up_spins, rand_basis, bits_set, total_bits_set
         integer :: bit_element, bit_position, npsips, basis_find, ipos
         integer(i0) :: f(basis_length)
         real(dp) prob_of_acceptance
         real :: rand_num
-  
+
         total_hilbert_space = 2**(nbasis)
         npsips = int(D0_population/nprocs)
 
@@ -186,7 +186,7 @@ contains
                 end do
                 f = not(f)
                 bits_set = nbasis
-            end if               
+            end if
 
             ! Now create the bitstring.
             do
@@ -247,16 +247,16 @@ contains
 
         up_spins = (ms_in+nsites)/2
         npsips = int(D0_population/nprocs)
-        
+
         do i = 1, npsips
-          
+
             ! Start with all spins down.
             f = 0
             bits_set = 0
 
             do
                 ! If half the spins are now flipped up, we have our basis
-                ! function fully created, so exit the loop. 
+                ! function fully created, so exit the loop.
                 if (bits_set==up_spins) exit
                 ! Choose a random spin to flip.
                 rand_num = genrand_real2()
@@ -343,7 +343,7 @@ contains
 
         index1 = 0
         index2 = 0
-        
+
         do i = 1, subsystem_A_size
             if (btest(f(subsystem_A_bit_positions(i,2)),subsystem_A_bit_positions(i,1))) &
                 index1 = ibset(index1,i-1)

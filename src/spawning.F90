@@ -22,7 +22,7 @@ contains
 
     subroutine spawn_hub_k(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! Attempt to spawn a new particle on a connected determinant for the
         ! momentum space formulation of the Hubbard model.
         !
         ! In:
@@ -51,7 +51,7 @@ contains
         real(p) :: pgen, psuccess, pspawn, hmatel
         integer :: i, j, a, b, ij_sym
 
-        ! Single excitations are not connected determinants within the 
+        ! Single excitations are not connected determinants within the
         ! momentum space formulation of the Hubbard model.
 
         ! 1. Select a random pair of spin orbitals to excite from.
@@ -66,7 +66,7 @@ contains
         !     a) They differ by two spin-orbitals.
         !     b) In the (i,j)->(a,b) connecting excitation, the spins of i and
         !     j have to be opposite.  This is because
-        !     < ij | ab > = U/N_k \delta_{s_i,s_a} \delta_{s_j,s_b} 
+        !     < ij | ab > = U/N_k \delta_{s_i,s_a} \delta_{s_j,s_b}
         !     and so < ij || ab > = 0 if s_i = s_a = s_j = s_b.
         !     In fact:
         !     < ij || ab > = 0          if s_i = s_a = s_j = s_b
@@ -88,7 +88,7 @@ contains
 
         ! Need to take into account the possibilty of a spawning attempt
         ! producing multiple offspring...
-        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
         ! then spawn a particle with probability pspawn-floor(pspawn).
         nspawn = int(pspawn)
         pspawn = pspawn - nspawn
@@ -120,12 +120,12 @@ contains
             end if
 
         end if
-        
+
     end subroutine spawn_hub_k
 
     subroutine spawn_hub_k_no_renorm(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! Attempt to spawn a new particle on a connected determinant for the
         ! momentum space formulation of the Hubbard model.
         !
         ! This doesn't use excitation generators which exclude the case where,
@@ -164,7 +164,7 @@ contains
         integer :: ij_sym
         logical :: allowed_excitation
 
-        ! Single excitations are not connected determinants within the 
+        ! Single excitations are not connected determinants within the
         ! momentum space formulation of the Hubbard model.
 
         ! 1. Select a random pair of spin orbitals to excite from.
@@ -273,7 +273,7 @@ contains
 
     subroutine spawn_hub_real(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! Attempt to spawn a new particle on a connected determinant for the
         ! real space formulation of the Hubbard model.
         !
         ! In:
@@ -298,7 +298,7 @@ contains
 
         real(p) :: pgen, hmatel
 
-        ! 1. Generate random excitation from cdet as well as both the probability 
+        ! 1. Generate random excitation from cdet as well as both the probability
         ! of spawning there and the connecting matrix element.
         call gen_excit_hub_real(cdet, pgen, connection, hmatel)
 
@@ -309,7 +309,7 @@ contains
 
     subroutine spawn_hub_real_no_renorm(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! Attempt to spawn a new particle on a connected determinant for the
         ! real space formulation of the Hubbard model.
         !
         ! This uses excitation generators which, having selected the occupied
@@ -386,7 +386,7 @@ contains
 
     subroutine gen_excit_hub_real(cdet, pgen, connection, hmatel)
 
-        ! Create a random excitation from cdet and calculate both the probability 
+        ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
@@ -396,7 +396,7 @@ contains
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
-        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
@@ -410,7 +410,7 @@ contains
 
         integer :: nvirt_avail
 
-        ! Double excitations are not connected determinants within the 
+        ! Double excitations are not connected determinants within the
         ! real space formulation of the Hubbard model.
         connection%nexcit = 1
 
@@ -424,10 +424,10 @@ contains
         call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
 
     end subroutine gen_excit_hub_real
-    
+
     subroutine spawn_heisenberg(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new psip on a connected determinant for the 
+        ! Attempt to spawn a new psip on a connected determinant for the
         ! Heisenberg model
         !
         ! In:
@@ -458,10 +458,10 @@ contains
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
     end subroutine spawn_heisenberg
-    
+
     subroutine spawn_heisenberg_importance_sampling(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new psip on a connected determinant for the 
+        ! Attempt to spawn a new psip on a connected determinant for the
         ! Heisenberg model. This subroutine applies a transformed Hamiltonian
         ! to apply importance sampling. It uses the Neel singlet state as a
         ! trial function. In all other ways it is the same as the basic
@@ -514,12 +514,12 @@ contains
         else
             up_spins_to = up_spins_from+1
         end if
-        
+
         ! For a given number of spins up on sublattice 1, n, the corresponding
         ! ampltidue of this basis function in the trial function is stored as
         ! neel_singlet_amp(n), for this particular trial function. Hence we have:
         hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
-        
+
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
@@ -527,7 +527,7 @@ contains
 
     subroutine spawn_heisenberg_no_renorm(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new psip on a connected determinant for the 
+        ! Attempt to spawn a new psip on a connected determinant for the
         ! Heisenberg model
         !
         ! This uses excitation generators which, having selected the spin-up
@@ -578,7 +578,7 @@ contains
 
     subroutine spawn_heisenberg_importance_sampling_no_renorm(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new psip on a connected determinant for the 
+        ! Attempt to spawn a new psip on a connected determinant for the
         ! Heisenberg model. This subroutine applies a transformed Hamiltonian
         ! to apply importance sampling. It uses the Neel singlet state as a
         ! trial function.
@@ -644,12 +644,12 @@ contains
             else
                 up_spins_to = up_spins_from+1
             end if
-            
+
             ! For a given number of spins up on sublattice 1, n, the corresponding
             ! ampltidue of this basis function in the trial function is stored as
             ! neel_singlet_amp(n), for this particular trial function. Hence we have:
             hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
-            
+
             ! 3. Attempt spawning.
             nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
@@ -659,7 +659,7 @@ contains
 
     subroutine gen_excit_heisenberg(cdet, pgen, connection, hmatel)
 
-        ! Create a random excitation from cdet and calculate both the probability 
+        ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
@@ -669,7 +669,7 @@ contains
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
-        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
@@ -703,7 +703,7 @@ contains
 
     subroutine gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
 
-        ! Create a random excitation from cdet and calculate both the probability 
+        ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         !
         ! This selects the spin-up site (i) and then selects any site (a)
@@ -723,7 +723,7 @@ contains
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
-        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
@@ -749,7 +749,7 @@ contains
         ! nb: a might already be up.
         i = int(genrand_real2()*connected_sites(0,connection%from_orb(1)) + 1)
         connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
-        
+
         ! Is a already up?  If so, not an allowed excitation: return a null
         ! event.
         ipos = bit_lookup(1, connection%to_orb(1))
@@ -810,7 +810,7 @@ contains
 
         ! We use a triangular indexing scheme to compress 2 electron indices
         ! into 1.
-        ! For i/=j and (for an arbitrary choice of i>j), a 1D index of 
+        ! For i/=j and (for an arbitrary choice of i>j), a 1D index of
         ! a strictly lower triangular array is:
         !   p = (i-1)(i-2)/2 + j,
         ! where 1<=j<i and 1<=p<=n(n-1)/2
@@ -860,10 +860,10 @@ contains
             ! alpha, alpha
             ij_spin = 1
         case(0)
-            ! alpha, beta 
+            ! alpha, beta
             ij_spin = 0
         case(-2)
-            ! beta, beta 
+            ! beta, beta
             ij_spin = -1
         end select
 
@@ -934,7 +934,7 @@ contains
         ! which electrons are excited.
         ! (a,b) are chosen such that the (i,j)->(a,b) excitation is symmetry-
         ! allowed.
-        ! In: 
+        ! In:
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
@@ -967,12 +967,12 @@ contains
 
     subroutine find_ab_hub_k(f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
 
-        ! Choose a random pair of (a,b) spin-orbitals. 
+        ! Choose a random pair of (a,b) spin-orbitals.
         ! (a,b) are chosen such that the (i,j)->(a,b) excitation is symmetry-
         ! allowed and a is a virtual spin-orbital.  As (a,b) must be one alpha
         ! orbital and one beta orbital, we can choose a to be an alpha orbital
         ! without loss of generality.
-        ! In: 
+        ! In:
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
@@ -1003,7 +1003,7 @@ contains
         ! under translational symmetry (which forms an Abelian group) then
         !   \Gamma_i* x \Gamma_j* x \Gamma_a x \Gamma_b = \Gamma_1
         ! is equivalent to the conversation of crystal momentum (where \Gamma_1
-        ! is the totally symmetric representation).  
+        ! is the totally symmetric representation).
         ! Further, as
         !   \Gamma_i* x \Gamma_i = 1
         ! and direct products in Abelian groups commute, it follows that:
@@ -1038,9 +1038,9 @@ contains
         ! This is also used for the Heisenberg model, which has the same conditions
         ! for two (different) basis functions to be connected. In this context,
         ! the number of electrons is actually the number of spins up (1 in binary).
-        ! In: 
+        ! In:
         !    f: bit string representation of the Slater determinant.
-        !    occ_list: integer list of the occupied spin-orbitals in 
+        !    occ_list: integer list of the occupied spin-orbitals in
         !        the Slater determinant.
         ! Returns:
         !    i,a: spin orbitals excited from/to respectively.
@@ -1048,7 +1048,7 @@ contains
         !        into from the i-th orbital.
 
         use basis, only: basis_length, bit_lookup, nbasis
-    
+
         use dSFMT_interface, only:  genrand_real2
 
         use basis, only: basis_length, basis_lookup
@@ -1132,7 +1132,7 @@ contains
 
         ! Need to take into account the possibilty of a spawning attempt
         ! producing multiple offspring...
-        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and 
+        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
         ! then spawn a particle with probability pspawn-floor(pspawn).
         nspawn = int(pspawn)
         pspawn = pspawn - nspawn
@@ -1188,7 +1188,7 @@ contains
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
-        integer :: iproc_spawn 
+        integer :: iproc_spawn
 #endif
 
         ! Create bit string of new determinant.
@@ -1247,7 +1247,7 @@ contains
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
-        integer :: iproc_spawn 
+        integer :: iproc_spawn
 #endif
 
         ! Create bit string of new determinant.
@@ -1285,7 +1285,7 @@ contains
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
-        !         was not involved in the current spawning step.    
+        !         was not involved in the current spawning step.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
@@ -1304,11 +1304,11 @@ contains
         use fciqmc_data, only: spawned_parent, spawned_pop, truncate_space, truncation_level
         use hashing
         use parallel, only: iproc, nprocs
-        
+
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn
         integer, intent(in) :: spawning_end
-        
+
         type(excit), intent(in) :: connection
         integer(i0) :: f_new(basis_length)
         integer(i0) :: f_new_tot(total_basis_length)
@@ -1355,7 +1355,7 @@ contains
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
-        ! A spawned walker is only created on (f1', f2) if f1' and f2 do not differ by 
+        ! A spawned walker is only created on (f1', f2) if f1' and f2 do not differ by
         ! more than truncation_level basis functions, where f1' is obtained by
         ! applying the connection to f1.
 
@@ -1363,7 +1363,7 @@ contains
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
-        !         was not involved in the current spawning step.    
+        !         was not involved in the current spawning step.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
@@ -1382,11 +1382,11 @@ contains
         use fciqmc_data, only: spawned_parent, spawned_pop, truncate_space, truncation_level
         use hashing
         use parallel, only: iproc, nprocs
-        
+
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn
         integer, intent(in) :: spawning_end
-        
+
         type(excit), intent(in) :: connection
         integer(i0) :: f_new(basis_length)
         integer(i0) :: f_new_tot(total_basis_length)

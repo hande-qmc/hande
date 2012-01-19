@@ -81,7 +81,7 @@ contains
         ! specified by the user and then repeat this main loop beta_loops
         ! times, to accumulate statistics for each value for beta.
 
-        use parallel 
+        use parallel
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
@@ -98,7 +98,7 @@ contains
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
         use dSFMT_interface, only: dSFMT_init
         use utils, only: int_fmt
-        
+
         integer :: i, idet, ireport, icycle, iparticle
         integer :: beta_cycle
         integer(lint) :: nparticles_old(sampling_size)
@@ -129,7 +129,7 @@ contains
         ! output we subtract one from the iteration number, and run for one more
         ! report loop, asimplemented in the line of code below.
         nreport = nreport+1
- 
+
         do beta_cycle = 1, beta_loops
             ! Reset the current position in the spawning array to be the
             ! slot preceding the first slot.
@@ -140,7 +140,7 @@ contains
             nparticles = 0
             start_vary_shift = 0
             vary_shift = .false.
- 
+
             ! Need to place psips randomly along the diagonal at the
             ! start of every iteration. Pick orbitals randomly, each
             ! with equal probability, so that when electrons are placed
@@ -154,7 +154,7 @@ contains
                        " # Resetting beta... Beta loop =", beta_cycle
                 ! Reset the random number generator with seed = seed + 1
                 seed = seed + 1
-                call dSFMT_init(seed + iproc)   
+                call dSFMT_init(seed + iproc)
                 write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
                     " # Resetting random number generator with a seed of:", seed, "."
             end if
@@ -171,10 +171,10 @@ contains
 
                 do icycle = 1, ncycles
                     spawning_head = spawning_block_start
-  
+
                     ! Number of spawning attempts that will be made.
-                    ! Each particle and each end gets to attempt to 
-                    ! spawn onto a connected determinant and a chance 
+                    ! Each particle and each end gets to attempt to
+                    ! spawn onto a connected determinant and a chance
                     ! to die/clone.
                     nattempts = 4*nparticles(1)
 
@@ -231,7 +231,7 @@ contains
                     call direct_annihilation()
 
                 end do
-            
+
                 old_shift=shift
                 ! Update the shift and desired thermal quantites.
                 call update_dmqmc_estimators(ireport, nparticles_old)
