@@ -26,7 +26,7 @@ contains
         use hamiltonian, only: get_hmatel_dets
 
         use utils, only: int_fmt
-        use m_mrgref, only: mrgref
+        use ranking, only: insertion_rank_rp
 
         type soln
             integer :: ms
@@ -43,7 +43,7 @@ contains
 
         ! For sorting the solutions by energy rather than by energy within each
         ! spin block.
-        integer, allocatable :: ranking(:)
+        integer, allocatable :: eigv_rank(:)
 
         character(50) :: fmt1
 
@@ -182,13 +182,13 @@ contains
         ! Output results.
         if (doing_calc(lanczos_diag) .and. parent) then
             write (6,'(1X,a31,/,1X,31("-"),/)') 'Lanczos diagonalisation results'
-            allocate(ranking(nlanczos), stat=ierr)
-            call check_allocate('ranking',nlanczos,ierr)
-            call mrgref(lanczos_solns(:nlanczos)%energy, ranking)
+            allocate(eigv_rank(nlanczos), stat=ierr)
+            call check_allocate('eigv_rank',nlanczos,ierr)
+            call insertion_rank_rp(lanczos_solns(:nlanczos)%energy, eigv_rank)
             write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
             state = 0
             do i = 1, nlanczos
-                ind = ranking(i)
+                ind = eigv_rank(i)
                 state = state + 1
                 write (6,'(1X,i6,2X,i6,1X,f18.12)') state, lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
                 if (lanczos_solns(ind)%ms /= 0) then
@@ -197,20 +197,20 @@ contains
                     write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
                 end if
             end do
-            write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', lanczos_solns(ranking(1))%energy
-            deallocate(ranking, stat=ierr)
-            call check_deallocate('ranking',ierr)
+            write (6,'(/,1X,a21,f18.12,/)') 'Lanczos ground state:', lanczos_solns(eigv_rank(1))%energy
+            deallocate(eigv_rank, stat=ierr)
+            call check_deallocate('eigv_rank',ierr)
         end if
 
         if (doing_calc(exact_diag) .and. parent) then
             write (6,'(1X,a29,/,1X,29("-"),/)') 'Exact diagonalisation results'
-            allocate(ranking(nexact), stat=ierr)
-            call check_allocate('ranking',nexact,ierr)
-            call mrgref(exact_solns(:nexact)%energy, ranking)
+            allocate(eigv_rank(nexact), stat=ierr)
+            call check_allocate('eigv_rank',nexact,ierr)
+            call insertion_rank_rp(exact_solns(:nexact)%energy, eigv_rank)
             write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
             state = 0
             do i = 1, nexact
-                ind = ranking(i)
+                ind = eigv_rank(i)
                 state = state + 1
                 write (6,'(1X,i6,2X,i6,1X,f18.12)') state, exact_solns(ind)%ms, exact_solns(ind)%energy
                 if (exact_solns(ind)%ms /= 0) then
@@ -219,9 +219,9 @@ contains
                     write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -exact_solns(ind)%ms, exact_solns(ind)%energy
                 end if
             end do
-            write (6,'(/,1X,a19,f18.12,/)') 'Exact ground state:', exact_solns(ranking(1))%energy
-            deallocate(ranking, stat=ierr)
-            call check_deallocate('ranking',ierr)
+            write (6,'(/,1X,a19,f18.12,/)') 'Exact ground state:', exact_solns(eigv_rank(1))%energy
+            deallocate(eigv_rank, stat=ierr)
+            call check_deallocate('eigv_rank',ierr)
         end if
 
         if (doing_calc(lanczos_diag)) then

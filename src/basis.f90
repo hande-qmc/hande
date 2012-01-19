@@ -324,7 +324,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use system
-        use m_mrgref, only: mrgref
+        use ranking, only: insertion_rank_rp
         use errors, only: stop_all
         use parallel, only: parent
 
@@ -472,7 +472,7 @@ contains
         ! Rank by kinetic energy (applies to momentum space basis sets only).
         select case(system_type)
         case(hub_k, ueg)
-            call mrgref(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking)
+            call insertion_rank_rp(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking)
         case(hub_real, heisenberg)
             forall (i=1:nsites) basis_fns_ranking(i) = i
         end select
