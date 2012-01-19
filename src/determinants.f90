@@ -176,7 +176,11 @@ contains
 
         if (parent) then
             fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
-            write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
+            if (system_type == heisenberg) then
+                write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', nel
+            else
+                write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
+            end if
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
             if (doing_calc(exact_diag+lanczos_diag)) &
                 write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets

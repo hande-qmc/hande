@@ -176,7 +176,7 @@ contains
         !        If false, only information about the quantum numbers is
         !        printed.
 
-        use system, only: system_type, read_in, hub_k, hub_real
+        use system, only: system_type, read_in, hub_k, hub_real, heisenberg
 
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: print_full
@@ -202,7 +202,7 @@ contains
         write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
 
         ! Describe information.
-        write (6,'(1X,a27)') 'Spin given in units of 1/2.'
+        if (system_type /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
 
         select case(system_type)
         case(hub_real,heisenberg)
@@ -231,7 +231,7 @@ contains
         end if
 
         if (print_long) then
-            write (6,'(a2)', advance='no') 'ms'
+            if (system_type /= heisenberg) write (6,'(a2)', advance='no') 'ms'
 
             if (system_type == hub_real .or. system_type == heisenberg) then
                 write(6,'()')
@@ -265,7 +265,7 @@ contains
         !        associated with the basis function are printed.  If false, only
         !        the quantum numbers are printed.
 
-        use system, only: system_type, read_in, hub_k, ueg
+        use system, only: system_type, read_in, hub_k, ueg, heisenberg
 
         type(basis_fn), intent(in) :: b
         integer, intent(in), optional :: ind
@@ -302,7 +302,7 @@ contains
             write (io,'(")")', advance='no')
         end if
         if (print_all) then
-            write (io,'(5X,i2)', advance='no') b%ms
+            if (system_type /= heisenberg) write (io,'(5X,i2)', advance='no') b%ms
             if (system_type == hub_k .or. system_type == ueg .or. system_type == read_in) write (io,'(4X,f12.8)', advance='no') b%sp_eigv
         end if
         if (present(new_line)) then
