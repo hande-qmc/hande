@@ -370,6 +370,13 @@ These options select the type of system to use.
     
     Warning: for efficiency reasons it is assumed that the smallest dimension
     lattice vector is greater than 2 if periodic boundary conditions are used.
+**ueg**
+    Perform calculation on the uniform electron gas.
+
+    .. note::
+
+        Currently only exact diagonalisation methods are implemented for the UEG.
+        QMC methods require excitation generators to be written.
 
 System
 ^^^^^^
@@ -486,6 +493,36 @@ These options describe the system which is to be investigated.
     smallest energy eigenvalue as the equivalent the triangular lattice.
     
     Periodic boundary conditions may only be applied to bipartite lattices.
+
+UEG Systems
+^^^^^^^^^^^
+
+These options are only relevant for calculations on the uniform electron gas.
+
+**2D**
+    Perform calculation on the 2D UEG.
+**3D**
+    Perform calculation on the 3D UEG.
+**density** *rs*
+    Real.
+
+    Default: 1.
+
+    Set the density, :math:`r_s`, of the UEG to be *rs*.
+**ecutoff** *emax*
+    Real.
+
+    Default: 3.
+
+    Set the maximum kinetic energy of the orbitals included in the basis set.
+
+    Note that this is in scaled units of :math:`(2\pi/L)^2`, where :math:`L` is the
+    dimension of simulation cell defined by *nel* and *rs* and is compared to
+    the kinetic energy of each plane-wave without the twist angle included.  In
+    this way **ecutoff** can be kept constant when **twist** is varied and the
+    basis set used will remain consistent.
+**rs** *rs*
+    Synonym for **density**.
 
 Calculation type
 ^^^^^^^^^^^^^^^^

@@ -80,6 +80,8 @@ contains
             case('READ')
                 system_type = read_in
                 if (item /= nitems) call reada(fcidump)
+            case('UEG')
+                system_type = ueg
 
             ! System information.
             case('LATTICE')
@@ -101,39 +103,62 @@ contains
                         if (eof) call stop_all('read_input', 'Unexpected end of file reading lattice vectors.')
                     end if
                 end do
+            case('2D')
+                if (ndim > 0) then
+                    call warning('read_input','Dimension already set; ignoring keyword '//w)
+                else
+                    ndim = 2
+                end if
+            case('3D')
+                if (ndim > 0) then
+                    call warning('read_input','Dimension already set; ignoring keyword '//w)
+                else
+                    ndim = 3
+                end if
             case('NEL', 'ELECTRONS')
                 if (system_type == heisenberg) &
                      call stop_all('read_input', 'Cannot set electron number for Heisenberg. &
                      &Please enter a Ms value instead.')
                 call readi(nel)
+
+            ! Hubbard-specific system info
             case('T')
                 call readf(hubt)
             case('U')
                 call readf(hubu)
+
+            ! Heisenberg-specific system info.
             case('J')
                 call readf(J_coupling)
             case('MAGNETIC_FIELD')
                 call readf(magnetic_field)
             case('STAGGERED_MAGNETIC_FIELD')
                 call readf(staggered_magnetic_field)
-            case('TWIST')
-                allocate(ktwist(nitems-item), stat=ierr)
-                call check_allocate('ktwist',nitems-item,ierr)
-                do i = 1, nitems-item
-                    call readf(ktwist(i))
-                end do
-            case('SEPARATE_STRINGS')
-                separate_strings = .true.
-            case('CAS')
-                do i = 1,2
-                    call readi(CAS(i))
-                end do
+
+            ! UEG-specific system info.
+            case('RS','DENSITY')
+                call readf(r_s)
+            case('ECUTOFF')
+                call readf(ueg_ecutoff)
 
             ! Select symmetry of wavefunction.
             case('MS')
                 call readi(ms_in)
             case('SYM','SYMMETRY')
                 call readi(sym_in)
+
+            case('SEPARATE_STRINGS')
+                separate_strings = .true.
+            case('CAS')
+                do i = 1,2
+                    call readi(CAS(i))
+                end do
+            case('TWIST')
+                allocate(ktwist(nitems-item), stat=ierr)
+                call check_allocate('ktwist',nitems-item,ierr)
+                do i = 1, nitems-item
+                    call readf(ktwist(i))
+                end do
 
             ! Calculation type.
             case('EXACT','FCI')
@@ -391,11 +416,12 @@ contains
                                           & This is not a bipartite lattice. Changing options so that it will not be calculated.')
                     dmqmc_calc_type = dmqmc_calc_type - dmqmc_staggered_magnetisation
                 end if
-            else
+            else if (system_type == hub_k .or. system_type == hub_real) then
                 if (nel > 2*nsites) call stop_all(this, 'More than two electrons per site.')
             end if
 
             if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
+            if (system_type == ueg .and. ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
         
             if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
                 call warning('check_input','Periodic boundary conditions may not be applied for these particular &
@@ -422,6 +448,7 @@ contains
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
                &sites for the correlation function option.')
 
+        ! Calculation specific checking.
         if (doing_calc(lanczos_diag)) then
             if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
@@ -523,6 +550,8 @@ contains
             end if
             call mpi_bcast(ktwist, ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
+        call mpi_bcast(r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ueg_ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)

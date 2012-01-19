@@ -176,7 +176,7 @@ contains
 
         if (parent) then
             fmt1 = int_fmt((/nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
-            write (6,'(/,1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
+            write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
             if (doing_calc(exact_diag+lanczos_diag)) &
                 write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
@@ -399,16 +399,16 @@ contains
         use utils, only: binom_i, int_fmt
         use system, only: nsym
         use symmetry, only: cross_product, symmetry_orb_list
+        use ueg_system, only: ueg_basis_index
 
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string
 
-        use momentum_symmetry
-
-        integer :: i, j, ierr
+        integer :: i, j, iel, ierr
         integer :: nalpha_combinations, nbeta_combinations
         integer :: sym_beta, sym
         integer(i0) :: f_alpha, f_beta
         integer, allocatable :: occ(:)
+        integer :: k(ndim), k_beta(ndim)
 
         if (allocated(sym_space_size)) then
             deallocate(sym_space_size, stat=ierr)
@@ -458,7 +458,18 @@ contains
                 call decode_bit_string(f_beta, occ)
                 ! Convert to beta orbitals.
                 occ = 2*(occ+1)
-                sym_beta = symmetry_orb_list(occ(1:nbeta))
+                ! Symmetry.
+                ! Have to treat the UEG as a special case as we don't consider
+                ! all possible symmetries for the UEG but rather only momenta
+                ! which exist in the basis set.
+                if (system_type == ueg) then
+                    k_beta = 0
+                    do iel = 1, nbeta
+                        k_beta = k_beta + basis_fns(occ(iel))%l
+                    end do
+                else
+                    sym_beta = symmetry_orb_list(occ(1:nbeta))
+                end if
 
                 do j = 1, nalpha_combinations
 
@@ -473,9 +484,22 @@ contains
                     ! Convert to alpha orbitals.
                     occ = 2*occ+1
                     ! Symmetry of all orbitals.
-                    sym = cross_product(sym_beta, symmetry_orb_list(occ(1:nalpha)))
+                    if (system_type == ueg) then
+                        k = k_beta
+                        do iel = 1, nalpha
+                            k = k + basis_fns(occ(iel))%l
+                        end do
+                        ! Symmetry label (convert from basis index).
+                        sym = (ueg_basis_index(k,1)+1)/2
+                    else
+                        sym = cross_product(sym_beta, symmetry_orb_list(occ(1:nalpha)))
+                    end if
 
-                    sym_space_size(sym) = sym_space_size(sym) + 1
+                    if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
+                        ! Ignore symmetries outside the basis set (only affects
+                        ! UEG currently).
+                        sym_space_size(sym) = sym_space_size(sym) + 1
+                    end if
 
                 end do
             end do
@@ -515,15 +539,17 @@ contains
         use utils, only: get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string
         use symmetry, only: cross_product, symmetry_orb_list
+        use ueg_system, only: ueg_basis_index
 
         integer, intent(in) :: ref_sym
 
-        integer :: i, j, idet, ierr, ibit
+        integer :: i, j, iel, idet, ierr, ibit
         integer :: nalpha_combinations, nbeta_combinations
         integer :: sym_beta, sym
         character(4) :: fmt1
         integer(i0) :: f_alpha, f_beta
         integer, allocatable :: occ(:)
+        integer :: k(ndim), k_beta(ndim)
 
         allocate(occ(max(nalpha, nbeta)), stat=ierr)
         call check_allocate('occ', max(nalpha, nbeta), ierr)
@@ -582,7 +608,17 @@ contains
                 ! Convert to beta orbitals.
                 occ = 2*(occ+1)
                 ! Symmetry of the beta orbitals.
-                sym_beta = symmetry_orb_list(occ(1:nbeta))
+                ! Have to treat the UEG as a special case as we don't consider
+                ! all possible symmetries for the UEG but rather only momenta
+                ! which exist in the basis set.
+                if (system_type == ueg) then
+                    k_beta = 0
+                    do iel = 1, nbeta
+                        k_beta = k_beta + basis_fns(occ(iel))%l
+                    end do
+                else
+                    sym_beta = symmetry_orb_list(occ(1:nbeta))
+                end if
 
                 do j = 1, nalpha_combinations
 
@@ -597,7 +633,16 @@ contains
                     ! Convert to alpha orbitals.
                     occ = 2*occ+1
                     ! Symmetry of all orbitals.
-                    sym = cross_product(sym_beta, symmetry_orb_list(occ(1:nalpha)))
+                    if (system_type == ueg) then
+                        k = k_beta
+                        do iel = 1, nalpha
+                            k = k + basis_fns(occ(iel))%l
+                        end do
+                        ! Symmetry label (convert from basis index).
+                        sym = (ueg_basis_index(k,1)+1)/2
+                    else
+                        sym = cross_product(sym_beta, symmetry_orb_list(occ(1:nalpha)))
+                    end if
 
                     if (sym == ref_sym) then
 

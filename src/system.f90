@@ -1,11 +1,22 @@
 module system
 
-use const
+! Module to store system information.  See also the basis module.
 
+! Hubbard and Heisenberg systems:
+!
 ! We assume that the lattice is defined by unit vectors and sites are located at
 ! all integer combinations of the primitive vectors.
 ! We never actually store the lattice vectors or reciprocal lattice vectors of
 ! the primitive unit cell.
+
+! UEG:
+!
+! The lattice defines the simulation cell, to which periodic boundary conditions
+! are applied.  Note that there is no underlying primitive lattice and so we
+! only consider the case where the simulation cell is aligned with the
+! coordinate system.
+
+use const
 
 implicit none
 
@@ -16,6 +27,7 @@ integer, parameter :: hub_k = 0
 integer, parameter :: hub_real = 1
 integer, parameter :: read_in = 2
 integer, parameter :: heisenberg = 3
+integer, parameter :: ueg = 4
 
 ! Which system are we examining?  Hubbard (real space)? Hubbard (k space)? ...?
 integer :: system_type = hub_k
@@ -84,18 +96,24 @@ integer :: CAS(2) = (/ -1, -1 /)
 ! --- Model Hamiltonians ---
 
 ! 1, 2 or 3 dimensions.
-integer :: ndim 
+integer :: ndim = -1 ! set to a nonsensical value for error checking in input parser.
 
-! Number of sites in crystal cell.
+! Number of sites in crystal cell (Hubbard; Heisenberg).
 integer :: nsites
 
-! Number of bonds in the crystal cell.
+! Number of bonds in the crystal cell (Heisenberg).
 integer :: nbonds
+
+! Electron density (UEG only)
+real(p) :: r_s = 1.0_p
+! Energy cutoff for basis (UEG only).
+! This is in provided in scaled units of (2*pi/L)^2.
+real(p) :: ueg_ecutoff = 3.0_p
 
 ! Lattice vectors of crystal cell. (:,i) is the i-th vector.
 integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
-! If a triangular lattice is being used, this variable is true.
+! If a triangular lattice is being used, this variable is true (Hubbard; Heisenberg).
 logical :: triangular_lattice
 
 ! Lengths of lattice vectors.
@@ -111,7 +129,7 @@ integer :: lattice_size(3)
 ! b_i = 2\pi/|a_i|^2 a_i
 real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
-! Twist applied to wavevectors.
+! Twist applied to wavevectors (Hubbard; UEG).
 real(p), allocatable :: ktwist(:)
 
 ! --- Hubbard model ---
@@ -161,6 +179,8 @@ contains
         use checking, only: check_allocate
         use calc, only: ms_in
 
+        use checking, only: check_deallocate
+
         integer :: i, ivec, ierr, counter
 
         if (.not. system_type == read_in) then
@@ -170,8 +190,43 @@ contains
             allocate(rlattice(ndim,ndim), stat=ierr)
             call check_allocate('rlattice',ndim*ndim,ierr)
 
-            forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),p))
-            nsites = nint(product(box_length))
+            select case(system_type)
+            case(ueg)
+
+                ! UEG specific information.
+
+                ! Lattice vectors are not read from input file (or at least, should
+                ! not be).
+                if (allocated(lattice)) then
+                    deallocate(lattice, stat=ierr)
+                    call check_deallocate('lattice',ierr)
+                end if
+                allocate(lattice(ndim,ndim), stat=ierr)
+                call check_allocate('lattice',ndim*ndim,ierr)
+
+                ! Use a cubic simulation cell.
+                ! The system is uniquely defined by two out of the number of
+                ! electrons, the density and the simulation cell lattice parameter.
+                ! It is most convenient to have the first two as input parameters.
+                lattice = 0.0_p
+                select case(ndim)
+                case(2)
+                    forall (ivec=1:ndim) lattice(ivec,ivec) = r_s*sqrt(pi*nel)
+                case(3)
+                    forall (ivec=1:ndim) lattice(ivec,ivec) = r_s*(4*pi*nel)**(1.0_p/3.0_p)
+                end select
+
+                box_length = lattice(1,1)
+
+            case default
+
+                ! Lattice-model specific information.
+
+                forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),p))
+                nsites = nint(product(box_length))
+
+            end select
+
             forall (ivec=1:ndim) rlattice(:,ivec) = lattice(:,ivec)/box_length(ivec)**2
 
             if (.not.allocated(ktwist)) then
@@ -184,12 +239,15 @@ contains
             ! Here nel means the number of up spins, nvirt means the number of down spins.
             ! For other models, both ms_in and nel have already been set, and nel refers
             ! to the number of electrons in the system.
-            if (system_type == heisenberg) then
+            select case(system_type)
+            case(heisenberg)
                 nel = (nsites+ms_in)/2
                 nvirt = (nsites-ms_in)/2
-            else
+            case(hub_k, hub_real)
                 nvirt = 2*nsites - nel
-            end if
+            case(ueg)
+                ! set nvirt in basis once the basis set has been generated.
+            end select
             
             ! lattice_size is useful for loops over a general number of dimensions. This
             ! variable is only concerned with simple lattices which could be bipartite,
@@ -269,13 +327,19 @@ contains
         integer :: i
         real :: kc(ndim)
 
-        ! Convert to cartesian units.
-        forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
+        select case(system_type)
+        case(UEG)
+            ! FBZ is infinite.
+            in_FBZ = .true.
+        case default
+            ! Convert to cartesian units.
+            forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
 
-        ! This test only works because the underlying lattice is orthogonal.
-        ! The asymmetry of the boundary conditions prevent the acceptance of
-        ! all wavevectors on the boundaries...
-        in_FBZ = all(kc<=(0.50_p+depsilon)).and.all(kc>(-0.50_p))
+            ! This test only works because the underlying lattice is orthogonal.
+            ! The asymmetry of the boundary conditions prevent the acceptance of
+            ! all wavevectors on the boundaries...
+            in_FBZ = all(kc<=(0.50_p+depsilon)).and.all(kc>(-0.50_p))
+        end select
 
     end function in_FBZ
 

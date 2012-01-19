@@ -21,8 +21,8 @@ contains
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, hub_real, hub_k, heisenberg, momentum_space, read_in, cas
-        use hubbard, only: init_model_basis_fns
+        use system, only: init_system, system_type, hub_real, hub_k, heisenberg, ueg, momentum_space, read_in, cas
+        use basis, only: init_model_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
@@ -31,6 +31,7 @@ contains
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_fcidump
         use calc
+        use ueg_system, only: init_ueg_proc_pointers
 
         call init_parallel()
 
@@ -64,6 +65,9 @@ contains
 
         ! System specific.
         select case(system_type)
+        case(ueg)
+            call init_momentum_symmetry()
+            call init_ueg_proc_pointers()
         case(hub_k)
             call init_momentum_symmetry()
         case(hub_real, heisenberg) 

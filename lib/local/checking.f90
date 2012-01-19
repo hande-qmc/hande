@@ -48,7 +48,7 @@ contains
             else
                 write (6,'(1X,a25,1X,a,1X,a9)') 'Error in deallocating array',trim(array_name)
             end if
-            call stop_all('check_deallocate','Allocation error')
+            call stop_all('check_deallocate','Deallocation error')
         end if
 
     end subroutine check_deallocate
