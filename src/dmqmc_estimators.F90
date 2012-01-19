@@ -79,7 +79,7 @@ contains
    end subroutine update_dmqmc_estimators
 
    subroutine call_dmqmc_estimators(idet)
-       
+
        ! This function calls the processes to update the estimators which
        ! have been requested by the user to be calculated.
        ! First, calculate the excitation level between the two bitsrtings
@@ -100,7 +100,7 @@ contains
 
        integer, intent(in) :: idet
        type(excit) :: excitation
-   
+
        ! Get excitation.
        excitation = get_excitation(walker_dets(:basis_length,idet), &
                         walker_dets((1+basis_length):total_basis_length,idet))
@@ -127,7 +127,7 @@ contains
        !    excitation: excit type variable which stores information on
        !    the excitation between the two bitstring ends, corresponding
        !    to the two labels for the density matrix element.
- 
+
        use basis, only: basis_length, total_basis_length
        use basis, only: bit_lookup
        use excitations, only: excit
@@ -148,7 +148,7 @@ contains
                                     (walker_data(1,idet)+H00)*walker_population(1,idet)
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
-       ! Hamiltonian element may be non-zero. Calculate if the flipped spins are 
+       ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
        ! neighbours on the lattice, and if so, add the contirbution from this site.
            bit_position = bit_lookup(1,excitation%from_orb(1))
            bit_element = bit_lookup(2,excitation%from_orb(1))
@@ -275,7 +275,7 @@ contains
        use fciqmc_data, only: walker_dets, walker_population
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
-       use hamiltonian, only: slater_condon1_hub_real        
+       use hamiltonian, only: slater_condon1_hub_real
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
@@ -395,7 +395,7 @@ contains
            ! Need to calculate the number of spins up on sublattice 1:
            ! N_u(+) - Number up on + sublattice (where (-1)^i above is +1)
            ! Note the number of down spins on a sublattice is easily obtained from
-           ! N_u(+) since there are N/2 spins on each - and the number of spins up on 
+           ! N_u(+) since there are N/2 spins on each - and the number of spins up on
            ! a different sublattice is easily obtained since there are nel spins
            ! up in total. Hence the matrix element will be written only in terms
            ! of the number of up spins on sublattice 1, to save computation.
@@ -421,7 +421,7 @@ contains
            ! of -1, as we get.
            total_sum = (mod(total_sum+1,2)*2)-1
        end if
-       
+
        estimator_numerators(staggered_mag_index) = estimator_numerators(staggered_mag_index) + &
                                   (real(total_sum)/real(nsites**2))*walker_population(1,idet)
 

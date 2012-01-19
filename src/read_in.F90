@@ -235,8 +235,8 @@ contains
         ! Yes, this the calls to insertion_rank_rp do result in array copies,
         ! but the arrays are small and the elegance and brevity of the code is
         ! more than aadequate compensation.
-        call insertion_rank_rp(sp_eigv(::2), sp_eigv_rank(1::2))
-        call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2))
+        call insertion_rank_rp(sp_eigv(::2), sp_eigv_rank(1::2), tolerance=depsilon)
+        call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
         ! Interweave so the basis functions remain with alternating spins.
         forall (i = 1:nbasis-1:2)
             sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
@@ -260,7 +260,7 @@ contains
         ! Set up basis functions, including those which are subsequently frozen.
         allocate(all_basis_fns(nbasis), stat=ierr)
         call check_allocate('all_basis_fns', nbasis, ierr)
-        call init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank(1:), all_basis_fns) 
+        call init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank(1:), all_basis_fns)
 
         ! From CAS work out the start of the active basis functions, the number
         ! of active basis functions and the number of active electrons.
@@ -279,7 +279,7 @@ contains
         ! Set up basis functions used in calculation.
         allocate(basis_fns(nbasis), stat=ierr)
         call check_allocate('basis_fns', nbasis, ierr)
-        call init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank(1+active_basis_offset/rhf_fac:), basis_fns) 
+        call init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank(1+active_basis_offset/rhf_fac:), basis_fns)
 
         deallocate(sp_eigv, stat=ierr)
         call check_deallocate('sp_eigv', ierr)
@@ -317,7 +317,7 @@ contains
         ! active orbitals.
 
         ! See J. Chem. Phys. 62, 4764 (1975), An Introduction to
-        ! Configuration Interaction Theory by C. David Sherrill 
+        ! Configuration Interaction Theory by C. David Sherrill
         ! (http://vergil.chemistry.gatech.edu/notes/ci/ci.html) and
         ! Alex Thom's thesis.
 

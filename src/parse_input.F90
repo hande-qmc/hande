@@ -12,7 +12,7 @@ use lanczos
 use determinants
 use fciqmc_data
 use fciqmc_restart, only: read_restart_number, write_restart_number,&
-                          binary_fmt_in, binary_fmt_out 
+                          binary_fmt_in, binary_fmt_out
 use hubbard_real, only: finite_cluster
 use hfs_data, only: lmag2
 
@@ -29,7 +29,7 @@ contains
 #ifdef NAGF95
         use f90_unix_env
 #endif
-    
+
         use input
         use utils, only: get_free_unit
         use checking, only: check_allocate
@@ -261,7 +261,7 @@ contains
                 call readf(shift)
                 ! We assume the user is sensible/knows what he/she is doing if
                 ! initial_shift and vary_shift_from are set.
-                vary_shift_from = shift 
+                vary_shift_from = shift
             case('VARY_SHIFT_FROM')
                 call readu(w)
                 if (w == 'PROJE') then
@@ -351,15 +351,15 @@ contains
             ! Parameters for parallel calculations.
             case('BLOCK_SIZE')
                 call readi(block_size)
-             
+
             case('FINITE_CLUSTER')
-                ! this will be checked in check_input to ensure that it 
+                ! this will be checked in check_input to ensure that it
                 ! is only used when we are formulating the calculation
                 ! in real-space
-                finite_cluster = .true.   
+                finite_cluster = .true.
             case('TRIANGULAR_LATTICE')
                 triangular_lattice = .true.
-            
+
             case('NEEL_SINGLET_ESTIMATOR')
                 trial_function = neel_singlet
             case('NEEL_SINGLET_GUIDING')
@@ -372,7 +372,7 @@ contains
                 call report('Keyword '//trim(w)//' not recognized.', .true.)
             end select
         end do ! end reading of input.
-        
+
         close(ir, status='keep')
         if (ios.gt.0) call stop_all('read_input','Problem reading input.')
 
@@ -384,7 +384,7 @@ contains
         ! make sure a few things are not completely insane.
 
         use const
-        
+
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
 
@@ -392,8 +392,9 @@ contains
             if (nel <= 0) call stop_all(this,'Number of electrons must be positive.')
                 if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
                                                      & state for this system. Other trial functions are not avaliable.')
-                if (guiding_function /= no_guiding) call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
-                                                                currently.')
+                if (guiding_function /= no_guiding) &
+                    call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
+                                         & currently.')
         end if
 
         if (system_type /= read_in) then
@@ -403,14 +404,16 @@ contains
             if (system_type == heisenberg) then
                 if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
                 if ((-ms_in) > nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
-                if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not possible for this lattice.')
-                if (staggered_magnetic_field /= 0.0_p .and. (.not.bipartite_lattice)) call stop_all(this, 'Cannot set a staggered field&
-                                                           & for this lattice because it is frustrated.')
+                if (mod(abs(ms_in),2) /=  mod(nsites,2)) call stop_all(this, 'Ms value specified is not&
+                                                                              & possible for this lattice.')
+                if (staggered_magnetic_field /= 0.0_p .and. (.not.bipartite_lattice)) &
+                    call stop_all(this, 'Cannot set a staggered field&
+                                        & for this lattice because it is frustrated.')
                 if (staggered_magnetic_field /= 0.0_p .and. magnetic_field /= 0.0_p) &
                     call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
                 if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
                                                          &guiding function is only avaliable when using the Neel singlet state &
-                                                         &as an energy estimator.') 
+                                                         &as an energy estimator.')
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.bipartite_lattice)) then
                     call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
                                           & This is not a bipartite lattice. Changing options so that it will not be calculated.')
@@ -422,7 +425,7 @@ contains
 
             if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
             if (system_type == ueg .and. ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
-        
+
             if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
                 call warning('check_input','Periodic boundary conditions may not be applied for these particular &
                                &triangular lattice. Periodic boundary conditions are being turned off.')
@@ -475,8 +478,8 @@ contains
             if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
-         
-        ! If the FINITE_CLUSTER keyword was detected then make sure that 
+
+        ! If the FINITE_CLUSTER keyword was detected then make sure that
         ! we are doing a calculation in real-space. If we're not then
         ! unset finite cluster,tell the user and carry on
         if(momentum_space) then
@@ -499,8 +502,8 @@ contains
                                       & calculations in real-space: ignoring keyword')
             end if
         end if
-        
-        if (parent) write (6,'(/,1X,13("-"),/)') 
+
+        if (parent) write (6,'(/,1X,13("-"),/)')
 
     end subroutine check_input
 

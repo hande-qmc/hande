@@ -25,7 +25,7 @@ integer, allocatable :: ueg_basis_lookup(:) ! (N_kx^ndim)
 ! for ueg_basis_lookup.
 integer, allocatable :: ueg_basis_dim(:) ! (ndim)
 
-! ueg_basis_origin accounts for the fact that ueg_basis_lookup is a 1-indexed array.  
+! ueg_basis_origin accounts for the fact that ueg_basis_lookup is a 1-indexed array.
 ! ueg_basis_origin = k_max*(1 + N_x + N_x*N_y) + 1
 integer :: ueg_basis_origin
 
@@ -145,7 +145,7 @@ contains
     subroutine end_ueg_indexing()
 
         ! Clean up UEG index arrays.
-        
+
         use checking, only: check_deallocate
 
         integer :: ierr
@@ -173,7 +173,7 @@ contains
         !          the excited determinant.
         !
         ! Returns:
-        !   The anti-symmetrized integral < ij || ab >.   
+        !   The anti-symmetrized integral < ij || ab >.
 
         ! Warning: assume i,j /= a,b (ie not asking for < ij || ij > or < ij || ji >).
 

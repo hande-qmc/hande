@@ -49,7 +49,7 @@ integer, parameter :: neel_singlet = 1
 ! trial_function will always be 0 for other models to represent a single determinant.
 integer :: trial_function = 0
 
-! For the Heisenberd model, a guiding function may be used, 
+! For the Heisenberd model, a guiding function may be used,
 ! |psi_G> = \sum_{i} a_i |psi_i>, so that the new Hamiltonian matrix elements are
 ! H_ij^new = (a_i*H_ij)/a_j. This is just importance sampling. These functions
 ! represent the different types of functions whihc may be used.
@@ -65,10 +65,10 @@ integer :: guiding_function = 0
 ! --- General System variables ---
 
 ! # of electrons
-! *NOTE*: For the Heisenberg model nel refers to the number of spins up in the 
+! *NOTE*: For the Heisenberg model nel refers to the number of spins up in the
 ! basis functions. This is to reuse code for the Hubbard model, where it simply
 ! refers to the number of electrons in the system
-integer :: nel = 0 
+integer :: nel = 0
 ! # number of virtual orbitals
 ! *NOTE*: For the Heisenberg model nvirt refers to the number of spins down, or
 ! the number of 0's in the basis functions
@@ -153,7 +153,7 @@ real(p) :: magnetic_field = 0
 
 ! This parameter allows a staggered magnetisation operator to be added
 ! to the Hamiltonian. staggered_magnetic_field gives the constant of proportionality:
-! \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - 
+! \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j -
 !                      staggered_magnetic_field \sum_{i}(-1)^{\zeta(i)}\sigma_{i,z}
 ! where \zeta(i) gives \pm 1 depending upon which sublattice site i is on.
 ! Applicable only to bipartite lattices.
@@ -248,28 +248,28 @@ contains
             case(ueg)
                 ! set nvirt in basis once the basis set has been generated.
             end select
-            
+
             ! lattice_size is useful for loops over a general number of dimensions. This
             ! variable is only concerned with simple lattices which could be bipartite,
             ! as it is used in init_determinants to split a bipartite lattice into its two parts.
-            lattice_size = 1  
+            lattice_size = 1
             lattice_size(1) = ceiling(box_length(1), 2)
             if (ndim > 1) lattice_size(2) = ceiling(box_length(2), 2)
             if (ndim > 2) lattice_size(3) = ceiling(box_length(3), 2)
-            
+
             ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
             ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
             ! to be calculated.
             counter = 0
             do i = 1,ndim
-                if ( sum(lattice(:,i)) == box_length(i) .and. mod(lattice_size(i), 2) == 0) counter = counter + 1 
+                if ( sum(lattice(:,i)) == box_length(i) .and. mod(lattice_size(i), 2) == 0) counter = counter + 1
             end do
             if (counter == ndim) bipartite_lattice = .true.
-            
+
             ! This logical variable is set true if the system being used has basis functions
             ! in momentum space - the Heisenberg and real Hubbard models are in real space.
             momentum_space = .not.(system_type == hub_real .or. system_type == heisenberg .or. system_type == read_in)
-            
+
             if (triangular_lattice) then
                 ! Triangular lattice, only in 2d. Each site has 6 bonds, but each bond is
                 ! connected to 2 sites, so we divide by 2 to avoid counting twice. So there

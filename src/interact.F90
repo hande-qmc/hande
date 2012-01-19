@@ -61,7 +61,7 @@ contains
                 write (6,'(1X,"#",1X,a21)') 'FCIQMC.COMM detected.'
                 write (6,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of FCIQMC.COMM:'
                 ! Flush output from parent processor so that processor which
-                ! has the FCIQMC.COMM file can print out the contents without 
+                ! has the FCIQMC.COMM file can print out the contents without
                 ! mixing the output.
                 call flush(6)
             end if
@@ -90,7 +90,7 @@ contains
                         call read_line(eof)
                         if (eof) exit
                         write (6,'(1X,"#",1X,a)') trim(line)
-                        
+
                         call readu(w)
                         select case(w)
                         case('SOFTEXIT')
@@ -144,7 +144,7 @@ contains
             call mpi_bcast(start_averaging_from, 1, mpi_integer, proc, mpi_comm_world, ierr)
 #endif
 
-            if (parent) write (6,'(1X,"#",/,1X,"#",1X,a59,/,1X,"#",1X,62("-"))')  & 
+            if (parent) write (6,'(1X,"#",/,1X,"#",1X,a59,/,1X,"#",1X,62("-"))')  &
                    "From now on we use the information provided in FCIQMC.COMM."
         end if
 

@@ -377,13 +377,13 @@ contains
                           heisenberg, J_coupling
         use basis, only: bit_lookup
         use hubbard_real, only: connected_orbs
-        
+
         integer :: i, j, ierr, spins_set, connections
         integer :: bit_element, bit_pos
 
         ! Leave the reference determinant unchanged if it's already been
         ! allocated (and presumably set).
-        
+
         if (allocated(occ_list0)) then
             if (size(occ_list0) /= nel) then
                 select case(system_type)
@@ -423,7 +423,7 @@ contains
             case(heisenberg)
                 if (J_coupling >= 0) then
                     forall (i=1:nel) occ_list0(i) = i
-                ! For the antiferromagnetic case, below. This is messy but should 
+                ! For the antiferromagnetic case, below. This is messy but should
                 ! give a reasonable reference determinant for general cases, even
                 ! for bizarre lattices. For bipartite lattices (eg 4x4, 6x6...)
                 ! it will give the best possible reference determinant.
@@ -608,7 +608,7 @@ contains
                 ! --> need fewest stack elements.
                 nstack = nstack + 1
 
-                ! With a stack_max of 50, we can sort arrays of length 
+                ! With a stack_max of 50, we can sort arrays of length
                 ! 1125899906842624.  It is safe to say this will never be
                 ! exceeded, and so this test can be skipped.
 !                if (nstack > stack_max) call stop_all('sort_spawned_lists', "parameter stack_max too small")
@@ -644,7 +644,7 @@ contains
     pure subroutine search_walker_list(f, istart, iend, hit, pos)
 
         ! Find where a determinant belongs in the main walker list.
-        ! Only elements between istart and iend are examined (use the 
+        ! Only elements between istart and iend are examined (use the
         ! array boundaries in the worst case).
         !
         ! In:
@@ -674,7 +674,7 @@ contains
             ! This should only occur if istart = iend + 1.
             pos = istart
             hit = .false.
-            
+
         else
 
             ! Search range.
@@ -819,11 +819,11 @@ contains
                 write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
             end do
             write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
-        else                                   
+        else
             write (6,'(5X,i8,2X,4(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
                                              mc_cycles_done+mc_cycles, shift,   &
                                              av_shift/vary_shift_reports, proj_energy,       &
-                                             av_proj_energy/av_D0_population, D0_population, & 
+                                             av_proj_energy/av_D0_population, D0_population, &
                                              ntot_particles, rspawn, elapsed_time/ncycles
         end if
 

@@ -6,7 +6,7 @@ implicit none
 
 contains
 
-      
+
     subroutine check_allocate(array_name, array_size, ierr)
 
         use utils, only: int_fmt

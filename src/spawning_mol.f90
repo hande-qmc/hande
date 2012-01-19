@@ -3,11 +3,6 @@ module spawning_mol_system
 ! Module for spawning routine(s) related to the molecular system (ie one read in
 ! from an FCIDUMP file).
 
-! TODO:
-!  * pgen evaluation
-!  * test!
-!  * comment
-
 use const, only: i0, p
 
 implicit none
@@ -18,7 +13,7 @@ contains
 
     subroutine spawn_mol(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! Attempt to spawn a new particle on a connected determinant for the
         ! molecular systems.
         !
         ! In:
@@ -34,38 +29,26 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: tau
-
-        use dSFMT_interface, only:  genrand_real2
+        use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, hmatel, pspawn
+        real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
         call gen_excit_mol(cdet, pgen, connection, hmatel)
 
-        ! 2. Calculate P_spawn.
-        pspawn = tau*abs(hmatel)/pgen
-
-        ! 3. Attempt spawning.
-        nspawn = int(pspawn)
-        pspawn = pspawn - nspawn
-        if (pspawn > genrand_real2()) nspawn = nspawn + 1
-        if (hmatel > 0) then
-            nspawn = -sign(nspawn, parent_sign)
-        else
-            nspawn = sign(nspawn, parent_sign)
-        end if
+        ! 2. Attempt spawning.
+        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
     end subroutine spawn_mol
 
     subroutine spawn_mol_no_renorm(cdet, parent_sign, nspawn, connection)
 
-        ! Attempt to spawn a new particle on a connected determinant for the 
+        ! Attempt to spawn a new particle on a connected determinant for the
         ! molecular systems.
         !
         ! This doesn't use excitation generators which exclude the case where,
@@ -89,32 +72,20 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: tau
-
-        use dSFMT_interface, only:  genrand_real2
+        use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, hmatel, pspawn
+        real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
         call gen_excit_mol_no_renorm(cdet, pgen, connection, hmatel)
 
-        ! 2. Calculate P_spawn.
-        pspawn = tau*abs(hmatel)/pgen
-
-        ! 3. Attempt spawning.
-        nspawn = int(pspawn)
-        pspawn = pspawn - nspawn
-        if (pspawn > genrand_real2()) nspawn = nspawn + 1
-        if (hmatel > 0) then
-            nspawn = -sign(nspawn, parent_sign)
-        else
-            nspawn = sign(nspawn, parent_sign)
-        end if
+        ! 2. Attempt spawning.
+        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
     end subroutine spawn_mol_no_renorm
 
@@ -122,7 +93,7 @@ contains
 
     subroutine gen_excit_mol(cdet, pgen, connection, hmatel)
 
-        ! Create a random excitation from cdet and calculate both the probability 
+        ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
@@ -134,7 +105,7 @@ contains
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
-        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a 
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !    determinant and a connected determinant in molecular systems.
 
         use determinants, only: det_info
@@ -153,14 +124,14 @@ contains
         integer :: ij_sym, ij_spin
 
         ! 1. Select single or double.
-        
+
         if (genrand_real2() < pattempt_single) then
 
             ! 2a. Select orbital to excite from and orbital to excit into.
             call choose_ia_mol(cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
                                connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
-            
+
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
                 pgen = calc_pgen_single_mol(cdet%occ_list, cdet%symunocc, connection%to_orb(1))
@@ -188,7 +159,7 @@ contains
             connection%nexcit = 2
 
             if (allowed_excitation) then
-                
+
                 ! 3b. Probability of generating this excitation.
                 pgen = calc_pgen_double_mol(ij_sym, connection%to_orb(1), connection%to_orb(2), &
                                             ij_spin, cdet%symunocc)
@@ -215,7 +186,7 @@ contains
 
     subroutine gen_excit_mol_no_renorm(cdet, pgen, connection, hmatel)
 
-        ! Create a random excitation from cdet and calculate both the probability 
+        ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
@@ -227,7 +198,7 @@ contains
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
-        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a 
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !    determinant and a connected determinant in molecular systems.
 
         use basis, only: basis_fns
@@ -247,7 +218,7 @@ contains
         integer :: ij_sym, ij_spin
 
         ! 1. Select single or double.
-        
+
         if (genrand_real2() < pattempt_single) then
 
             ! 2a. Select orbital to excite from and orbital to excit into.
@@ -257,7 +228,7 @@ contains
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
                 pgen = calc_pgen_single_mol_no_renorm(connection%to_orb(1))
-            
+
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(cdet%f, connection)
 
@@ -322,7 +293,7 @@ contains
         use basis, only: basis_length, basis_fns, bit_lookup
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns
         use system, only: nel, sym0
-        
+
         use dSFMT_interface, only: genrand_real2
 
         integer(i0), intent(in) :: f(basis_length)
@@ -342,7 +313,7 @@ contains
                 exit
             end if
         end do
-        
+
         if (allowed_excitation) then
             ! We could wrap around find_ia_mol, but it's more efficient to have
             ! a custom generator instead.  The cost of an extra few lines is worth
@@ -352,7 +323,7 @@ contains
                 ! Select an occupied orbital at random.
                 i = occ_list(int(genrand_real2()*nel)+1)
                 ! Conserve symmetry (spatial and spin) in selecting a.
-                ims = (basis_fns(i)%Ms+3)/2 
+                ims = (basis_fns(i)%Ms+3)/2
                 isym = basis_fns(i)%sym
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
@@ -432,7 +403,7 @@ contains
         ! Select a random pair of orbitals to excite into as part of a double
         ! excitation, given that the (i,j) pair of orbitals to excite from have
         ! already been selected.
-        ! 
+        !
         ! In:
         !    f: bit string representation of the Slater determinant from which
         !        an electron is excited.
@@ -493,7 +464,7 @@ contains
                 if ( (symunocc(1,isyma) > 0 .and. symunocc(2,isymb) > 0) .or. &
                      (symunocc(2,isyma) > 0 .and. symunocc(1,isymb) > 0) ) then
                     allowed_excitation = .true.
-                    exit 
+                    exit
                 end if
             end do
 
@@ -531,7 +502,7 @@ contains
             do
                 ! Find a.  See notes in find_ab_mol.
                 a = int(genrand_real2()*na) + 1
-                ! convert to down or up orbital 
+                ! convert to down or up orbital
                 a = fac*a-shift
                 ! If a is unoccupied and there's a possbible b, then have found
                 ! first orbital to excite into.
@@ -606,7 +577,7 @@ contains
         i = occ_list(int(genrand_real2()*nel)+1)
 
         ! Conserve symmetry (spatial and spin) in selecting a.
-        ims = (basis_fns(i)%Ms+3)/2 
+        ims = (basis_fns(i)%Ms+3)/2
         isym = basis_fns(i)%sym
         ind = int(nbasis_sym_spin(ims,isym)*genrand_real2())+1
         if (nbasis_sym_spin(ims,isym) == 0) then
@@ -636,7 +607,7 @@ contains
         ! probability simpler and faster at the cost of makin the sampling
         ! substantially more inefficient.  Nevertheless, this approach can be
         ! useful in large systems.
-        ! 
+        !
         ! In:
         !    f: bit string representation of the Slater determinant from which
         !        an electron is excited.
@@ -692,7 +663,7 @@ contains
 
         do
             ! We assume that the user is not so crazy that he/she is
-            ! running a calculation where there exists no virtual 
+            ! running a calculation where there exists no virtual
             ! orbitals of a given spin.
             ! random integer between 1 and # possible a orbitals.
             a = int(genrand_real2()*na) + 1
@@ -755,7 +726,7 @@ contains
         !    those orbitals) and a is selected from the list of unoccupied
         !    orbitals which conserve spin and spatial symmetry.
 
-        ! WARNING: We assume that the excitation is actually valid. 
+        ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
         ! a forbidden excitation (e.g. no possible single excitations exist) is
         ! generated.  The correct way to handle those excitations is to
@@ -809,7 +780,7 @@ contains
         !    an unoccupied orbital and b is selected from the set of unoccupied
         !    orbitals which conserve spin and spatial symmetry.
 
-        ! WARNING: We assume that the excitation is actually valid. 
+        ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
         ! a forbidden excitation (e.g. due to no possible a orbitals given the
         ! choice of (i,j)) is generated.  The correct way to handle those
@@ -922,7 +893,7 @@ contains
         !    conserve spin and spatial symmetry.  Note that the probability is
         !    actually independent of i due to the uniform selection of i.
 
-        ! WARNING: We assume that the excitation is actually valid. 
+        ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
         ! a forbidden excitation (e.g. due to a actually being occupied) is
         ! generated.  The correct way to handle those excitations is to
@@ -966,7 +937,7 @@ contains
         !    which conserve spin and spatial symmetry.  (Note: in this scheme,
         !    b is not necessarily unoccupied.)
 
-        ! WARNING: We assume that the excitation is actually valid. 
+        ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
         ! a forbidden excitation (e.g. due to a or b actually being occupied) is
         ! generated.  The correct way to handle those excitations is to
@@ -1027,5 +998,5 @@ contains
         pgen = 2*pattempt_double/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
 
     end function calc_pgen_double_mol_no_renorm
-            
+
 end module spawning_mol_system

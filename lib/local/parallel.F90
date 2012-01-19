@@ -1,7 +1,7 @@
 module parallel
 
 ! Wrappers for parallel tasks.
-! This allows (in principle) much of the code to be identical for both the 
+! This allows (in principle) much of the code to be identical for both the
 ! serial and parallel cases and avoids the rest of the code being littered
 ! with preprocessing statements.
 
@@ -38,7 +38,7 @@ logical :: parent
 integer :: block_size = 64
 
 ! Type for storing information about a processor as used in blacs and scalapack.
-! Conveniently filled by the function get_blacs_info. 
+! Conveniently filled by the function get_blacs_info.
 type blacs_info
     ! Location of the processor within the grid.  Negative if the processor
     ! isn't involved in the grid.
@@ -131,7 +131,7 @@ contains
         !    matrix_size: leading dimension of the square array to be
         !                 distributed amongst the processor mesh.
         !   proc_grid(2) (optional): set the processor mesh to be
-        !                 (/ nproc_cols, nproc_rows /).  If not present then 
+        !                 (/ nproc_cols, nproc_rows /).  If not present then
         !                 a mesh as close to square as possible is used.
         ! Returns:
         !    my_blacs_info: derived type containing information about the
@@ -147,7 +147,7 @@ contains
         integer :: procy, procx, nrows, ncols
         integer :: desc_m(9), desc_v(9)
 #if PARALLEL
-        integer :: numroc ! scalapack function 
+        integer :: numroc ! scalapack function
         integer :: ierr
         integer :: context
 #endif

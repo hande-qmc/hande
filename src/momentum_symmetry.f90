@@ -191,7 +191,7 @@ contains
         !    s1, s2: irreducible representation labels/momentum labels.
         ! Returns:
         !    s1 \cross s2, the direct product of the two symmetries.
-        
+
         ! Hubbard model in momentum space has small enough basis that we can
         ! store the symmetry table easily.
 
@@ -207,12 +207,12 @@ contains
         ! In:
         !    s1, s2: irreducible representation labels/momentum labels.
         ! Returns:
-        !    s1 \cross s2, the direct product of the two symmetries.  
+        !    s1 \cross s2, the direct product of the two symmetries.
         !    If s1 and s2 are *not* in the basis, then an integer less than 1 is
         !    returned.  As such, this *must* *not* be called in a chain; i.e.
         !    the output used in another call to cross_product_ueg.  Instead, all
         !    vector summations must be performed before converting to a basis.
-        
+
         ! UEG basis can be large; avoid storing O(N^2) symmetry table.
 
         use basis, only: basis_fns

@@ -67,7 +67,7 @@ type(blacs_info) :: proc_blacs_info
 
 !--- Parallel info for FCI calculations ---
 
-! Distribution of Hamiltonian matrix across the processors. 
+! Distribution of Hamiltonian matrix across the processors.
 ! No distribution.
 integer, parameter :: distribute_off = 0
 ! Block cyclic distribution (see comments in parallel.F90 and the blacs and
@@ -110,7 +110,7 @@ contains
         !      the sum of the group of calculation types.
         ! Returns:
         !    true if the supplied calculation type is specifed in calc_type.
-        
+
         logical :: doing
         integer, intent(in) :: calc_param
 

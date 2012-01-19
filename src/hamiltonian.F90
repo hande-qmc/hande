@@ -15,7 +15,7 @@ contains
         !    d1, d2: integer labels of two determinants, as stored in the
         !            dets array.
         ! Returns:
-        !    Hamiltonian matrix element between the two determinants, 
+        !    Hamiltonian matrix element between the two determinants,
         !    < D1 | H | D2 >.
 
         ! This is just a wrapper around get_hmatel (which is itself a wrapper
@@ -36,7 +36,7 @@ contains
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
-        !    Hamiltonian matrix element between the two determinants, 
+        !    Hamiltonian matrix element between the two determinants,
         !    < D1 | H | D2 >.
 
         ! This is just a wrapper function around the system specific get_hmatel
@@ -73,7 +73,7 @@ contains
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
-        !    Hamiltonian matrix element between the two determinants, 
+        !    Hamiltonian matrix element between the two determinants,
         !    < D1 | H | D2 >, where the determinants are formed from
         !    momentum space basis functions.
 
@@ -94,8 +94,8 @@ contains
         ! Assume D1 and D2 are of the same symmetry.  Namely:
 
         !     We assume Ms is conserved (ie has already been checked for).
-         
-        !     In the momentum space description the overall crystal 
+
+        !     In the momentum space description the overall crystal
         !     momentum must be conserved up to a reciprocal lattice
         !     vector (i.e. satisfy translational symmetry).
         !     We assume this is also already checked.
@@ -148,7 +148,7 @@ contains
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
-        !    Hamiltonian matrix element between the two determinants, 
+        !    Hamiltonian matrix element between the two determinants,
         !    < D1 | H | D2 >, where the determinants are formed from
         !    real space basis functions.
 
@@ -190,7 +190,7 @@ contains
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
                 hmatel = slater_condon0_hub_real(f1)
-    
+
             case(1)
 
                 hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
@@ -209,10 +209,10 @@ contains
     pure function get_hmatel_heisenberg(f1, f2) result(hmatel)
 
         ! In:
-        !    f1, f2: bit string representation of the basis functions 
+        !    f1, f2: bit string representation of the basis functions
         !        D1 and D2 respectively.
         ! Returns:
-        !    Hamiltonian matrix element between the two basis functions, 
+        !    Hamiltonian matrix element between the two basis functions,
         !    < D1 | H | D2 >, where the basis functions are formed from
         !    the list of spins on each site.
 
@@ -259,7 +259,7 @@ contains
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
-        !    Hamiltonian matrix element between the two determinants, 
+        !    Hamiltonian matrix element between the two determinants,
         !    < D1 | H | D2 >, where the determinants are formed from
         !    real space basis functions.
 
@@ -276,7 +276,7 @@ contains
         ! Assume D1 and D2 are of the same symmetry.  Namely:
 
         !     We assume Ms is conserved (ie has already been checked for).
-         
+
         !     The overall crystal momentum must be conserved (i.e. satisfy
         !     translational symmetry).  We assume this is also already checked.
 
@@ -305,11 +305,11 @@ contains
             hmatel = 0.0_p
 
         end select
-        
+
     end function get_hmatel_ueg
 
     pure function slater_condon0_hub_k(f) result(hmatel)
-        
+
         ! In:
         !    f: bit string representation of the Slater determinant.
         ! Returns:
@@ -330,7 +330,7 @@ contains
         ! Two electron operator
         ! 1/2 \sum_i \sum_j < ij || ij >
         ! Some points to note:
-        !   a) Crystal momentum is conserved for all < ij | ij > and < ij | ji > integrals 
+        !   a) Crystal momentum is conserved for all < ij | ij > and < ij | ji > integrals
         !      by defintion.
         !   b) If i,j are of the same spin, then < ij | ij > = < ij | ji > and
         !      so < ij || ij > = 0.
@@ -358,7 +358,7 @@ contains
         !    perm: true if D and D_i^a are connected by an odd number of
         !          permutations.
         ! Returns:
-        !    < D | H | D_ij^ab >, the Hamiltonian matrix element between a 
+        !    < D | H | D_ij^ab >, the Hamiltonian matrix element between a
         !    determinant and a double excitation of it in the momemtum space
         !    formulation of the Hubbard model.
 
@@ -390,7 +390,7 @@ contains
         !    set.  On exit the from_orb and to_orb fields will be ordered
         !    and the perm field will be set.
         ! Out:
-        !    hmatel: < D | H | D_ij^ab >, the Hamiltonian matrix element between a 
+        !    hmatel: < D | H | D_ij^ab >, the Hamiltonian matrix element between a
         !    determinant and a double excitation of it in the momemtum space
         !    formulation of the Hubbard model.
 
@@ -405,7 +405,7 @@ contains
 
         ! The permuting algorithm works by lining up the min(i,j) with
         ! min(a,b) and max(i,j) with max(a,b) and hence we can find out
-        ! whether the Coulomb or exchange integral is non-zero.  
+        ! whether the Coulomb or exchange integral is non-zero.
         ! Thus (i,j) and (a,b) must be ordered.
         if (connection%from_orb(1) > connection%from_orb(2)) then
             ! Swap.
@@ -490,7 +490,7 @@ contains
         !    perm: true if D and D_i^a are connected by an odd number of
         !        permutations.
         ! Returns:
-        !    < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    < D | H | D_i^a >, the Hamiltonian matrix element between a
         !        determinant and a single excitation of it.
 
         use hubbard_real, only: get_one_e_int_real
@@ -528,7 +528,7 @@ contains
         !    |D_i^a>.  On entry, only the from_orb and to_orb fields must be
         !    set.  On exit the perm field will also be set.
         ! Out:
-        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a 
+        !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
@@ -549,7 +549,7 @@ contains
         end if
 
     end subroutine slater_condon1_hub_real_excit
-    
+
     pure function diagonal_element_heisenberg(f) result(hmatel)
 
         ! In:
@@ -559,20 +559,20 @@ contains
         !        the Heisenberg Model.
         !
         ! Includes an uniform external field, if one is added.
-        
+
         use basis, only: basis_length, basis_lookup
         use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
         use system, only: nbonds, J_coupling, magnetic_field
-        
+
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
         integer(i0) :: f_not(basis_length), g(basis_length)
         integer :: ipos, i, basis_find, counter
-        
+
         counter = 0
-        
+
         ! Count the number of 0-1 type bonds
         f_not = not(f)
         do i = 1, basis_length
@@ -584,27 +584,27 @@ contains
                 end if
             end do
         end do
-        
+
         ! Contribution to Hamiltonian from spin interactions:
         ! For a lattice the number of bonds is stored as nbonds.
         ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
         ! element.  0-1 bonds will give +J_coupling contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
         ! of 0-0 or 1-1 bonds will be (nbonds-counter)
-        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and 
+        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and
         ! +J_coupling*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
         hmatel = -J_coupling*(nbonds-2*counter)
-        
+
         ! Contribution to Hamiltonian from external field:
         ! Each spin up (bit set) up gives a contirbution of -magnetic_field. Each spin down
-        ! gives a contirbution of +magnetic_field. There are bits_set spins up, and 
+        ! gives a contirbution of +magnetic_field. There are bits_set spins up, and
         ! (nsites - bits_set) spins down, so the total contirbution is
         ! -magnetic_field*(2*bits_set-nsites) = -h_field*ms_in
         hmatel = hmatel - magnetic_field*ms_in
 
     end function diagonal_element_heisenberg
-    
+
     pure function diagonal_element_heisenberg_staggered(f) result(hmatel)
 
         ! In:
@@ -615,27 +615,27 @@ contains
         !
         ! This function is for diagonal elements for the Hamiltonian which includes
         ! a staggered magnetization term.
-        
+
         use basis, only: basis_length, basis_lookup
         use determinants, only: lattice_mask
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
         use system, only: nbonds, nel, J_coupling, magnetic_field, staggered_magnetic_field
-        
+
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
         integer(i0) :: f_not(basis_length), f_mask(basis_length), &
                        g(basis_length)
         integer :: ipos, i, basis_find, counter, sublattice1_up_spins
-        
+
         counter = 0
-        
+
         ! For non-frustrtated lattices where we want to add a staggered magnetization
         ! term, we need to calculate how many up spins are on each of the sublattices,
         ! so we first consider one particular sublattice and put 0's at all other sites:
         f_mask = iand(f, lattice_mask)
         sublattice1_up_spins = sum(count_set_bits(f_mask))
-        
+
         ! Count the number of 0-1 type bonds
         f_not = not(f)
         do i = 1, basis_length
@@ -647,18 +647,18 @@ contains
                 end if
             end do
         end do
-        
+
         ! Contribution to Hamiltonian from spin interactions:
         ! For a lattice the number of bonds is stored as nbonds.
         ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
         ! element.  0-1 bonds will give +J_coupling contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
         ! of 0-0 or 1-1 bonds will be (nbonds-counter)
-        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and 
+        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and
         ! +J_coupling*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
         hmatel = -J_coupling*(nbonds-2*counter)
-        
+
         ! Contibution to Hamiltonian from staggered field term.
         ! Split the lattice into a (+) sublattice and a (-) sublattice.
         ! For every up spin on a (+) site, add one to the hmatel. (add staggered_magnetic_field * 1)
@@ -686,11 +686,11 @@ contains
         ! This applies to all Heisenberg situations, including those with
         ! uniform and staggered external fields applied, since these additions
         ! only alter the diagonal elements.
-        
+
         use basis, only: basis_length, bit_lookup
         use hubbard_real, only: connected_orbs
         use system, only: J_coupling
-        
+
         real(p) :: hmatel
         integer, intent(in) :: i, a
 
@@ -761,7 +761,7 @@ contains
         !    perm: true if D and D_i^a are connected by an odd number of
         !          permutations.
         ! Returns:
-        !    < D | H | D_ij^ab >, the Hamiltonian matrix element between a 
+        !    < D | H | D_ij^ab >, the Hamiltonian matrix element between a
         !    determinant and a double excitation of it in the UEG.
 
         use ueg_system, only: get_two_e_int_ueg

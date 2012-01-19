@@ -65,7 +65,7 @@ abstract interface
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
     subroutine i_create_spawned_particle(d, connection, nspawned, spawned_pop)
-        import :: excit, det_info 
+        import :: excit, det_info
         implicit none
         type(det_info), intent(in) :: d
         type(excit), intent(in) :: connection

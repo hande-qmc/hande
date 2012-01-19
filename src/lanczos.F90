@@ -45,7 +45,7 @@ contains
 #ifdef DISABLE_LANCZOS
         call stop_all('lanczos_diagonalisation','Lanczos diagonalisation disabled at compile-time.')
 #else
-        
+
         integer, parameter :: lohi = -1
         integer :: mev
         real(dp), allocatable :: eval(:) ! (mev)
@@ -58,7 +58,7 @@ contains
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
         mev = min(2*nlanczos_eigv, ndets)
-       
+
         if (parent) then
             if (direct_lanczos) then
                 write (6,'(/,1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
@@ -66,7 +66,7 @@ contains
                 write (6,'(/,1X,a37,/)') 'Performing Lanczos diagonalisation...'
             end if
         end if
-       
+
         if (distribute /= distribute_off .and. distribute /= distribute_cols) then
             call stop_all('lanczos_diagonalisation','Incorrect distribution mode used.')
         end if
@@ -93,13 +93,13 @@ contains
 #ifndef DISABLE_LANCZOS
         call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,ndets))
 #endif
-       
+
         allocate(eval(mev), stat=ierr)
         call check_allocate('eval',mev,ierr)
 
         allocate(evec(nrows,mev), stat=ierr)
         call check_allocate('evec',nrows*mev,ierr)
-       
+
         ! Call Lanczos diagonalizer.
         ! hamil_vector: matrix-vector multiplication routine.
         ! info: created in trl_init_info.
@@ -143,18 +143,18 @@ contains
 #endif // ndef DISABLE_LANCZOS
 
     end subroutine lanczos_diagonalisation
-       
+
     subroutine HPsi(nrow, ncol, xin, ldx, yout, ldy)
- 
+
         ! Matrix-vector multiplication procedure for use with trlan.
         ! In:
-        !    nrow: the number of rows on this processor if the problem is distributed 
-        !        using MPI, otherwise the number of total rows in a Lanczos vector. 
-        !    ncol: the number of vectors (columns in xin and yout) to be multiplied. 
+        !    nrow: the number of rows on this processor if the problem is distributed
+        !        using MPI, otherwise the number of total rows in a Lanczos vector.
+        !    ncol: the number of vectors (columns in xin and yout) to be multiplied.
         !    xin: the array to store the input vectors to be multiplied.
-        !    ldx: the leading dimension of the array xin when it is declared as 
+        !    ldx: the leading dimension of the array xin when it is declared as
         !       two-dimensional array.
-        !    ldy: the leading dimension of the array yout when it is declared as 
+        !    ldy: the leading dimension of the array yout when it is declared as
         !       two-dimensional array.
         ! Out:
         !    yout: the array to store results of the multiplication.
@@ -163,7 +163,7 @@ contains
 
         use calc, only: hamil, proc_blacs_info
         use determinants, only: ndets
- 
+
         integer, intent(in) :: nrow, ncol, ldx, ldy
         real(dp), intent(in) :: xin(ldx,ncol)
         real(dp), intent(out) :: yout(ldy,ncol)
@@ -230,7 +230,7 @@ contains
 #ifdef SINGLE_PRECISION
         yout = yout_p
 #endif
- 
+
     end subroutine HPsi
 
     subroutine HPsi_direct(nrow, ncol, xin, ldx, yout, ldy)
@@ -239,26 +239,26 @@ contains
         ! The Hamiltonian matrix elements are calculated directly ('on-the-fly')
         ! rather than looked up in the precomputed array hamil.
         ! In:
-        !    nrow: the number of rows on this processor if the problem is distributed 
-        !        using MPI, otherwise the number of total rows in a Lanczos vector. 
-        !    ncol: the number of vectors (columns in xin and yout) to be multiplied. 
+        !    nrow: the number of rows on this processor if the problem is distributed
+        !        using MPI, otherwise the number of total rows in a Lanczos vector.
+        !    ncol: the number of vectors (columns in xin and yout) to be multiplied.
         !    xin: the array to store the input vectors to be multiplied.
-        !    ldx: the leading dimension of the array xin when it is declared as 
+        !    ldx: the leading dimension of the array xin when it is declared as
         !       two-dimensional array.
-        !    ldy: the leading dimension of the array yout when it is declared as 
+        !    ldy: the leading dimension of the array yout when it is declared as
         !       two-dimensional array.
         ! Out:
         !    yout: the array to store results of the multiplication.
 
         use determinants, only: ndets
         use hamiltonian, only: get_hmatel_dets
- 
+
         integer, intent(in) :: nrow, ncol, ldx, ldy
         real(dp), intent(in) :: xin(ldx,ncol)
         real(dp), intent(out) :: yout(ldy,ncol)
         integer :: i, j, k
         real(dp) :: tmp, hmatel
- 
+
         yout = 0.0_dp
         do k = 1, ncol
             ! y = H x,
@@ -269,7 +269,7 @@ contains
             do j = 1, nrow ! Identical to ndets in serial.
                 tmp = 0.0_dp
                 do i = 1, j-1
-                    hmatel = get_hmatel_dets(i,j) 
+                    hmatel = get_hmatel_dets(i,j)
                     yout(i,k) = yout(i,k) + hmatel*xin(j, k)
                     tmp = tmp + hmatel*xin(i,k)
                 end do
@@ -278,5 +278,5 @@ contains
         end do
 
     end subroutine HPsi_direct
-    
+
 end module lanczos

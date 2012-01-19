@@ -15,7 +15,7 @@ contains
     subroutine init_calc()
 
         ! Initialise the calculation.
-        ! Print out information about the compiled executable, 
+        ! Print out information about the compiled executable,
         ! read input options and initialse the system and basis functions
         ! to be used.
 
@@ -70,7 +70,7 @@ contains
             call init_ueg_proc_pointers()
         case(hub_k)
             call init_momentum_symmetry()
-        case(hub_real, heisenberg) 
+        case(hub_real, heisenberg)
             call init_real_space()
         case(read_in)
             call print_pg_symmetry_info()

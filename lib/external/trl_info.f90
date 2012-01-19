@@ -131,7 +131,7 @@ Module trl_interface
 !           <0 : lower end, the smallest eigenvalues
 !           >0 : high end, the largest eigenvalues
 !            0 : either lower and or high end, whoever converges
-!                first 
+!                first
 ! ned    -- number of wanted eigenvalues and eigenvectors
 ! mxmv   -- (optional) maximum number of matrix-vector multiplications
 !           allowed
@@ -146,7 +146,7 @@ Module trl_interface
      Subroutine trl_init_info(info, nrow, mxlan, lohi, ned, tol,&
           & trestart, maxmv, mpicom)
        Use trl_info
-       Implicit None 
+       Implicit None
        Integer, Intent(in) :: lohi, mxlan, ned, nrow
        Integer, Intent(in), Optional :: maxmv, mpicom, trestart
        Real(8), Intent(in), Optional :: tol

@@ -12,7 +12,7 @@ implicit none
 
 contains
 
-    pure subroutine insertion_rank_rp(arr, rank)
+    pure subroutine insertion_rank_rp(arr, rank, tolerance)
 
         ! Rank a real(p) array in increasing order using the insertion sort
         ! algorithm.
@@ -23,7 +23,7 @@ contains
         ! sort is a good compromise and easy to code.
         !
         ! Based upon the F90 insertion sort implementation in Rosetta Stone
-        ! (TODO reference).
+        ! http://rosettacode.org/wiki/Sorting_algorithms/Insertion_sort#Fortran.
         !
         ! ***WARNING***
         ! We assume that the arrays are 1-indexed due to a feature of how array
@@ -31,6 +31,11 @@ contains
         !
         ! In:
         !   arr: array of real values.
+        !   tolerance (optional, default 0.0): tolerance for comparing values.
+        !   If present, then two values which differ by less than tolerance are
+        !   treated as equal.  This allows one to avoid changing the order of
+        !   items that have identical values to within a desired precision.
+        !   Naturally, one should have this as small as possible.
         ! In/Out:
         !    rank: on output rank(i) contains the ranked index (in increasing
         !    order) of the value in arr(i), that is arr(rank(i)) returns the
@@ -38,17 +43,25 @@ contains
         !    NOTE: rank must have at least the dimensions of arr on input.
 
         real(p), intent(in) :: arr(:)
-        integer, intent(inout) :: rank(:) ! inout to avoid automatic deallocation 
+        real(p), intent(in), optional :: tolerance
+        integer, intent(inout) :: rank(:) ! inout to avoid automatic deallocation
                                           ! of an allocatable array on entry
 
         integer :: i, j, tmp
+        real(p) :: tol
+
+        if (present(tolerance)) then
+            tol = tolerance
+        else
+            tol = 0.0_p
+        end if
 
         forall (i=1:size(arr)) rank(i) = i
 
         do i = 2, size(arr)
             j = i - 1
             tmp = rank(i)
-            do while ( j >= 1 .and. arr(rank(j)) > arr(tmp) )
+            do while ( j >= 1 .and. arr(rank(j)) - arr(tmp) > tol)
                 rank(j+1) = rank(j)
                 j = j - 1
             end do

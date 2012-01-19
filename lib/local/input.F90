@@ -8,12 +8,12 @@ MODULE input
 !  modify it under the terms of the GNU General Public License
 !  as published by the Free Software Foundation; either version 2
 !  of the License, or (at your option) any later version.
-!  
+!
 !  This program is distributed in the hope that it will be useful,
 !  but WITHOUT ANY WARRANTY; without even the implied warranty of
 !  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !  GNU General Public License for more details.
-!  
+!
 !  You should have received a copy of the GNU General Public License
 !  along with this program; if not, write to
 !  the Free Software Foundation, Inc., 51 Franklin Street,
@@ -136,7 +136,7 @@ PUBLIC :: item, nitems, read_line, stream, reada, readu, readl,        &
 !  (default) no skipping occurs and the next data line is returned
 !  regardless of what it contains.
 
-!  If CLEAR is set to TRUE (default) then null items will be returned 
+!  If CLEAR is set to TRUE (default) then null items will be returned
 !  as zero or blank. If an attempt is made to read more than
 !  NITEMS items from a line, the items are treated as null. If
 !  CLEAR is FALSE, a variable into which a null item is read is
@@ -388,7 +388,7 @@ nitems=0
 L=0            ! Position in input buffer
 tcomma=.true.  !  True if last item was terminated by comma
                !  and also at start of buffer
-      
+
 
 chars: do
 
@@ -435,7 +435,7 @@ chars: do
       loc(nitems)=L
       state=2
     end select
-    
+
   case(1)                ! Reading through quoted string
     if (c .eq. term) then ! Closing quote found
       end(nitems)=L
@@ -491,9 +491,9 @@ chars: do
     case default
       call report("Space or comma needed after quoted string",.true.)
     end select
-      
+
   end select
-    
+
 end do chars
 
 END SUBROUTINE parse
@@ -606,21 +606,21 @@ END SUBROUTINE reada
 !-----------------------------------------------------------------------
 
 ! SUBROUTINE read_quad(A,factor)
-! 
+!
 ! !  Read the next item from the buffer as a real (quadruple precision) number.
 ! !  If the optional argument factor is present, the value read should be
 ! !  divided by it. (External value = factor*internal value)
-! 
+!
 ! REAL(KIND=qp), INTENT(INOUT) :: a
 ! REAL(KIND=qp), INTENT(IN), OPTIONAL :: factor
-! 
+!
 ! CHARACTER(LEN=50) :: string
-! 
+!
 ! if (clear) a=0.0_qp
-! 
+!
 ! !  If there are no more items on the line, I is unchanged
 ! if (item .ge. nitems) return
-! 
+!
 ! string=""
 ! call reada(string)
 ! !  If the item is null, I is unchanged
@@ -630,7 +630,7 @@ END SUBROUTINE reada
 !   a=a/factor
 ! endif
 ! return
-! 
+!
 ! 99 a=0.0_qp
 ! select case(nerror)
 ! case(-1,0)
@@ -640,7 +640,7 @@ END SUBROUTINE reada
 ! case(2)
 !   nerror=-1
 ! end select
-! 
+!
 ! END SUBROUTINE read_quad
 
 !-----------------------------------------------------------------------

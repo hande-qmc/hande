@@ -1,6 +1,6 @@
 module determinants
 
-! Generation, inspection and manipulation of Slater determinants. 
+! Generation, inspection and manipulation of Slater determinants.
 
 use const
 use system
@@ -21,9 +21,9 @@ integer(i0) :: alpha_mask, beta_mask
 
 ! For the Heisenberg model, certain lattices can be split into two
 ! sublattices such that all the sites on one sublattice only have neighbors
-! on the other sublattice. This is important when finding the staggered 
+! on the other sublattice. This is important when finding the staggered
 ! magnetisation:
-! 
+!
 ! \hat{M} = \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
 !
 ! Here zeta will be +1 for sites on one sublattice, and -1 for sites on the
@@ -55,13 +55,13 @@ type det
     ! represented as a bit string.
     ! The *even* bits contain the alpha (spin up) functions.  This is in
     ! contrast to the list of basis functions, basis_fns, where the *odd*
-    ! indices refer to alpha (spin up) functions.  This difference arises because 
+    ! indices refer to alpha (spin up) functions.  This difference arises because
     ! fortran numbers bits from 0...
     ! If separate_strings is turned on, then the first basis_length/2 integers
     ! represent the alpha orbitals and the second half of the bit array the beta
     ! orbitals.
     integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
-    ! Total spin of the determinant in units of electron spin (1/2).   
+    ! Total spin of the determinant in units of electron spin (1/2).
     integer, pointer :: Ms => NULL()
     ! Symmetry of the occupied orbitals in the Slater determinant.
     integer, pointer :: sym => NULL()
@@ -82,7 +82,7 @@ end type det
 integer(i0), allocatable, target :: dets_list(:,:) ! (basis_length,ndets)
 
 ! Total spin of each Slater determinant stored in dets_list in units of electron spin (1/2).
-integer, target :: dets_Ms 
+integer, target :: dets_Ms
 
 ! Symmetry of the occupied orbitals in each Slater determinant stored
 ! in det_list.
@@ -167,7 +167,7 @@ contains
             basis_length = ceiling(real(nbasis)/i0_length)
             last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
         end if
- 
+
         if(doing_calc(dmqmc_calc)) then
             total_basis_length = 2*basis_length
         else
@@ -218,7 +218,7 @@ contains
                 basis_lookup(bit_pos, bit_element) = i
             end do
         end if
-        
+
         ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
         ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
         ! This is assumming separate_strings is off...
@@ -231,7 +231,7 @@ contains
                 beta_mask = ibset(beta_mask,i)
             end if
         end do
-        
+
         ! For Heisenberg systems, to include staggered fields and to calculate
         ! the staggered magnetisation, we require lattice_mask. Here we find
         ! lattice_mask for a gerenal bipartite lattice.
@@ -250,7 +250,7 @@ contains
                     end do
                 end do
             end do
-        end if             
+        end if
 
         if (write_determinants) then
             det_unit = get_free_unit()
@@ -370,7 +370,7 @@ contains
 
             ! Find the number of determinants with the required spin.
             if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
-             
+
             dets_Ms = Ms
 
             nbeta = (nel - Ms)/2
@@ -439,7 +439,7 @@ contains
             ! nvirt.
             sym_space_size = binom_i(nsites, nel)
 
-        case default 
+        case default
 
             ! Determinants are assigned a given symmetry by the sum of the
             ! wavevectors of the occupied basis functions.  This is because only
@@ -528,7 +528,7 @@ contains
     end subroutine find_sym_space_size
 
     subroutine enumerate_determinants(ref_sym)
-    
+
         ! Find the Slater determinants that can be formed from the
         ! basis functions.  The list of determinants is stored in the
         ! module level dets_list array.
@@ -707,7 +707,7 @@ contains
         d%f => dets_list(:,i)
         d%Ms => dets_Ms
         if (system_type /= hub_real) d%sym = dets_sym
-    
+
     end function point_to_det
 
     pure subroutine encode_det(occ_list, bit_list)
@@ -719,11 +719,11 @@ contains
         !        orbitals.   The first element contains the first i0_length basis
         !        functions, the second element the next i0_length and so on.  A basis
         !        function is occupied if the relevant bit is set.
-        
+
         integer, intent(in) :: occ_list(nel)
         integer(i0), intent(out) :: bit_list(basis_length)
         integer :: i, orb, bit_pos, bit_element
-        
+
         bit_list = 0
         do i = 1, nel
             orb = occ_list(i)
@@ -731,7 +731,7 @@ contains
             bit_element = bit_lookup(2,orb)
             bit_list(bit_element) = ibset(bit_list(bit_element), bit_pos)
         end do
-        
+
     end subroutine encode_det
 
     pure subroutine decode_det(f, occ_list)
@@ -827,7 +827,7 @@ contains
                         iunocc_a = iunocc_a + 1
                         d%unocc_list_alpha(iunocc_a) = basis_lookup(j, i)
                     else
-                        ! beta state 
+                        ! beta state
                         iunocc_b = iunocc_b + 1
                         d%unocc_list_beta(iunocc_b) = basis_lookup(j, i)
                     end if
@@ -843,7 +843,7 @@ contains
     pure subroutine decode_det_spinocc_spinunocc(f, d)
 
         ! Decode determinant bit string into integer lists containing the
-        ! occupied and unoccupied orbitals.  
+        ! occupied and unoccupied orbitals.
         !
         ! We return the lists for alpha and beta electrons separately.
         !
@@ -1026,7 +1026,7 @@ contains
 
     subroutine write_det(f, iunit, new_line)
 
-        ! Write out a determinant as a list of occupied orbitals in the 
+        ! Write out a determinant as a list of occupied orbitals in the
         ! Slater determinant.
         ! In:
         !    f(basis_length): bit string representation of the Slater
@@ -1071,7 +1071,7 @@ contains
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         ! Returns:
-        !    Ms: total spin of the determinant in units of electron spin (1/2).   
+        !    Ms: total spin of the determinant in units of electron spin (1/2).
 
         use bit_utils, only: count_set_bits
 
@@ -1103,7 +1103,7 @@ contains
         !    True if the first element of f1 which is not equal to the
         !    corresponding element of f2 is greater than the corresponding
         !    element in f2.
-        
+
         logical :: gt
         integer(i0), intent(in) :: f1(total_basis_length), f2(total_basis_length)
 

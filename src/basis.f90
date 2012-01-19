@@ -45,13 +45,13 @@ type basis_fn
     ! molecular systems:
     !     sp_eigv is the single-particle energy read in from the FCIDUMP file
     !     (e.g. Hartree--Fock or Kohn--Sham eigenvalue).
-    real(p) :: sp_eigv 
+    real(p) :: sp_eigv
 end type basis_fn
 
 ! Store of information about the (spin) basis functions of the system.
 ! The *odd* indices contain the alpha (spin up) functions.  This is in
 ! contrast to the bit strings used to refer to determinants where the *even*
-! bits refer to alpha (spin up) functions.  This difference arises because 
+! bits refer to alpha (spin up) functions.  This difference arises because
 ! fortran numbers bits from 0...
 type(basis_fn), allocatable :: basis_fns(:) ! (nbasis)
 
@@ -89,7 +89,7 @@ integer :: total_basis_length
 ! All bits in the determinant bit array correspond to a basis function apart
 ! from the last element in the bit array (which can contain some excess).
 ! last_basis_ind is the index of the last basis function in the last element of
-! the bit array. 
+! the bit array.
 integer :: last_basis_ind
 
 ! A determinant is stored in the array f(nbasis).  A basis function is occupied
@@ -303,7 +303,8 @@ contains
         end if
         if (print_all) then
             if (system_type /= heisenberg) write (io,'(5X,i2)', advance='no') b%ms
-            if (system_type == hub_k .or. system_type == ueg .or. system_type == read_in) write (io,'(4X,f12.8)', advance='no') b%sp_eigv
+            if (system_type == hub_k .or. system_type == ueg .or. system_type == read_in) &
+                write (io,'(4X,f12.8)', advance='no') b%sp_eigv
         end if
         if (present(new_line)) then
             if (new_line) write (io,'()')
@@ -324,7 +325,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use system
-        use m_mrgref, only: mrgref
+        use ranking, only: insertion_rank_rp
         use errors, only: stop_all
         use parallel, only: parent
 
@@ -355,7 +356,7 @@ contains
         ! primitive unit cell (so that a unique set of k-points are chosen).
         ! The volume of the FBZ is inversely proportional to the volume of the
         ! cell, and so the number of sites in the crystal cell is equal to the
-        ! number of reciprocal crystal cells in the FBZ of the unit cell and 
+        ! number of reciprocal crystal cells in the FBZ of the unit cell and
         ! hence this gives the required number of wavevectors.
 
         ! Real space:
@@ -387,7 +388,7 @@ contains
             limits = 0
             ! forall is a poor substitute for list comprehension. ;-)
             forall (i=1:ndim)
-                forall (j=1:ndim, lattice(i,j) /= 0) 
+                forall (j=1:ndim, lattice(i,j) /= 0)
                     limits(i,j) = abs(nint(box_length(i)**2/(2*lattice(i,j))))
                 end forall
                 nmax(i) = maxval(limits(:,i))
@@ -432,7 +433,7 @@ contains
                                 ! Avoid the chance of having allocated
                                 ! additional %l elements (eg if rejecting the
                                 ! final basis function tested).
-                                deallocate(tmp_basis_fns(ibasis)%l, stat=ierr) 
+                                deallocate(tmp_basis_fns(ibasis)%l, stat=ierr)
                                 call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
                                 ibasis = ibasis - 1
                             end if
@@ -441,7 +442,7 @@ contains
                 end do
             end do
         end do
-        
+
         select case(system_type)
         case(hub_k, hub_real, heisenberg)
             if (ibasis /= nspatial) call stop_all('init_basis_fns','Not enough basis functions found.')
@@ -472,7 +473,7 @@ contains
         ! Rank by kinetic energy (applies to momentum space basis sets only).
         select case(system_type)
         case(hub_k, ueg)
-            call mrgref(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking)
+            call insertion_rank_rp(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking, tolerance=depsilon)
         case(hub_real, heisenberg)
             forall (i=1:nsites) basis_fns_ranking(i) = i
         end select
@@ -531,8 +532,8 @@ contains
         !    f: bit string of orbitals.
         !    iorb: orbital index.
         ! Out:
-        !    f: bit string of orbitals with the bit corresponding to iorb set. 
-        
+        !    f: bit string of orbitals with the bit corresponding to iorb set.
+
         ! Note that f must be zerod before first using this procedure.
 
         integer, intent(in) :: iorb

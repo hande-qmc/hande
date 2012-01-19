@@ -231,9 +231,9 @@ contains
                     D0_proc = iproc
                 end if
             end if
-        
+
             ! For the Heisenberg model and open shell systems, it is often useful to
-            ! have psips start on both the reference state and the spin-flipped version. 
+            ! have psips start on both the reference state and the spin-flipped version.
             if (init_spin_inv_D0) then
 
                 ! Need to handle the Heisenberg model (consisting of spinors on
@@ -268,7 +268,7 @@ contains
                     ! development branches.
 !                    if (uhf) call stop_all('init_fciqmc','Check inversion for UHF systems.')
                 end select
-            
+
                 if (nprocs > 1) then
                     D0_inv_proc = modulo(murmurhash_bit_string(f0_inv, basis_length), nprocs)
                 else
@@ -324,13 +324,13 @@ contains
             pattempt_single = pattempt_single/(pattempt_single+pattempt_double)
             pattempt_double = 1.0_p - pattempt_single
         end if
-        
+
         ! Calculate all the possible different amplitudes for the Neel singlet state
         ! and store them in an array
         if (trial_function == neel_singlet) then
             allocate(neel_singlet_amp(-1:(nsites/2)+1), stat=ierr)
             call check_allocate('neel_singlet_amp',(nsites/2)+1,ierr)
-            
+
             neel_singlet_amp(-1) = 0
             neel_singlet_amp((nsites/2)+1) = 0
             do i=0,(nsites/2)
@@ -338,7 +338,7 @@ contains
                 neel_singlet_amp(i) = -(2*mod(i,2)-1) * neel_singlet_amp(i)
             end do
         end if
-        
+
         ! When doing a DMQMC calculation, call a routine to initialise all the required
         ! arrays, ie to store thermal quantities, and to initalise reduced density matrix
         ! quantities if necessary.
@@ -371,7 +371,7 @@ contains
             end if
             write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
             write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
-            write (6,'(1X,a88)') 'Average shift: the running average & 
+            write (6,'(1X,a88)') 'Average shift: the running average &
                                                     &of the shift from when the shift was allowed to vary.'
             if (.not. doing_calc(dmqmc_calc)) then
                 write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
@@ -401,7 +401,7 @@ contains
             write (6,'(1X,a49)') '# particles: current total population of walkers.'
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
         end if
-        
+
     end subroutine init_fciqmc
 
     subroutine select_ref_det()
@@ -475,11 +475,11 @@ contains
             f0 = fmax
             H00 = H00_max
         end if
-        
+
 #endif
 
         if (updated) then
-            ! Update occ_list. 
+            ! Update occ_list.
             call decode_det(f0, occ_list0)
             if (parent) then
                 write (6,'(1X,"#",1X,62("-"))')
@@ -537,10 +537,10 @@ contains
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 virt_syms(ims1,basis_fns(occ_list(i))%sym) = virt_syms(ims1,basis_fns(occ_list(i))%sym) - 1
             end do
-            
+
             ! Count number of possible single excitations from the supplied
             ! determinant.
-            ! Symmetry and spin must be conserved. 
+            ! Symmetry and spin must be conserved.
             nsingles = 0
             do i = 1, nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
@@ -611,9 +611,9 @@ contains
         ! update_proj_energy.
         proj_energy = 0.0_p
         D0_population = 0
-        do idet = 1, tot_walkers 
+        do idet = 1, tot_walkers
             call update_proj_energy_ptr(idet)
-        end do 
+        end do
 
 #ifdef PARALLEL
         call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -621,8 +621,8 @@ contains
         call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
         ntot_particles = nparticles(1)
-#endif 
-        
+#endif
+
         proj_energy = proj_energy/D0_population
 
         if (parent) then
