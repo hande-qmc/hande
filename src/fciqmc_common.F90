@@ -121,7 +121,7 @@ contains
         ! Allocate main walker lists.
         allocate(nparticles(sampling_size), stat=ierr)
         call check_allocate('nparticles', sampling_size, ierr)
-        allocate(walker_dets(basis_length,walker_length), stat=ierr)
+        allocate(walker_dets(total_basis_length,walker_length), stat=ierr)
         call check_allocate('walker_dets', basis_length*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
