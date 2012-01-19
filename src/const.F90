@@ -60,7 +60,11 @@ integer, parameter :: p = dp
 
 real(p), parameter :: pi = 3.1415926535897931_p
 
-! depsilon is the precision used to compare floating point numbers.
-real(p), parameter :: depsilon = 1.e-12_p
+! depsilon is the precision used to compare floating point numbers of kind=p.
+#ifdef SINGLE_PRECISION
+real(p), parameter :: depsilon = 1.e-8_p ! MACHEPS is ~10^-8
+#else
+real(p), parameter :: depsilon = 1.e-12_p ! MACHEPS is ~10^-16 but we won't go quite that far...
+#endif
 
 end module const
