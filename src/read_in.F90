@@ -205,7 +205,7 @@ contains
                 ! loop over lines.
                 read (ir,*, iostat=ios) x, i, a, j, b
                 if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_input','Problem reading input.')
+                if (ios /= 0) call stop_all('read_in_fcidump','Problem reading integrals file: '//trim(FCIDUMP))
                 if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
                     ! \epsilon_i --- temporarily store for all basis functions,
                     ! including inactive (frozen) orbitals.
@@ -385,7 +385,7 @@ contains
                 ! loop over lines.
                 read (ir,*, iostat=ios) x, i, a, j, b
                 if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_input','Problem reading input.')
+                if (ios /= 0) call stop_all('read_in_fcidump','Problem reading integrals file: '//trim(FCIDUMP))
 
                 ! Working in spin orbitals but FCIDUMP is in spatial orbitals in RHF
                 ! calculations and spin orbitals in UHF calculations, and te basis
