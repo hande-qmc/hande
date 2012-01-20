@@ -60,10 +60,6 @@ contains
         use fciqmc_data, only: P__, Po_, P_o, X__, Xo_, X_o, tau, H00
         real(p) :: P_renorm
 
-        ! overwrite the spawning and death routines
-        spawner_ptr => fs_spawner
-        death_ptr => fs_stochastic_death
-
         ! set folded spectrum generation probabilities
         ! renormalise P__, Po_, P_o (just in case)
         P_renorm = P__ + Po_ + P_o
