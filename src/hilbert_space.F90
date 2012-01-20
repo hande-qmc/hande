@@ -66,7 +66,7 @@ contains
             ! Heisenberg model.
             if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', binom_r(nsites, nel)
 
-        case(hub_k)
+        case(hub_k, ueg, read_in)
 
             ! Perform a Monte Carlo sampling of the space.
 
@@ -77,7 +77,11 @@ contains
 
             if (parent) then
                 write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
-                call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+                if (momentum_space) then
+                    call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+                else
+                    write (6,'(1X,i2)') ref_sym
+                end if
             end if
 
             naccept = 0
