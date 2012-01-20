@@ -449,9 +449,6 @@ contains
         case(ueg)
         end select
 
-        allocate(basis_fns_ranking(nspatial), stat=ierr)
-        call check_allocate('basis_fns_ranking',nbasis,ierr)
-
         ! Convert nbasis to being in terms of spin-orbitals if applicable.
         select case(system_type)
         case(ueg)
@@ -469,6 +466,9 @@ contains
             ! nvirt set in init_system
             nbasis = nspatial
         end select
+
+        allocate(basis_fns_ranking(nspatial), stat=ierr)
+        call check_allocate('basis_fns_ranking',nspatial,ierr)
 
         ! Rank by kinetic energy (applies to momentum space basis sets only).
         select case(system_type)
