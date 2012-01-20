@@ -61,7 +61,8 @@ contains
         do i = 2, size(arr)
             j = i - 1
             tmp = rank(i)
-            do while ( j >= 1 .and. arr(rank(j)) - arr(tmp) > tol)
+            do while ( j >= 1 )
+                if (arr(rank(j)) - arr(tmp) < tol) exit
                 rank(j+1) = rank(j)
                 j = j - 1
             end do
