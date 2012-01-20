@@ -9,6 +9,21 @@ use parallel
 
 implicit none
 
+! --- Slater determinants ---
+
+! Bit string representation of the Slater determinant.
+! f is used throughout to indicate a Slater determinant
+! represented as a bit string.
+! The *even* bits contain the alpha (spin up) functions.  This is in
+! contrast to the list of basis functions, basis_fns, where the *odd*
+! indices refer to alpha (spin up) functions.  This difference arises because
+! fortran numbers bits from 0...
+! If separate_strings is turned on, then the first basis_length/2 integers
+! represent the alpha orbitals and the second half of the bit array the beta
+! orbitals.
+
+! --- Bit masks ---
+
 ! Bit masks to reveal the list of alpha basis functions and beta functions
 ! occupied in a Slater determinant, required for Hubbard model.
 ! If separate_strings is false, then:
@@ -49,32 +64,14 @@ logical :: separate_strings = .false.
 
 !--- Info for FCI calculations ---
 
-type det
-    ! Bit string representation of the Slater determinant.
-    ! f is used throughout to indicate a Slater determinant
-    ! represented as a bit string.
-    ! The *even* bits contain the alpha (spin up) functions.  This is in
-    ! contrast to the list of basis functions, basis_fns, where the *odd*
-    ! indices refer to alpha (spin up) functions.  This difference arises because
-    ! fortran numbers bits from 0...
-    ! If separate_strings is turned on, then the first basis_length/2 integers
-    ! represent the alpha orbitals and the second half of the bit array the beta
-    ! orbitals.
-    integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
-    ! Total spin of the determinant in units of electron spin (1/2).
-    integer, pointer :: Ms => NULL()
-    ! Symmetry of the occupied orbitals in the Slater determinant.
-    integer, pointer :: sym => NULL()
-end type det
-
 ! Store of determinant information.
 ! This will quickly become a memory issue, but for dealing with the FCI of small
 ! systems it is ok.
 
-! Rather than creating an array of type(det), which leads to a serious
-! memory overhead due to the need for pointers/allocatable arrays in the
-! derived type, we instead create 3 separate variables.  A variable of type det
-! can be used to point to the appropriate information, if needed.
+! Rather than creating an array of derived types containing information about
+! each determinant, which leads to a serious memory overhead due to the need for
+! pointers/allocatable arrays in the derived type, we instead create 3 separate
+! variables.
 
 ! Bit list of the Slater determinant.  See note for f in det type.
 ! We only store determinants of the same Ms and (for momentum space
@@ -690,25 +687,6 @@ contains
         call check_deallocate('occ', ierr)
 
     end subroutine enumerate_determinants
-
-    function point_to_det(i) result(d)
-
-        ! Return a variable of type dets which has components
-        ! that point to the bit string, spin and wavevector (if
-        ! doing a momentum space calculation) of a determinant.
-        ! In:
-        !    i: index of determinant.
-
-        use system, only: system_type, hub_real
-
-        type(det) :: d
-        integer, intent(in) :: i
-
-        d%f => dets_list(:,i)
-        d%Ms => dets_Ms
-        if (system_type /= hub_real) d%sym = dets_sym
-
-    end function point_to_det
 
     pure subroutine encode_det(occ_list, bit_list)
 
