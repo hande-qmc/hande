@@ -41,75 +41,75 @@ contains
         integer(lint) :: ntot_particles(sampling_size)
         integer :: ierr
 
-            ! Need to sum the number of particles and the projected energy over
-            ! all processors.
-            ir(1:sampling_size) = nparticles
-            ir(sampling_size+1) = proj_energy
-            ir(sampling_size+2) = proj_hf_expectation
-            ir(sampling_size+3) = D0_population
-            ir(sampling_size+4) = rspawn
-            call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            ntot_particles = nint(ir_sum(1:sampling_size), lint)
-            proj_energy = ir_sum(sampling_size+1)
-            proj_hf_expectation = ir_sum(sampling_size+2)
-            D0_population = ir_sum(sampling_size+3)
-            rspawn = ir_sum(sampling_size+4)
+        ! Need to sum the number of particles and the projected energy over
+        ! all processors.
+        ir(1:sampling_size) = nparticles
+        ir(sampling_size+1) = proj_energy
+        ir(sampling_size+2) = proj_hf_expectation
+        ir(sampling_size+3) = D0_population
+        ir(sampling_size+4) = rspawn
+        call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        ntot_particles = nint(ir_sum(1:sampling_size), lint)
+        proj_energy = ir_sum(sampling_size+1)
+        proj_hf_expectation = ir_sum(sampling_size+2)
+        D0_population = ir_sum(sampling_size+3)
+        rspawn = ir_sum(sampling_size+4)
 
-            if (vary_shift) then
-                call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
-                if (doing_calc(hfs_fciqmc_calc)) then
-                    call update_hf_shift(ntot_particles_old(1), ntot_particles(1), ntot_particles_old(2), &
-                                         ntot_particles(2), ncycles)
-                end if
+        if (vary_shift) then
+            call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
+            if (doing_calc(hfs_fciqmc_calc)) then
+                call update_hf_shift(ntot_particles_old(1), ntot_particles(1), ntot_particles_old(2), &
+                                     ntot_particles(2), ncycles)
             end if
-            ntot_particles_old = ntot_particles
-            if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
-                if (vary_shift_from_proje) then
-                    if(doing_calc(folded_spectrum)) then
-                      !if running a folded spectrum calculation, set the shift to
-                      !instantaneously be the projected energy of the folded hamiltonian
-                      shift = (proj_energy/D0_population - fold_line)**2
-                    else
-                      ! Set shift to be instantaneous projected energy.
-                      shift = proj_energy/D0_population
-                    endif
+        end if
+        ntot_particles_old = ntot_particles
+        if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
+            vary_shift = .true.
+            if (vary_shift_from_proje) then
+                if(doing_calc(folded_spectrum)) then
+                  !if running a folded spectrum calculation, set the shift to
+                  !instantaneously be the projected energy of the folded hamiltonian
+                  shift = (proj_energy/D0_population - fold_line)**2
                 else
-                    shift = vary_shift_from
-                end if
+                  ! Set shift to be instantaneous projected energy.
+                  shift = proj_energy/D0_population
+                endif
+            else
+                shift = vary_shift_from
             end if
+        end if
 #else
-            if (vary_shift) then
-                call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
-                if (doing_calc(hfs_fciqmc_calc)) then
-                    call update_hf_shift(ntot_particles_old(1), nparticles(1), ntot_particles_old(2), nparticles(2), ncycles)
-                end if
+        if (vary_shift) then
+            call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
+            if (doing_calc(hfs_fciqmc_calc)) then
+                call update_hf_shift(ntot_particles_old(1), nparticles(1), ntot_particles_old(2), nparticles(2), ncycles)
             end if
-            ntot_particles_old = nparticles
-            if (nparticles(1) > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
-                if (vary_shift_from_proje) then
-                    if(doing_calc(folded_spectrum)) then
-                    !if running a folded spectrum calculation, set the shift to
-                    !instantaneously be the projected energy of the folded hamiltonian
-                    shift = (proj_energy/D0_population - fold_line)**2
-                    else
-                    ! Set shift to be instantaneous projected energy.
-                    shift = proj_energy/D0_population
-                    endif
+        end if
+        ntot_particles_old = nparticles
+        if (nparticles(1) > target_particles .and. .not.vary_shift) then
+            vary_shift = .true.
+            if (vary_shift_from_proje) then
+                if(doing_calc(folded_spectrum)) then
+                !if running a folded spectrum calculation, set the shift to
+                !instantaneously be the projected energy of the folded hamiltonian
+                shift = (proj_energy/D0_population - fold_line)**2
                 else
-                    shift = vary_shift_from
-                end if
+                ! Set shift to be instantaneous projected energy.
+                shift = proj_energy/D0_population
+                endif
+            else
+                shift = vary_shift_from
             end if
+        end if
 #endif
 
-            ! average energy quantities over report loop.
-            proj_energy = proj_energy/ncycles
-            D0_population = D0_population/ncycles
-            ! Similarly for the HFS estimator
-            proj_hf_expectation = proj_hf_expectation/ncycles
-            ! average spawning rate over report loop and processor.
-            rspawn = rspawn/(ncycles*nprocs)
+        ! average energy quantities over report loop.
+        proj_energy = proj_energy/ncycles
+        D0_population = D0_population/ncycles
+        ! Similarly for the HFS estimator
+        proj_hf_expectation = proj_hf_expectation/ncycles
+        ! average spawning rate over report loop and processor.
+        rspawn = rspawn/(ncycles*nprocs)
 
     end subroutine update_energy_estimators
 
