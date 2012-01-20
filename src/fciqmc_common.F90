@@ -262,11 +262,7 @@ contains
                             occ_list0_inv(i) = occ_list0(i) - 1
                         end if
                     end do
-                write (6,'(a,64i4)') 'inv', occ_list0_inv
                     call encode_det(occ_list0_inv, f0_inv)
-                    ! TODO: this needs to be checked for UHF upon merging
-                    ! development branches.
-!                    if (uhf) call stop_all('init_fciqmc','Check inversion for UHF systems.')
                 end select
 
                 if (nprocs > 1) then
