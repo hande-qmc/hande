@@ -355,7 +355,7 @@ contains
         use checking, only: check_allocate
 
         use errors, only: stop_all
-        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, nsites, &
+        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, ueg, nsites, &
                           heisenberg, J_coupling
         use basis, only: bit_lookup
         use hubbard_real, only: connected_orbs
@@ -383,7 +383,7 @@ contains
             allocate(occ_list0(nel), stat=ierr)
             call check_allocate('occ_list0',nel,ierr)
             select case(system_type)
-            case(hub_k,read_in)
+            case(hub_k,read_in,ueg)
                 ! Orbitals are ordered by their single-particle eigenvalues.
                 ! Occupy the Fermi sphere/HF det.
                 forall (i=1:nalpha) occ_list0(i) = 2*i-1
