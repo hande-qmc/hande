@@ -176,10 +176,10 @@ contains
 
         ! Initialise system based upon input parameters.
 
-        use checking, only: check_allocate
         use calc, only: ms_in
 
-        use checking, only: check_deallocate
+        use checking, only: check_allocate, check_deallocate
+        use errors, only: stop_all
 
         integer :: i, ivec, ierr, counter
 
@@ -194,6 +194,7 @@ contains
             case(ueg)
 
                 ! UEG specific information.
+                if (ndim /= 2 .and. ndim /= 3) call stop_all('init_system','2D or 3D UEG not specified in input.')
 
                 ! Lattice vectors are not read from input file (or at least, should
                 ! not be).
