@@ -173,6 +173,10 @@ contains
         call MPI_BCast(symlz, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
 #endif
 
+        ! NOTE: nbasis is currently the number of spin-orbitals in the FCIDUMP file.
+        ! This is changed to the number of spin-orbitals active the calculation
+        ! later on.
+
         if (uhf) then
             nbasis = norb
             rhf_fac = 1
@@ -194,7 +198,7 @@ contains
         ! Read in FCIDUMP file to get single-particle eigenvalues.
         not_found_sp_eigv = .true.
         allocate(sp_eigv(norb), stat=ierr)
-        call check_allocate('sp_eigv', nbasis, ierr)
+        call check_allocate('sp_eigv', norb, ierr)
         ios = 0
         if (parent) then
             do
@@ -223,28 +227,36 @@ contains
         ! Rank basis functions by single-particle energy.
         ! Note that we use a *stable* ranking algorithm.
         allocate(sp_eigv_rank(0:norb), stat=ierr)
-        call check_allocate('sp_eigv_rank', nbasis+1, ierr)
+        call check_allocate('sp_eigv_rank', norb+1, ierr)
         allocate(sp_fcidump_rank(0:norb), stat=ierr)
-        call check_allocate('sp_fcidump_rank', nbasis+1, ierr)
+        call check_allocate('sp_fcidump_rank', norb+1, ierr)
 
-        ! Cannot simply naively sort all basis functions by energy as that
-        ! causes basis functions to be labelled with the incorrect spin.
-        ! Further we assume that basis functions have alternating alpha, beta
-        ! spins.  To overcome this we sort by energy within each spin and then
-        ! merge the two ranking orders.
-        ! Yes, this the calls to insertion_rank_rp do result in array copies,
-        ! but the arrays are small and the elegance and brevity of the code is
-        ! more than aadequate compensation.
-        call insertion_rank_rp(sp_eigv(::2), sp_eigv_rank(1::2), tolerance=depsilon)
-        call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
-        ! Interweave so the basis functions remain with alternating spins.
-        forall (i = 1:nbasis-1:2)
-            sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
-            sp_eigv_rank(i+1) = 2*sp_eigv_rank(i+1)
-        end forall
+        if (uhf) then
+            ! Cannot simply naively sort all basis functions by energy as that
+            ! causes basis functions to be labelled with the incorrect spin.
+            ! Further we assume that basis functions have alternating alpha, beta
+            ! spins.  To overcome this we sort by energy within each spin and then
+            ! merge the two ranking orders.
+            ! Yes, this the calls to insertion_rank_rp do result in array copies,
+            ! but the arrays are small and the elegance and brevity of the code is
+            ! more than aadequate compensation.
+            call insertion_rank_rp(sp_eigv(1::2), sp_eigv_rank(1::2), tolerance=depsilon)
+            call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
+            ! Interweave so the basis functions remain with alternating spins.
+            forall (i = 1:nbasis-1:2)
+                sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
+                sp_eigv_rank(i+1) = 2*sp_eigv_rank(i+1)
+            end forall
+        else
+            ! RHF case is much easier, as spin channels are degenerate and have
+            ! the same spatial components.
+            call insertion_rank_rp(sp_eigv(1:), sp_eigv_rank(1:), tolerance=depsilon)
+        end if
+
         ! the 0 index is used as a null entry in the FCIDUMP file, so need
         ! to handle that...
         sp_eigv_rank(0) = 0
+
         ! sp_eigv_rank(i) = i' takes us from the {i'} basis (as ordered in
         ! the FCIDUMP file) to the {i} basis (ordered by energy).  We also
         ! need the inverse.
@@ -264,6 +276,10 @@ contains
 
         ! From CAS work out the start of the active basis functions, the number
         ! of active basis functions and the number of active electrons.
+
+        ! NOTE: this sets nbasis to be the number of spin orbitals in the active
+        ! basis.
+
         active_basis_offset = nel-cas(1) ! number of core *spin* orbitals
         ! Note that nbasis is spin-orbitals whereas cas(2)=M is in spatial orbitals
         ! (as we use the conventional CAS definition).
@@ -555,6 +571,8 @@ contains
 
         ! Initialise list of basis functions based upon the FCI namelist`data
         ! read in from an FCIDUMP file.
+
+        ! TODO: interface comments
 
         ! In:
         !    norb: number of orbitals/functions to initialise.
