@@ -8,6 +8,8 @@ implicit none
 
 contains
 
+! --- Initialisation routines ---
+
     subroutine init_fciqmc()
 
         ! Initialisation for fciqmc calculations.
@@ -400,6 +402,8 @@ contains
 
     end subroutine init_fciqmc
 
+! --- Utility routines ---
+
     subroutine select_ref_det()
 
         ! Change the reference determinant to be the determinant with the
@@ -587,6 +591,49 @@ contains
 
     end subroutine find_single_double_prob
 
+    subroutine load_balancing_report()
+
+        ! Print out a load-balancing report when run in parallel showing how
+        ! determinants and walkers/particles are distributed over the processors.
+
+#ifdef PARALLEL
+        use annihilation, only: annihilation_comms_time
+        use parallel
+
+        integer(lint) :: load_data(nprocs)
+        integer :: ierr
+        real(dp) :: comms(nprocs)
+
+        if (nprocs > 1) then
+            if (parent) then
+                write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
+                write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
+            endif
+            call mpi_gather(nparticles, 1, mpi_integer8, load_data, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            if (parent) then
+                write (6,'(1X,a34,6X,i8)') 'Min # of particles on a processor:', minval(load_data)
+                write (6,'(1X,a34,6X,i8)') 'Max # of particles on a processor:', maxval(load_data)
+                write (6,'(1X,a35,5X,f11.2)') 'Mean # of particles on a processor:', real(sum(load_data), p)/nprocs
+            end if
+            call mpi_gather(tot_walkers, 1, mpi_integer, load_data, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
+            if (parent) then
+                write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data)
+                write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data)
+                write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data), p)/nprocs
+                write (6,'()')
+                write (6,'(1X,a38,5X,f8.2,a1)') 'Min time take by walker communication:', minval(comms),'s'
+                write (6,'(1X,a38,5X,f8.2,a1)') 'Max time take by walker communication:', maxval(comms),'s'
+                write (6,'(1X,a39,4X,f8.2,a1)') 'Mean time take by walker communication:', real(sum(comms), p)/nprocs,'s'
+                write (6,'()')
+            end if
+        end if
+#endif
+
+    end subroutine load_balancing_report
+
+! --- Output routines ---
+
     subroutine initial_fciqmc_status()
 
         ! Calculate the projected energy based upon the initial walker
@@ -631,45 +678,5 @@ contains
 
     end subroutine initial_fciqmc_status
 
-    subroutine load_balancing_report()
-
-        ! Print out a load-balancing report when run in parallel showing how
-        ! determinants and walkers/particles are distributed over the processors.
-
-#ifdef PARALLEL
-        use annihilation, only: annihilation_comms_time
-        use parallel
-
-        integer(lint) :: load_data(nprocs)
-        integer :: ierr
-        real(dp) :: comms(nprocs)
-
-        if (nprocs > 1) then
-            if (parent) then
-                write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
-                write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
-            endif
-            call mpi_gather(nparticles, 1, mpi_integer8, load_data, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
-            if (parent) then
-                write (6,'(1X,a34,6X,i8)') 'Min # of particles on a processor:', minval(load_data)
-                write (6,'(1X,a34,6X,i8)') 'Max # of particles on a processor:', maxval(load_data)
-                write (6,'(1X,a35,5X,f11.2)') 'Mean # of particles on a processor:', real(sum(load_data), p)/nprocs
-            end if
-            call mpi_gather(tot_walkers, 1, mpi_integer, load_data, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
-            call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
-            if (parent) then
-                write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data)
-                write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data)
-                write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data), p)/nprocs
-                write (6,'()')
-                write (6,'(1X,a38,5X,f8.2,a1)') 'Min time take by walker communication:', minval(comms),'s'
-                write (6,'(1X,a38,5X,f8.2,a1)') 'Max time take by walker communication:', maxval(comms),'s'
-                write (6,'(1X,a39,4X,f8.2,a1)') 'Mean time take by walker communication:', real(sum(comms), p)/nprocs,'s'
-                write (6,'()')
-            end if
-        end if
-#endif
-
-    end subroutine load_balancing_report
 
 end module fciqmc_common
