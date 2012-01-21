@@ -432,7 +432,7 @@ contains
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
 
-        integer :: isyma, isymb, imsa, imsb, ims_min, ims_max, fac, shift, na, ind
+        integer :: isyma, isymb, imsb, fac, shift, na, ind
 
         ! Is there a possible (a,b) pair which conserves symmetry once the (i,j)
         ! pair has been selected?
@@ -796,7 +796,7 @@ contains
         real(p) :: pgen
         integer, intent(in) :: ij_sym, a, b, spin, symunocc(:,sym0:)
 
-        integer :: imsa, isyma, imsb, isymb, n_aij, ims_min, ims_max
+        integer :: imsa, isyma, imsb, isymb, n_aij
         real(p) :: p_bija, p_aijb
 
         ! p(i,j) = 1/binom(nel,2) = 2/(nel*(nel-1))

@@ -77,7 +77,7 @@ contains
 #endif
         end if
 
-        lwork = work(1)
+        lwork = nint(work(1))
         deallocate(work)
         call check_deallocate('work',ierr)
 

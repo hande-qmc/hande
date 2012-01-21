@@ -10,7 +10,7 @@
       INTEGER            IA, ICPRNT, IRPRNT, JA, M, N, NOUT
 !     ..
 !     .. Array Arguments ..
-      CHARACTER*(*)      CMATNM
+      CHARACTER(*)      CMATNM
       INTEGER            DESCA( * )
       DOUBLE PRECISION   A( * ), WORK( * )
 
@@ -309,6 +309,23 @@
  9999 FORMAT(A,'(',I6,',',I6,')=',D30.18)
 !
       RETURN
+
+#else
+
+! Just some dummy options to avoid unused argument warnings
+
+    CHARACTER :: C
+
+    C = CMATNM(1)
+    work(1) = M
+    work(1) = N
+    work(1) = A(1)
+    work(1) = IA
+    work(1) = JA
+    work(1) = DESCA(1)
+    work(1) = IRPRNT
+    work(1) = ICPRNT
+    work(1) = NOUT
 
 #endif
 

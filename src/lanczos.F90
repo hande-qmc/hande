@@ -44,6 +44,9 @@ contains
 
 #ifdef DISABLE_LANCZOS
         call stop_all('lanczos_diagonalisation','Lanczos diagonalisation disabled at compile-time.')
+        ! Avoid compile-time warnings about unset intent(out) variables...
+        nfound = 0
+        eigv = huge(0.0_dp)
 #else
 
         integer, parameter :: lohi = -1
@@ -51,9 +54,7 @@ contains
         real(dp), allocatable :: eval(:) ! (mev)
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         integer :: ierr, nrows
-#ifndef DISABLE_LANCZOS
         type(trl_info_t) :: info
-#endif
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
@@ -90,9 +91,7 @@ contains
         ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
         !       the largest).
         ! nlanczos_eigv: number of eigenvalues to compute.
-#ifndef DISABLE_LANCZOS
         call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,ndets))
-#endif
 
         allocate(eval(mev), stat=ierr)
         call check_allocate('eval',mev,ierr)

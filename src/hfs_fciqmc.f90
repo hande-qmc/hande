@@ -92,10 +92,10 @@ contains
         end interface
 
         integer :: idet, ireport, icycle, iparticle
-        integer(lint) :: nparticles_old(sampling_size)
+        integer(lint) :: nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
-        integer :: nspawned, nattempts, ndeath
+        integer :: nspawned, ndeath
         type(excit) :: connection
 
         real(p) :: inst_proj_hf_t1
@@ -214,7 +214,7 @@ contains
             end do
 
             ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(ireport, nparticles_old)
+            call update_energy_estimators(nparticles_old)
 
 !            if (vary_shift) then
 !                do idet = 1, tot_walkers
@@ -236,7 +236,7 @@ contains
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
 
-            call fciqmc_interact(ireport, soft_exit)
+            call fciqmc_interact(soft_exit)
             if (soft_exit) exit
 
         end do

@@ -480,7 +480,8 @@ contains
         !    2 for the timestep algorithm).
 
         real(p) :: rate
-        integer, intent(in) :: ndeath, nattempts
+        integer, intent(in) :: ndeath
+        integer(lint), intent(in) :: nattempts
         integer :: nspawn
 
         nspawn = sum(spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1))

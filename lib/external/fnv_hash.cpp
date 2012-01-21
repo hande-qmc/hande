@@ -35,7 +35,7 @@ extern "C"
     uint32_t fnv1_hash(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
-        uint32_t h = 2166136261;
+        uint32_t h = 2166136261u;
         int i;
 
         for (i = 0; i < 4*len; i++)
@@ -77,7 +77,7 @@ extern "C"
     uint32_t fnv1a_hash(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
-        uint32_t h = 2166136261;
+        uint32_t h = 2166136261u;
         int i;
 
         for (i = 0; i < 4*len; i++)
@@ -93,7 +93,7 @@ extern "C"
     uint64_t fnv1a_hash(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
-        uint64_t h = 14695981039346656037;
+        uint64_t h = 14695981039346656037u;
         int i;
 
         for (i = 0; i < 8*len; i++)
@@ -117,7 +117,7 @@ extern "C"
     uint32_t fnv1_hash32(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
-        uint32_t h = 2166136261;
+        uint32_t h = 2166136261u;
         int i;
 
         for (i = 0; i < 4*len; i++)
@@ -131,7 +131,7 @@ extern "C"
     uint32_t fnv1a_hash32(const void *key, int &len)
     {
         const unsigned char *p = (const unsigned char *)key;
-        uint32_t h = 2166136261;
+        uint32_t h = 2166136261u;
         int i;
 
         for (i = 0; i < 4*len; i++)

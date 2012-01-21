@@ -103,6 +103,12 @@ contains
         integer, intent(in) :: parent_population
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(out) :: parent_flag
+        
+        ! Simple statements (optimised away?) which remove any unused/unset
+        ! variable warnings for compilation with -Werror.
+        parent_flag = f(1)
+        parent_flag = parent_population
+        parent_flag = 0
 
     end subroutine set_parent_flag_dummy
 

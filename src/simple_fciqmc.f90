@@ -152,7 +152,9 @@ contains
                 spawned_walkers = 0
 
                 ! Number of spawning attempts that will be made.
-                nattempts = nparticles
+                ! convert to integer from integer(lint).  should only be doing
+                ! very small calculations with this algothim!
+                nattempts = int(nparticles)
 
                 ! Consider all walkers.
                 do iwalker = 1, ndets

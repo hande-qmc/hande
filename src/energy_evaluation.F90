@@ -9,15 +9,13 @@ implicit none
 
 contains
 
-    subroutine update_energy_estimators(ireport, ntot_particles_old)
+    subroutine update_energy_estimators(ntot_particles_old)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
 
         ! Should be called every report loop in an FCIQMC/iFCIQMC calculation.
 
-        ! In:
-        !    ireport: index of the current report loop.
         ! Inout:
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -33,7 +31,6 @@ contains
 
         use parallel
 
-        integer, intent(in) :: ireport
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
         real(dp) :: ir(sampling_size+4), ir_sum(sampling_size+4)
@@ -54,6 +51,7 @@ contains
         call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
         ir_sum = ir
+        ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
         ntot_particles = nint(ir_sum(1:sampling_size), lint)

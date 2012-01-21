@@ -24,7 +24,10 @@ contains
         use parallel
 
         integer, parameter :: particle_type = 1
-        integer :: in_data(2), out_data(2), i, fmax(basis_length), max_pop, ierr
+        integer :: i, fmax(basis_length), max_pop
+#ifdef PARALLEL
+        integer :: in_data(2), out_data(2), ierr
+#endif
         real(p) :: H00_max
         logical :: updated
 
@@ -249,7 +252,7 @@ contains
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         integer :: idet
-        integer :: ntot_particles
+        integer(lint) :: ntot_particles
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum
@@ -283,6 +286,5 @@ contains
         end if
 
     end subroutine initial_fciqmc_status
-
 
 end module fciqmc_common

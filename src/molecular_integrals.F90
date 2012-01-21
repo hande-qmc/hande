@@ -477,7 +477,7 @@ contains
         type(int_indx) :: indx
         integer, intent(in) :: i, j, a, b
 
-        integer :: ii, jj, aa, bb, tmp, ia, jb
+        integer :: ia, jb
 
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
@@ -665,9 +665,9 @@ contains
 
         type(one_body), intent(inout) :: store
         integer, intent(in) :: data_proc
+#ifdef PARALLEL
         integer :: i, j, ierr
 
-#ifdef PARALLEL
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
@@ -675,6 +675,12 @@ contains
                 call MPI_BCast(store%integrals(i,j)%v, size(store%integrals(i,j)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
             end do
         end do
+#else
+        integer :: i
+        ! A null operation so I can use -Werror when compiling
+        ! without this procedure throwing an error.
+        i = data_proc
+        i = size(store%integrals)
 #endif
 
     end subroutine broadcast_one_body_int
@@ -693,14 +699,19 @@ contains
 
         type(two_body), intent(inout) :: store
         integer, intent(in) :: data_proc
-        integer :: i, j, ierr
-
 #ifdef PARALLEL
+        integer :: i, j, ierr
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
         end do
+#else
+        integer :: i
+        ! A null operation so I can use -Werror when compiling
+        ! without this procedure throwing an error.
+        i = data_proc
+        i = size(store%integrals)
 #endif
 
     end subroutine broadcast_two_body_int

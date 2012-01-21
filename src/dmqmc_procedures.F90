@@ -145,7 +145,7 @@ contains
         use utils, only: binom_r
 
         integer(i0) :: total_hilbert_space, subspace_size
-        integer :: i, up_spins, rand_basis, bits_set, total_bits_set
+        integer :: i, rand_basis, bits_set, total_bits_set
         integer :: bit_element, bit_position, npsips, basis_find, ipos
         integer(i0) :: f(basis_length)
         real(dp) prob_of_acceptance
@@ -161,7 +161,7 @@ contains
             do
                 rand_num = genrand_real2()
                 total_bits_set = int(rand_num*(nbasis+1))
-                subspace_size = binom_r(nbasis, total_bits_set)
+                subspace_size = nint(binom_r(nbasis, total_bits_set))
                 prob_of_acceptance = subspace_size/total_hilbert_space
                 rand_num = genrand_real2()
                 if (prob_of_acceptance < rand_num) exit

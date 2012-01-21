@@ -324,7 +324,7 @@ contains
         integer, intent(in) :: k(ndim)
 
         integer :: i
-        real :: kc(ndim)
+        real(p) :: kc(ndim)
 
         select case(system_type)
         case(UEG)
@@ -337,7 +337,7 @@ contains
             ! This test only works because the underlying lattice is orthogonal.
             ! The asymmetry of the boundary conditions prevent the acceptance of
             ! all wavevectors on the boundaries...
-            in_FBZ = all(kc<=(0.50_p+depsilon)).and.all(kc>(-0.50_p))
+            in_FBZ = all(kc<=(0.50_p+depsilon)).and.all(kc>(-0.50_p+1.e-5_p))
         end select
 
     end function in_FBZ

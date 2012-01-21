@@ -243,7 +243,7 @@ contains
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
-        integer :: i, j, a, b, ij_sym
+        integer :: ij_sym
 
         ! See notes in spawn_hub_k for more details regarding this algorithm.
         ! spawn_hub_k contains a somewhat more optimised version for fciqmc and
@@ -488,11 +488,9 @@ contains
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, psuccess, pspawn, hmatel, amp_j, amp_i
-        integer(i0) :: bitstring_j(basis_length)
-        integer :: i, a, n, up_spins_to, up_spins_from
+        real(p) :: pgen, hmatel
+        integer :: up_spins_to, up_spins_from
         integer :: bit_position, bit_element
-        integer :: nvirt_avail
 
         ! 1. Generate a random excitation.
         call gen_excit_heisenberg(cdet, pgen, connection, hmatel)
@@ -557,7 +555,7 @@ contains
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, psuccess, pspawn, hmatel
+        real(p) :: pgen, hmatel
 
         ! 1. Generate a random excitation
         call gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
@@ -611,11 +609,9 @@ contains
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
-        real(p) :: pgen, psuccess, pspawn, hmatel, amp_j, amp_i
-        integer(i0) :: bitstring_j(basis_length)
-        integer :: i, a, n, up_spins_to, up_spins_from
+        real(p) :: pgen, hmatel
+        integer :: up_spins_to, up_spins_from
         integer :: bit_position, bit_element
-        integer :: nvirt_avail
 
         ! 1. Generate a random excitation.
         call gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
@@ -838,7 +834,7 @@ contains
         ! represents a substantial saving. :-)
 
         r = genrand_real2()
-        ind = int(r*nel*(nel-1)/2) + 1.
+        ind = int(r*nel*(nel-1)/2) + 1
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.

@@ -139,10 +139,9 @@ contains
 
         real(p)          :: Pgen_ki, Pgen_jk
         real(p)          :: pspawn_ki, pspawn_jk
-        real(p)          :: nspawn_ki, nspawn_jk
+        integer          :: nspawn_ki, nspawn_jk
         real(p)          :: hmatel_ki, hmatel_jk
         type(excit)      :: connection_ki, connection_jk
-        real(p)          :: psuccess
 
         ! 0. Choose the type of double element you're going to spawn
         choose_double_elt_type = genrand_real2()
@@ -406,7 +405,7 @@ contains
         use dSFMT_interface , only: genrand_real2
         implicit none
         real(p), intent(in) :: probability
-        integer              :: number_spawned
+        integer             :: number_spawned
         real(p)             :: psuccess, pstochastic
 
         ! Generate random number

@@ -86,7 +86,7 @@ contains
         use parallel, only: parent
 
         integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
-        integer :: basis_find, row_1, row_2
+        integer :: row_1, row_2
         integer :: r(ndim)
 
         integer :: lvecs(ndim, 3**ndim)

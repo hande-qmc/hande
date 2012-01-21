@@ -6,14 +6,12 @@ implicit none
 
 contains
 
-    subroutine fciqmc_interact(ireport, soft_exit)
+    subroutine fciqmc_interact(soft_exit)
 
         ! Read FCIQMC.COMM if it exists in the working directory of any
         ! processor and set the variables according to the options defined in
         ! FCIQMC.COMM.
 
-        ! In:
-        !    ireport: index of the current report loop.
         ! Out:
         !    softexit: true if SOFTEXIT is defined in FCIQMC.COMM, in which case
         !        any fciqmc calculation should exit immediately and go to the
@@ -25,7 +23,6 @@ contains
 
         use fciqmc_data, only: target_particles, tau, vary_shift, shift
 
-        integer, intent(in) :: ireport
         logical, intent(out) :: soft_exit
 
         logical :: comms_exists, comms_found, comms_read, eof

@@ -23,7 +23,6 @@ contains
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_procedures, only: random_distribution_heisenberg
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
-        use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit, get_excitation_level
         use fciqmc_common
         use fciqmc_restart, only: dump_restart
@@ -34,15 +33,14 @@ contains
         use dSFMT_interface, only: dSFMT_init
         use utils, only: int_fmt
 
-        integer :: i, idet, ireport, icycle, iparticle
+        integer :: idet, ireport, icycle, iparticle
         integer :: beta_cycle
         integer(lint) :: nparticles_old(sampling_size)
-        integer(lint) :: nparticles_start_report
+        integer(lint) :: nattempts, nparticles_start_report
         type(det_info) :: cdet1, cdet2
-        integer :: nspawned, nattempts, ndeath
+        integer :: nspawned, ndeath
         type(excit) :: connection
-        integer :: bit_pos, bit_element
-        integer :: walker_pop_1, walker_pop_2, spawning_end
+        integer :: spawning_end
         logical :: soft_exit
         real :: t1, t2
 
@@ -92,7 +90,7 @@ contains
                     " # Resetting random number generator with a seed of:", seed, "."
             end if
 
-            nparticles_old = D0_population
+            nparticles_old = nint(D0_population)
 
             do ireport = 1, nreport
 
@@ -167,7 +165,7 @@ contains
 
                 old_shift=shift
                 ! Update the shift and desired thermal quantites.
-                call update_dmqmc_estimators(ireport, nparticles_old)
+                call update_dmqmc_estimators(nparticles_old)
 
                 call cpu_time(t2)
 
@@ -178,7 +176,7 @@ contains
                 ! cpu_time outputs an elapsed time, so update the reference timer.
                 t1 = t2
 
-                call fciqmc_interact(ireport, soft_exit)
+                call fciqmc_interact(soft_exit)
                 if (soft_exit) exit
 
             end do

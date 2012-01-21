@@ -310,6 +310,23 @@
 !
       RETURN
 
+#else
+
+! Just some dummy options to avoid unused argument warnings
+
+    CHARACTER :: C
+
+    C = CMATNM(1)
+    work(1) = M
+    work(1) = N
+    work(1) = A(1)
+    work(1) = IA
+    work(1) = JA
+    work(1) = DESCA(1)
+    work(1) = IRPRNT
+    work(1) = ICPRNT
+    work(1) = NOUT
+
 #endif
 
 !

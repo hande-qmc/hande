@@ -6,14 +6,12 @@ implicit none
 
 contains
 
-   subroutine update_dmqmc_estimators(ireport, ntot_particles_old)
+   subroutine update_dmqmc_estimators(ntot_particles_old)
 
         ! Update the shift and average the shift and estimators
 
         ! Should be called every report loop in an DMQMC calculation.
 
-        ! In:
-        !    ireport: index of the current report loop.
         ! Inout:
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -29,7 +27,6 @@ contains
         use fciqmc_data, only: nreport, ncycles, trace
         use parallel
 
-        integer, intent(in) :: ireport
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
@@ -277,7 +274,6 @@ contains
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
-       integer :: bit_element, bit_position
        real(p) :: hmatel
 
        ! If no excitation, we have a diagonal element, so add elements

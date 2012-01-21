@@ -99,7 +99,7 @@ contains
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
         integer, intent(in) :: idet
-        integer :: i, n, ipos, lattice_1_up, lattice_2_up
+        integer :: n, lattice_1_up, lattice_2_up
         real(dp) :: importance_sampling_factor = 1.0
 
         n = nint(walker_data(sampling_size+1,idet))

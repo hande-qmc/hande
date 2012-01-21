@@ -34,10 +34,10 @@ contains
         use folded_spectrum_utils, only: cdet_excit
 
         integer :: idet, ireport, icycle, iparticle
-        integer(lint) :: nparticles_old(sampling_size)
+        integer(lint) :: nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
-        integer :: nspawned, nattempts, ndeath
+        integer :: nspawned, ndeath
         type(excit) :: connection
 
         logical :: soft_exit
@@ -122,7 +122,7 @@ contains
             end do
 
             ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(ireport, nparticles_old)
+            call update_energy_estimators(nparticles_old)
 
             call cpu_time(t2)
 
@@ -133,7 +133,7 @@ contains
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
 
-            call fciqmc_interact(ireport, soft_exit)
+            call fciqmc_interact(soft_exit)
             if (soft_exit) exit
             if (mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
 

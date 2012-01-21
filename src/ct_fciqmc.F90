@@ -28,8 +28,8 @@ contains
 
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
-        integer :: nspawned, nattempts, ndeath, ireport, idet
-        integer(lint) :: nparticles_old(sampling_size)
+        integer :: nspawned, ndeath, ireport, idet
+        integer(lint) :: nattempts, nparticles_old(sampling_size)
         integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
         integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
@@ -216,7 +216,7 @@ contains
             call direct_annihilation()
 
             ! Update projected energy and shift
-            call update_energy_estimators(ireport, nparticles_old)
+            call update_energy_estimators(nparticles_old)
 
             call cpu_time(t2)
 
@@ -224,7 +224,7 @@ contains
 
             t1 = t2
 
-            call fciqmc_interact(ireport, soft_exit)
+            call fciqmc_interact(soft_exit)
             if (soft_exit) exit
             if (mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
 
