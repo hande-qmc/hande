@@ -129,6 +129,7 @@ contains
         use excitations, only: end_excitations
         use diagonalisation, only: end_hamil
         use fciqmc_data, only: end_fciqmc
+        use ifciqmc, only: end_ifciqmc
         use parallel, only: parent, end_parallel
         use hubbard_real, only: end_real_space
         use momentum_symmetry, only: end_momentum_symmetry
@@ -148,6 +149,7 @@ contains
         call end_hamil()
         call end_real_space()
         call end_fciqmc()
+        call end_ifciqmc()
 
         ! Calculation time.
         call cpu_time(end_time)
