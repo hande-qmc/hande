@@ -149,7 +149,7 @@ contains
         integer :: bit_element, bit_position, npsips, basis_find, ipos
         integer(i0) :: f(basis_length)
         real(dp) prob_of_acceptance
-        real :: rand_num
+        real(dp) :: rand_num
 
         total_hilbert_space = 2**(nbasis)
         npsips = int(D0_population/nprocs)
@@ -243,7 +243,7 @@ contains
         integer :: i, up_spins, rand_basis, bits_set
         integer :: bit_element, bit_position, npsips
         integer(i0) :: f(basis_length)
-        real :: rand_num
+        real(dp) :: rand_num
 
         up_spins = (ms_in+nsites)/2
         npsips = int(D0_population/nprocs)
