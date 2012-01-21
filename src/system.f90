@@ -111,12 +111,14 @@ real(p) :: r_s = 1.0_p
 real(p) :: ueg_ecutoff = 3.0_p
 
 ! Lattice vectors of crystal cell. (:,i) is the i-th vector.
+! Not used for the UEG (see box_length).
 integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
 ! If a triangular lattice is being used, this variable is true (Hubbard; Heisenberg).
 logical :: triangular_lattice
 
 ! Lengths of lattice vectors.
+! This defines the cubic simulation cell used in the UEG.
 real(p), allocatable :: box_length(:) ! ndim.
 
 ! Contains integer lattice lengths. If less than 3 dimensions are used
@@ -196,28 +198,24 @@ contains
                 ! UEG specific information.
                 if (ndim /= 2 .and. ndim /= 3) call stop_all('init_system','2D or 3D UEG not specified in input.')
 
-                ! Lattice vectors are not read from input file (or at least, should
-                ! not be).
+                ! Lattice vectors (integers) are not used in the UEG as the
+                ! simulation cell might well be defined by non-integers.
                 if (allocated(lattice)) then
                     deallocate(lattice, stat=ierr)
                     call check_deallocate('lattice',ierr)
+                    write (6,'(1X,a)') 'Ignoring lattice input for the UEG.'
                 end if
-                allocate(lattice(ndim,ndim), stat=ierr)
-                call check_allocate('lattice',ndim*ndim,ierr)
 
                 ! Use a cubic simulation cell.
                 ! The system is uniquely defined by two out of the number of
                 ! electrons, the density and the simulation cell lattice parameter.
                 ! It is most convenient to have the first two as input parameters.
-                lattice = 0.0_p
                 select case(ndim)
                 case(2)
-                    forall (ivec=1:ndim) lattice(ivec,ivec) = r_s*sqrt(pi*nel)
+                    box_length = r_s*sqrt(pi*nel)
                 case(3)
-                    forall (ivec=1:ndim) lattice(ivec,ivec) = r_s*(4*pi*nel)**(1.0_p/3.0_p)
+                    box_length = r_s*(4*pi*nel)**(1.0_p/3.0_p)
                 end select
-
-                box_length = lattice(1,1)
 
             case default
 

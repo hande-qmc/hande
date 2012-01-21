@@ -399,7 +399,9 @@ contains
 
         if (system_type /= read_in) then
 
-            if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
+            if (system_type /= ueg) then
+                if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
+            end if
 
             if (system_type == heisenberg) then
                 if (ms_in > nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
