@@ -32,7 +32,8 @@ contains
 #ifdef PARALLEL
         real(dp) :: ir(sampling_size+1+((number_dmqmc_estimators+1)*ncycles))
         real(dp) :: ir_sum(sampling_size+1+((number_dmqmc_estimators+1)*ncycles))
-        integer :: ntot_particles(sampling_size), ierr
+        integer :: ierr
+        integer(lint) :: ntot_particles(sampling_size)
 
         ! Need to sum the number of particles and other quantites over all processors.
         ir(1:sampling_size) = nparticles
@@ -41,12 +42,12 @@ contains
         ir(sampling_size+3:sampling_size+2+number_dmqmc_estimators) = estimator_numerators
         ! Merge the lists from each processor together.
         call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-        ntot_particles = nint(ir_sum(1:sampling_size))
+        ntot_particles = nint(ir_sum(1:sampling_size),lint)
         rspawn = ir_sum(sampling_size+1)
         if (parent) then
             ! Let the parent processor store the merged data lists, so that these
             ! can be output afterwards by the parent.
-            trace = ir_sum(sampling_size+2)
+            trace = nint(ir_sum(sampling_size+2))
             estimator_numerators = ir_sum(sampling_size+3:sampling_size+2+number_dmqmc_estimators)
         end if
 

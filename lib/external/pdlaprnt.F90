@@ -125,11 +125,14 @@
 !  =====================================================================
 !
 !     .. Parameters ..
-      INTEGER            BLOCK_CYCLIC_2D, CSRC_, CTXT_, DLEN_, DTYPE_,   &
-                         LLD_, MB_, M_, NB_, N_, RSRC_
-      PARAMETER          ( BLOCK_CYCLIC_2D = 1, DLEN_ = 9, DTYPE_ = 1,   &
-                           CTXT_ = 2, M_ = 3, N_ = 4, MB_ = 5, NB_ = 6,   &
-                           RSRC_ = 7, CSRC_ = 8, LLD_ = 9 )
+      INTEGER            CTXT_, LLD_, MB_, NB_
+      PARAMETER          ( CTXT_ = 2, MB_ = 5, NB_ = 6, LLD_ = 9 )
+! Defined in the original source but not used:
+!      INTEGER            BLOCK_CYCLIC_2D, CSRC_, DLEN_, DTYPE_,   &
+!                         M_, N_, RSRC_
+!      PARAMETER          ( BLOCK_CYCLIC_2D = 1, DLEN_ = 9, DTYPE_ = 1,   &
+!                           M_ = 3, N_ = 4, RSRC_ = 7, CSRC_ = 8 )
+
 !     ..
 !     .. Local Scalars ..
       INTEGER            H, I, IACOL, IAROW, IB, ICTXT, ICURCOL,   &

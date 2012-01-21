@@ -700,7 +700,7 @@ contains
         type(two_body), intent(inout) :: store
         integer, intent(in) :: data_proc
 #ifdef PARALLEL
-        integer :: i, j, ierr
+        integer :: i, ierr
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)

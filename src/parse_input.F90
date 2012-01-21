@@ -3,7 +3,7 @@ module parse_input
 
 use const
 
-use parallel, only: parent
+use parallel, only: parent, block_size
 use errors
 use hilbert_space
 use system
@@ -523,7 +523,7 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        integer :: ierr, occ_list_size, subsystem_size
+        integer :: ierr, occ_list_size
         logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)

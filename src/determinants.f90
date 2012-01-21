@@ -5,7 +5,7 @@ module determinants
 use const
 use system
 use basis
-use parallel
+use parallel, only: parent
 
 implicit none
 
