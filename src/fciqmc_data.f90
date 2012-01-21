@@ -735,8 +735,8 @@ contains
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
 
         if (doing_calc(dmqmc_calc)) then
-           write (6,'(1X,a12,3X,a13,6X,a16,5X,a5)', advance = 'no') &
-           '# iterations','Instant shift','Av. shift','Trace'
+           write (6,'(1X,a12,3X,a13,8X,a5)', advance = 'no') &
+           '# iterations','Instant shift','Trace'
 
             if (doing_dmqmc_calc(dmqmc_energy)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
@@ -753,20 +753,10 @@ contains
 
             write (6, '(2X,a11,2X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
 
-        else if (doing_calc(folded_spectrum)) then
-            ! If we are doing folded spectrum the third column is not the average shift,
-            ! but the average of the square root of the shift, since this is the relevant
-            ! data to average
-            write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
-              '# iterations','Instant shift','Av.sqrt S','\sum H_0j Nj',    &
-              'Av. Proj. E','# D0','# particles','R_spawn','time'
         else
-            write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,11X,a4,7X,a11,2X,a7,2X,a4)') &
-              '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
-              'Av. Proj. E','# D0','# particles','R_spawn','time'
-            write (6,'(1X,a12,3X,a13,6X,a9,10X,a12,7X,a11,8X,a4,16X,a11,2X,a7,2X,a4)') &
-            '# iterations','Instant shift','Av. shift','\sum H_0j Nj',    &
-            'Av. Proj. E','# D0','# particles','R_spawn','time'
+            write (6,'(1X,a12,3X,a13,6X,a12,7X,a4,16X,a11,2X,a7,2X,a4)') &
+              '# iterations','Instant shift','\sum H_0j Nj',    &
+              '# D0','# particles','R_spawn','time'
         end if
 
     end subroutine write_fciqmc_report_header
@@ -814,7 +804,6 @@ contains
         ! In:
         !    ireport: index of the report loop after the report loop has been
         !    exited.
-        use Calc, only: doing_calc, folded_spectrum
 
         integer, intent(in) :: ireport
         integer :: report_cycles_done
@@ -828,19 +817,10 @@ contains
             report_cycles_done = nreport
         end if
 
-        if(doing_calc(folded_spectrum)) then
-            ! Folded spectrum calculations require a different final output of the shift
-            ! since the S tends to (E - fold_line)**2, we average over the square root of the
-            ! shift and output the final "unfolded" shift
-            write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
-            write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy/D0_population
-            write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
-        else
-            write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
-            write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy/D0_population
-            write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift+H00
-            write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
-        endif
+        write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
+        write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy/D0_population
+        write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift+H00
+        write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
 
     end subroutine write_fciqmc_final
 
