@@ -129,6 +129,7 @@ integer :: lattice_size(3)
 ! As we are working in an orthogonal space, the reciprocal lattice vectors are
 ! easily obtained:
 ! b_i = 2\pi/|a_i|^2 a_i
+!     = 2\pi/ L_i for UEG, where L_i is box_length(i)
 real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
 ! Twist applied to wavevectors (Hubbard; UEG).
@@ -214,8 +215,10 @@ contains
                 case(2)
                     box_length = r_s*sqrt(pi*nel)
                 case(3)
-                    box_length = r_s*(4*pi*nel)**(1.0_p/3.0_p)
+                    box_length = r_s*((4*pi*nel)/3)**(1.0_p/3.0_p)
                 end select
+                rlattice = 0.0_p
+                forall (ivec=1:ndim) rlattice(ivec,ivec) = 1.0_p/box_length(ivec)
 
             case default
 
@@ -224,9 +227,18 @@ contains
                 forall (ivec=1:ndim) box_length(ivec) = sqrt(real(dot_product(lattice(:,ivec),lattice(:,ivec)),p))
                 nsites = nint(product(box_length))
 
-            end select
+                forall (ivec=1:ndim) rlattice(:,ivec) = lattice(:,ivec)/box_length(ivec)**2
 
-            forall (ivec=1:ndim) rlattice(:,ivec) = lattice(:,ivec)/box_length(ivec)**2
+                ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
+                ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
+                ! to be calculated.
+                counter = 0
+                do i = 1,ndim
+                    if ( sum(lattice(:,i)) == box_length(i) .and. mod(lattice_size(i), 2) == 0) counter = counter + 1
+                end do
+                if (counter == ndim) bipartite_lattice = .true.
+
+            end select
 
             if (.not.allocated(ktwist)) then
                 allocate(ktwist(ndim), stat=ierr)
@@ -256,14 +268,6 @@ contains
             if (ndim > 1) lattice_size(2) = ceiling(box_length(2), 2)
             if (ndim > 2) lattice_size(3) = ceiling(box_length(3), 2)
 
-            ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
-            ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
-            ! to be calculated.
-            counter = 0
-            do i = 1,ndim
-                if ( sum(lattice(:,i)) == box_length(i) .and. mod(lattice_size(i), 2) == 0) counter = counter + 1
-            end do
-            if (counter == ndim) bipartite_lattice = .true.
 
             ! This logical variable is set true if the system being used has basis functions
             ! in momentum space - the Heisenberg and real Hubbard models are in real space.

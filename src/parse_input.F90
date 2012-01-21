@@ -401,6 +401,13 @@ contains
 
             if (system_type /= ueg) then
                 if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
+                do ivec = 1, ndim
+                    do jvec = ivec+1, ndim
+                        if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
+                            call stop_all(this, 'Lattice vectors are not orthogonal.')
+                        end if
+                    end do
+                end do
             end if
 
             if (system_type == heisenberg) then
@@ -433,14 +440,6 @@ contains
                                &triangular lattice. Periodic boundary conditions are being turned off.')
                 finite_cluster = .true.
             end if
-
-            do ivec = 1, ndim
-                do jvec = ivec+1, ndim
-                    if (dot_product(lattice(:,ivec), lattice(:,jvec)) /= 0) then
-                        call stop_all(this, 'Lattice vectors are not orthogonal.')
-                    end if
-                end do
-            end do
 
         end if
 
