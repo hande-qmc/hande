@@ -215,7 +215,7 @@ contains
         !    a Hartree integral).
 
         use basis, only: basis_fns
-        use system, only: rlattice
+        use system, only: box_length
 
         real(p) :: intgrl
         integer, intent(in) :: i, a
@@ -226,7 +226,7 @@ contains
         ! the integral hence becomes 1/(L|q|), where q = k_i - k_a.
 
         q = basis_fns(i)%l - basis_fns(a)%l
-        intgrl = 1.0_p/(box_length(1)*sqrt(dot_product(q,q)))
+        intgrl = 1.0_p/(box_length(1)*sqrt(real(dot_product(q,q),p)))
 
     end function coulomb_int_ueg_2d
 
