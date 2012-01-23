@@ -147,6 +147,9 @@ contains
 
         up_spins = (ms_in+nsites)/2
         npsips = int(D0_population/nprocs)
+        ! If initial number of psips does not split evenly between all processors,
+        ! add the leftover psips to the first processors in order.
+        if (D0_population-(nprocs*int(D0_population/nprocs)) > iproc) npsips = npsips+1
 
         do i = 1, npsips
 
