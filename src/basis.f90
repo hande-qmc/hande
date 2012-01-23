@@ -312,9 +312,13 @@ contains
 
     end subroutine write_basis_fn
 
-    subroutine init_model_basis_fns()
+    subroutine init_model_basis_fns(store_info)
 
         ! Produce the basis functions for model Hamiltonian systems.
+        !
+        ! In:
+        !    store_info (optional): if true (default) then store the data read
+        !    in.  Otherwise the basis set is simply printed out.
         !
         ! The number of wavevectors is equal to the number of sites in the
         ! crystal cell (ie the number of k-points used to sample the FBZ of the
@@ -329,11 +333,21 @@ contains
         use errors, only: stop_all
         use parallel, only: parent
 
+        logical, intent(in), optional :: store_info
+
+        logical :: t_store
+
         integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
         integer :: i, j, k, ibasis, ierr, nspatial
         type(basis_fn), allocatable, target :: tmp_basis_fns(:)
         type(basis_fn), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
+
+        if (present(store_info)) then
+            t_store = store_info
+        else
+            t_store = .true.
+        end if
 
         ! Find basis functions.
 
@@ -507,6 +521,11 @@ contains
                 call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'()')
+        end if
+
+        if (.not.t_store) then
+            ! Should tidy up and deallocate everything we allocated.
+            call end_basis_fns()
         end if
 
     end subroutine init_model_basis_fns
