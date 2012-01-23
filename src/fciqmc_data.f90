@@ -214,11 +214,6 @@ logical :: init_spin_inv_D0 = .false.
 ! performing a DMQMC calculation, and so can be ignored in these cases.
 real(p) :: dmqmc_factor = 1.0_p
 
-! The modulus squared of the wavefunction which the psips represent
-! This is used in calculating the expectation value of the
-! staggered magnetisation.
-real(p) :: population_squared = 0.0_p
-
 ! This variable stores the number of estimators which are to be
 ! calculated and printed out in a DMQMC calculation.
 integer :: number_dmqmc_estimators = 0
