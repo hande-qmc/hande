@@ -208,7 +208,7 @@ contains
         !    a: index of spin-orbital basis function.
         !
         ! Returns:
-        !    The Coulumb integral < i j | a b > = 1/|k_i - k_a| for the 2D
+        !    The Coulumb integral < i j | a b > = 2\pi/\Omega|k_i - k_a| for the 2D
         !    UEG.  Note that we assume i, j, a and b are such that spin and
         !    crystal momentum is conserved and hence the integral is not zero by
         !    symmetry.  We also assume that i,j /= a,b (ie the integral is not
@@ -219,11 +219,14 @@ contains
 
         real(p) :: intgrl
         integer, intent(in) :: i, a
-        real(p) :: q(2)
-        integer :: j
+        integer :: q(2)
 
-        forall (j=1:2) q(j) = sum( (basis_fns(i)%l-basis_fns(a)%l)*rlattice(j,:) )
-        intgrl = 1.0_p/sqrt(dot_product(q,q))
+        ! Wavevectors are stored in units of 2\pi/L, where L is the length of
+        ! the cell.  As we only deal with cubic simulation cells (i.e. \Omega = L^2),
+        ! the integral hence becomes 1/(L|q|), where q = k_i - k_a.
+
+        q = basis_fns(i)%l - basis_fns(a)%l
+        intgrl = 1.0_p/(box_length(1)*sqrt(dot_product(q,q)))
 
     end function coulomb_int_ueg_2d
 
@@ -241,15 +244,18 @@ contains
         !    a Hartree integral).
 
         use basis, only: basis_fns
-        use system, only: rlattice
+        use system, only: box_length
 
         real(p) :: intgrl
         integer, intent(in) :: i, a
-        real(p) :: q(3)
-        integer :: j
+        integer :: q(3)
 
-        forall (j=1:3) q(j) = sum( (basis_fns(i)%l-basis_fns(a)%l)*rlattice(j,:) )
-        intgrl = 1.0_p/dot_product(q,q)
+        ! Wavevectors are stored in units of 2\pi/L, where L is the length of
+        ! the cell.  As we only deal with cubic simulation cells (i.e. \Omega = L^3),
+        ! the integral hence becomes 1/(\pi.L.q^2), where q = k_i - k_a.
+
+        q = basis_fns(i)%l - basis_fns(a)%l
+        intgrl = 1.0_p/(pi*box_length(1)*dot_product(q,q))
 
     end function coulomb_int_ueg_3d
 
