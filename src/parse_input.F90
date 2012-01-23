@@ -530,11 +530,15 @@ contains
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        if (.not.parent) then
-            allocate(lattice(ndim,ndim), stat=ierr)
-            call check_allocate('lattice',ndim*ndim,ierr)
+        if (parent) option_set = allocated(lattice)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            if (.not.parent) then
+                allocate(lattice(ndim,ndim), stat=ierr)
+                call check_allocate('lattice',ndim*ndim,ierr)
+            end if
+            call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
-        call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
