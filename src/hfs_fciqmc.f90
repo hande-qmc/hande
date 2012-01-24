@@ -143,8 +143,8 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
-                        ! Currently only using operators diagonal in the basis,
-                        ! so this isn't possible.
+                        ! Currently using O=H for testing, so this uses the same spawning
+                        ! routines as the Hamiltonian walkers.
                         call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
@@ -168,7 +168,7 @@ contains
                     call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
-                    ! CHECK
+                    ! TODO: CHECK
                     call stochastic_hf_cloning(walker_data(1,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
@@ -196,8 +196,13 @@ contains
             ! t2-t1 is thus the time taken by this report loop.
             proj_hf_expectation = inst_proj_hf_t1 - proj_energy*D0_hf_population/D0_population
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            write (17,*) ireport, inst_proj_hf_t1, hf_shift, nparticles_old, walker_population(:,1), D0_population, D0_hf_population
-            flush(17)
+            if (parent) then
+                ! DEBUG output only.
+                ! TODO: include with std. output.
+                write (17,*) ireport, inst_proj_hf_t1, hf_shift, nparticles_old, walker_population(:,1), &
+                             D0_population, D0_hf_population
+                call flush(17)
+            end if
 
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &
