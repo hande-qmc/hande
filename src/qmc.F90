@@ -44,7 +44,7 @@ contains
             if (doing_calc(folded_spectrum)) call init_folded_spectrum()
             if (doing_calc(hfs_fciqmc_calc)) then
                 call init_hellmann_feynman_sampling()
-                call do_hfs_fciqmc(update_proj_hfs_hub_k)
+                call do_hfs_fciqmc()
             else
                 call do_fciqmc()
             end if

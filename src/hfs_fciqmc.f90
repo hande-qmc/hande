@@ -43,7 +43,7 @@ contains
 
     end subroutine init_hellmann_feynman_sampling
 
-    subroutine do_hfs_fciqmc(update_proj_energy)
+    subroutine do_hfs_fciqmc()
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -57,15 +57,6 @@ contains
         ! be sufficiently modular that implementing a new system can reuse many
         ! existing routines) as it leads to much faster code.
 
-        ! In:
-        !    decoder: relevant subroutine to decode/extract the necessary
-        !        information from the determinant bit string.  See the
-        !        determinants module.
-        !    update_proj_energy: relevant subroutine to update the projected
-        !        energy.  See the energy_evaluation module.
-        !    spawner: relevant subroutine to attempt to spawn a walker from an
-        !        existing walker.  See the spawning module.
-
         use parallel
 
         use annihilation, only: direct_annihilation
@@ -78,18 +69,6 @@ contains
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use spawning, only: create_spawned_particle
         use fciqmc_common
-
-        ! It seems this interface block cannot go in a module when we're passing
-        ! subroutines around as arguments.  Bummer.
-        ! If only procedure pointers were more commonly implemented...
-        interface
-            subroutine update_proj_energy(idet, inst_proj_energy, inst_proj_hf_t1)
-                use const, only: p
-                implicit none
-                integer, intent(in) :: idet
-                real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
-            end subroutine update_proj_energy
-        end interface
 
         integer :: idet, ireport, icycle, iparticle
         integer(lint) :: nattempts, nparticles_old(sampling_size)
@@ -113,8 +92,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-! TODO.
-!        call initial_fciqmc_status(update_proj_energy)
+        call initial_fciqmc_status()
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -153,7 +131,8 @@ contains
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy(idet, proj_energy, inst_proj_hf_t1)
+                    ! TODO: HFS projected estimator update.
+                    call update_proj_energy_ptr(idet)
 
                     do iparticle = 1, abs(walker_population(1,idet))
 
