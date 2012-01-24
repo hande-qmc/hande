@@ -119,11 +119,6 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
-        do idet = 1, tot_walkers
-            walker_population(2, idet) = walker_population(1,idet)
-        end do
-        nparticles(2) = nparticles(1)
-
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
@@ -215,14 +210,6 @@ contains
 
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(nparticles_old)
-
-!            if (vary_shift) then
-!                do idet = 1, tot_walkers
-!                    call decoder_ptr(walker_dets(:,idet), cdet)
-!                    write (12,*) cdet%occ_list, walker_population(:,idet)
-!                end do
-!                exit
-!            end if
 
             call cpu_time(t2)
 
