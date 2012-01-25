@@ -165,11 +165,13 @@ contains
                     call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! TODO: CHECK
-                    call stochastic_hf_cloning(walker_data(1,idet), walker_population(1,idet), &
+                    ! NOTE: for debugging only, using O=H (set in
+                    ! insert_new_walkers in annihilation module).
+                    call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
                 end do

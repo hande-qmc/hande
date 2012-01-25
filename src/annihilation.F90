@@ -442,7 +442,8 @@ contains
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_data(2:,k) = <D_i|O|D_i>.
-                walker_data(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00
+                ! DEBUG ONLY: set O=H.
+                walker_data(2,k) = walker_data(1,k)
             else if (doing_calc(dmqmc_calc)) then
                 ! Set the energy to be the average of the two induvidual energies.
                 walker_data(1,k) = (walker_data(1,k) + sc0_ptr(walker_dets((basis_length+1):(2*basis_length),k)) - H00)/2
