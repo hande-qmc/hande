@@ -114,10 +114,12 @@ contains
                 spawning_head = spawning_block_start
 
                 ! Number of spawning attempts that will be made.
-                ! Each particle gets to attempt to spawn onto a connected
-                ! determinant and a chance to die/clone.
+                ! Each Hamiltonian particle gets a chance to spawn a Hamiltonian
+                ! particle, clone/die, spawn a Hellmann-Feynman particle and clone
+                ! itself into a Hellmann-Feynman particle.  Each H-F particle
+                ! gets a chance to spawn and a chance to clone/die.
                 ! This is used for accounting later, not for controlling the spawning.
-                nattempts = 2*nparticles(1)
+                nattempts = 4*nparticles(1) + 2*nparticles(2)
 
                 ! Reset death counter.
                 ndeath = 0
