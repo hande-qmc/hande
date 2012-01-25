@@ -366,7 +366,7 @@ contains
         case default
 
             ! Find the number of determinants with the required spin.
-            if (mod(Ms,2) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
+            if (abs(mod(Ms,2)) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
 
             dets_Ms = Ms
 
