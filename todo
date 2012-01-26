@@ -4,7 +4,7 @@
 4.  checktest.
 5.  parallel direct lanczos.
 6.  UEG.
-7.  Better name? A: DANGERMOUSE.  PENFOLD.
+7.  Better name? A: DANGERMOUSE.  High-Accuracy N-DImensional Quantum Monte Carlo (HANDIQMC)
 
 FCIQMC
 ------
@@ -33,30 +33,12 @@ Optimisations
 
 1. sym_table in terms of basis functions
 
-FS merge
---------
-
-1. merge (easy to fix conflicts)
-2. implement no_renorm excit generators
-
-Heisenberg merge
-----------------
-
-1. go through code
-2. merge (but see notes on importance sampling)
-
 Importance sampling
 -------------------
 
 1. Implement infrastructure
 
-Real systems
-------------
-
-So much...
-
 Cleanup
 -------
 
-1. function pointer init
-2. system specific modules: spawning, hamiltonian matrix elements
+1. system specific modules: spawning, hamiltonian matrix elements
