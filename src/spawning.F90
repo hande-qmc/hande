@@ -1349,7 +1349,9 @@ contains
     subroutine create_spawned_particle_half_density_matrix(f1, f2, connection, nspawn, spawning_end)
 
         ! Create a spawned walker in the spawned walkers lists.
-        ! The current position in the spawning array is updated.
+        ! If walker tries to spawn in the lower triangle of density matrix
+        ! then reflect it to upper triangle by swapping bit strings for the
+        ! two ends. The current position in the spawning array is updated.
 
         ! In:
         !    f1: bitstring corresponding to the end which is currently
@@ -1393,6 +1395,12 @@ contains
         ! bitstring is eventually stored in f_new_tot.
         call create_excited_det(f1, connection, f_new)
         f_new_tot = 0
+
+        ! Test to see whether the new determinant resides in the upper
+        ! triangle of the density matrix. If so keep bit string ends
+        ! as they are. If not then swap bitstring ends so that the 
+        ! new psips are reflected into the upper triangle of the density
+        ! matrix as they try to spawn.
         if (in_upper_triangle(f_new, f2)) then
             f_new_tot(:basis_length) = f_new
             f_new_tot((basis_length+1):(total_basis_length)) = f2

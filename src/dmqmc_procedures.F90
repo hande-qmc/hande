@@ -260,6 +260,8 @@ contains
     end subroutine decode_dm_bitstring
     
     function in_upper_triangle(f1, f2) result (upper_triangle)
+    ! Check to see if the psip with bitsring ends f1 and f2 is in the upper
+    ! triangle of the density matrix
 
     use basis, only: basis_length
     logical :: upper_triangle
@@ -267,14 +269,19 @@ contains
     integer(i0), intent(in) :: f2(basis_length)
     integer :: i
 
+    ! If the psips is on the diagonal of the density matrix then true and
+    ! do nothing
     if (sum(abs(f1-f2)) == 0) then 
         upper_triangle = .TRUE.
     else
+    ! Work out which bit string end f1 or f2 is bigger. If f1 is bigger then
+    ! the psip belongs in the upper triangle. Otherwise it does not (unless
+    ! on diagonal)
         do i = 1, basis_length
-            if(f1(basis_length+1-i) .GE. f2(basis_length+1-i)) then
+            if(f1(basis_length+1-i) .GT. f2(basis_length+1-i)) then
                 upper_triangle = .TRUE.
                 exit
-            else
+            else if((f2(basis_length+1-i) .GT. f1(basis_length+1-i))) then
                 upper_triangle = .FALSE.
                 exit
             end if
