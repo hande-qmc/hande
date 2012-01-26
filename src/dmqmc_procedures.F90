@@ -258,5 +258,30 @@ contains
         index2 = index2+1
 
     end subroutine decode_dm_bitstring
+    
+    function in_upper_triangle(f1, f2) result (upper_triangle)
+
+    use basis, only: basis_length
+    logical :: upper_triangle
+    integer(i0), intent(in) :: f1(basis_length)
+    integer(i0), intent(in) :: f2(basis_length)
+    integer :: i
+
+    if (sum(abs(f1-f2)) == 0) then 
+        upper_triangle = .TRUE.
+    else
+        do i = 1, basis_length
+            if(f1(basis_length+1-i) .GE. f2(basis_length+1-i)) then
+                upper_triangle = .TRUE.
+                exit
+            else
+                upper_triangle = .FALSE.
+                exit
+            end if
+        end do
+    end if
+                   
+    
+    end function in_upper_triangle
 
 end module dmqmc_procedures

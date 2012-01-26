@@ -29,6 +29,8 @@ integer, parameter :: mc_hilbert_space = 2**7
 integer, parameter :: folded_spectrum = 2**8
 ! Doing Density Matrix Monte Carlo?
 integer, parameter :: dmqmc_calc = 2**9
+! Doing Half Density Matrix Monte Carlo?
+integer, parameter :: hdmqmc_calc = 2**10
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
