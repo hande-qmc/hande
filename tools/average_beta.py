@@ -242,7 +242,7 @@ def print_stats(stats, estimator_headings, trace=False,  shift=False, with_splin
             betas.append(beta)
             energies.append(data.estimators.mean[TR_HRHO_INDEX]) 
 #            energies_squared.append(data.estimators.mean[TR_H2RHO_INDEX]) 
-        energy_fit, specific_heats = calculate_specific_heat(energies, betas, weightd)
+        energy_fit, specific_heats = calculate_specific_heat(energies, betas, weights)
             
     print '#           beta    ',
     if trace:
