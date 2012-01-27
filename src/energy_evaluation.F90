@@ -26,15 +26,15 @@ contains
                                proj_energy, shift, vary_shift, vary_shift_from,                  &
                                vary_shift_from_proje, D0_population,                           &
                                fold_line
-        use hfs_data, only: proj_hf_expectation
+        use hfs_data, only: proj_hf_expectation, hf_signed_pop
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
-        real(dp) :: ir(sampling_size+4), ir_sum(sampling_size+4)
-        integer(lint) :: ntot_particles(sampling_size)
+        real(dp) :: ir(sampling_size+5), ir_sum(sampling_size+5)
+        integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
         integer :: ierr
 
         ! Need to sum the number of particles and the projected energy over
@@ -44,6 +44,13 @@ contains
         ir(sampling_size+2) = proj_hf_expectation
         ir(sampling_size+3) = D0_population
         ir(sampling_size+4) = rspawn
+
+        if (doing_calc(hfs_fciqmc_calc)) then
+            ! HFS calculations also need to know \tilde{N} = \sum_i sign(N_j^(H)) N_j^(HF),
+            ! where N_j^(H) is the population of Hamiltonian walkers on j and
+            ! N_j^(HF) the population of Hellmann-Feynman walkers on j.
+            ir(sampling_size+5) = calculate_hf_signed_pop()
+        end if
 
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
@@ -59,12 +66,14 @@ contains
         proj_hf_expectation = ir_sum(sampling_size+2)
         D0_population = ir_sum(sampling_size+3)
         rspawn = ir_sum(sampling_size+4)
+        new_hf_signed_pop = nint(ir_sum(sampling_size+5), lint)
 
         if (vary_shift) then
             call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
-                call update_hf_shift(ntot_particles_old(1), ntot_particles(1), ntot_particles_old(2), &
-                                     ntot_particles(2), ncycles)
+                call update_hf_shift(ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
+                                     new_hf_signed_pop, ncycles)
+                hf_signed_pop = new_hf_signed_pop
             end if
         end if
         ntot_particles_old = ntot_particles
@@ -123,17 +132,59 @@ contains
 
     subroutine update_hf_shift(nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
 
+        ! Update the Hellmann-Feynman shift, \tilde{S}.
+        ! In:
+        !    nparticles_old: N_w(beta-A*tau); total Hamiltonian population at beta-Atau.
+        !    nparticles: N_w(beta); total Hamiltonian population at beta.
+        !    nhf_particles_old: N_w(beta-A*tau); total Hellmann-Feynman (signed) population at beta-Atau.
+        !    nhf_particles: N_w(beta); total Hellmann-Feynman (signed) population at beta.
+        !
+        ! WARNING:
+        ! The Hellmann-Feynman signed population is not simply the sum over
+        ! Hellmann-Feynman walkers but also involves the Hamiltonian walkers and
+        ! *must* be calculated using calculate_hf_signed_pop.
+
         use fciqmc_data, only: tau, shift_damping
         use hfs_data, only: hf_shift
 
         integer(lint), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
 
+        ! Given the definition of the shift, S, \tilde{S} \equiv \frac{dS}{d\alpha}|_{\alpha=0}.
+        ! Hence \tilde{S}(\beta) =
+        !           \tilde{S}(\beta-A\tau)
+        !           - \frac{\xi}{A\tau} [ \frac{\tilde{N}_w(\beta)}{N_w(\beta)}
+        !                                 - \frac{\tilde{N}_w(\beta-A\tau)}{N_w(\beta-A\tau)} ]
+        ! where N_w(\beta) is the total population of (Hamiltonian) walkers at
+        ! imaginary time \beta and \tilde{N}_w = \frac{dN_w}{d\alpha}|_{\alpha=0}.
+        ! The latter quantity is calculated in calculate_hf_signed pop.
+
         hf_shift = hf_shift - &
                  (shift_damping/(tau*nupdate_steps)) &
                  *(real(nhf_particles,p)/nparticles - real(nhf_particles_old,p)/nparticles_old)
 
     end subroutine update_hf_shift
+
+    function calculate_hf_signed_pop() result(hf_signed_pop)
+
+        ! Find
+        !    \sum_j sign(N_j(\beta)) \tilde{N}_j(\beta)
+        ! where N_j(\beta) is the Hamiltonian population on j at imaginary time
+        ! \beta and \tilde{N}_j(\beta) is the Hellmann-Feynman population on
+        ! j at imaginary time \beta.
+
+        use fciqmc_data, only: walker_population, tot_walkers
+
+        integer(lint) :: hf_signed_pop
+
+        integer :: i
+
+        hf_signed_pop = 0_lint
+        do i = 1, tot_walkers
+            hf_signed_pop = hf_signed_pop + sign(walker_population(2,i), walker_population(1,i))
+        end do
+
+    end function calculate_hf_signed_pop
 
     subroutine update_proj_energy_hub_k(idet)
 

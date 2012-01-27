@@ -2,7 +2,7 @@ module hfs_data
 
 ! Module for storing data specific to Hellmann--Feynman sampling.
 
-use const, only: p, i0
+use const, only: p, i0, lint
 
 implicit none
 
@@ -20,10 +20,14 @@ integer(i0), allocatable :: lmask(:)
 
 !--- HFS-specific variables. ---
 
+! TODO: comment variables.
+
 real(p) :: hf_shift = 0.0_p
 real(p) :: proj_hf_expectation = 0.0_p
 
 real(p) :: D0_hf_population
 real(p) :: O00
+
+integer(lint) :: hf_signed_pop
 
 end module hfs_data
