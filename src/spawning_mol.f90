@@ -452,11 +452,11 @@ contains
             end do
 
             ! nbasis/2 functions of this spin.
-            ! all basis functions of this spin are odd.
-            ! Convert number, x, in range [1,nbasis/2] to odd number in range
-            ! [1,nbasis] using 2*x-1
+            ! all basis functions of this spin are even.
+            ! Convert number, x, in range [1,nbasis/2] to even number in range
+            ! [1,nbasis] using 2*x
             fac = 2
-            shift = 1
+            shift = 0
             na = nbasis/2
         case(0)
             do isyma = sym0, nsym+(sym0-1)
@@ -486,11 +486,11 @@ contains
             end do
 
             ! nbasis/2 functions of this spin.
-            ! all basis functions of this spin are even.
-            ! Convert number, x, in range [1,nbasis/2] to even number in range
-            ! [1,nbasis] using 2*x
+            ! all basis functions of this spin are odd.
+            ! Convert number, x, in range [1,nbasis/2] to odd number in range
+            ! [1,nbasis] using 2*x-1
             fac = 2
-            shift = 0
+            shift = 1
             na = nbasis/2
         end select
 
@@ -640,10 +640,10 @@ contains
         select case(spin)
         case(-2)
             ! a must be down.
-            ! Convert number, x, in range [1,nbasis/2] to odd number in range
-            ! [1,nbasis] using 2*x-1
+            ! Convert number, x, in range [1,nbasis/2] to even number in range
+            ! [1,nbasis] using 2*x
             fac = 2
-            shift = 1
+            shift = 0
             na = nbasis/2
         case(0)
             ! a can be up or down.
@@ -654,10 +654,10 @@ contains
             na = nbasis
         case(2)
             ! a must be up.
-            ! Convert number, x, in range [1,nbasis/2] to even number in range
-            ! [1,nbasis] using 2*x
+            ! Convert number, x, in range [1,nbasis/2] to odd number in range
+            ! [1,nbasis] using 2*x-1
             fac = 2
-            shift = 0
+            shift = 1
             na = nbasis/2
         end select
 
