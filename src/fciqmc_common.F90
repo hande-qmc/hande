@@ -16,7 +16,12 @@ contains
         ! greatest population if it exceeds some threshold relative to the
         ! current reference determinant.
 
-        ! TODO: make compatible with HFS.
+        ! Note this currently only looks at the Hamiltonian population.  The
+        ! setting of multiple reference determinants (e.g. different references
+        ! for Hamiltonian walkers and Hellmann-Feynmann walkers) is currently not
+        ! supported.  It is not clear if there is such a need as a good
+        ! reference determinant for the Hamiltonian space should also be
+        ! important (if not crucial!) in the H-F space.
 
         use basis, only: basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc

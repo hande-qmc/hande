@@ -77,8 +77,6 @@ contains
         integer :: nspawned, ndeath
         type(excit) :: connection
 
-        real(p) :: inst_proj_hf_t1
-
         logical :: soft_exit
 
         real :: t1, t2
@@ -133,7 +131,7 @@ contains
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    ! TODO: HFS projected estimator update.
+                    ! TODO: H-F projected estimator.
                     call update_proj_energy_ptr(idet)
 
                     do iparticle = 1, abs(walker_population(1,idet))
@@ -170,7 +168,6 @@ contains
                     call death_ptr(walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
-                    ! TODO: CHECK
                     ! NOTE: for debugging only, using O=H (set in
                     ! insert_new_walkers in annihilation module).
                     call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), &
@@ -185,9 +182,6 @@ contains
                 ! D0_population is communicated in the direct_annihilation
                 ! algorithm for efficiency.
                 call direct_annihilation()
-
-                ! Form HF projected expectation value and add to running
-                ! total.
 
             end do
 
