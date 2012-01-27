@@ -48,14 +48,6 @@ integer :: initiator_cas(2) = (/ 0,0 /)
 ! Population above which a determinant is an initiator.
 integer :: initiator_population = 3
 
-!--- Input data: Hilbert space truncation ---
-
-! Currently only implemented for DMQMC.
-! If true, truncate the density matrix space such that it only contains elements which
-! differ by at most truncation_level excitations.
-logical :: truncate_space = .false.
-integer :: truncation_level
-
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless

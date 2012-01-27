@@ -501,7 +501,7 @@ contains
         use basis, only: basis_length, total_basis_length
         use excitations, only: excit, create_excited_det
         use fciqmc_data, only: spawned_walkers, spawning_head
-        use fciqmc_data, only: spawned_parent, spawned_pop, truncate_space, truncation_level
+        use fciqmc_data, only: spawned_parent, spawned_pop
         use hashing
         use parallel, only: iproc, nprocs
 
@@ -577,9 +577,10 @@ contains
         ! won't require it.
 
         use basis, only: basis_length, total_basis_length
+        use calc, only: truncation_level
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: spawned_walkers, spawning_head
-        use fciqmc_data, only: spawned_parent, spawned_pop, truncate_space, truncation_level
+        use fciqmc_data, only: spawned_parent, spawned_pop
         use hashing
         use parallel, only: iproc, nprocs
 

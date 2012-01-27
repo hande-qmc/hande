@@ -79,6 +79,22 @@ integer, parameter :: distribute_cols = 2
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
 
+!--- Input data: Hilbert space truncation ---
+
+! CI/CIQMC:
+! If true, truncate the Slater determinant space such that it contains
+! determinants which differ from the reference determinant (e.g. Hartree--Fock
+! determinant) by at most truncation_level excitations.
+! truncation_level excitations.  A truncation level equal to the number of
+! electrons corresponds to the full space
+! DMQMC:
+! If true, truncate the density matrix space such that it only contains matrix
+! elements corresponding to two determinants which differ by at most
+! truncation_level excitations.  A truncation level equal to the number of
+! electrons corresponds to the full space.
+logical :: truncate_space = .false.
+integer :: truncation_level
+
 !--- Info for stocastic calculations ---
 
 ! Seed used to initialise the dSFMT random number generator.
