@@ -21,11 +21,12 @@ abstract interface
         implicit none
         integer, intent(in) :: idet
     end subroutine i_update_proj_energy
-    subroutine i_update_dmqmc_estimators(idet,excitation)
-        import :: excit
+    subroutine i_update_dmqmc_estimators(idet,excitation,walker_pop)
+        import :: excit, p
         implicit none
         integer, intent(in) :: idet
         type(excit), intent(in) :: excitation
+        real(p) :: walker_pop
     end subroutine i_update_dmqmc_estimators
     subroutine i_spawner(d, parent_sign, nspawned, connection)
         import :: det_info, excit
