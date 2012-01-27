@@ -118,106 +118,6 @@ contains
 
     end subroutine init_dmqmc
 
-    subroutine random_distribution_entire_space()
-
-        ! Distribute the initial number of psips along the main diagonal.
-        ! Each diagonal element should be chosen with the same probability.
-        ! Note that this does not only create psips within a particular
-        ! subspace, but can create psips anywhere in the entire Hilbert space.
-
-        ! To pick each configuration with equal probability, we first choose
-        ! a number of bits to be set, i, out of a total of N = nbasis bits. Then
-        ! we set choose i bits to set, each with equal probability. So the
-        ! probability that a particular configuration is chosen is
-
-        ! prob(config) = prob(config with i bits set) * prob(config | config with i bits set)
-        !              = fraction of configs with i bits set * (1/number of configs with i bits set)
-        !              = (number of configs with i bits set/total number of configs)
-        !                            * (1/number of configs with i bits set)
-        ! => prob(config) =  1/total number of configs
-
-        ! So each configuartion will be chosen with equal probability, as desired.
-
-        use basis, only: nbasis, basis_length, bit_lookup, basis_lookup
-        use dSFMT_interface, only:  genrand_real2
-        use fciqmc_data, only: D0_population
-        use parallel
-        use utils, only: binom_r
-
-        integer(i0) :: total_hilbert_space, subspace_size
-        integer :: i, rand_basis, bits_set, total_bits_set
-        integer :: bit_element, bit_position, npsips, basis_find, ipos
-        integer(i0) :: f(basis_length)
-        real(dp) prob_of_acceptance
-        real(dp) :: rand_num
-
-        total_hilbert_space = 2**(nbasis)
-        npsips = int(D0_population/nprocs)
-
-        do i = 1, npsips
-
-            ! First we need to decide how many bits will be set, total_bits_set, with
-            ! probability equal to prob = fraction of configs with i bits set
-            do
-                rand_num = genrand_real2()
-                total_bits_set = int(rand_num*(nbasis+1))
-                subspace_size = nint(binom_r(nbasis, total_bits_set))
-                prob_of_acceptance = subspace_size/total_hilbert_space
-                rand_num = genrand_real2()
-                if (prob_of_acceptance < rand_num) exit
-            end do
-
-            ! Now form the initial bitstring, f, which will be modified to create the
-            ! final desired bitstring
-            if (total_bits_set <= int(nbasis/2)) then
-                ! If less than half bits are to be set, start from all down.
-                f = 0
-                bits_set = 0
-            else
-                ! If more than half bits are to be set, start from all up,
-                ! remembering to set the bits on the end down, which don't
-                ! correspond to an orbital, so must always be 0.
-                f = 0
-                do ipos = 0, i0_end
-                    basis_find = basis_lookup(ipos, basis_length)
-                    if (basis_find == 0) then
-                        f(basis_length) = ibset(f(basis_length),ipos)
-                    end if
-                end do
-                f = not(f)
-                bits_set = nbasis
-            end if
-
-            ! Now create the bitstring.
-            do
-                ! If the correct number of bits are set, we have the
-                ! bitstring that we want, so exit the loop.
-                if (bits_set==total_bits_set) exit
-                ! Choose a random spin to flip.
-                rand_num = genrand_real2()
-                rand_basis = ceiling(rand_num*nbasis)
-                ! Find the corresponding positions for this spin.
-                bit_position = bit_lookup(1,rand_basis)
-                bit_element = bit_lookup(2,rand_basis)
-                if (btest(f(bit_element),bit_position)) then
-                    ! If already flipped up, flip back down.
-                    f(bit_element) = ibclr(f(bit_element),bit_position)
-                    bits_set = bits_set - 1
-                else
-                    ! If not flipped up, flip the spin up.
-                    f(bit_element) = ibset(f(bit_element),bit_position)
-                    bits_set = bits_set + 1
-                end if
-            end do
-
-            ! Now call a routine to add the corresponding diagonal element to
-            ! the spawned walkers list.
-            call create_diagonal_particle(f)
-
-        end do
-
-    end subroutine random_distribution_entire_space
-
     subroutine random_distribution_heisenberg()
 
         ! For the Heisenberg model only. Distribute the initial number of psips
@@ -247,6 +147,9 @@ contains
 
         up_spins = (ms_in+nsites)/2
         npsips = int(D0_population/nprocs)
+        ! If initial number of psips does not split evenly between all processors,
+        ! add the leftover psips to the first processors in order.
+        if (D0_population-(nprocs*int(D0_population/nprocs)) > iproc) npsips = npsips+1
 
         do i = 1, npsips
 
@@ -355,5 +258,30 @@ contains
         index2 = index2+1
 
     end subroutine decode_dm_bitstring
+    
+    function in_upper_triangle(f1, f2) result (upper_triangle)
+
+    use basis, only: basis_length
+    logical :: upper_triangle
+    integer(i0), intent(in) :: f1(basis_length)
+    integer(i0), intent(in) :: f2(basis_length)
+    integer :: i
+
+    if (sum(abs(f1-f2)) == 0) then 
+        upper_triangle = .TRUE.
+    else
+        do i = 1, basis_length
+            if(f1(basis_length+1-i) .GE. f2(basis_length+1-i)) then
+                upper_triangle = .TRUE.
+                exit
+            else
+                upper_triangle = .FALSE.
+                exit
+            end if
+        end do
+    end if
+                   
+    
+    end function in_upper_triangle
 
 end module dmqmc_procedures

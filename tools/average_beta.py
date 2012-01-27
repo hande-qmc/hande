@@ -20,7 +20,7 @@ BETA_COL = 0
 SHIFT_COL = 1
 TR_HRHO_COL = 4
 TR_H2RHO_COL = 5
-TR_RHO_COL = 3
+TR_RHO_COL = 2
 H2_is_present = False
 H_is_present = False
 TR_HRHO_INDEX = -1
@@ -81,25 +81,25 @@ def get_estimator_headings(data_files):
            index = 0
            for k in range(0,len(headings)):
                if headings[k] == '\\sum\\rho_{ij}H_{ji}':
-                   estimator_col_no.append(k-3)
+                   estimator_col_no.append(k-TR_RHO_COL)
                    estimator_headings.append('Tr[Hp]/Tr[p]')
                    H_is_present = True
                    TR_HRHO_INDEX = index
                    index = index + 1
                elif headings[k] == '\\sum\\rho_{ij}S_{ji}':
-                   estimator_col_no.append(k-3)
+                   estimator_col_no.append(k-TR_RHO_COL)
                    estimator_headings.append('Tr[Sp]/Tr[p]')
                    index = index + 1
                elif headings[k] == '\\sum\\rho_{ij}C_{ji}':
-                   estimator_col_no.append(k-3)
+                   estimator_col_no.append(k-TR_RHO_COL)
                    estimator_headings.append('Tr[Cp]/Tr[p]')
                    index = index + 1 
                elif headings[k] == '\\sum\\rho_{ij}M2{ji}':
-                   estimator_col_no.append(k-3)
+                   estimator_col_no.append(k-TR_RHO_COL)
                    estimator_headings.append('Tr[Mp]/Tr[p]')
                    index = index + 1
                elif headings[k] == '\\sum\\rho_{ij}H2{ji}':
-                   estimator_col_no.append(k-3)
+                   estimator_col_no.append(k-TR_RHO_COL)
                    estimator_headings.append('Tr[H2p]/Tr[p]')
                    H2_is_present = True
                    TR_H2RHO_INDEX = index
@@ -201,6 +201,7 @@ def calculate_spline_fit(energies, betas, weights):
     # Where m is number of data points. 
     # Defaults is s = m - sqrt(2*m)
     # Caluclate knots, spline co-efficients and degree of spline (t,c,k=3)
+    
     tck = scipy.interpolate.splrep(betas, energies, weights, k=3)
     # Calculate the spline fit using (t,c,k)
     spline_fit = scipy.interpolate.splev(betas,tck)
@@ -216,17 +217,32 @@ def calculate_specific_heat(energies, betas, weights):
         specific_heat[i] = -1.*betas[i]*betas[i]*specific_heat[i]
     return energy_fit, specific_heat
 
+#def calculate_specific_heat(energies, energies_squared, betas, weights, weights_squared):
+#    # Calculate energy spline fit and first derivative
+#    energy_fit, specific_heat = calculate_spline_fit(energies, betas, weights)
+#    energy_squared_fit, specific_heat = calculate_spline_fit(energies_squared, betas, weights_squared)
+#    for i in range(0,len(energy_squared_fit)):
+#        specific_heat[i] = (betas[i]**2)*(energy_squared_fit[i]-(energy_fit[i]**2))
+#    return energy_squared_fit, specific_heat
+
+
+
+
 def print_stats(stats, estimator_headings, trace=False,  shift=False, with_spline=False, with_heat_capacity=False):
     energies = []
+#    energies_squared = []
     betas = []
     weights = []
+#    weights_squared = []
     if with_spline:
         for beta in sorted(stats.iterkeys()):
             data = stats[beta]
-            weights.append(1./data.estimators.se[0])
+            weights.append(1./data.estimators.se[TR_HRHO_INDEX])
+#            weights_squared.append(1./data.estimators.se[TR_H2RHO_INDEX])
             betas.append(beta)
-            energies.append(data.estimators.mean[0]) 
-        energy_fit, specific_heats = calculate_specific_heat(energies, betas, weights)
+            energies.append(data.estimators.mean[TR_HRHO_INDEX]) 
+#            energies_squared.append(data.estimators.mean[TR_H2RHO_INDEX]) 
+        energy_fit, specific_heats = calculate_specific_heat(energies, betas, weightd)
             
     print '#           beta    ',
     if trace:

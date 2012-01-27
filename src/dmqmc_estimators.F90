@@ -210,15 +210,17 @@ contains
            ! matter which way up they are, so we only need to check if there are two possible paths.
 
            if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0) then
-               ! Contribution for next nearest neighbors
+               ! Contribution for next-nearest neighbors.
                sum_H1_H2 = 4.0*J_coupling_squared*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
-           else
-               ! Contributions for nearest neighbors
-               bit_position1 = bit_lookup(1,excitation%from_orb(1))
-               bit_element1 = bit_lookup(2,excitation%from_orb(1))
-               if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
-                   sum_H1_H2 = -4.0*J_coupling*(walker_data(1,idet)+H00)
            end if
+           ! Contributions for nearest neighbors.
+           ! Note, for certain lattices, such as the triangular lattice, two spins can be both
+           ! nearest neighbors *and* next-nearest neighbors. Therefore, it is necessary in general
+           ! to check for both situations.
+           bit_position1 = bit_lookup(1,excitation%from_orb(1))
+           bit_element1 = bit_lookup(2,excitation%from_orb(1))
+           if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
+                   sum_H1_H2 = sum_H1_H2 - 4.0*J_coupling*(walker_data(1,idet)+H00)
 
        else if (excitation%nexcit == 2) then
            ! If there are two excitations (4 spins flipped) then, once again, the contribution
