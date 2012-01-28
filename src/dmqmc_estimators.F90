@@ -91,28 +91,48 @@ contains
        use calc, only: dmqmc_energy_squared, dmqmc_correlation
        use excitations, only: get_excitation, excit
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
+       use fciqmc_data, only: dmqmc_sampling_prob
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
 
        integer, intent(in) :: idet
        type(excit) :: excitation
+       real(p) :: unweighted_walker_pop
 
        ! Get excitation.
        excitation = get_excitation(walker_dets(:basis_length,idet), &
                         walker_dets((1+basis_length):total_basis_length,idet))
 
+       ! When performing importance sampling the result is that certain excitation
+       ! levels have smaller psips populations than the true density matrix by some
+       ! factor. In these cases, we want to multiply the psip population by this factor
+       ! to calculate the contribution from these excitation levels correctly.
+       
+       ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet)
+       ! and so this change can be ignored.
+       unweighted_walker_pop = walker_population(1,idet)*(dmqmc_sampling_prob**(excitation%nexcit))
+
        ! If diagonal element, add to the trace.
        if (excitation%nexcit == 0) trace = trace + walker_population(1,idet)
        ! See which estimators are to be calculated, and call the corresponding procedures.
-       if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr(idet, excitation)
-       if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr(idet, excitation)
-       if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr(idet, excitation)
-       if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr(idet, excitation)
+       ! Energy
+       if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr&
+               &(idet, excitation, unweighted_walker_pop)
+       ! Energy squared
+       if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
+               &(idet, excitation, unweighted_walker_pop)
+       ! Spin-spin correlation function
+       if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
+               &(idet, excitation, unweighted_walker_pop)
+       ! Staggered magnetisation
+       if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
+               &(idet, excitation, unweighted_walker_pop)
+       ! Reduced density matrix
        if (doing_reduced_dm) call update_reduced_density_matrix(idet)
 
    end subroutine call_dmqmc_estimators
 
-   subroutine dmqmc_energy_heisenberg(idet, excitation)
+   subroutine dmqmc_energy_heisenberg(idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -127,7 +147,7 @@ contains
        use basis, only: basis_length, total_basis_length
        use basis, only: bit_lookup
        use excitations, only: excit
-       use fciqmc_data, only: walker_dets, walker_population
+       use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
        use hubbard_real, only: connected_orbs
@@ -135,13 +155,14 @@ contains
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
+       real(p) , intent(in) :: walker_pop
        integer :: bit_element, bit_position
 
        ! If no excitation, we have a diagonal element, so add elements
        ! which involve the diagonal element of the Hamiltonian.
        if (excitation%nexcit == 0) then
            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
-                                    (walker_data(1,idet)+H00)*walker_population(1,idet)
+                                    (walker_data(1,idet)+H00)*walker_pop
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
@@ -150,12 +171,12 @@ contains
            bit_element = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
                  estimator_numerators(energy_index) = estimator_numerators(energy_index) - &
-                                   (2.0*J_coupling*walker_population(1,idet))
+                                   (2.0*J_coupling*walker_pop)
        end if
 
    end subroutine dmqmc_energy_heisenberg
 
-   subroutine dmqmc_energy_squared_heisenberg(idet, excitation)
+   subroutine dmqmc_energy_squared_heisenberg(idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -170,7 +191,7 @@ contains
        use basis, only: basis_length, total_basis_length
        use basis, only: bit_lookup
        use excitations, only: excit
-       use fciqmc_data, only: walker_dets, walker_population
+       use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_squared_index
        use hubbard_real, only: connected_orbs, next_nearest_orbs
@@ -178,6 +199,7 @@ contains
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
+       real(p) , intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        real(p) :: sum_H1_H2, J_coupling_squared
 
@@ -252,11 +274,11 @@ contains
        end if
 
        estimator_numerators(energy_squared_index) = estimator_numerators(energy_squared_index) + &
-               sum_H1_H2*walker_population(1,idet)
+               sum_H1_H2*walker_pop
 
    end subroutine dmqmc_energy_squared_heisenberg
 
-   subroutine dmqmc_energy_hub_real(idet, excitation)
+   subroutine dmqmc_energy_hub_real(idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -270,32 +292,33 @@ contains
 
        use basis, only: basis_length, total_basis_length
        use excitations, only: excit
-       use fciqmc_data, only: walker_dets, walker_population
+       use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
        use hamiltonian, only: slater_condon1_hub_real
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
+       real(p) , intent(in) :: walker_pop
        real(p) :: hmatel
 
        ! If no excitation, we have a diagonal element, so add elements
        ! which involve the diagonal element of the Hamiltonian.
        if (excitation%nexcit == 0) then
            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
-                                 (walker_data(1,idet)+H00)*walker_population(1,idet)
+                                 (walker_data(1,idet)+H00)*walker_pop
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
        ! neighbours on the lattice, and if so, add the contirbution from this site.
            hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
-                                 (hmatel*walker_population(1,idet))
+                                 (hmatel*walker_pop)
        end if
 
    end subroutine dmqmc_energy_hub_real
 
-   subroutine dmqmc_correlation_function_heisenberg(idet, excitation)
+   subroutine dmqmc_correlation_function_heisenberg(idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -311,7 +334,7 @@ contains
        use basis, only: bit_lookup
        use bit_utils, only: count_set_bits
        use excitations, only: excit
-       use fciqmc_data, only: walker_dets, walker_population
+       use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00, correlation_mask
        use fciqmc_data, only: estimator_numerators, correlation_index
        use hubbard_real, only: connected_orbs
@@ -319,6 +342,7 @@ contains
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
+       real(p) , intent(in) :: walker_pop
        integer(i0) :: f(basis_length)
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer :: sign_factor
@@ -338,7 +362,7 @@ contains
            sign_factor = (mod(sign_factor+1,2)*2)-1
            ! Hence sign_factor can be used to find the matrix element, as used below.
            estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + &
-                                    (real(sign_factor*walker_population(1,idet))/4)
+                                    (sign_factor*(walker_pop/4))
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! matrix element will be 1/2 if and only if the two sites which are flipped are
@@ -350,12 +374,12 @@ contains
            bit_element2 = bit_lookup(2,excitation%to_orb(1))
            if (btest(correlation_mask(bit_element1), bit_position1).and.btest(correlation_mask(bit_element2), bit_position2)) &
                  estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + &
-                                   (real(walker_population(1,idet))/2)
+                                   (walker_pop/2)
        end if
 
    end subroutine dmqmc_correlation_function_heisenberg
 
-   subroutine dmqmc_stag_mag_heisenberg(idet, excitation)
+   subroutine dmqmc_stag_mag_heisenberg(idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
        ! Add the contribution from the current density matrix element
@@ -371,12 +395,13 @@ contains
        use bit_utils, only: count_set_bits
        use determinants, only: lattice_mask
        use excitations, only: excit
-       use fciqmc_data, only: walker_dets, walker_population
+       use fciqmc_data, only: walker_dets
        use fciqmc_data, only: estimator_numerators, staggered_mag_index
        use system, only: nel, nsites
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
+       real(p) , intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer(i0) :: f(basis_length)
        integer :: n_up_plus
@@ -420,7 +445,7 @@ contains
        end if
 
        estimator_numerators(staggered_mag_index) = estimator_numerators(staggered_mag_index) + &
-                                  (real(total_sum)/real(nsites**2))*walker_population(1,idet)
+                                  (real(total_sum)/real(nsites**2))*walker_pop
 
    end subroutine dmqmc_stag_mag_heisenberg
 

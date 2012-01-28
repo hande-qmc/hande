@@ -246,6 +246,15 @@ integer :: energy_squared_index = 0
 integer :: correlation_index = 0
 integer :: staggered_mag_index = 0
 
+! If this logical is true then the program runs the DMQMC algorithm with
+! importance sampling.
+! dmqmc_sampling_prob stores the factor by which the probabilities of
+! spawning to a larger excitation are reduced by. So, when spawning from
+! a diagonal element to a element with one excitation, the probability
+! of spawning is reduced by a factor dmqmc_sampling_prob.
+logical :: dmqmc_weighted_sampling
+real(p) :: dmqmc_sampling_prob = 1.0_p
+
 ! If true, then the reduced density matrix will be calulated
 ! for the subsystem A specified by the user.
 logical :: doing_reduced_dm = .false.
