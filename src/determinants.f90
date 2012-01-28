@@ -139,6 +139,8 @@ end interface
 
 contains
 
+!--- Initialisation and finalisation of module-level variables ---
+
     subroutine init_determinants()
 
         ! Initialise determinant information: number of determinants, how
@@ -284,6 +286,8 @@ contains
 
     end subroutine end_determinants
 
+!--- Initialisation and finalisation of det_info objects ---
+
     subroutine alloc_det_info(det_info_t)
 
         ! Allocate the components of a det_info variable.
@@ -379,6 +383,8 @@ contains
         end select
 
     end subroutine set_spin_polarisation
+
+!--- Complete enumeration of determinant Hilbert space ---
 
     subroutine find_sym_space_size()
 
@@ -688,6 +694,8 @@ contains
 
     end subroutine enumerate_determinants
 
+!--- Encode determinant bit strings ---
+
     pure subroutine encode_det(occ_list, bit_list)
 
         ! In:
@@ -711,6 +719,8 @@ contains
         end do
 
     end subroutine encode_det
+
+!--- Decode determinant bit strings ---
 
     pure subroutine decode_det(f, occ_list)
 
@@ -957,6 +967,8 @@ contains
 
     end subroutine decode_det_occ_symunocc
 
+!--- Extract information from bit strings ---
+
     pure function det_momentum(occ_list) result(ksum)
 
         ! In:
@@ -974,6 +986,34 @@ contains
         end do
 
     end function det_momentum
+
+    pure function det_spin(f) result(Ms)
+
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Returns:
+        !    Ms: total spin of the determinant in units of electron spin (1/2).
+
+        use bit_utils, only: count_set_bits
+
+        integer :: Ms
+        integer(i0), intent(in) :: f(basis_length)
+        integer(i0) :: a, b
+        integer :: i
+
+        Ms = 0
+        do i = 1, basis_length
+            ! Find bit string of all alpha orbitals.
+            a = iand(f(i), alpha_mask)
+            ! Find bit string of all beta orbitals.
+            b = iand(f(i), beta_mask)
+            Ms = Ms + count_set_bits(a) - count_set_bits(b)
+        end do
+
+    end function det_spin
+
+!--- Manipulate/transform determinant bitstrings ---
 
     pure function det_invert_spin(f) result(f_inv)
 
@@ -1002,72 +1042,7 @@ contains
 
     end function det_invert_spin
 
-    subroutine write_det(f, iunit, new_line)
-
-        ! Write out a determinant as a list of occupied orbitals in the
-        ! Slater determinant.
-        ! In:
-        !    f(basis_length): bit string representation of the Slater
-        !        determinant.
-        !    iunit (optional): io unit to which the output is written.
-        !        Default: 6 (stdout).
-        !    new_line (optional): if true, then a new line is written at
-        !        the end of the list of occupied orbitals.  Default: no
-        !        new line.
-
-        use utils, only: int_fmt
-
-        integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in), optional :: iunit
-        logical, intent(in), optional :: new_line
-        integer :: occ_list(nel), io, i
-        character(4) :: fmt1
-
-        if (present(iunit)) then
-            io = iunit
-        else
-            io = 6
-        end if
-
-        call decode_det(f, occ_list)
-        fmt1 = int_fmt(nbasis,1)
-
-        write (io,'("|")', advance='no')
-        do i = 1, nel
-            write (io,'('//fmt1//')', advance='no') occ_list(i)
-        end do
-        write (io,'(1X,">")', advance='no')
-        if (present(new_line)) then
-            if (new_line) write (io,'()')
-        end if
-
-    end subroutine write_det
-
-    pure function det_spin(f) result(Ms)
-
-        ! In:
-        !    f(basis_length): bit string representation of the Slater
-        !        determinant.
-        ! Returns:
-        !    Ms: total spin of the determinant in units of electron spin (1/2).
-
-        use bit_utils, only: count_set_bits
-
-        integer :: Ms
-        integer(i0), intent(in) :: f(basis_length)
-        integer(i0) :: a, b
-        integer :: i
-
-        Ms = 0
-        do i = 1, basis_length
-            ! Find bit string of all alpha orbitals.
-            a = iand(f(i), alpha_mask)
-            ! Find bit string of all beta orbitals.
-            b = iand(f(i), beta_mask)
-            Ms = Ms + count_set_bits(a) - count_set_bits(b)
-        end do
-
-    end function det_spin
+!--- Comparison of determinants ---
 
     pure function det_gt(f1, f2) result(gt)
 
@@ -1132,5 +1107,48 @@ contains
         end do
 
     end function det_compare
+
+!--- Output ---
+
+    subroutine write_det(f, iunit, new_line)
+
+        ! Write out a determinant as a list of occupied orbitals in the
+        ! Slater determinant.
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        !    iunit (optional): io unit to which the output is written.
+        !        Default: 6 (stdout).
+        !    new_line (optional): if true, then a new line is written at
+        !        the end of the list of occupied orbitals.  Default: no
+        !        new line.
+
+        use utils, only: int_fmt
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in), optional :: iunit
+        logical, intent(in), optional :: new_line
+        integer :: occ_list(nel), io, i
+        character(4) :: fmt1
+
+        if (present(iunit)) then
+            io = iunit
+        else
+            io = 6
+        end if
+
+        call decode_det(f, occ_list)
+        fmt1 = int_fmt(nbasis,1)
+
+        write (io,'("|")', advance='no')
+        do i = 1, nel
+            write (io,'('//fmt1//')', advance='no') occ_list(i)
+        end do
+        write (io,'(1X,">")', advance='no')
+        if (present(new_line)) then
+            if (new_line) write (io,'()')
+        end if
+
+    end subroutine write_det
 
 end module determinants
