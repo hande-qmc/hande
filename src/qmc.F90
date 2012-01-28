@@ -561,12 +561,20 @@ contains
         ! a) initiator-approximation
         if (doing_calc(initiator_fciqmc)) then
             set_parent_flag_ptr => set_parent_flag
-            create_spawned_particle_ptr => create_spawned_particle_initiator
+            if (truncate_space) then
+                create_spawned_particle_ptr => create_spawned_particle_initiator_truncated
+            else
+                create_spawned_particle_ptr => create_spawned_particle_initiator
+            end if
             annihilate_main_list_ptr => annihilate_main_list_initiator
             annihilate_spawned_list_ptr => annihilate_spawned_list_initiator
         else
             set_parent_flag_ptr => set_parent_flag_dummy
-            create_spawned_particle_ptr => create_spawned_particle
+            if (truncate_space) then
+                create_spawned_particle_ptr => create_spawned_particle_truncated
+            else
+                create_spawned_particle_ptr => create_spawned_particle
+            end if
             annihilate_main_list_ptr => annihilate_main_list
             annihilate_spawned_list_ptr => annihilate_spawned_list
         end if
