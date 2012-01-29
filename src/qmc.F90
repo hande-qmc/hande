@@ -25,7 +25,7 @@ contains
         real(dp) :: hub_matel
 
         ! Initialise data
-        call init_fciqmc()
+        call init_qmc()
 
         ! Initialise procedure pointers
         call init_proc_pointers()
@@ -54,7 +54,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_fciqmc()
+    subroutine init_qmc()
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -436,7 +436,7 @@ contains
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
         end if
 
-    end subroutine init_fciqmc
+    end subroutine init_qmc
 
     subroutine init_proc_pointers()
 
