@@ -26,7 +26,7 @@ abstract interface
         implicit none
         integer, intent(in) :: idet
         type(excit), intent(in) :: excitation
-        real(p) :: walker_pop
+        real(p), intent(in) :: walker_pop
     end subroutine i_update_dmqmc_estimators
     subroutine i_spawner(d, parent_sign, nspawned, connection)
         import :: det_info, excit
