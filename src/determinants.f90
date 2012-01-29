@@ -1100,7 +1100,7 @@ contains
 
     end function det_gt
 
-    pure function det_compare(f1, f2) result(compare)
+    pure function det_compare(f1, f2, flength) result(compare)
 
         ! In:
         !    f1(total_basis_length): bit string representation of the Slater
@@ -1116,12 +1116,13 @@ contains
         !    corresponding element in f2;
 
         integer :: compare
-        integer(i0), intent(in) :: f1(total_basis_length), f2(total_basis_length)
+        integer, intent(in) :: flength
+        integer(i0), intent(in) :: f1(flength), f2(flength)
 
         integer :: i
 
         compare = 0
-        do i = 1, total_basis_length
+        do i = 1, flength
             if (f1(i) < f2(i)) then
                 compare = 1
                 exit

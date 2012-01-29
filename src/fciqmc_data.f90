@@ -255,6 +255,12 @@ integer :: staggered_mag_index = 0
 logical :: dmqmc_weighted_sampling
 real(p) :: dmqmc_sampling_prob = 1.0_p
 
+! If half_density_matrix is true then half the density matrix will be 
+! calculated by reflecting spawning onto the lower triangle into the
+! upper triangle. This is allowed because the density matrix is 
+! symmetric.
+logical :: half_density_matrix
+
 ! If true, then the reduced density matrix will be calulated
 ! for the subsystem A specified by the user.
 logical :: doing_reduced_dm = .false.
@@ -680,7 +686,7 @@ contains
                 ! search algorithm.
                 pos = (hi+lo)/2
 
-                compare = det_compare(walker_dets(:,pos), f)
+                compare = det_compare(walker_dets(:,pos), f, total_basis_length)
                 select case(compare)
                 case (0)
                     ! hit!
@@ -711,7 +717,7 @@ contains
             ! element which doesn't exist yet) the binary search can find either
             ! the element before or after where f should be placed.
             if (hi == lo) then
-                compare = det_compare(walker_dets(:,hi), f)
+                compare = det_compare(walker_dets(:,hi), f, total_basis_length)
                 select case(compare)
                 case (0)
                     ! hit!
