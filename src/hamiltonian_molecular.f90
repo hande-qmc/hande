@@ -3,9 +3,6 @@ module hamiltonian_molecular
 ! Module for evaluating Hamiltonian matrix elements for molecular systems (ie
 ! systems where the integrals have been read in from file).
 
-! TODO:
-! * optimise integral cache access.
-
 use const, only: p, i0
 
 implicit none
