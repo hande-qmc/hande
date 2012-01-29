@@ -70,7 +70,7 @@ contains
 
             ! Perform a Monte Carlo sampling of the space.
 
-            call set_reference_det()
+            call set_reference_det(occ_list0, .false.)
 
             ! Symmetry of the reference determinant.
             ref_sym = symmetry_orb_list(occ_list0)

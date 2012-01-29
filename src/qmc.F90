@@ -215,12 +215,14 @@ contains
             end if
             call read_restart()
         else
+
             ! Reference det
+
             ! Set the reference determinant to be the spin-orbitals with the lowest
-            ! kinetic energy which satisfy the spin polarisation.
+            ! single-particle eigenvalues which satisfy the spin polarisation.
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
-            call set_reference_det()
+            call set_reference_det(occ_list0, .false.)
 
             call encode_det(occ_list0, f0)
 
