@@ -17,7 +17,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
-        use system, only: nel, nsym, sym0, uhf
+        use system, only: nel, nsym, sym_max, sym0, uhf
         use determinants, only: enumerate_determinants, find_sym_space_size, &
                                 set_spin_polarisation
         use determinants, only: tot_ndets, ndets, sym_space_size
@@ -33,7 +33,7 @@ contains
             real(p) :: energy
         end type soln
 
-        integer :: ms, ms_min, ms_max, ierr, nlanczos, nexact, nfound, i, ind, state, isym, sym_min, sym_max
+        integer :: ms, ms_min, ms_max, ierr, nlanczos, nexact, nfound, i, ind, state, isym, isym_min, isym_max
 
         type(soln), allocatable :: lanczos_solns(:), exact_solns(:)
 
@@ -72,12 +72,12 @@ contains
         end if
 
         if (sym_in == huge(1)) then
-            sym_min = sym0
-            sym_max = nsym+(sym0-1)
+            isym_min = sym0
+            isym_max = sym_max
         else
             ! sym was set in input
-            sym_min = sym_in
-            sym_max = sym_in
+            isym_min = sym_in
+            isym_max = sym_in
         end if
 
         if (doing_calc(lanczos_diag)) then
@@ -102,7 +102,7 @@ contains
             call find_sym_space_size()
 
             ! Diagonalise each symmetry block in turn.
-            do isym = sym_min, sym_max
+            do isym = isym_min, isym_max
 
                 if (sym_space_size(isym)==0) then
                     if (parent) then

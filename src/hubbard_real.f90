@@ -78,7 +78,7 @@ contains
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
         use determinants, only: decode_det
-        use system, only: lattice, ndim, box_length, system_type, nsym, sym0
+        use system, only: lattice, ndim, box_length, system_type, nsym, sym0, sym_max
         use system, only: heisenberg, triangular_lattice
         use bit_utils
         use checking, only: check_allocate
@@ -96,6 +96,7 @@ contains
 
         nsym = 1
         sym0 = 1
+        sym_max = 1
 
         t_self_images = any(abs(box_length-1.0_p) < depsilon)
 

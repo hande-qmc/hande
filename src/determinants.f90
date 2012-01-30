@@ -308,7 +308,7 @@ contains
         call check_allocate('det_info_t%unocc_list_alpha',nvirt_alpha,ierr)
         allocate(det_info_t%unocc_list_beta(nvirt_beta), stat=ierr)
         call check_allocate('det_info_t%unocc_list_beta',nvirt_beta,ierr)
-        allocate(det_info_t%symunocc(2,sym0:nsym+(sym0-1)), stat=ierr)
+        allocate(det_info_t%symunocc(2,sym0:sym_max), stat=ierr)
         call check_allocate('det_info_t%symunocc',size(det_info_t%symunocc),ierr)
 
     end subroutine alloc_det_info
@@ -398,7 +398,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i, int_fmt
-        use system, only: nsym
+        use system, only: sym0, sym_max
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
 
@@ -415,7 +415,7 @@ contains
             deallocate(sym_space_size, stat=ierr)
             call check_deallocate('sym_space_size',ierr)
         end if
-        allocate(sym_space_size(sym0:nsym+(sym0-1)), stat=ierr)
+        allocate(sym_space_size(sym0:sym_max), stat=ierr)
         call check_allocate('sym_space_size',nsym,ierr)
 
         nbeta_combinations = binom_i(nbasis/2, nbeta)

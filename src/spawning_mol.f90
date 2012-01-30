@@ -422,7 +422,7 @@ contains
         !        (i,j).
 
         use basis, only: basis_length, basis_fns, bit_lookup, nbasis
-        use system, only: nel, sym0, nsym
+        use system, only: nel, sym0, sym_max
         use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns
 
         use dSFMT_interface, only: genrand_real2
@@ -441,7 +441,7 @@ contains
         allowed_excitation = .false.
         select case(spin)
         case(-2)
-            do isyma = sym0, nsym+(sym0-1)
+            do isyma = sym0, sym_max
                 isymb = cross_product_pg_sym(isyma, sym)
                 if ( symunocc(1,isyma) > 0 .and. &
                         ( symunocc(1,isymb) > 1 .or. &
@@ -459,7 +459,7 @@ contains
             shift = 0
             na = nbasis/2
         case(0)
-            do isyma = sym0, nsym+(sym0-1)
+            do isyma = sym0, sym_max
                 isymb = cross_product_pg_sym(isyma, sym)
                 if ( (symunocc(1,isyma) > 0 .and. symunocc(2,isymb) > 0) .or. &
                      (symunocc(2,isyma) > 0 .and. symunocc(1,isymb) > 0) ) then
@@ -475,7 +475,7 @@ contains
             shift = 0
             na = nbasis
         case(2)
-            do isyma = sym0, nsym+(sym0-1)
+            do isyma = sym0, sym_max
                 isymb = cross_product_pg_sym(isyma, sym)
                 if ( symunocc(2,isyma) > 0 .and. &
                         ( symunocc(2,isymb) > 1 .or. &
@@ -790,7 +790,7 @@ contains
 
         use basis, only: basis_fns
         use fciqmc_data, only: pattempt_double
-        use system, only: nel, nvirt, nvirt_alpha, nvirt_beta, sym0, nsym
+        use system, only: nel, nvirt, nvirt_alpha, nvirt_beta, sym0, sym_max
         use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym
 
         real(p) :: pgen
@@ -821,7 +821,7 @@ contains
         case(-2)
             ! # a.
             n_aij = nvirt_beta
-            do isyma = sym0, nsym+(sym0-1)
+            do isyma = sym0, sym_max
                 ! find corresponding isymb.
                 isymb = cross_product_pg_sym(isyma, ij_sym)
                 if (symunocc(1, isymb) == 0) then
@@ -842,7 +842,7 @@ contains
         case(0)
             ! # a.
             n_aij = nvirt
-            do isyma = sym0, nsym+(sym0-1)
+            do isyma = sym0, sym_max
                 ! find corresponding isymb.
                 isymb = cross_product_pg_sym(isyma, ij_sym)
                 if (symunocc(1, isymb) == 0) then
@@ -858,7 +858,7 @@ contains
         case(2)
             ! # a.
             n_aij = nvirt_alpha
-            do isyma = sym0, nsym+(sym0-1)
+            do isyma = sym0, sym_max
                 ! find corresponding isymb.
                 isymb = cross_product_pg_sym(isyma, ij_sym)
                 if (symunocc(2, isymb) == 0) then
