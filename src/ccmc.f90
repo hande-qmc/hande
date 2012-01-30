@@ -134,4 +134,13 @@ contains
 
     end subroutine do_ccmc
 
+    function select_cluster_size(max_excit_level) result(cluster_size)
+
+        integer :: cluster_size
+        integer, intent(in) :: max_excit_level
+
+        
+
+    end function select_cluster_size
+
 end module ccmc
