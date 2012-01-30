@@ -80,6 +80,7 @@ contains
         use hamiltonian, only: get_hmatel
         use fciqmc_common, only: find_single_double_prob
         use fciqmc_restart, only: read_restart
+        use reference_determinant, only: set_reference_det
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
         use system, only: trial_function, neel_singlet, single_basis
         use symmetry, only: symmetry_orb_list

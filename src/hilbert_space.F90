@@ -23,7 +23,8 @@ contains
         use const, only: dp
         use determinants, only: set_spin_polarisation
         use dSFMT_interface, only: genrand_real2
-        use fciqmc_data, only: occ_list0, set_reference_det
+        use fciqmc_data, only: occ_list0
+        use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
         use system
         use parallel
