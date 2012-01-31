@@ -650,6 +650,27 @@ contains
 
     end function det_spin
 
+    pure function spin_orb_list(orb_list) result(ms)
+
+        ! In:
+        !    orb_list: list of orbitals (e.g. determinant).
+        ! Returns:
+        !    Ms: total spin of the determinant in units of electron spin (1/2).
+
+        use basis, only: basis_fns
+
+        integer :: ms
+        integer, intent(in) :: orb_list(:)
+
+        integer :: i
+
+        ms = 0
+        do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
+            ms = ms + basis_fns(orb_list(i))%Ms
+        end do
+
+    end function spin_orb_list
+
 !--- Manipulate/transform determinant bitstrings ---
 
     pure function det_invert_spin(f) result(f_inv)
