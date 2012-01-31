@@ -112,7 +112,7 @@ contains
 
         integer :: i, j, iel, ierr
         integer :: nalpha_combinations, nbeta_combinations
-        integer :: sym_beta, sym
+        integer :: sym_beta, sym, Ms
         integer(i0) :: f_alpha, f_beta, f0(basis_length,sym0:sym_max), f(basis_length)
         integer, allocatable :: occ(:)
         integer :: k(ndim), k_beta(ndim)
@@ -240,10 +240,11 @@ contains
         end select
 
         if (parent) then
+            Ms = nalpha - nbeta
             write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
-            write (6,'(1X,a75,'//int_fmt(dets_Ms,0)//',a1,/)') &
+            write (6,'(1X,a75,'//int_fmt(Ms,0)//',a1,/)') &
                      'The table below gives the number of determinants for each symmetry with Ms=', &
-                     dets_Ms,"."
+                     Ms,"."
             write (6,'(1X,a14,6X,a6)') 'Symmetry index','# dets'
             do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
                 write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
@@ -434,8 +435,6 @@ contains
             end do
 
         end select
-
-        dets_sym = ref_sym
 
         if (write_determinants .and. parent) then
             fmt1 = int_fmt(ndets, padding=1)

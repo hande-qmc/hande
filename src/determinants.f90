@@ -64,13 +64,6 @@ logical :: separate_strings = .false.
 
 !--- Info for FCI calculations ---
 
-! Total spin of each Slater determinant stored in dets_list in units of electron spin (1/2).
-integer, target :: dets_Ms
-
-! Symmetry of the occupied orbitals in each Slater determinant stored
-! in det_list.
-integer, target :: dets_sym
-
 ! Only used in FCI calculations, where we can be certain that we have fewer
 ! determinants than 2**31-1 (ie no overflow).
 ! Whilst it's set (and frequently overflows) in FCIQMC calculations, we never
@@ -307,7 +300,6 @@ contains
 
         ! Set the spin polarisation information stored in module-level
         ! variables:
-        !    dets_Ms: spin of determinants that are being considered.
         !    nalpha, nbeta: number of alpha, beta electrons.
         !    nvirt_alpha, nvirt_beta: number of alpha, beta virtual spin-orbitals.
         ! In:
@@ -323,14 +315,11 @@ contains
 
             ! Spin polarization is different (see comments in system) as the
             ! Heisenberg model is a collection of spins rather than electrons.
-            dets_Ms = Ms
 
         case default
 
             ! Find the number of determinants with the required spin.
             if (abs(mod(Ms,2)) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
-
-            dets_Ms = Ms
 
             nbeta = (nel - Ms)/2
             nalpha = (nel + Ms)/2
