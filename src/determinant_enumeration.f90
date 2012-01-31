@@ -81,7 +81,7 @@ contains
 
 !--- Hilbert space enumeration ---
 
-    subroutine find_sym_space_size()
+    subroutine find_sym_space_size(occ_list0)
 
         ! Finds the number of Slater determinants that can be formed from the
         ! basis functions belonging to each symmetry.
@@ -97,6 +97,11 @@ contains
         ! for a Monte Carlo approach to estimating the size of the space (better
         ! for large systems where we can't do FCI).
 
+        ! In:
+        !    occ_list0(optional): list of occupied orbitals in a determinant.
+        !        if present and a truncated space is being used, then use this as
+        !        the reference determinant for the appropriate symmetry block.
+
         use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i, int_fmt
 
@@ -109,6 +114,8 @@ contains
         use ueg_system, only: ueg_basis_index
 
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string
+
+        integer, intent(in), optional :: occ_list0(nel)
 
         integer :: i, j, iel, ierr
         integer :: nalpha_combinations, nbeta_combinations
@@ -157,6 +164,10 @@ contains
                         call set_reference_det(occ, .true., sym)
                         call encode_det(occ, f0(:,sym))
                     end do
+                    if (present(occ_list0)) then
+                        sym = symmetry_orb_list(occ_list0)
+                        call encode_det(occ_list0, f0(:,sym))
+                    end if
                 end if
 
                 ! Determinants are assigned a given symmetry by the direct product
@@ -257,15 +268,20 @@ contains
 
     end subroutine find_sym_space_size
 
-    subroutine enumerate_determinants(ref_sym)
+    subroutine enumerate_determinants(ref_sym, occ_list0)
 
         ! Find the Slater determinants that can be formed from the
         ! basis functions.  The list of determinants is stored in the
         ! module level dets_list array.
+
         ! find_sym_space_size must be called first for each value of Ms.
+
         ! In:
-        !   ref_sym: index of an irreducible representation.  Only determinants
-        !   with the same symmetry  are stored.
+        !    ref_sym: index of an irreducible representation.  Only determinants
+        !        with the same symmetry  are stored.
+        !    occ_list0(optional): list of occupied orbitals in a determinant.
+        !        if present and a truncated space is being used, then use this as
+        !        the reference determinant.
 
         use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i
@@ -280,6 +296,7 @@ contains
         use ueg_system, only: ueg_basis_index
 
         integer, intent(in) :: ref_sym
+        integer, intent(in), optional :: occ_list0(nel)
 
         integer :: i, j, iel, idet, ierr
         integer :: nalpha_combinations, nbeta_combinations
@@ -307,7 +324,11 @@ contains
 
         ! Find reference det if required.
         if (truncate_space) then
-            call set_reference_det(occ, .true., ref_sym)
+            if (present(occ_list0)) then
+                occ = occ_list0
+            else
+                call set_reference_det(occ, .true., ref_sym)
+            end if
             call encode_det(occ, f0)
         end if
 

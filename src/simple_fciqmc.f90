@@ -41,10 +41,19 @@ contains
 
         ! Find and set information about the space.
         call set_spin_polarisation(ms_in)
-        call find_sym_space_size()
+        if (allocated(occ_list0)) then
+            call find_sym_space_size(occ_list0)
+        else
+            call find_sym_space_size()
+        end if
 
         ! Find all determinants with desired spin and symmetry.
-        call enumerate_determinants(sym_in)
+        if (allocated(occ_list0)) then
+            call enumerate_determinants(sym_in, occ_list0)
+        else
+            call enumerate_determinants(sym_in)
+        end if
+
 
         ! Set up hamiltonian matrix.
         call generate_hamil(distribute_off)
