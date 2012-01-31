@@ -18,9 +18,9 @@ contains
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use system, only: nel, nsym, sym_max, sym0, uhf
-        use determinants, only: enumerate_determinants, find_sym_space_size, &
-                                set_spin_polarisation
-        use determinants, only: tot_ndets, ndets, sym_space_size
+        use determinant_enumeration, only: enumerate_determinants, find_sym_space_size
+                                
+        use determinants, only: tot_ndets, ndets, sym_space_size, set_spin_polarisation
         use lanczos
         use full_diagonalisation
         use hamiltonian, only: get_hmatel_dets

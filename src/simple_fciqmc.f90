@@ -33,6 +33,7 @@ contains
         use checking, only: check_allocate
         use utils, only: int_fmt
 
+        use determinant_enumeration
         use diagonalisation, only: generate_hamil
         use fciqmc_restart, only: read_restart
 
