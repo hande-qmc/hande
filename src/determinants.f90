@@ -64,20 +64,6 @@ logical :: separate_strings = .false.
 
 !--- Info for FCI calculations ---
 
-! Store of determinant information.
-! This will quickly become a memory issue, but for dealing with the FCI of small
-! systems it is ok.
-
-! Rather than creating an array of derived types containing information about
-! each determinant, which leads to a serious memory overhead due to the need for
-! pointers/allocatable arrays in the derived type, we instead create 3 separate
-! variables.
-
-! Bit list of the Slater determinant.  See note for f in det type.
-! We only store determinants of the same Ms and (for momentum space
-! calculations) same ksum at a time.
-integer(i0), allocatable, target :: dets_list(:,:) ! (basis_length,ndets)
-
 ! Total spin of each Slater determinant stored in dets_list in units of electron spin (1/2).
 integer, target :: dets_Ms
 
@@ -85,12 +71,6 @@ integer, target :: dets_Ms
 ! in det_list.
 integer, target :: dets_sym
 
-! Number of determinants stored in dets.
-! This is the number of determinants enumerated in enumerate_determinants with
-! the desired spin and momentum symmetry.
-integer :: ndets
-
-! Total (exact) size of determinant space.
 ! Only used in FCI calculations, where we can be certain that we have fewer
 ! determinants than 2**31-1 (ie no overflow).
 ! Whilst it's set (and frequently overflows) in FCIQMC calculations, we never
@@ -98,14 +78,6 @@ integer :: ndets
 ! estimate estimate (or, in real-space systems, exact to a certain precision)
 ! for the size of the Hilbert space for a given symmetry which avoids overflows.
 integer :: tot_ndets
-
-! Number of determinants of each symmetry.
-integer, allocatable :: sym_space_size(:) ! (nsym)
-
-! If true then the determinant list is written to determinant_file.
-logical :: write_determinants = .false.
-character(255) :: determinant_file = 'DETS'
-integer :: det_unit
 
 ! --- FCIQMC info ---
 
@@ -251,11 +223,6 @@ contains
             end do
         end if
 
-        if (write_determinants) then
-            det_unit = get_free_unit()
-            open(det_unit, file=determinant_file, status='unknown')
-        end if
-
     end subroutine init_determinants
 
     subroutine end_determinants()
@@ -266,23 +233,14 @@ contains
 
         integer :: ierr
 
-        if (allocated(dets_list)) then
-            deallocate(dets_list, stat=ierr)
-            call check_deallocate('dets_list',ierr)
-        end if
         deallocate(bit_lookup, stat=ierr)
         call check_deallocate('bit_lookup',ierr)
         deallocate(basis_lookup, stat=ierr)
         call check_deallocate('basis_lookup',ierr)
-        if (allocated(sym_space_size)) then
-            deallocate(sym_space_size, stat=ierr)
-            call check_deallocate('sym_space_size',ierr)
-        end if
         if (allocated(lattice_mask)) then
             deallocate(lattice_mask, stat=ierr)
             call check_deallocate('lattice_mask',ierr)
         end if
-        if (write_determinants) close(det_unit, status='keep')
 
     end subroutine end_determinants
 

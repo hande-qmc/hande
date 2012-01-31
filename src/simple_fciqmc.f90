@@ -7,14 +7,11 @@ module simple_fciqmc
 ! Nonetheless, it is useful for debugging and having a simple algorithm which
 ! definitely works...
 
-! Based on GHB's ModelFCIQMC code.
-
 use const
 use dSFMT_interface
 use errors
 
 use calc
-use determinants
 use fciqmc_data
 
 implicit none
@@ -123,6 +120,7 @@ contains
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
+        use determinant_enumeration, only: ndets
         use fciqmc_restart, only: dump_restart
         use energy_evaluation, only: update_shift
 
@@ -223,6 +221,8 @@ contains
         ! only gets one opportunity per FCIQMC cycle to spawn.
         ! In:
         !    iwalker: walker whose particles attempt to clone/die.
+
+        use determinant_enumeration, only: ndets
 
         integer, intent(in) :: iwalker
 

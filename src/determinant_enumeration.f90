@@ -1,13 +1,85 @@
 module determinant_enumeration
 
+! Module for complete enumeration of determinant Hilbert space.
+! Used only in FCI and simple_fciqmc calculations.
+! Rather a memory hog! ;-)
+
 use const
 use determinants
 
 implicit none
 
+!--- Info for FCI calculations ---
+
+! Store of determinant information.
+! This will quickly become a memory issue, but for dealing with the FCI of small
+! systems it is ok.
+
+! Rather than creating an array of derived types containing information about
+! each determinant, which leads to a serious memory overhead due to the need for
+! pointers/allocatable arrays in the derived type, we instead create 3 separate
+! variables.
+
+! Bit list of the Slater determinant.  See note for f in determinants module.
+! We only store determinants of the same Ms and (for momentum space
+! calculations) same ksum at a time.
+integer(i0), allocatable :: dets_list(:,:) ! (basis_length,ndets)
+
+! Number of determinants stored in dets.
+! This is the number of determinants enumerated in enumerate_determinants with
+! the desired spin and momentum symmetry.
+integer :: ndets
+
+! Total (exact) size of determinant space.
+! Number of determinants of each symmetry.
+integer, allocatable :: sym_space_size(:) ! (nsym)
+
+! If true then the determinant list is written to determinant_file.
+logical :: write_determinants = .false.
+character(255) :: determinant_file = 'DETS'
+integer :: det_unit
+
 contains
 
-!--- Complete enumeration of determinant Hilbert space ---
+!--- Initialisation and finalisation ---
+
+    subroutine init_determinant_enumeration()
+
+        ! Initialise determinant enumeration info,
+        ! Note that memory allocation is done in the determinant enumeration
+        ! routines.
+
+        use utils, only: get_free_unit
+
+        if (write_determinants) then
+            det_unit = get_free_unit()
+            open(det_unit, file=determinant_file, status='unknown')
+        end if
+
+    end subroutine init_determinant_enumeration
+
+    subroutine end_determinant_enumeration()
+
+        ! Clean up.
+
+        use checking, only: check_deallocate
+
+        integer :: ierr
+
+        if (allocated(dets_list)) then
+            deallocate(dets_list, stat=ierr)
+            call check_deallocate('dets_list',ierr)
+        end if
+        if (allocated(sym_space_size)) then
+            deallocate(sym_space_size, stat=ierr)
+            call check_deallocate('sym_space_size',ierr)
+        end if
+
+        if (write_determinants) close(det_unit, status='keep')
+
+    end subroutine end_determinant_enumeration
+
+!--- Hilbert space enumeration ---
 
     subroutine find_sym_space_size()
 

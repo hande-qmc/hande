@@ -24,6 +24,7 @@ contains
         use system, only: init_system, system_type, hub_real, hub_k, heisenberg, ueg, momentum_space, read_in, cas
         use basis, only: init_model_basis_fns
         use determinants, only: init_determinants
+        use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
         use hubbard_real, only: init_real_space
@@ -60,6 +61,7 @@ contains
         end if
 
         call init_determinants()
+        call init_determinant_enumeration()
 
         call init_excitations()
 
@@ -126,6 +128,7 @@ contains
         use system, only: end_system
         use basis, only: end_basis_fns
         use determinants, only: end_determinants
+        use determinant_enumeration, only: end_determinant_enumeration
         use excitations, only: end_excitations
         use diagonalisation, only: end_hamil
         use fciqmc_data, only: end_fciqmc
@@ -145,6 +148,7 @@ contains
         call end_basis_fns()
         call end_momentum_symmetry()
         call end_determinants()
+        call end_determinant_enumeration()
         call end_excitations()
         call end_hamil()
         call end_real_space()

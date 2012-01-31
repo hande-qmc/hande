@@ -20,7 +20,8 @@ contains
         use system, only: nel, nsym, sym_max, sym0, uhf
         use determinant_enumeration, only: enumerate_determinants, find_sym_space_size
                                 
-        use determinants, only: tot_ndets, ndets, sym_space_size, set_spin_polarisation
+        use determinants, only: tot_ndets, set_spin_polarisation
+        use determinant_enumeration, only: ndets, sym_space_size
         use lanczos
         use full_diagonalisation
         use hamiltonian, only: get_hmatel_dets
@@ -261,7 +262,7 @@ contains
 
         use hamiltonian, only: get_hmatel_dets
         use hubbard_real
-        use determinants, only: ndets
+        use determinant_enumeration, only: ndets
 
         integer, intent(in), optional :: distribute_mode
         integer :: ierr, iunit, n1, n2, ind_offset

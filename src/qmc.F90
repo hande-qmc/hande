@@ -451,6 +451,7 @@ contains
         ! Procedures to be pointed to.
         use annihilation
         use death, only: stochastic_death
+        use determinants
         use dmqmc_estimators
         use dmqmc_procedures
         use energy_evaluation

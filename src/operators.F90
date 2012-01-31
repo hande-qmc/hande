@@ -42,7 +42,7 @@ contains
         use const, only: i0, p
         use basis, only: nbasis, basis_fns, basis_length, set_orb_mask
         use calc, only: proc_blacs_info, distribute, distribute_off
-        use determinants, only: dets_list, ndets
+        use determinant_enumeration, only: dets_list, ndets
         use parallel
 
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
@@ -114,7 +114,7 @@ contains
         use const, only: i0, p
         use basis, only: nbasis, basis_fns, basis_length, set_orb_mask
         use calc, only: proc_blacs_info, distribute, distribute_off
-        use determinants, only: dets_list, ndets
+        use determinant_enumeration, only: dets_list, ndets
 
         use checking, only: check_allocate, check_deallocate
         use parallel

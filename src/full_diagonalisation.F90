@@ -23,7 +23,7 @@ contains
         use parallel, only: parent, nprocs
 
         use calc
-        use determinants, only: ndets
+        use determinant_enumeration, only: ndets
 
         use operators
 
