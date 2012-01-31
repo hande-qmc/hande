@@ -13,7 +13,7 @@ contains
 
 !--- Attempt to find a reasonable reference determinant ---
 
-    subroutine set_reference_det(occ_list, override_input)
+    subroutine set_reference_det(occ_list, override_input, ref_sym)
 
         ! Set the list of occupied orbitals in the reference determinant to be
         ! the spin-orbitals with the lowest kinetic energy which satisfy the
@@ -28,26 +28,37 @@ contains
         ! definition of 'best' is system dependent (see code below).
 
         ! In/Out:
-        !   occ_list: allocatable integer array.  Contains the reference
-        !   determinant (nel elements) on output.  Unchanged if already
-        !   allocated unless override_input is set.
+        !   occ_list: allocatable integer array.  Contains a 'best guess' at
+        !       a suitable reference determinant (nel elements; list of occupied
+        !       orbitals in determinant) on output.  Note that this is not ordered.
+        !       Unchanged if already allocated unless override_input is set.
         ! In:
         !   override_input: if true, overwrite occ_list with the best guess of
-        !   a reference determinant even if occ_list is allocated on input.
+        !       a reference determinant even if occ_list is allocated on input.
+        !   ref_sym (optional): if supplied, attempt to find the reference
+        !       determinant with the lowest sum of single-particle energies with
+        !       this symmetry index.  Ignored if less than sym0 or greater than
+        !       sym_max.
 
+        use const, only: i0, p
         use checking, only: check_allocate
-
         use errors, only: stop_all
-        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, ueg, nsites, &
-                          heisenberg, J_coupling
-        use basis, only: bit_lookup
+
+        use basis, only: bit_lookup, basis_fns, nbasis, basis_length
+        use determinants, only: encode_det
         use hubbard_real, only: connected_orbs
+        use symmetry, only: symmetry_orb_list
+        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, ueg, nsites, &
+                          heisenberg, J_coupling, sym0, sym_max
 
         integer, intent(inout), allocatable :: occ_list(:)
         logical, intent(in) :: override_input
+        integer, intent(in), optional :: ref_sym
 
-        integer :: i, j, ierr, spins_set, connections
-        integer :: bit_element, bit_pos
+        integer :: i, j, ierr, spins_set, connections, iel, icore, jcore, ivirt, jvirt
+        integer :: bit_element, bit_pos, tmp_occ_list(nel), curr_occ_list(nel), sym
+        integer(i0) :: f(basis_length)
+        real(p) :: eigv_sum, sp_eigv_sum
         logical :: set
 
         ! Leave the reference determinant unchanged if it's already been
@@ -84,6 +95,87 @@ contains
                 ! Occupy the Fermi sphere/HF det.
                 forall (i=1:nalpha) occ_list(i) = 2*i-1
                 forall (i=1:nbeta) occ_list(i+nalpha) = 2*i
+
+                ! Symmetry only implemented for these systems.  Do we need
+                ! to find a determinant of different symmetry?
+                ! This needs only be called for initialisation, so don't attempt
+                ! to be clever and efficient...
+                if (present(ref_sym)) then
+                    if (ref_sym >= sym0 .and. ref_sym <= sym_max) then
+                        call encode_det(occ_list, f)
+                        ! If occ_list is already of the correct symmetry, then
+                        ! have nothing to do.
+                        sym = symmetry_orb_list(occ_list)
+                        if (sym /= ref_sym) then
+
+                            ! Consider single excitations of our current
+                            ! reference determinant, conserving only spin.
+                            eigv_sum = huge(0.0_p)
+                            do icore = 1, nel
+                                i = occ_list(icore)
+                                do ivirt = 1, nbasis
+                                    ! Ensure ivirt is not already in the
+                                    ! determinant.
+                                    if (.not.btest(f(bit_lookup(2,ivirt)), bit_lookup(1,ivirt)) .and. &
+                                            basis_fns(i)%Ms == basis_fns(ivirt)%Ms) then
+                                        tmp_occ_list = occ_list
+                                        tmp_occ_list(icore) = ivirt
+                                        if (symmetry_orb_list(tmp_occ_list) == ref_sym) then
+                                            sp_eigv_sum = 0.0_p
+                                            do iel = 1, nel
+                                                sp_eigv_sum = sp_eigv_sum + basis_fns(tmp_occ_list(iel))%sp_eigv
+                                            end do
+                                            if (sp_eigv_sum < eigv_sum) then
+                                                curr_occ_list = tmp_occ_list
+                                                eigv_sum = sp_eigv_sum
+                                            end if
+                                        end if
+                                    end if
+                                end do
+                            end do
+
+                            ! Consider double excitations of our current
+                            ! reference determinant, conserving only spin.
+                            do icore = 1, nel
+                                i = occ_list(icore)
+                                do jcore = icore+1, nel
+                                    j = occ_list(jcore)
+                                    do ivirt = 1, nbasis
+                                        if (.not.btest(f(bit_lookup(2,ivirt)), bit_lookup(1,ivirt))) then
+                                            do jvirt = ivirt+1, nbasis
+                                                if (.not.btest(f(bit_lookup(2,jvirt)), bit_lookup(1,jvirt)) .and. &
+                                                        (basis_fns(i)%Ms + basis_fns(j)%Ms) == &
+                                                        (basis_fns(ivirt)%Ms + basis_fns(jvirt)%Ms) ) then
+                                                    tmp_occ_list = occ_list
+                                                    tmp_occ_list(icore) = ivirt
+                                                    tmp_occ_list(jcore) = jvirt
+                                                    if (symmetry_orb_list(tmp_occ_list) == ref_sym) then
+                                                        sp_eigv_sum = 0.0_p
+                                                        do iel = 1, nel
+                                                            sp_eigv_sum = sp_eigv_sum + &
+                                                                basis_fns(tmp_occ_list(iel))%sp_eigv
+                                                        end do
+                                                        if (sp_eigv_sum < eigv_sum) then
+                                                            curr_occ_list = tmp_occ_list
+                                                            eigv_sum = sp_eigv_sum
+                                                        end if
+                                                    end if
+                                                end if
+                                            end do
+                                        end if
+                                    end do
+                                end do
+                            end do
+
+                            occ_list = curr_occ_list
+                            if (eigv_sum == huge(0.0_p)) then
+                                call stop_all('set_reference_det', &
+                                    'Could not find determinant of required symmetry.')
+                            end if
+
+                        end if
+                    end if
+                end if
             case(hub_real)
                 ! Attempt to keep electrons on different sites where possible.
                 ! Sites 1, 3, 5, ... (occupy every other alpha orbital first, ie
@@ -157,6 +249,5 @@ contains
         end if
 
     end subroutine set_reference_det
-
 
 end module reference_determinant
