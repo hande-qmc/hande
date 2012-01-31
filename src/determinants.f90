@@ -444,11 +444,13 @@ contains
 
         case default
 
-            ! Determinants are assigned a given symmetry by the sum of the
-            ! wavevectors of the occupied basis functions.  This is because only
-            ! doubly excitations are connected and D and D_{ij}^{ab} are only
-            ! connected if k_i + k_j - k_a - k_b is a reciprocal lattice vector.
-            ! Thus we can regard the sum of the wavevectors of the occupied
+            ! Determinants are assigned a given symmetry by the direct product
+            ! of the representations spanned by the occupied orbitals.  For
+            ! momentum space systems this amounts to the sum of the wavevectors
+            ! of the occupied basis functions.  This is because only doubly
+            ! excitations are connected and D and D_{ij}^{ab} are only connected
+            ! if k_i + k_j - k_a - k_b is a reciprocal lattice vector.  Thus we
+            ! can regard the sum of the wavevectors of the occupied
             ! spin-orbitals as a symmetry label.
 
             sym_space_size = 0
