@@ -65,7 +65,6 @@ contains
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs, parent
-        use proc_pointers
         use utils, only: int_fmt
 
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
@@ -511,7 +510,8 @@ contains
             case (neel_singlet)
                 update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
             end select
-            ! Set whether the staggered magnetisation is to be calculated.
+
+            ! Set whether the applied staggered magnetisation is non-zero.
             if (abs(staggered_magnetic_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
             else
@@ -539,15 +539,14 @@ contains
 
         case(read_in)
 
+            spawner_ptr => spawn
             update_proj_energy_ptr => update_proj_energy_mol
             sc0_ptr => slater_condon0_mol
 
             if (no_renorm) then
-                spawner_ptr => spawn_mol_no_renorm
                 gen_excit_ptr => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             else
-                spawner_ptr => spawn_mol
                 gen_excit_ptr => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
             end if

@@ -24,6 +24,45 @@ implicit none
 
 contains
 
+!--- Spawning wrappers ---
+
+    subroutine spawn(cdet, parent_sign, nspawn, connection)
+
+        ! Attempt to spawn a new particle on a connected determinant.
+
+        ! This is just a thin wrapper around s system-specific excitation
+        ! generator and a utility function.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use determinants, only: det_info
+        use excitations, only: excit
+        use proc_pointers, only: gen_excit_ptr
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
+
+        real(p) :: pgen, hmatel
+
+        ! 1. Generate random excitation.
+        call gen_excit_ptr(cdet, pgen, connection, hmatel)
+
+        ! 2. Attempt spawning.
+        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
+
+    end subroutine spawn
+
 !--- Attempt spawning based upon random excitation ---
 
     function attempt_to_spawn(hmatel, pgen, parent_sign) result(nspawn)
