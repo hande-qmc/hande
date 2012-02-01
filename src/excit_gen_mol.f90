@@ -1,7 +1,9 @@
-module spawning_mol_system
+module excit_gen_mol
 
-! Module for spawning routine(s) related to the molecular system (ie one read in
-! from an FCIDUMP file).
+! Module for random excitation generators and related routines for the molecular
+! system (ie one read in from an FCIDUMP file).
+
+! See top-level comments in spawning about the overall aim of the spawning step.
 
 use const, only: i0, p
 
@@ -999,4 +1001,4 @@ contains
 
     end function calc_pgen_double_mol_no_renorm
 
-end module spawning_mol_system
+end module excit_gen_mol

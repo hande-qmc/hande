@@ -452,13 +452,15 @@ contains
         use dmqmc_estimators
         use dmqmc_procedures
         use energy_evaluation
+        use excit_gen_mol
+        use excit_gen_hub_k
+        use excit_gen_real_lattice
         use folded_spectrum_utils, only: fs_spawner, fs_stochastic_death
         use hamiltonian
         use hamiltonian_molecular, only: slater_condon0_mol
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
         use spawning
-        use spawning_mol_system
 
         ! Procedure pointers
         use proc_pointers
