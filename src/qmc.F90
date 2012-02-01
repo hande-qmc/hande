@@ -495,7 +495,7 @@ contains
             if (no_renorm) then
                 spawner_ptr => spawn_hub_real_no_renorm
             else
-                spawner_ptr => spawn_hub_real
+                spawner_ptr => spawn
                 gen_excit_ptr => gen_excit_hub_real
             end if
 
@@ -522,7 +522,7 @@ contains
             if (no_renorm) then
                 select case(guiding_function)
                 case (no_guiding)
-                    spawner_ptr => spawn_heisenberg_no_renorm
+                    spawner_ptr => spawn
                     gen_excit_ptr => gen_excit_heisenberg_no_renorm
                 case (neel_singlet_guiding)
                     spawner_ptr => spawn_heisenberg_importance_sampling_no_renorm
@@ -530,7 +530,7 @@ contains
             else
                 select case(guiding_function)
                 case (no_guiding)
-                    spawner_ptr => spawn_heisenberg
+                    spawner_ptr => spawn
                     gen_excit_ptr => gen_excit_heisenberg
                 case (neel_singlet_guiding)
                     spawner_ptr => spawn_heisenberg_importance_sampling

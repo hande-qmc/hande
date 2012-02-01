@@ -15,43 +15,6 @@ contains
 
 !---- Top level spawning routines ---
 
-    subroutine spawn_hub_real(cdet, parent_sign, nspawn, connection)
-
-        ! Attempt to spawn a new particle on a connected determinant for the
-        ! real space formulation of the Hubbard model.
-        !
-        ! In:
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are spawned.
-
-        use determinants, only: det_info
-        use excitations, only: excit
-        use fciqmc_data, only: tau
-        use spawning, only: attempt_to_spawn
-
-        type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn
-        type(excit), intent(out) :: connection
-
-        real(p) :: pgen, hmatel
-
-        ! 1. Generate random excitation from cdet as well as both the probability
-        ! of spawning there and the connecting matrix element.
-        call gen_excit_hub_real(cdet, pgen, connection, hmatel)
-
-        ! 2. Attempt to spawn child.
-        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
-
-    end subroutine spawn_hub_real
-
     subroutine spawn_hub_real_no_renorm(cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant for the
@@ -130,41 +93,6 @@ contains
 
     end subroutine spawn_hub_real_no_renorm
 
-    subroutine spawn_heisenberg(cdet, parent_sign, nspawn, connection)
-
-        ! Attempt to spawn a new psip on a connected determinant for the
-        ! Heisenberg model
-        !
-        ! In:
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are spawned.
-
-        use determinants, only: det_info
-        use excitations, only: excit
-        use spawning, only: attempt_to_spawn
-
-        type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn
-        type(excit), intent(out) :: connection
-
-        real(p) :: pgen, hmatel
-
-        ! 1. Generate a random excitation
-        call gen_excit_heisenberg(cdet, pgen, connection, hmatel)
-
-        ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
-
-    end subroutine spawn_heisenberg
-
     subroutine spawn_heisenberg_importance_sampling(cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new psip on a connected determinant for the
@@ -208,58 +136,6 @@ contains
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
     end subroutine spawn_heisenberg_importance_sampling
-
-    subroutine spawn_heisenberg_no_renorm(cdet, parent_sign, nspawn, connection)
-
-        ! Attempt to spawn a new psip on a connected determinant for the
-        ! Heisenberg model
-        !
-        ! This uses excitation generators which, having selected the spin-up
-        ! site (i), select any site (a) connected to i to exchange spins with i.
-        ! As a might be already spin-up, this is somewhat wasteful (generating
-        ! excitations which can't be performed), there is a balance between the
-        ! cost of generating forbidden excitations and the O(N) cost of
-        ! renormalising the generation probabilities.
-        !
-        ! In:
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are spawned.
-
-        use determinants, only: det_info
-        use excitations, only: excit
-        use system, only: J_coupling
-        use spawning, only: attempt_to_spawn
-
-        type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn
-        type(excit), intent(out) :: connection
-
-        real(p) :: pgen, hmatel
-
-        ! 1. Generate a random excitation
-        call gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
-
-        ! 2. Attempt spawning if excitation is allowed.
-        if (abs(hmatel) > depsilon) then
-
-            nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
-
-        else
-
-            ! Generated a forbidden excitation (ie selected 2 spin up sites).
-            nspawn = 0
-
-        end if
-
-    end subroutine spawn_heisenberg_no_renorm
 
     subroutine spawn_heisenberg_importance_sampling_no_renorm(cdet, parent_sign, nspawn, connection)
 
