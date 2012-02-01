@@ -1,0 +1,30 @@
+read INTDUMP
+nel 10
+
+fci
+
+(   SCF calculation produced by Q-Chem using:   )
+#
+#    $molecule
+#    0 1
+#    O
+#    H1 O distance
+#    H2 O distance H1 theta
+#
+#    distance = 0.975512
+#    theta = 110.565
+#    $end
+#
+#    $rem
+#    basis sto-2g
+#    exchange hf
+#    correlation idump
+#    scf_convergence 14
+#    thresh 16
+#    jobtype sp
+#    iprint 20000011
+#    geom_opt_coords 0
+#    print_orbitals 999
+#    unrestricted false
+#    use_abelian_subgroup true
+#    $end

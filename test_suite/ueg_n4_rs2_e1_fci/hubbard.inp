@@ -1,0 +1,9 @@
+ueg
+3d
+nel 4
+rs 2
+ecutoff 1
+fci
+sym 1
+ms 0
+hamil hamil.hfq
