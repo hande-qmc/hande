@@ -202,7 +202,11 @@ contains
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             case('DMQMC_WEIGHTED_SAMPLING')
-                call readf(dmqmc_sampling_prob)
+                allocate(dmqmc_sampling_probs(nitems-1), stat=ierr)
+                call check_allocate('dmqmc_sampling_probs',nitems-1,ierr)
+                do i = 1, nitems-1
+                    call readf(dmqmc_sampling_probs(i))
+                end do
                 dmqmc_weighted_sampling = .true.
             ! Calculate a reduced density matrix
             case('REDUCED_DENSITY_MATRIX')
@@ -593,13 +597,24 @@ contains
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dmqmc_sampling_prob, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        option_set = .false.
+        if (parent) option_set = allocated(dmqmc_sampling_probs)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            occ_list_size = size(dmqmc_sampling_probs)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(dmqmc_sampling_probs(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_sampling_probs',occ_list_size,ierr)
+            end if
+            call mpi_bcast(dmqmc_sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
+        end if
         option_set = .false.
         if (parent) option_set = allocated(subsystem_A_list)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             occ_list_size = size(subsystem_A_list)
-            call mpi_bcast(subsystem_A_list, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
                 allocate(subsystem_A_list(occ_list_size), stat=ierr)
                 call check_allocate('subsystem_A_list',occ_list_size,ierr)

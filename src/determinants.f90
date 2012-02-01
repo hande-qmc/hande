@@ -1116,8 +1116,8 @@ contains
         !    corresponding element in f2;
 
         integer :: compare
-        integer(i0), intent(in) :: f1(flength), f2(flength)
         integer, intent(in) :: flength
+        integer(i0), intent(in) :: f1(flength), f2(flength)
 
         integer :: i
 

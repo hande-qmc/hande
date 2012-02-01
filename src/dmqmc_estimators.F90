@@ -91,7 +91,7 @@ contains
        use calc, only: dmqmc_energy_squared, dmqmc_correlation
        use excitations, only: get_excitation, excit
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
-       use fciqmc_data, only: dmqmc_sampling_prob
+       use fciqmc_data, only: dmqmc_accumulated_probs
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
 
@@ -110,7 +110,7 @@ contains
        
        ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet)
        ! and so this change can be ignored.
-       unweighted_walker_pop = walker_population(1,idet)*(dmqmc_sampling_prob**(excitation%nexcit))
+       unweighted_walker_pop = walker_population(1,idet)*dmqmc_accumulated_probs(excitation%nexcit)
 
        ! If diagonal element, add to the trace.
        if (excitation%nexcit == 0) trace = trace + walker_population(1,idet)
