@@ -80,6 +80,12 @@ abstract interface
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawned, spawning_end
     end subroutine i_create_spawned_particle_dm
+    subroutine i_trial_fn(cdet, connection, hmatel)
+        import :: det_info, excit, p
+        type(det_info), intent(in) :: cdet
+        type(excit), intent(in) :: connection
+        real(p) :: hmatel
+    end subroutine i_trial_fn
 
     ! generic procedures...
     subroutine i_sub()
@@ -103,5 +109,6 @@ procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
+procedure(i_trial_fn), pointer :: trial_fn_ptr => null()
 
 end module proc_pointers
