@@ -184,10 +184,9 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use basis, only: bit_lookup, basis_length
-        use determinants, only: det_info, lattice_mask
+        use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: neel_singlet_amp, sampling_size
+        use importance_sampling, only: neel_trial_state
         use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
@@ -196,8 +195,6 @@ contains
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, hmatel
-        integer :: up_spins_to, up_spins_from
-        integer :: bit_position, bit_element
 
         ! 1. Generate a random excitation.
         call gen_excit_heisenberg(cdet, pgen, connection, hmatel)
@@ -205,25 +202,7 @@ contains
         ! 2. When using a trial function |psi_T> = \sum{i} a_i|D_i>, the Hamiltonian
         ! used in importance sampling is H_ji^T = a_j * H_ji * (1/a_i), so we
         ! need to adjust hmatel returned by gen_excit_heisenberg accordingly.
-
-        ! Find the number of up spins on sublattice 1.
-        up_spins_from = nint(cdet%data(sampling_size+1))
-        ! For the spin up which was flipped to create the connected
-        ! basis function, find whether this spin was on sublattice 1 or 2.
-        ! If it was on sublattice 1, the basis function we go to has 1 less
-        ! up spin on sublattice 1, else it will have one more spin up here.
-        bit_position = bit_lookup(1,connection%from_orb(1))
-        bit_element = bit_lookup(2,connection%from_orb(1))
-        if (btest(lattice_mask(bit_element), bit_position)) then
-            up_spins_to = up_spins_from-1
-        else
-            up_spins_to = up_spins_from+1
-        end if
-
-        ! For a given number of spins up on sublattice 1, n, the corresponding
-        ! ampltidue of this basis function in the trial function is stored as
-        ! neel_singlet_amp(n), for this particular trial function. Hence we have:
-        hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
+        call neel_trial_state(cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
@@ -307,10 +286,9 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use basis, only: bit_lookup, basis_length
-        use determinants, only: det_info, lattice_mask
+        use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: neel_singlet_amp, sampling_size
+        use importance_sampling, only: neel_trial_state
         use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
@@ -319,8 +297,6 @@ contains
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, hmatel
-        integer :: up_spins_to, up_spins_from
-        integer :: bit_position, bit_element
 
         ! 1. Generate a random excitation.
         call gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
@@ -335,25 +311,7 @@ contains
             ! 2. When using a trial function |psi_T> = \sum{i} a_i|D_i>, the Hamiltonian
             ! used in importance sampling is H_ji^T = a_j * H_ji * (1/a_i), so we
             ! need to adjust hmatel returned by gen_excit_heisenberg accordingly.
-
-            ! Find the number of up spins on sublattice 1.
-            up_spins_from = nint(cdet%data(sampling_size+1))
-            ! For the spin up which was flipped to create the connected
-            ! basis function, find whether this spin was on sublattice 1 or 2.
-            ! If it was on sublattice 1, the basis function we go to has 1 less
-            ! up spin on sublattice 1, else it will have one more spin up here.
-            bit_position = bit_lookup(1,connection%from_orb(1))
-            bit_element = bit_lookup(2,connection%from_orb(1))
-            if (btest(lattice_mask(bit_element), bit_position)) then
-                up_spins_to = up_spins_from-1
-            else
-                up_spins_to = up_spins_from+1
-            end if
-
-            ! For a given number of spins up on sublattice 1, n, the corresponding
-            ! ampltidue of this basis function in the trial function is stored as
-            ! neel_singlet_amp(n), for this particular trial function. Hence we have:
-            hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
+            call neel_trial_state(cdet, connection, hmatel)
 
             ! 3. Attempt spawning.
             nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
