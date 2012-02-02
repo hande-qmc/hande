@@ -139,6 +139,37 @@ contains
 
     end function nspawn_from_prob
 
+    subroutine set_child_sign(hmatel, parent_sign, nspawn)
+
+        ! Set the sign of the child walkers based upon the sign of the
+        ! Hamiltonian matrix element connecting the parent determinant to the
+        ! child determinant.
+        !
+        ! In:
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !        determinant and a connected determinant.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! In/Out:
+        !    nspawn: On input, the unsigned population of child walkers spawned
+        !    from |D> to |D'>.  On output, the *signed* population of child
+        !    walkers produced by this spawning attempt.
+
+        real(p), intent(in) :: hmatel
+        integer, intent(in) :: parent_sign
+        integer, intent(inout) :: nspawn
+
+        ! If H_ij is positive, then the spawned walker is of opposite
+        ! sign to the parent, otherwise the spawned walkers if of the same
+        ! sign as the parent.
+        if (hmatel > 0.0_p) then
+            nspawn = -sign(nspawn, parent_sign)
+        else
+            nspawn = sign(nspawn, parent_sign)
+        end if
+
+    end subroutine set_child_sign
+
     function attempt_to_spawn(hmatel, pgen, parent_sign) result(nspawn)
 
         ! In:
@@ -160,6 +191,9 @@ contains
         integer, intent(in) :: parent_sign
 
         real(p) :: pspawn
+
+        ! Essentially combines nspawn_from_prob and set_child_sign into one
+        ! convenient routine...
 
         ! 1. Calculate probability spawning is successful.
         pspawn = tau*abs(hmatel)/pgen

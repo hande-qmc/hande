@@ -127,7 +127,7 @@ contains
         use excitations, only: create_excited_det, get_excitation
         use basis, only: basis_length
         use dSFMT_interface, only: genrand_real2
-        use spawning, only: nspawn_from_prob
+        use spawning, only: nspawn_from_prob, set_child_sign
 
         implicit none
         type(det_info), intent(in) :: cdet
@@ -184,11 +184,7 @@ contains
                     ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
-                    if (hmatel_ki*hmatel_jk > 0.0_p) then
-                        nspawn = -sign(nspawn, parent_sign)
-                    else
-                        nspawn = sign(nspawn, parent_sign)
-                    end if
+                    call set_child_sign(hmatel_ki*hmatel_jk, parent_sign, nspawn)
 
                     ! Set connection to the address of the spawned element
                     connection = connection_jk
@@ -245,11 +241,7 @@ contains
                     ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
-                    if (hmatel_ki*hmatel_jk > 0.0_p) then
-                        nspawn = -sign(nspawn, parent_sign)
-                    else
-                        nspawn = sign(nspawn, parent_sign)
-                    end if
+                    call set_child_sign(hmatel_ki*hmatel_jk, parent_sign, nspawn)
 
                     ! Set connection to the address of the spawned element
                     connection = connection_ki
@@ -310,31 +302,27 @@ contains
                     ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
-                    if (hmatel_ki*hmatel_jk > 0.0_p) then
-                        nspawn = -sign(nspawn, parent_sign)
-                    else
-                        nspawn = sign(nspawn, parent_sign)
-                    end if
+                    call set_child_sign(hmatel_ki*hmatel_jk, parent_sign, nspawn)
 
-                ! Calculate the excited determinant (can be up to degree 4)
-                ! (i)   add up the number of excitations
-                connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
-                ! (ii)  combine the annihilations
-                connection%from_orb(:connection_ki%nexcit) = &
-                               connection_ki%from_orb(:connection_ki%nexcit)
+                    ! Calculate the excited determinant (can be up to degree 4)
+                    ! (i)   add up the number of excitations
+                    connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
+                    ! (ii)  combine the annihilations
+                    connection%from_orb(:connection_ki%nexcit) = &
+                                   connection_ki%from_orb(:connection_ki%nexcit)
 
-                connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
-                               connection_jk%from_orb(:connection_jk%nexcit)
+                    connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
+                                   connection_jk%from_orb(:connection_jk%nexcit)
 
-                ! (iii) combine the creations
-                connection%to_orb(:connection_ki%nexcit) = &
-                               connection_ki%to_orb(:connection_ki%nexcit)
+                    ! (iii) combine the creations
+                    connection%to_orb(:connection_ki%nexcit) = &
+                                   connection_ki%to_orb(:connection_ki%nexcit)
 
-                connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
-                               connection_jk%to_orb(:connection_jk%nexcit)
+                    connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
+                                   connection_jk%to_orb(:connection_jk%nexcit)
 
-                ! (iv) combine the permutations
-                connection%perm = connection_jk%perm .eqv. connection_ki%perm
+                    ! (iv) combine the permutations
+                    connection%perm = connection_jk%perm .eqv. connection_ki%perm
 
                 else
                     ! Unsuccessful spawning on jk, set nspawn = 0
