@@ -459,6 +459,7 @@ contains
         use hamiltonian_molecular, only: slater_condon0_mol
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
+        use importance_sampling
         use spawning
 
         ! Procedure pointers
@@ -520,22 +521,16 @@ contains
 
             ! Set which guiding wavefunction to use, if requested.
             if (no_renorm) then
-                select case(guiding_function)
-                case (no_guiding)
-                    spawner_ptr => spawn
-                    gen_excit_ptr => gen_excit_heisenberg_no_renorm
-                case (neel_singlet_guiding)
-                    spawner_ptr => spawn_heisenberg_importance_sampling_no_renorm
-                end select
+                gen_excit_ptr => gen_excit_heisenberg_no_renorm
             else
-                select case(guiding_function)
-                case (no_guiding)
-                    spawner_ptr => spawn
                     gen_excit_ptr => gen_excit_heisenberg
-                case (neel_singlet_guiding)
-                    spawner_ptr => spawn_heisenberg_importance_sampling
-                end select
             end if
+            select case(guiding_function)
+            case (no_guiding)
+                spawner_ptr => spawn
+            case (neel_singlet_guiding)
+                spawner_ptr => spawn_importance_sampling
+            end select
 
         case(read_in)
 
