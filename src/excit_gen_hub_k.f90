@@ -111,7 +111,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use hamiltonian, only: slater_condon2_hub_k_excit
+        use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use momentum_symmetry, only: sym_table
 
         type(det_info), intent(in) :: cdet
@@ -165,7 +165,7 @@ contains
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: excit
-        use hamiltonian, only: slater_condon2_hub_k_excit
+        use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb, nalpha, nbeta, nvirt
 
@@ -226,7 +226,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use hamiltonian, only: slater_condon2_hub_k_excit
+        use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(inout) :: connection ! inout for interface compatibility
@@ -263,7 +263,7 @@ contains
         use excitations, only: excit
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
-        use hamiltonian, only: slater_condon2_hub_k_excit
+        use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
 
         type(det_info), intent(in) :: cdet
         real(p), intent(out) :: pgen, hmatel
@@ -326,7 +326,7 @@ contains
         use excitations, only: excit
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb, nalpha, nbeta, nvirt
-        use hamiltonian, only: slater_condon2_hub_k_excit
+        use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
 
         type(det_info), intent(in) :: cdet
         real(p), intent(out) :: pgen, hmatel

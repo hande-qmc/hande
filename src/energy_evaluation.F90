@@ -154,7 +154,7 @@ contains
 
         use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
         use excitations, only: excit, get_excitation
-        use hamiltonian, only: slater_condon2_hub_k
+        use hamiltonian_hub_k, only: slater_condon2_hub_k
 
         integer, intent(in) :: idet
         type(excit) :: excitation
@@ -194,7 +194,7 @@ contains
 
         use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
         use excitations, only: excit, get_excitation
-        use hamiltonian, only: slater_condon1_hub_real
+        use hamiltonian_hub_real, only: slater_condon1_hub_real
 
         integer, intent(in) :: idet
         type(excit) :: excitation
@@ -302,7 +302,7 @@ contains
 
         use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
         use excitations, only: excit, get_excitation
-        use hamiltonian, only: slater_condon2_hub_k
+        use hamiltonian_hub_k, only: slater_condon2_hub_k
         use hfs_data, only: D0_hf_population
 
         integer, intent(in) :: idet

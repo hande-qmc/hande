@@ -393,7 +393,6 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use determinants, only: decode_det
         use system, only: nel, trial_function, neel_singlet
-        use hamiltonian, only: slater_condon0_hub_real
         use hfs_data, only: lmask, O00
         use operators, only: calc_orb_occ
         use proc_pointers, only: sc0_ptr

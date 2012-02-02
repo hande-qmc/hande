@@ -266,7 +266,8 @@ contains
         use determinants, only: det_info
         use dSFMT_interface, only: genrand_real2
         use system, only: ndim, nel, system_type, hub_real, hub_k
-        use hamiltonian, only: slater_condon1_hub_real_excit, slater_condon2_hub_k_excit
+        use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
+        use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use excit_gen_hub_k, only: choose_ij_hub_k, find_ab_hub_k
 
         type(det_info), intent(in) :: cdet

@@ -456,7 +456,9 @@ contains
         use excit_gen_hub_k
         use excit_gen_real_lattice
         use folded_spectrum_utils, only: fs_spawner, fs_stochastic_death
-        use hamiltonian
+        use hamiltonian_hub_k, only: slater_condon0_hub_k
+        use hamiltonian_hub_real, only: slater_condon0_hub_real
+        use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy

@@ -36,7 +36,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use hamiltonian, only: slater_condon1_hub_real_excit
+        use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
 
         type(det_info), intent(in) :: cdet
         real(p), intent(out) :: pgen, hmatel
@@ -89,7 +89,7 @@ contains
         use dSFMT_interface, only: genrand_real2
         use excitations, only: excit
         use system, only: nel
-        use hamiltonian, only: slater_condon1_hub_real_excit
+        use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use hubbard_real, only: connected_sites
         use basis, only: bit_lookup
         use spawning, only: attempt_to_spawn

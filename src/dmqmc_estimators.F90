@@ -271,7 +271,7 @@ contains
        use fciqmc_data, only: walker_dets, walker_population
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
-       use hamiltonian, only: slater_condon1_hub_real
+       use hamiltonian_hub_real, only: slater_condon1_hub_real
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
