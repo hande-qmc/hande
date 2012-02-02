@@ -111,6 +111,13 @@ contains
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
+        ! This doesn't exclude the case where, having selected all orbitals
+        ! involved in the excitation, the final orbital selected is already
+        ! occupied and so cannot be excited into.  Whilst this is somewhat
+        ! wasteful (generating excitations which can't be performed), there is
+        ! a balance between the cost of generating forbidden excitations and the
+        ! O(N) cost of renormalising the generation probabilities.
+
         ! In:
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
