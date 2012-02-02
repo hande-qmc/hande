@@ -530,6 +530,7 @@ contains
                 spawner_ptr => spawn
             case (neel_singlet_guiding)
                 spawner_ptr => spawn_importance_sampling
+                trial_fn_ptr => neel_trial_state
             end select
 
         case(read_in)
