@@ -1,9 +1,6 @@
 module hamiltonian
 
 use const
-use basis
-use determinants
-use parallel
 
 implicit none
 
@@ -22,6 +19,8 @@ contains
         ! around system-specific functions) but is handy for computing matrix
         ! elements (slowly!) when we have the entire Hilbert space of
         ! determinants stored in dets_list.
+
+        use determinants, only: dets_list
 
         real(p) :: hmatel
         integer, intent(in) :: d1, d2
@@ -47,7 +46,9 @@ contains
         ! but enables us to use only one test for the system type.  A small
         ! efficiency for not much effort. :-)
 
+        use determinants, only: basis_length
         use hamiltonian_molecular, only: get_hmatel_mol
+        use system, only: system_type, hub_k, hub_real, heisenberg, read_in, ueg
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
@@ -79,6 +80,7 @@ contains
 
         ! Used in the momentum space formulation of the Hubbard model only.
 
+        use determinants, only: basis_length
         use excitations, only: excit, get_excitation
 
         real(p) :: hmatel
@@ -154,6 +156,7 @@ contains
 
         ! Used in the real space formulation of the Hubbard model only.
 
+        use determinants, only: basis_length
         use excitations, only: excit, get_excitation
 
         real(p) :: hmatel
@@ -218,7 +221,9 @@ contains
 
         ! Used in the Heisenberg model only.
 
+        use determinants, only: basis_length
         use excitations, only: excit, get_excitation
+        use system, only: staggered_magnetic_field
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
@@ -265,6 +270,7 @@ contains
 
         ! Used in the UEG only.
 
+        use determinants, only: basis_length
         use excitations, only: excit, get_excitation
 
         real(p) :: hmatel
@@ -316,7 +322,8 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
-        use system, only: nalpha, nbeta, hub_k_coulomb
+        use determinants, only: decode_det, basis_fns, basis_length
+        use system, only: nalpha, nbeta, hub_k_coulomb, nel
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -396,6 +403,7 @@ contains
 
         use excitations, only: excit, find_excitation_permutation2
         use basis, only: basis_length
+        use system, only: hub_k_coulomb
 
         integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: connection
@@ -453,7 +461,9 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in real space.
 
+        use determinants, only: decode_det, basis_length
         use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
+        use system, only: nel
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -532,7 +542,9 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
+        use determinants, only: basis_length
         use excitations, only: excit, find_excitation_permutation1
+        use system, only: hubt
 
         integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: connection
@@ -718,7 +730,9 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
+        use determinants, only: decode_det, basis_fns, basis_length
         use ueg_system, only: exchange_int_ueg
+        use system, only: nel
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
