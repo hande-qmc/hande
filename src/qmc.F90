@@ -480,12 +480,15 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
 
+            spawner_ptr => spawn_lattice_split_gen
             if (no_renorm) then
-                spawner_ptr => spawn_hub_k_no_renorm
                 gen_excit_ptr => gen_excit_hub_k_no_renorm
+                gen_excit_init_ptr => gen_excit_init_hub_k_no_renorm
+                gen_excit_finalise_ptr => gen_excit_finalise_hub_k_no_renorm
             else
-                spawner_ptr => spawn_hub_k
                 gen_excit_ptr => gen_excit_hub_k
+                gen_excit_init_ptr => gen_excit_init_hub_k
+                gen_excit_finalise_ptr => gen_excit_finalise_hub_k
             end if
 
         case(hub_real)

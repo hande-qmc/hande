@@ -11,44 +11,55 @@ implicit none
 
 contains
 
-!--- Top level spawning routines ---
+!--- Split excitation gnerators ---
 
-    subroutine spawn_hub_k(cdet, parent_sign, nspawn, connection)
+! Because the off-diagonal matrix elements are so simple in the Hubbard model,
+! we don't actually need to generate the entire excitation before we have
+! sufficient information to test whether the spawning event is accepted.  This
+! allows us to save some time when the spawning attempt is rejected (which is
+! the majority of the time).
 
-        ! Attempt to spawn a new particle on a connected determinant for the
-        ! momentum space formulation of the Hubbard model.
-        !
+! These split excitation generators *MUST BE USED IN PAIRS*.
+
+! gen_excit_init_hub_k*:     provides sufficient information to attempt spawning
+!                            event.
+! gen_excit_finalise_hub_k*: provides rest of excitation required to determine
+!                            the sign of the child walkers.
+
+    subroutine gen_excit_init_hub_k(cdet, pgen, connection, abs_hmatel)
+
+        ! Select orbitals from which to excite electrons and hence the
+        ! generation probability (which is independent of the virtual orbitals
+        ! into which the electrons are excited).
+
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are spawned.
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: from_orb field is set to be the orbitals from which
+        !        electrons are excited from the current determinant in the
+        !        excitation to the child determinant, on which progeny are spawned.
+        !    abs_hmatel: |< D | H | D' >|, the absolute value of the Hamiltonian
+        !        matrix element between a determinant and a connected determinant in
+        !        the Hubbard model in a Bloch basis.
 
         use determinants, only: det_info
-        use dSFMT_interface, only:  genrand_real2
         use excitations, only: excit
-        use hamiltonian, only: slater_condon2_hub_k_excit
-        use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
+        real(p), intent(out) :: pgen, abs_hmatel
 
-        real(p) :: pgen, psuccess, pspawn, hmatel
-        integer :: i, j, a, b, ij_sym
+        integer :: ij_sym
 
         ! Single excitations are not connected determinants within the
         ! momentum space formulation of the Hubbard model.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
+        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, &
+                                 connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Calculate the generation probability of the excitation.
         ! For two-band systems this depends only upon the orbitals excited from.
@@ -69,76 +80,87 @@ contains
         ! we can actually test whether we accept the excitation before we finish
         ! completing the excitation.
 
-        ! 3. Test that whether the attempted spawning is successful.
-        ! As we can only excite from (alpha,beta) or (beta,alpha),
+        ! 3. Matrix element: as we can only excite from (alpha,beta) or (beta,alpha),
         !   H_ij =  < ij | ab >  *or*
         !        = -< ij | ba >
         ! so
         !   |H_ij| = U/\Omega
         ! for allowed excitations.
-        pspawn = tau*abs(hub_k_coulomb)/pgen
-        psuccess = genrand_real2()
+        abs_hmatel = abs(hub_k_coulomb)
 
-        ! Need to take into account the possibilty of a spawning attempt
-        ! producing multiple offspring...
-        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
-        ! then spawn a particle with probability pspawn-floor(pspawn).
-        nspawn = int(pspawn)
-        pspawn = pspawn - nspawn
+    end subroutine gen_excit_init_hub_k
 
-        if (pspawn > psuccess) nspawn = nspawn + 1
+    subroutine gen_excit_finalise_hub_k(cdet, connection, hmatel)
 
-        if (nspawn > 0) then
-            ! 4. Well, I suppose we should find out which determinant we're spawning
-            ! on...
-            call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b)
+        ! Complete the excitation started in gen_excit_hub_k:
+        !    * select the virtual orbitals electrons are excited into.
+        !    * find the connecting Hamiltonian matrix element.
 
-            connection%nexcit = 2
-            connection%from_orb(1:2) = (/ i,j /)
-            connection%to_orb(1:2) = (/ a,b /)
-
-            ! 5. Is connecting matrix element positive (in which case we spawn with
-            ! negative walkers) or negative (in which case we spawn with positive
-            ! walkers)?
-            call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
-
-            ! If H_ij is positive, then the spawned walker is of opposite sign
-            ! to the parent.
-            ! If H_ij is negative, then the spawned walker is of the same sign
-            ! as the parent.
-            if (hmatel > 0) then
-                nspawn = -sign(nspawn, parent_sign)
-            else
-                nspawn = sign(nspawn, parent_sign)
-            end if
-
-        end if
-
-    end subroutine spawn_hub_k
-
-    subroutine spawn_hub_k_no_renorm(cdet, parent_sign, nspawn, connection)
-
-        ! Attempt to spawn a new particle on a connected determinant for the
-        ! momentum space formulation of the Hubbard model.
-        !
-        ! This doesn't use excitation generators which exclude the case where,
-        ! having selected 2 occupied orbitals (i and j) and the first virtual
-        ! orbital (a), the final orbital is already occupied and so that
-        ! excitation is impossible.  Whilst it is somewhat wasteful (generating
-        ! excitations which can't be performed), there is a balance between the
-        ! cost of generating forbidden excitations and the O(N) cost of
-        ! renormalising the generation probabilities.
-        !
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        ! In/Out:
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
+        !        On input the from_orb field must be given.  On output the
+        !        remaining fields are also set.
+        ! Out:
+        !    hmatel: < D | H | D' >, the value of the Hamiltonian matrix element
+        !        between a determinant and the connected determinant in the Hubbard
+        !        model in a Bloch basis.
+
+        use determinants, only: det_info
+        use excitations, only: excit
+        use hamiltonian, only: slater_condon2_hub_k_excit
+        use momentum_symmetry, only: sym_table
+
+        type(det_info), intent(in) :: cdet
+        type(excit), intent(inout) :: connection
+        real(p), intent(out) :: hmatel
+
+        integer :: ij_sym
+
+        ! Continuing from gen_excit_init_hub_k...
+
+        ! Recalculate symmetry of (i,j) pair quickly to save passing it round...
+        ij_sym = sym_table((connection%from_orb(1)+1)/2,(connection%from_orb(2)+1)/2)
+
+        ! 4. Well, I suppose we should find out which determinant we're spawning
+        ! on...
+        connection%nexcit = 2
+        call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, &
+                                 connection%to_orb(1), connection%to_orb(2))
+
+        ! 5. Is connecting matrix element positive (in which case we spawn with
+        ! negative walkers) or negative (in which case we spawn with positive
+        ! walkers)?
+        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+
+    end subroutine gen_excit_finalise_hub_k
+
+    subroutine gen_excit_init_hub_k_no_renorm(cdet, pgen, connection, abs_hmatel)
+
+        ! Create a random excitation from cdet and calculate the probability of
+        ! selecting that excitation.
+
+        ! This doesn't exclude the case where, having selected 2 occupied
+        ! orbitals (i and j) and the first virtual orbital (a), the final
+        ! orbital is already occupied and so that excitation is impossible.
+        ! Whilst it is somewhat wasteful (generating excitations which can't be
+        ! performed), there is a balance between the cost of generating
+        ! forbidden excitations and the O(N) cost of renormalising the
+        ! generation probabilities.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        !    abs_hmatel: |< D | H | D' >|, the absolute value of the Hamiltonian
+        !        matrix element between a determinant and a connected determinant in
+        !        the Hubbard model in a Bloch basis.
 
         use determinants, only: det_info
         use dSFMT_interface, only:  genrand_real2
@@ -148,12 +170,9 @@ contains
         use system, only: hub_k_coulomb, nalpha, nbeta, nvirt
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-
-        integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
+        real(p), intent(out) :: pgen, abs_hmatel
 
-        real(p) :: pgen, psuccess, pspawn, hmatel
         integer :: ij_sym
         logical :: allowed_excitation
 
@@ -165,6 +184,7 @@ contains
 
         ! 2. Chose a random pair of spin orbitals to excite to.
         call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+        connection%nexcit = 2
 
         if (allowed_excitation) then
 
@@ -176,42 +196,50 @@ contains
             !         nalpha*nbeta*(nbasis-nel)
             pgen = 2.0_dp/(nalpha*nbeta*nvirt)
 
-            ! 4. Test that whether the attempted spawning is successful.
-            pspawn = tau*abs(hub_k_coulomb)/pgen
-            psuccess = genrand_real2()
-            nspawn = int(pspawn)
-            pspawn = pspawn - nspawn
-            if (pspawn > psuccess) nspawn = nspawn + 1
-
-            if (nspawn > 0) then
-
-                connection%nexcit = 2
-
-                ! 5. Is connecting matrix element positive (in which case we spawn with
-                ! negative walkers) or negative (in which case we spawn with positive
-                ! walkers)?
-                call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
-
-                ! If H_ij is positive, then the spawned walker is of opposite sign
-                ! to the parent.
-                ! If H_ij is negative, then the spawned walker is of the same sign
-                ! as the parent.
-                if (hmatel > 0) then
-                    nspawn = -sign(nspawn, parent_sign)
-                else
-                    nspawn = sign(nspawn, parent_sign)
-                end if
-
-            end if
+            ! 4. |H_ij| is constant for this system.
+            abs_hmatel = abs(hub_k_coulomb)
 
         else
 
-            ! Generated a forbidden excitation (b is already occupied)
-            nspawn = 0
+            ! Forbidden excitation.
+            pgen = 1.0_p ! just to avoid division by zero issues
+            abs_hmatel = 0.0_p
 
         end if
 
-    end subroutine spawn_hub_k_no_renorm
+    end subroutine gen_excit_init_hub_k_no_renorm
+
+    subroutine gen_excit_finalise_hub_k_no_renorm(cdet, connection, hmatel)
+
+        ! Complete the excitation started in gen_excit_hub_k_no_renorm:
+        !    * find the connecting Hamiltonian matrix element.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        ! Out:
+        !    hmatel: < D | H | D' >, the value of the Hamiltonian matrix element
+        !        between a determinant and the connected determinant in the Hubbard
+        !        model in a Bloch basis.
+
+        use determinants, only: det_info
+        use excitations, only: excit
+        use hamiltonian, only: slater_condon2_hub_k_excit
+
+        type(det_info), intent(in) :: cdet
+        type(excit), intent(inout) :: connection ! inout for interface compatibility
+        real(p), intent(out) :: hmatel
+
+        ! Continuing on from gen_excit_init_hub_k_no_renorm now the spawning
+        ! event has been accepted.
+
+        ! For no_renorm the excitation has been completely specified, so we just
+        ! need to find the exact connecting matrix element.
+        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+
+    end subroutine gen_excit_finalise_hub_k_no_renorm
 
 !--- Excitation generation (see also split excitation generators) ---
 
@@ -243,12 +271,14 @@ contains
 
         integer :: ij_sym
 
-        ! See notes in spawn_hub_k for more details regarding this algorithm.
-        ! spawn_hub_k contains a somewhat more optimised version for fciqmc and
-        ! i-fciqmc, as you can decide whether to spawn (or not) without actually
-        ! generating the excitation when working in momentum space.
+        ! See notes in gen_excit_init_hub_k and gen_excit_finalise_hub_k for
+        ! more details regarding this algorithm.
+        ! The split excitation generators are a somewhat more optimised version
+        ! for fciqmc and i-fciqmc, as you can decide whether to spawn (or not)
+        ! without actually generating the excitation when working in momentum
+        ! space.
 
-        ! However, we need pgen and an excitation for use with, e.g. the folded
+        ! However, we need pgen and a complete excitation for use with, e.g. the folded
         ! spectrum algorithm.
 
         connection%nexcit = 2
@@ -262,7 +292,6 @@ contains
         ! 3. Calculate the generation probability of the excitation.
         ! For two-band systems this depends only upon the orbitals excited from.
         pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
-
 
         ! 4. find the connecting matrix element.
         call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
@@ -306,7 +335,7 @@ contains
         integer :: ij_sym
         logical :: allowed_excitation
 
-        ! See notes in spawn_hub_k and gen_excit_hub_k for more details regarding this algorithm.
+        ! See notes in gen_excit_init_hub_k and gen_excit_hub_k for more details regarding this algorithm.
 
         ! 1. Select a random pair of spin orbitals to excite from.
         call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)

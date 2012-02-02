@@ -163,7 +163,7 @@ contains
         if (nspawn /= 0) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_finalise_ptr(cdet, pgen, connection, hmatel)
+            call gen_excit_finalise_ptr(cdet, connection, hmatel)
 
             ! 4. Find sign of offspring.
             call set_child_sign(hmatel, parent_sign, nspawn)
@@ -223,7 +223,7 @@ contains
         if (nspawn /= 0) then
 
             ! 4. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_finalise_ptr(cdet, pgen, connection, hmatel)
+            call gen_excit_finalise_ptr(cdet, connection, hmatel)
 
             ! 5. Find sign of offspring.
             ! Note that we don't care about the value of H_ij at this step, only
