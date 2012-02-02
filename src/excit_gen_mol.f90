@@ -1,93 +1,15 @@
-module spawning_mol_system
+module excit_gen_mol
 
-! Module for spawning routine(s) related to the molecular system (ie one read in
-! from an FCIDUMP file).
+! Module for random excitation generators and related routines for the molecular
+! system (ie one read in from an FCIDUMP file).
+
+! See top-level comments in spawning about the overall aim of the spawning step.
 
 use const, only: i0, p
 
 implicit none
 
 contains
-
-!--- Top level spawning routines ---
-
-    subroutine spawn_mol(cdet, parent_sign, nspawn, connection)
-
-        ! Attempt to spawn a new particle on a connected determinant for the
-        ! molecular systems.
-        !
-        ! In:
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are spawned.
-
-        use determinants, only: det_info
-        use excitations, only: excit
-        use spawning, only: attempt_to_spawn
-
-        type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn
-        type(excit), intent(out) :: connection
-
-        real(p) :: pgen, hmatel
-
-        ! 1. Generate random excitation.
-        call gen_excit_mol(cdet, pgen, connection, hmatel)
-
-        ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
-
-    end subroutine spawn_mol
-
-    subroutine spawn_mol_no_renorm(cdet, parent_sign, nspawn, connection)
-
-        ! Attempt to spawn a new particle on a connected determinant for the
-        ! molecular systems.
-        !
-        ! This doesn't use excitation generators which exclude the case where,
-        ! having selected (e.g.) 2 occupied orbitals (i and j) and the first virtual
-        ! orbital (a), the final orbital is already occupied and so that
-        ! excitation is impossible.  Whilst it is somewhat wasteful (generating
-        ! excitations which can't be performed), there is a balance between the
-        ! cost of generating forbidden excitations and the O(N) cost of
-        ! renormalising the generation probabilities.
-        !
-        ! In:
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are spawned.
-
-        use determinants, only: det_info
-        use excitations, only: excit
-        use spawning, only: attempt_to_spawn
-
-        type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn
-        type(excit), intent(out) :: connection
-
-        real(p) :: pgen, hmatel
-
-        ! 1. Generate random excitation.
-        call gen_excit_mol_no_renorm(cdet, pgen, connection, hmatel)
-
-        ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
-
-    end subroutine spawn_mol_no_renorm
 
 !--- Excitation generation ---
 
@@ -188,6 +110,13 @@ contains
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
+
+        ! This doesn't exclude the case where, having selected all orbitals
+        ! involved in the excitation, the final orbital selected is already
+        ! occupied and so cannot be excited into.  Whilst this is somewhat
+        ! wasteful (generating excitations which can't be performed), there is
+        ! a balance between the cost of generating forbidden excitations and the
+        ! O(N) cost of renormalising the generation probabilities.
 
         ! In:
         !    cdet: info on the current determinant (cdet) that we will gen
@@ -999,4 +928,4 @@ contains
 
     end function calc_pgen_double_mol_no_renorm
 
-end module spawning_mol_system
+end module excit_gen_mol

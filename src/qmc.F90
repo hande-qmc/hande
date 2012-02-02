@@ -65,7 +65,6 @@ contains
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs, parent
-        use proc_pointers
         use utils, only: int_fmt
 
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
@@ -452,19 +451,25 @@ contains
         use dmqmc_estimators
         use dmqmc_procedures
         use energy_evaluation
+        use excit_gen_mol
+        use excit_gen_hub_k
+        use excit_gen_real_lattice
         use folded_spectrum_utils, only: fs_spawner, fs_stochastic_death
         use hamiltonian
         use hamiltonian_molecular, only: slater_condon0_mol
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
+        use importance_sampling
         use spawning
-        use spawning_mol_system
 
         ! Procedure pointers
         use proc_pointers
 
         ! Utilities
         use errors, only: stop_all
+
+        ! 0. In general, use the default spawning routine.
+        spawner_ptr => spawn
 
         ! 1. Set system-specific procedure pointers.
         !     * projected energy estimator
@@ -478,11 +483,15 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
 
+            spawner_ptr => spawn_lattice_split_gen
             if (no_renorm) then
-                spawner_ptr => spawn_hub_k_no_renorm
+                gen_excit_ptr => gen_excit_hub_k_no_renorm
+                gen_excit_init_ptr => gen_excit_init_hub_k_no_renorm
+                gen_excit_finalise_ptr => gen_excit_finalise_hub_k_no_renorm
             else
-                spawner_ptr => spawn_hub_k
                 gen_excit_ptr => gen_excit_hub_k
+                gen_excit_init_ptr => gen_excit_init_hub_k
+                gen_excit_finalise_ptr => gen_excit_finalise_hub_k
             end if
 
         case(hub_real)
@@ -492,9 +501,8 @@ contains
             sc0_ptr => slater_condon0_hub_real
 
             if (no_renorm) then
-                spawner_ptr => spawn_hub_real_no_renorm
+                gen_excit_ptr => gen_excit_hub_real_no_renorm
             else
-                spawner_ptr => spawn_hub_real
                 gen_excit_ptr => gen_excit_hub_real
             end if
 
@@ -509,7 +517,8 @@ contains
             case (neel_singlet)
                 update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
             end select
-            ! Set whether the staggered magnetisation is to be calculated.
+
+            ! Set whether the applied staggered magnetisation is non-zero.
             if (abs(staggered_magnetic_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
             else
@@ -518,22 +527,15 @@ contains
 
             ! Set which guiding wavefunction to use, if requested.
             if (no_renorm) then
-                select case(guiding_function)
-                case (no_guiding)
-                    spawner_ptr => spawn_heisenberg_no_renorm
-                    gen_excit_ptr => gen_excit_heisenberg_no_renorm
-                case (neel_singlet_guiding)
-                    spawner_ptr => spawn_heisenberg_importance_sampling_no_renorm
-                end select
+                gen_excit_ptr => gen_excit_heisenberg_no_renorm
             else
-                select case(guiding_function)
-                case (no_guiding)
-                    spawner_ptr => spawn_heisenberg
                     gen_excit_ptr => gen_excit_heisenberg
-                case (neel_singlet_guiding)
-                    spawner_ptr => spawn_heisenberg_importance_sampling
-                end select
             end if
+            select case(guiding_function)
+            case (neel_singlet_guiding)
+                spawner_ptr => spawn_importance_sampling
+                trial_fn_ptr => neel_trial_state
+            end select
 
         case(read_in)
 
@@ -541,11 +543,9 @@ contains
             sc0_ptr => slater_condon0_mol
 
             if (no_renorm) then
-                spawner_ptr => spawn_mol_no_renorm
                 gen_excit_ptr => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             else
-                spawner_ptr => spawn_mol
                 gen_excit_ptr => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
             end if

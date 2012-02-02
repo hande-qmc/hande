@@ -3,7 +3,6 @@ module folded_spectrum_utils
 !TO DO:
 ! tau finder.
 ! calculating P__, P_o, Po_.
-! use spawn_from_prob everywhere.
 ! optimise diagonal matrix element evaluation.
 
 ! Utilities for folded-spectrum method of obtaining excited states in FCIQMC.
@@ -128,6 +127,7 @@ contains
         use excitations, only: create_excited_det, get_excitation
         use basis, only: basis_length
         use dSFMT_interface, only: genrand_real2
+        use spawning, only: nspawn_from_prob, set_child_sign
 
         implicit none
         type(det_info), intent(in) :: cdet
@@ -161,7 +161,7 @@ contains
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = spawn_from_prob(pspawn_ki)
+            nspawn_ki = nspawn_from_prob(pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -173,7 +173,7 @@ contains
                 pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = spawn_from_prob(pspawn_jk)
+                nspawn_jk = nspawn_from_prob(pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -184,11 +184,7 @@ contains
                     ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
-                    if (hmatel_ki*hmatel_jk > 0.0_p) then
-                        nspawn = -sign(nspawn, parent_sign)
-                    else
-                        nspawn = sign(nspawn, parent_sign)
-                    end if
+                    call set_child_sign(hmatel_ki*hmatel_jk, parent_sign, nspawn)
 
                     ! Set connection to the address of the spawned element
                     connection = connection_jk
@@ -217,7 +213,7 @@ contains
             pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = spawn_from_prob(pspawn_ki)
+            nspawn_ki = nspawn_from_prob(pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -234,7 +230,7 @@ contains
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = spawn_from_prob(pspawn_jk)
+                nspawn_jk = nspawn_from_prob(pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -245,11 +241,7 @@ contains
                     ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
-                    if (hmatel_ki*hmatel_jk > 0.0_p) then
-                        nspawn = -sign(nspawn, parent_sign)
-                    else
-                        nspawn = sign(nspawn, parent_sign)
-                    end if
+                    call set_child_sign(hmatel_ki*hmatel_jk, parent_sign, nspawn)
 
                     ! Set connection to the address of the spawned element
                     connection = connection_ki
@@ -284,7 +276,7 @@ contains
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = spawn_from_prob(pspawn_ki)
+            nspawn_ki = nspawn_from_prob(pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -299,7 +291,7 @@ contains
                 pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = spawn_from_prob(pspawn_jk)
+                nspawn_jk = nspawn_from_prob(pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -310,31 +302,27 @@ contains
                     ! If H_ij is positive, then the spawned walker is of opposite
                     ! sign to the parent, otherwise the spawned walkers if of the same
                     ! sign as the parent.
-                    if (hmatel_ki*hmatel_jk > 0.0_p) then
-                        nspawn = -sign(nspawn, parent_sign)
-                    else
-                        nspawn = sign(nspawn, parent_sign)
-                    end if
+                    call set_child_sign(hmatel_ki*hmatel_jk, parent_sign, nspawn)
 
-                ! Calculate the excited determinant (can be up to degree 4)
-                ! (i)   add up the number of excitations
-                connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
-                ! (ii)  combine the annihilations
-                connection%from_orb(:connection_ki%nexcit) = &
-                               connection_ki%from_orb(:connection_ki%nexcit)
+                    ! Calculate the excited determinant (can be up to degree 4)
+                    ! (i)   add up the number of excitations
+                    connection%nexcit = connection_ki%nexcit + connection_jk%nexcit
+                    ! (ii)  combine the annihilations
+                    connection%from_orb(:connection_ki%nexcit) = &
+                                   connection_ki%from_orb(:connection_ki%nexcit)
 
-                connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
-                               connection_jk%from_orb(:connection_jk%nexcit)
+                    connection%from_orb(connection_ki%nexcit+1:connection%nexcit) = &
+                                   connection_jk%from_orb(:connection_jk%nexcit)
 
-                ! (iii) combine the creations
-                connection%to_orb(:connection_ki%nexcit) = &
-                               connection_ki%to_orb(:connection_ki%nexcit)
+                    ! (iii) combine the creations
+                    connection%to_orb(:connection_ki%nexcit) = &
+                                   connection_ki%to_orb(:connection_ki%nexcit)
 
-                connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
-                               connection_jk%to_orb(:connection_jk%nexcit)
+                    connection%to_orb(connection_ki%nexcit+1:connection%nexcit) = &
+                                   connection_jk%to_orb(:connection_jk%nexcit)
 
-                ! (iv) combine the permutations
-                connection%perm = connection_jk%perm .eqv. connection_ki%perm
+                    ! (iv) combine the permutations
+                    connection%perm = connection_jk%perm .eqv. connection_ki%perm
 
                 else
                     ! Unsuccessful spawning on jk, set nspawn = 0
@@ -389,35 +377,5 @@ contains
         call stochastic_death((Kii-fold_line)**2, population, tot_population, ndeath)
 
     end subroutine fs_stochastic_death
-
-    function spawn_from_prob(probability) result(number_spawned)
-
-        ! Generate the number spawned from a probability. If probability is greater than
-        ! zero, then number spawned = int(probability) + stochastic{0,1}
-        ! where the latter half of the RHS is a stochastic spawning from the remainder
-        !
-        ! In:
-        !    probability: the spawning probability
-        !
-        ! Result:
-        !    number_spawned: the number spawned from this probability
-
-        use dSFMT_interface , only: genrand_real2
-        implicit none
-        real(p), intent(in) :: probability
-        integer             :: number_spawned
-        real(p)             :: psuccess, pstochastic
-
-        ! Generate random number
-        psuccess = genrand_real2()
-
-        ! Multiple offspring
-        number_spawned = int(probability)
-
-        ! Stochastic offspring
-        pstochastic = probability - number_spawned
-        if (pstochastic > psuccess) number_spawned = number_spawned + 1
-
-    end function spawn_from_prob
 
 end module folded_spectrum_utils

@@ -35,13 +35,20 @@ abstract interface
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
     end subroutine i_spawner
-    subroutine i_gen_excit(d, pgen, connection,hmatel)
+    subroutine i_gen_excit(d, pgen, connection, hmatel)
         import :: det_info, excit, p
         implicit none
         type(det_info), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
     end subroutine i_gen_excit
+    subroutine i_gen_excit_finalise(d, connection, hmatel)
+        import :: det_info, excit, p
+        implicit none
+        type(det_info), intent(in) :: d
+        type(excit), intent(inout) :: connection
+        real(p), intent(out) :: hmatel
+    end subroutine i_gen_excit_finalise
     subroutine i_death(mat, pop, tot_pop, ndeath)
         import :: p, lint
         implicit none
@@ -80,6 +87,12 @@ abstract interface
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawned, spawning_end
     end subroutine i_create_spawned_particle_dm
+    subroutine i_trial_fn(cdet, connection, hmatel)
+        import :: det_info, excit, p
+        type(det_info), intent(in) :: cdet
+        type(excit), intent(in) :: connection
+        real(p) :: hmatel
+    end subroutine i_trial_fn
 
     ! generic procedures...
     subroutine i_sub()
@@ -95,6 +108,8 @@ procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => nu
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_correlation_ptr => null()
 procedure(i_spawner), pointer :: spawner_ptr => null()
 procedure(i_gen_excit), pointer :: gen_excit_ptr => null()
+procedure(i_gen_excit), pointer :: gen_excit_init_ptr => null()
+procedure(i_gen_excit_finalise), pointer :: gen_excit_finalise_ptr => null()
 procedure(i_death), pointer :: death_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
@@ -103,5 +118,6 @@ procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
+procedure(i_trial_fn), pointer :: trial_fn_ptr => null()
 
 end module proc_pointers
