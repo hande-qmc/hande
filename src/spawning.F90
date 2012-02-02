@@ -109,6 +109,36 @@ contains
 
 !--- Attempt spawning based upon random excitation ---
 
+    function nspawn_from_prob(probability) result(number_spawned)
+
+        ! Generate the number spawned from a probability. If probability is greater than
+        ! zero, then number spawned = int(probability) + stochastic{0,1}
+        ! where the latter half of the RHS is a stochastic spawning from the remainder
+        !
+        ! In:
+        !    probability: the spawning probability
+        !
+        ! Returns:
+        !    number_spawned: the number spawned from this probability
+
+        use dSFMT_interface , only: genrand_real2
+        implicit none
+        real(p), intent(in) :: probability
+        integer             :: number_spawned
+        real(p)             :: psuccess, pstochastic
+
+        ! Generate random number
+        psuccess = genrand_real2()
+
+        ! Multiple offspring
+        number_spawned = int(probability)
+
+        ! Stochastic offspring
+        pstochastic = probability - number_spawned
+        if (pstochastic > psuccess) number_spawned = number_spawned + 1
+
+    end function nspawn_from_prob
+
     function attempt_to_spawn(hmatel, pgen, parent_sign) result(nspawn)
 
         ! In:
