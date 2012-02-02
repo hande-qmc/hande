@@ -178,8 +178,6 @@ contains
                 calc_type = calc_type + ct_fciqmc_calc
             case('DMQMC')
                 calc_type = calc_type + dmqmc_calc
-            case('HDMQMC')
-                calc_type = calc_type + hdmqmc_calc + dmqmc_calc
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
@@ -203,6 +201,9 @@ contains
             print *, correlation_sites
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
+            case('DMQMC_WEIGHTED_SAMPLING')
+                call readf(dmqmc_sampling_prob)
+                dmqmc_weighted_sampling = .true.
             ! Calculate a reduced density matrix
             case('REDUCED_DENSITY_MATRIX')
                 doing_reduced_dm = .true.
@@ -216,6 +217,8 @@ contains
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
                 call readi(truncation_level)
+            case('HALF_DENSITY_MATRIX')
+                half_density_matrix = .true.
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -592,6 +595,9 @@ contains
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_sampling_prob, 1, mpi_preal, 0, mpi_comm_world, ierr)
         option_set = .false.
         if (parent) option_set = allocated(subsystem_A_list)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)

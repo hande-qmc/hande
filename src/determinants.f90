@@ -1100,14 +1100,14 @@ contains
 
     end function det_gt
 
-    pure function det_compare(f1, f2) result(compare)
+    pure function det_compare(f1, f2, flength) result(compare)
 
         ! In:
-        !    f1(total_basis_length): bit string representation of the Slater
-        !        determinant.
-        !    f2(total_basis_length): bit string representation of the Slater
-        !        determinant.
-        !    (For DMQMC this bitstring contains information for both determinants)
+        !    f1(flength): bit string.
+        !    f2(flength): bit string.
+        !    flength: size of bit string.  Should be basis_length for comparing
+        !    determinants and total_basis_length for comparing pairs of density
+        !    matrix labels (DMQMC only).
         ! Returns:
         !    0 if f1 and f2 are identical;
         !    1 if the first non-identical element in f1 is smaller than the
@@ -1116,12 +1116,13 @@ contains
         !    corresponding element in f2;
 
         integer :: compare
-        integer(i0), intent(in) :: f1(total_basis_length), f2(total_basis_length)
+        integer(i0), intent(in) :: f1(flength), f2(flength)
+        integer, intent(in) :: flength
 
         integer :: i
 
         compare = 0
-        do i = 1, total_basis_length
+        do i = 1, flength
             if (f1(i) < f2(i)) then
                 compare = 1
                 exit

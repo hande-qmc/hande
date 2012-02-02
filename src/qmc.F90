@@ -591,12 +591,20 @@ contains
             end select
 
             ! Spawned particle creation. 
-            if (truncate_space) then
-                create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix
-            else if (doing_calc(hdmqmc_calc)) then
-                create_spawned_particle_dm_ptr => create_spawned_particle_half_density_matrix
+            if (half_density_matrix) then
+                if (truncate_space) then
+                    create_spawned_particle_dm_ptr => create_spawned_particle_truncated_half_density_matrix
+                else
+                    create_spawned_particle_dm_ptr => create_spawned_particle_half_density_matrix
+                end if
             else
-                create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+                if (truncate_space) then
+                    create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix
+                else if (dmqmc_weighted_sampling) then
+                    create_spawned_particle_dm_ptr => create_spawned_particle_weighted_density_matrix
+                else
+                    create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+                end if
             end if
 
             ! Expectation values.

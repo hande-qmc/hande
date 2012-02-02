@@ -1346,10 +1346,15 @@ contains
 
     end subroutine create_spawned_particle_density_matrix
 
-    subroutine create_spawned_particle_half_density_matrix(f1, f2, connection, nspawn, spawning_end)
+    subroutine create_spawned_particle_weighted_density_matrix(f1, f2, connection, nspawn, spawning_end)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
+
+        ! This routine will reject certain new psips from being created
+        ! with a certain probability in order to apply importance sampling 
+        ! to the density matrix. Alternatively, it can also increase the number
+        ! of psips created if the associated probability is greater than 1.
 
         ! In:
         !    f1: bitstring corresponding to the end which is currently
@@ -1367,7 +1372,112 @@ contains
         ! Note that particle type, ie specifying hellman-feynman properties, is
         ! not currently considered, as the density matrix formulation (hopefully!)
         ! won't require it.
-        use dmqmc_procedures, only: in_upper_triangle
+
+        use basis, only: basis_length, total_basis_length
+        use dSFMT_interface, only:  genrand_real2
+        use excitations, only: excit, create_excited_det, get_excitation_level
+        use fciqmc_data, only: spawned_walkers, spawning_head, dmqmc_sampling_prob
+        use fciqmc_data, only: spawned_parent, spawned_pop, truncate_space, truncation_level
+        use hashing
+        use parallel, only: iproc, nprocs
+
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer, intent(in) :: nspawn
+        integer, intent(in) :: spawning_end
+
+        type(excit), intent(in) :: connection
+        integer(i0) :: f_new(basis_length)
+        integer(i0) :: f_new_tot(total_basis_length)
+        integer :: excitation_level_old, excitation_level_new
+        integer :: nspawn_new
+        real(p) :: pkeep
+
+#ifndef PARALLEL
+        integer, parameter :: iproc_spawn = 0
+#else
+        integer :: iproc_spawn
+#endif
+
+        ! Find the relative number of excitations between the two
+        ! ends of the old bitstring which was spawned from.
+        excitation_level_old = get_excitation_level(f1,f2)
+
+        ! Create bitstring of new determinant. The entire two-ended
+        ! bitstring is eventually stored in f_new_tot.
+        call create_excited_det(f1, connection, f_new)
+        f_new_tot = 0
+        if (spawning_end==1) then
+            f_new_tot(:basis_length) = f_new
+            f_new_tot((basis_length+1):(total_basis_length)) = f2
+        else
+            f_new_tot(:basis_length) = f2
+            f_new_tot((basis_length+1):(total_basis_length)) = f_new
+        end if
+   
+        ! Find the relative number of excitations between the two
+        ! ends of the new bitstring which is spawned to.
+        excitation_level_new = get_excitation_level(f_new,f2)
+
+        ! For each excitation level, there is a factor of dmqmc_sampling_prob
+        ! contributing to the probability of keeping the new psip. If spawning
+        ! to higher excitations, pkeep < 1, if spawning to lower excitations
+        ! (towards the diagonal) then pkeep > 1.
+        pkeep = dmqmc_sampling_prob**(excitation_level_old-excitation_level_new)
+
+        ! Find how many psips will be spawned for certain.
+        nspawn_new = nspawn*int(pkeep)
+        ! If pkeep is non-integer, we want to spawn nspawn more psips some of the
+        ! time, as given by the probability below.
+        if ((pkeep-int(pkeep)) > genrand_real2()) nspawn_new = nspawn_new + nspawn
+
+        ! If the new psips are to be kept, add them to the spawned walkers list.
+        if (abs(nspawn_new) > 0) then
+
+#ifdef PARALLEL
+            ! (Extra credit for parallel calculations)
+            ! Need to determine which processor the spawned walker should be sent
+            ! to.  This communication is done during the annihilation process, after
+            ! all spawning and death has occured..
+            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (total_basis_length)), nprocs)
+#endif
+
+            ! Move to the next position in the spawning array.
+            spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+
+            ! Set info in spawning array.
+            ! Zero it as not all fields are set.
+            spawned_walkers(:,spawning_head(iproc_spawn)) = 0
+            spawned_walkers(:(total_basis_length),spawning_head(iproc_spawn)) = f_new_tot
+            spawned_walkers((total_basis_length)+1,spawning_head(iproc_spawn)) = nspawn_new
+
+        end if
+
+    end subroutine create_spawned_particle_weighted_density_matrix
+
+    subroutine create_spawned_particle_half_density_matrix(f1, f2, connection, nspawn, spawning_end)
+
+        ! Create a spawned walker in the spawned walkers lists.
+        ! If walker tries to spawn in the lower triangle of density matrix
+        ! then reflect it to upper triangle by swapping bit strings for the
+        ! two ends. The current position in the spawning array is updated.
+
+        ! In:
+        !    f1: bitstring corresponding to the end which is currently
+        !         being spawned from.
+        !    f2: bitstring corresponding to the 'inactive' end, which
+        !         was not involved in the current spawning step.
+        !    connection: excitation connecting the current determinant to its
+        !        offspring.  Note that the perm field is not used.
+        !    nspawn: the (signed) number of particles to create on the
+        !        spawned determinant.
+        !    spawning_end: Specifies which 'end' we are spawning from
+        !        currently, ie, if the elements of the density matrix are
+        !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
+
+        ! Note that particle type, ie specifying hellman-feynman properties, is
+        ! not currently considered, as the density matrix formulation (hopefully!)
+        ! won't require it.
+        use determinants, only: det_compare
         use basis, only: basis_length, total_basis_length
         use excitations, only: excit, create_excited_det
         use fciqmc_data, only: spawned_walkers, spawning_head
@@ -1393,7 +1503,13 @@ contains
         ! bitstring is eventually stored in f_new_tot.
         call create_excited_det(f1, connection, f_new)
         f_new_tot = 0
-        if (in_upper_triangle(f_new, f2)) then
+
+        ! Test to see whether the new determinant resides in the upper
+        ! triangle of the density matrix. If so keep bit string ends
+        ! as they are. If not then swap bitstring ends so that the 
+        ! new psips are reflected into the upper triangle of the density
+        ! matrix as they try to spawn.
+        if (det_compare(f_new, f2, basis_length) == -1) then
             f_new_tot(:basis_length) = f_new
             f_new_tot((basis_length+1):(total_basis_length)) = f2
         else
@@ -1420,6 +1536,101 @@ contains
 
     end subroutine create_spawned_particle_half_density_matrix
 
+    subroutine create_spawned_particle_truncated_half_density_matrix(f1, f2, connection, nspawn, spawning_end)
+
+        ! Create a spawned walker in the spawned walkers lists.
+        ! The current position in the spawning array is updated.
+
+        ! A spawned walker is only created on (f1', f2) if f1' and f2 do not differ by
+        ! more than truncation_level basis functions, where f1' is obtained by
+        ! applying the connection to f1. 
+
+        ! Note: This is the half density matrix version of create_spawned_particle_truncated_density_matrix
+        ! It works in an ientical way apart from attempts to spawn on the lower triangle of the 
+        ! density matrix are reflected so that they are spawned on the upper triangle of the
+        ! density matrix.
+
+        ! In:
+        !    f1: bitstring corresponding to the end which is currently
+        !         being spawned from.
+        !    f2: bitstring corresponding to the 'inactive' end, which
+        !         was not involved in the current spawning step.
+        !    connection: excitation connecting the current determinant to its
+        !        offspring.  Note that the perm field is not used.
+        !    nspawn: the (signed) number of particles to create on the
+        !        spawned determinant.
+        !    spawning_end: Specifies which 'end' we are spawning from
+        !        currently, ie, if the elements of the density matrix are
+        !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
+
+        ! Note that particle type, ie specifying hellman-feynman properties, is
+        ! not currently considered, as the density matrix formulation (hopefully!)
+        ! won't require it.
+
+        use basis, only: basis_length, total_basis_length
+        use determinants, only: det_compare
+        use excitations, only: excit, create_excited_det, get_excitation_level
+        use fciqmc_data, only: spawned_walkers, spawning_head
+        use fciqmc_data, only: spawned_parent, spawned_pop, truncate_space, truncation_level
+        use hashing
+        use parallel, only: iproc, nprocs
+
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer, intent(in) :: nspawn
+        integer, intent(in) :: spawning_end
+
+        type(excit), intent(in) :: connection
+        integer(i0) :: f_new(basis_length)
+        integer(i0) :: f_new_tot(total_basis_length)
+
+#ifndef PARALLEL
+        integer, parameter :: iproc_spawn = 0
+#else
+        integer :: iproc_spawn
+#endif
+
+        ! Create bit string of new determinant. The entire two-ended
+        ! bitstring is eventually stored in f_new_tot.
+        call create_excited_det(f1, connection, f_new)
+
+        if (get_excitation_level(f2, f_new) <= truncation_level) then
+
+            f_new_tot = 0
+            ! Test to see whether the new determinant resides in the upper
+            ! triangle of the density matrix. If so keep bit string ends
+            ! as they are. If not then swap bitstring ends so that the 
+            ! new psips are reflected into the upper triangle of the density
+            ! matrix as they try to spawn.
+            if (det_compare(f_new, f2, basis_length) == -1) then
+                f_new_tot(:basis_length) = f_new
+                f_new_tot((basis_length+1):(total_basis_length)) = f2
+            else
+                f_new_tot(:basis_length) = f2
+                f_new_tot((basis_length+1):(total_basis_length)) = f_new
+            end if 
+
+#ifdef PARALLEL
+            ! (Extra credit for parallel calculations)
+            ! Need to determine which processor the spawned walker should be sent
+            ! to.  This communication is done during the annihilation process, after
+            ! all spawning and death has occured..
+            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (total_basis_length)), nprocs)
+#endif
+
+            ! Move to the next position in the spawning array.
+            spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+
+            ! Set info in spawning array.
+            ! Zero it as not all fields are set.
+            spawned_walkers(:,spawning_head(iproc_spawn)) = 0
+            spawned_walkers(:(total_basis_length),spawning_head(iproc_spawn)) = f_new_tot
+            spawned_walkers((total_basis_length)+1,spawning_head(iproc_spawn)) = nspawn
+
+        end if
+
+    end subroutine create_spawned_particle_truncated_half_density_matrix
+
+ 
 
     subroutine create_spawned_particle_truncated_density_matrix(f1, f2, connection, nspawn, spawning_end)
 
