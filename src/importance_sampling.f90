@@ -1,8 +1,36 @@
 module importance_sampling
 
 ! Module for applying importance sampling transforms to the Hamiltonian, e.g. to
-! stochastically sample \tilde{H}_{ij} = f(i) H_{ij} 1/f(j) rather than just
-! H_{ij}.
+! stochastically sample \tilde{H}_{ij} = \psi^{(T})_i H_{ij} 1/\psi^{(T})_j
+! rather than just H_{ij}.
+
+! Instead of propogating using
+
+! dc_i
+! ---- = - \sum_j H_{ij} c_j
+!  dt
+
+! we instead propogate using
+
+! df_i      \sum_j \psi^{(T)}_i H_{ij}      1        f_j
+! ---- = -                             ------------
+!  dt                                  \psi^{(T)}_j 
+
+! where
+
+! f_i = \psi^{(T)}_i c_i
+
+! and \psi^{(T)}_i is the weight of the trial function on i.
+
+! As we currently generate the excitations uniformly, this amounts to simply
+! scaling H_{ij} appropriately after generating the excitation (as usual) but
+! before testing whether or not to accept the spawning attempt (which depends
+! upon the connecting Hamiltonian matrix element, which has changed).
+
+! This module contains the appropriate functions required to transform the
+! Hamiltonian matrix element according to the trial function being used.
+
+! Note that the projected estimator must also be adjusted accordingly.
 
 ! In order to be accessible via a common function pointer, these subroutines
 ! should have the interface defined by i_trial_fn.
