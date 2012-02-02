@@ -48,8 +48,8 @@ contains
 
         use determinants, only: basis_length
         use hamiltonian_heisenberg, only: get_hmatel_heisenberg
-        use hamiltonian_hub_k, only: get_hmatel_k
-        use hamiltonian_hub_real, only: get_hmatel_real
+        use hamiltonian_hub_k, only: get_hmatel_hub_k
+        use hamiltonian_hub_real, only: get_hmatel_hub_real
         use hamiltonian_molecular, only: get_hmatel_mol
         use hamiltonian_ueg, only: get_hmatel_ueg
         use system, only: system_type, hub_k, hub_real, heisenberg, read_in, ueg
@@ -59,9 +59,9 @@ contains
 
         select case(system_type)
         case(hub_k)
-            hmatel = get_hmatel_k(f1, f2)
+            hmatel = get_hmatel_hub_k(f1, f2)
         case(hub_real)
-            hmatel = get_hmatel_real(f1, f2)
+            hmatel = get_hmatel_hub_real(f1, f2)
         case(heisenberg)
             hmatel = get_hmatel_heisenberg(f1, f2)
         case(read_in)

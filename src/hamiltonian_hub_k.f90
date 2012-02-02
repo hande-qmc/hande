@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    pure function get_hmatel_k(f1, f2) result(hmatel)
+    pure function get_hmatel_hub_k(f1, f2) result(hmatel)
 
         ! In:
         !    f1, f2: bit string representation of the Slater
@@ -83,7 +83,7 @@ contains
             end select
         end if
 
-    end function get_hmatel_k
+    end function get_hmatel_hub_k
 
     pure function slater_condon0_hub_k(f) result(hmatel)
 

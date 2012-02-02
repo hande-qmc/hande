@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    pure function get_hmatel_real(f1, f2) result(hmatel)
+    pure function get_hmatel_hub_real(f1, f2) result(hmatel)
 
         ! In:
         !    f1, f2: bit string representation of the Slater
@@ -72,7 +72,7 @@ contains
             end select
         end if
 
-    end function get_hmatel_real
+    end function get_hmatel_hub_real
 
     pure function slater_condon0_hub_real(f) result(hmatel)
 
