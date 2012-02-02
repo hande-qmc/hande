@@ -10,18 +10,21 @@ contains
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
          use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation
-         use checking, only: check_allocate
+         use checking, only: check_allocate, check_deallocate
          use fciqmc_data, only: trace, energy_index, energy_squared_index, correlation_index
          use fciqmc_data, only: staggered_mag_index, estimator_numerators, subsystem_A_size
          use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
          use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
          use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
          use fciqmc_data, only: correlation_mask, correlation_sites
+         use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs
          use parallel, only: parent
-         use system, only: system_type, heisenberg, nsites
+         use system, only: system_type, heisenberg, nsites, nel
 
          integer :: ierr
          integer :: i, ipos, basis_find, bit_position, bit_element
+         real(p), allocatable :: dmqmc_sampling_probs_complete(:)
+         integer :: max_number_excitations
 
          number_dmqmc_estimators = 0
          trace = 0
@@ -65,6 +68,45 @@ contains
          ! Every system uses the same death routine, so this factor only needs to be added once.
          ! This factor is also used in updated the shift, where the true tau is needed.
          dmqmc_factor = 2.0_p
+
+         if (allocated(dmqmc_sampling_probs)) then
+             ! dmqmc_sampling_probs stores the factors by which probabilities are to
+             ! be reduced when spawning away from the diagonal. In general the user may only
+             ! want to reduce the probabilities when going to the first few excitations, so
+             ! only a small array will have been allocated upon reading the input file. But
+             ! in the calculations we need to know the factors for higher excitations, even
+             ! if they are mostly 1's. So we reallocate this array with the full size...
+             max_number_excitations = min(nel, (nsites-nel))
+             ! Allocate new array to store old probabilities whilst we reallocate the proper array.
+             allocate(dmqmc_sampling_probs_complete(max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_sampling_probs_complete',max_number_excitations,ierr)
+             ! Set all probabilities of the new array.
+             dmqmc_sampling_probs_complete = 1.0_p
+             dmqmc_sampling_probs_complete(1:size(dmqmc_sampling_probs)) = dmqmc_sampling_probs
+             ! Reallocate the desried array.
+             deallocate(dmqmc_sampling_probs, stat=ierr)
+             call check_deallocate('dmqmc_sampling_probs',ierr)
+             allocate(dmqmc_sampling_probs(1:max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_sampling_probs',max_number_excitations,ierr)
+             ! Set this array to have all the probabilities, as desired.
+             dmqmc_sampling_probs = dmqmc_sampling_probs_complete
+             ! deallocate temporary array.
+             deallocate(dmqmc_sampling_probs_complete, stat=ierr)
+             call check_deallocate('dmqmc_sampling_probs_complete',ierr)
+             ! Now it is also useful to store the accumulative factors to avoid having
+             ! to calculate them every time.
+             allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
+             dmqmc_accumulated_probs(0) = 1.0_p
+             do i = 1, max_number_excitations
+                 dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
+             end do
+         else
+             max_number_excitations = min(nel, (nsites-nel))
+             allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
+             dmqmc_accumulated_probs = 1.0_p
+         end if
 
          ! If doing a reduced density matrix calculation, then allocate and define the
          ! bit masks that have 1's at the positions referring to either subsystems A or B.

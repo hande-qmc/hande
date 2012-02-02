@@ -248,12 +248,16 @@ integer :: staggered_mag_index = 0
 
 ! If this logical is true then the program runs the DMQMC algorithm with
 ! importance sampling.
-! dmqmc_sampling_prob stores the factor by which the probabilities of
+! dmqmc_sampling_prob stores the factors by which the probabilities of
 ! spawning to a larger excitation are reduced by. So, when spawning from
 ! a diagonal element to a element with one excitation, the probability
-! of spawning is reduced by a factor dmqmc_sampling_prob.
+! of spawning is reduced by a factor dmqmc_sampling_probs(1).
+! dmqmc_accumulated_probs(i) stores the multiplication of all the elements
+! of dmqmc_sampling_probs up to the ith element. This quantity is often
+! needed, so it is stored.
 logical :: dmqmc_weighted_sampling
-real(p) :: dmqmc_sampling_prob = 1.0_p
+real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
+real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
 
 ! If half_density_matrix is true then half the density matrix will be 
 ! calculated by reflecting spawning onto the lower triangle into the

@@ -1376,7 +1376,7 @@ contains
         use basis, only: basis_length, total_basis_length
         use dSFMT_interface, only:  genrand_real2
         use excitations, only: excit, create_excited_det, get_excitation_level
-        use fciqmc_data, only: spawned_walkers, spawning_head, dmqmc_sampling_prob
+        use fciqmc_data, only: spawned_walkers, spawning_head, dmqmc_sampling_probs
         use fciqmc_data, only: spawned_parent, spawned_pop, truncate_space, truncation_level
         use hashing
         use parallel, only: iproc, nprocs
@@ -1389,7 +1389,7 @@ contains
         integer(i0) :: f_new(basis_length)
         integer(i0) :: f_new_tot(total_basis_length)
         integer :: excitation_level_old, excitation_level_new
-        integer :: nspawn_new
+        integer :: nspawn_new, i, do_loop_sign
         real(p) :: pkeep
 
 #ifndef PARALLEL
@@ -1422,7 +1422,26 @@ contains
         ! contributing to the probability of keeping the new psip. If spawning
         ! to higher excitations, pkeep < 1, if spawning to lower excitations
         ! (towards the diagonal) then pkeep > 1.
-        pkeep = dmqmc_sampling_prob**(excitation_level_old-excitation_level_new)
+        
+        pkeep = 1.0_p
+        do_loop_sign = sign(1, excitation_level_new-excitation_level_old)
+        if (do_loop_sign == 1) then
+            do i = excitation_level_old+1, excitation_level_new
+                pkeep = pkeep*dmqmc_sampling_probs(i)
+            end do
+        else
+            do i = excitation_level_new+1, excitation_level_old
+                pkeep = pkeep*dmqmc_sampling_probs(i)
+            end do
+        end if
+
+        pkeep = pkeep**(-do_loop_sign)
+        
+        !print *, "New:" , excitation_level_new
+        !print *, "Old:" , excitation_level_old
+        !print *, "Sign:", do_loop_sign
+        !print *, "Prob:", pkeep
+        !print *, ""
 
         ! Find how many psips will be spawned for certain.
         nspawn_new = nspawn*int(pkeep)
@@ -1629,8 +1648,6 @@ contains
         end if
 
     end subroutine create_spawned_particle_truncated_half_density_matrix
-
- 
 
     subroutine create_spawned_particle_truncated_density_matrix(f1, f2, connection, nspawn, spawning_end)
 
