@@ -92,7 +92,7 @@ abstract interface
         import :: det_info, excit, p
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        real(p) :: hmatel
+        real(p), intent(inout) :: hmatel
     end subroutine i_trial_fn
 
     ! generic procedures...
