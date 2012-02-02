@@ -87,6 +87,8 @@ integer :: nsym = 1
 
 ! Index of lowest symmetry (normally 0 or 1).
 integer :: sym0 = 1
+! Index of highest symmetry (i.e. nsym+(sym0-1))
+integer :: sym_max
 
 ! Complete active space of basis.  Valid only in systems where the
 ! single-particle basis can be ordered by the single-particle eigenvalues (e.g.

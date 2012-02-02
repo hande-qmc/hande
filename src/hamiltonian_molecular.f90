@@ -3,9 +3,6 @@ module hamiltonian_molecular
 ! Module for evaluating Hamiltonian matrix elements for molecular systems (ie
 ! systems where the integrals have been read in from file).
 
-! TODO:
-! * optimise integral cache access.
-
 use const, only: p, i0
 
 implicit none
@@ -98,7 +95,7 @@ contains
         do iel = 1, nel
             i = occ_list(iel)
             hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_h_integrals, i, i)
-            do jel = iel, nel
+            do jel = iel+1, nel
                 j = occ_list(jel)
                 hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j)
                 if (basis_fns(i)%Ms == basis_fns(j)%Ms) &

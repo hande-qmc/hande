@@ -120,13 +120,13 @@ contains
         !             connected to D by a double excitation.
 
         use basis, only: basis_fns
-        use system, only: nel, system_type, hub_k, hub_real, heisenberg, read_in, sym0, nsym
+        use system, only: nel, system_type, hub_k, hub_real, heisenberg, read_in, sym0, sym_max
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, nbasis_sym_spin
 
         integer, intent(in) :: occ_list(nel)
         real(p), intent(out) :: psingle, pdouble
 
-        integer :: i, j, virt_syms(2, sym0:nsym+(sym0-1)), nsingles, ndoubles, isyma, isymb, ims1, ims2
+        integer :: i, j, virt_syms(2, sym0:sym_max), nsingles, ndoubles, isyma, isymb, ims1, ims2
 
         select case(system_type)
         case(hub_k)
@@ -167,7 +167,7 @@ contains
                 do j = i+1, nel
                     ! Convert -1->1 and 1->2 for spin index in arrays.
                     ims2 = (basis_fns(occ_list(j))%ms+3)/2
-                    do isyma = sym0, nsym+(sym0-1)
+                    do isyma = sym0, sym_max
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
                         isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j)))

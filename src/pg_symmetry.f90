@@ -62,19 +62,19 @@ integer, parameter :: gamma_sym = 0
 
 ! nbasis_sym(i) gives the number of (spin) basis functions in the i-th symmetry,
 ! where i is the bit string describing the irreducible representation.
-integer, allocatable :: nbasis_sym(:) ! (sym0:nsym+(sym0-1))
+integer, allocatable :: nbasis_sym(:) ! (sym0:sym_max)
 
 ! nbasis_sym_spin(1,i) gives the number of spin-down basis functions in the i-th
 ! symmetry where i is the bit string describing the irreducible representation.
 ! Similarly, j=2 gives the analagous quantity for spin-up basis functions.
 ! For RHF calculations nbasis_sym_spin(:,i) = nbasis_sym(i)/2.
-integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sym0:nsym+(sym0-1))
+integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sym0:sym_max)
 
 ! sym_spin_basis_fns(:,ims,isym) gives the list of spin functions (ims=1 for
 ! down, ims=2 for up) with symmetry isym.  We merrily waste some memory (not all
 ! symmetries will have the same number of basis functions), so a 0 entry
 ! indicates no more basis functions with the given spin and spatial symmetries.
-integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0:nsym+(sym0-1))
+integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0:sym_max)
 
 contains
 
@@ -87,7 +87,7 @@ contains
         use checking, only: check_allocate
 
         use basis, only: basis_fns, nbasis
-        use system, only: nsym, sym0
+        use system, only: nsym, sym0, sym_max
 
         integer :: i, ierr, ims, ind
 
@@ -103,6 +103,7 @@ contains
         ! +1 comes from the fact that the basis_fn%sym gives the bit string
         ! representation.
         nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
+        sym_max = nsym-1
 
         allocate(nbasis_sym(0:nsym-1), stat=ierr)
         call check_allocate('nbasis_sym', nsym, ierr)

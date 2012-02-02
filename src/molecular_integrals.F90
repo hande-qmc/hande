@@ -467,7 +467,12 @@ contains
         !    i,j,a,b: (indices of) spin-orbitals.
         ! Returns:
         !    indx: spin-channel and index of a two_body integral store which contains the
-        !    <ij|o_2|ab> integral.
+        !    <ij|o_2|ab> integral, assuming the integral is non-zero by spin and
+        !    spatial symmetry.
+
+        ! NOTE:
+        !     This is not optimised for RHF systems, where the spin-channel is
+        !     always 1.
 
         use basis, only: basis_fns
         use system, only: uhf
@@ -477,7 +482,7 @@ contains
         type(int_indx) :: indx
         integer, intent(in) :: i, j, a, b
 
-        integer :: ia, jb
+        integer :: ia, jb, ii, jj, aa, bb
 
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
@@ -486,20 +491,37 @@ contains
         ! Obviously we wish to use this permutation symmetry to reduce the
         ! storage space required by a factor of 8.
 
+        ! For UHF systems we must also keep track of the spin of the orbitals
+        ! during the permutations so we know which spin channel the integral is
+        ! in.
+
         ! Require i>=a and j>=b.
         if (i < a) then
+            ii = a
+            aa = i
             ia = tri_ind(basis_fns(a)%spatial_index, basis_fns(i)%spatial_index)
         else
+            ii = i
+            aa = a
             ia = tri_ind(basis_fns(i)%spatial_index, basis_fns(a)%spatial_index)
         end if
         if (j < b) then
+            jj = b
+            bb = j
             jb = tri_ind(basis_fns(b)%spatial_index, basis_fns(j)%spatial_index)
         else
+            jj = j
+            bb = b
             jb = tri_ind(basis_fns(j)%spatial_index, basis_fns(b)%spatial_index)
         end if
 
-        ! Require (i,a) > (j,b), i.e. i>j || (i==j && a>b)
+        ! Comine ia and jb in a unique way.
+        ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
+        ! for example.
         ! Hence find overall index after applying 3-fold permutation symmetry.
+        ! NOTE: this test *only* looks at the spatial indices so it is not
+        ! sufficient for detecting the case where (e.g.) i and j are different
+        ! spin-orbitals with the same spatial index.
         if (ia < jb) then
             indx%indx = tri_ind(jb, ia)
         else
@@ -508,8 +530,20 @@ contains
 
         ! Find spin channel.
         if (uhf) then
-            if (basis_fns(i)%ms == -1) then
-                if (basis_fns(j)%ms == -1) then
+
+            ! Due to overall index depending on spatial indices, we must check
+            ! the spin indices to determine whether there's another flip in
+            ! order to obtain the unique set of indices for this integral.
+            ! Must compare the spin indices to get the right spin channel (for
+            ! reasons given above).
+            if ( ii < jj .or. ( ii == jj .and. aa < bb) ) then
+                aa = ii ! don't need aa and bb any more; use as scratch space
+                ii = jj
+                jj = aa
+            end if
+
+            if (basis_fns(ii)%ms == -1) then
+                if (basis_fns(jj)%ms == -1) then
                     ! down down down down
                     indx%spin_channel = 1
                 else
@@ -517,7 +551,7 @@ contains
                     indx%spin_channel = 3
                 end if
             else
-                if (basis_fns(j)%ms == 1) then
+                if (basis_fns(jj)%ms == 1) then
                     ! up up up up
                     indx%spin_channel = 2
                 else

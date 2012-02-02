@@ -61,7 +61,6 @@ contains
 
     end subroutine init_excitations
 
-
     subroutine end_excitations()
 
         ! Deallocate excit_mask.
@@ -74,7 +73,6 @@ contains
         call check_deallocate('excit_mask', ierr)
 
     end subroutine end_excitations
-
 
     pure function get_excitation(f1,f2) result(excitation)
 
@@ -375,191 +373,6 @@ contains
         end do
 
     end subroutine create_excited_det
-
-    pure function calc_pgen_hub_k(ab_sym, f, unocc_alpha, unocc_beta) result(pgen)
-
-        ! Calculate the generation probability of a given excitation for the
-        ! Hubbard model in momentum space.  The Hubbard model is a special case
-        ! as it is a two-band system and so the generation probability is
-        ! independent of the virtual spin-orbitals into which electrons are
-        ! excited and depends only upon the spin-orbitals from which we excite.
-        !
-        ! Note that all the information required for input should be available
-        ! during the FCIQMC algorithm and should not be needed to be calculated.
-        !
-        ! Further, we assume only allowed excitations are generated.
-        !
-        ! In:
-        !    ab_sym: symmetry spanned by the (a,b) combination of unoccupied
-        !        spin-orbitals into which electrons are excited.
-        !    f: bit string representation of the determinant we're exciting
-        !        from.
-        !    unocc_alpha, unocc_beta: integer list of the unoccupied alpha and
-        !        beta (respectively) spin-orbitals.
-        ! Returns:
-        !    pgen: the generation probability of the excitation.  See notes in
-        !        spawning.
-
-        use basis, only: basis_length, bit_lookup, nbasis
-        use system, only: nvirt, nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
-        use momentum_symmetry, only: sym_table, inv_sym
-
-        real(p) :: pgen
-        integer, intent(in) :: ab_sym
-        integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_alpha(nvirt_alpha), unocc_beta(nvirt_beta)
-
-        integer :: forbidden_excitations, a, b, a_pos, a_el, b_pos, b_el, ka, kb
-
-        forbidden_excitations = 0
-
-        ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
-        !
-        ! The number of ways of choosing i,j is
-        !
-        !  nalpha*nbeta
-        !
-        ! Due to the requirement that crystal momentum is conserved and that the Hubbard
-        ! model is a 2-band system:
-        !
-        !  p(a|i,j,b) = 1
-        !  p(b|i,j,a) = 1
-        !
-        ! i.e. once three spin-orbitals are selected, the fourth is fixed.
-        !
-        ! We now consider p(a|i,j).  Not all a are possible, as an a virtual spin-orbital
-        ! can have an occupied b spin-orbital, as b is fixed by the choice of i,j and a.
-        !
-        ! The number of spin-orbitals from which a can be chosen is
-        !
-        !  nbasis - nel - delta_d
-        !
-        ! where delta_d is the number of a orbitals which are forbidden due to b being occupied.
-        ! p(b|i,j) is identical.  Hence:
-        !
-        ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel-delta_d) + 1/(basis-nel-delta_d) ]
-        !                       2
-        !      =  ---------------------------------
-        !         nalpha*nbeta*(nbasis-nel-delta_d)
-
-        ! We count the number of a orbitals which cannot be excited into due to
-        ! the corresponding b orbital not being available.
-        ! The Hubbard model is a 2-band system, which makes this pleasingly
-        ! easy. :-)
-
-        ! exciting from alpha, beta orbitals.
-        ! alpha orbitals are odd (1,3,5,...)
-        ! beta orbitals are odd (2,4,6,...)
-        ! [Note that this is not the indexing used in bit strings: see basis
-        ! module.]
-        ! To convert from the wavevector label, 1,2,3,..., where wavevector
-        ! 1 corresponds to orbitals 1 and 2, we do:
-        !   2*k-1    for alpha
-        !   2*k      for beta
-        ! and similarly for the reverse transformation.
-
-        ! a is an alpha orbital
-        ! b is a beta orbital.
-        do a = 1, nvirt_alpha
-            ka = (unocc_alpha(a)+1)/2
-            b = 2*sym_table(ab_sym, inv_sym(ka))
-            b_pos = bit_lookup(1,b)
-            b_el = bit_lookup(2,b)
-            ! Are (a,b) both unoccupied?
-            if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
-        end do
-        do b = 1, nvirt_beta
-            kb = unocc_beta(b)/2
-            a = 2*sym_table(ab_sym, inv_sym(kb)) - 1
-            a_pos = bit_lookup(1,a)
-            a_el = bit_lookup(2,a)
-            ! Are (a,b) both unoccupied?
-            if (btest(f(a_el), a_pos)) forbidden_excitations = forbidden_excitations + 1
-        end do
-
-        pgen = 2.0_p/(nalpha*nbeta*(nvirt - forbidden_excitations))
-
-    end function calc_pgen_hub_k
-
-    pure function calc_pgen_real(occ_list, f, nvirt_avail) result(pgen)
-
-        ! Calculate the generation probability of a given excitation for the
-        ! real space models, the real Hubbard model and the Heisenberg model
-        !
-        ! Note that all the information required for input should be available
-        ! during the FCIQMC algorithm and should not be needed to be calculated.
-        !
-        ! Note also that electrons and virtual orbitals in the Hubbard model are
-        ! equivalent to spins up and spins down respectively in the Heisenberg model.
-        !
-        ! Further, we assume only allowed excitations are generated.
-        !
-        ! In:
-        !    occ_list: integer list of occupied orbitals in the Slater determinant.
-        !    f: bit string representation of the determinant we're exciting
-        !        from.
-        !    nvirt_avail: the number of available orbitals into which an
-        !        electron can be excited, given the choice of the orbital which
-        !        is being excited from (i.e. having chosen i, how many
-        !        possibilities are there for a, where i is occupied and
-        !        a occupied and D_i^a is connected to D.
-        !        For Heisenberg model, nvirt_avail is the number spins down
-        !        which can be changed to a spin up, given the spin up we have
-        !        chosen to try and excite from
-        ! Returns:
-        !    pgen: the generation probability of the excitation.  See notes in
-        !        spawning.
-
-        use basis, only: basis_length
-        use system, only: nel
-        use hubbard_real, only: connected_orbs
-
-        use errors
-
-        real(p) :: pgen
-        integer, intent(in) :: occ_list(nel)
-        integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: nvirt_avail
-        integer :: i, no_excit
-
-        ! For single excitations
-        !   pgen = p(i) p(a|i) \chi_r
-        ! where
-        !   p(i) is the probability of choosing the i-th electron to excite
-        !   from.
-        !   p(i) = 1/nel
-        !
-        !   p(a|i) is the probability of choosing to excite into orbital a given
-        !   that the i-th electron has been chosen.
-        !   nvirt_avail is the number of virtual orbitals connected to i and is
-        !   calculated when the random excitation is chosen.
-        !   p(a|i) = 1/nvirt_avail
-
-        !   \chi_r is a renormalisation to take into account the fact that not
-        !   all electrons may be excited from (e.g. no connected orbitals are
-        !   vacant).
-        !   \chi_r = nel/(nel - no_excit)
-        !   where no_excit is the number of occupied orbitals which have no
-        !   connected excitations.
-
-        ! \chi_r is a constant for a given determinant, so an optimisation is to
-        ! calculate this once per determinant rather than for each walker on the
-        ! same determinant.
-
-        no_excit = 0
-        do i = 1, nel
-            ! See if there are any allowed excitations from this electron
-            ! (Or excitations from this spin up for Hesienberg)
-            ! (see notes in choose_ia_real for how this works)
-            if (all(iand(not(f), connected_orbs(:,occ_list(i))) == 0)) then
-                ! none allowed from this orbial
-                no_excit = no_excit + 1
-            end if
-        end do
-
-        pgen = 1.0_p/(nvirt_avail * (nel - no_excit))
-
-    end function calc_pgen_real
 
     pure subroutine enumerate_all_excitations_hub_real(cdet, max_excit, excitations)
 

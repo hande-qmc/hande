@@ -30,7 +30,7 @@ contains
         ! Construct the symmetry tables.
 
         use basis, only: nbasis, basis_fns, write_basis_fn
-        use system, only: ndim, system_type, hub_k, ueg, sym0
+        use system, only: ndim, system_type, hub_k, ueg, sym0, nsym, sym_max
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
@@ -45,6 +45,7 @@ contains
         ! model systems use symmetry indices starting from 1.
         sym0 = 1
         nsym = nbasis/2 ! two spin orbitals per wavevector
+        sym_max = nsym
 
         select case(system_type)
         case(hub_k)

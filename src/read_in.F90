@@ -572,21 +572,26 @@ contains
         ! Initialise list of basis functions based upon the FCI namelist`data
         ! read in from an FCIDUMP file.
 
-        ! TODO: interface comments
-
         ! In:
         !    norb: number of orbitals/functions to initialise.
         !    uhf: true if FCIDUMP file was produced from an unrestricted (UHF)
         !         calculation.  norb refers to spatial orbitals in a RHF-based
         !         FCIDUMP file and spin orbitals in a UHF-based FCIDUMP file.
         !    orbsym: list of symmetries of each orbital/function.
-        !    sp_eigv:
-        !    sp_eigv_rank:
+        !    sp_eigv: single-particle eigenvalues of each orbital/function.
+        !    sp_eigv_rank: rank of each orbital/function by the single-particle
+        !         eigenvalue.
+        !
+        ! Note: input arrays *must* have at least norb set elements.  Only the
+        ! first norb elements are used.  In RHF systems the up and down spin
+        ! orbitals have identical eigenvalues and symmetries (due to sharing the
+        ! same spatial orbitals).
+        !
         ! In/Out:
-        !    basis_arr: array of basis functions.  On entry it is allocated to
-        !    (at least) the size of the basis.  On exit the individual basis_fn
-        !    elements have been initialised and symmetry and spatial_index
-        !    information assigned.
+        !    basis_arr: array of (spin) basis functions.  On entry it is
+        !    allocated to (at least) the size of the basis.  On exit the
+        !    individual basis_fn elements have been initialised and symmetry and
+        !    spatial_index information assigned.
 
         use basis, only: basis_fn, init_basis_fn
 
@@ -612,8 +617,8 @@ contains
                 basis_arr(i)%sp_eigv = sp_eigv(rank)
             else
                 ! Need to initialise both up- and down-spin basis functions.
-                call init_basis_fn(basis_arr(2*i-1), sym=orbsym(rank)-1, ms=-1)
-                call init_basis_fn(basis_arr(2*i), sym=orbsym(rank)-1, ms=1)
+                call init_basis_fn(basis_arr(2*i), sym=orbsym(rank)-1, ms=-1)
+                call init_basis_fn(basis_arr(2*i-1), sym=orbsym(rank)-1, ms=1)
                 basis_arr(2*i-1)%spatial_index = i
                 basis_arr(2*i)%spatial_index = i
                 basis_arr(2*i-1)%sp_eigv = sp_eigv(rank)

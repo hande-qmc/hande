@@ -7,5 +7,5 @@ extract = ../../tools/extract.py
 
 [user]
 diff = vimdiff
-benchfile = benchmark%(INPUTTAG)s-dfd7d8e.out
+benchfile = benchmark%(INPUTTAG)s-e623fc4.out
 

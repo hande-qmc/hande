@@ -17,7 +17,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
-        use system, only: nel, nsym, sym0
+        use system, only: nel, nsym, sym_max, sym0, uhf
         use determinants, only: enumerate_determinants, find_sym_space_size, &
                                 set_spin_polarisation
         use determinants, only: tot_ndets, ndets, sym_space_size
@@ -33,7 +33,7 @@ contains
             real(p) :: energy
         end type soln
 
-        integer :: ms, ms_min, ms_max, ierr, nlanczos, nexact, nfound, i, ind, state, isym, sym_min, sym_max
+        integer :: ms, ms_min, ms_max, ierr, nlanczos, nexact, nfound, i, ind, state, isym, isym_min, isym_max
 
         type(soln), allocatable :: lanczos_solns(:), exact_solns(:)
 
@@ -55,12 +55,16 @@ contains
 
         ! For a given number of electrons, n, the total spin can range from -n
         ! to +n in steps of 2.
-        ! The -ms blocks are degenerate with the +ms blocks so only need to
-        ! solve for ms >= 0.
-
         if (ms_in == huge(1)) then
-            ms_min = mod(nel,2)
-            ms_max = min(nel, nbasis-nel)
+            if (uhf) then
+                ms_min = -min(nel, nbasis-nel)
+                ms_max = min(nel, nbasis-nel)
+            else
+                ! The -ms blocks are degenerate with the +ms blocks so only need to
+                ! solve for ms >= 0.
+                ms_min = mod(nel,2)
+                ms_max = min(nel, nbasis-nel)
+            end if
         else
             ! ms was set in input
             ms_min = ms_in
@@ -68,12 +72,12 @@ contains
         end if
 
         if (sym_in == huge(1)) then
-            sym_min = sym0
-            sym_max = nsym+(sym0-1)
+            isym_min = sym0
+            isym_max = sym_max
         else
             ! sym was set in input
-            sym_min = sym_in
-            sym_max = sym_in
+            isym_min = sym_in
+            isym_max = sym_in
         end if
 
         if (doing_calc(lanczos_diag)) then
@@ -98,7 +102,7 @@ contains
             call find_sym_space_size()
 
             ! Diagonalise each symmetry block in turn.
-            do isym = sym_min, sym_max
+            do isym = isym_min, isym_max
 
                 if (sym_space_size(isym)==0) then
                     if (parent) then
@@ -191,7 +195,7 @@ contains
                 ind = eigv_rank(i)
                 state = state + 1
                 write (6,'(1X,i6,2X,i6,1X,f18.12)') state, lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
-                if (lanczos_solns(ind)%ms /= 0) then
+                if (.not.uhf .and. lanczos_solns(ind)%ms /= 0) then
                     ! Also a degenerate -ms solution.
                     state = state + 1
                     write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
@@ -213,7 +217,7 @@ contains
                 ind = eigv_rank(i)
                 state = state + 1
                 write (6,'(1X,i6,2X,i6,1X,f18.12)') state, exact_solns(ind)%ms, exact_solns(ind)%energy
-                if (exact_solns(ind)%ms /= 0) then
+                if (.not.uhf .and. exact_solns(ind)%ms /= 0) then
                     ! Also a degenerate -ms solution.
                     state = state + 1
                     write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -exact_solns(ind)%ms, exact_solns(ind)%energy

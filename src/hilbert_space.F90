@@ -29,7 +29,7 @@ contains
         use parallel
         use utils, only: binom_r
 
-        integer :: i, iel, icycle, naccept
+        integer :: iel, icycle, naccept
         integer :: a, a_el, a_pos, b, b_el, b_pos
         integer :: ref_sym, det_sym
         integer(i0) :: f(basis_length)
@@ -91,36 +91,32 @@ contains
                 ! Alpha electrons.
                 f = 0
                 iel = 0
-                do i = 1, nalpha
-                    do
-                        ! generate random number 1,3,5,...
-                        a = 2*nint(genrand_real2()*(nbasis/2-1))+1
-                        a_pos = bit_lookup(1,a)
-                        a_el = bit_lookup(2,a)
-                        if (.not.btest(f(a_el), a_pos)) then
-                            ! found unoccupied alpha orbital.
-                            f(a_el) = ibset(f(a_el), a_pos)
-                            iel = iel + 1
-                            occ_list(iel) = a
-                            exit
-                        end if
-                    end do
+                do
+                    ! generate random number 1,3,5,...
+                    a = 2*nint(genrand_real2()*(nbasis/2-1))+1
+                    a_pos = bit_lookup(1,a)
+                    a_el = bit_lookup(2,a)
+                    if (.not.btest(f(a_el), a_pos)) then
+                        ! found unoccupied alpha orbital.
+                        f(a_el) = ibset(f(a_el), a_pos)
+                        iel = iel + 1
+                        occ_list(iel) = a
+                        if (iel == nalpha) exit
+                    end if
                 end do
                 ! Beta electrons.
-                do i = 1, nbeta
-                    do
-                        ! generate random number 2,4,6,...
-                        b = 2*nint(genrand_real2()*(nbasis/2-1))+2
-                        b_pos = bit_lookup(1,b)
-                        b_el = bit_lookup(2,b)
-                        if (.not.btest(f(b_el), b_pos)) then
-                            ! found unoccupied beta orbital.
-                            f(b_el) = ibset(f(b_el), b_pos)
-                            iel = iel + 1
-                            occ_list(iel) = b
-                            exit
-                        end if
-                    end do
+                do
+                    ! generate random number 2,4,6,...
+                    b = 2*nint(genrand_real2()*(nbasis/2-1))+2
+                    b_pos = bit_lookup(1,b)
+                    b_el = bit_lookup(2,b)
+                    if (.not.btest(f(b_el), b_pos)) then
+                        ! found unoccupied beta orbital.
+                        f(b_el) = ibset(f(b_el), b_pos)
+                        iel = iel + 1
+                        occ_list(iel) = b
+                        if (iel == nel) exit
+                    end if
                 end do
                 ! Find the symmetry of the determinant.
                 det_sym = symmetry_orb_list(occ_list)

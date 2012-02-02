@@ -6,6 +6,8 @@ test*.out*
 testcode*.err*
 DETS
 HAMIL
+HAMIL.*
+hamil.*
 *.out
 *.err
 *.log
