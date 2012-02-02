@@ -19,6 +19,11 @@ module spawning
 ! actual work of generating a random excitation is done in the system-specific
 ! excit_gen_* modules.
 
+! TODO: profile to discover how much time is spent obtaining the correct sign of
+! a matrix element (i.e. find_permutation_* routines).  These can be avoided
+! unless the spawning event is successful as we only need the correct sign of
+! the matrix element if offspring are produced.
+
 use const
 implicit none
 

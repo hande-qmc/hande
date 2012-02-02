@@ -8,6 +8,9 @@ module excit_gen_real_lattice
 
 ! See top-level comments in spawning about the overall aim of the spawning step.
 
+! TODO: 'split' excitation generators (optimisation already used for Hubbard
+! model in momentum space).
+
 use const
 implicit none
 
