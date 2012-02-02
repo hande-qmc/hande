@@ -482,6 +482,7 @@ contains
 
             if (no_renorm) then
                 spawner_ptr => spawn_hub_k_no_renorm
+                gen_excit_ptr => gen_excit_hub_k_no_renorm
             else
                 spawner_ptr => spawn_hub_k
                 gen_excit_ptr => gen_excit_hub_k

@@ -213,7 +213,7 @@ contains
 
     end subroutine spawn_hub_k_no_renorm
 
-!--- Excitation generation ---
+!--- Excitation generation (see also split excitation generators) ---
 
     subroutine gen_excit_hub_k(cdet, pgen, connection, hmatel)
 
@@ -268,6 +268,75 @@ contains
         call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
 
     end subroutine gen_excit_hub_k
+
+    subroutine gen_excit_hub_k_no_renorm(cdet, pgen, connection, hmatel)
+
+        ! Create a random excitation from cdet and calculate the probability of
+        ! selecting that excitation.
+
+        ! This doesn't exclude the case where, having selected 2 occupied
+        ! orbitals (i and j) and the first virtual orbital (a), the final
+        ! orbital is already occupied and so that excitation is impossible.
+        ! Whilst it is somewhat wasteful (generating excitations which can't be
+        ! performed), there is a balance between the cost of generating
+        ! forbidden excitations and the O(N) cost of renormalising the
+        ! generation probabilities.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !        determinant and a connected determinant in the Hubbard model in
+        !        a Bloch basis.
+
+        use determinants, only: det_info
+        use excitations, only: excit
+        use fciqmc_data, only: tau
+        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt
+        use hamiltonian, only: slater_condon2_hub_k_excit
+
+        type(det_info), intent(in) :: cdet
+        real(p), intent(out) :: pgen, hmatel
+        type(excit), intent(out) :: connection
+
+        integer :: ij_sym
+        logical :: allowed_excitation
+
+        ! See notes in spawn_hub_k and gen_excit_hub_k for more details regarding this algorithm.
+
+        ! 1. Select a random pair of spin orbitals to excite from.
+        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
+
+        ! 2. Chose a random pair of spin orbitals to excite to.
+        call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+
+        if (allowed_excitation) then
+
+            ! 3. probability of this excitation.
+            ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
+            ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel) + 1/(basis-nel) ]
+            !                    2
+            !      =  -------------------------
+            !         nalpha*nbeta*(nbasis-nel)
+            pgen = 2.0_dp/(nalpha*nbeta*nvirt)
+
+            ! 4. find the connecting matrix element.
+            connection%nexcit = 2
+            call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+
+        else
+
+            ! Generated a forbidden excitation (b is already occupied)
+            hmatel = 0.0_p
+            pgen = 1.0_p
+
+        end if
+
+    end subroutine gen_excit_hub_k_no_renorm
 
 !--- Select random orbitals involved in a valid double excitation ---
 
