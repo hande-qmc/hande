@@ -4,7 +4,7 @@
 4.  checktest.
 5.  parallel direct lanczos.
 6.  UEG.
-7.  Better name? A: DANGERMOUSE.  High-Accuracy N-DImensional Quantum Monte Carlo (HANDIQMC)
+7.  Better name? A: High-Accuracy N-DImensional Quantum Monte Carlo (HANDIQMC)
 
 FCIQMC
 ------
@@ -23,6 +23,14 @@ Hellmann--Feynmann
 6. test with kinetic energy.
 7. w/ initiator?
 
+Quantities to accumulate:
+
+* O_{0j] c_j
+* H_{0j} \tilde{c}_j
+* H_{0j} c_j
+* c_0
+* \tilde{c}_0
+
 FCIQMC parallelisation
 ----------------------
 
@@ -32,11 +40,6 @@ Optimisations
 -------------
 
 1. sym_table in terms of basis functions
-
-Importance sampling
--------------------
-
-1. Implement infrastructure
 
 Cleanup
 -------
