@@ -468,6 +468,9 @@ contains
         ! Utilities
         use errors, only: stop_all
 
+        ! 0. In general, use the default spawning routine.
+        spawner_ptr => spawn
+
         ! 1. Set system-specific procedure pointers.
         !     * projected energy estimator
         !     * diagonal hamiltonian matrix element evaluation
@@ -497,7 +500,6 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_real
             sc0_ptr => slater_condon0_hub_real
 
-            spawner_ptr => spawn
             if (no_renorm) then
                 gen_excit_ptr => gen_excit_hub_real_no_renorm
             else
@@ -530,8 +532,6 @@ contains
                     gen_excit_ptr => gen_excit_heisenberg
             end if
             select case(guiding_function)
-            case (no_guiding)
-                spawner_ptr => spawn
             case (neel_singlet_guiding)
                 spawner_ptr => spawn_importance_sampling
                 trial_fn_ptr => neel_trial_state
@@ -539,7 +539,6 @@ contains
 
         case(read_in)
 
-            spawner_ptr => spawn
             update_proj_energy_ptr => update_proj_energy_mol
             sc0_ptr => slater_condon0_mol
 
