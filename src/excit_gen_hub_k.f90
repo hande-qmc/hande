@@ -227,6 +227,9 @@ contains
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !        determinant and a connected determinant in the Hubbard model in
+        !        a Bloch basis.
 
         use determinants, only: det_info
         use excitations, only: excit
