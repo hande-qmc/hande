@@ -493,10 +493,10 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_real
             sc0_ptr => slater_condon0_hub_real
 
+            spawner_ptr => spawn
             if (no_renorm) then
-                spawner_ptr => spawn_hub_real_no_renorm
+                gen_excit_ptr => gen_excit_hub_real_no_renorm
             else
-                spawner_ptr => spawn
                 gen_excit_ptr => gen_excit_hub_real
             end if
 
