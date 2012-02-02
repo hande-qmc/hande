@@ -107,6 +107,128 @@ contains
 
     end subroutine spawn_importance_sampling
 
+    subroutine spawn_lattice_split_gen(cdet, parent_sign, nspawn, connection)
+
+        ! Attempt to spawn a new particle on a connected determinant.
+
+        ! This is just a thin wrapper around a system-specific excitation
+        ! generator and a utility function.
+
+        ! This subroutine applies a transformation to the Hamiltonian to achieve
+        ! importance sampling of the stochastic process.
+
+        ! For lattice models (principally the Hubbard model; the savings for the
+        ! Heisenberg model are minimal) one can make a useful optimisation, as
+        ! determining |H_ij| is fast (indeed, constant if non-zero) and does not
+        ! require full knowledge of the excitation.  As only a small fraction of
+        ! spawning events are successful, it is faster to not do any unnecessary
+        ! work and test whether the spawning event is successful before
+        ! finalising the excitation.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use determinants, only: det_info
+        use excitations, only: excit
+        use fciqmc_data, only: tau
+        use proc_pointers, only: gen_excit_init_ptr, gen_excit_finalise_ptr
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
+
+        real(p) :: pgen, abs_hmatel, hmatel
+
+        ! 1. Generate enough of a random excitation to determinant the
+        ! generation probability and |H_ij|.
+        call gen_excit_init_ptr(cdet, pgen, connection, abs_hmatel)
+
+        ! 2. Attempt spawning.
+        nspawn = nspawn_from_prob(tau*abs_hmatel/pgen)
+
+        if (nspawn /= 0) then
+
+            ! 3. Complete excitation and find sign of connecting matrix element.
+            call gen_excit_finalise_ptr(cdet, pgen, connection, hmatel)
+
+            ! 4. Find sign of offspring.
+            call set_child_sign(hmatel, parent_sign, nspawn)
+
+        end if
+
+    end subroutine spawn_lattice_split_gen
+
+    subroutine spawn_lattice_split_gen_importance_sampling(cdet, parent_sign, nspawn, connection)
+
+        ! Attempt to spawn a new particle on a connected determinant.
+
+        ! This is just a thin wrapper around a system-specific excitation
+        ! generator and a utility function.
+
+        ! For lattice models (principally the Hubbard model; the savings for the
+        ! Heisenberg model are minimal) one can make a useful optimisation, as
+        ! determining |H_ij| is fast (indeed, constant if non-zero) and does not
+        ! require full knowledge of the excitation.  As only a small fraction of
+        ! spawning events are successful, it is faster to not do any unnecessary
+        ! work and test whether the spawning event is successful before
+        ! finalising the excitation.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! Out:
+        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+
+        use determinants, only: det_info
+        use excitations, only: excit
+        use fciqmc_data, only: tau
+        use proc_pointers, only: gen_excit_init_ptr, gen_excit_finalise_ptr, gen_excit_ptr, trial_fn_ptr
+
+        type(det_info), intent(in) :: cdet
+        integer, intent(in) :: parent_sign
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
+
+        real(p) :: pgen, tilde_hmatel, hmatel
+
+        ! 1. Generate enough of a random excitation to determinant the
+        ! generation probability and |H_ij|.
+        call gen_excit_init_ptr(cdet, pgen, connection, tilde_hmatel)
+
+        ! 2. Transform Hamiltonian matrix element by trial function.
+        call trial_fn_ptr(cdet, connection, hmatel)
+
+        ! 3. Attempt spawning.
+        nspawn = nspawn_from_prob(tau*abs(tilde_hmatel)/pgen)
+
+        if (nspawn /= 0) then
+
+            ! 4. Complete excitation and find sign of connecting matrix element.
+            call gen_excit_finalise_ptr(cdet, pgen, connection, hmatel)
+
+            ! 5. Find sign of offspring.
+            ! Note that we don't care about the value of H_ij at this step, only
+            ! the sign.
+            call set_child_sign(tilde_hmatel*hmatel, parent_sign, nspawn)
+
+        end if
+
+    end subroutine spawn_lattice_split_gen_importance_sampling
+
 !--- Attempt spawning based upon random excitation ---
 
     function nspawn_from_prob(probability) result(number_spawned)
@@ -122,6 +244,7 @@ contains
         !    number_spawned: the number spawned from this probability
 
         use dSFMT_interface , only: genrand_real2
+
         implicit none
         real(p), intent(in) :: probability
         integer             :: number_spawned
