@@ -116,6 +116,7 @@ integer :: det_unit
 type det_info
     ! bit representation of determinant.
     integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
+    integer(i0), pointer :: f2(:)  => NULL()  ! (basis_length); for DMQMC
     ! List of occupied spin-orbitals.
     integer, pointer :: occ_list(:)  => NULL()  ! (nel)
     ! List of occupied alpha/beta spin-orbitals
@@ -284,20 +285,38 @@ contains
 
     end subroutine end_determinants
 
-    subroutine alloc_det_info(det_info_t)
+    subroutine alloc_det_info(det_info_t, allocate_bit_strings)
 
         ! Allocate the components of a det_info variable.
+
+        ! In:
+        !    allocate_bit_strings (optional): if true (default), allocate the
+        !        bit string attributes.  If false, then the bit string attributes
+        !        can be used to point to already allocated bit strings.
+        !        If set to false, the programmer *must* set allocated_bit_strings to
+        !        false when calling dealloc_det_info.
         ! Out:
         !    det_info_t: det_info variable with components allocated to the
-        !    appropriate sizes.
+        !        appropriate sizes.
 
         use checking, only: check_allocate
 
+        logical, intent(in), optional :: allocate_bit_strings
         type(det_info), intent(inout) :: det_info_t
+        logical :: alloc_f
         integer :: ierr
 
-        allocate(det_info_t%f(basis_length), stat=ierr)
-        call check_allocate('det_info_t%f',basis_length,ierr)
+        if (present(allocate_bit_strings)) then
+            alloc_f = allocate_bit_strings
+        else
+            alloc_f = .true.
+        end if
+        if (alloc_f) then
+            allocate(det_info_t%f(basis_length), stat=ierr)
+            call check_allocate('det_info_t%f',basis_length,ierr)
+            allocate(det_info_t%f2(basis_length), stat=ierr)
+            call check_allocate('det_info_t%f2',basis_length,ierr)
+        end if
         allocate(det_info_t%occ_list(nel), stat=ierr)
         call check_allocate('det_info_t%occ_list',nel,ierr)
         allocate(det_info_t%occ_list_alpha(nalpha), stat=ierr)
@@ -313,19 +332,40 @@ contains
 
     end subroutine alloc_det_info
 
-    subroutine dealloc_det_info(det_info_t)
+    subroutine dealloc_det_info(det_info_t, allocated_bit_strings)
 
         ! Deallocate the components of a det_info variable.
+
+        ! In:
+        !    allocated_bit_strings (optional): if true (default), the
+        !        bit string attributes are allocated and must be deallocated.
+        !        If false, then the bit string attributes were just used to
+        !        point to already allocated bit strings and don't need to be
+        !        deallocated.  This *must* correspond to the alloc_bit_strings
+        !        argument given to alloc_det_info.
         ! Out:
         !    det_info_t: det_info variable with all components deallocated.
 
         use checking, only: check_deallocate
 
+        logical, intent(in), optional :: allocated_bit_strings
         type(det_info), intent(inout) :: det_info_t
         integer :: ierr
 
-        deallocate(det_info_t%f, stat=ierr)
-        call check_deallocate('det_info_t%f',ierr)
+        logical :: alloc_f
+
+        if (present(allocated_bit_strings)) then
+            alloc_f = allocated_bit_strings
+        else
+            alloc_f = .true.
+        end if
+
+        if (alloc_f) then
+            deallocate(det_info_t%f, stat=ierr)
+            call check_deallocate('det_info_t%f',ierr)
+            deallocate(det_info_t%f2, stat=ierr)
+            call check_deallocate('det_info_t%f2',ierr)
+        end if
         deallocate(det_info_t%occ_list, stat=ierr)
         call check_deallocate('det_info_t%occ_list',ierr)
         deallocate(det_info_t%occ_list_alpha, stat=ierr)
