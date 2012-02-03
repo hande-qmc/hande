@@ -46,8 +46,8 @@ contains
 
         ! Allocate det_info components. We need two cdet objects
         ! for each 'end' which may be spawned from in the DMQMC algorithm.
-        call alloc_det_info(cdet1)
-        call alloc_det_info(cdet2)
+        call alloc_det_info(cdet1, .false.)
+        call alloc_det_info(cdet2, .false.)
 
         ! Main DMQMC loop.
         if (parent) call write_fciqmc_report_header()
@@ -113,8 +113,13 @@ contains
                     ndeath = 0
 
                     do idet = 1, tot_walkers ! loop over walkers/dets
-                        cdet1%f = walker_dets(:basis_length,idet)
-                        cdet2%f = walker_dets((basis_length+1):(2*basis_length),idet)
+
+                        ! f points to the bitstring that is spawning, f2 to the
+                        ! other bit string.
+                        cdet1%f => walker_dets(:basis_length,idet)
+                        cdet2%f2 => walker_dets((basis_length+1):(2*basis_length),idet)
+                        cdet2%f => walker_dets((basis_length+1):(2*basis_length),idet)
+                        cdet1%f2 => walker_dets(:basis_length,idet)
 
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
@@ -192,8 +197,8 @@ contains
 
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
-        call dealloc_det_info(cdet1)
-        call dealloc_det_info(cdet2)
+        call dealloc_det_info(cdet1, .false.)
+        call dealloc_det_info(cdet2, .false.)
 
     end subroutine do_dmqmc
 
