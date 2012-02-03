@@ -23,7 +23,8 @@ integer(i0), allocatable :: lmask(:)
 ! TODO: comment variables.
 
 real(p) :: hf_shift = 0.0_p
-real(p) :: proj_hf_expectation = 0.0_p
+real(p) :: proj_hf_O_hpsip
+real(p) :: proj_hf_H_hfpsip
 
 real(p) :: D0_hf_population
 real(p) :: O00

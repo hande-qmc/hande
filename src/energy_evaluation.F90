@@ -26,14 +26,14 @@ contains
                                proj_energy, shift, vary_shift, vary_shift_from,                  &
                                vary_shift_from_proje, D0_population,                           &
                                fold_line
-        use hfs_data, only: proj_hf_expectation, hf_signed_pop
+        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
-        real(dp) :: ir(sampling_size+5), ir_sum(sampling_size+5)
+        real(dp) :: ir(sampling_size+6), ir_sum(sampling_size+6)
         integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
         integer :: ierr
 
@@ -41,15 +41,16 @@ contains
         ! all processors.
         ir(1:sampling_size) = nparticles
         ir(sampling_size+1) = proj_energy
-        ir(sampling_size+2) = proj_hf_expectation
-        ir(sampling_size+3) = D0_population
-        ir(sampling_size+4) = rspawn
+        ir(sampling_size+2) = D0_population
+        ir(sampling_size+3) = rspawn
 
         if (doing_calc(hfs_fciqmc_calc)) then
             ! HFS calculations also need to know \tilde{N} = \sum_i sign(N_j^(H)) N_j^(HF),
             ! where N_j^(H) is the population of Hamiltonian walkers on j and
             ! N_j^(HF) the population of Hellmann-Feynman walkers on j.
-            ir(sampling_size+5) = calculate_hf_signed_pop()
+            ir(sampling_size+4) = calculate_hf_signed_pop()
+            ir(sampling_size+5) = proj_hf_O_hpsip
+            ir(sampling_size+6) = proj_hf_H_hfpsip
         end if
 
         ! Don't bother to optimise for running in serial.  This is a fast
@@ -63,10 +64,11 @@ contains
 
         ntot_particles = nint(ir_sum(1:sampling_size), lint)
         proj_energy = ir_sum(sampling_size+1)
-        proj_hf_expectation = ir_sum(sampling_size+2)
-        D0_population = ir_sum(sampling_size+3)
-        rspawn = ir_sum(sampling_size+4)
-        new_hf_signed_pop = nint(ir_sum(sampling_size+5), lint)
+        D0_population = ir_sum(sampling_size+2)
+        rspawn = ir_sum(sampling_size+3)
+        new_hf_signed_pop = nint(ir_sum(sampling_size+4), lint)
+        proj_hf_O_hpsip = ir_sum(sampling_size+5)
+        proj_hf_H_hfpsip = ir_sum(sampling_size+6)
 
         if (vary_shift) then
             call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
@@ -97,7 +99,8 @@ contains
         proj_energy = proj_energy/ncycles
         D0_population = D0_population/ncycles
         ! Similarly for the HFS estimator
-        proj_hf_expectation = proj_hf_expectation/ncycles
+        proj_hf_O_hpsip = proj_hf_O_hpsip/ncycles
+        proj_hf_H_hfpsip = proj_hf_H_hfpsip/ncycles
         ! average spawning rate over report loop and processor.
         rspawn = rspawn/(ncycles*nprocs)
 
@@ -335,7 +338,7 @@ contains
 
     end subroutine update_proj_energy_mol
 
-    subroutine update_proj_hfs_hub_k(idet, inst_proj_energy, inst_proj_hf_t1)
+    subroutine update_proj_hfs_hub_k(idet)
 
         ! Add the contribution of the current determinant to the projected
         ! energy in an identical way to update_proj_energy_hub_k.
@@ -347,17 +350,13 @@ contains
 
         ! In:
         !    idet: index of current determinant in the main walker list.
-        ! In/Out:
-        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
         use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_k, only: slater_condon2_hub_k
-        use hfs_data, only: D0_hf_population
+        use hfs_data, only: D0_hf_population, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
         integer, intent(in) :: idet
-        real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
         type(excit) :: excitation
         real(p) :: hmatel
 
@@ -372,8 +371,12 @@ contains
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            inst_proj_energy = inst_proj_energy + hmatel*walker_population(1,idet)
-            inst_proj_hf_t1 = inst_proj_hf_t1 + hmatel*walker_population(2,idet)
+            proj_energy = proj_energy + hmatel*walker_population(1,idet)
+            ! DEBUG/TESTING: For now, just using O=H
+            ! In this case, \sum_j O_0j c_j = proj_energy
+            proj_hf_O_hpsip = proj_energy
+            ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*walker_population(2,idet)
         end if
 
     end subroutine update_proj_hfs_hub_k

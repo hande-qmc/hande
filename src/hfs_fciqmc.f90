@@ -49,13 +49,12 @@ contains
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
         ! the instantaneous wavefunction.
 
-        ! This is implemented by abusing fortran's ability to pass procedures as
-        ! arguments (if only function pointers (F2003) were implemented in more
-        ! compilers!).  This allows us to avoid many system dependent if blocks,
-        ! which are constant for a given calculation.  Avoiding such branching
-        ! is worth the extra verbosity (especially if procedures are written to
-        ! be sufficiently modular that implementing a new system can reuse many
-        ! existing routines) as it leads to much faster code.
+        ! This is implemented using F2003 function pointers.  This allows us to
+        ! avoid many system dependent if blocks, which are constant for a given
+        ! calculation.  Avoiding such branching is worth the extra verbosity
+        ! (especially if procedures are written to be sufficiently modular that
+        ! implementing a new system can reuse many existing routines) as it
+        ! leads to much faster code.
 
         use parallel
 
@@ -99,8 +98,8 @@ contains
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
-            inst_proj_hf_t1 = 0.0_p
-            proj_hf_expectation = 0.0_p
+            proj_hf_O_hpsip = 0.0_p
+            proj_hf_H_hfpsip = 0.0_p
             D0_population = 0.0_p
             D0_hf_population = 0.0_p
             rspawn = 0.0_p
@@ -131,7 +130,6 @@ contains
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    ! TODO: H-F projected estimator.
                     call update_proj_energy_ptr(idet)
 
                     do iparticle = 1, abs(walker_population(1,idet))
@@ -143,8 +141,8 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
-                        ! Currently using O=H for testing, so this uses the same spawning
-                        ! routines as the Hamiltonian walkers.
+                        ! DEBUG/TESTING: For now, just using O=H, so this uses
+                        ! the same spawning routines as the Hamiltonian walkers.
                         call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
@@ -168,7 +166,7 @@ contains
                     call death_ptr(walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
-                    ! NOTE: for debugging only, using O=H (set in
+                    ! NOTE: for DEBUG/TESTING only, using O=H (set in
                     ! insert_new_walkers in annihilation module).
                     call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
@@ -192,13 +190,12 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            proj_hf_expectation = inst_proj_hf_t1 - proj_energy*D0_hf_population/D0_population
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
             if (parent) then
                 ! DEBUG output only.
                 ! TODO: include with std. output.
-                write (17,*) ireport, inst_proj_hf_t1, hf_shift, nparticles_old, walker_population(:,1), &
-                             D0_population, D0_hf_population
+                write (17,*) ireport, hf_shift, proj_energy, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
+                             D0_population, D0_hf_population, nparticles_old
                 call flush(17)
             end if
 
