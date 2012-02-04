@@ -6,6 +6,8 @@ module ccmc
 ! (especially the spawning, death and annihilation).  As a result, the structure
 ! of do_ccmc is remarkably similar to the other do_*mc routines.
 
+use const, only: p
+
 implicit none
 
 contains
@@ -23,7 +25,7 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use excitations, only: excit
+        use excitations, only: excit, get_excitation_level
         use energy_evaluation, only: update_energy_estimators
         use fciqmc_data
         use fciqmc_common
@@ -32,13 +34,12 @@ contains
         use proc_pointers
 
         integer :: ireport, icycle
-!        integer :: iparticle ! not used yet
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
-        integer :: ndeath
-!        integer :: nspawned ! not used yet
-!        type(excit) :: connection  ! not used yet
+        integer :: ndeath, nspawned, excitation_level
+        real(p) :: cluster_amplitude, pcluster
+        type(excit) :: connection
 
         logical :: soft_exit
 
@@ -81,10 +82,32 @@ contains
                 ! Allow one spawning & death attempt for each walker on the
                 ! processor.
                 do iattempt = 1, nparticles(1)
+
                     ! TODO: select cluster size
-                    ! TODO: find cluster
-                    ! TODO: projected estimator.
-                    ! TODO: evolve.
+
+                    ! TODO: select cluster
+
+                    ! TODO: collapse cluster (return also excitation_level)
+
+                    if (excitation_level <= truncation_level+2) then
+
+                        ! TODO: projected estimator.
+!                        call update_proj_energy_ptr(cdet, amp)
+
+                        ! TODO: evolve.
+!                        call spawner_ccmc(cdet, cluster_amplitude, pcluster, nspawned, connection)
+
+                        if (nspawned /= 0) then
+                            call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
+                        end if
+
+                        ! Does the cluster collapsed onto D0 produce
+                        ! a determinant is in the truncation space?  If so, also
+                        ! need to attempt a death/cloning step.
+                        if (excitation_level <= truncation_level) call stochastic_ccmc_death(cdet, cluster_amplitude, pcluster)
+
+                    end if
+
                 end do
 
                 ! Add the spawning rate (for the processor) to the running
@@ -134,13 +157,62 @@ contains
 
     end subroutine do_ccmc
 
-    function select_cluster_size(max_excit_level) result(cluster_size)
+    subroutine stochastic_ccmc_death(cdet, amplitude, pcluster)
 
-        integer :: cluster_size
-        integer, intent(in) :: max_excit_level
+        ! Attempt to 'die' (ie create an excip on the current exictor, cdet%f)
+        ! with probability
+        !    \tau |<D_s|H|D_s> A_s|
+        !    ----------------------
+        !       p_sel p_s p_clust
+        ! where |D_s> is the determinant formed by applying the excitor to the
+        ! reference determinant and A_s is the amplitude.  See comments in TODO
+        ! about the probabilities.
 
-        
+        ! In:
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
+        !    amplitude: amplitude of cluster.
+        !    pcluster: Overall probabilites of selecting this cluster, ie
+        !        p_sel.p_s.p_clust.
 
-    end function select_cluster_size
+        use determinants, only: det_info
+        use fciqmc_data, only: tau, shift, spawned_pop, H00
+        use excitations, only: excit
+        use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
+        use dSFMT_interface, only: genrand_real2
+
+        type(det_info), intent(in) :: cdet
+        real(p), intent(in) :: amplitude
+        real(p), intent(in) :: pcluster
+
+        real(p) :: pdeath, Kii
+        integer :: nkill
+        type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
+
+        ! TODO: optimise for the case where the cluster is either the reference
+        ! determinant or consisting of a single excitor.
+        Kii = sc0_ptr(cdet%f) - H00 - shift
+
+        pdeath = (tau*Kii*amplitude)/pcluster
+
+        ! Number that will definitely die
+        ! Create nkill excips with opposite sign to parent excip...
+        nkill = -int(pdeath)
+
+        ! Stochastic death...
+        pdeath = pdeath - nkill
+        if (abs(pdeath) > genrand_real2()) then
+            ! Increase magnitude of nkill...
+            nkill = nkill + sign(1, nkill)
+        end if
+
+        ! The excitor might be a composite cluster so we'll just create
+        ! excips in the spawned list and allow the annihilation process to take
+        ! care of the rest.
+        ! Pass through a null excitation so that we create a spawned particle on
+        ! the current excitor.
+        call create_spawned_particle_ptr(cdet, null_excit, nkill, spawned_pop)
+
+    end subroutine stochastic_ccmc_death
 
 end module ccmc
