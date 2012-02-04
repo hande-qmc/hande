@@ -80,14 +80,16 @@ contains
 
             call direct_annihilation()
 
-            if (beta_cycle .ne. 1 .and. parent) then
-                write (6,'(a32,i7)') &
-                       " # Resetting beta... Beta loop =", beta_cycle
-                ! Reset the random number generator with seed = seed + 1
-                seed = seed + 1
+            if (beta_cycle .ne. 1) then
+                ! Reset the random number generator with seed = seed + nprocs
+                seed = seed + nprocs
                 call dSFMT_init(seed + iproc)
-                write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
-                    " # Resetting random number generator with a seed of:", seed, "."
+                if (parent) then
+                    write (6,'(a32,i7)') &
+                        " # Resetting beta... Beta loop =", beta_cycle
+                    write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
+                        " # Resetting random number generator with a seed of:", seed, "."
+                end if
             end if
 
             nparticles_old = nint(D0_population)
