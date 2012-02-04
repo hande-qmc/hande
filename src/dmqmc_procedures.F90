@@ -23,7 +23,6 @@ contains
 
          integer :: ierr
          integer :: i, ipos, basis_find, bit_position, bit_element
-         real(p), allocatable :: dmqmc_sampling_probs_complete(:)
          integer :: max_number_excitations
 
          number_dmqmc_estimators = 0
@@ -71,36 +70,24 @@ contains
 
          if (allocated(dmqmc_sampling_probs)) then
              ! dmqmc_sampling_probs stores the factors by which probabilities are to
-             ! be reduced when spawning away from the diagonal. In general the user may only
-             ! want to reduce the probabilities when going to the first few excitations, so
-             ! only a small array will have been allocated upon reading the input file. But
-             ! in the calculations we need to know the factors for higher excitations, even
-             ! if they are mostly 1's. So we reallocate this array with the full size...
+             ! be reduced when spawning away from the diagonal. The trial function required
+             ! from these probabilities, for use in importance sampling, is actually that of
+             ! the accumulated factors, ie, if dmqmc_sampling_probs = (a, b, c, ...) then
+             ! dmqmc_accumulated_factors = (1, a, ab, abc, ...). This is the array which we
+             ! need to create and store. dmqmc_sampling_probs is no longer needed and so can
+             ! be deallocated. Also, the user may have only input factors for the first few
+             ! excitation levels, but we need to store factors for all levels, as done below.
              max_number_excitations = min(nel, (nsites-nel))
-             ! Allocate new array to store old probabilities whilst we reallocate the proper array.
-             allocate(dmqmc_sampling_probs_complete(max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_sampling_probs_complete',max_number_excitations,ierr)
-             ! Set all probabilities of the new array.
-             dmqmc_sampling_probs_complete = 1.0_p
-             dmqmc_sampling_probs_complete(1:size(dmqmc_sampling_probs)) = dmqmc_sampling_probs
-             ! Reallocate the desried array.
-             deallocate(dmqmc_sampling_probs, stat=ierr)
-             call check_deallocate('dmqmc_sampling_probs',ierr)
-             allocate(dmqmc_sampling_probs(1:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_sampling_probs',max_number_excitations,ierr)
-             ! Set this array to have all the probabilities, as desired.
-             dmqmc_sampling_probs = dmqmc_sampling_probs_complete
-             ! deallocate temporary array.
-             deallocate(dmqmc_sampling_probs_complete, stat=ierr)
-             call check_deallocate('dmqmc_sampling_probs_complete',ierr)
-             ! Now it is also useful to store the accumulative factors to avoid having
-             ! to calculate them every time.
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
              dmqmc_accumulated_probs(0) = 1.0_p
-             do i = 1, max_number_excitations
+             do i = 1, size(dmqmc_sampling_probs)
                  dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
              end do
+             dmqmc_accumulated_probs(size(dmqmc_sampling_probs):max_number_excitations) = &
+                                        dmqmc_sampling_probs(size(dmqmc_sampling_probs))
+             deallocate(dmqmc_sampling_probs, stat=ierr)
+            call check_deallocate('dmqmc_sampling_probs',ierr)
          else
              max_number_excitations = min(nel, (nsites-nel))
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)

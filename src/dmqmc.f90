@@ -117,9 +117,9 @@ contains
                         ! f points to the bitstring that is spawning, f2 to the
                         ! other bit string.
                         cdet1%f => walker_dets(:basis_length,idet)
-                        cdet2%f2 => walker_dets((basis_length+1):(2*basis_length),idet)
+                        cdet1%f2 => walker_dets((basis_length+1):(2*basis_length),idet)
                         cdet2%f => walker_dets((basis_length+1):(2*basis_length),idet)
-                        cdet1%f2 => walker_dets(:basis_length,idet)
+                        cdet2%f2 => walker_dets(:basis_length,idet)
 
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
