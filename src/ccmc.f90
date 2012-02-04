@@ -94,8 +94,7 @@ contains
                         ! TODO: projected estimator.
 !                        call update_proj_energy_ptr(cdet, amp)
 
-                        ! TODO: evolve.
-!                        call spawner_ccmc(cdet, cluster_amplitude, pcluster, nspawned, connection)
+                        call spawner_ccmc(cdet, cluster_amplitude, pcluster, nspawned, connection)
 
                         if (nspawned /= 0) then
                             call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
@@ -156,6 +155,66 @@ contains
         call dealloc_det_info(cdet)
 
     end subroutine do_ccmc
+
+    subroutine spawner_ccmc(cdet, amplitude, pcluster, nspawn, connection)
+
+        ! Attempt to spawn a new particle on a connected excitor with
+        ! probability
+        !     \tau |<D'|H|D_s> A_s|
+        !   -------------------------
+        !   p_sel p_s p_clust p_excit
+        ! where |D_s> is the determinant formed by applying the excitor to the
+        ! reference determinant, A_s is the amplitude and D' is the determinant
+        ! formed from applying a connected excitor to the reference determinant.
+        ! See comments in TODO about p_sel, p_s and p_clust.  p_excit is the
+        ! probability of choosing D' given D_s.
+
+        ! This is just a thin wrapper around a system-specific excitation
+        ! generator and a utility function.  We need to modify the spawning
+        ! probability compared to the FCIQMC algorithm as we spawn from multiple
+        ! excips at once (in FCIQMC we allow each psip to spawn individually)
+        ! and have additional probabilities to take into account.
+
+        ! In:
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
+        !    amplitude: amplitude of cluster.
+        !    pcluster: Overall probabilites of selecting this cluster, ie
+        !        p_sel.p_s.p_clust.
+        ! Out:
+        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !        attempt was unsuccessful.
+        !    connection: excitation connection between the current excitor
+        !        and the child excitor, on which progeny are spawned.
+
+        use determinants, only: det_info
+        use excitations, only: excit
+        use proc_pointers, only: gen_excit_ptr
+        use spawning, only: attempt_to_spawn
+
+        type(det_info), intent(in) :: cdet
+        real(p), intent(in) :: amplitude
+        real(p), intent(in) :: pcluster
+        integer, intent(out) :: nspawn
+        type(excit), intent(out) :: connection
+
+        ! We incorporate the sign of the amplitude into the Hamiltonian matrix
+        ! element, so we 'pretend' to attempt_to_spawn that all excips are
+        ! actually spawned by positive excips.
+        integer, parameter :: parent_sign = 1
+        real(p) :: hmatel, pgen
+
+        ! 1. Generate random excitation.
+        call gen_excit_ptr(cdet, pgen, connection, hmatel)
+
+        ! 2, Apply additional factors.
+        hmatel = hmatel*amplitude
+        pgen = pgen/pcluster
+
+        ! 3. Attempt spawning.
+        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
+
+    end subroutine spawner_ccmc
 
     subroutine stochastic_ccmc_death(cdet, amplitude, pcluster)
 
