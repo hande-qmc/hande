@@ -16,7 +16,7 @@ contains
          use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
          use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
          use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
-         use fciqmc_data, only: correlation_mask, correlation_sites
+         use fciqmc_data, only: correlation_mask, correlation_sites, half_density_matrix
          use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs
          use parallel, only: parent
          use system, only: system_type, heisenberg, nsites, nel
@@ -69,6 +69,7 @@ contains
          dmqmc_factor = 2.0_p
 
          if (allocated(dmqmc_sampling_probs)) then
+             if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
              ! dmqmc_sampling_probs stores the factors by which probabilities are to
              ! be reduced when spawning away from the diagonal. The trial function required
              ! from these probabilities, for use in importance sampling, is actually that of
@@ -93,6 +94,8 @@ contains
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
              dmqmc_accumulated_probs = 1.0_p
+             if (half_density_matrix) dmqmc_accumulated_probs(1:max_number_excitations) &
+                                      = 2.0_p*dmqmc_accumulated_probs(1:max_number_excitations)
          end if
 
          ! If doing a reduced density matrix calculation, then allocate and define the

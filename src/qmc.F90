@@ -596,6 +596,8 @@ contains
                     create_spawned_particle_dm_ptr => create_spawned_particle_truncated_half_density_matrix
                 else
                     create_spawned_particle_dm_ptr => create_spawned_particle_half_density_matrix
+                    spawner_ptr => spawn_importance_sampling
+                    trial_fn_ptr => dmqmc_weighting_fn
                 end if
             else
                 if (truncate_space) then
