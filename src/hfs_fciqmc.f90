@@ -75,7 +75,7 @@ contains
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use interact, only: fciqmc_interact
-        use fciqmc_restart, only: dump_restart
+        use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use spawning, only: create_spawned_particle
         use fciqmc_common
 
@@ -232,6 +232,10 @@ contains
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
             write (17,*) ireport, inst_proj_hf_t1, hf_shift, nparticles_old, walker_population(:,1), D0_population, D0_hf_population
             call flush(17)
+
+            ! Write restart file if required.
+            if (mod(ireport,write_restart_file_every_nreports) == 0) &
+                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2

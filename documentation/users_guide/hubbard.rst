@@ -876,6 +876,22 @@ The following options are valid for FCIQMC calculations.
 
     Warning: these files can become very large, so care should be taken when
     not re-using the same filenames.
+**dump_restart_every** *nreport*
+    Integer.  Default: off.
+
+    Write out a restart file every *nreport* report cycles.
+
+    .. warning::
+
+         Unless **dump_restart** is specified with a file id, this will create
+         a new restart file every *nreport* report cycles.  The disk space used
+         with this option can therefore be very large.  Small values of
+         *nreport* should only be used for diagnostic purposes and not in
+         production calculations on large systems.
+
+         Furthermore, writing to (for instance) a network disk will degrade performance
+         substantially.
+
 **ascii_format_out**
     The default format for restart files is binary, as for the most part the files
     are meant purely for reading by Hubbard, and having the file in human-readable

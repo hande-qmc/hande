@@ -221,6 +221,9 @@ contains
             call cpu_time(t2)
 
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
+            ! Write restart file if required.
+            if (mod(ireport,write_restart_file_every_nreports) == 0) &
+                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
 
             t1 = t2
 

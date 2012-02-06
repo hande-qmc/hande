@@ -122,7 +122,7 @@ contains
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
-        use fciqmc_restart, only: dump_restart
+        use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use energy_evaluation, only: update_shift
 
         integer :: ireport, icycle, iwalker, ipart
@@ -201,6 +201,10 @@ contains
 
             ! Output stats
             call write_fciqmc_report(ireport, nparticles, t2-t1)
+
+            ! Write restart file if required.
+            if (mod(ireport,write_restart_file_every_nreports) == 0) &
+                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
 
             t1 = t2
 
