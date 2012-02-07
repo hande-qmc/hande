@@ -20,7 +20,6 @@ contains
         use folded_spectrum_utils, only: init_folded_spectrum
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: init_hellmann_feynman_sampling, do_hfs_fciqmc
-        use energy_evaluation, only: update_proj_hfs_hub_k
 
         real(dp) :: hub_matel
 
@@ -484,7 +483,11 @@ contains
         case(hub_k)
 
             decoder_ptr => decode_det_spinocc_spinunocc
-            update_proj_energy_ptr => update_proj_energy_hub_k
+            if (doing_calc(hfs_fciqmc_calc)) then
+                update_proj_energy_ptr => update_proj_hfs_hub_k
+            else
+                update_proj_energy_ptr => update_proj_energy_hub_k
+            end if
             sc0_ptr => slater_condon0_hub_k
 
             spawner_ptr => spawn_lattice_split_gen
