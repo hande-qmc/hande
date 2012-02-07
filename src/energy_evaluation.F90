@@ -26,7 +26,7 @@ contains
                                proj_energy, shift, vary_shift, vary_shift_from,                  &
                                vary_shift_from_proje, D0_population,                           &
                                fold_line
-        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop
+        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
         use parallel
@@ -75,10 +75,10 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) then
                 call update_hf_shift(ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
                                      new_hf_signed_pop, ncycles)
-                hf_signed_pop = new_hf_signed_pop
             end if
         end if
         ntot_particles_old = ntot_particles
+        hf_signed_pop = new_hf_signed_pop
         if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
             vary_shift = .true.
             if (vary_shift_from_proje) then
@@ -99,6 +99,7 @@ contains
         proj_energy = proj_energy/ncycles
         D0_population = D0_population/ncycles
         ! Similarly for the HFS estimator
+        D0_hf_population = D0_hf_population/ncycles
         proj_hf_O_hpsip = proj_hf_O_hpsip/ncycles
         proj_hf_H_hfpsip = proj_hf_H_hfpsip/ncycles
         ! average spawning rate over report loop and processor.
@@ -184,7 +185,7 @@ contains
 
         hf_signed_pop = 0_lint
         do i = 1, tot_walkers
-            hf_signed_pop = hf_signed_pop + sign(walker_population(2,i), walker_population(1,i))
+            hf_signed_pop = hf_signed_pop + sign(1, walker_population(1,i))*walker_population(2,i)
         end do
 
     end function calculate_hf_signed_pop
