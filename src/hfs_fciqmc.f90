@@ -2,6 +2,8 @@ module hellmann_feynman_sampling
 
 ! Module for performing Hellmann--Feynman sampling in FCIQMC.
 
+! See documentation/theory/hellmann_feynman/hf.tex for details.
+
 use const
 
 use hfs_data
