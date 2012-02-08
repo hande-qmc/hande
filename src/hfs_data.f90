@@ -13,6 +13,21 @@ implicit none
 ! sampled using HF-FCIQMC.
 integer :: lmag2 = -1
 
+! Which operator are we sampling?
+integer :: hf_operator
+
+!--- Avaiable operators. ---
+
+! Note that not all operators are implemented for all systems.
+
+! Hamiltonian operator.
+! Of course, we can obtain this via standard FCIQMC, but it's useful for
+! debugging.
+integer, parameter :: hamiltonian_operator = 2**0
+
+! Kinetic operator, T.
+integer, parameter :: kinetic_operator = 2**1
+
 !--- Operator parameters. ---
 
 ! Bit string mask corresponding to be orbitals selected by lmag2.

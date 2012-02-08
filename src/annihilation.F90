@@ -395,7 +395,7 @@ contains
         use system, only: nel, trial_function, neel_singlet
         use hfs_data, only: lmask, O00
         use operators, only: calc_orb_occ
-        use proc_pointers, only: sc0_ptr
+        use proc_pointers, only: sc0_ptr, op0_ptr
         use heisenberg_estimators, only: neel_singlet_data
 
         integer :: i, istart, iend, j, k, pos
@@ -441,9 +441,8 @@ contains
             walker_data(1,k) = sc0_ptr(walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
-                ! Set walker_data(2:,k) = <D_i|O|D_i>.
-                ! DEBUG ONLY: set O=H.
-                walker_data(2,k) = walker_data(1,k)
+                ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
+                walker_data(2,k) = op0_ptr(walker_dets(:,k)) - O00
             else if (doing_calc(dmqmc_calc)) then
                 ! Set the energy to be the average of the two induvidual energies.
                 walker_data(1,k) = (walker_data(1,k) + sc0_ptr(walker_dets((basis_length+1):(2*basis_length),k)) - H00)/2

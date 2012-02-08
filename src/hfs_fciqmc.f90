@@ -143,9 +143,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
-                        ! DEBUG/TESTING: For now, just using O=H, so this uses
-                        ! the same spawning routines as the Hamiltonian walkers.
-                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_hfs_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
@@ -189,8 +187,6 @@ contains
                     call death_ptr(walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
-                    ! NOTE: for DEBUG/TESTING only, using O=H (set in
-                    ! insert_new_walkers in annihilation module).
                     call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
@@ -217,6 +213,7 @@ contains
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
+
             if (parent) then
                 ! DEBUG output only.
                 ! TODO: include with std. output.

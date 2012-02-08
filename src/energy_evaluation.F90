@@ -339,13 +339,16 @@ contains
 
     end subroutine update_proj_energy_mol
 
-    subroutine update_proj_hfs_hub_k(idet)
+    subroutine update_proj_hfs_hamiltonian_hub_k(idet)
 
         ! Add the contribution of the current determinant to the projected
         ! energy in an identical way to update_proj_energy_hub_k.
 
         ! Also add the contribution of the current determinant to the running
         ! total of the projected Hellmann--Feynman estimator.
+
+        ! For debugging purposes, this procedure is for when we are sampling
+        ! O=H.
 
         ! This procedure is for the Hubbard model in momentum space only.
 
@@ -380,6 +383,6 @@ contains
             proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*walker_population(2,idet)
         end if
 
-    end subroutine update_proj_hfs_hub_k
+    end subroutine update_proj_hfs_hamiltonian_hub_k
 
 end module energy_evaluation

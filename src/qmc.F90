@@ -76,9 +76,10 @@ contains
         use calc, only: dmqmc_energy_squared, dmqmc_correlation
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: encode_det, set_spin_polarisation, write_det
-        use hamiltonian, only: get_hmatel
         use fciqmc_common, only: find_single_double_prob
         use fciqmc_restart, only: read_restart
+        use hfs_data, only: O00
+        use proc_pointers, only: sc0_ptr, op0_ptr
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
         use system, only: trial_function, neel_singlet, single_basis
         use symmetry, only: symmetry_orb_list
@@ -240,7 +241,8 @@ contains
             end if
 
             ! Energy of reference determinant.
-            H00 = get_hmatel(f0,f0)
+            H00 = sc0_ptr(f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
 
             ! Determine and set properties for the reference state which we start on.
             ! (For DMQMC, we do not start on the reference state, and so this is not
@@ -317,16 +319,16 @@ contains
                     walker_population(:,tot_walkers) = 0
                     ! Set the population for this basis function.
                     walker_population(1,tot_walkers) = nint(D0_population)
-                    walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
+                    walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
                     select case(system_type)
                     case(heisenberg)
                         if (trial_function /= single_basis) then
                             walker_data(1,tot_walkers) = 0
                         else
-                            walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
+                            walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
                         end if
                     case default
-                        walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
+                        walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
                     end select
                     walker_dets(:,tot_walkers) = f0_inv
                     ! If we are using the Neel state as a reference in the
@@ -385,6 +387,7 @@ contains
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+            if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =',H00
             write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
             select case(system_type)
             case (hub_k)
@@ -442,6 +445,7 @@ contains
 
         ! System and calculation data
         use calc
+        use hfs_data
         use system
 
         ! Procedures to be pointed to.
@@ -483,11 +487,7 @@ contains
         case(hub_k)
 
             decoder_ptr => decode_det_spinocc_spinunocc
-            if (doing_calc(hfs_fciqmc_calc)) then
-                update_proj_energy_ptr => update_proj_hfs_hub_k
-            else
-                update_proj_energy_ptr => update_proj_energy_hub_k
-            end if
+            update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
 
             spawner_ptr => spawn_lattice_split_gen
@@ -626,6 +626,23 @@ contains
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             end select
 
+        end if
+
+        ! d) Hellmann--Feynman operator sampling
+        if (doing_calc(hfs_fciqmc_calc)) then
+            select case(system_type)
+            case(hub_k)
+                select case(hf_operator)
+                case(kinetic_operator)
+                    call stop_all('init_proc_pointers','Kinetic operator not implemented in HFS yet.')
+                case(hamiltonian_operator)
+                    op0_ptr => sc0_ptr
+                    update_proj_energy_ptr => update_proj_hfs_hamiltonian_hub_k
+                    spawner_hfs_ptr => spawner_ptr
+                end select
+            case default
+                call stop_all('init_proc_pointers','System not supported in HFS yet.')
+            end select
         end if
 
     end subroutine init_proc_pointers
