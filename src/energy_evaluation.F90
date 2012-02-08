@@ -385,4 +385,51 @@ contains
 
     end subroutine update_proj_hfs_hamiltonian_hub_k
 
+    subroutine update_proj_hfs_diagonal_hub_k(idet)
+
+        ! Add the contribution of the current determinant to the projected
+        ! energy in an identical way to update_proj_energy_hub_k.
+
+        ! Also add the contribution of the current determinant to the running
+        ! total of the projected Hellmann--Feynman estimator.
+
+        ! This procedure is for when we are sampling an operator, O, which is
+        ! diagonal in the Slater determinant space.
+
+        ! This procedure is for the Hubbard model in momentum space only.
+
+        ! In:
+        !    idet: index of current determinant in the main walker list.
+
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use excitations, only: excit, get_excitation
+        use hamiltonian_hub_k, only: slater_condon2_hub_k
+        use hfs_data, only: D0_hf_population, proj_hf_O_hpsip, proj_hf_H_hfpsip
+
+        integer, intent(in) :: idet
+        type(excit) :: excitation
+        real(p) :: hmatel
+
+        excitation = get_excitation(walker_dets(:,idet), f0)
+
+        if (excitation%nexcit == 0) then
+            ! Have reference determinant.
+            D0_population = D0_population + walker_population(1,idet)
+            D0_hf_population = D0_hf_population + walker_population(2,idet)
+        else if (excitation%nexcit == 2) then
+            ! Have a determinant connected to the reference determinant: add to
+            ! projected energy.
+            hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
+                                       & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
+            proj_energy = proj_energy + hmatel*walker_population(1,idet)
+
+            ! O is diagonal in the determinant basis.  As we are actually
+            ! sampling O - <D0|O|D0>, this means that \sum_j O_j0 c_j = 0.
+
+            ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*walker_population(2,idet)
+        end if
+
+    end subroutine update_proj_hfs_diagonal_hub_k
+
 end module energy_evaluation
