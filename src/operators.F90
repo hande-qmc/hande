@@ -132,7 +132,7 @@ contains
         integer, parameter :: comm_tag = 123
 #endif
 
-        open(12,file=filename,status='unknown')
+        if (parent) open(12,file=filename,status='unknown')
 
         if (nprocs == 1) then
             do idet = 1, size(wfn)
@@ -145,12 +145,10 @@ contains
             info = (/proc_blacs_info%nrows, proc_blacs_info%procx/)
             call mpi_gather(info, 2, mpi_integer, proc_info, 2, &
                              mpi_integer, root, mpi_comm_world, ierr)
+
             if (parent) then
                 allocate(wfn_recv(maxval(proc_info(1,:))), stat=ierr)
                 call check_allocate('wfn_local', maxval(proc_info(1,:)), ierr)
-            end if
-
-            if (parent) then
                 ! Write out from root.
                 call write_wavefunction_parallel(proc_blacs_info%nrows, proc_blacs_info%procx, wfn)
                 ! Write out from other processors.
@@ -160,12 +158,14 @@ contains
                 end do
                 deallocate(wfn_recv, stat=ierr)
                 call check_deallocate('wfn_local', ierr)
+            else
+                ! Send data from from other processors.
+                call mpi_send(wfn, proc_blacs_info%nrows, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
             end if
-
-            ! Send data from from other processors.
-            call mpi_send(wfn, proc_blacs_info%nrows, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
+
+        if (parent) close(12,status='keep')
 
         contains
 
