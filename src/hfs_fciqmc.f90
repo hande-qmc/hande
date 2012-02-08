@@ -14,37 +14,6 @@ implicit none
 
 contains
 
-    subroutine init_hellmann_feynman_sampling()
-
-        ! Initialisation of HF sampling: setup parameters for the operators being
-        ! sampled.
-
-        use basis, only: basis_length, set_orb_mask
-        use fciqmc_data, only: D0_proc, f0, walker_data, tot_walkers
-        use hfs_data, only: lmask
-        use operators, only: calc_orb_occ
-
-        use errors, only: stop_all
-        use parallel, only: iproc
-
-        integer :: ierr
-
-        allocate(lmask(basis_length), stat=ierr)
-
-        call set_orb_mask(lmag2, lmask)
-
-        if (all(lmask == 0)) then
-            call stop_all('init_hellmann_feynman_sampling','Setting lmask failed.  Invalid value of lmag2 given?')
-        end if
-
-        if (iproc == D0_proc) then
-            walker_data(2,tot_walkers) = 0.0_p
-        end if
-
-        O00 = calc_orb_occ(f0, lmask)
-
-    end subroutine init_hellmann_feynman_sampling
-
     subroutine do_hfs_fciqmc()
 
         ! Run the FCIQMC algorithm starting from the initial walker

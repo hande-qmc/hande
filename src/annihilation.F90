@@ -393,8 +393,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use determinants, only: decode_det
         use system, only: nel, trial_function, neel_singlet
-        use hfs_data, only: lmask, O00
-        use operators, only: calc_orb_occ
+        use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr
         use heisenberg_estimators, only: neel_singlet_data
 

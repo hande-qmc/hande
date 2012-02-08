@@ -8,11 +8,6 @@ implicit none
 
 !--- Input options. ---
 
-! Specifiy the magnitude squared of the l quantum vector which specifies a set
-! of symmetry-related orbitals.  The occupation number of this set is then
-! sampled using HF-FCIQMC.
-integer :: lmag2 = -1
-
 ! Which operator are we sampling?
 integer :: hf_operator
 
@@ -29,9 +24,6 @@ integer, parameter :: hamiltonian_operator = 2**0
 integer, parameter :: kinetic_operator = 2**1
 
 !--- Operator parameters. ---
-
-! Bit string mask corresponding to be orbitals selected by lmag2.
-integer(i0), allocatable :: lmask(:)
 
 !--- HFS-specific variables. ---
 

@@ -15,7 +15,6 @@ use fciqmc_restart, only: read_restart_number, write_restart_number,&
                           binary_fmt_in, binary_fmt_out,&
                           write_restart_file_every_nreports
 use hubbard_real, only: finite_cluster
-use hfs_data, only: lmag2
 
 implicit none
 
@@ -344,9 +343,6 @@ contains
                 call readi(initiator_population)
 
             ! Calculation options: operators sampled using Hellmann--Feynman.
-            case('L2')
-                ! Set value of |l|^2 which is used
-                call readi(lmag2)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
@@ -654,7 +650,6 @@ contains
         call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(lmag2, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

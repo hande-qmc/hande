@@ -19,7 +19,7 @@ contains
         use fciqmc, only: do_fciqmc
         use folded_spectrum_utils, only: init_folded_spectrum
         use ifciqmc, only: init_ifciqmc
-        use hellmann_feynman_sampling, only: init_hellmann_feynman_sampling, do_hfs_fciqmc
+        use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
         real(dp) :: hub_matel
 
@@ -42,7 +42,6 @@ contains
             ! timestep algorithm.
             if (doing_calc(folded_spectrum)) call init_folded_spectrum()
             if (doing_calc(hfs_fciqmc_calc)) then
-                call init_hellmann_feynman_sampling()
                 call do_hfs_fciqmc()
             else
                 call do_fciqmc()
