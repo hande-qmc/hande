@@ -12,7 +12,8 @@ use lanczos
 use determinants
 use fciqmc_data
 use fciqmc_restart, only: read_restart_number, write_restart_number,&
-                          binary_fmt_in, binary_fmt_out
+                          binary_fmt_in, binary_fmt_out,&
+                          write_restart_file_every_nreports
 use hubbard_real, only: finite_cluster
 use hfs_data, only: lmag2
 
@@ -314,6 +315,9 @@ contains
                     call readi(write_restart_number)
                     write_restart_number = -write_restart_number-1
                 end if
+            case('DUMP_RESTART_EVERY')
+                dump_restart_file = .true.
+                call readi(write_restart_file_every_nreports)
             case('ASCII_FORMAT_IN')
                 binary_fmt_in = .false.
             case('ASCII_FORMAT_OUT')
@@ -633,6 +637,7 @@ contains
         call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(read_restart_number, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_restart_number, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(write_restart_file_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)

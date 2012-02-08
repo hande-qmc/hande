@@ -26,7 +26,7 @@ contains
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use interact, only: fciqmc_interact
-        use fciqmc_restart, only: dump_restart
+        use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use system, only: nel
         use spawning, only: create_spawned_particle_initiator
         use fciqmc_common
@@ -129,6 +129,9 @@ contains
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
+            ! Write restart file if required.
+            if (mod(ireport,write_restart_file_every_nreports) == 0) &
+                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2

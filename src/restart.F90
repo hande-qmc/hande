@@ -23,6 +23,9 @@ integer :: read_restart_number = 0
 ! a specific restart file.
 integer :: write_restart_number = 0
 
+! Dump restart files every n report_loops
+integer :: write_restart_file_every_nreports = huge(0)
+
 ! specifies if the restart file (to read --> in, to write --> out)
 ! is in binary (.true.) or ASCII (.false.) format;
 ! The latter requires substantially more space ( 1 byte per digit of output
