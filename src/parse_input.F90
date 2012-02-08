@@ -15,6 +15,7 @@ use fciqmc_restart, only: read_restart_number, write_restart_number,&
                           binary_fmt_in, binary_fmt_out,&
                           write_restart_file_every_nreports
 use hubbard_real, only: finite_cluster
+use hfs_data
 
 implicit none
 
@@ -343,6 +344,14 @@ contains
                 call readi(initiator_population)
 
             ! Calculation options: operators sampled using Hellmann--Feynman.
+            case('OPERATOR')
+                call readu(w)
+                select case(w)
+                case('HAMILTONIAN')
+                    hf_operator = hamiltonian_operator
+                case('KINETIC')
+                    hf_operator = kinetic_operator
+                end select
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
@@ -649,6 +658,8 @@ contains
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
+        call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
