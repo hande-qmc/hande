@@ -466,6 +466,7 @@ contains
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
         use importance_sampling
+        use operators
         use spawning
 
         ! Procedure pointers
@@ -633,7 +634,9 @@ contains
             case(hub_k)
                 select case(hf_operator)
                 case(kinetic_operator)
-                    call stop_all('init_proc_pointers','Kinetic operator not implemented in HFS yet.')
+                    op0_ptr => kinetic0_hub_k
+                    update_proj_energy_ptr => update_proj_hfs_diagonal_hub_k
+                    spawner_hfs_ptr => spawn_null
                 case(hamiltonian_operator)
                     op0_ptr => sc0_ptr
                     update_proj_energy_ptr => update_proj_hfs_hamiltonian_hub_k

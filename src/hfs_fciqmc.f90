@@ -186,7 +186,7 @@ contains
             if (parent) then
                 ! DEBUG output only.
                 ! TODO: include with std. output.
-                write (17,*) ireport, hf_shift, proj_energy, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
+                write (17,'(i6,6f18.8,2i8)') ireport, hf_shift, proj_energy, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
                              D0_population, D0_hf_population, nparticles_old
                 call flush(17)
             end if
@@ -213,40 +213,5 @@ contains
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
     end subroutine do_hfs_fciqmc
-
-    subroutine spawn_null(cdet, parent_sign, nspawn, connection)
-
-        ! This is a null spawning routine for use with operators which are
-        ! diagonal in the basis and hence only have a cloning step in the
-        ! Hellmann-Feynman sampling.
-
-        ! In:
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
-        !    parent_sign: sign of the population on the parent determinant (i.e.
-        !        either a positive or negative integer).
-        ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
-        !    connection: excitation connection between the current determinant
-        !        and the child determinant, on which progeny are spawned.
-
-        use determinants, only: det_info
-        use excitations, only: excit
-        use proc_pointers, only: gen_excit_ptr
-
-        type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawn
-        type(excit), intent(out) :: connection
-
-        ! Just some null operations to avoid -Wall -Werror causing errors.
-        connection%nexcit = huge(0)
-        nspawn = cdet%initiator_flag + parent_sign
-
-        ! Return nspawn = 0 as we don't want to do any spawning.
-        nspawn = 0
-
-    end subroutine spawn_null
 
 end module hellmann_feynman_sampling
