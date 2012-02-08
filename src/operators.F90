@@ -6,6 +6,40 @@ implicit none
 
 contains
 
+!--- Kinetic energy ---
+
+    pure function kinetic0_hub_k(f) result(kin)
+
+        ! In:
+        !    f: bit string representation of the Slater determinant.
+        ! Returns:
+        !    < D_i | T | D_i >, the diagonal Kinetic matrix elements, for
+        !        the Hubbard model in momentum space.
+
+        use basis, only: basis_length, basis_fns
+        use determinants, only: decode_det
+        use system, only: nel
+
+        use const, only: p, i0
+
+        real(p) :: kin
+        integer(i0), intent(in) :: f(basis_length)
+
+        integer :: i, occ(nel)
+
+        ! Kinetic operator is diagonal in the Hubbard model in the Bloch basis.
+
+        ! <D|T|D> = \sum_k \epsilon_k
+        kin = 0.0_p
+        call decode_det(f, occ)
+        do i = 1, nel
+            kin = kin + basis_fns(occ(i))%sp_eigv
+        end do
+
+    end function kinetic0_hub_k
+
+!-- Debug/test routines for operating on exact wavefunction ---
+
     subroutine analyse_wavefunction(wfn)
 
         ! Analyse an exact wavefunction using the desired operator(s).
