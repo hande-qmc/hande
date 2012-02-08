@@ -23,11 +23,11 @@ contains
 
         real(dp) :: hub_matel
 
-        ! Initialise data
-        call init_qmc()
-
         ! Initialise procedure pointers
         call init_proc_pointers()
+
+        ! Initialise data
+        call init_qmc()
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
