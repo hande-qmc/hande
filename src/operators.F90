@@ -56,6 +56,7 @@ contains
 
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
+        real(p) :: expectation_val
         integer :: idet, iorb, i, ii, ilocal
 
 #ifdef PARALLEL
@@ -64,13 +65,17 @@ contains
 
         ! TODO: tidy and generalise.  Currently not functional!
 
+        expectation_val = 0.0_p
+
         do i = 1, proc_blacs_info%nrows, block_size
             do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
                 ilocal = i - 1 + ii
                 idet =  (i-1)*nproc_rows + proc_blacs_info%procx* block_size + ii
-                ! TODO: Evaluate operator.
+                expectation_val = expectation_val + wfn(idet)**2*kinetic0_hub_k(dets_list(:,idet))
             end do
         end do
+
+        write (6,'(1X,a16,f12.8,/)') '<\Psi|T|\Psi> = ', expectation_val
 
     end subroutine analyse_wavefunction
 
