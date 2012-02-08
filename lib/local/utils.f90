@@ -56,6 +56,30 @@ contains
 
     end function binom_r
 
+    elemental function factorial(n) result(fac)
+
+        ! In:
+        !   n: integer
+        ! Returns:
+        !   factorial of n, n!
+
+        ! WARNING:
+        ! This does *not* safeguard against integer overflow.  As such, it is
+        ! only suitably for 0 <= n <= 12.  Investigating using log(n!) or the
+        ! Gamma function if required for larger values.
+
+        integer :: fac
+        integer, intent(in) :: n
+
+        integer :: i
+
+        fac = 1
+        do i = 2, n
+            fac = fac*i
+        end do
+
+    end function factorial
+
     elemental function factorial_combination_1(m,n) result (combination)
 
         ! Given m and n input, this function returns
