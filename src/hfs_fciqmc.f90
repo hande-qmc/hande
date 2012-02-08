@@ -159,8 +159,29 @@ contains
 
                     end do
 
-                    ! Clone or die: Hamiltonian walkers.
-                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    ! Now deal with the diagonal events.
+
+                    ! *IMPORTANT*
+                    ! My mother told me that it is important to play nice, be
+                    ! fair and not beat up younger brothers.  Monte Carlo is
+                    ! a particularly fickle playmate and one must follow her
+                    ! advice in order to avoid biased (a polite way of saying
+                    ! wrong) results.
+
+                    ! In this instance, we must give all particles the same
+                    ! opportunities.  In particular:
+                    ! * Hamiltonian walkers that existed at the beginning of the
+                    !   loop *must* have an opportunity to create Hellmann--Feynman 
+                    !   versions of themselves.
+                    ! * Hamiltonian walkers that existed at the beginning of the
+                    !   loop *must* have an opportunity to die/clone themselves.
+                    ! * Hellmann--Feynman walkers that existed at the beginning
+                    !   of the loop must have an opportunity to die/clone
+                    !   themselves.
+
+                    ! As the death/clone routines act in place, we must ensure
+                    ! the above requirements are met and (e.g.) walkers that are
+                    ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
                     call death_ptr(walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
@@ -170,6 +191,9 @@ contains
                     ! insert_new_walkers in annihilation module).
                     call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
+
+                    ! Clone or die: Hamiltonian walkers.
+                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
