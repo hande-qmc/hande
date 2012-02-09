@@ -26,14 +26,14 @@ contains
                                proj_energy, shift, vary_shift, vary_shift_from,                  &
                                vary_shift_from_proje, D0_population,                           &
                                fold_line
-        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population
+        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
-        real(dp) :: ir(sampling_size+6), ir_sum(sampling_size+6)
+        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7)
         integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
         integer :: ierr
 
@@ -51,6 +51,7 @@ contains
             ir(sampling_size+4) = calculate_hf_signed_pop()
             ir(sampling_size+5) = proj_hf_O_hpsip
             ir(sampling_size+6) = proj_hf_H_hfpsip
+            ir(sampling_size+7) = D0_hf_population
         end if
 
         ! Don't bother to optimise for running in serial.  This is a fast
@@ -69,6 +70,7 @@ contains
         new_hf_signed_pop = nint(ir_sum(sampling_size+4), lint)
         proj_hf_O_hpsip = ir_sum(sampling_size+5)
         proj_hf_H_hfpsip = ir_sum(sampling_size+6)
+        D0_hf_population = ir_sum(sampling_size+7)
 
         if (vary_shift) then
             call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
@@ -89,6 +91,8 @@ contains
                 else
                   ! Set shift to be instantaneous projected energy.
                   shift = proj_energy/D0_population
+                  hf_shift = proj_hf_O_hpsip/D0_population + proj_hf_H_hfpsip/D0_population &
+                                                           - (proj_energy*D0_hf_population)/D0_population**2
                 endif
             else
                 shift = vary_shift_from
