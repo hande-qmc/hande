@@ -97,7 +97,9 @@ contains
                         call spawner_ccmc(cdet, cluster_amplitude, pcluster, nspawned, connection)
 
                         if (nspawned /= 0) then
-                            call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
+                            ! TODO: initiator (use create_spawned_particle_ptr
+                            ! proc pointer).
+                            call create_spawned_particle_truncated(cdet, connection, nspawned, spawned_pop)
                         end if
 
                         ! Does the cluster collapsed onto D0 produce
