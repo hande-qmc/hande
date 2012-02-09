@@ -31,7 +31,7 @@ contains
         use parallel
         use utils, only: binom_r
 
-        integer :: iel, icycle, naccept, nfull
+        integer :: iel, icycle, naccept
         integer :: a, a_el, a_pos, b, b_el, b_pos
         integer :: ref_sym, det_sym
         integer(i0) :: f(basis_length), f0(basis_length)
@@ -93,7 +93,6 @@ contains
                 end if
 
                 naccept = 0
-                nfull = 0
 
                 do icycle = 1, nhilbert_cycles
                     ! Generate a random determinant.
@@ -102,7 +101,7 @@ contains
                     iel = 0
                     do
                         ! generate random number 1,3,5,...
-                        a = 2*nint(genrand_real2()*(nbasis/2-1))+1
+                        a = 2*int(genrand_real2()*(nbasis/2))+1
                         a_pos = bit_lookup(1,a)
                         a_el = bit_lookup(2,a)
                         if (.not.btest(f(a_el), a_pos)) then
@@ -116,7 +115,7 @@ contains
                     ! Beta electrons.
                     do
                         ! generate random number 2,4,6,...
-                        b = 2*nint(genrand_real2()*(nbasis/2-1))+2
+                        b = 2*int(genrand_real2()*(nbasis/2))+2
                         b_pos = bit_lookup(1,b)
                         b_el = bit_lookup(2,b)
                         if (.not.btest(f(b_el), b_pos)) then
@@ -137,18 +136,13 @@ contains
                         else
                             naccept = naccept + 1
                         end if
-                        nfull = nfull + 1
                     end if
                 end do
 
                 ! Size of the Hilbert space in the desired symmetry block is given
                 ! by
-                !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons)*nfull/nattempts
-                ! The size of a truncated space is the size of the full space
-                ! multiplied by the fraction of generated determinants within
-                ! the truncation.
-                space_size = (binom_r(nbasis/2, nalpha) * binom_r(nbasis/2, nbeta) * nfull) / nhilbert_cycles
-                space_size = (space_size*naccept)/nfull ! If not truncated then nfull = naccept
+                !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons)*naccept/nattempts
+                space_size = (binom_r(nbasis/2, nalpha) * binom_r(nbasis/2, nbeta) * naccept) / nhilbert_cycles
 
 #ifdef PARALLEL
                 ! If we did this on multiple processors then we can get an estimate
