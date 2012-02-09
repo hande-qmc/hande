@@ -113,11 +113,12 @@ contains
              subsystem_A_bit_positions = 0
              ! For the Heisenberg model only currently.
              if (system_type==heisenberg) then
-                 subsystem_A_mask = 0
                  do i = 1, subsystem_A_size
                      bit_position = bit_lookup(1,subsystem_A_list(i))
                      bit_element = bit_lookup(2,subsystem_A_list(i))
                      subsystem_A_mask(bit_element) = ibset(subsystem_A_mask(bit_element), bit_position)
+                     subsystem_A_bit_positions(i,1) = bit_position
+                     subsystem_A_bit_positions(i,2) = bit_element
                  end do
                  subsystem_B_mask = subsystem_A_mask
                  ! We cannot just flip the mask for system A to get that for system B, because
@@ -140,12 +141,6 @@ contains
                  call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
                  reduced_density_matrix = 0
              end if
-             do i = 1, subsystem_A_size
-                 bit_position = bit_lookup(1,subsystem_A_list(i))
-                 bit_element = bit_lookup(2,subsystem_A_list(i))
-                 subsystem_A_bit_positions(i,1) = bit_position
-                 subsystem_A_bit_positions(i,2) = bit_element
-             end do
          end if
 
     end subroutine init_dmqmc
@@ -268,6 +263,10 @@ contains
 
     subroutine decode_dm_bitstring(f, index1, index2)
 
+        ! This function maps an input DMQMC bitstring to two indices
+        ! giving the corresponding position of the bitstring in the reduced
+        ! density matrix.
+
         use basis, only: total_basis_length, basis_length
         use fciqmc_data, only: subsystem_A_bit_positions, subsystem_A_bit_positions
         use fciqmc_data, only: subsystem_A_size
@@ -276,16 +275,22 @@ contains
         integer(i0), intent(out) :: index1, index2
         integer :: i
 
+        ! Start from all bits down, so that we can flip bits up one by one.
         index1 = 0
         index2 = 0
 
+        ! Loop over all the sites in the sublattice considered for the reduced density matrix.
         do i = 1, subsystem_A_size
+            ! If the spin is up, flip the corresponding bit in the first index up.
             if (btest(f(subsystem_A_bit_positions(i,2)),subsystem_A_bit_positions(i,1))) &
                 index1 = ibset(index1,i-1)
+            ! Similarly for the second index, by looking at the second end of the bitstring.
             if (btest(f(subsystem_A_bit_positions(i,2)+basis_length),subsystem_A_bit_positions(i,1))) &
                 index2 = ibset(index2,i-1)
         end do
 
+        ! The process above maps to numbers between 0 and 2^subsystem_A_size-1, but the smallest
+        ! and largest of the reduced density matrix are one more than these, so add one...
         index1 = index1+1
         index2 = index2+1
 

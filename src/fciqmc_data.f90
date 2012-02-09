@@ -284,7 +284,12 @@ integer(i0), allocatable :: subsystem_A_mask(:)
 integer(i0), allocatable :: subsystem_B_mask(:)
 ! This stored the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
-integer, allocatable :: reduced_density_matrix(:,:)
+real(p), allocatable :: reduced_density_matrix(:,:)
+! When calculating the reduced density matrix, we only want to start
+! averaging once the ground state is reached. The below integer is input
+! by the user, and gives the iteration at which data should start being
+! accumulated for the reduced density matrix.
+integer :: reduced_dm_start_averaging = 0
 
 ! correlation_mask is a bit string with a 1 at positions i and j which
 ! are considered when finding the spin correlation function, C(r_{i,j}).

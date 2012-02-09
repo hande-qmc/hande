@@ -61,7 +61,7 @@ contains
 
 #else
         ! If only one a single core, don't need to merge the data
-        ! from several processors. Cn simply output everything as it is.
+        ! from several processors. Can simply output everything as it is.
 
         if (vary_shift) call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
         ntot_particles_old = nparticles
@@ -74,7 +74,7 @@ contains
 
    end subroutine update_dmqmc_estimators
 
-   subroutine call_dmqmc_estimators(idet)
+   subroutine call_dmqmc_estimators(idet, iteration)
 
        ! This function calls the processes to update the estimators which
        ! have been requested by the user to be calculated.
@@ -91,11 +91,11 @@ contains
        use calc, only: dmqmc_energy_squared, dmqmc_correlation
        use excitations, only: get_excitation, excit
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
-       use fciqmc_data, only: dmqmc_accumulated_probs
+       use fciqmc_data, only: dmqmc_accumulated_probs, reduced_dm_start_averaging
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
 
-       integer, intent(in) :: idet
+       integer, intent(in) :: idet, iteration
        type(excit) :: excitation
        real(p) :: unweighted_walker_pop
 
@@ -128,7 +128,8 @@ contains
        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
                &(idet, excitation, unweighted_walker_pop)
        ! Reduced density matrix
-       if (doing_reduced_dm) call update_reduced_density_matrix(idet)
+       if (doing_reduced_dm .and. iteration > reduced_dm_start_averaging) &
+               call update_reduced_density_matrix(idet, unweighted_walker_pop)
 
    end subroutine call_dmqmc_estimators
 
@@ -449,7 +450,12 @@ contains
 
    end subroutine dmqmc_stag_mag_heisenberg
 
-   subroutine update_reduced_density_matrix(idet)
+   subroutine update_reduced_density_matrix(idet, walker_pop)
+
+       ! Add a contirbution from the current walker to the reduced density
+       ! matrix estimator. This function takes the two bitstrings for the current
+       ! walker and, if the two bitstrings of the B subsystem are identical,
+       ! adds the walker population to the corresponding reduced density matrix element.
 
        use basis, only: basis_length, total_basis_length
        use dmqmc_procedures, only: decode_dm_bitstring
@@ -457,18 +463,67 @@ contains
        use fciqmc_data, only: walker_dets, walker_population
 
        integer, intent(in) :: idet
+       real(p), intent(in) :: walker_pop
        integer(i0) :: f1(basis_length), f2(basis_length)
        integer(i0) :: end1, end2
 
+       ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
        f1 = iand(subsystem_B_mask,walker_dets(:basis_length,idet))
        f2 = iand(subsystem_B_mask,walker_dets(basis_length+1:total_basis_length,idet))
 
+       ! Once this is done, check if the resulting bitstring (which can only possibly
+       ! have 1's in the B subsystem) are identical. If they are, then this psip gives
+       ! a contibution to the reduced density matrix for subsystem A. This is because we
+       ! get the reduced density matrix for A by 'tracing out' over B, which in practice
+       ! means only keeping matrix elements that are on the diagonal for subsystem B.
        if (sum(abs(f1-f2)) == 0) then
+           ! We need to assign positions in the reduced density matrix for this walker,
+           ! so call a function which maps the possible subsystem A spin configurations
+           ! to indices.
            call decode_dm_bitstring(walker_dets(:,idet),end1,end2)
-           reduced_density_matrix(end1,end2) = reduced_density_matrix(end1,end2) + walker_population(1,idet)
+           reduced_density_matrix(end1,end2) = reduced_density_matrix(end1,end2) + walker_pop
        end if
 
     end subroutine update_reduced_density_matrix
 
+    subroutine output_reduced_density_matrix()
+
+        ! Normalise and ouput the reduced density matrix to the screen. This is
+        ! called at the end of each beta loop in DMQMC calculations, when the
+        ! reduced density matrix is requested.
+
+        use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
+        use parallel
+        use utils, only: print_matrix
+
+        integer :: i, rdm_size
+        real(p) :: trace_rdm
+   
+#ifdef PARALLEL
+        real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
+        real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
+        integer :: ierr
+
+        dm = reduced_density_matrix
+
+        call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+        reduced_density_matrix = dm_sum
+
+#endif
+
+        trace_rdm = 0.0_p
+        rdm_size = ubound(reduced_density_matrix,1)
+
+        if (parent) then
+            do i = 1, rdm_size
+                trace_rdm = trace_rdm + reduced_density_matrix(i,i)
+            end do
+            reduced_density_matrix = reduced_density_matrix/trace_rdm
+            write (6, '(a23)') 'Reduced density matrix:'
+            call print_matrix(reduced_density_matrix)
+        end if
+
+    end subroutine output_reduced_density_matrix
 
 end module dmqmc_estimators

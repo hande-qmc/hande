@@ -211,12 +211,13 @@ contains
             ! Calculate a reduced density matrix
             case('REDUCED_DENSITY_MATRIX')
                 doing_reduced_dm = .true.
-            case('SUBSYSTEM_SITES')
                 allocate(subsystem_A_list(nitems-1), stat=ierr)
                 call check_allocate('subsystem_A_list',nitems-1,ierr)
                 do i = 1, nitems-1
                     call readi(subsystem_A_list(i))
                 end do
+            case('REDUCED_DM_START_AVERAGING')
+                call readi(reduced_dm_start_averaging)
             ! calculation options: DMQMC
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
@@ -599,6 +600,7 @@ contains
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(reduced_dm_start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.

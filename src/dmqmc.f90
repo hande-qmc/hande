@@ -23,6 +23,7 @@ contains
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_procedures, only: random_distribution_heisenberg
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
+        use dmqmc_estimators, only: output_reduced_density_matrix
         use excitations, only: excit, get_excitation_level
         use fciqmc_common
         use fciqmc_restart, only: dump_restart
@@ -33,7 +34,7 @@ contains
         use dSFMT_interface, only: dSFMT_init
         use utils, only: int_fmt
 
-        integer :: idet, ireport, icycle, iparticle
+        integer :: idet, ireport, icycle, iparticle, iteration
         integer :: beta_cycle
         integer(lint) :: nparticles_old(sampling_size)
         integer(lint) :: nattempts, nparticles_start_report
@@ -70,6 +71,7 @@ contains
             tot_walkers = 0
             shift = initial_shift
             nparticles = 0
+            if (allocated(reduced_density_matrix)) reduced_density_matrix = 0
             vary_shift = .false.
 
             ! Need to place psips randomly along the diagonal at the
@@ -95,7 +97,6 @@ contains
             nparticles_old = nint(D0_population)
 
             do ireport = 1, nreport
-
                 ! Zero report cycle quantities.
                 rspawn = 0.0_p
                 trace = 0
@@ -104,6 +105,7 @@ contains
 
                 do icycle = 1, ncycles
                     spawning_head = spawning_block_start
+                    iteration = (ireport-1)*ncycles + icycle
 
                     ! Number of spawning attempts that will be made.
                     ! Each particle and each end gets to attempt to
@@ -131,7 +133,8 @@ contains
 
                         ! Call wrapper function which calls all requested estimators
                         ! to be updated, and also always updates the trace separately.
-                        if (icycle == 1) call call_dmqmc_estimators(idet)
+
+                        if (icycle == 1) call call_dmqmc_estimators(idet, iteration)
 
                         do iparticle = 1, abs(walker_population(1,idet))
                             ! Spawn from the first end.
@@ -187,6 +190,8 @@ contains
                 if (soft_exit) exit
 
             end do
+
+            if (doing_reduced_dm) call output_reduced_density_matrix
 
         end do
 
