@@ -10,6 +10,7 @@ use system
 use calc
 use lanczos
 use determinants
+use determinant_enumeration, only: write_determinants, determinant_file
 use fciqmc_data
 use fciqmc_restart, only: read_restart_number, write_restart_number,&
                           binary_fmt_in, binary_fmt_out

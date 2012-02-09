@@ -2,8 +2,6 @@ module hamiltonian
 
 use const
 use basis
-use determinants
-use parallel
 
 implicit none
 
@@ -22,6 +20,8 @@ contains
         ! around system-specific functions) but is handy for computing matrix
         ! elements (slowly!) when we have the entire Hilbert space of
         ! determinants stored in dets_list.
+
+        use determinant_enumeration, only: dets_list
 
         real(p) :: hmatel
         integer, intent(in) :: d1, d2
@@ -316,6 +316,7 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
+        use determinants, only: decode_det
         use system, only: nalpha, nbeta, hub_k_coulomb
 
         real(p) :: hmatel
@@ -453,6 +454,7 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in real space.
 
+        use determinants, only: decode_det
         use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
 
         real(p) :: hmatel
@@ -718,6 +720,7 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
+        use determinants, only: decode_det
         use ueg_system, only: exchange_int_ueg
 
         real(p) :: hmatel

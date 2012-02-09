@@ -80,6 +80,7 @@ contains
         use hamiltonian, only: get_hmatel
         use fciqmc_common, only: find_single_double_prob
         use fciqmc_restart, only: read_restart
+        use reference_determinant, only: set_reference_det
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
         use system, only: trial_function, neel_singlet, single_basis
         use symmetry, only: symmetry_orb_list
@@ -215,12 +216,14 @@ contains
             end if
             call read_restart()
         else
+
             ! Reference det
+
             ! Set the reference determinant to be the spin-orbitals with the lowest
-            ! kinetic energy which satisfy the spin polarisation.
+            ! single-particle eigenvalues which satisfy the spin polarisation.
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
-            call set_reference_det()
+            call set_reference_det(occ_list0, .false.)
 
             call encode_det(occ_list0, f0)
 
@@ -448,6 +451,7 @@ contains
         ! Procedures to be pointed to.
         use annihilation
         use death, only: stochastic_death
+        use determinants
         use dmqmc_estimators
         use dmqmc_procedures
         use energy_evaluation
@@ -561,12 +565,20 @@ contains
         ! a) initiator-approximation
         if (doing_calc(initiator_fciqmc)) then
             set_parent_flag_ptr => set_parent_flag
-            create_spawned_particle_ptr => create_spawned_particle_initiator
+            if (truncate_space) then
+                create_spawned_particle_ptr => create_spawned_particle_initiator_truncated
+            else
+                create_spawned_particle_ptr => create_spawned_particle_initiator
+            end if
             annihilate_main_list_ptr => annihilate_main_list_initiator
             annihilate_spawned_list_ptr => annihilate_spawned_list_initiator
         else
             set_parent_flag_ptr => set_parent_flag_dummy
-            create_spawned_particle_ptr => create_spawned_particle
+            if (truncate_space) then
+                create_spawned_particle_ptr => create_spawned_particle_truncated
+            else
+                create_spawned_particle_ptr => create_spawned_particle
+            end if
             annihilate_main_list_ptr => annihilate_main_list
             annihilate_spawned_list_ptr => annihilate_spawned_list
         end if

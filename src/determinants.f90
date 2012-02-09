@@ -64,33 +64,6 @@ logical :: separate_strings = .false.
 
 !--- Info for FCI calculations ---
 
-! Store of determinant information.
-! This will quickly become a memory issue, but for dealing with the FCI of small
-! systems it is ok.
-
-! Rather than creating an array of derived types containing information about
-! each determinant, which leads to a serious memory overhead due to the need for
-! pointers/allocatable arrays in the derived type, we instead create 3 separate
-! variables.
-
-! Bit list of the Slater determinant.  See note for f in det type.
-! We only store determinants of the same Ms and (for momentum space
-! calculations) same ksum at a time.
-integer(i0), allocatable, target :: dets_list(:,:) ! (basis_length,ndets)
-
-! Total spin of each Slater determinant stored in dets_list in units of electron spin (1/2).
-integer, target :: dets_Ms
-
-! Symmetry of the occupied orbitals in each Slater determinant stored
-! in det_list.
-integer, target :: dets_sym
-
-! Number of determinants stored in dets.
-! This is the number of determinants enumerated in enumerate_determinants with
-! the desired spin and momentum symmetry.
-integer :: ndets
-
-! Total (exact) size of determinant space.
 ! Only used in FCI calculations, where we can be certain that we have fewer
 ! determinants than 2**31-1 (ie no overflow).
 ! Whilst it's set (and frequently overflows) in FCIQMC calculations, we never
@@ -98,14 +71,6 @@ integer :: ndets
 ! estimate estimate (or, in real-space systems, exact to a certain precision)
 ! for the size of the Hilbert space for a given symmetry which avoids overflows.
 integer :: tot_ndets
-
-! Number of determinants of each symmetry.
-integer, allocatable :: sym_space_size(:) ! (nsym)
-
-! If true then the determinant list is written to determinant_file.
-logical :: write_determinants = .false.
-character(255) :: determinant_file = 'DETS'
-integer :: det_unit
 
 ! --- FCIQMC info ---
 
@@ -138,6 +103,8 @@ interface operator(.detgt.)
 end interface
 
 contains
+
+!--- Initialisation and finalisation of module-level variables ---
 
     subroutine init_determinants()
 
@@ -249,11 +216,6 @@ contains
             end do
         end if
 
-        if (write_determinants) then
-            det_unit = get_free_unit()
-            open(det_unit, file=determinant_file, status='unknown')
-        end if
-
     end subroutine init_determinants
 
     subroutine end_determinants()
@@ -264,25 +226,18 @@ contains
 
         integer :: ierr
 
-        if (allocated(dets_list)) then
-            deallocate(dets_list, stat=ierr)
-            call check_deallocate('dets_list',ierr)
-        end if
         deallocate(bit_lookup, stat=ierr)
         call check_deallocate('bit_lookup',ierr)
         deallocate(basis_lookup, stat=ierr)
         call check_deallocate('basis_lookup',ierr)
-        if (allocated(sym_space_size)) then
-            deallocate(sym_space_size, stat=ierr)
-            call check_deallocate('sym_space_size',ierr)
-        end if
         if (allocated(lattice_mask)) then
             deallocate(lattice_mask, stat=ierr)
             call check_deallocate('lattice_mask',ierr)
         end if
-        if (write_determinants) close(det_unit, status='keep')
 
     end subroutine end_determinants
+
+!--- Initialisation and finalisation of det_info objects ---
 
     subroutine alloc_det_info(det_info_t)
 
@@ -345,7 +300,6 @@ contains
 
         ! Set the spin polarisation information stored in module-level
         ! variables:
-        !    dets_Ms: spin of determinants that are being considered.
         !    nalpha, nbeta: number of alpha, beta electrons.
         !    nvirt_alpha, nvirt_beta: number of alpha, beta virtual spin-orbitals.
         ! In:
@@ -361,14 +315,11 @@ contains
 
             ! Spin polarization is different (see comments in system) as the
             ! Heisenberg model is a collection of spins rather than electrons.
-            dets_Ms = Ms
 
         case default
 
             ! Find the number of determinants with the required spin.
             if (abs(mod(Ms,2)) /= mod(nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
-
-            dets_Ms = Ms
 
             nbeta = (nel - Ms)/2
             nalpha = (nel + Ms)/2
@@ -380,313 +331,7 @@ contains
 
     end subroutine set_spin_polarisation
 
-    subroutine find_sym_space_size()
-
-        ! Finds the number of Slater determinants that can be formed from the
-        ! basis functions belonging to each symmetry.
-        ! Currently only crystal momentum symmetry is implemented.
-        ! Note that this will overflow for large spaces (but we should be not
-        ! doing FCI on such spaces anyway...).
-        ! The spin polarisation of the system must be set first (by calling
-        ! set_spin_polarisation).
-        ! find_sym_space_size must be called first for each value of Ms before
-        ! enumerating the determinant list.
-
-        ! This finds the exact size of the space.  See estimate_hilbert_space
-        ! for a Monte Carlo approach to estimating the size of the space (better
-        ! for large systems where we can't do FCI).
-
-        use checking, only: check_allocate, check_deallocate
-        use utils, only: binom_i, int_fmt
-        use system, only: sym0, sym_max
-        use symmetry, only: cross_product, symmetry_orb_list
-        use ueg_system, only: ueg_basis_index
-
-        use bit_utils, only: first_perm, bit_permutation, decode_bit_string
-
-        integer :: i, j, iel, ierr
-        integer :: nalpha_combinations, nbeta_combinations
-        integer :: sym_beta, sym
-        integer(i0) :: f_alpha, f_beta
-        integer, allocatable :: occ(:)
-        integer :: k(ndim), k_beta(ndim)
-
-        if (allocated(sym_space_size)) then
-            deallocate(sym_space_size, stat=ierr)
-            call check_deallocate('sym_space_size',ierr)
-        end if
-        allocate(sym_space_size(sym0:sym_max), stat=ierr)
-        call check_allocate('sym_space_size',nsym,ierr)
-
-        nbeta_combinations = binom_i(nbasis/2, nbeta)
-        nalpha_combinations = binom_i(nbasis/2, nalpha)
-
-        allocate(occ(max(nalpha, nbeta)), stat=ierr)
-        call check_allocate('occ', max(nalpha, nbeta), ierr)
-
-        select case(system_type)
-
-        case(hub_real)
-
-            sym_space_size = nalpha_combinations*nbeta_combinations
-
-        case(heisenberg)
-
-            ! See notes in system about how the Heisenberg model uses nel and
-            ! nvirt.
-            sym_space_size = binom_i(nsites, nel)
-
-        case default
-
-            ! Determinants are assigned a given symmetry by the sum of the
-            ! wavevectors of the occupied basis functions.  This is because only
-            ! doubly excitations are connected and D and D_{ij}^{ab} are only
-            ! connected if k_i + k_j - k_a - k_b is a reciprocal lattice vector.
-            ! Thus we can regard the sum of the wavevectors of the occupied
-            ! spin-orbitals as a symmetry label.
-
-            sym_space_size = 0
-
-            do i = 1, nbeta_combinations
-
-                ! Get beta orbitals.
-                if (i == 1) then
-                    f_beta = first_perm(nbeta)
-                else
-                    f_beta = bit_permutation(f_beta)
-                end if
-
-                call decode_bit_string(f_beta, occ)
-                ! Convert to beta orbitals.
-                occ = 2*(occ+1)
-                ! Symmetry.
-                ! Have to treat the UEG as a special case as we don't consider
-                ! all possible symmetries for the UEG but rather only momenta
-                ! which exist in the basis set.
-                if (system_type == ueg) then
-                    k_beta = 0
-                    do iel = 1, nbeta
-                        k_beta = k_beta + basis_fns(occ(iel))%l
-                    end do
-                else
-                    sym_beta = symmetry_orb_list(occ(1:nbeta))
-                end if
-
-                do j = 1, nalpha_combinations
-
-                    ! Get alpha orbitals.
-                    if (j == 1) then
-                        f_alpha = first_perm(nalpha)
-                    else
-                        f_alpha = bit_permutation(f_alpha)
-                    end if
-
-                    call decode_bit_string(f_alpha, occ)
-                    ! Convert to alpha orbitals.
-                    occ = 2*occ+1
-                    ! Symmetry of all orbitals.
-                    if (system_type == ueg) then
-                        k = k_beta
-                        do iel = 1, nalpha
-                            k = k + basis_fns(occ(iel))%l
-                        end do
-                        ! Symmetry label (convert from basis index).
-                        sym = (ueg_basis_index(k,1)+1)/2
-                    else
-                        sym = cross_product(sym_beta, symmetry_orb_list(occ(1:nalpha)))
-                    end if
-
-                    if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
-                        ! Ignore symmetries outside the basis set (only affects
-                        ! UEG currently).
-                        sym_space_size(sym) = sym_space_size(sym) + 1
-                    end if
-
-                end do
-            end do
-
-        end select
-
-        if (parent) then
-            write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
-            write (6,'(1X,a75,'//int_fmt(dets_Ms,0)//',a1,/)') &
-                     'The table below gives the number of determinants for each symmetry with Ms=', &
-                     dets_Ms,"."
-            write (6,'(1X,a14,6X,a6)') 'Symmetry index','# dets'
-            do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
-                write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
-            end do
-            write (6,'()')
-        end if
-
-        deallocate(occ, stat=ierr)
-        call check_deallocate('occ', ierr)
-
-    end subroutine find_sym_space_size
-
-    subroutine enumerate_determinants(ref_sym)
-
-        ! Find the Slater determinants that can be formed from the
-        ! basis functions.  The list of determinants is stored in the
-        ! module level dets_list array.
-        ! find_sym_space_size must be called first for each value of Ms.
-        ! In:
-        !   ref_sym: index of an irreducible representation.  Only determinants
-        !   with the same symmetry  are stored.
-
-        use checking, only: check_allocate, check_deallocate
-        use utils, only: binom_i
-        use errors, only: stop_all
-        use utils, only: get_free_unit, int_fmt
-        use bit_utils, only: first_perm, bit_permutation, decode_bit_string
-        use symmetry, only: cross_product, symmetry_orb_list
-        use ueg_system, only: ueg_basis_index
-
-        integer, intent(in) :: ref_sym
-
-        integer :: i, j, iel, idet, ierr, ibit
-        integer :: nalpha_combinations, nbeta_combinations
-        integer :: sym_beta, sym
-        character(4) :: fmt1
-        integer(i0) :: f_alpha, f_beta
-        integer, allocatable :: occ(:)
-        integer :: k(ndim), k_beta(ndim)
-
-        allocate(occ(max(nalpha, nbeta)), stat=ierr)
-        call check_allocate('occ', max(nalpha, nbeta), ierr)
-
-        if (allocated(dets_list)) then
-            deallocate(dets_list, stat=ierr)
-            call check_deallocate('dets_list',ierr)
-        end if
-
-        nbeta_combinations = binom_i(nbasis/2, nbeta)
-        nalpha_combinations = binom_i(nbasis/2, nalpha)
-
-        ndets = sym_space_size(ref_sym)
-
-        allocate(dets_list(basis_length, ndets), stat=ierr)
-        call check_allocate('dets_list',basis_length*ndets,ierr)
-
-        select case(system_type)
-
-        case(heisenberg)
-
-            ! Just have spin up and spin down sites (no concept of unoccupied
-            ! sites) so just need to arrange nel spin ups.  No need to
-            ! interweave alpha and beta strings.
-
-            ! Assume that we're not attempting to do FCI for more than
-            ! a i0_length sites , which is quite large... ;-)
-            if (nbasis > i0_length) then
-                call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
-            end if
-
-            dets_list(1,1) = first_perm(nel)
-            do i = 2, ndets
-                dets_list(1,i) = bit_permutation(dets_list(1,i-1))
-            end do
-
-        case default
-
-            ! Assume that we're not attempting to do FCI for more than
-            ! a 2*i0_length spin orbitals, which is quite large... ;-)
-            if (nbasis/2 > i0_length) then
-                call stop_all('enumerate_determinants','Number of alpha spin functions longer than the an i0 integer.')
-            end if
-
-            idet = 0
-            do i = 1, nbeta_combinations
-
-                ! Get beta orbitals.
-                if (i == 1) then
-                    f_beta = first_perm(nbeta)
-                else
-                    f_beta = bit_permutation(f_beta)
-                end if
-
-                call decode_bit_string(f_beta, occ)
-                ! Convert to beta orbitals.
-                occ = 2*(occ+1)
-                ! Symmetry of the beta orbitals.
-                ! Have to treat the UEG as a special case as we don't consider
-                ! all possible symmetries for the UEG but rather only momenta
-                ! which exist in the basis set.
-                if (system_type == ueg) then
-                    k_beta = 0
-                    do iel = 1, nbeta
-                        k_beta = k_beta + basis_fns(occ(iel))%l
-                    end do
-                else
-                    sym_beta = symmetry_orb_list(occ(1:nbeta))
-                end if
-
-                do j = 1, nalpha_combinations
-
-                    ! Get alpha orbitals.
-                    if (j == 1) then
-                        f_alpha = first_perm(nalpha)
-                    else
-                        f_alpha = bit_permutation(f_alpha)
-                    end if
-
-                    call decode_bit_string(f_alpha, occ)
-                    ! Convert to alpha orbitals.
-                    occ = 2*occ+1
-                    ! Symmetry of all orbitals.
-                    if (system_type == ueg) then
-                        k = k_beta
-                        do iel = 1, nalpha
-                            k = k + basis_fns(occ(iel))%l
-                        end do
-                        ! Symmetry label (convert from basis index).
-                        sym = (ueg_basis_index(k,1)+1)/2
-                    else
-                        sym = cross_product(sym_beta, symmetry_orb_list(occ(1:nalpha)))
-                    end if
-
-                    if (sym == ref_sym) then
-
-                        idet = idet + 1
-
-                        ! Merge alpha and beta sets into determinant list.
-                        if (separate_strings) then
-                            dets_list(:,idet) = (/ f_alpha, f_beta /)
-                        else
-                            ! Alpha orbitals are stored in the even bits, beta orbitals in
-                            ! the odd bits (hence the conversion).
-                            dets_list(:,idet) = 0
-                            do ibit = 0, min(nbasis/2, i0_length/2-1)
-                                if (btest(f_alpha,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit)
-                                if (btest(f_beta,ibit)) dets_list(1,idet) = ibset(dets_list(1,idet), 2*ibit+1)
-                            end do
-                            do ibit = i0_length/2, max(nbasis/2, i0_end)
-                                if (btest(f_alpha,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit-i0_length)
-                                if (btest(f_beta,ibit)) dets_list(2,idet) = ibset(dets_list(2,idet), 2*ibit+1-i0_length)
-                            end do
-                        end if
-
-                    end if
-
-                end do
-            end do
-
-        end select
-
-        dets_sym = ref_sym
-
-        if (write_determinants .and. parent) then
-            fmt1 = int_fmt(ndets, padding=1)
-            do i = 1, ndets
-                write (det_unit,'('//fmt1//',4X)',advance='no') i
-                call write_det(dets_list(:,i), det_unit, new_line=.true.)
-            end do
-        end if
-
-        deallocate(occ, stat=ierr)
-        call check_deallocate('occ', ierr)
-
-    end subroutine enumerate_determinants
+!--- Encode determinant bit strings ---
 
     pure subroutine encode_det(occ_list, bit_list)
 
@@ -711,6 +356,8 @@ contains
         end do
 
     end subroutine encode_det
+
+!--- Decode determinant bit strings ---
 
     pure subroutine decode_det(f, occ_list)
 
@@ -957,6 +604,8 @@ contains
 
     end subroutine decode_det_occ_symunocc
 
+!--- Extract information from bit strings ---
+
     pure function det_momentum(occ_list) result(ksum)
 
         ! In:
@@ -974,6 +623,55 @@ contains
         end do
 
     end function det_momentum
+
+    pure function det_spin(f) result(Ms)
+
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        ! Returns:
+        !    Ms: total spin of the determinant in units of electron spin (1/2).
+
+        use bit_utils, only: count_set_bits
+
+        integer :: Ms
+        integer(i0), intent(in) :: f(basis_length)
+        integer(i0) :: a, b
+        integer :: i
+
+        Ms = 0
+        do i = 1, basis_length
+            ! Find bit string of all alpha orbitals.
+            a = iand(f(i), alpha_mask)
+            ! Find bit string of all beta orbitals.
+            b = iand(f(i), beta_mask)
+            Ms = Ms + count_set_bits(a) - count_set_bits(b)
+        end do
+
+    end function det_spin
+
+    pure function spin_orb_list(orb_list) result(ms)
+
+        ! In:
+        !    orb_list: list of orbitals (e.g. determinant).
+        ! Returns:
+        !    Ms: total spin of the determinant in units of electron spin (1/2).
+
+        use basis, only: basis_fns
+
+        integer :: ms
+        integer, intent(in) :: orb_list(:)
+
+        integer :: i
+
+        ms = 0
+        do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
+            ms = ms + basis_fns(orb_list(i))%Ms
+        end do
+
+    end function spin_orb_list
+
+!--- Manipulate/transform determinant bitstrings ---
 
     pure function det_invert_spin(f) result(f_inv)
 
@@ -1002,72 +700,7 @@ contains
 
     end function det_invert_spin
 
-    subroutine write_det(f, iunit, new_line)
-
-        ! Write out a determinant as a list of occupied orbitals in the
-        ! Slater determinant.
-        ! In:
-        !    f(basis_length): bit string representation of the Slater
-        !        determinant.
-        !    iunit (optional): io unit to which the output is written.
-        !        Default: 6 (stdout).
-        !    new_line (optional): if true, then a new line is written at
-        !        the end of the list of occupied orbitals.  Default: no
-        !        new line.
-
-        use utils, only: int_fmt
-
-        integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in), optional :: iunit
-        logical, intent(in), optional :: new_line
-        integer :: occ_list(nel), io, i
-        character(4) :: fmt1
-
-        if (present(iunit)) then
-            io = iunit
-        else
-            io = 6
-        end if
-
-        call decode_det(f, occ_list)
-        fmt1 = int_fmt(nbasis,1)
-
-        write (io,'("|")', advance='no')
-        do i = 1, nel
-            write (io,'('//fmt1//')', advance='no') occ_list(i)
-        end do
-        write (io,'(1X,">")', advance='no')
-        if (present(new_line)) then
-            if (new_line) write (io,'()')
-        end if
-
-    end subroutine write_det
-
-    pure function det_spin(f) result(Ms)
-
-        ! In:
-        !    f(basis_length): bit string representation of the Slater
-        !        determinant.
-        ! Returns:
-        !    Ms: total spin of the determinant in units of electron spin (1/2).
-
-        use bit_utils, only: count_set_bits
-
-        integer :: Ms
-        integer(i0), intent(in) :: f(basis_length)
-        integer(i0) :: a, b
-        integer :: i
-
-        Ms = 0
-        do i = 1, basis_length
-            ! Find bit string of all alpha orbitals.
-            a = iand(f(i), alpha_mask)
-            ! Find bit string of all beta orbitals.
-            b = iand(f(i), beta_mask)
-            Ms = Ms + count_set_bits(a) - count_set_bits(b)
-        end do
-
-    end function det_spin
+!--- Comparison of determinants ---
 
     pure function det_gt(f1, f2) result(gt)
 
@@ -1132,5 +765,48 @@ contains
         end do
 
     end function det_compare
+
+!--- Output ---
+
+    subroutine write_det(f, iunit, new_line)
+
+        ! Write out a determinant as a list of occupied orbitals in the
+        ! Slater determinant.
+        ! In:
+        !    f(basis_length): bit string representation of the Slater
+        !        determinant.
+        !    iunit (optional): io unit to which the output is written.
+        !        Default: 6 (stdout).
+        !    new_line (optional): if true, then a new line is written at
+        !        the end of the list of occupied orbitals.  Default: no
+        !        new line.
+
+        use utils, only: int_fmt
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in), optional :: iunit
+        logical, intent(in), optional :: new_line
+        integer :: occ_list(nel), io, i
+        character(4) :: fmt1
+
+        if (present(iunit)) then
+            io = iunit
+        else
+            io = 6
+        end if
+
+        call decode_det(f, occ_list)
+        fmt1 = int_fmt(nbasis,1)
+
+        write (io,'("|")', advance='no')
+        do i = 1, nel
+            write (io,'('//fmt1//')', advance='no') occ_list(i)
+        end do
+        write (io,'(1X,">")', advance='no')
+        if (present(new_line)) then
+            if (new_line) write (io,'()')
+        end if
+
+    end subroutine write_det
 
 end module determinants

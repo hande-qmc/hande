@@ -262,7 +262,7 @@ contains
         !    connection: the excitation connection between the parent and child
         !        determinants
 
-        use excitations, only: enumerate_all_excitations_hub_real, excit
+        use excitations, only: excit
         use determinants, only: det_info
         use dSFMT_interface, only: genrand_real2
         use system, only: ndim, nel, system_type, hub_real, hub_k

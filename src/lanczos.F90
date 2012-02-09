@@ -36,7 +36,7 @@ contains
         use calc
         use operators
 #endif
-        use determinants, only: ndets
+        use determinant_enumeration, only: ndets
         use errors, only: stop_all
 
         integer, intent(out) :: nfound
@@ -161,7 +161,7 @@ contains
         use parallel, only: nprocs
 
         use calc, only: hamil, proc_blacs_info
-        use determinants, only: ndets
+        use determinant_enumeration, only: ndets
 
         integer, intent(in) :: nrow, ncol, ldx, ldy
         real(dp), intent(in) :: xin(ldx,ncol)
@@ -249,7 +249,7 @@ contains
         ! Out:
         !    yout: the array to store results of the multiplication.
 
-        use determinants, only: ndets
+        use determinant_enumeration, only: ndets
         use hamiltonian, only: get_hmatel_dets
 
         integer, intent(in) :: nrow, ncol, ldx, ldy
