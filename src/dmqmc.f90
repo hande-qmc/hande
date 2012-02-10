@@ -23,7 +23,7 @@ contains
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_procedures, only: random_distribution_heisenberg
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
-        use dmqmc_estimators, only: output_reduced_density_matrix
+        use dmqmc_estimators, only: calculate_vn_entropy
         use excitations, only: excit, get_excitation_level
         use fciqmc_common
         use fciqmc_restart, only: dump_restart
@@ -191,7 +191,7 @@ contains
 
             end do
 
-            if (doing_reduced_dm) call output_reduced_density_matrix
+            if (doing_reduced_dm) call calculate_vn_entropy
 
         end do
 

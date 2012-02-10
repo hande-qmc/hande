@@ -526,4 +526,73 @@ contains
 
     end subroutine output_reduced_density_matrix
 
+    subroutine calculate_vn_entropy()
+
+        ! Calculate the Von Neumann Entropy. Use lapack to calculate the 
+        ! eigenvalues {\lambda_j} of the reduced density matrix. 
+        ! Then VN Entropy S = -\sum_j\lambda_j\log_2{\lambda_j}
+
+        ! Need to paralellise for large subsystems and introduce test to
+        ! check whether diagonalisation should be performed in serial or
+        ! paralell.
+       
+        use checking, only: check_allocate, check_deallocate
+        use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
+        use parallel
+
+        integer :: i, rdm_size
+        integer :: info, ierr, lwork
+        real(p), allocatable :: work(:)
+        real(p) :: eigv(2**subsystem_A_size)
+        real(p) :: trace_rdm, vn_entropy
+#ifdef PARALLEL
+        real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
+        real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
+
+        vn_entropy = 0._p
+        dm = reduced_density_matrix
+
+        call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+        reduced_density_matrix = dm_sum
+
+#endif
+
+        trace_rdm = 0.0_p
+        rdm_size = ubound(reduced_density_matrix,1)
+
+        if (parent) then
+            do i = 1, rdm_size
+                trace_rdm = trace_rdm + reduced_density_matrix(i,i)
+            end do
+            reduced_density_matrix = reduced_density_matrix/trace_rdm
+            ! Find the optimal size of the workspace.
+            allocate(work(1), stat=ierr)
+            call check_allocate('work',1,ierr)
+#ifdef SINGLE_PRECISION
+            call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
+#else     
+            call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
+#endif  
+            lwork = nint(work(1))
+            deallocate(work)
+            call check_deallocate('work',ierr)
+
+            ! Now perform the diagonalisation.
+            allocate(work(lwork), stat=ierr)
+            call check_allocate('work',lwork,ierr)
+
+#ifdef SINGLE_PRECISION
+            call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
+#else
+            call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
+#endif
+            do i = 1, ubound(eigv,1)
+                vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.))             
+            end do
+            write (6,'(1x,a23,1X,f22.12)') "# Von-Neumann Entropy= ", vn_entropy
+        end if
+        
+    end subroutine calculate_vn_entropy
+
 end module dmqmc_estimators
