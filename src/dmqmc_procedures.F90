@@ -86,7 +86,7 @@ contains
                  dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
              end do
              dmqmc_accumulated_probs(size(dmqmc_sampling_probs):max_number_excitations) = &
-                                        dmqmc_sampling_probs(size(dmqmc_sampling_probs))
+                                        dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
              deallocate(dmqmc_sampling_probs, stat=ierr)
             call check_deallocate('dmqmc_sampling_probs',ierr)
          else
