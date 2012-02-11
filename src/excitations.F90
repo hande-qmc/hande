@@ -312,24 +312,32 @@ contains
         ! An analagous approach counts the number of permutations required so
         ! j and b are coincident.
 
-        ! Finally, we need to account for some more overcounting/undercounting.
+        ! We need to account for some more overcounting/undercounting.
         ! If j is between i and a, then it is counted yet j can either be moved
         ! before i (resulting in the actual number of permutations being one
         ! less than that counted) or after i (resulting in moving j taking one
-        ! more permutation than counted).  It doesn't matter which we do, as we
-        ! are only interested in whether the number of permutations is odd or
-        ! even.  We similarly need to take into account the case where i is
-        ! between j and b.
+        ! more permutation than counted).  Technically it doesn't matter which
+        ! we do, as we are only interested in whether the number of permutations
+        ! is odd or even.  We similarly need to take into account the case where
+        ! i is between j and b.
+
+        ! Finally, we note that we don't care about the exact number of
+        ! permutations but only the parity.  Hence the exclusive or of the
+        ! occupied orbitals between i and a and the occupied orbitals between
+        ! j and b gives the occupied orbitals which are only involved in one
+        ! permutation but not two.  This enables us to use only one popcount.
+        ! However, we need to add one for the undercounting/overcounting issues
+        ! to avoid the number of counted permutations becoming negative!
 
         ia = ieor(excit_mask(:,excitation%from_orb(1)),excit_mask(:,excitation%to_orb(1)))
         jb = ieor(excit_mask(:,excitation%from_orb(2)),excit_mask(:,excitation%to_orb(2)))
 
-        perm = sum(count_set_bits(iand(f,ia))) + sum(count_set_bits(iand(f,jb)))
+        perm = sum(count_set_bits(ieor(iand(f,ia),iand(f,jb))))
 
-        if (excitation%from_orb(1) > excitation%to_orb(1)) perm = perm - 1
-        if (excitation%from_orb(1) > excitation%to_orb(2)) perm = perm - 1
+        if (excitation%from_orb(1) > excitation%to_orb(1)) perm = perm + 1
+        if (excitation%from_orb(1) > excitation%to_orb(2)) perm = perm + 1
         if (excitation%from_orb(2) > excitation%to_orb(2) .or. &
-            excitation%from_orb(2) < excitation%to_orb(1)) perm = perm - 1
+            excitation%from_orb(2) < excitation%to_orb(1)) perm = perm + 1
 
         excitation%perm = mod(perm,2) == 1
 
