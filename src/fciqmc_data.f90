@@ -762,8 +762,9 @@ contains
             write (6,'(1X,a13,3(2X,a17))', advance='no') &
                      "# iterations ", "Shift            ", "\sum H_0j N_j    ", "N_0              "
             if (doing_calc(hfs_fciqmc_calc)) then
-                write (6,'(4(2X,a17),3X,a11,2X,a10)', advance='no') "H.F. Shift       ","\sum O_0j N_j    ","\sum H_0j N'_j   ","N'_0              ", &
-                                                                    "# H psips","# HF psips"
+                write (6,'(4(2X,a17),3X,a11,2X,a10)', advance='no') &
+                    "H.F. Shift       ","\sum O_0j N_j    ","\sum H_0j N'_j   ","N'_0              ", &
+                    "# H psips","# HF psips"
             else
                 write (6,'(3X,a11)', advance='no') "# H psips"
             end if
