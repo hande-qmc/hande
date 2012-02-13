@@ -801,11 +801,11 @@ contains
                     d%occ_list(iocc) = basis_lookup(j, i)
                 else
                     if (mod(j,2)==0) then
-                        ! alpha state
+                        ! alpha state (even bit index, odd basis function index)
                         iunocc_a = iunocc_a + 1
                         d%unocc_list_alpha(iunocc_a) = basis_lookup(j, i)
                     else
-                        ! beta state
+                        ! beta state (odd bit index, even basis function index)
                         iunocc_b = iunocc_b + 1
                         d%unocc_list_beta(iunocc_b) = basis_lookup(j, i)
                     end if
