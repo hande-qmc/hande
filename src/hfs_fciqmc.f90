@@ -189,15 +189,7 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-
-            if (parent) then
-                ! DEBUG output only.
-                ! TODO: include with std. output.
-                write (17,'(i6,6f18.8,2i8)') ireport, hf_shift, proj_energy, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
-                             D0_population, D0_hf_population, nparticles_old
-                call flush(17)
-            end if
+            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
 
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &

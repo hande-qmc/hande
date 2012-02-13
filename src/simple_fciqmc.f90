@@ -200,7 +200,7 @@ contains
             call cpu_time(t2)
 
             ! Output stats
-            call write_fciqmc_report(ireport, nparticles, t2-t1)
+            call write_fciqmc_report(ireport, (/nparticles/), t2-t1, .false.)
 
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &

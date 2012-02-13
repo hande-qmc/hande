@@ -275,7 +275,7 @@ contains
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         integer :: idet
-        integer(lint) :: ntot_particles
+        integer(lint) :: ntot_particles(sampling_size)
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum
@@ -289,23 +289,22 @@ contains
         do idet = 1, tot_walkers
             call update_proj_energy_ptr(idet)
         end do
+        rspawn = 0.0_p
 
 #ifdef PARALLEL
-        call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
-        call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        ! TODO: HFS, DMQMC quantities
 #else
-        ntot_particles = nparticles(1)
+        ntot_particles = nparticles
 #endif
-
-        proj_energy = proj_energy/D0_population
 
         if (parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            write (6,'(1X,"#",3X,i8,2X,2(es17.10,2X),es17.10,4X,i11,6X,a3,3X,a3)') &
-                    mc_cycles_done, shift, proj_energy, D0_population, ntot_particles,'n/a','n/a'
+            call write_fciqmc_report(0, ntot_particles, 0.0, .true.)
         end if
 
     end subroutine initial_fciqmc_status

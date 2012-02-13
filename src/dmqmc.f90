@@ -98,7 +98,6 @@ contains
                 rspawn = 0.0_p
                 trace = 0
                 estimator_numerators = 0
-                nparticles_start_report = nparticles_old(1)
 
                 do icycle = 1, ncycles
                     spawning_head = spawning_block_start
@@ -171,7 +170,7 @@ contains
 
                 ! t1 was the time at the previous iteration, t2 the current time.
                 ! t2-t1 is thus the time taken by this report loop.
-                if (parent) call write_fciqmc_report(ireport, nparticles_start_report, t2-t1)
+                if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
                 ! Write restart file if required.
                 if (mod(ireport,write_restart_file_every_nreports) == 0) &
                     call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
