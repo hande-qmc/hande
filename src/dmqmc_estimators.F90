@@ -609,7 +609,7 @@ contains
             call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
 #endif
             do i = 1, ubound(eigv,1)
-                vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.))
+                vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.0_p))
             end do
             write (6,'(1x,a23,1X,f22.12)') "# Von-Neumann Entropy= ", vn_entropy
         end if
