@@ -72,7 +72,6 @@ logical :: vary_shift_from_proje = .false.
 ! Initial shift, needed in DMQMC to reset the shift at the start of each
 ! beta loop.
 real(p) :: initial_shift = 0.0_p
-real(p) :: old_shift = 0.0_p
 
 ! Factor by which the changes in the population are damped when updating the
 ! shift.
@@ -801,7 +800,7 @@ contains
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(5X,i8,2X,es17.10,i10)',advance = 'no') &
-                                             (mc_cycles_done+mc_cycles-ncycles), old_shift, trace
+                                             (mc_cycles_done+mc_cycles-ncycles), shift, trace
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             do i = 1, number_dmqmc_estimators

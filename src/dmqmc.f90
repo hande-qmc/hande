@@ -173,7 +173,6 @@ contains
 
                 end do
 
-                old_shift=shift
                 ! Update the shift and desired thermal quantites.
                 call update_dmqmc_estimators(nparticles_old)
 
