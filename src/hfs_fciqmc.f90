@@ -1,6 +1,14 @@
 module hellmann_feynman_sampling
 
-! Module for performing Hellmann--Feynman sampling in FCIQMC.
+! Module for performing Hellmann--Feynman sampling in FCIQMC in order to obtain
+! expectation values of arbitrary operators which do not commute with the
+! Hamiltonian.
+
+! This involves sampling a 'pumped' diffusion equation in an adjoint space to
+! that used to sample the Hamiltonian.  Fortunately we can use essentially the
+! same dynamics to sample the adjoint space.  The connection between the
+! Hamiltonian space and the adjoint 'Hellmann--Feynman' space is defined by the
+! operator being sampled.
 
 ! See documentation/theory/hellmann_feynman/hf.tex for details.
 
