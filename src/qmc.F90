@@ -406,12 +406,16 @@ contains
                 write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
                     'Population for a determinant outside CAS space to be an initiator:', initiator_population
             end if
-            write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
-            write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
+            write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
+            write (6,'(1X,a69)') 'Note that all particle populations are averaged over the report loop.'
+            write (6,'(1X,a58,/)') 'Shift: the shift calculated at the end of the report loop.'
             if (.not. doing_calc(dmqmc_calc)) then
-                write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
-                                     &Calculated at the end of each cycle.'
-                write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+                write (6,'(1X,a46)') 'H_0j: <D_0|H|D_j>, Hamiltonian matrix element.'
+                write (6,'(1X,a60)') 'N_j: population of Hamiltonian particles on determinant D_j.'
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    write (6,'(1X,a43)') 'O_0j: <D_0|O|D_j>, operator matrix element.'
+                    write (6,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
+                end if
             else
                 write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
                                      &density matrix.'
@@ -432,8 +436,12 @@ contains
                                          &value of the staggered magnetisation.'
                 end if
             end if
-            write (6,'(1X,a49)') '# particles: current total population of walkers.'
+            write (6,'(1X,a61)') '# H psips: current total population of Hamiltonian particles.'
+            if (doing_calc(hfs_fciqmc_calc)) then
+                write (6,'(1X,a68)') '# HF psips: current total population of Hellmann--Feynman particles.'
+            end if
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
+            write (6,'(1X,a41,/)') 'time: average time per Monte Carlo cycle.'
         end if
 
     end subroutine init_qmc
