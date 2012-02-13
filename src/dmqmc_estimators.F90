@@ -84,7 +84,8 @@ contains
        ! calculated. Then call other estimators, as required.
 
        ! In:
-       !    idet: Current position in the main bitsrting list.
+       !    idet: Current position in the main bitstring list.
+       !    iteration: current Monte Carlo cycle.
 
        use basis, only: basis_length, total_basis_length
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
@@ -107,7 +108,7 @@ contains
        ! levels have smaller psips populations than the true density matrix by some
        ! factor. In these cases, we want to multiply the psip population by this factor
        ! to calculate the contribution from these excitation levels correctly.
-       
+
        ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet)
        ! and so this change can be ignored.
        unweighted_walker_pop = walker_population(1,idet)*dmqmc_accumulated_probs(excitation%nexcit)
@@ -140,10 +141,12 @@ contains
        ! to the thermal energy estimate.
 
        ! In:
-       !    idet: Current position in the main bitsrting list.
+       !    idet: Current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
-       !    the excitation between the two bitstring ends, corresponding
-       !    to the two labels for the density matrix element.
+       !        the excitation between the two bitstring ends, corresponding
+       !        to the two labels for the density matrix element.
+       !    walker_pop: number of particles on the current density matrix
+       !        element.
 
        use basis, only: basis_length, total_basis_length
        use basis, only: bit_lookup
@@ -184,10 +187,12 @@ contains
        ! to the thermal energy squared estimate.
 
        ! In:
-       !    idet: Current position in the main bitsrting list.
+       !    idet: Current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
-       !    the excitation between the two bitstring ends, corresponding
-       !    to the two labels for the density matrix element.
+       !        the excitation between the two bitstring ends, corresponding
+       !        to the two labels for the density matrix element.
+       !    walker_pop: number of particles on the current density matrix
+       !        element.
 
        use basis, only: basis_length, total_basis_length
        use basis, only: bit_lookup
@@ -286,10 +291,12 @@ contains
        ! to the thermal energy estimate.
 
        ! In:
-       !    idet: Current position in the main bitsrting list.
+       !    idet: Current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
-       !    the excitation between the two bitstring ends, corresponding
-       !    to the two labels for the density matrix element.
+       !        the excitation between the two bitstring ends, corresponding
+       !        to the two labels for the density matrix element.
+       !    walker_pop: number of particles on the current density matrix
+       !        element.
 
        use basis, only: basis_length, total_basis_length
        use excitations, only: excit
@@ -326,10 +333,12 @@ contains
        ! to the thermal spin correlation function estimator.
 
        ! In:
-       !    idet: Current position in the main bitsrting list.
+       !    idet: Current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
-       !    the excitation between the two bitstring ends, corresponding
-       !    to the two labels for the density matrix element.
+       !        the excitation between the two bitstring ends, corresponding
+       !        to the two labels for the density matrix element.
+       !    walker_pop: number of particles on the current density matrix
+       !        element.
 
        use basis, only: basis_length, total_basis_length
        use basis, only: bit_lookup
@@ -387,10 +396,12 @@ contains
        ! to the thermal staggered magnetisation estimate.
 
        ! In:
-       !    idet: Current position in the main bitsrting list.
+       !    idet: Current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
-       !    the excitation between the two bitstring ends, corresponding
-       !    to the two labels for the density matrix element.
+       !        the excitation between the two bitstring ends, corresponding
+       !        to the two labels for the density matrix element.
+       !    walker_pop: number of particles on the current density matrix
+       !        element.
 
        use basis, only: basis_length, total_basis_length, bit_lookup
        use bit_utils, only: count_set_bits
@@ -450,12 +461,23 @@ contains
 
    end subroutine dmqmc_stag_mag_heisenberg
 
-   subroutine update_reduced_density_matrix(idet, walker_pop)
+   subroutine update_reduced_density_matrix_heisenberg(idet, walker_pop)
 
-       ! Add a contirbution from the current walker to the reduced density
-       ! matrix estimator. This function takes the two bitstrings for the current
+       ! Add a contribution from the current walker to the reduced density
+       ! matrix estimator, which is produced by 'tracing out' a given set of
+       ! spins.
+
+       ! Applicable only to the Heisenberg model.
+
+       ! This procedure takes the two determinants bitstrings for the current
        ! walker and, if the two bitstrings of the B subsystem are identical,
-       ! adds the walker population to the corresponding reduced density matrix element.
+       ! adds the walker population to the corresponding reduced density matrix
+       ! element.
+
+       ! In:
+       !    idet: Current position in the main bitstring (density matrix) list.
+       !    walker_pop: number of particles on the current density matrix
+       !        element.
 
        use basis, only: basis_length, total_basis_length
        use dmqmc_procedures, only: decode_dm_bitstring
@@ -484,7 +506,7 @@ contains
            reduced_density_matrix(end1,end2) = reduced_density_matrix(end1,end2) + walker_pop
        end if
 
-    end subroutine update_reduced_density_matrix
+    end subroutine update_reduced_density_matrix_heisenberg
 
     subroutine output_reduced_density_matrix()
 
@@ -498,7 +520,7 @@ contains
 
         integer :: i, rdm_size
         real(p) :: trace_rdm
-   
+
 #ifdef PARALLEL
         real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
         real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
@@ -509,7 +531,6 @@ contains
         call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 
         reduced_density_matrix = dm_sum
-
 #endif
 
         trace_rdm = 0.0_p
@@ -528,14 +549,14 @@ contains
 
     subroutine calculate_vn_entropy()
 
-        ! Calculate the Von Neumann Entropy. Use lapack to calculate the 
-        ! eigenvalues {\lambda_j} of the reduced density matrix. 
+        ! Calculate the Von Neumann Entropy. Use lapack to calculate the
+        ! eigenvalues {\lambda_j} of the reduced density matrix.
         ! Then VN Entropy S = -\sum_j\lambda_j\log_2{\lambda_j}
 
         ! Need to paralellise for large subsystems and introduce test to
         ! check whether diagonalisation should be performed in serial or
         ! paralell.
-       
+
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
         use parallel
@@ -571,9 +592,9 @@ contains
             call check_allocate('work',1,ierr)
 #ifdef SINGLE_PRECISION
             call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
-#else     
+#else
             call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
-#endif  
+#endif
             lwork = nint(work(1))
             deallocate(work)
             call check_deallocate('work',ierr)
@@ -588,11 +609,11 @@ contains
             call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
 #endif
             do i = 1, ubound(eigv,1)
-                vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.))             
+                vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.))
             end do
             write (6,'(1x,a23,1X,f22.12)') "# Von-Neumann Entropy= ", vn_entropy
         end if
-        
+
     end subroutine calculate_vn_entropy
 
 end module dmqmc_estimators
