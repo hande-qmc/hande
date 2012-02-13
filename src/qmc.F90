@@ -649,6 +649,8 @@ contains
                     op0_ptr => sc0_ptr
                     update_proj_energy_ptr => update_proj_hfs_hamiltonian_hub_k
                     spawner_hfs_ptr => spawner_ptr
+                case default
+                    call stop_all('init_proc_pointers','Operator given is not yet supported')
                 end select
             case default
                 call stop_all('init_proc_pointers','System not supported in HFS yet.')
