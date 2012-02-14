@@ -20,26 +20,37 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared
+        use checking, only: check_allocate
         use energy_evaluation, only: update_shift
         use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn
         use fciqmc_data, only: shift, vary_shift
         use fciqmc_data, only: estimator_numerators, number_dmqmc_estimators
-        use fciqmc_data, only: nreport, ncycles, trace
+        use fciqmc_data, only: nreport, ncycles, trace, calculate_excit_distribution
+        use fciqmc_data, only: excit_distribution
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
 #ifdef PARALLEL
-        real(dp) :: ir(sampling_size+1+((number_dmqmc_estimators+1)*ncycles))
-        real(dp) :: ir_sum(sampling_size+1+((number_dmqmc_estimators+1)*ncycles))
-        integer :: ierr
+        real(dp), allocatable :: ir(:)
+        real(dp), allocatable :: ir_sum(:)
+        integer :: ierr, array_size
         integer(lint) :: ntot_particles(sampling_size)
+
+        array_size = sampling_size+2+number_dmqmc_estimators
+        if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
+
+        allocate(ir(1:array_size), stat=ierr)
+        call check_allocate('ir',array_size,ierr)
+        allocate(ir_sum(1:array_size), stat=ierr)
+        call check_allocate('ir_sum',array_size,ierr)
 
         ! Need to sum the number of particles and other quantites over all processors.
         ir(1:sampling_size) = nparticles
         ir(sampling_size+1) = rspawn
         ir(sampling_size+2) = trace
         ir(sampling_size+3:sampling_size+2+number_dmqmc_estimators) = estimator_numerators
+        ir(sampling_size+3+number_dmqmc_estimators:array_size) = excit_distribution
         ! Merge the lists from each processor together.
         call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
         ntot_particles = nint(ir_sum(1:sampling_size),lint)
@@ -49,6 +60,7 @@ contains
             ! can be output afterwards by the parent.
             trace = nint(ir_sum(sampling_size+2))
             estimator_numerators = ir_sum(sampling_size+3:sampling_size+2+number_dmqmc_estimators)
+            excit_distribution = ir_sum(sampling_size+3+number_dmqmc_estimators:array_size)
         end if
 
         if (vary_shift) then
@@ -93,6 +105,7 @@ contains
        use excitations, only: get_excitation, excit
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use fciqmc_data, only: dmqmc_accumulated_probs, reduced_dm_start_averaging
+       use fciqmc_data, only: calculate_excit_distribution, excit_distribution
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
 
@@ -131,6 +144,9 @@ contains
        ! Reduced density matrix
        if (doing_reduced_dm .and. iteration > reduced_dm_start_averaging) &
                call update_reduced_density_matrix_heisenberg(idet, unweighted_walker_pop)
+       ! Excitation distribution
+       if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
+               excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
 
    end subroutine call_dmqmc_estimators
 
@@ -508,6 +524,45 @@ contains
 
     end subroutine update_reduced_density_matrix_heisenberg
 
+    subroutine call_rdm_procedures()
+
+        ! Wrapper for calling relevant reduced density matrix procedures
+
+        use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
+        use fciqmc_data, only: doing_von_neumann_entropy, doing_concurrence
+        use parallel
+
+        real(p) :: trace_rdm
+        integer :: i
+        ! If in paralell then merge the reduced density matrix onto one processor
+#ifdef PARALLEL
+
+        real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
+        real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
+        integer :: ierr
+
+        dm = reduced_density_matrix
+
+        call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+        reduced_density_matrix = dm_sum
+
+#endif
+
+        trace_rdm = 0.0_p
+
+        if (parent) then
+            do i = 1, ubound(reduced_density_matrix,1)
+                trace_rdm = trace_rdm + reduced_density_matrix(i,i)
+            end do
+            reduced_density_matrix = reduced_density_matrix/trace_rdm
+        end if
+
+        if (doing_von_neumann_entropy) call calculate_vn_entropy()
+        if (doing_concurrence) call calculate_concurrence()
+
+    end subroutine call_rdm_procedures
+
     subroutine calculate_vn_entropy()
 
         ! Calculate the Von Neumann Entropy. Use lapack to calculate the
@@ -562,7 +617,7 @@ contains
 
     end subroutine calculate_vn_entropy
     
-    subroutine calculate_concurrence
+    subroutine calculate_concurrence()
 
         ! Calculate the concurrence of a qubit. For a reduced density matrix \rho,
         ! the concurrence, C =  max(0, \lamda_1 - \lambda_2 - \lambda_3 -\lambda_4) where
@@ -629,6 +684,5 @@ contains
         end if
 
     end subroutine calculate_concurrence
-
 
 end module dmqmc_estimators

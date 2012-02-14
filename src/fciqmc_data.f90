@@ -262,7 +262,13 @@ real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
 ! calculated by reflecting spawning onto the lower triangle into the
 ! upper triangle. This is allowed because the density matrix is 
 ! symmetric.
-logical :: half_density_matrix
+logical :: half_density_matrix = .false.
+
+! For DMQMC: If this locial is true then the fraction of psips at each
+! excitation level will be output at each report loop. These fractions
+! will be stored in the array below.
+logical :: calculate_excit_distribution = .false.
+real(p), allocatable :: excit_distribution(:) ! (min(nel, nsites-nel) + 1)
 
 ! If true, then the reduced density matrix will be calulated
 ! for the subsystem A specified by the user.
@@ -764,6 +770,8 @@ contains
         use calc, only: doing_calc, folded_spectrum, dmqmc_calc, doing_dmqmc_calc, dmqmc_correlation
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
 
+        integer :: i
+
         if (doing_calc(dmqmc_calc)) then
            write (6,'(1X,a12,3X,a13,8X,a5)', advance = 'no') &
            '# iterations','Instant shift','Trace'
@@ -779,6 +787,11 @@ contains
             end if
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
+            end if
+            if (calculate_excit_distribution) then
+                do i = 0, ubound(excit_distribution,1)
+                    write (6, '(4X,a13,1X,i3)', advance = 'no') 'Excit. level:', i
+                end do
             end if
 
             write (6, '(2X,a11,2X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
@@ -817,6 +830,12 @@ contains
             do i = 1, number_dmqmc_estimators
                 write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
             end do
+            if (calculate_excit_distribution) then
+                excit_distribution = excit_distribution/ntot_particles
+                do i = 0, ubound(excit_distribution,1)
+                    write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
+                end do
+            end if
             write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
         else
             write (6,'(5X,i8,2X,2(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &

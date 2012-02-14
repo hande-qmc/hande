@@ -21,8 +21,9 @@ contains
         use basis, only: basis_length, bit_lookup, nbasis
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use dmqmc_procedures, only: random_distribution_heisenberg, call_rdm_procedures
+        use dmqmc_procedures, only: random_distribution_heisenberg
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
+        use dmqmc_estimators, only: call_rdm_procedures
         use excitations, only: excit, get_excitation_level
         use fciqmc_common
         use fciqmc_restart, only: dump_restart
@@ -100,6 +101,7 @@ contains
                 rspawn = 0.0_p
                 trace = 0
                 estimator_numerators = 0
+                if (allocated(excit_distribution)) excit_distribution = 0
                 nparticles_start_report = nparticles_old(1)
 
                 do icycle = 1, ncycles

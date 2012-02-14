@@ -18,7 +18,7 @@ contains
          use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
          use fciqmc_data, only: correlation_mask, correlation_sites, half_density_matrix
          use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, flip_spin_matrix
-         use fciqmc_data, only: doing_concurrence
+         use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
          use parallel, only: parent
          use system, only: system_type, heisenberg, nsites, nel
 
@@ -57,6 +57,13 @@ contains
          allocate(estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
          call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
          estimator_numerators = 0
+
+         if (calculate_excit_distribution) then
+             max_number_excitations = min(nel, (nsites-nel))
+             allocate(excit_distribution(0:max_number_excitations), stat=ierr)
+             call check_allocate('excit_distribution',max_number_excitations+1,ierr)             
+             excit_distribution = 0.0_p
+         end if
 
          ! In DMQMC we want the spawning probabilities to have an extra factor of a half,
          ! because we spawn from two different ends with half probability. To avoid having
@@ -310,45 +317,4 @@ contains
 
     end subroutine decode_dm_bitstring
     
-    subroutine call_rdm_procedures()
-       
-        ! Wrapper for calling relevant reduced density matrix procedures
-
-        use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
-        use fciqmc_data, only: doing_von_neumann_entropy, doing_concurrence
-        use dmqmc_estimators, only: calculate_vn_entropy, calculate_concurrence
-        use parallel
-        
-        real(p) :: trace_rdm
-        integer :: i
-        ! If in paralell then merge the reduced density matrix onto one processor
-#ifdef PARALLEL
-
-        real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
-        real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
-        integer :: ierr
-
-        dm = reduced_density_matrix
-
-        call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-        reduced_density_matrix = dm_sum
-
-#endif
-
-        trace_rdm = 0.0_p
-
-        if (parent) then
-            do i = 1, ubound(reduced_density_matrix,1)
-                trace_rdm = trace_rdm + reduced_density_matrix(i,i)
-            end do
-            reduced_density_matrix = reduced_density_matrix/trace_rdm
-        end if
-
-        if (doing_von_neumann_entropy) call calculate_vn_entropy()
-        if (doing_concurrence) call calculate_concurrence()
-
-    end subroutine call_rdm_procedures
-
-
 end module dmqmc_procedures
