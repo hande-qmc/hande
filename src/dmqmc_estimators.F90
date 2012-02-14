@@ -659,7 +659,6 @@ contains
                 reduced_density_matrix(j,i) = reduced_density_matrix(i,j)
             end do 
         end do
-        print reduced_density_matrix
 
         rdm_spin_flip = matmul(reduced_density_matrix, flip_spin_matrix)
 

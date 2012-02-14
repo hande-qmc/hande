@@ -193,7 +193,7 @@ contains
             
             if (soft_exit) then
                 exit
-            else if (doing_reduced_dm)
+            else if (doing_reduced_dm) then
                 call call_rdm_procedures()
             end if
         end do
