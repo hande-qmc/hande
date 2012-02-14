@@ -130,7 +130,7 @@ contains
                &(idet, excitation, unweighted_walker_pop)
        ! Reduced density matrix
        if (doing_reduced_dm .and. iteration > reduced_dm_start_averaging) &
-               call update_reduced_density_matrix(idet, unweighted_walker_pop)
+               call update_reduced_density_matrix_heisenberg(idet, unweighted_walker_pop)
 
    end subroutine call_dmqmc_estimators
 
@@ -508,45 +508,6 @@ contains
 
     end subroutine update_reduced_density_matrix_heisenberg
 
-    subroutine output_reduced_density_matrix()
-
-        ! Normalise and ouput the reduced density matrix to the screen. This is
-        ! called at the end of each beta loop in DMQMC calculations, when the
-        ! reduced density matrix is requested.
-
-        use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
-        use parallel
-        use utils, only: print_matrix
-
-        integer :: i, rdm_size
-        real(p) :: trace_rdm
-
-#ifdef PARALLEL
-        real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
-        real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
-        integer :: ierr
-
-        dm = reduced_density_matrix
-
-        call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-        reduced_density_matrix = dm_sum
-#endif
-
-        trace_rdm = 0.0_p
-        rdm_size = ubound(reduced_density_matrix,1)
-
-        if (parent) then
-            do i = 1, rdm_size
-                trace_rdm = trace_rdm + reduced_density_matrix(i,i)
-            end do
-            reduced_density_matrix = reduced_density_matrix/trace_rdm
-            write (6, '(a23)') 'Reduced density matrix:'
-            call print_matrix(reduced_density_matrix)
-        end if
-
-    end subroutine output_reduced_density_matrix
-
     subroutine calculate_vn_entropy()
 
         ! Calculate the Von Neumann Entropy. Use lapack to calculate the
@@ -558,35 +519,20 @@ contains
         ! paralell.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
+        use fciqmc_data, only: subsystem_A_size, reduced_density_matrix
         use parallel
 
         integer :: i, rdm_size
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p) :: eigv(2**subsystem_A_size)
-        real(p) :: trace_rdm, vn_entropy
-#ifdef PARALLEL
-        real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
-        real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
-
+        real(p) :: vn_entropy
+        
+        rdm_size = 2**subsystem_A_size
         vn_entropy = 0._p
-        dm = reduced_density_matrix
-
-        call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-        reduced_density_matrix = dm_sum
-
-#endif
-
-        trace_rdm = 0.0_p
-        rdm_size = ubound(reduced_density_matrix,1)
 
         if (parent) then
-            do i = 1, rdm_size
-                trace_rdm = trace_rdm + reduced_density_matrix(i,i)
-            end do
-            reduced_density_matrix = reduced_density_matrix/trace_rdm
+            
             ! Find the optimal size of the workspace.
             allocate(work(1), stat=ierr)
             call check_allocate('work',1,ierr)
@@ -615,5 +561,74 @@ contains
         end if
 
     end subroutine calculate_vn_entropy
+    
+    subroutine calculate_concurrence
+
+        ! Calculate the concurrence of a qubit. For a reduced density matrix \rho,
+        ! the concurrence, C =  max(0, \lamda_1 - \lambda_2 - \lambda_3 -\lambda_4) where
+        ! \lambda_i are the eigenvalues of the matrix, R = \sqrt{\sqrt{\rho}\~{\rho}\sqrt{\rho}}.
+        ! Where \~\rho = {\sigma_y \otimes \sigma_y} \rho^{\ast} {\sigma_y \otimes \sigma_y}. 
+        ! \lambda_1 > ... > \lambda_4
+
+        ! This can be simplified to finding the eigenvalues \{\lambda_i\} of \rho\~{\rho} and in
+        ! the case where \rho is a real, symmetric matrix then we can further simplify the problem
+        ! to finding the eigenvalues of R = \rho \sigma_y \otimes \sigma_y.
+
+        ! Below we have named {\sigma_y \otimes \sigma_y} flip_spin_matrix as in the literature.
+
+        use checking, only: check_allocate, check_deallocate
+        use fciqmc_data, only: subsystem_A_size, reduced_density_matrix, flip_spin_matrix
+        use parallel
+
+        integer :: i,j
+        integer :: info, ierr, lwork
+        real(p), allocatable :: work(:)
+        real(p) :: eigv(4)
+        real(p) :: concurrence
+        real(p) :: rdm_spin_flip(4,4)
+        
+        do i = 1, ubound(reduced_density_matrix,1)
+            do j = 1, i
+                reduced_density_matrix(i,j) = 0.5*(reduced_density_matrix(i,j) + reduced_density_matrix(j,i)) 
+            end do 
+        end do
+
+        do i = 1, ubound(reduced_density_matrix,1)
+            do j = 1, i-1
+                reduced_density_matrix(j,i) = reduced_density_matrix(i,j)
+            end do
+        end do
+ 
+        rdm_spin_flip = matmul(reduced_density_matrix, flip_spin_matrix)
+        if (parent) then
+            
+            ! Find the optimal size of the workspace.
+            allocate(work(1), stat=ierr)
+            call check_allocate('work',1,ierr)
+#ifdef SINGLE_PRECISION
+            call ssyev('N', 'U', 4, rdm_spin_flip, 4, eigv, work, -1, info)
+#else
+            call dsyev('N', 'U', 4, rdm_spin_flip, 4, eigv, work, -1, info)
+#endif
+            lwork = nint(work(1))
+            deallocate(work)
+            call check_deallocate('work',ierr)
+
+            ! Now perform the diagonalisation.
+            allocate(work(lwork), stat=ierr)
+            call check_allocate('work',lwork,ierr)
+
+#ifdef SINGLE_PRECISION
+            call ssyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
+#else
+            call dsyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
+#endif
+            concurrence = 2.*maxval(eigv) - sum(eigv) 
+            concurrence = max(0._p, concurrence)
+            write (6,'(1x,a23,1X,f22.12)') "# Concurrence= ", concurrence
+        end if
+
+    end subroutine calculate_concurrence
+
 
 end module dmqmc_estimators

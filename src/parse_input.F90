@@ -216,6 +216,10 @@ contains
                 do i = 1, nitems-1
                     call readi(subsystem_A_list(i))
                 end do
+            case('CONCURRENCE')
+                doing_concurrence = .true.
+            case('VON_NEUMANN_ENTROPY')
+                doing_von_neumann_entropy = .true.
             case('REDUCED_DM_START_AVERAGING')
                 call readi(reduced_dm_start_averaging)
             ! calculation options: DMQMC
@@ -470,7 +474,8 @@ contains
 
         if ((.not.doing_calc(dmqmc_calc)) .and. dmqmc_calc_type /= 0) call warning('check_input',&
                'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
-
+        if (doing_concurrence .and. size(subsystem_A_list) /= 2) call stop_all(this, 'You must select exactly two sites for the &
+               & subsystem when calculating concurrence.')
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
                 if (walker_length == 0) call stop_all(this,'Walker length zero.')
@@ -600,6 +605,8 @@ contains
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_von_neumann_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(reduced_dm_start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)

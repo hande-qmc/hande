@@ -268,6 +268,12 @@ logical :: half_density_matrix
 ! for the subsystem A specified by the user.
 logical :: doing_reduced_dm = .false.
 
+! If true then calculate the concurrence for reduced density matrix of two sites
+logical :: doing_concurrence = .false.
+
+! If true then calculate the Von-Neumann entanglement entropy for specified subsystem
+logical :: doing_von_neumann_entropy = .false.
+
 integer :: subsystem_A_size
 ! If finding a reduced density matrix for subsystem A, then the
 ! following list stores the sites on the lattice which belong
@@ -284,6 +290,11 @@ integer(i0), allocatable :: subsystem_B_mask(:)
 ! This stored the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
 real(p), allocatable :: reduced_density_matrix(:,:)
+
+! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
+! concurrence is to be calculated
+real(p), allocatable :: flip_spin_matrix(:,:)
+
 ! When calculating the reduced density matrix, we only want to start
 ! averaging once the ground state is reached. The below integer is input
 ! by the user, and gives the iteration at which data should start being

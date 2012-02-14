@@ -7,7 +7,6 @@ import scipy.stats
 
 def extract_data(data_files):
     data = []
-    # timestep value from echoed input data
     entropy_regex = '^ # Von-Neumann Entropy='
 
     for data_file in data_files:

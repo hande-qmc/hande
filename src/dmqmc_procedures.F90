@@ -17,7 +17,8 @@ contains
          use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
          use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
          use fciqmc_data, only: correlation_mask, correlation_sites, half_density_matrix
-         use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs
+         use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, flip_spin_matrix
+         use fciqmc_data, only: doing_concurrence
          use parallel, only: parent
          use system, only: system_type, heisenberg, nsites, nel
 
@@ -141,6 +142,19 @@ contains
                  call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
                  reduced_density_matrix = 0
              end if
+         end if
+
+         ! If doing concurrence calculation then construct and store the 4x4 flip spin matrix i.e.
+         ! \sigma_y \otimes \sigma_y
+ 
+         if (doing_concurrence) then
+             allocate(flip_spin_matrix(4,4), stat=ierr)
+             call check_allocate('flip_spin_matrix', 16,ierr)
+             flip_spin_matrix = 0._p
+             flip_spin_matrix(1,4) = -1._p
+             flip_spin_matrix(4,1) = -1._p
+             flip_spin_matrix(3,2) = 1._p
+             flip_spin_matrix(2,3) = 1._p    
          end if
 
     end subroutine init_dmqmc
@@ -296,4 +310,45 @@ contains
 
     end subroutine decode_dm_bitstring
     
+    subroutine call_rdm_procedures()
+       
+        ! Wrapper for calling relevant reduced density matrix procedures
+
+        use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
+        use fciqmc_data, only: doing_von_neumann_entropy, doing_concurrence
+        use dmqmc_estimators, only: calculate_vn_entropy, calculate_concurrence
+        use parallel
+        
+        real(p) :: trace_rdm
+        integer :: i
+        ! If in paralell then merge the reduced density matrix onto one processor
+#ifdef PARALLEL
+
+        real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
+        real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
+        integer :: ierr
+
+        dm = reduced_density_matrix
+
+        call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+        reduced_density_matrix = dm_sum
+
+#endif
+
+        trace_rdm = 0.0_p
+
+        if (parent) then
+            do i = 1, ubound(reduced_density_matrix,1)
+                trace_rdm = trace_rdm + reduced_density_matrix(i,i)
+            end do
+            reduced_density_matrix = reduced_density_matrix/trace_rdm
+        end if
+
+        if (doing_von_neumann_entropy) call calculate_vn_entropy()
+        if (doing_concurrence) call calculate_concurrence()
+
+    end subroutine call_rdm_procedures
+
+
 end module dmqmc_procedures
