@@ -249,10 +249,14 @@ contains
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
+        use determinants, only: det_info
+        use fciqmc_data, only: walker_dets, walker_data
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
+
         integer :: idet
         integer(lint) :: ntot_particles
+        type(det_info) :: cdet
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum
@@ -264,7 +268,11 @@ contains
         proj_energy = 0.0_p
         D0_population = 0
         do idet = 1, tot_walkers
-            call update_proj_energy_ptr(idet)
+            cdet%f = walker_dets(:,idet)
+            cdet%data => walker_data(:,idet)
+            ! WARNING!  We assume only the bit string and data field are
+            ! required to update the projected estimator.
+            call update_proj_energy_ptr(cdet, walker_population(1,idet))
         end do
 
 #ifdef PARALLEL

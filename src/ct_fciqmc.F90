@@ -90,7 +90,7 @@ contains
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                call update_proj_energy_ptr(idet)
+                call update_proj_energy_ptr(cdet, walker_population(1,idet))
 
                 ! Loop over each walker on the determinant.
                 do iparticle = 1, abs(walker_population(1,idet))
