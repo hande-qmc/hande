@@ -89,7 +89,7 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(cdet, walker_population(1,idet))
+                    call update_proj_energy_ptr(cdet, real(walker_population(1,idet),p))
 
                     ! Is this determinant an initiator?
                     call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)

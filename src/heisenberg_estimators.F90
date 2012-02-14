@@ -33,7 +33,7 @@ contains
         use hubbard_real, only: connected_orbs
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: pop
+        real(p), intent(in) :: pop
         type(excit) :: excitation
         integer :: bit_position, bit_element
 
@@ -76,7 +76,7 @@ contains
         use system, only: J_coupling, nbonds
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: pop
+        real(p), intent(in) :: pop
 
         proj_energy = proj_energy + (J_coupling*nbonds+2*cdet%data(1))*pop
 
@@ -106,7 +106,7 @@ contains
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: pop
+        real(p), intent(in) :: pop
         integer :: n, lattice_1_up, lattice_2_up
         real(dp) :: importance_sampling_factor = 1.0
 

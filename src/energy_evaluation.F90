@@ -160,7 +160,7 @@ contains
         use hamiltonian, only: slater_condon2_hub_k
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: pop
+        real(p), intent(in) :: pop
         type(excit) :: excitation
         real(p) :: hmatel
 
@@ -204,7 +204,7 @@ contains
         use hamiltonian, only: slater_condon1_hub_real
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: pop
+        real(p), intent(in) :: pop
         type(excit) :: excitation
         real(p) :: hmatel
 
@@ -252,7 +252,7 @@ contains
         use system, only: nel
 
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: pop
+        real(p), intent(in) :: pop
 
         type(excit) :: excitation
         real(p) :: hmatel

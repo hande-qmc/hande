@@ -91,7 +91,7 @@ contains
                     if (excitation_level <= truncation_level+2) then
 
                         ! TODO: projected estimator.
-!                        call update_proj_energy_ptr(cdet, 1, amp)
+                        call update_proj_energy_ptr(cdet, cluster_amplitude)
 
                         call spawner_ccmc(cdet, cluster_amplitude, pcluster, nspawned, connection)
 
