@@ -190,9 +190,12 @@ contains
                 if (soft_exit) exit
 
             end do
-
-            if (doing_reduced_dm) call call_rdm_procedures()
-
+            
+            if (soft_exit) then
+                exit
+            else if (doing_reduced_dm)
+                call call_rdm_procedures()
+            end if
         end do
 
         if (parent) then

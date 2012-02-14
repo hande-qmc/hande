@@ -577,7 +577,7 @@ contains
         use fciqmc_data, only: subsystem_A_size, reduced_density_matrix
         use parallel
 
-        integer :: i, rdm_size
+        integer :: i, j, rdm_size
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p) :: eigv(2**subsystem_A_size)
@@ -585,6 +585,15 @@ contains
         
         rdm_size = 2**subsystem_A_size
         vn_entropy = 0._p
+        
+        ! Copy the bottom half of the reduced density matrix to top half. The rdm should be
+        ! symmetric so averaging lower and upper triangles should give slightly better results.
+        ! The factor of 1/2 has been omitted because this will not change the eigenvalues
+        do i = 1, ubound(reduced_density_matrix,1)
+            do j = 1, i
+                reduced_density_matrix(i,j) = reduced_density_matrix(i,j) + reduced_density_matrix(j,i)
+            end do
+        end do
 
         if (parent) then
             
@@ -642,19 +651,18 @@ contains
         real(p) :: concurrence
         real(p) :: rdm_spin_flip(4,4)
         
-        do i = 1, ubound(reduced_density_matrix,1)
-            do j = 1, i
-                reduced_density_matrix(i,j) = 0.5*(reduced_density_matrix(i,j) + reduced_density_matrix(j,i)) 
-            end do 
-        end do
 
+        ! Force the reduced desnity matrix to be symmetric by averaging the upper and lower triangles
         do i = 1, ubound(reduced_density_matrix,1)
             do j = 1, i-1
+                reduced_density_matrix(i,j) = 0.5_p*(reduced_density_matrix(i,j) + reduced_density_matrix(j,i))
                 reduced_density_matrix(j,i) = reduced_density_matrix(i,j)
-            end do
+            end do 
         end do
- 
+        print reduced_density_matrix
+
         rdm_spin_flip = matmul(reduced_density_matrix, flip_spin_matrix)
+
         if (parent) then
             
             ! Find the optimal size of the workspace.
@@ -678,9 +686,10 @@ contains
 #else
             call dsyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
 #endif
+            ! Calculate the concurrence.
             concurrence = 2.*maxval(eigv) - sum(eigv) 
             concurrence = max(0._p, concurrence)
-            write (6,'(1x,a23,1X,f22.12)') "# Concurrence= ", concurrence
+            write (6,'(1x,a15,1X,f22.12)') "# Concurrence= ", concurrence
         end if
 
     end subroutine calculate_concurrence
