@@ -62,7 +62,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
-        use parallel, only: iproc, nprocs, parent
+        use parallel!, only: iproc, nprocs, parent
         use utils, only: int_fmt
 
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
@@ -75,9 +75,10 @@ contains
         use calc, only: dmqmc_energy_squared, dmqmc_correlation
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: encode_det, set_spin_polarisation, write_det
+        use energy_evaluation, only: calculate_hf_signed_pop
         use fciqmc_common, only: find_single_double_prob
         use fciqmc_restart, only: read_restart
-        use hfs_data, only: O00
+        use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
         use system, only: trial_function, neel_singlet, single_basis
@@ -90,6 +91,7 @@ contains
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
+        integer(lint) :: ntot_particles
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -213,6 +215,20 @@ contains
                 call check_allocate('occ_list0',nel,ierr)
             end if
             call read_restart()
+            ! Need to re-calculate the reference determinant data
+            call encode_det(occ_list0, f0)
+            if (trial_function == neel_singlet) then
+                ! Set the Neel state data for the reference state, if it is being used.
+                H00 = 0.0_p
+            else
+                H00 = sc0_ptr(f0)
+            end if
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
+            if (nprocs > 1) then
+                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+            else
+                D0_proc = iproc
+            end if
         else
             ! Reference det
             ! Set the reference determinant to be the spin-orbitals with the lowest
@@ -255,6 +271,7 @@ contains
                     ! Set the Neel state data for the reference state, if it is being used.
                     walker_data(1,tot_walkers) = H00
                     H00 = 0.0_p
+
                     walker_data(sampling_size+1,tot_walkers) = nsites/2
                     ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
                     ! The Neel state cannot be used for non-bipartite lattices.
@@ -345,6 +362,14 @@ contains
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
         forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
+        ! Should we already be in varyshift mode (e.g. restarting a calculation)?
+#ifdef PARALLEL
+        call mpi_allreduce(nparticles(1), ntot_particles, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+#else
+        ntot_particles = nparticles(1)
+#endif
+        vary_shift = ntot_particles >= target_particles
+        if (doing_calc(hfs_fciqmc_calc)) hf_signed_pop = calculate_hf_signed_pop()
 
         ! calculate the reference determinant symmetry
         ref_sym = symmetry_orb_list(occ_list0)

@@ -63,7 +63,7 @@ contains
         call alloc_det_info(cdet)
 
         ! from restart
-        nparticles_old = nparticles_old_restart
+        nparticles_old = nparticles
 
         ! Main fciqmc loop.
 
@@ -193,7 +193,7 @@ contains
 
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
+                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
@@ -210,7 +210,7 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
 
     end subroutine do_hfs_fciqmc
 

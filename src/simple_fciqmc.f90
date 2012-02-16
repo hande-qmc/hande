@@ -130,10 +130,8 @@ contains
         integer :: nattempts
         real :: t1, t2
 
-        ! from restart
-        nparticles_old = nparticles_old_restart
-
         nparticles = sum(abs(walker_population(1,:)))
+        nparticles_old = nparticles
 
         call write_fciqmc_report_header()
 
@@ -204,7 +202,7 @@ contains
 
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
+                call dump_restart(mc_cycles_done+ncycles*ireport, (/nparticles_old/))
 
             t1 = t2
 
@@ -213,7 +211,7 @@ contains
         call write_fciqmc_final(ireport)
         write (6,'()')
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, (/nparticles_old/))
 
     end subroutine do_simple_fciqmc
 

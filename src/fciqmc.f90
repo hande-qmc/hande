@@ -49,7 +49,7 @@ contains
         if (doing_calc(folded_spectrum)) call alloc_det_info(cdet_excit)
 
         ! from restart
-        nparticles_old = nparticles_old_restart
+        nparticles_old = nparticles
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
@@ -131,7 +131,7 @@ contains
             if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
+                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
@@ -155,7 +155,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
+        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
 
         call dealloc_det_info(cdet)
         if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)

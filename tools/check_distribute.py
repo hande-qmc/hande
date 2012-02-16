@@ -105,7 +105,7 @@ def test_restart():
     # Get keywords set in restart.F90
     start = re.compile('^ *subroutine read_restart', re.I)
     end = re.compile('^ *end subroutine read_restart', re.I)
-    read = re.compile('(?<=call read_in\(io,)(.*?)(?=\))', re.I)
+    read = re.compile('(?<=call read_in\(io,)(.*)(?=\))', re.I)
     # remove commas and array slices
     data_extract = re.compile(',|(\(.*?\))')
     data_in = False
@@ -122,8 +122,8 @@ def test_restart():
             if not COMMENT.match(line):
                 read_search = read.search(line)
                 if read_search:
-                    data = read_search.group(0).strip().split(',')
-                    data = [re.sub(data_extract, '', d.upper()) for d in data]
+                    data = read_search.group(0).split(',')
+                    data = [re.sub(data_extract, '', d.upper().strip()) for d in data]
                     variables.update(data)
                 else:
                     for mpi_regex in [BCAST, SCATTERV]:
@@ -134,9 +134,9 @@ def test_restart():
             data_in = False
 
     # Remove special cases...
-    for v in ['DET', 'POP', 'ENERGY', 'JUNK', 'TOT_WALKERS']:
+    for v in ['DET', 'POP', 'TMP_DATA', 'JUNK', 'TOT_WALKERS', 'BINARY_FMT_IN']:
         variables.remove(v)
-    for v in ['DONE', 'SCRATCH_ENERGIES', 'SPAWNED_WALKERS']:
+    for v in ['DONE', 'SCRATCH_DATA', 'SPAWNED_WALKERS']:
         distributed.remove(v)
 
     return check_distributed(input_file, variables, distributed)

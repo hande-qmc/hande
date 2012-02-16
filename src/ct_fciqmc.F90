@@ -21,7 +21,7 @@ contains
         use fciqmc_restart
         use proc_pointers
         use interact
-        use system, only: ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
+        use system, only: nel, ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
 
         use checking
         use parallel
@@ -54,7 +54,7 @@ contains
 
         call alloc_det_info(cdet)
 
-        nparticles_old = nparticles_old_restart
+        nparticles_old = nparticles
 
         t_barrier = tau ! or we could just not bother with the t_barrier var...
 
@@ -223,7 +223,7 @@ contains
             if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
+                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
 
             t1 = t2
 
@@ -240,7 +240,7 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
 
         deallocate(current_pos, stat=ierr)
         call check_deallocate('current_pos', ierr)

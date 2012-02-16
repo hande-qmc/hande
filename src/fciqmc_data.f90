@@ -323,7 +323,6 @@ logical :: dump_restart_file = .false.
 
 ! Restart data.
 integer :: mc_cycles_done = 0
-integer(lint) :: nparticles_old_restart = 0
 
 !--- Folded spectrum data ---
 
