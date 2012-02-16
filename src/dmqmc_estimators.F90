@@ -533,7 +533,7 @@ contains
         use parallel
 
         real(p) :: trace_rdm
-        integer :: i
+        integer :: i, j
         ! If in paralell then merge the reduced density matrix onto one processor
 #ifdef PARALLEL
 
@@ -552,14 +552,23 @@ contains
         trace_rdm = 0.0_p
 
         if (parent) then
+            ! Force the reduced desnity matrix to be symmetric by averaging the upper and lower triangles
             do i = 1, ubound(reduced_density_matrix,1)
+                do j = 1, i-1
+                    reduced_density_matrix(i,j) = 0.5_p*(reduced_density_matrix(i,j) +&
+                            reduced_density_matrix(j,i))
+                    reduced_density_matrix(j,i) = reduced_density_matrix(i,j)
+                end do
+                ! Add current contirbution to the trace.
                 trace_rdm = trace_rdm + reduced_density_matrix(i,i)
             end do
+            ! Normalise the reduced density matrix, so that the trace equals 1.
             reduced_density_matrix = reduced_density_matrix/trace_rdm
+            
+            ! Call the routines to calculate the desired quantities.
+            if (doing_von_neumann_entropy) call calculate_vn_entropy()
+            if (doing_concurrence) call calculate_concurrence()
         end if
-
-        if (doing_von_neumann_entropy) call calculate_vn_entropy()
-        if (doing_concurrence) call calculate_concurrence()
 
     end subroutine call_rdm_procedures
 
@@ -575,7 +584,6 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: subsystem_A_size, reduced_density_matrix
-        use parallel
 
         integer :: i, j, rdm_size
         integer :: info, ierr, lwork
@@ -586,43 +594,31 @@ contains
         rdm_size = 2**subsystem_A_size
         vn_entropy = 0._p
         
-        ! Copy the bottom half of the reduced density matrix to top half. The rdm should be
-        ! symmetric so averaging lower and upper triangles should give slightly better results.
-        ! The factor of 1/2 has been omitted because this will not change the eigenvalues
-        do i = 1, ubound(reduced_density_matrix,1)
-            do j = 1, i
-                reduced_density_matrix(i,j) = reduced_density_matrix(i,j) + reduced_density_matrix(j,i)
-            end do
+        ! Find the optimal size of the workspace.
+        allocate(work(1), stat=ierr)
+        call check_allocate('work',1,ierr)
+#ifdef SINGLE_PRECISION
+        call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
+#else
+        call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
+#endif
+        lwork = nint(work(1))
+        deallocate(work)
+        call check_deallocate('work',ierr)
+
+        ! Now perform the diagonalisation.
+        allocate(work(lwork), stat=ierr)
+        call check_allocate('work',lwork,ierr)
+
+#ifdef SINGLE_PRECISION
+        call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
+#else
+        call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
+#endif
+        do i = 1, ubound(eigv,1)
+            vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.0_p))
         end do
-
-        if (parent) then
-            
-            ! Find the optimal size of the workspace.
-            allocate(work(1), stat=ierr)
-            call check_allocate('work',1,ierr)
-#ifdef SINGLE_PRECISION
-            call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
-#else
-            call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
-#endif
-            lwork = nint(work(1))
-            deallocate(work)
-            call check_deallocate('work',ierr)
-
-            ! Now perform the diagonalisation.
-            allocate(work(lwork), stat=ierr)
-            call check_allocate('work',lwork,ierr)
-
-#ifdef SINGLE_PRECISION
-            call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
-#else
-            call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
-#endif
-            do i = 1, ubound(eigv,1)
-                vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.0_p))
-            end do
-            write (6,'(1x,a23,1X,f22.12)') "# Von-Neumann Entropy= ", vn_entropy
-        end if
+        write (6,'(1x,a23,1X,f22.12)') "# Von-Neumann Entropy= ", vn_entropy
 
     end subroutine calculate_vn_entropy
     
@@ -642,7 +638,6 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: subsystem_A_size, reduced_density_matrix, flip_spin_matrix
-        use parallel
 
         integer :: i,j
         integer :: info, ierr, lwork
@@ -651,45 +646,33 @@ contains
         real(p) :: concurrence
         real(p) :: rdm_spin_flip(4,4)
         
-
-        ! Force the reduced desnity matrix to be symmetric by averaging the upper and lower triangles
-        do i = 1, ubound(reduced_density_matrix,1)
-            do j = 1, i-1
-                reduced_density_matrix(i,j) = 0.5_p*(reduced_density_matrix(i,j) + reduced_density_matrix(j,i))
-                reduced_density_matrix(j,i) = reduced_density_matrix(i,j)
-            end do 
-        end do
-
         rdm_spin_flip = matmul(reduced_density_matrix, flip_spin_matrix)
 
-        if (parent) then
-            
-            ! Find the optimal size of the workspace.
-            allocate(work(1), stat=ierr)
-            call check_allocate('work',1,ierr)
+        ! Find the optimal size of the workspace.
+        allocate(work(1), stat=ierr)
+        call check_allocate('work',1,ierr)
 #ifdef SINGLE_PRECISION
-            call ssyev('N', 'U', 4, rdm_spin_flip, 4, eigv, work, -1, info)
+        call ssyev('N', 'U', 4, rdm_spin_flip, 4, eigv, work, -1, info)
 #else
-            call dsyev('N', 'U', 4, rdm_spin_flip, 4, eigv, work, -1, info)
+        call dsyev('N', 'U', 4, rdm_spin_flip, 4, eigv, work, -1, info)
 #endif
-            lwork = nint(work(1))
-            deallocate(work)
-            call check_deallocate('work',ierr)
+        lwork = nint(work(1))
+        deallocate(work)
+        call check_deallocate('work',ierr)
 
-            ! Now perform the diagonalisation.
-            allocate(work(lwork), stat=ierr)
-            call check_allocate('work',lwork,ierr)
+        ! Now perform the diagonalisation.
+        allocate(work(lwork), stat=ierr)
+        call check_allocate('work',lwork,ierr)
 
 #ifdef SINGLE_PRECISION
-            call ssyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
+        call ssyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
 #else
-            call dsyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
+        call dsyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
 #endif
-            ! Calculate the concurrence.
-            concurrence = 2.*maxval(eigv) - sum(eigv) 
-            concurrence = max(0._p, concurrence)
-            write (6,'(1x,a15,1X,f22.12)') "# Concurrence= ", concurrence
-        end if
+        ! Calculate the concurrence.
+        concurrence = 2.*maxval(eigv) - sum(eigv) 
+        concurrence = max(0._p, concurrence)
+        write (6,'(1x,a15,1X,f22.12)') "# Concurrence= ", concurrence
 
     end subroutine calculate_concurrence
 
