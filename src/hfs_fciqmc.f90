@@ -63,7 +63,7 @@ contains
         call alloc_det_info(cdet)
 
         ! from restart
-        nparticles_old = nparticles
+        nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
 
