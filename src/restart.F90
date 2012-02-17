@@ -270,7 +270,7 @@ contains
         ! processors, thus need to hash walkers again to choose which
         ! processor to send each determinant to.
         ! Use the spawning arrays as scratch space.
-        allocate(scratch_data(sampling_size,spawned_walker_length), stat=ierr)
+        allocate(scratch_data(sampling_size+info_size,spawned_walker_length), stat=ierr)
         call check_allocate('scratch_data',size(scratch_data),ierr)
         ! spawning_head_start gives the first slot in the spawning array for
         ! each processor.  Also want the last slot in the spawning array for
@@ -307,10 +307,10 @@ contains
             send_displacements = spawning_block_start(:nprocs-1)
             call mpi_scatter(send_counts, 1, mpi_integer, nread, 1, mpi_integer, root, mpi_comm_world, ierr)
             ! send walkers to their appropriate processor.
-            call mpi_scatterv(scratch_data, sampling_size*send_counts,                   &
-                                 (sampling_size+info_size)*send_displacements, mpi_preal,&
-                                 walker_data(:,tot_walkers+1:), nread, mpi_preal, root,  &
-                                 mpi_comm_world, ierr)
+            call mpi_scatterv(scratch_data, (sampling_size+info_size)*send_counts,               &
+                                 (sampling_size+info_size)*send_displacements, mpi_preal,        &
+                                 walker_data(:,tot_walkers+1:), (sampling_size+info_size)*nread, &
+                                 mpi_preal, root, mpi_comm_world, ierr)
             send_counts = send_counts*spawned_size
             send_displacements = send_displacements*spawned_size
             ! Easy to scatter into a different array.  Helpfully we already need
@@ -321,7 +321,7 @@ contains
             ! Transfer from spawned arrays to main walker arrays.
             do i = 1, nread
                 walker_dets(:,i+tot_walkers) = spawned_walkers_recvd(:basis_length,i)
-                walker_population(1,i+tot_walkers) = spawned_walkers_recvd(basis_length+1,i)
+                walker_population(:,i+tot_walkers) = spawned_walkers_recvd(basis_length+1:basis_length+sampling_size,i)
             end do
             tot_walkers = tot_walkers + nread
 

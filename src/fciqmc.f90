@@ -49,7 +49,7 @@ contains
         if (doing_calc(folded_spectrum)) call alloc_det_info(cdet_excit)
 
         ! from restart
-        nparticles_old = nparticles
+        nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()

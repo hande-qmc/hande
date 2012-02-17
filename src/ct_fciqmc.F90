@@ -54,7 +54,7 @@ contains
 
         call alloc_det_info(cdet)
 
-        nparticles_old = nparticles
+        nparticles_old = tot_nparticles
 
         t_barrier = tau ! or we could just not bother with the t_barrier var...
 

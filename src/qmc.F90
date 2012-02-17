@@ -91,7 +91,7 @@ contains
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
-        integer(lint) :: ntot_particles
+        integer(lint) :: tmp_lint
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -162,6 +162,8 @@ contains
         ! Allocate main walker lists.
         allocate(nparticles(sampling_size), stat=ierr)
         call check_allocate('nparticles', sampling_size, ierr)
+        allocate(tot_nparticles(sampling_size), stat=ierr)
+        call check_allocate('tot_nparticles', sampling_size, ierr)
         allocate(walker_dets(total_basis_length,walker_length), stat=ierr)
         call check_allocate('walker_dets', basis_length*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
@@ -364,12 +366,19 @@ contains
         forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
         ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
-        call mpi_allreduce(nparticles(1), ntot_particles, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
-        ntot_particles = nparticles(1)
+        tot_nparticles = nparticles
 #endif
-        vary_shift = ntot_particles >= target_particles
-        if (doing_calc(hfs_fciqmc_calc)) hf_signed_pop = calculate_hf_signed_pop()
+        vary_shift = tot_nparticles(1) >= target_particles
+        if (doing_calc(hfs_fciqmc_calc)) then
+#ifdef PARALLEL
+            tmp_lint = calculate_hf_signed_pop()
+            call mpi_allreduce(tmp_lint, hf_signed_pop, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+#else
+            hf_signed_pop = calculate_hf_signed_pop()
+#endif
+        end if
 
         ! calculate the reference determinant symmetry
         ref_sym = symmetry_orb_list(occ_list0)

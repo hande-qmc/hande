@@ -101,6 +101,8 @@ integer :: tot_walkers
 ! The first element is the number of normal (Hamiltonian) particles.
 ! Subsequent elements are the number of Hellmann--Feynamnn particles.
 integer(lint), allocatable :: nparticles(:) ! (sampling_size)
+! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
+integer(lint), allocatable :: tot_nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
