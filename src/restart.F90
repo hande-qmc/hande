@@ -70,6 +70,8 @@ contains
     subroutine dump_restart(nmc_cycles, nparticles_old)
 
         ! Write out the main walker list to file.
+
+        use basis, only: total_basis_length
         use hfs_data, only: hf_shift
         use fciqmc_data, only: sampling_size, info_size, shift, occ_list0, tot_walkers, &
                                nparticles, walker_population, walker_dets, walker_data
@@ -145,7 +147,7 @@ contains
                 ! Receive walker infor from all other processors.
                 ! This overwrites the root processor's walkers
                 call mpi_recv(walker_population, sampling_size*nwalkers(i), mpi_integer, i, comm_tag, mpi_comm_world, stat, ierr)
-                call mpi_recv(walker_dets, basis_length*nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_dets, total_basis_length*nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
                 call mpi_recv(walker_data, (sampling_size+info_size)*nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
                 ! Write out walkers from all other processors.
                 call write_walkers(io, nwalkers(i), binary_fmt_out)
@@ -169,7 +171,7 @@ contains
 #ifdef PARALLEL
             ! Send walker info to root processor.
             call mpi_send(walker_population, sampling_size*tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, ierr)
-            call mpi_send(walker_dets, basis_length*tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_dets, total_basis_length*tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, ierr)
             call mpi_send(walker_data, (sampling_size+info_size)*tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
