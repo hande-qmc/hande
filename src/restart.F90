@@ -67,9 +67,17 @@ contains
 
 !--- write/read restart file ---
 
-    subroutine dump_restart(nmc_cycles, nparticles_old)
+    subroutine dump_restart(nmc_cycles, nparticles_old, vspace)
 
         ! Write out the main walker list to file.
+
+        ! In:
+        !    nmc_cycles: number of Monte Carlo cycles performed.
+        !    nparticles_old: current number of particles in all active spaces
+        !        (e.g Hamiltonian, Hellmann--Feynman, ...).
+        !    vspace (optional): if present and true, add a blank line following
+        !        the end of output from this routine for additional anal-retentive
+        !        formatting.
 
         use basis, only: total_basis_length
         use hfs_data, only: hf_shift
@@ -80,7 +88,8 @@ contains
         use utils, only: get_unique_filename, get_free_unit
 
         integer, intent(in) :: nmc_cycles
-        integer(lint) :: nparticles_old(:)
+        integer(lint) , intent(in) :: nparticles_old(:)
+        logical, intent(in), optional :: vspace
         character(255) :: restart_file
         integer :: io
         integer, parameter :: restart_version = 2
@@ -103,6 +112,9 @@ contains
             end if
 
             write (6,'(1X,"#",1X,a23,1X,a,a1)') 'Writing restart file to',trim(restart_file),'.'
+            if (present(vspace)) then
+                if (vspace) write (6,'()')
+            end if
 
             if (binary_fmt_out) then
                 open(io,file=restart_file,form='unformatted')

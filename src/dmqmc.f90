@@ -192,7 +192,7 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old, vspace=.true.)
 
         call dealloc_det_info(cdet1)
         call dealloc_det_info(cdet2)

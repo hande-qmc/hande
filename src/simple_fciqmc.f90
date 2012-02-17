@@ -211,7 +211,7 @@ contains
         call write_fciqmc_final(ireport)
         write (6,'()')
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, (/nparticles_old/))
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, (/nparticles_old/), vspace=.true.)
 
     end subroutine do_simple_fciqmc
 
