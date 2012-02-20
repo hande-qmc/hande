@@ -6,7 +6,7 @@ implicit none
 
 contains
 
-   subroutine update_dmqmc_estimators(ntot_particles_old)
+   subroutine update_dmqmc_estimators(ntot_particles_old, ireport)
 
         ! Update the shift and average the shift and estimators
 
@@ -23,13 +23,14 @@ contains
         use checking, only: check_allocate
         use energy_evaluation, only: update_shift
         use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn
-        use fciqmc_data, only: shift, vary_shift
+        use fciqmc_data, only: shift, vary_shift, nreport
         use fciqmc_data, only: estimator_numerators, number_dmqmc_estimators
         use fciqmc_data, only: nreport, ncycles, trace, calculate_excit_distribution
-        use fciqmc_data, only: excit_distribution
+        use fciqmc_data, only: excit_distribution, average_shift_until, shift_profile
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
+        integer, intent(in) :: ireport
 
 #ifdef PARALLEL
         real(dp), allocatable :: ir(:)
@@ -62,26 +63,21 @@ contains
             estimator_numerators = ir_sum(sampling_size+3:sampling_size+2+number_dmqmc_estimators)
             excit_distribution = ir_sum(sampling_size+3+number_dmqmc_estimators:array_size)
         end if
-
-        if (vary_shift) then
-            call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
-        end if
-        ntot_particles_old = ntot_particles
-        if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
-            vary_shift = .true.
-        end if
-
 #else
-        ! If only one a single core, don't need to merge the data
-        ! from several processors. Can simply output everything as it is.
-
-        if (vary_shift) call update_shift(ntot_particles_old(1), nparticles(1), ncycles)
-        ntot_particles_old = nparticles
-        if (nparticles(1) > target_particles .and. .not.vary_shift) then
-            vary_shift = .true.
-        end if
+        ntot_particles = nparticles
 #endif
 
+        ! If average_shift_until = -1 then it means that the shift should be updated to
+        ! use the values of shift stored in shift_profile. Otherwise, use the standard update
+        ! routine.
+        if (average_shift_until == -1) then
+            if (ireport < nreport) shift = shift_profile(ireport+1)
+        else
+            if (vary_shift) call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
+            if (nparticles(1) > target_particles .and. .not.vary_shift) vary_shift = .true.
+        end if
+
+        ntot_particles_old = ntot_particles
         rspawn = rspawn/(ncycles*nprocs)
 
    end subroutine update_dmqmc_estimators

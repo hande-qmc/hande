@@ -174,8 +174,11 @@ contains
 
                 end do
 
+                ! If averaging the shift to use in future beta loops, add contirubtion from this report.
+                if (average_shift_until > 0) shift_profile(ireport) = shift_profile(ireport) + shift
+
                 ! Update the shift and desired thermal quantites.
-                call update_dmqmc_estimators(nparticles_old)
+                call update_dmqmc_estimators(nparticles_old, ireport)
 
                 call cpu_time(t2)
 
@@ -190,6 +193,14 @@ contains
                 if (soft_exit) exit
 
             end do
+  
+            ! If have just finished last beta loop of accumulating the shift, then perform
+            ! the averaging and set average_shift_until to -1. This tells the shift update
+            ! algorithm to use the values for shift stored in shift_profile.
+            if (beta_cycle == average_shift_until) then
+                shift_profile = shift_profile/average_shift_until
+                average_shift_until = -1
+            end if
             
             if (soft_exit) then
                 exit

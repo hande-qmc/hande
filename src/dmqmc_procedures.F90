@@ -19,6 +19,7 @@ contains
          use fciqmc_data, only: correlation_mask, correlation_sites, half_density_matrix
          use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, flip_spin_matrix
          use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
+         use fciqmc_data, only: nreport, average_shift_until, shift_profile
          use parallel, only: parent
          use system, only: system_type, heisenberg, nsites, nel
 
@@ -63,6 +64,12 @@ contains
              allocate(excit_distribution(0:max_number_excitations), stat=ierr)
              call check_allocate('excit_distribution',max_number_excitations+1,ierr)             
              excit_distribution = 0.0_p
+         end if
+
+         if (average_shift_until > 0) then
+             allocate(shift_profile(1:nreport+1), stat=ierr)
+             call check_allocate('shift_profile',nreport+1,ierr)
+             shift_profile = 0.0_p
          end if
 
          ! In DMQMC we want the spawning probabilities to have an extra factor of a half,
