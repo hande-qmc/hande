@@ -25,6 +25,7 @@ H2_is_present = False
 H_is_present = False
 TR_HRHO_INDEX = -1
 TR_H2RHO_INDEX = -1
+PARTICLES_COL = 6
 
 class Stats:
     def __init__(self, mean, se):
@@ -68,6 +69,7 @@ def get_estimator_headings(data_files):
     global H2_is_present
     global TR_HRHO_INDEX
     global TR_H2RHO_INDEX
+    global PARTICLES_COL
 # Get collumn headings from input file
     start_regex = '^ # iterations'
     data_file = data_files[0]
@@ -106,6 +108,7 @@ def get_estimator_headings(data_files):
                    index = index + 1
                else:
                    print '# Warning: Column name, '+headings[k]+', not recognised...'
+           PARTICLES_COL = TR_RHO_COL + index + 1
            break
            
     return estimator_headings, estimator_col_no
@@ -131,13 +134,14 @@ def stats_stochastic_specific_heat(beta, estimator_array):
     se = scipy.sqrt((beta**4)*(estimator_array.se[TR_H2RHO_INDEX]**2+4*(estimator_array.mean[TR_HRHO_INDEX]**2)*estimator_array.se[TR_HRHO_INDEX]**2))
     return Stats(mean,se)
 
-def extract_data(data_files, estimtor_col_no):
+def extract_data(data_files, estimtor_col_no, start_averaging):
     data = {}
-    
+    beta_loop_count = 1 
     # ignore lines beginning with # as the first non-whitespace character.
     comment = '^ *#'
     # start of data table
     start_regex = '^ # iterations'
+    beta_loop_regex = '^ # Resetting beta'
     # end of data table is a blank line
     end_regex = '^ *$'
     # timestep value from echoed input data
@@ -149,7 +153,7 @@ def extract_data(data_files, estimtor_col_no):
 
         have_data = False
         for line in f:
-
+       
             if re.search(end_regex, line):
                 have_data = False
             elif have_data:
@@ -157,18 +161,23 @@ def extract_data(data_files, estimtor_col_no):
                 # data structure:
                 #   data[beta] = ( [data from runs], [data item from runs], ...., )
                 if not re.match(comment, line):
-                    words = line.split()
-                    beta = tau*float(words[BETA_COL])
-                    shift = float(words[SHIFT_COL])
-                    numerators = []
-                    for i in range(0,len(estimtor_col_no)):
-                       numerators.append(float(words[estimtor_col_no[i]])) 
+                    if beta_loop_count >= start_averaging:
+                        words = line.split()
+                        # if int(words[PARTICLES_COL]) == 0:
+                        #     break
+                        beta = tau*float(words[BETA_COL])
+                        shift = float(words[SHIFT_COL])
+                        numerators = []
+                        for i in range(0,len(estimtor_col_no)):
+                           numerators.append(float(words[estimtor_col_no[i]])) 
                     
-                    Tr_rho = float(words[TR_RHO_COL])
-                    if beta in data:
-                        data[beta].append(shift, Tr_rho, numerators)
-                    else:
-                        data[beta] = Data(shift, Tr_rho, numerators)
+                        Tr_rho = float(words[TR_RHO_COL])
+                        if beta in data:
+                            data[beta].append(shift, Tr_rho, numerators)
+                        else:
+                            data[beta] = Data(shift, Tr_rho, numerators) 
+                elif re.search(beta_loop_regex, line):
+                    beta_loop_count = beta_loop_count + 1
             elif re.search(start_regex, line):
                 have_data = True
             elif re.search(tau_regex, line):
@@ -306,6 +315,7 @@ def parse_options(args):
     parser.add_option('--without-spline', action='store_false', dest='with_spline', help='Do not calcualate heat capacity using spline fit. Default')
     parser.add_option('--with-heat-capacity', action='store_true', dest='with_heat_capacity', default=False, help='Calculate the stochastic heat capacity.')
     parser.add_option('--without-heat-capacity', action='store_false', dest='with_heat_capacity', help='Do not calculate teh stochastic heat capacity')
+    parser.add_option("-s", "--start-averaging", action="store", dest="start_averaging", type="int")
     (options, filenames) = parser.parse_args(args)
     
     if len(filenames) == 0:
@@ -315,10 +325,9 @@ def parse_options(args):
     return (options, filenames)
 
 if __name__ == '__main__':
-
     (options, data_files) = parse_options(sys.argv[1:])
     estimator_headings, estimtor_col_no = get_estimator_headings(data_files)
-    data = extract_data(data_files, estimtor_col_no)
+    data = extract_data(data_files, estimtor_col_no, options.start_averaging)
     stats = get_data_stats(data)
     print_stats(stats, estimator_headings, options.with_trace, options.with_shift, options.with_spline, options.with_heat_capacity)
     if options.plot:
