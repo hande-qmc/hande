@@ -48,7 +48,7 @@ contains
         use spawning, only: create_spawned_particle
         use fciqmc_common
 
-        integer :: idet, ireport, icycle, iparticle
+        integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(lint) :: nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
@@ -111,6 +111,17 @@ contains
                     ! already looping over the determinants.
                     call update_proj_energy_ptr(idet)
 
+                    ! Is this determinant an initiator?
+                    ! A determinant can be an initiator in the Hamiltonian space
+                    ! or the Hellmann-Feynman space or both.
+                    ! The initiator_flag attribute of det_info is checked and passed to the
+                    ! annihilation routine in the appropriate create_spawned_particle_*
+                    ! routine, so we must set cdet%initiator_flag
+                    ! appropriately...
+                    call set_parent_flag_ptr(walker_population(1,idet), cdet%f, h_initiator_flag)
+                    call set_parent_flag_ptr(walker_population(1,idet), cdet%f, hf_initiator_flag)
+                    cdet%initiator_flag = h_initiator_flag
+
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
@@ -125,6 +136,8 @@ contains
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
                     end do
+
+                    cdet%initiator_flag = hf_initiator_flag
 
                     do iparticle = 1, abs(walker_population(2,idet))
 
@@ -164,6 +177,8 @@ contains
                     call death_ptr(walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
+                    ! Not in place, must set initiator flag.
+                    cdet%initiator_flag = h_initiator_flag
                     call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
