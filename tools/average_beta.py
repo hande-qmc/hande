@@ -163,21 +163,23 @@ def extract_data(data_files, estimtor_col_no, start_averaging):
                 if not re.match(comment, line):
                     if beta_loop_count >= start_averaging:
                         words = line.split()
-                        # if int(words[PARTICLES_COL]) == 0:
-                        #     break
-                        beta = tau*float(words[BETA_COL])
-                        shift = float(words[SHIFT_COL])
-                        numerators = []
-                        for i in range(0,len(estimtor_col_no)):
-                           numerators.append(float(words[estimtor_col_no[i]])) 
-                    
-                        Tr_rho = float(words[TR_RHO_COL])
-                        if beta in data:
-                            data[beta].append(shift, Tr_rho, numerators)
+                        if int(words[PARTICLES_COL]) == 0:
+                             have_data = False
                         else:
-                            data[beta] = Data(shift, Tr_rho, numerators) 
+                            beta = tau*float(words[BETA_COL])
+                            shift = float(words[SHIFT_COL])
+                            numerators = []
+                            for i in range(0,len(estimtor_col_no)):
+                               numerators.append(float(words[estimtor_col_no[i]])) 
+                    
+                            Tr_rho = float(words[TR_RHO_COL])
+                            if beta in data:
+                                data[beta].append(shift, Tr_rho, numerators)
+                            else:
+                                data[beta] = Data(shift, Tr_rho, numerators) 
                 elif re.search(beta_loop_regex, line):
                     beta_loop_count = beta_loop_count + 1
+                    have_data = True
             elif re.search(start_regex, line):
                 have_data = True
             elif re.search(tau_regex, line):
