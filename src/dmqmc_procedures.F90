@@ -155,6 +155,10 @@ contains
                  allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
                  call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
                  reduced_density_matrix = 0
+             else if (subsystem_A_size == nsites) then
+                 allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
+                 call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
+                 reduced_density_matrix = 0
              end if
          end if
 

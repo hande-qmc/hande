@@ -500,7 +500,6 @@ contains
        real(p), intent(in) :: walker_pop
        integer(i0) :: f1(basis_length), f2(basis_length)
        integer(i0) :: end1, end2
-
        ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
        f1 = iand(subsystem_B_mask,walker_dets(:basis_length,idet))
        f2 = iand(subsystem_B_mask,walker_dets(basis_length+1:total_basis_length,idet))
