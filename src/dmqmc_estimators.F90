@@ -638,7 +638,7 @@ contains
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p) :: eigv(4)
-        real(p) :: concurrence
+        real(p) :: concurrence, entanglement_of_formation, x
         real(p) :: rdm_spin_flip(4,4)
         
         rdm_spin_flip = matmul(reduced_density_matrix, flip_spin_matrix)
@@ -667,7 +667,10 @@ contains
         ! Calculate the concurrence.
         concurrence = 2.*maxval(eigv) - sum(eigv) 
         concurrence = max(0._p, concurrence)
+        x = 0.5_p + 0.5_p*sqrt(1._p - concurrence**2)
+        entanglement_of_formation = -1._p*(x*log(x)+(1._p-x)*log(1._p-x))/log(2.0_p)
         write (6,'(1x,a15,1X,f22.12)') "# Concurrence= ", concurrence
+        write (6,'(1x,a29,1X,f22.12)') "# Entanglement of formation= ", entanglement_of_formation
 
     end subroutine calculate_concurrence
 
