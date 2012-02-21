@@ -6,6 +6,8 @@ module ccmc
 ! (especially the spawning, death and annihilation).  As a result, the structure
 ! of do_ccmc is remarkably similar to the other do_*mc routines.
 
+! Numerous discussions with Alex Thom gratefully acknowledged...
+
 use const, only: i0, lint, p
 
 implicit none
@@ -162,6 +164,7 @@ contains
 
         use calc, only: truncation_level
         use determinants, only: det_info
+        use excitations, only: get_excitation_level
         use dSFMT_interface, only: genrand_real2
         use fciqmc_data, only: f0, D0_population, tot_walkers, &
                                walker_population, walker_dets
@@ -174,14 +177,13 @@ contains
         real(p), intent(out) :: amplitude, pcluster
 
         real(p) :: rand, psize
-        integer :: cluster_size, i, pos, cluster_pop
-        logical :: valid_cluster
+        integer :: cluster_size, i, pos, cluster_population
 
         ! We shall accumulate the factors which comprise pcluster as we go.
         !   pcluster = n_sel p_size p_clust
         ! where
         !   n_sel   is the number of cluster selections made (by this
-        !           processor?);
+        !           processor);
         !   p_size  is the probability of choosing a cluster of that size;
         !   p_clust is the probability of choosing a specific cluster given
         !           the choice of size.
@@ -213,7 +215,6 @@ contains
             pcluster = pcluster/(1.0_p - psize)
         end if
 
-        valid_cluster = .true.
         select case(cluster_size)
         case(0)
             ! Must be the reference.
@@ -227,31 +228,40 @@ contains
             ! First excitor 'seeds' the cluster:
             pos = int(genrand_real2()*tot_walkers) +1
             cdet%f = walker_dets(:,pos)
-            cluster_pop = walker_population(1,pos)
+            cluster_population = walker_population(1,pos)
             ! Now the rest...
             do i = 2, cluster_size
                 ! Select a position between in the excitors list.
                 pos = int(genrand_real2()*tot_walkers) + 1
-                call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_pop)
-                if (cluster_pop == 0) exit
+                call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population)
+                if (cluster_population == 0) exit
             end do
 
-            ! Normalisation factor for amplitudes...
-            amplitude = real(cluster_pop,p)/(D0_population**(cluster_size-1)) ! TODO: don't accumulate D0 over report loops
+            excitation_level = get_excitation_level(f0, cdet%f)
+            ! To contribute the cluster must be within a double excitation of
+            ! the maximum excitation included in the CC wavefunction.
+            if (excitation_level > truncation_level+2) cluster_population = 0
 
-            ! TODO: sign change due to difference between determinant
-            ! representation and excitors.
+            if (cluster_population /= 0) then
+                ! Sign change due to difference between determinant
+                ! representation and excitors and excitation level.
+                call convert_excitor_to_determinant(cdet%f, excitation_level, cluster_population)
 
-            ! We chose excitors uniformly.
-            !  -> prob. of each excitor is 1./(number of excitors on processor).
-            ! Overall probability is the product of this times the number of
-            ! ways the cluster could have been selected, ie
-            !   n_s!/n_excitors^n_s
-            pcluster = (pcluster*factorial(cluster_size))/(tot_walkers**cluster_size)
+                ! Normalisation factor for amplitudes...
+                amplitude = real(cluster_population,p)/(D0_population**(cluster_size-1)) ! TODO: don't accumulate D0 over report loops
+
+                ! We chose excitors uniformly.
+                !  -> prob. of each excitor is 1./(number of excitors on processor).
+                ! Overall probability is the product of this times the number of
+                ! ways the cluster could have been selected, ie
+                !   n_s!/n_excitors^n_s
+                pcluster = (pcluster*factorial(cluster_size))/(tot_walkers**cluster_size)
+            end if
+
         end select
 
         ! Fill in information about the cluster if required.
-        if (valid_cluster) then
+        if (cluster_population /= 0) then
             call decoder_ptr(cdet%f, cdet)
         else
             ! Simply set excitation level to a too high (fake) level to avoid
@@ -445,7 +455,7 @@ contains
             ! an excitor).
             ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
             ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
-            ! excitor, e.g. t_{ij}^{ab} = a^+_b a^+_a a_j a_i (where i<j and
+            ! excitor, e.g. t_{ij}^{ab} = a^+_a a^+_b a_j a_i (where i<j and
             ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
             ! permute the creation and annihilation operators.  Each permutation
             ! incurs a sign change.
@@ -483,5 +493,120 @@ contains
         end if
 
     end subroutine collapse_cluster
+
+    subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_population)
+
+        ! We usually consider an excitor as a bit string representation of the
+        ! determinant formed by applying the excitor (a group of annihilation
+        ! and creation operators) to the reference determinant; indeed the
+        ! determinant form is required when constructing Hamiltonian matrix
+        ! elements.  However, the resulting determinant might actually contain
+        ! a sign change, which needs to be absorbed into the (signed) population
+        ! of excips on the excitor.
+
+        ! This results from the fact that a determinant, |D>, is defined as:
+        !   |D> = a^+_i a^+_j ... a^+_k |0>,
+        ! where |0> is the vacuum, a^+_i creates an electron in the i-th
+        ! orbital, i<j<...<k and |0> is the vacuum.  An excitor is defined as
+        !   t_{ij...k}^{ab...c} = a^+_a a^+_b ... a^+_c a_i a_j ... a_k
+        ! where i<j<...<k and a<b<...<c.  (This definition is somewhat
+        ! arbitrary; the key thing is to be consistent.)  Hence applying an
+        ! excitor to the reference might result in a change of sign, i.e.
+        ! t_{ij}^{ab} |D_0> = -|D_{ij}^{ab}>.  As a more concrete example,
+        ! consider a set of spin states (as the extension to fermions is
+        ! irrelevant to the argument), with the reference:
+        !   |D_0> = | 1 2 3 >
+        ! and the excitor
+        !   t_{13}^{58}
+        ! Thus:
+        !   t_{13}^{58} | 1 2 3 > = + a^+_5 a^+_8 a_3 a_1 a^+_1 a^+_2 a^+_3 |0>
+        !                         = + a^+_5 a^+_8 a_3 a^+_2 a^+_3 |0>
+        !                         = - a^+_5 a^+_8 a_3 a^+_3 a^+_2 |0>
+        !                         = - a^+_5 a^+_8 a^+_2 |0>
+        !                         = + a^+_5 a^+_2 a^+_8 |0>
+        !                         = - a^+_2 a^+_5 a^+_8 |0>
+        !                         = - | 2 5 8 >
+        ! Similarly
+        !   t_{12}^{58} | 1 2 3 > = + a^+_5 a^+_8 a_2 a_1 a^+_1 a^+_2 a^+_3 |0>
+        !                         = + a^+_5 a^+_8 a_2 a^+_2 a^+_3 |0>
+        !                         = + a^+_5 a^+_8 a^+_3 |0>
+        !                         = - a^+_5 a^+_3 a^+_8 |0>
+        !                         = + a^+_3 a^+_5 a^+_8 |0>
+        !                         = + | 3 5 8 >
+
+        ! This potential sign change must be taken into account; we do so by
+        ! absorbing the sign into the signed population of excips on the
+        ! excitor.
+
+        ! Essentially taken from Alex Thom's original implementation.
+
+        ! In:
+        !    excitor: bit string of the Slater determinant formed by applying
+        !        the excitor to the reference determinant.
+        !    excitor_level: excitation level, relative to the reference
+        !        determinant, of the excitor.  Equal to the number of
+        !        annihilation (or indeed creation) operators in the excitor.
+        ! In/Out:
+        !    excitor_population: population of excips on the excitor.  On output
+        !        this acquires, if required, a sign change due to applying the
+        !        excitor to the reference determinant to form a Slater determinant.
+        !        Note that this is still a *signed* variable on input.
+
+        use basis, only: basis_length
+        use const, only: i0_end
+        use fciqmc_data, only: f0
+
+        integer(i0), intent(in) :: excitor(basis_length)
+        integer, intent(in) :: excitor_level
+        integer, intent(inout) :: excitor_population
+
+        integer(i0) :: excitation(basis_length)
+        integer :: ibasis, ibit, ncreation, nannihilation
+
+        ! Bits involved in the excitation from the reference determinant.
+        excitation = ieor(f0, excitor)
+
+        nannihilation = excitor_level
+        ncreation = excitor_level
+
+        ! Obtain sign change by (implicitly) constructing the determinant formed
+        ! by applying the excitor to the reference determinant.
+        do ibasis = 1, basis_length
+            do ibit = 0, i0_end
+                if (btest(f0(ibasis),ibit)) then
+                    ! Occupied orbital in reference.
+                    if (btest(excitation(ibasis),ibit)) then
+                        ! Orbital excited from...annihilate electron.
+                        ! This amounts to one fewer operator in the cluster through
+                        ! which the other creation operators in the determinant must
+                        ! permute.
+                        nannihilation = nannihilation - 1
+                    else
+                        ! Orbital is occupied in the reference and once the
+                        ! excitor has been applied.
+                        ! Permute the corresponding creation operator through
+                        ! the remaining creation and annihilation operators of
+                        ! the excitor (which operate on orbitals with a higher
+                        ! index than the current orbital).
+                        ! If the permutation is odd, then we incur a sign
+                        ! change.
+                        if (mod(nannihilation+ncreation,2) == 1) &
+                            excitor_population = -excitor_population
+                    end if
+                else if (btest(excitation(ibasis),ibit)) then
+                    ! Orbital excited to...create electron.
+                    ! This amounts to one fewer operator in the cluster through
+                    ! which the creation operators in the determinant must
+                    ! permute.
+                    ! Note due to definition of the excitor, it is guaranteed
+                    ! that this is created in the correct place, ie there are no
+                    ! other operators in the excitor it needs to be interchanged
+                    ! with.
+                    ncreation = ncreation - 1
+                end if
+            end do
+        end do
+
+    end subroutine convert_excitor_to_determinant
 
 end module ccmc
