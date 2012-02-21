@@ -115,8 +115,6 @@ contains
                 ! total.
                 rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
-                ! D0_population is communicated in the direct_annihilation
-                ! algorithm for efficiency.
                 call direct_annihilation()
 
             end do
