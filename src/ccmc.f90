@@ -31,6 +31,7 @@ contains
         ! See notes about the implementation of this using function pointers
         ! in fciqmc_main.
 
+        ! TODO: parallelisation.
         use parallel
 
         use annihilation, only: direct_annihilation
