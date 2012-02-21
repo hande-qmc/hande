@@ -143,7 +143,6 @@ contains
 
             call fciqmc_interact(soft_exit)
             if (soft_exit) exit
-            if (mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
 
         end do
 
