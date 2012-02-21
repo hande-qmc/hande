@@ -6,7 +6,16 @@ module ccmc
 ! (especially the spawning, death and annihilation).  As a result, the structure
 ! of do_ccmc is remarkably similar to the other do_*mc routines.
 
-! Numerous discussions with Alex Thom gratefully acknowledged...
+! NOTE:
+!     FCIQMC routines work entirely in a determinant framework.  This is
+!     somewhat inconsistent with coupled cluster which is most naturally defined
+!     in terms of excitors.  Thus when considering the interface between CC
+!     routines and FCI routines, one should mentally translate 'Slater
+!     determinant' into 'the Slater determinant formed by applying the excitor
+!     to the reference determinant'.
+
+! Numerous discussions with Alex Thom (AJWT) and access to drafts/preprints of
+! AJWT's CCMC papers gratefully acknowledged...
 
 use const, only: i0, lint, p
 
@@ -158,7 +167,27 @@ contains
 
     subroutine select_cluster(nattempts, cdet, excitation_level, amplitude, pcluster)
 
-        ! TODO: interface comments
+        ! Select a random cluster of excitors from the excitors on the
+        ! processor.  A cluster of excitors is itself an excitor.  For clarity
+        ! (if not technical accuracy) in comments we shall distinguish between
+        ! the cluster of excitors and a single excitor, from a set of which the
+        ! cluster is formed.
+
+        ! In:
+        !    nattempts: the number of times (on this processor) a random cluster
+        !        of excitors is generated in the current timestep.
+        ! In/Out:
+        !    cdet: information about the cluster of excitors.  This is a bare
+        !        det_info variable on input with only the relevant fields
+        !        allocated.  On output the appropriate (system-specific) fields
+        !        have been filled.
+        ! Out:
+        !    excitation_level: excitation level, relative to the reference
+        !        determinant, of the determiant formed by applying the cluster
+        !        of excitors to the reference determinant.
+        !    amplitude: stochastically sample of the amplitude/weight on the
+        !        cluster of excitors.
+        !    pcluster: probability of selecting the cluster at random.
 
         use calc, only: truncation_level
         use determinants, only: det_info
