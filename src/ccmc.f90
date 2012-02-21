@@ -6,7 +6,7 @@ module ccmc
 ! (especially the spawning, death and annihilation).  As a result, the structure
 ! of do_ccmc is remarkably similar to the other do_*mc routines.
 
-use const, only: p, lint
+use const, only: i0, lint, p
 
 implicit none
 
@@ -90,7 +90,6 @@ contains
 
                     if (excitation_level <= truncation_level+2) then
 
-                        ! TODO: projected estimator.
                         call update_proj_energy_ptr(cdet, cluster_amplitude)
 
                         call spawner_ccmc(cdet, cluster_amplitude, pcluster, nspawned, connection)
@@ -165,7 +164,7 @@ contains
         use determinants, only: det_info
         use dSFMT_interface, only: genrand_real2
         use fciqmc_data, only: f0, D0_population, tot_walkers, &
-                               walker_population
+                               walker_population, walker_dets
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
 
@@ -175,9 +174,8 @@ contains
         real(p), intent(out) :: amplitude, pcluster
 
         real(p) :: rand, psize
-        integer :: cluster_size, i
+        integer :: cluster_size, i, pos, cluster_pop
         logical :: valid_cluster
-        integer :: excitor(truncation_level+1)
 
         ! We shall accumulate the factors which comprise pcluster as we go.
         !   pcluster = n_sel p_size p_clust
@@ -226,16 +224,23 @@ contains
         case default
             ! Select cluster from the excitors on the current processor in
             ! a uniform manner.
-            amplitude = 1.0_p
-            do i = 1, cluster_size
+            ! First excitor 'seeds' the cluster:
+            pos = int(genrand_real2()*tot_walkers) +1
+            cdet%f = walker_dets(:,pos)
+            cluster_pop = walker_population(1,pos)
+            ! Now the rest...
+            do i = 2, cluster_size
                 ! Select a position between in the excitors list.
-                excitor(i) = int(genrand_real2()*tot_walkers) + 1
-                amplitude = amplitude*walker_population(1,excitor(i))
+                pos = int(genrand_real2()*tot_walkers) + 1
+                call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_pop)
+                if (cluster_pop == 0) exit
             end do
-            ! Normalisation factor for amplitudes...
-            amplitude = amplitude/(D0_population**(cluster_size-1)) ! TODO: don't accumulate D0 over report loops
 
-            ! TODO: collapse cluster (return also excitation_level)
+            ! Normalisation factor for amplitudes...
+            amplitude = real(cluster_pop,p)/(D0_population**(cluster_size-1)) ! TODO: don't accumulate D0 over report loops
+
+            ! TODO: sign change due to difference between determinant
+            ! representation and excitors.
 
             ! We chose excitors uniformly.
             !  -> prob. of each excitor is 1./(number of excitors on processor).
@@ -318,7 +323,7 @@ contains
 
     subroutine stochastic_ccmc_death(cdet, amplitude, pcluster)
 
-        ! Attempt to 'die' (ie create an excip on the current exictor, cdet%f)
+        ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
         !    \tau |<D_s|H|D_s> A_s|
         !    ----------------------
@@ -373,5 +378,110 @@ contains
         call create_spawned_particle_ptr(cdet, null_excit, nkill, spawned_pop)
 
     end subroutine stochastic_ccmc_death
+
+    subroutine collapse_cluster(excitor, excitor_population, cluster_excitor, cluster_population)
+
+        ! Collapse two excitors.  The result is returned in-place.
+
+        ! In:
+        !    excitor: bit string of the Slater determinant formed by applying
+        !        the excitor to the reference determinant.
+        !    excitor_population: number of excips on the excitor.
+        ! In/Out:
+        !    cluster_excitor: bit string of the Slater determinant formed by applying
+        !        the excitor to the reference determinant.
+        !    cluster_population: number of excips on the 'cluster' excitor.
+
+        ! On input, cluster excitor refers to an existing excitor.  On output,
+        ! cluster excitor refers to the excitor formed from applying the excitor
+        ! to the cluster.
+
+        use basis, only: basis_length, basis_lookup
+        use excitations, only: excit_mask
+        use fciqmc_data, only: f0
+
+        use bit_utils, only: count_set_bits
+        use const, only: i0_end
+
+        integer(i0), intent(in) :: excitor(basis_length)
+        integer, intent(in) :: excitor_population
+        integer(i0), intent(inout) :: cluster_excitor(basis_length)
+        integer, intent(inout) :: cluster_population
+
+        integer :: ibasis, ibit
+        integer(i0) :: excitor_excitation(basis_length), excitor_annihilation(basis_length), excitor_creation(basis_length)
+        integer(i0) :: cluster_excitation(basis_length), cluster_annihilation(basis_length), cluster_creation(basis_length)
+        integer(i0) :: permute_operators(basis_length)
+
+        ! Apply excitor to the cluster of excitors.
+
+        ! orbitals involved in excitation from reference
+        excitor_excitation = ieor(f0, excitor)
+        cluster_excitation = ieor(f0, cluster_excitor)
+        ! annihilation operators (relative to the reference)
+        excitor_annihilation = iand(excitor_excitation, f0)
+        cluster_annihilation = iand(cluster_excitation, f0)
+        ! creation operators (relative to the reference)
+        excitor_creation = iand(excitor_excitation, excitor)
+        cluster_creation = iand(cluster_excitation, cluster_excitor)
+
+        ! First, let's find out if the excitor is valid...
+        if (any(iand(excitor_creation,cluster_creation) /= 0) &
+                .or. any(iand(excitor_annihilation,cluster_annihilation) /= 0)) then
+            ! excitor attempts to excite from an orbital already excited from by
+            ! the cluster or into an orbital already excited into by the
+            ! cluster.
+            ! => not valid
+            cluster_population = 0
+        else
+            ! Applying the excitor to the existing cluster of excitors results
+            ! in a valid cluster.
+
+            ! Combine amplitudes.
+            ! Might need a sign change as well...see below!
+            cluster_population = cluster_population*excitor_population
+
+            ! Now apply the excitor to the cluster (which is, in its own right,
+            ! an excitor).
+            ! Consider a cluster, e.g. t_i^a = a^+_a a_i (which corresponds to i->a).
+            ! We wish to collapse two excitors, e.g. t_i^a t_j^b, to a single
+            ! excitor, e.g. t_{ij}^{ab} = a^+_b a^+_a a_j a_i (where i<j and
+            ! a<b).  However t_i^a t_j^b = a^+_a a_i a^+_b a_j.  We thus need to
+            ! permute the creation and annihilation operators.  Each permutation
+            ! incurs a sign change.
+
+            do ibasis = 1, basis_length
+                do ibit = 0, i0_end
+                    if (btest(excitor_excitation(ibasis),ibit)) then
+                        if (btest(f0(ibasis),ibit)) then
+                            ! Exciting from this orbital.
+                            cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
+                            ! We need to swap it with every annihilation
+                            ! operator and every creation operator referring to
+                            ! an orbital with a higher index already in the
+                            ! cluster.
+                            ! Note that an orbital cannot be in the list of
+                            ! annihilation operators and the list of creation
+                            ! operators.
+                            ! First annihilation operators:
+                            permute_operators = iand(excit_mask(:,basis_lookup(ibit,ibasis)),cluster_annihilation)
+                            ! Now add the creation operators:
+                            permute_operators = ior(permute_operators,cluster_creation)
+                        else
+                            ! Exciting into this orbital.
+                            cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
+                            ! Need to swap it with every creation operator with
+                            ! a higher index already in the cluster.
+                            permute_operators = iand(excit_mask(:,basis_lookup(ibit,ibasis)),cluster_creation)
+                        end if
+                        if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
+                            cluster_population = -cluster_population
+                    end if
+                end do
+            end do
+
+        end if
+
+    end subroutine collapse_cluster
 
 end module ccmc
