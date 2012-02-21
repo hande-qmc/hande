@@ -379,7 +379,8 @@ contains
         use determinants, only: det_info
         use fciqmc_data, only: tau, shift, spawned_pop, H00
         use excitations, only: excit
-        use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
+        use proc_pointers, only: sc0_ptr
+        use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: genrand_real2
 
         type(det_info), intent(in) :: cdet
@@ -412,7 +413,7 @@ contains
         ! care of the rest.
         ! Pass through a null excitation so that we create a spawned particle on
         ! the current excitor.
-        call create_spawned_particle_ptr(cdet, null_excit, nkill, spawned_pop)
+        call create_spawned_particle_truncated(cdet, null_excit, nkill, spawned_pop)
 
     end subroutine stochastic_ccmc_death
 
