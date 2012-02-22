@@ -413,7 +413,7 @@ contains
         ! care of the rest.
         ! Pass through a null excitation so that we create a spawned particle on
         ! the current excitor.
-        call create_spawned_particle_truncated(cdet, null_excit, nkill, spawned_pop)
+        if (nkill /= 0) call create_spawned_particle_truncated(cdet, null_excit, nkill, spawned_pop)
 
     end subroutine stochastic_ccmc_death
 
