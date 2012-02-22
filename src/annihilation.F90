@@ -201,7 +201,7 @@ contains
 
         use basis, only: total_basis_length
 
-        integer :: islot, k, pop_sign
+        integer :: islot, k, pop_sign, events, initiator_pop
 
         ! islot is the current element in the spawned walkers lists.
         islot = 1
@@ -211,37 +211,69 @@ contains
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned walker.
             spawned_walkers(:,islot) = spawned_walkers(:,k)
+            events = sign(1,spawned_walkers(spawned_pop,k))
+            if (spawned_walkers(spawned_parent,k) == 0) then
+                ! from an initiator
+                initiator_pop = spawned_walkers(spawned_pop,k)
+            else
+                initiator_pop = 0
+            end if
             compress: do
                 k = k + 1
-                if (k > spawning_head(0)) exit self_annihilate
-                if (all(spawned_walkers(:total_basis_length,k) == spawned_walkers(:total_basis_length,islot))) then
-                    ! Update the parent flag.
-                    ! Note we ignore the possibility of multiple spawning events
-                    ! onto the same unoccupied determinant.  Such events become
-                    ! vanishingly unlikely with the size of the determinant
-                    ! space (according to Ali at least!).
-                    pop_sign = spawned_walkers(spawned_pop,islot)*spawned_walkers(spawned_pop,k)
-                    if (pop_sign > 0) then
-                        ! Sign coherent event.
-                        ! Set parent_flag to 2 (indicating multiple
-                        ! sign-coherent spawning events).
-                        spawned_walkers(spawned_parent,islot) = 2
-                    else
-                        ! Keep the parent_flag of the largest spawning event.
-                        if (spawned_walkers(spawned_pop,k) > spawned_walkers(spawned_pop,islot)) then
-                            spawned_walkers(spawned_parent,islot) = spawned_walkers(spawned_parent,k)
-                        end if
-                    end if
-                    ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(spawned_pop,islot) = &
-                                   spawned_walkers(spawned_pop,islot) + spawned_walkers(spawned_pop,k)
-                else
+                if (k > spawning_head(0) &
+                 .or. any(spawned_walkers(:total_basis_length,k) /= spawned_walkers(:total_basis_length,islot))) then
                     ! Found the next unique spawned walker.
+                    ! Set the overall parent flag of the population on the
+                    ! current determinant and move on.
+                    ! Rules:
+                    !   * keep psips from initiator determinants
+                    !   * keep psips from multiple coherent events
+                    ! These are indicated by a 0 flag.
+                    !   * keep other psips only if determinant is already
+                    !     occupied.
+                    ! We also want the outcome to be independent of the order
+                    ! the spawning events occured in, hence accumulating the
+                    ! signed number of events and number of initiator particles
+                    ! separately.
+                    ! Corner cases are tricky!
+                    ! * If multiple initiator events exactly cancel out, then the
+                    !   flag is determined by the number of coherent events from
+                    !   non-initiator parent determinants.
+                    ! * If more psips from non-initiators are spawned than
+                    !   initiators and the two sets have opposite sign, the flag
+                    !   is determined by number of coherent events from
+                    !   non-initiator parents.
+                    if (initiator_pop /= 0 .and.  &
+                            sign(1,spawned_walkers(spawned_pop,islot)) == sign(1,initiator_pop) ) then
+                        ! Keep all.  We should still annihilate psips of
+                        ! opposite sign from non-initiator events.
+                        spawned_walkers(spawned_parent,islot) = 0
+                    else if (abs(events) > 1) then
+                        ! Multiple coherent spawning events after removing pairs
+                        ! of spawning events of the opposite sign.
+                        ! Keep.
+                        spawned_walkers(spawned_parent,islot) = 0
+                    else
+                        ! Should only keep if determinant is already occupied.
+                        spawned_walkers(spawned_parent,islot) = 1
+                    end if
                     exit compress
+                else
+                    ! Accumulate the population on this determinant, how much of the population came
+                    ! from an initiator and the sign of the event.
+                    if (spawned_walkers(spawned_parent,k) == 0) then
+                        initiator_pop = initiator_pop + spawned_walkers(spawned_pop,k)
+                    else if (spawned_walkers(spawned_pop,k) < 0) then
+                        events = events - 1
+                    else
+                        events = events + 1
+                    end if
+                    spawned_walkers(spawned_pop,islot) = spawned_walkers(spawned_pop,islot) &
+                                                         + spawned_walkers(spawned_pop,k)
                 end if
             end do compress
             ! All done?
-            if (islot == spawning_head(0)) exit self_annihilate
+            if (islot == spawning_head(0) .or. k > spawning_head(0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
             if (spawned_walkers(spawned_pop,islot) /= 0) islot = islot + 1
@@ -338,8 +370,7 @@ contains
             else
                 ! Compress spawned list.
                 ! Keep only progeny spawned by initiator determinants
-                ! (parent_flag=0) or multiple sign-coherent events
-                ! (parent_flag=2).
+                ! or multiple sign-coherent events (indicated by parent_flag=0).
                 if (spawned_walkers(spawned_parent,i) == 1) then
                     ! discard attempting spawnings from non-initiator walkers
                     ! onto unoccupied determinants.
