@@ -21,6 +21,9 @@ use const, only: i0, lint, p
 
 implicit none
 
+! TEMPORARY ONLY
+integer :: D0_normalisation
+
 contains
 
     subroutine do_ccmc()
@@ -57,6 +60,9 @@ contains
 
         logical :: soft_exit
 
+        integer :: pos
+        logical :: hit
+
         real :: t1, t2
 
         ! Allocate det_info components.
@@ -76,6 +82,8 @@ contains
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
             rspawn = 0.0_p
+            ! TEMPORARY
+            D0_normalisation = nint(D0_population)
             D0_population = 0.0_p
 
             do icycle = 1, ncycles
@@ -130,6 +138,12 @@ contains
 
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(nparticles_old)
+            ! TEMPORARY: population on reference determinant.
+            ! As we might select the reference determinant multiple times in
+            ! a cycle, the running total of D0_population is incorrect (by
+            ! a factor of the number of times it was selected).  Fix.
+            call search_walker_list(f0, 1, tot_walkers, hit, pos)
+            D0_population = walker_population(1,pos)
 
             call cpu_time(t2)
 
@@ -246,7 +260,7 @@ contains
             ! Must be the reference.
             cdet%f = f0
             excitation_level = 0
-            amplitude = D0_population ! TODO: don't accumulate D0 over report loops
+            amplitude = D0_normalisation ! TODO: don't accumulate D0 over report loops
             ! Only one cluster of this size to choose => p_clust = 1
         case default
             ! Select cluster from the excitors on the current processor in
@@ -274,7 +288,7 @@ contains
                 call convert_excitor_to_determinant(cdet%f, excitation_level, cluster_population)
 
                 ! Normalisation factor for amplitudes...
-                amplitude = real(cluster_population,p)/(D0_population**(cluster_size-1)) ! TODO: don't accumulate D0 over report loops
+                amplitude = real(cluster_population,p)/(D0_normalisation**(cluster_size-1)) ! TODO: don't accumulate D0 over report loops
 
                 ! We chose excitors uniformly.
                 !  -> prob. of each excitor is 1./(number of excitors on processor).
