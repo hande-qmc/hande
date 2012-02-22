@@ -249,7 +249,7 @@ contains
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
-        use determinants, only: det_info
+        use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use fciqmc_data, only: walker_dets, walker_data
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
@@ -267,6 +267,7 @@ contains
         ! update_proj_energy.
         proj_energy = 0.0_p
         D0_population = 0
+        call alloc_det_info(cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
             cdet%data => walker_data(:,idet)
@@ -274,6 +275,7 @@ contains
             ! required to update the projected estimator.
             call update_proj_energy_ptr(cdet, real(walker_population(1,idet),p))
         end do
+        call dealloc_det_info(cdet)
 
 #ifdef PARALLEL
         call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
