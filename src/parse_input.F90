@@ -179,6 +179,8 @@ contains
                 calc_type = calc_type + ct_fciqmc_calc
             case('DMQMC')
                 calc_type = calc_type + dmqmc_calc
+            case('CCMC')
+                calc_type = calc_type + ccmc_calc
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')

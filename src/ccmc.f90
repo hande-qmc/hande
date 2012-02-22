@@ -360,6 +360,9 @@ contains
         real(p) :: hmatel, pgen
 
         ! 1. Generate random excitation.
+        ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
+        ! generators of the lattice models.  It is trivial to implement and (at
+        ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr(cdet, pgen, connection, hmatel)
 
         ! 2, Apply additional factors.

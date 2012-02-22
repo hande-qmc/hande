@@ -14,6 +14,7 @@ contains
 
         use calc
 
+        use ccmc, only: do_ccmc
         use ct_fciqmc, only: do_ct_fciqmc
         use dmqmc, only: do_dmqmc
         use fciqmc, only: do_fciqmc
@@ -38,6 +39,8 @@ contains
             call do_dmqmc()
         else if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(hub_matel)
+        else if (doing_calc(ccmc_calc)) then
+            call do_ccmc()
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
