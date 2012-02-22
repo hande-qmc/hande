@@ -51,7 +51,7 @@ contains
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
-        integer :: ndeath, nspawned, excitation_level
+        integer :: nspawned, excitation_level
         real(p) :: cluster_amplitude, pcluster
         type(excit) :: connection
 
@@ -90,9 +90,6 @@ contains
                 ! This is used for accounting later, not for controlling the spawning.
                 nattempts = 2*nparticles(1)
 
-                ! Reset death counter
-                ndeath = 0
-
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
                 do iattempt = 1, nparticles(1)
@@ -123,7 +120,9 @@ contains
 
                 ! Add the spawning rate (for the processor) to the running
                 ! total.
-                rspawn = rspawn + spawning_rate(ndeath, nattempts)
+                ! Note that 'death' in CCMC creates particles in the spawned
+                ! list, so the number of deaths not in the spawned list is 0.
+                rspawn = rspawn + spawning_rate(0, nattempts)
 
                 call direct_annihilation()
 
