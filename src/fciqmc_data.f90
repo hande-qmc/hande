@@ -257,6 +257,14 @@ integer :: staggered_mag_index = 0
 logical :: dmqmc_weighted_sampling
 real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
 real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
+! If dmqmc_vary_weights is true, then instead of using the final sampling
+! weights for all the iterations, the weights will be gradually increased
+! until finish_varying_weights, at which point they will be held constant.
+! weight_altering_factors stores the factors by which each weight is
+! multiplied at each step. 
+logical :: dmqmc_vary_weights = .false.
+integer :: finish_varying_weights = 0
+real(dp), allocatable :: weight_altering_factors(:)
 
 ! If half_density_matrix is true then half the density matrix will be 
 ! calculated by reflecting spawning onto the lower triangle into the

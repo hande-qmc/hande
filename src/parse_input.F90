@@ -208,6 +208,9 @@ contains
                     call readf(dmqmc_sampling_probs(i))
                 end do
                 dmqmc_weighted_sampling = .true.
+            case('DMQMC_VARY_WEIGHTS')
+                call readi(finish_varying_weights)
+                dmqmc_vary_weights = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 calculate_excit_distribution = .true.
             ! Calculate a reduced density matrix
@@ -614,6 +617,8 @@ contains
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(reduced_dm_start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.

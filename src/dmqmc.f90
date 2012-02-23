@@ -22,6 +22,7 @@ contains
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_procedures, only: random_distribution_heisenberg
+        use dmqmc_procedures, only: update_sampling_weights
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
         use dmqmc_estimators, only: call_rdm_procedures
         use excitations, only: excit, get_excitation_level
@@ -72,6 +73,7 @@ contains
             shift = initial_shift
             nparticles = 0
             if (allocated(reduced_density_matrix)) reduced_density_matrix = 0
+            if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
             vary_shift = .false.
 
             ! Need to place psips randomly along the diagonal at the
@@ -171,6 +173,10 @@ contains
                     ! the main walker list, and walkers of opposite sign on the same sites are
                     ! annihilated.
                     call direct_annihilation()
+
+                    ! If doing importance sampling *and* varying the weights of the trial function, call a routine 
+                    ! to update these weights and alter the number of psips on each excitation level accordingly.
+                    if (dmqmc_vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights()
 
                 end do
 

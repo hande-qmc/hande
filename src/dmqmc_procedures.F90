@@ -19,7 +19,8 @@ contains
          use fciqmc_data, only: correlation_mask, correlation_sites, half_density_matrix
          use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, flip_spin_matrix
          use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
-         use fciqmc_data, only: nreport, average_shift_until, shift_profile
+         use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
+         use fciqmc_data, only: finish_varying_weights, weight_altering_factors
          use parallel, only: parent
          use system, only: system_type, heisenberg, nsites, nel
 
@@ -83,6 +84,7 @@ contains
          ! This factor is also used in updated the shift, where the true tau is needed.
          dmqmc_factor = 2.0_p
 
+         max_number_excitations = min(nel, (nsites-nel))
          if (allocated(dmqmc_sampling_probs)) then
              if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
              ! dmqmc_sampling_probs stores the factors by which probabilities are to
@@ -93,19 +95,27 @@ contains
              ! need to create and store. dmqmc_sampling_probs is no longer needed and so can
              ! be deallocated. Also, the user may have only input factors for the first few
              ! excitation levels, but we need to store factors for all levels, as done below.
-             max_number_excitations = min(nel, (nsites-nel))
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
              dmqmc_accumulated_probs(0) = 1.0_p
-             do i = 1, size(dmqmc_sampling_probs)
-                 dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
-             end do
-             dmqmc_accumulated_probs(size(dmqmc_sampling_probs):max_number_excitations) = &
+                 do i = 1, size(dmqmc_sampling_probs)
+                     dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
+                 end do
+                 dmqmc_accumulated_probs(size(dmqmc_sampling_probs):max_number_excitations) = &
                                         dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
-             deallocate(dmqmc_sampling_probs, stat=ierr)
-            call check_deallocate('dmqmc_sampling_probs',ierr)
+                 deallocate(dmqmc_sampling_probs, stat=ierr)
+                 call check_deallocate('dmqmc_sampling_probs',ierr)
+             if (dmqmc_vary_weights) then
+                 ! Allocate an array to store the factors by which the weights will change each
+                 ! iteration.
+                 allocate(weight_altering_factors(0:max_number_excitations), stat=ierr)
+                 call check_allocate('weight_altering_factors',max_number_excitations+1,ierr) 
+                 weight_altering_factors = dble(dmqmc_accumulated_probs)**(1/dble(finish_varying_weights))
+                 ! If varying the weights, start the accumulated probabilties as all 1.0
+                 ! initially, and then alter them gradually later.
+                 dmqmc_accumulated_probs = 1.0_p
+             end if
          else
-             max_number_excitations = min(nel, (nsites-nel))
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
              dmqmc_accumulated_probs = 1.0_p
@@ -239,13 +249,13 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_diagonal_particle(f)
+            call create_particle(f,f,1)
 
         end do
 
     end subroutine random_distribution_heisenberg
 
-    subroutine create_diagonal_particle(f_new)
+    subroutine create_particle(f1,f2,nspawn)
 
         ! Create a psip on a diagonal element of the density
         ! matrix by adding it to the spawned walkers list. This
@@ -261,22 +271,23 @@ contains
         use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop
         use parallel
 
-        integer(i0), intent(in) :: f_new(basis_length)
-        integer(i0) :: f_new_diagonal(total_basis_length)
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer, intent(in) :: nspawn
+        integer(i0) :: f_new(total_basis_length)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
         integer :: iproc_spawn
 #endif
 
-        ! Create the bitstring of a psip on a diagonal element.
-        f_new_diagonal = 0
-        f_new_diagonal(:basis_length) = f_new
-        f_new_diagonal((basis_length+1):(total_basis_length)) = f_new
+        ! Create the bitstring of the psip.
+        f_new = 0
+        f_new(:basis_length) = f1
+        f_new((basis_length+1):(total_basis_length)) = f2
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned walker should be sent to.
-        iproc_spawn = modulo(murmurhash_bit_string(f_new_diagonal, &
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, &
                                 (total_basis_length)), nprocs)
 #endif
 
@@ -287,11 +298,11 @@ contains
         ! Zero it as not all fields are set.
         spawned_walkers(:,spawning_head(iproc_spawn)) = 0
         ! indices 1 to total_basis_length store the bitstring.
-        spawned_walkers(:(2*basis_length),spawning_head(iproc_spawn)) = f_new_diagonal
-        ! The final index stores the number of psips created, always 1 in this situation.
-        spawned_walkers((2*basis_length)+1,spawning_head(iproc_spawn)) = 1
+        spawned_walkers(:(2*basis_length),spawning_head(iproc_spawn)) = f_new
+        ! The final index stores the number of psips created.
+        spawned_walkers((2*basis_length)+1,spawning_head(iproc_spawn)) = nspawn
 
-    end subroutine create_diagonal_particle
+    end subroutine create_particle
 
     subroutine decode_dm_bitstring(f, index1, index2)
 
@@ -327,5 +338,62 @@ contains
         index2 = index2+1
 
     end subroutine decode_dm_bitstring
+ 
+    subroutine update_sampling_weights()
+        
+        ! This routine updates the values of the weights used in importance sampling. It also
+        ! removes or adds psips from the various levels accordingly.
+
+        ! In:
+        !    iteration: The current iteration in the beta loop.
+
+        use annihilation, only: remove_unoccupied_dets
+        use basis, only: basis_length, total_basis_length
+        use excitations, only: get_excitation_level
+        use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, finish_varying_weights
+        use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
+        use fciqmc_data, only: nparticles
+        use dSFMT_interface, only:  genrand_real2
+
+        integer :: idet, excit_level, nspawn, sign_factor, old_population
+        real(p) :: new_factor
+        real(dp) :: rand_num, prob
+
+        ! Alter weights for the next iteration.
+        dmqmc_accumulated_probs = dble(dmqmc_accumulated_probs)*weight_altering_factors
+
+        ! When the weights for an excitation level are increased by a factor, the number
+        ! of psips on that level has to decrease by the same factor, else the wavefunction
+        ! which the psips represent will not be the correct importance sampled wavefunction
+        ! for the new weights. The code below loops over every psips and destorys (or creates)
+        ! it with the appropriate probability.
+        do idet = 1, tot_walkers
+            excit_level = get_excitation_level(walker_dets(1:basis_length,idet),&
+                    walker_dets(basis_length+1:total_basis_length,idet))
+            old_population = abs(walker_population(1,idet))
+            rand_num = genrand_real2()
+            ! If weight_altering_factors(excit_level)**(-1) > 1, need to kill psips.
+            ! If weight_altering_factors(excit_level)**(-1) < 1, need to create psips.
+            prob = abs(1.0_dp - weight_altering_factors(excit_level)**(-1))*old_population
+            nspawn = int(prob)
+            prob = prob - nspawn
+            if (rand_num < prob) nspawn = nspawn + 1
+            if (weight_altering_factors(excit_level) > 1.0_dp) then
+                sign_factor = -1
+            else
+                sign_factor = +1
+            end if
+            nspawn = sign(nspawn,walker_population(1,idet)*sign_factor)
+            ! Update the wpopulation on this determinant.
+            walker_population(1,idet) = walker_population(1,idet) + nspawn
+            ! Update the total number of walkers
+            nparticles(1) = nparticles(1) - old_population + abs(walker_population(1,idet))
+        end do
+
+        ! Call the annihilation routine to update the main walker list, as some
+        ! sites will now have no psips on and so need removing from the simulation.
+        call remove_unoccupied_dets()
+
+    end subroutine update_sampling_weights
     
 end module dmqmc_procedures
