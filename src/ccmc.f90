@@ -269,13 +269,24 @@ contains
             pos = int(genrand_real2()*tot_walkers) +1
             cdet%f = walker_dets(:,pos)
             cluster_population = walker_population(1,pos)
-            ! Now the rest...
-            do i = 2, cluster_size
-                ! Select a position between in the excitors list.
-                pos = int(genrand_real2()*tot_walkers) + 1
-                call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population)
-                if (cluster_population == 0) exit
-            end do
+            if (all(walker_dets(:,pos) == f0)) then
+                ! Not allowed to select the reference as it is not an excitor.
+                ! Return a null cluster.
+                cluster_population = 0
+            else
+                ! Now the rest...
+                do i = 2, cluster_size
+                    ! Select a position between in the excitors list.
+                    pos = int(genrand_real2()*tot_walkers) + 1
+                    ! Not allowed to select the reference...
+                    if (all(walker_dets(:,pos) == f0)) then
+                        cluster_population = 0
+                    else
+                        call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population)
+                    end if
+                    if (cluster_population == 0) exit
+                end do
+            end if
 
             excitation_level = get_excitation_level(f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
