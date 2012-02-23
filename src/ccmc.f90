@@ -309,18 +309,16 @@ contains
                 ! ways the cluster could have been selected, ie
                 !   n_s!/n_excitors^n_s
                 pcluster = (pcluster*factorial(cluster_size))/(tot_walkers**cluster_size)
+            else
+                ! Simply set excitation level to a too high (fake) level to avoid
+                ! this cluster being used.
+                excitation_level = huge(0)
             end if
 
         end select
 
         ! Fill in information about the cluster if required.
-        if (cluster_population /= 0) then
-            call decoder_ptr(cdet%f, cdet)
-        else
-            ! Simply set excitation level to a too high (fake) level to avoid
-            ! this cluster being used.
-            excitation_level = huge(0)
-        end if
+        if (excitation_level <= truncation_level+2) call decoder_ptr(cdet%f, cdet)
 
     end subroutine select_cluster
 
