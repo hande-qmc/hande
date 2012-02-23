@@ -300,6 +300,8 @@ contains
 
                 ! Normalisation factor for amplitudes...
                 amplitude = real(cluster_population,p)/(D0_normalisation**(cluster_size-1)) ! TODO: don't accumulate D0 over report loops
+                ! Factorial due to the series expansion of exp(\hat{T}).
+                amplitude = amplitude/factorial(cluster_size)
 
                 ! We chose excitors uniformly.
                 !  -> prob. of each excitor is 1./(number of excitors on processor).
