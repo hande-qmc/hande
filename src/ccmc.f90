@@ -539,8 +539,9 @@ contains
                             ! Exciting into this orbital.
                             cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
                             ! Need to swap it with every creation operator with
-                            ! a higher index already in the cluster.
-                            permute_operators = iand(excit_mask(:,basis_lookup(ibit,ibasis)),cluster_creation)
+                            ! a lower index already in the cluster.
+                            permute_operators = iand(not(excit_mask(:,basis_lookup(ibit,ibasis))),cluster_creation)
+                            permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
                         end if
                         if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
                             cluster_population = -cluster_population
