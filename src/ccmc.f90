@@ -288,7 +288,7 @@ contains
                 end do
             end if
 
-            excitation_level = get_excitation_level(f0, cdet%f)
+            if (cluster_population /= 0) excitation_level = get_excitation_level(f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
             ! the maximum excitation included in the CC wavefunction.
             if (excitation_level > truncation_level+2) cluster_population = 0
