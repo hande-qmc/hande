@@ -372,8 +372,8 @@ contains
                     walker_dets(basis_length+1:total_basis_length,idet))
             old_population = abs(walker_population(1,idet))
             rand_num = genrand_real2()
-            ! If weight_altering_factors(excit_level)**(-1) > 1, need to kill psips.
-            ! If weight_altering_factors(excit_level)**(-1) < 1, need to create psips.
+            ! If weight_altering_factors(excit_level) > 1, need to kill psips.
+            ! If weight_altering_factors(excit_level) < 1, need to create psips.
             prob = abs(1.0_dp - weight_altering_factors(excit_level)**(-1))*old_population
             nspawn = int(prob)
             prob = prob - nspawn
@@ -384,7 +384,7 @@ contains
                 sign_factor = +1
             end if
             nspawn = sign(nspawn,walker_population(1,idet)*sign_factor)
-            ! Update the wpopulation on this determinant.
+            ! Update the population on this determinant.
             walker_population(1,idet) = walker_population(1,idet) + nspawn
             ! Update the total number of walkers
             nparticles(1) = nparticles(1) - old_population + abs(walker_population(1,idet))
