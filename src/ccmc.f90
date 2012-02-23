@@ -414,25 +414,24 @@ contains
         real(p), intent(in) :: amplitude
         real(p), intent(in) :: pcluster
 
-        real(p) :: pdeath, Kii
+        real(p) :: pdeath, KiiAi
         integer :: nkill
         type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         ! TODO: optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
-        Kii = sc0_ptr(cdet%f) - H00 - shift
+        KiiAi = (sc0_ptr(cdet%f) - H00 - shift)*amplitude
 
-        pdeath = (tau*Kii*amplitude)/pcluster
+        pdeath = tau*abs(KiiAi)/pcluster
 
         ! Number that will definitely die
-        ! Create nkill excips with opposite sign to parent excip...
-        nkill = -int(pdeath)
+        nkill = int(pdeath)
 
         ! Stochastic death...
         pdeath = pdeath - nkill
-        if (abs(pdeath) > genrand_real2()) then
+        if (pdeath > genrand_real2()) then
             ! Increase magnitude of nkill...
-            nkill = nkill + sign(1, nkill)
+            nkill = nkill + 1
         end if
 
         ! The excitor might be a composite cluster so we'll just create
@@ -440,7 +439,11 @@ contains
         ! care of the rest.
         ! Pass through a null excitation so that we create a spawned particle on
         ! the current excitor.
-        if (nkill /= 0) call create_spawned_particle_truncated(cdet, null_excit, nkill, spawned_pop)
+        if (nkill /= 0) then
+            ! Create nkill excips with sign of -K_ii A_i
+            if (KiiAi > 0) nkill = -nkill
+            call create_spawned_particle_truncated(cdet, null_excit, nkill, spawned_pop)
+        end if
 
     end subroutine stochastic_ccmc_death
 
