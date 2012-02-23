@@ -378,7 +378,7 @@ contains
 
         ! 2, Apply additional factors.
         hmatel = hmatel*amplitude
-        pgen = pgen/pcluster
+        pgen = pgen*pcluster
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
