@@ -353,8 +353,10 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
+        use basis, only: basis_length
         use determinants, only: det_info
-        use excitations, only: excit
+        use excitations, only: excit, create_excited_det, get_excitation_level
+        use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr
         use spawning, only: attempt_to_spawn
 
@@ -369,6 +371,8 @@ contains
         ! actually spawned by positive excips.
         integer, parameter :: parent_sign = 1
         real(p) :: hmatel, pgen
+        integer(i0) :: fexcit(basis_length)
+        integer :: excitor_sign, excitor_level
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -382,6 +386,19 @@ contains
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
+
+        if (nspawn /= 0) then
+            ! 4. Convert the random excitation from a determinant into an
+            ! excitor.  This might incur a sign change and hence result in
+            ! a change in sign to the sign of the progeny.
+            ! This is the same process as excitor to determinant and hence we
+            ! can reuse code...
+            call create_excited_det(cdet%f, connection, fexcit)
+            excitor_level = get_excitation_level(f0, fexcit)
+            excitor_sign = 1
+            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign)
+            if (excitor_sign < 0) nspawn = -nspawn
+        end if
 
     end subroutine spawner_ccmc
 
