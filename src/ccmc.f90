@@ -421,8 +421,8 @@ contains
         !        n_sel.p_s.p_clust.
 
         use determinants, only: det_info
-        use fciqmc_data, only: tau, shift, spawned_pop, H00
-        use excitations, only: excit
+        use fciqmc_data, only: tau, shift, spawned_pop, H00, f0
+        use excitations, only: excit, get_excitation_level
         use proc_pointers, only: sc0_ptr
         use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: genrand_real2
@@ -432,12 +432,17 @@ contains
         real(p), intent(in) :: pcluster
 
         real(p) :: pdeath, KiiAi
-        integer :: nkill
+        integer :: nkill, excitor_level, excitor_sign
         type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
+
+        ! TODO: optimise by remembering computed quantities.
+        excitor_level = get_excitation_level(f0, cdet%f)
+        excitor_sign = 1
+        call convert_excitor_to_determinant(cdet%f, excitor_level, excitor_sign)
 
         ! TODO: optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
-        KiiAi = (sc0_ptr(cdet%f) - H00 - shift)*amplitude
+        KiiAi = (sc0_ptr(cdet%f) - H00 - shift)*amplitude*excitor_sign
 
         pdeath = tau*abs(KiiAi)/pcluster
 
