@@ -567,7 +567,7 @@ contains
         !   |D> = a^+_i a^+_j ... a^+_k |0>,
         ! where |0> is the vacuum, a^+_i creates an electron in the i-th
         ! orbital, i<j<...<k and |0> is the vacuum.  An excitor is defined as
-        !   t_{ij...k}^{ab...c} = a^+_a a^+_b ... a^+_c a_i a_j ... a_k
+        !   t_{ij...k}^{ab...c} = a^+_a a^+_b ... a^+_c a_k ... a_j a_i
         ! where i<j<...<k and a<b<...<c.  (This definition is somewhat
         ! arbitrary; the key thing is to be consistent.)  Hence applying an
         ! excitor to the reference might result in a change of sign, i.e.
@@ -577,7 +577,7 @@ contains
         !   |D_0> = | 1 2 3 >
         ! and the excitor
         !   t_{13}^{58}
-        ! Thus:
+        ! Thus, using |0> to denote the vacuum:
         !   t_{13}^{58} | 1 2 3 > = + a^+_5 a^+_8 a_3 a_1 a^+_1 a^+_2 a^+_3 |0>
         !                         = + a^+_5 a^+_8 a_3 a^+_2 a^+_3 |0>
         !                         = - a^+_5 a^+_8 a_3 a^+_3 a^+_2 |0>
