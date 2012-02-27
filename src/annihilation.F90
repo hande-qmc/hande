@@ -200,9 +200,8 @@ contains
         ! walkers).
 
         use basis, only: total_basis_length
-        use fciqmc_data, only: sampling_size
 
-        integer :: islot, k, pop_sign, events(sampling_size), initiator_pop(sampling_size)
+        integer :: islot, ipart, k, pop_sign, events(spawned_pop:spawned_hf_pop), initiator_pop(spawned_pop:spawned_hf_pop)
 
         ! islot is the current element in the spawned walkers lists.
         islot = 1
@@ -212,13 +211,16 @@ contains
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned walker.
             spawned_walkers(:,islot) = spawned_walkers(:,k)
-            events(1) = sign(1,spawned_walkers(spawned_pop,k))
-            if (spawned_walkers(spawned_parent,k) == 0) then
-                ! from an initiator
-                initiator_pop(1) = spawned_walkers(spawned_pop,k)
-            else
-                initiator_pop = 0
-            end if
+            do ipart = spawned_pop, spawned_hf_pop
+                if (spawned_walkers(spawned_parent,k) == 0) then
+                    ! from an initiator
+                    initiator_pop(ipart) = spawned_walkers(ipart,k)
+                    events(ipart) = 0
+                else
+                    initiator_pop(ipart) = 0
+                    events(ipart) = sign(1,spawned_walkers(ipart,k))
+                end if
+            end do
             compress: do
                 k = k + 1
                 if (k > spawning_head(0) &
@@ -244,33 +246,38 @@ contains
                     !   initiators and the two sets have opposite sign, the flag
                     !   is determined by number of coherent events from
                     !   non-initiator parents.
-                    if (initiator_pop(1) /= 0 .and.  &
-                            sign(1,spawned_walkers(spawned_pop,islot)) == sign(1,initiator_pop(1)) ) then
-                        ! Keep all.  We should still annihilate psips of
-                        ! opposite sign from non-initiator events(1).
-                        spawned_walkers(spawned_parent,islot) = 0
-                    else if (abs(events(1)) > 1) then
-                        ! Multiple coherent spawning events(1) after removing pairs
-                        ! of spawning events(1) of the opposite sign.
-                        ! Keep.
-                        spawned_walkers(spawned_parent,islot) = 0
-                    else
-                        ! Should only keep if determinant is already occupied.
-                        spawned_walkers(spawned_parent,islot) = 1
-                    end if
+                    spawned_walkers(spawned_parent,islot) = 0
+                    do ipart = spawned_pop, spawned_hf_pop
+                        if (initiator_pop(ipart) /= 0 .and.  &
+                                sign(1,spawned_walkers(ipart,islot)) == sign(1,initiator_pop(ipart)) ) then
+                            ! Keep all.  We should still annihilate psips of
+                            ! opposite sign from non-initiator events(spawned_pop).
+                        else if (abs(events(spawned_pop)) > 1) then
+                            ! Multiple coherent spawning events(spawned_pop) after removing pairs
+                            ! of spawning events(spawned_pop) of the opposite sign.
+                            ! Keep.
+                        else
+                            ! Should only keep if determinant is already occupied.
+                            spawned_walkers(spawned_parent,islot) = spawned_walkers(spawned_parent,islot) + 2**ipart
+                        end if
+                    end do
                     exit compress
                 else
                     ! Accumulate the population on this determinant, how much of the population came
                     ! from an initiator and the sign of the event.
                     if (spawned_walkers(spawned_parent,k) == 0) then
-                        initiator_pop(1) = initiator_pop(1) + spawned_walkers(spawned_pop,k)
-                    else if (spawned_walkers(spawned_pop,k) < 0) then
-                        events(1) = events(1) - 1
+                            initiator_pop = initiator_pop + spawned_walkers(spawned_pop:spawned_hf_pop,k)
                     else
-                        events(1) = events(1) + 1
+                        do ipart = spawned_pop, spawned_hf_pop
+                            if (spawned_walkers(ipart,k) < 0) then
+                                events(ipart) = events(ipart) - 1
+                            else
+                                events(ipart) = events(ipart) + 1
+                            end if
+                        end do
                     end if
-                    spawned_walkers(spawned_pop,islot) = spawned_walkers(spawned_pop,islot) &
-                                                         + spawned_walkers(spawned_pop,k)
+                    spawned_walkers(spawned_pop:spawned_hf_pop,islot) = &
+                         spawned_walkers(spawned_pop:spawned_hf_pop,islot) + spawned_walkers(spawned_pop:spawned_hf_pop,k)
                 end if
             end do compress
             ! All done?
@@ -372,16 +379,16 @@ contains
                 ! Compress spawned list.
                 ! Keep only progeny spawned by initiator determinants
                 ! or multiple sign-coherent events (indicated by parent_flag=0).
-                if (spawned_walkers(spawned_parent,i) == 1) then
+                if (spawned_walkers(spawned_parent,i) == 0) then
+                    ! keep!
+                    k = i - nannihilate
+                    spawned_walkers(:,k) = spawned_walkers(:,i)
+                else
                     ! discard attempting spawnings from non-initiator walkers
                     ! onto unoccupied determinants.
                     ! note that the number of particles (nparticles) was not
                     ! updated at the time of spawning, so doesn't change.
                     nannihilate = nannihilate + 1
-                else
-                    ! keep!
-                    k = i - nannihilate
-                    spawned_walkers(:,k) = spawned_walkers(:,i)
                 end if
             end if
         end do
