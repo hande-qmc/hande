@@ -350,9 +350,9 @@ contains
 
         use basis, only: total_basis_length
 
-        integer :: i, pos, k, nannihilate, istart, iend, old_pop
+        integer :: i, ipart, pos, k, nannihilate, istart, iend, old_pop(sampling_size)
         integer(i0) :: f(total_basis_length)
-        logical :: hit
+        logical :: hit, discard
 
         nannihilate = 0
         istart = 1
@@ -362,8 +362,8 @@ contains
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
-                old_pop = walker_population(1,pos)
-                walker_population(1,pos) = walker_population(1,pos) + spawned_walkers(spawned_pop,i)
+                old_pop = walker_population(:,pos)
+                walker_population(:,pos) = walker_population(:,pos) + spawned_walkers(spawned_pop:spawned_hf_pop,i)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -371,24 +371,37 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + abs(walker_population(1,pos)) - abs(old_pop)
+                nparticles = nparticles + abs(walker_population(:,pos)) - abs(old_pop)
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
             else
                 ! Compress spawned list.
                 ! Keep only progeny spawned by initiator determinants
-                ! or multiple sign-coherent events (indicated by parent_flag=0).
-                if (spawned_walkers(spawned_parent,i) == 0) then
-                    ! keep!
-                    k = i - nannihilate
-                    spawned_walkers(:,k) = spawned_walkers(:,i)
-                else
-                    ! discard attempting spawnings from non-initiator walkers
-                    ! onto unoccupied determinants.
-                    ! note that the number of particles (nparticles) was not
-                    ! updated at the time of spawning, so doesn't change.
+                ! or multiple sign-coherent events.  If neither of these
+                ! conditions are met then the i-th bit of spawned_parent is set,
+                ! where i is the particle index in spawned_walkers.
+                discard = .true.
+                do ipart = spawned_pop, spawned_hf_pop
+                    if (btest(spawned_walkers(spawned_parent,i),ipart)) then
+                        ! discard attempting spawnings from non-initiator walkers
+                        ! onto unoccupied determinants.
+                        ! note that the number of particles (nparticles) was not
+                        ! updated at the time of spawning, so doesn't change.
+                        spawned_walkers(ipart,i-nannihilate) = 0
+                    else
+                        ! keep!
+                        spawned_walkers(ipart,i-nannihilate) = spawned_walkers(ipart,i)
+                        discard = .false.
+                    end if
+                end do
+                if (discard) then
+                    ! Don't need to keep any particles from the current slot so can
+                    ! just overwrite them...
                     nannihilate = nannihilate + 1
+                else
+                    ! Need to copy the bit string across...
+                    spawned_walkers(:total_basis_length,i-nannihilate) = spawned_walkers(:total_basis_length,i)
                 end if
             end if
         end do
