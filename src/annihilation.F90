@@ -200,8 +200,9 @@ contains
         ! walkers).
 
         use basis, only: total_basis_length
+        use fciqmc_data, only: sampling_size
 
-        integer :: islot, k, pop_sign, events, initiator_pop
+        integer :: islot, k, pop_sign, events(sampling_size), initiator_pop(sampling_size)
 
         ! islot is the current element in the spawned walkers lists.
         islot = 1
@@ -211,10 +212,10 @@ contains
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned walker.
             spawned_walkers(:,islot) = spawned_walkers(:,k)
-            events = sign(1,spawned_walkers(spawned_pop,k))
+            events(1) = sign(1,spawned_walkers(spawned_pop,k))
             if (spawned_walkers(spawned_parent,k) == 0) then
                 ! from an initiator
-                initiator_pop = spawned_walkers(spawned_pop,k)
+                initiator_pop(1) = spawned_walkers(spawned_pop,k)
             else
                 initiator_pop = 0
             end if
@@ -243,14 +244,14 @@ contains
                     !   initiators and the two sets have opposite sign, the flag
                     !   is determined by number of coherent events from
                     !   non-initiator parents.
-                    if (initiator_pop /= 0 .and.  &
-                            sign(1,spawned_walkers(spawned_pop,islot)) == sign(1,initiator_pop) ) then
+                    if (initiator_pop(1) /= 0 .and.  &
+                            sign(1,spawned_walkers(spawned_pop,islot)) == sign(1,initiator_pop(1)) ) then
                         ! Keep all.  We should still annihilate psips of
-                        ! opposite sign from non-initiator events.
+                        ! opposite sign from non-initiator events(1).
                         spawned_walkers(spawned_parent,islot) = 0
-                    else if (abs(events) > 1) then
-                        ! Multiple coherent spawning events after removing pairs
-                        ! of spawning events of the opposite sign.
+                    else if (abs(events(1)) > 1) then
+                        ! Multiple coherent spawning events(1) after removing pairs
+                        ! of spawning events(1) of the opposite sign.
                         ! Keep.
                         spawned_walkers(spawned_parent,islot) = 0
                     else
@@ -262,11 +263,11 @@ contains
                     ! Accumulate the population on this determinant, how much of the population came
                     ! from an initiator and the sign of the event.
                     if (spawned_walkers(spawned_parent,k) == 0) then
-                        initiator_pop = initiator_pop + spawned_walkers(spawned_pop,k)
+                        initiator_pop(1) = initiator_pop(1) + spawned_walkers(spawned_pop,k)
                     else if (spawned_walkers(spawned_pop,k) < 0) then
-                        events = events - 1
+                        events(1) = events(1) - 1
                     else
-                        events = events + 1
+                        events(1) = events(1) + 1
                     end if
                     spawned_walkers(spawned_pop,islot) = spawned_walkers(spawned_pop,islot) &
                                                          + spawned_walkers(spawned_pop,k)
