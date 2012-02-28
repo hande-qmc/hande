@@ -14,10 +14,6 @@ module hellmann_feynman_sampling
 
 use const
 
-use hfs_data
-
-use proc_pointers
-
 implicit none
 
 contains
@@ -43,10 +39,11 @@ contains
         use determinants, only:det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use hfs_data
         use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
-        use spawning, only: create_spawned_particle
         use fciqmc_common
+        use proc_pointers
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(lint) :: nattempts, nparticles_old(sampling_size)
@@ -127,13 +124,13 @@ contains
                         ! Attempt to spawn Hamiltonian walkers..
                         call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         call spawner_hfs_ptr(cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_hf_pop)
 
                     end do
 
@@ -145,7 +142,7 @@ contains
                         ! Hellmann--Feynman walkers.
                         call spawner_ptr(cdet, walker_population(2,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_hf_pop)
 
                     end do
 
@@ -178,7 +175,7 @@ contains
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
-                    cdet%initiator_flag = h_initiator_flag
+                    cdet%initiator_flag = h_initiator_flag ! TODO: handle initiator
                     call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
