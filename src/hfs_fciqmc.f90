@@ -51,6 +51,7 @@ contains
 
         integer :: nspawned, ndeath
         type(excit) :: connection
+        type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         logical :: soft_exit
 
@@ -175,9 +176,9 @@ contains
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
-                    cdet%initiator_flag = h_initiator_flag ! TODO: handle initiator
-                    call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), &
-                                               walker_population(2,idet), nparticles(2))
+                    cdet%initiator_flag = h_initiator_flag
+                    call stochastic_hf_cloning(walker_data(2,idet), walker_population(1,idet), nspawned)
+                    if (nspawned /= 0) call create_spawned_particle_ptr(cdet, null_excit, nspawned, spawned_hf_pop)
 
                     ! Clone or die: Hamiltonian walkers.
                     call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
