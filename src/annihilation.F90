@@ -361,10 +361,19 @@ contains
             f = spawned_walkers(:total_basis_length,i)
             call search_walker_list(f, istart, iend, hit, pos)
             if (hit) then
-                ! Annihilate!
                 old_pop = walker_population(:,pos)
-                walker_population(:,pos) = walker_population(:,pos) + spawned_walkers(spawned_pop:spawned_hf_pop,i)
-                nannihilate = nannihilate + 1
+                ! Need to take into account that the determinant might not have
+                ! a non-zero population for all particle types.
+                do ipart = 1, sampling_size
+                    if (walker_population(ipart,pos) /= 0) then
+                        ! Annihilate!
+                        walker_population(ipart,pos) = walker_population(ipart,pos) + spawned_walkers(ipart+spawned_pop-1,i)
+                    else if (.not.btest(spawned_walkers(spawned_parent,i),ipart)) then
+                        ! Keep only if from a multiple spawning event or an
+                        ! initiator.
+                        walker_population(ipart,pos) = spawned_walkers(ipart+spawned_pop-1,i)
+                    end if
+                end do
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
                 !   i) annihilation enhancing the population on a determinant.
@@ -372,6 +381,8 @@ contains
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
                 nparticles = nparticles + abs(walker_population(:,pos)) - abs(old_pop)
+                ! One more entry to be removed from the spawned_walkers array.
+                nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
