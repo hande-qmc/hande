@@ -15,7 +15,104 @@ module ccmc
 !     to the reference determinant'.
 
 ! Numerous discussions with Alex Thom (AJWT) and access to drafts/preprints of
-! AJWT's CCMC papers gratefully acknowledged...
+! AJWT's CCMC papers gratefully acknowledged.  The following comments are some
+! useful implementation notes that fill in some technical details not (yet)
+! explicitly described in the CCMC papers.
+
+!  CCMC dynamics
+! =============
+!
+! In FCIQMC we essentially use first-order finite-difference approximation to the
+! imaginary-time Schroedinger equation::
+!
+!     c_i(t+dt) = c_i(t) - < D_i | H - S | \Psi(t) > dt  (1)
+!
+! where::
+!
+!     \Psi(t) = \sum_j c_j(t) | D_j >.  (2)
+!
+! CCMC involves propogating a very similar equation::
+!
+!     < D_i | a_i D_0 > t_i(t+dt) = < D_i | a_i D_0 > t_i(t) - < D_i | H - S | \Psi_{CC}(t) > dt  (3)
+!
+! where::
+!
+!     \Psi_{CC}(t) = e^{T(t)} | D_0 >,  (4)
+!
+! and::
+!
+!     e^{T(t)} = 1 + \sum_i t_i(t) a_i + 1/2! \sum_{ij} t_i(t) t_j(t) a_i a_j + ...  (5)
+!
+! The operators, {a_i}, known as excitors, cause electrons to be excited from
+! occupied orbitals in the reference determinant to virtual orbitals and have
+! corresponding amplitudes, {t_i}, which evolve in time.  In the infinite-time
+! limit, the amplitudes converge onto the true CC wavefunction.
+!
+! Note that, depending upon the definition of a_i, < D_i | a_i D_0 > can be
+! either +1 or -1.  Alex Thom defines a_i such that this term is always +1 in his
+! CCMC papers but this definition is not convenient for computation.  See
+! comments in collapse_cluster and convert_excitor_to_determinant.
+!
+! Dynamics in FCIQMC involve stochastically sampling the action of the
+! Hamiltonian.  As the projection onto the CC wavefunction in (3) involves many
+! terms (higher-order 'clusters' of excitors), CCMC also requires one to
+! stochastically sample the CC wavefunction itself.  This results in a process
+! similar (but more complicated) than the FCIQMC dynamics.  The similarities are
+! such that we can reuse much of the FCIQMC routines, including the excitation
+! generators and annihilation procedures.
+!
+! The CC wavefunction can be sampled by selected a random cluster of excitors.
+! Applying this cluster to the reference determinant generates a determinant,
+! D_i.  The action of the Hamiltonian is sampled in an identical fashion to
+! FCIQMC:
+!
+! #. Generate D_j, a random (single or double) excitation of D_i.  Create a new
+!    particle on D_j with a probability proportional to |H_{ij}| dt.
+! #. Create a particle on D_i with a probability proportional to |H_{ii}-S| dt.
+!
+! As with FCIQMC, because we do not allow every possible event to take place each
+! iteration, the probabilities must be weighted accordingly by the probability
+! that the event was selected.
+!
+! After we have sampled the CC wavefunction and sampled its evolution the desired
+! number of times, we then annihilate all particles (excips) on the same excitor
+! with opposite signs.
+!
+! There are two main differences between FCIQMC and CCMC evolution.  As the FCI
+! wavefunction is a linear combination of determinants, we can simply loop over
+! all particles (psips) on the determinants and allow them to spawn and die.  As
+! the CC wavefunction ansatz involves an exponentiation, we must consider
+! combinations of excitors and hence combinations of excips.  The stochastic
+! sampling of the wavefunction is achieved by selecting random clusters;
+! hopefully the comments in select_cluster provide suitable illumination.
+!
+! The other main difference (and certainly the hardest to get right) is that the
+! signs of the excips and their progeny are *far* more subtle and involved than
+! in FCIQMC.  In addition to the explicit minus sign in the propogation equation
+! (3), the other sources of sign changes are:
+!
+! #. the sign of the excip from which a new excip is spawned/cloned/killed (also
+!    in FCIQMC).  Note that the amplitude of the excips on a cluster of excitors
+!    is the product of the amplitudes of the excips on the individual excitors.
+! #. the sign of the Hamiltonian matrix element (also in FCIQMC).
+! #. combining excitors to form a 'cluster' excitor requires reordering of the
+!    set of annihilation and creation operators.  Each permutation causes a sign
+!    change and thus an overall odd number of permutations causes a sign change
+!    in the excip population.  See collapse_cluster.
+! #. Applying the i-th excitor to D_0 can result in a sign change due to the
+!    different definitions of an excitor and determinant which also requires
+!    permutations of creation and annihilation operators.  See
+!    convert_excitor_to_determinant.
+! #. As we are creating an excip on the j-th excitor from the i-th excitor, we
+!    must be consistent with our definition of the excitor; in particular they
+!    might produce determinants of different signs when applied to the reference
+!    determinant.  Thus if we consider creating an excip on t_j from t_i (where
+!    j can be i or any connected excitor), we *must* take into account the signs
+!    of the excitors relative to the reference determinant.
+!
+! In order for the correct dynamics to be performed, we must carefully
+! accumulate all negative signs and take them into account when
+! determining the sign of the child excips.
 
 use const, only: i0, lint, p
 
