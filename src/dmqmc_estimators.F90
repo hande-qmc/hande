@@ -625,31 +625,33 @@ contains
         ! Where \~\rho = {\sigma_y \otimes \sigma_y} \rho^{\ast} {\sigma_y \otimes \sigma_y}. 
         ! \lambda_1 > ... > \lambda_4
 
-        ! This can be simplified to finding the eigenvalues \{\lambda_i\} of \rho\~{\rho} and in
-        ! the case where \rho is a real, symmetric matrix then we can further simplify the problem
+        ! This can be simplified to finding the square root of the eigenvalues \{\lambda_i\} of \rho\~{\rho} 
+        ! and in the case where \rho is a real, symmetric matrix then we can further simplify the problem
         ! to finding the eigenvalues of R = \rho \sigma_y \otimes \sigma_y.
 
         ! Below we have named {\sigma_y \otimes \sigma_y} flip_spin_matrix as in the literature.
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: subsystem_A_size, reduced_density_matrix, flip_spin_matrix
-
+        use utils, only: print_matrix
         integer :: i,j
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
-        real(p) :: eigv(4)
+        real(p) :: reigv(4), ieigv(4)
         real(p) :: concurrence, entanglement_of_formation, x
-        real(p) :: rdm_spin_flip(4,4)
+        real(p) :: rdm_spin_flip(4,4), rdm_spin_flip_tmp(4,4), VL(4,4), VR(4,4)
         
-        rdm_spin_flip = matmul(reduced_density_matrix, flip_spin_matrix)
-
+        ! Make rdm_spin_flip_tmp because sgeev and dgeev delete input matrix
+        rdm_spin_flip_tmp = matmul(reduced_density_matrix, flip_spin_matrix)
+        rdm_spin_flip = rdm_spin_flip_tmp
+        
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
 #ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', 4, rdm_spin_flip, 4, eigv, work, -1, info)
+        call sgeev('N', 'N', 4, rdm_spin_flip_tmp, 4, reigv, ieigv, VL, 1, VR, 1, work, -1, info)
 #else
-        call dsyev('N', 'U', 4, rdm_spin_flip, 4, eigv, work, -1, info)
+        call dgeev('N', 'N', 4, rdm_spin_flip_tmp, 4, reigv, ieigv, VL, 1, VR, 1,  work, -1, info)
 #endif
         lwork = nint(work(1))
         deallocate(work)
@@ -658,14 +660,14 @@ contains
         ! Now perform the diagonalisation.
         allocate(work(lwork), stat=ierr)
         call check_allocate('work',lwork,ierr)
-
 #ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
+        call sgeev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, work, lwork, info)
 #else
-        call dsyev('N', 'U', 4, reduced_density_matrix, 4, eigv, work, lwork, info)
+        call dgeev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, work, lwork, info)
 #endif
-        ! Calculate the concurrence.
-        concurrence = 2.*maxval(eigv) - sum(eigv) 
+        ! Calculate the concurrence. Take abs of eigenvalues so that this is equivelant to sqauring
+        ! and then square-rooting
+        concurrence = 2._p*maxval(abs(reigv)) - sum(abs(reigv)) 
         concurrence = max(0._p, concurrence)
         x = 0.5_p + 0.5_p*sqrt(1._p - concurrence**2)
         entanglement_of_formation = -1._p*(x*log(x)+(1._p-x)*log(1._p-x))/log(2.0_p)
