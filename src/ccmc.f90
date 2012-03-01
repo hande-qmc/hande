@@ -215,7 +215,7 @@ contains
 
                     if (cluster%excitation_level <= truncation_level+2) then
 
-                        call update_proj_energy_ptr(cdet, cluster%cluster_to_det_sign*cluster%amplitude)
+                        call update_proj_energy_ptr(cdet, cluster%cluster_to_det_sign*cluster%amplitude/cluster%pselect)
 
                         call spawner_ccmc(cdet, cluster, nspawned, connection)
 
