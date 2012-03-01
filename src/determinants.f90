@@ -2,6 +2,7 @@ module determinants
 
 ! Generation, inspection and manipulation of Slater determinants.
 
+use ccmc_data, only: cluster_t
 use const
 use system
 use basis
@@ -96,6 +97,11 @@ type det_info
     integer :: initiator_flag
     ! Pointer (never allocated) to corresponding elements in walker_data array.
     real(p), pointer :: data(:) => NULL()
+    ! Pointer to an existing cluster_t variable.  Used *only* in CCMC and so
+    ! should *not* be used in generic routines.  In particular, great care
+    ! should be taken with excitation generators which are designed for both
+    ! FCIQMC and CCMC.
+    type(cluster_t), pointer :: cluster
 end type det_info
 
 interface operator(.detgt.)

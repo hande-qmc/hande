@@ -131,12 +131,14 @@ contains
         ! See notes about the implementation of this using function pointers
         ! in fciqmc_main.
 
+        use checking, only: check_allocate, check_deallocate
         ! TODO: parallelisation.
         use parallel
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
         use calc, only: truncation_level
+        use ccmc_data, only: cluster_t
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, get_excitation_level
         use energy_evaluation, only: update_energy_estimators
@@ -151,9 +153,9 @@ contains
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
-        integer :: nspawned, excitation_level
-        real(p) :: cluster_amplitude, pcluster
+        integer :: nspawned, ierr
         type(excit) :: connection
+        type(cluster_t), target :: cluster
 
         logical :: soft_exit
 
@@ -162,8 +164,17 @@ contains
 
         real :: t1, t2
 
-        ! Allocate det_info components.
+        ! Allocate det_info components...
         call alloc_det_info(cdet)
+        ! ...and cluster_t components
+        allocate(cluster%excitors(truncation_level+1), stat=ierr)
+        call check_allocate('cluster%excitors', truncation_level+1, ierr)
+        ! Whilst cluster data can be accessed from cdet, I recommend explicitly
+        ! passing it as an argument rather than accessing cdet%cluster both for
+        ! the sake of brevity and clarity.  In particular, I wish to encourage
+        ! not using cdet%cluster in order to maintain (where possible and
+        ! relevant) generality in routines applicable to FCIQMC and CCMC.
+        cdet%cluster => cluster
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -200,13 +211,13 @@ contains
                 do iattempt = 1, nparticles(1)
 
                     ! TODO: initiator.
-                    call select_cluster(nparticles(1), cdet, excitation_level, cluster_amplitude, pcluster)
+                    call select_cluster(nparticles(1), cdet, cluster)
 
-                    if (excitation_level <= truncation_level+2) then
+                    if (cluster%excitation_level <= truncation_level+2) then
 
-                        call update_proj_energy_ptr(cdet, cluster_amplitude)
+                        call update_proj_energy_ptr(cdet, cluster%cluster_to_det_sign*cluster%amplitude)
 
-                        call spawner_ccmc(cdet, cluster_amplitude, pcluster, nspawned, connection)
+                        call spawner_ccmc(cdet, cluster, nspawned, connection)
 
                         if (nspawned /= 0) then
                             ! TODO: initiator (use create_spawned_particle_ptr
@@ -217,7 +228,7 @@ contains
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
-                        if (excitation_level <= truncation_level) call stochastic_ccmc_death(cdet, cluster_amplitude, pcluster)
+                        if (cluster%excitation_level <= truncation_level) call stochastic_ccmc_death(cdet, cluster)
 
                     end if
 
@@ -272,10 +283,13 @@ contains
         if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
 
         call dealloc_det_info(cdet)
+        cdet%cluster => NULL()
+        deallocate(cluster%excitors, stat=ierr)
+        call check_deallocate('cluster%excitors', ierr)
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(nattempts, cdet, excitation_level, amplitude, pcluster)
+    subroutine select_cluster(nattempts, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -287,20 +301,21 @@ contains
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
         ! In/Out:
-        !    cdet: information about the cluster of excitors.  This is a bare
-        !        det_info variable on input with only the relevant fields
-        !        allocated.  On output the appropriate (system-specific) fields
-        !        have been filled.
-        ! Out:
-        !    excitation_level: excitation level, relative to the reference
-        !        determinant, of the determiant formed by applying the cluster
-        !        of excitors to the reference determinant.
-        !    amplitude: stochastically sample of the amplitude/weight on the
-        !        cluster of excitors.
-        !    pcluster: probability of selecting the cluster at random.
+        !    cdet: information about the cluster of excitors applied to the
+        !        reference determinant.  This is a bare det_info variable on input
+        !        with only the relevant fields allocated.  On output the
+        !        appropriate (system-specific) fields have been filled by
+        !        decoding the bit string of the determinant formed from applying
+        !        the cluster to the reference determinant.
+        !    cluster:
+        !        Additional information about the cluster of excitors.  On
+        !        input this is a bare cluster_t variable with the excitors array
+        !        allocated to the maximum number of excitors in a cluster.  On
+        !        output all fields in cluster have been set.
 
         use calc, only: truncation_level
         use determinants, only: det_info
+        use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: genrand_real2
         use fciqmc_data, only: f0, D0_population, tot_walkers, &
@@ -310,14 +325,13 @@ contains
 
         integer(lint), intent(in) :: nattempts
         type(det_info), intent(inout) :: cdet
-        integer, intent(out) :: excitation_level
-        real(p), intent(out) :: amplitude, pcluster
+        type(cluster_t), intent(inout) :: cluster
 
         real(p) :: rand, psize
-        integer :: cluster_size, i, pos, cluster_population
+        integer :: i, pos, cluster_population
 
-        ! We shall accumulate the factors which comprise pcluster as we go.
-        !   pcluster = n_sel p_size p_clust
+        ! We shall accumulate the factors which comprise cluster%pselect as we go.
+        !   cluster%pselect = n_sel p_size p_clust
         ! where
         !   n_sel   is the number of cluster selections made (by this
         !           processor);
@@ -325,7 +339,7 @@ contains
         !   p_clust is the probability of choosing a specific cluster given
         !           the choice of size.
 
-        pcluster = nattempts
+        cluster%pselect = nattempts
 
         ! Select the cluster size, i.e. the number of excitors in a cluster.
         ! For a given truncation_level, only clusters containing at most
@@ -336,28 +350,29 @@ contains
         ! is such that \sum_{n_s=0}^{truncation_level+1} p(n_s) = 1.
         rand = genrand_real2()
         psize = 0.0_p
-        cluster_size = -1
+        cluster%nexcitors = -1
         do i = 0, truncation_level
             psize = psize + 1.0_p/2**(i+1)
             if (rand < psize) then
                 ! Found size!
-                cluster_size = i
-                pcluster = pcluster/2**(i+1)
+                cluster%nexcitors = i
+                cluster%pselect = cluster%pselect/2**(i+1)
                 exit
             end if
         end do
         ! If not set, then must be the largest possible cluster
-        if (cluster_size < 0) then
-            cluster_size = truncation_level + 1
-            pcluster = pcluster/(1.0_p - psize)
+        if (cluster%nexcitors < 0) then
+            cluster%nexcitors = truncation_level + 1
+            cluster%pselect = cluster%pselect/(1.0_p - psize)
         end if
 
-        select case(cluster_size)
+        select case(cluster%nexcitors)
         case(0)
             ! Must be the reference.
             cdet%f = f0
-            excitation_level = 0
-            amplitude = D0_normalisation ! TODO: don't accumulate D0 over report loops
+            cluster%excitation_level = 0
+            cluster%amplitude = D0_normalisation ! TODO: don't accumulate D0 over report loops
+            cluster%cluster_to_det_sign = 1
             ! Only one cluster of this size to choose => p_clust = 1
         case default
             ! Select cluster from the excitors on the current processor in
@@ -366,60 +381,62 @@ contains
             pos = int(genrand_real2()*tot_walkers) +1
             cdet%f = walker_dets(:,pos)
             cluster_population = walker_population(1,pos)
+            cluster%excitors(1)%f => walker_dets(:,pos)
             if (all(walker_dets(:,pos) == f0)) then
                 ! Not allowed to select the reference as it is not an excitor.
                 ! Return a null cluster.
                 cluster_population = 0
             else
                 ! Now the rest...
-                do i = 2, cluster_size
+                do i = 2, cluster%nexcitors
                     ! Select a position between in the excitors list.
                     pos = int(genrand_real2()*tot_walkers) + 1
                     ! Not allowed to select the reference...
                     if (all(walker_dets(:,pos) == f0)) then
                         cluster_population = 0
                     else
+                        cluster%excitors(i)%f => walker_dets(:,pos)
                         call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population)
                     end if
                     if (cluster_population == 0) exit
                 end do
             end if
 
-            if (cluster_population /= 0) excitation_level = get_excitation_level(f0, cdet%f)
+            if (cluster_population /= 0) cluster%excitation_level = get_excitation_level(f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
             ! the maximum excitation included in the CC wavefunction.
-            if (excitation_level > truncation_level+2) cluster_population = 0
+            if (cluster%excitation_level > truncation_level+2) cluster_population = 0
 
             if (cluster_population /= 0) then
                 ! Sign change due to difference between determinant
                 ! representation and excitors and excitation level.
-                call convert_excitor_to_determinant(cdet%f, excitation_level, cluster_population)
+                call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign)
 
-                ! Normalisation factor for amplitudes...
-                amplitude = real(cluster_population,p)/(D0_normalisation**(cluster_size-1)) ! TODO: don't accumulate D0 over report loops
+                ! Normalisation factor for cluster%amplitudes...
+                cluster%amplitude = real(cluster_population,p)/(D0_normalisation**(cluster%nexcitors-1)) ! TODO: don't accumulate D0 over report loops
                 ! Factorial due to the series expansion of exp(\hat{T}).
-                amplitude = amplitude/factorial(cluster_size)
+                cluster%amplitude = cluster%amplitude/factorial(cluster%nexcitors)
 
                 ! We chose excitors uniformly.
                 !  -> prob. of each excitor is 1./(number of excitors on processor).
                 ! Overall probability is the product of this times the number of
                 ! ways the cluster could have been selected, ie
                 !   n_s!/n_excitors^n_s
-                pcluster = (pcluster*factorial(cluster_size))/(tot_walkers**cluster_size)
+                cluster%pselect = (cluster%pselect*factorial(cluster%nexcitors))/(tot_walkers**cluster%nexcitors)
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
-                excitation_level = huge(0)
+                cluster%excitation_level = huge(0)
             end if
 
         end select
 
         ! Fill in information about the cluster if required.
-        if (excitation_level <= truncation_level+2) call decoder_ptr(cdet%f, cdet)
+        if (cluster%excitation_level <= truncation_level+2) call decoder_ptr(cdet%f, cdet)
 
     end subroutine select_cluster
 
-    subroutine spawner_ccmc(cdet, amplitude, pcluster, nspawn, connection)
+    subroutine spawner_ccmc(cdet, cluster, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -441,9 +458,10 @@ contains
         ! In:
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
-        !    amplitude: amplitude of cluster.
-        !    pcluster: Overall probabilites of selecting this cluster, ie
-        !        n_sel.p_s.p_clust.
+        !    cluster: information about the cluster which forms the excitor.  In
+        !        particular, we use the amplitude, cluster_to_det_sign and pselect
+        !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
+        !        the excitation generator.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -451,6 +469,7 @@ contains
         !        and the child excitor, on which progeny are spawned.
 
         use basis, only: basis_length
+        use ccmc_data, only: cluster_t
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: f0
@@ -458,8 +477,7 @@ contains
         use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
-        real(p), intent(in) :: amplitude
-        real(p), intent(in) :: pcluster
+        type(cluster_t), intent(in) :: cluster
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
@@ -478,8 +496,8 @@ contains
         call gen_excit_ptr(cdet, pgen, connection, hmatel)
 
         ! 2, Apply additional factors.
-        hmatel = hmatel*amplitude
-        pgen = pgen*pcluster
+        hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign
+        pgen = pgen*cluster%pselect
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
@@ -492,14 +510,13 @@ contains
             ! can reuse code...
             call create_excited_det(cdet%f, connection, fexcit)
             excitor_level = get_excitation_level(f0, fexcit)
-            excitor_sign = 1
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign)
             if (excitor_sign < 0) nspawn = -nspawn
         end if
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(cdet, amplitude, pcluster)
+    subroutine stochastic_ccmc_death(cdet, cluster)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -513,10 +530,12 @@ contains
         ! In:
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
+        !    cluster: 
         !    amplitude: amplitude of cluster.
         !    pcluster: Overall probabilites of selecting this cluster, ie
         !        n_sel.p_s.p_clust.
 
+        use ccmc_data, only: cluster_t
         use determinants, only: det_info
         use fciqmc_data, only: tau, shift, spawned_pop, H00, f0
         use excitations, only: excit, get_excitation_level
@@ -525,23 +544,21 @@ contains
         use dSFMT_interface, only: genrand_real2
 
         type(det_info), intent(in) :: cdet
-        real(p), intent(in) :: amplitude
-        real(p), intent(in) :: pcluster
+        type(cluster_t), intent(in) :: cluster
 
         real(p) :: pdeath, KiiAi
-        integer :: nkill, excitor_level, excitor_sign
+        integer :: nkill
         type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
 
-        ! TODO: optimise by remembering computed quantities.
-        excitor_level = get_excitation_level(f0, cdet%f)
-        excitor_sign = 1
-        call convert_excitor_to_determinant(cdet%f, excitor_level, excitor_sign)
-
+        ! Spawning onto the same excitor so no change in sign due to
+        ! a difference in the sign of the determinant formed from applying the
+        ! parent excitor to the reference and that formed from applying the
+        ! child excitor.
         ! TODO: optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
-        KiiAi = (sc0_ptr(cdet%f) - H00 - shift)*amplitude*excitor_sign
+        KiiAi = (sc0_ptr(cdet%f) - H00 - shift)*cluster%amplitude
 
-        pdeath = tau*abs(KiiAi)/pcluster
+        pdeath = tau*abs(KiiAi)/cluster%pselect
 
         ! Number that will definitely die
         nkill = int(pdeath)
@@ -672,7 +689,7 @@ contains
 
     end subroutine collapse_cluster
 
-    subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_population)
+    subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_sign)
 
         ! We usually consider an excitor as a bit string representation of the
         ! determinant formed by applying the excitor (a group of annihilation
@@ -724,11 +741,12 @@ contains
         !    excitor_level: excitation level, relative to the reference
         !        determinant, of the excitor.  Equal to the number of
         !        annihilation (or indeed creation) operators in the excitor.
-        ! In/Out:
-        !    excitor_population: population of excips on the excitor.  On output
-        !        this acquires, if required, a sign change due to applying the
-        !        excitor to the reference determinant to form a Slater determinant.
-        !        Note that this is still a *signed* variable on input.
+        ! Out:
+        !    excitor_sign: sign due to applying the excitor to the reference
+        !    determinant to form a Slater determinant, i.e. < D_i | a_i D_0 >,
+        !    which is +1 or -1, where D_i is the determinant formed from
+        !    applying the cluster of excitors, a_i, to the reference
+        !    determinant.
 
         use basis, only: basis_length
         use const, only: i0_end
@@ -736,7 +754,7 @@ contains
 
         integer(i0), intent(in) :: excitor(basis_length)
         integer, intent(in) :: excitor_level
-        integer, intent(inout) :: excitor_population
+        integer, intent(inout) :: excitor_sign
 
         integer(i0) :: excitation(basis_length)
         integer :: ibasis, ibit, ncreation, nannihilation
@@ -746,6 +764,8 @@ contains
 
         nannihilation = excitor_level
         ncreation = excitor_level
+
+        excitor_sign = 1
 
         ! Obtain sign change by (implicitly) constructing the determinant formed
         ! by applying the excitor to the reference determinant.
@@ -769,7 +789,7 @@ contains
                         ! If the permutation is odd, then we incur a sign
                         ! change.
                         if (mod(nannihilation+ncreation,2) == 1) &
-                            excitor_population = -excitor_population
+                            excitor_sign = -excitor_sign
                     end if
                 else if (btest(excitation(ibasis),ibit)) then
                     ! Orbital excited to...create electron.
