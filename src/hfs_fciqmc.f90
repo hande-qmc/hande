@@ -117,7 +117,7 @@ contains
                     ! routine, so we must set cdet%initiator_flag
                     ! appropriately...
                     call set_parent_flag_ptr(walker_population(1,idet), cdet%f, h_initiator_flag)
-                    call set_parent_flag_ptr(walker_population(1,idet), cdet%f, hf_initiator_flag)
+                    call set_parent_flag_ptr(walker_population(2,idet), cdet%f, hf_initiator_flag)
                     cdet%initiator_flag = h_initiator_flag
 
                     do iparticle = 1, abs(walker_population(1,idet))
