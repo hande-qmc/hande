@@ -368,9 +368,13 @@ contains
                     if (walker_population(ipart,pos) /= 0) then
                         ! Annihilate!
                         walker_population(ipart,pos) = walker_population(ipart,pos) + spawned_walkers(ipart+spawned_pop-1,i)
-                    else if (.not.btest(spawned_walkers(spawned_parent,i),ipart)) then
+                    else if (.not.btest(spawned_walkers(spawned_parent,i),ipart+spawned_pop-1)) then
                         ! Keep only if from a multiple spawning event or an
                         ! initiator.
+                        ! If this is the case, then spawed_walkers(spawned_parent,i) 
+                        ! does not have a bit set in corresponding to 2**pop_indx, 
+                        ! where pop_indx is the index of this walker type in the
+                        ! spawned_walkers array (i.e. ipart+spawned_pop-1).
                         walker_population(ipart,pos) = spawned_walkers(ipart+spawned_pop-1,i)
                     end if
                 end do
