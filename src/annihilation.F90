@@ -284,12 +284,12 @@ contains
             if (islot == spawning_head(0) .or. k > spawning_head(0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (spawned_walkers(spawned_pop,islot) /= 0) islot = islot + 1
+            if (any(spawned_walkers(spawned_pop:spawned_hf_pop,islot) /= 0)) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (spawned_walkers(spawned_pop, islot) == 0) islot = islot - 1
+        if (all(spawned_walkers(spawned_pop:spawned_hf_pop, islot) == 0)) islot = islot - 1
 
         ! update spawning_head(0)
         spawning_head(0) = islot
