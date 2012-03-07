@@ -44,7 +44,7 @@ contains
         character(100) :: w
         integer :: ios
         logical :: eof, t_exists
-        integer :: ivec, i, ierr
+        integer :: ivec, i, ierr, nweights
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
@@ -202,12 +202,13 @@ contains
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             case('DMQMC_WEIGHTED_SAMPLING')
-                allocate(dmqmc_sampling_probs(nitems-1), stat=ierr)
-                call check_allocate('dmqmc_sampling_probs',nitems-1,ierr)
-                do i = 1, nitems-1
-                    call readf(dmqmc_sampling_probs(i))
-                end do
+                call readi(nweights)
+                allocate(dmqmc_sampling_probs(nweights), stat=ierr)
+                call check_allocate('dmqmc_sampling_probs', nweights, ierr)
                 dmqmc_weighted_sampling = .true.
+                do i = 1, nweights
+                    call getf(dmqmc_sampling_probs(i))
+                end do
             case('DMQMC_VARY_WEIGHTS')
                 call readi(finish_varying_weights)
                 dmqmc_vary_weights = .true.
