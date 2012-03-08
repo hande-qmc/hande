@@ -167,8 +167,8 @@ contains
         ! Allocate det_info components...
         call alloc_det_info(cdet)
         ! ...and cluster_t components
-        allocate(cluster%excitors(truncation_level+1), stat=ierr)
-        call check_allocate('cluster%excitors', truncation_level+1, ierr)
+        allocate(cluster%excitors(truncation_level+2), stat=ierr)
+        call check_allocate('cluster%excitors', truncation_level+2, ierr)
         ! Whilst cluster data can be accessed from cdet, I recommend explicitly
         ! passing it as an argument rather than accessing cdet%cluster both for
         ! the sake of brevity and clarity.  In particular, I wish to encourage
@@ -343,15 +343,15 @@ contains
 
         ! Select the cluster size, i.e. the number of excitors in a cluster.
         ! For a given truncation_level, only clusters containing at most
-        ! truncation_level+1 excitors.
+        ! truncation_level+2 excitors.
         ! Following the process described by Thom in 'Initiator Stochastic
         ! Coupled Cluster Theory' (unpublished), each size, n_s, has probability
-        ! p(n_s) = 1/2^(n_s+1), n_s=0,truncation_level and p(truncation_level+1)
-        ! is such that \sum_{n_s=0}^{truncation_level+1} p(n_s) = 1.
+        ! p(n_s) = 1/2^(n_s+1), n_s=0,truncation_level and p(truncation_level+2)
+        ! is such that \sum_{n_s=0}^{truncation_level+2} p(n_s) = 1.
         rand = genrand_real2()
         psize = 0.0_p
         cluster%nexcitors = -1
-        do i = 0, truncation_level
+        do i = 0, truncation_level+1
             psize = psize + 1.0_p/2**(i+1)
             if (rand < psize) then
                 ! Found size!
@@ -362,7 +362,7 @@ contains
         end do
         ! If not set, then must be the largest possible cluster
         if (cluster%nexcitors < 0) then
-            cluster%nexcitors = truncation_level + 1
+            cluster%nexcitors = truncation_level + 2
             cluster%pselect = cluster%pselect/(1.0_p - psize)
         end if
 
