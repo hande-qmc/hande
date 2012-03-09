@@ -265,6 +265,12 @@ real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
 logical :: dmqmc_vary_weights = .false.
 integer :: finish_varying_weights = 0
 real(dp), allocatable :: weight_altering_factors(:)
+! If this logical is true then the program will calculate the ratios
+! of the numbers of the psips on neighbouring excitation levels. These
+! are output so that they can be used when doing importance sampling
+! for DMQMC, so that each level will have roughly equal numbers of psips.
+! The resulting new weights are used in the next beta loop.
+logical :: dmqmc_find_weights
 
 ! If half_density_matrix is true then half the density matrix will be 
 ! calculated by reflecting spawning onto the lower triangle into the
@@ -309,11 +315,12 @@ real(p), allocatable :: reduced_density_matrix(:,:)
 ! concurrence is to be calculated
 real(p), allocatable :: flip_spin_matrix(:,:)
 
-! When calculating the reduced density matrix, we only want to start
+! When calculating certain DMQMC properties, we only want to start
 ! averaging once the ground state is reached. The below integer is input
 ! by the user, and gives the iteration at which data should start being
-! accumulated for the reduced density matrix.
-integer :: reduced_dm_start_averaging = 0
+! accumulated for the quantity. This is currently only used for the
+! reduced density matrix and calculating importance sampling weights.
+integer :: start_averaging = 0
 
 ! In DMQMC, the user may want want the shift as a function of beta to be
 ! the same for each beta loop. If average_shift_until is non-zero then

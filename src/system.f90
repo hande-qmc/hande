@@ -137,6 +137,9 @@ real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 ! Twist applied to wavevectors (Hubbard; UEG).
 real(p), allocatable :: ktwist(:)
 
+! The maximum number of excitations which a system can have.
+integer :: max_number_excitations
+
 ! --- Hubbard model ---
 
 ! Hubbard T and U parameters specifying the kinetic energy and Coulomb
@@ -287,6 +290,8 @@ contains
             end if
 
             hub_k_coulomb = hubu/nsites
+
+            max_number_excitations = min(nel, (nsites-nel))
 
         end if
 

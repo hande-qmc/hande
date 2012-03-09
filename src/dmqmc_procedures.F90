@@ -15,18 +15,17 @@ contains
          use fciqmc_data, only: staggered_mag_index, estimator_numerators, subsystem_A_size
          use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
          use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
-         use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
+         use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau, dmqmc_weighted_sampling
          use fciqmc_data, only: correlation_mask, correlation_sites, half_density_matrix
          use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, flip_spin_matrix
          use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
-         use fciqmc_data, only: finish_varying_weights, weight_altering_factors
+         use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use parallel, only: parent
-         use system, only: system_type, heisenberg, nsites, nel
+         use system, only: system_type, heisenberg, nsites, max_number_excitations
 
          integer :: ierr
          integer :: i, ipos, basis_find, bit_position, bit_element
-         integer :: max_number_excitations
 
          number_dmqmc_estimators = 0
          trace = 0
@@ -60,8 +59,7 @@ contains
          call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
          estimator_numerators = 0
 
-         if (calculate_excit_distribution) then
-             max_number_excitations = min(nel, (nsites-nel))
+         if (calculate_excit_distribution .or. dmqmc_find_weights) then
              allocate(excit_distribution(0:max_number_excitations), stat=ierr)
              call check_allocate('excit_distribution',max_number_excitations+1,ierr)             
              excit_distribution = 0.0_p
@@ -84,9 +82,7 @@ contains
          ! This factor is also used in updated the shift, where the true tau is needed.
          dmqmc_factor = 2.0_p
 
-         max_number_excitations = min(nel, (nsites-nel))
-         if (allocated(dmqmc_sampling_probs)) then
-             if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
+         if (dmqmc_weighted_sampling) then
              ! dmqmc_sampling_probs stores the factors by which probabilities are to
              ! be reduced when spawning away from the diagonal. The trial function required
              ! from these probabilities, for use in importance sampling, is actually that of
@@ -95,16 +91,20 @@ contains
              ! need to create and store. dmqmc_sampling_probs is no longer needed and so can
              ! be deallocated. Also, the user may have only input factors for the first few
              ! excitation levels, but we need to store factors for all levels, as done below.
+             if (.not.allocated(dmqmc_sampling_probs)) then
+                 allocate(dmqmc_sampling_probs(1:max_number_excitations), stat=ierr)
+                 call check_allocate('dmqmc_sampling_probs',max_number_excitations,ierr)
+                 dmqmc_sampling_probs = 1.0_p
+             end if
+             if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
              dmqmc_accumulated_probs(0) = 1.0_p
-                 do i = 1, size(dmqmc_sampling_probs)
-                     dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
-                 end do
-                 dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:max_number_excitations) = &
-                                        dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
-                 deallocate(dmqmc_sampling_probs, stat=ierr)
-                 call check_deallocate('dmqmc_sampling_probs',ierr)
+             do i = 1, size(dmqmc_sampling_probs)
+                 dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
+             end do
+             dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:max_number_excitations) = &
+                                    dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
              if (dmqmc_vary_weights) then
                  ! Allocate an array to store the factors by which the weights will change each
                  ! iteration.
@@ -350,7 +350,7 @@ contains
         use annihilation, only: remove_unoccupied_dets
         use basis, only: basis_length, total_basis_length
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, finish_varying_weights
+        use fciqmc_data, only: dmqmc_accumulated_probs, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
         use fciqmc_data, only: nparticles
         use dSFMT_interface, only:  genrand_real2
@@ -395,5 +395,56 @@ contains
         call remove_unoccupied_dets()
 
     end subroutine update_sampling_weights
-    
+
+    subroutine output_and_alter_weights()
+
+        ! This routine will alter and output the sampling weights used in importance 
+        ! sampling. It uses the excitation distribution, calculated on the beta loop
+        ! which has just finished, and finds the weights needed so that each excitation
+        ! level will have roughly equal numbers of psips in the next loop. For example,
+        ! to find the weights of psips on the 1st excitation level, divide the number of
+        ! psips on the 1st excitation level by the number on the 0th level, then multiply
+        ! the old sampling weight by this number to give the new weight. This can be used
+        ! when the weights are being introduced gradually each beta loop, too. The weights
+        ! are output and can then be used in future DMQMC runs.
+
+        use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs
+        use fciqmc_data, only: excit_distribution, finish_varying_weights
+        use fciqmc_data, only: dmqmc_vary_weights, weight_altering_factors
+        use system, only: max_number_excitations
+
+        integer :: i
+
+        do i = 1, max_number_excitations
+            ! Don't include levels where there are very few psips accumulated.
+            if (excit_distribution(i-1) > 10.0_p .and. excit_distribution(i) > 10.0_p) then
+                ! Alter the sampling weights using the relevant excitation distribution.
+                dmqmc_sampling_probs(i) = dmqmc_sampling_probs(i)*&
+                    (excit_distribution(i)/excit_distribution(i-1))
+            end if
+        end do
+        
+        ! Recalculate dmqmc_accumulated_probs with the new weights.
+        do i = 1, max_number_excitations
+            dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
+        end do
+
+        ! If dmqmc_vary_weights is true then the weights are to be introduced gradually at the
+        ! start of each beta loop. This required redifining weight_altering_factors to coincide
+        ! with the new sampling weights.
+        if (dmqmc_vary_weights) then
+            weight_altering_factors = dble(dmqmc_accumulated_probs)**(1/dble(finish_varying_weights))
+            ! Resert the weights for the next loop.
+            dmqmc_accumulated_probs = 1.0_p
+        end if
+
+        ! Print out weights in a form which can be copied into an input file.
+        write(6, '(a28)') 'Importance sampling weights:'
+        do i = 1, max_number_excitations
+            write (6, '(es12.4,2X)', advance = 'no') dmqmc_sampling_probs(i)
+        end do
+        write (6, '()', advance = 'yes')
+
+    end subroutine output_and_alter_weights
+
 end module dmqmc_procedures

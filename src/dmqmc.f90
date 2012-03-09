@@ -22,7 +22,7 @@ contains
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_procedures, only: random_distribution_heisenberg
-        use dmqmc_procedures, only: update_sampling_weights
+        use dmqmc_procedures, only: update_sampling_weights, output_and_alter_weights
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
         use dmqmc_estimators, only: call_rdm_procedures
         use excitations, only: excit, get_excitation_level
@@ -74,6 +74,7 @@ contains
             nparticles = 0
             if (allocated(reduced_density_matrix)) reduced_density_matrix = 0
             if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
+            if (dmqmc_find_weights) excit_distribution = 0
             vary_shift = .false.
 
             ! Need to place psips randomly along the diagonal at the
@@ -103,7 +104,7 @@ contains
                 rspawn = 0.0_p
                 trace = 0
                 estimator_numerators = 0
-                if (allocated(excit_distribution)) excit_distribution = 0
+                if (calculate_excit_distribution) excit_distribution = 0
                 nparticles_start_report = nparticles_old(1)
 
                 do icycle = 1, ncycles
@@ -199,6 +200,8 @@ contains
                 if (soft_exit) exit
 
             end do
+
+            if (soft_exit) exit
   
             ! If have just finished last beta loop of accumulating the shift, then perform
             ! the averaging and set average_shift_until to -1. This tells the shift update
@@ -208,11 +211,10 @@ contains
                 average_shift_until = -1
             end if
             
-            if (soft_exit) then
-                exit
-            else if (doing_reduced_dm) then
-                call call_rdm_procedures()
-            end if
+            ! Calculate and output all requested estimators based on the reduced dnesity matrix.
+            if (doing_reduced_dm) call call_rdm_procedures()
+            ! Calculate and output new weights based on the psip distirubtion in the previous loop.
+            if (dmqmc_find_weights) call output_and_alter_weights()
         end do
 
         if (parent) then

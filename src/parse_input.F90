@@ -212,6 +212,9 @@ contains
             case('DMQMC_VARY_WEIGHTS')
                 call readi(finish_varying_weights)
                 dmqmc_vary_weights = .true.
+            case('DMQMC_FIND_WEIGHTS')
+                dmqmc_find_weights = .true.
+                dmqmc_weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 calculate_excit_distribution = .true.
             ! Calculate a reduced density matrix
@@ -226,8 +229,8 @@ contains
                 doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
                 doing_von_neumann_entropy = .true.
-            case('REDUCED_DM_START_AVERAGING')
-                call readi(reduced_dm_start_averaging)
+            case('START_AVERAGING')
+                call readi(start_averaging)
             ! calculation options: DMQMC
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
@@ -474,6 +477,9 @@ contains
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
                &sites for the correlation function option.')
 
+          if (dmqmc_find_weights .and. calculate_excit_distribution) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
+              &_DISTRIBUTION options should cannot be used together.')
+
         ! Calculation specific checking.
         if (doing_calc(lanczos_diag)) then
             if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
@@ -616,9 +622,10 @@ contains
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_von_neumann_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(reduced_dm_start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)

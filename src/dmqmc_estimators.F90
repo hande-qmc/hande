@@ -30,16 +30,16 @@ contains
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
-        integer, intent(in) :: ireport
+        integer, intent(in) :: ireport        
+        integer(lint) :: ntot_particles(sampling_size)
 
 #ifdef PARALLEL
         real(dp), allocatable :: ir(:)
         real(dp), allocatable :: ir_sum(:)
         integer :: ierr, array_size
-        integer(lint) :: ntot_particles(sampling_size)
 
         array_size = sampling_size+2+number_dmqmc_estimators
-        if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
+        if (allocated(excit_distribution)) array_size = array_size + size(excit_distribution)
 
         allocate(ir(1:array_size), stat=ierr)
         call check_allocate('ir',array_size,ierr)
@@ -100,7 +100,7 @@ contains
        use calc, only: dmqmc_energy_squared, dmqmc_correlation
        use excitations, only: get_excitation, excit
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
-       use fciqmc_data, only: dmqmc_accumulated_probs, reduced_dm_start_averaging
+       use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
        use fciqmc_data, only: calculate_excit_distribution, excit_distribution
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
@@ -138,10 +138,13 @@ contains
        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
                &(idet, excitation, unweighted_walker_pop)
        ! Reduced density matrix
-       if (doing_reduced_dm .and. iteration > reduced_dm_start_averaging) &
+       if (doing_reduced_dm .and. iteration > start_averaging) &
                call update_reduced_density_matrix_heisenberg(idet, unweighted_walker_pop)
        ! Excitation distribution
        if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
+               excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
+       ! Excitation_distribtuion for calculating importance sampling weights
+       if (dmqmc_find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
                excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
 
    end subroutine call_dmqmc_estimators
