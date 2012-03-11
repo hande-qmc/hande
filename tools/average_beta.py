@@ -9,6 +9,10 @@ import scipy
 import scipy.stats
 import scipy.interpolate
 import sys
+from math import sqrt
+from math import ceil
+from math import floor
+
 try:
     import matplotlib.pyplot as pyplot
     USE_MATPLOTLIB = True
@@ -23,9 +27,17 @@ TR_H2RHO_COL = 5
 TR_RHO_COL = 2
 H2_is_present = False
 H_is_present = False
+S_is_present = False
+C_is_present = False
+M2_is_present = False
+
+TR_SRHO_INDEX = -1
+TR_CRHO_INDEX = -1
+TR_M2RHO_INDEX = -1
 TR_HRHO_INDEX = -1
 TR_H2RHO_INDEX = -1
 PARTICLES_COL = 6
+
 
 class Stats:
     def __init__(self, mean, se):
@@ -67,8 +79,14 @@ class Data:
 def get_estimator_headings(data_files):
     global H_is_present
     global H2_is_present
+    global S_is_present
+    global C_is_present
+    global M2_is_present
     global TR_HRHO_INDEX
     global TR_H2RHO_INDEX
+    global TR_SRHO_INDEX
+    global TR_CRHO_INDEX
+    global TR_M2RHO_INDEX
     global PARTICLES_COL
 # Get collumn headings from input file
     start_regex = '^ # iterations'
@@ -91,14 +109,20 @@ def get_estimator_headings(data_files):
                elif headings[k] == '\\sum\\rho_{ij}S_{ji}':
                    estimator_col_no.append(k-TR_RHO_COL)
                    estimator_headings.append('Tr[Sp]/Tr[p]')
+                   S_is_present = True
+                   TR_SRHO_INDEX = index
                    index = index + 1
                elif headings[k] == '\\sum\\rho_{ij}C_{ji}':
                    estimator_col_no.append(k-TR_RHO_COL)
                    estimator_headings.append('Tr[Cp]/Tr[p]')
+                   C_is_present = True
+                   TR_CRHO_INDEX = index
                    index = index + 1 
                elif headings[k] == '\\sum\\rho_{ij}M2{ji}':
                    estimator_col_no.append(k-TR_RHO_COL)
                    estimator_headings.append('Tr[Mp]/Tr[p]')
+                   M2_is_present = True
+                   TR_M2RHO_INDEX = index
                    index = index + 1
                elif headings[k] == '\\sum\\rho_{ij}H2{ji}':
                    estimator_col_no.append(k-TR_RHO_COL)
@@ -285,26 +309,210 @@ def print_stats(stats, estimator_headings, trace=False,  shift=False, with_splin
         counter = counter + 1
         print
 
-def plot_stats(stats, shift=False):
+def plot_stats(stats, data_file, trace=False, shift=False, spline=False, heat_capacity=False):
 
     if USE_MATPLOTLIB:
+        save_name = data_file.split()
+        save_temp = data_file.split(r'/') 
+        save_name = save_temp[len(save_temp)-1].split('.',1)[0]
+
+        fig_width_pt = 246.0  # Get this from LaTeX using \showthe\columnwidth
+        inches_per_pt = 1.0/72.27               # Convert pt to inch
+        golden_mean = (sqrt(5)-1.0)/2.0         # Aesthetic ratio
+        fig_width = fig_width_pt*inches_per_pt  # width in inches
+        fig_height = fig_width*golden_mean      # height in inches
+        fig_size =  [fig_width,fig_height]
+
+        pyplot.rcParams.update(
+            {'legend.borderpad':0.3,
+             'legend.labelspacing':0.3,
+             'legend.fontsize':'medium',
+             'text.usetex':True,
+             'backend': 'ps',
+             'axes.labelsize': 8,
+             'text.fontsize': 8,
+             'legend.fontsize': 8,
+             'xtick.labelsize': 8,
+             'ytick.labelsize': 8,
+             'figure.figsize': fig_size}
+        )
 
         beta = sorted(stats.keys())
+        beta_max = max(beta)
+        # find nice frequency to plot points
+        N = int(len(beta)/25.)
         if shift:
             # data
             data = [stats[b].shift.mean for b in beta] 
             # errorbars
             err = [stats[b].shift.se for b in beta] 
-            pyplot.errorbar(beta, data, yerr=err, label='S')
-       
-        # data
-        data = [stats[b].estimators.mean[0] for b in beta] 
-        # errorbars
-        err = [stats[b].estimators.se[0] for b in beta] 
-        pyplot.errorbar(beta, data, yerr=err, label='Tr[Hp]/Tr[p]')
-        pyplot.legend()
-        pyplot.show()
+            pyplot.gca().cla()
+            pyplot.plot(beta, data, c='blue')
+            pyplot.errorbar(beta[::N], data[::N], yerr=err[::N], linewidth = 0., c='blue')
+            ax = pyplot.gca()
+            ax.xaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%3i$'))
+            ax.yaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%2.1f$'))
+            ax.xaxis.set_major_locator(pyplot.MaxNLocator(5))
+            ax.yaxis.set_major_locator(pyplot.MaxNLocator(4))
+            ax.set_xlim((0,beta_max))
+            ax.set_ylim((floor(min(data)),ceil(max(data))))
+            ax.set_xlabel(r'$\beta$')
+            ax.set_ylabel(r'$\textnormal{Shift}$')
+            pyplot.subplots_adjust(left=0.15, bottom=0.17, right=0.95)
+            pyplot.savefig(save_name+'_shift.eps', dpi=(300))
+            pyplot.savefig(save_name+'_shift.pdf')
+            
+        if trace:
 
+            # data
+            data = [stats[b].Tr_rho.mean for b in beta]
+            # errorbars
+            err = [stats[b].Tr_rho.se for b in beta]
+            pyplot.gca().cla()
+            pyplot.plot(beta, data, c='blue')
+            pyplot.errorbar(beta[::N], data[::N], yerr=err[::N], linewidth = 0., c='blue')            
+            ax = pyplot.gca()
+            ax.xaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%3i$'))
+            ax.yaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%2.1f$'))
+            ax.xaxis.set_major_locator(pyplot.MaxNLocator(5))
+            ax.yaxis.set_major_locator(pyplot.MaxNLocator(4))            
+            ax.set_xlim((0,beta_max))
+            ax.set_ylim((floor(min(data)),ceil(max(data))))
+            ax.set_xlabel(r'$\beta$')
+            ax.set_ylabel(r'$\textnormal{Trace}$')
+            pyplot.subplots_adjust(left=0.15, bottom=0.17, right=0.95)
+            pyplot.savefig(save_name+'_trace.eps', dpi=(300))
+            pyplot.savefig(save_name+'_trace.pdf')
+
+        if H2_is_present and H_is_present and  heat_capacity:
+      
+            # data
+            data = [stats[b].stochastic_specific_heat.mean for b in beta]
+            # errorbars
+            err = [stats[b].stochastic_specific_heat.se for b in beta]
+            pyplot.gca().cla()
+            pyplot.plot(beta, data, c='blue')
+            pyplot.errorbar(beta[::N], data[::N], yerr=err[::N], linewidth = 0., c='blue')
+            ax = pyplot.gca()
+
+            ax.set_xlim((0,beta_max))
+            ax.set_ylim((floor(min(data)),ceil(max(data))))
+            ax.set_xlabel(r'$\beta$')
+            ax.set_ylabel(r'$\textnormal{E}(C_{h})$')
+            pyplot.subplots_adjust(left=0.15, bottom=0.17, right=0.95)
+            pyplot.savefig(save_name+'_stochastic_specific_heat.eps', dpi=(300))
+            pyplot.savefig(save_name+'_stochastic_specific_heat.pdf')
+
+        if H2_is_present:
+            
+            # data
+            data = [stats[b].estimators.mean[TR_H2RHO_INDEX] for b in beta]
+            # errorbars
+            err = [stats[b].estimators.se[TR_H2RHO_INDEX] for b in beta]
+            pyplot.gca().cla()
+            pyplot.plot(beta, data, c='blue')
+            pyplot.errorbar(beta[::N], data[::N], yerr=err[::N], linewidth = 0., c='blue')
+            ax = pyplot.gca()
+            ax.xaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%3i$'))
+            ax.yaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%2.1f$'))
+            ax.xaxis.set_major_locator(pyplot.MaxNLocator(5))
+            ax.yaxis.set_major_locator(pyplot.MaxNLocator(4))
+            ax.set_xlim((0,beta_max))
+            ax.set_xlim((0,beta_max))
+            ax.set_ylim((floor(min(data)),ceil(max(data))))
+            ax.set_xlabel(r'$\beta$')
+            ax.set_ylabel(r'$\textnormal{E}(\hat{H}^2)$')
+            pyplot.subplots_adjust(left=0.15, bottom=0.17, right=0.95)
+            pyplot.savefig(save_name+'_energy_squared.eps', dpi=(300))
+            pyplot.savefig(save_name+'_energy_squared.pdf')
+
+        if H_is_present:
+         
+            # data
+            data = [stats[b].estimators.mean[TR_HRHO_INDEX] for b in beta]
+            # errorbars
+            err = [stats[b].estimators.se[TR_HRHO_INDEX] for b in beta]
+            pyplot.gca().cla()
+            pyplot.plot(beta, data, c='blue')
+            pyplot.errorbar(beta[::N], data[::N], yerr=err[::N], linewidth = 0., c='blue')
+            ax = pyplot.gca()
+            ax.xaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%3i$'))
+            ax.yaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%2.1f$'))
+            ax.xaxis.set_major_locator(pyplot.MaxNLocator(5))
+            ax.yaxis.set_major_locator(pyplot.MaxNLocator(4))
+            ax.set_xlim((0,beta_max))
+            ax.set_ylim((floor(min(data)),ceil(max(data))))
+            ax.set_xlabel(r'$\beta$')
+            ax.set_ylabel(r'$\textnormal{E}(\hat{H})$')
+            pyplot.subplots_adjust(left=0.15, bottom=0.17, right=0.95)
+            pyplot.savefig(save_name+'_energy.eps', dpi=(300))
+            pyplot.savefig(save_name+'_energy.pdf')
+  
+        if S_is_present: 
+            # data
+            data = [stats[b].estimators.mean[TR_SRHO_INDEX] for b in beta]
+            # errorbars
+            err = [stats[b].estimators.se[TR_SRHO_INDEX] for b in beta]
+            pyplot.gca().cla()
+            pyplot.plot(beta, data, c='blue')
+            pyplot.errorbar(beta[::N], data[::N], yerr=err[::N], linewidth = 0., c='blue')            
+            ax = pyplot.gca()
+            ax.xaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%3i$'))
+            ax.yaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%2.1f$'))
+            ax.xaxis.set_major_locator(pyplot.MaxNLocator(5))
+            ax.yaxis.set_major_locator(pyplot.MaxNLocator(4))
+            ax.set_xlim((0,beta_max))
+            ax.set_ylim((floor(min(data)),ceil(max(data))))
+            ax.set_xlabel(r'$\beta$')
+            ax.set_ylabel(r'$\textnormal{E}(S)$')
+            pyplot.subplots_adjust(left=0.15, bottom=0.17, right=0.95)
+            pyplot.savefig(save_name+'_staggerred_magnetisation.eps', dpi=(300))
+            pyplot.savefig(save_name+'_staggered_magnetisation.pdf')
+
+        if C_is_present: 
+            # data
+            data = [stats[b].estimators.mean[TR_CRHO_INDEX] for b in beta]
+            # errorbars
+            err = [stats[b].estimators.se[TR_CRHO_INDEX] for b in beta]
+            pyplot.gca().cla()
+            pyplot.plot(beta, data, c='blue')
+            pyplot.errorbar(beta[::N], data[::N], yerr=err[::N], linewidth = 0., c='blue')
+            ax = pyplot.gca()
+            ax.xaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%3i$'))
+            ax.yaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%2.1f$'))
+            ax.xaxis.set_major_locator(pyplot.MaxNLocator(5))
+            ax.yaxis.set_major_locator(pyplot.MaxNLocator(4))
+            ax.set_xlim((0,beta_max))
+            ax.set_ylim((floor(min(data)),ceil(max(data))))
+            ax.set_xlabel(r'$\beta$')
+            ax.set_ylabel(r'$\textnormal{E}(C)$')
+            pyplot.subplots_adjust(left=0.15, bottom=0.17, right=0.95)
+            pyplot.savefig(save_name+'_spin_correlation.eps', dpi=(300))
+            pyplot.savefig(save_name+'_spin_correlation.pdf')
+
+        if M2_is_present:
+
+            # data
+            data = [stats[b].estimators.mean[TR_M2RHO_INDEX] for b in beta]
+            # errorbars
+            err = [stats[b].estimators.se[TR_M2RHO_INDEX] for b in beta]
+            pyplot.gca().cla()
+            pyplot.plot(beta, data, c='blue')
+            pyplot.errorbar(beta[::N], data[::N], yerr=err[::N], linewidth = 0., c='blue')
+            ax = pyplot.gca()
+            ax.xaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%3i$'))
+            ax.yaxis.set_major_formatter(pyplot.FormatStrFormatter(r'$%2.1f$'))
+            ax.xaxis.set_major_locator(pyplot.MaxNLocator(5))
+            ax.yaxis.set_major_locator(pyplot.MaxNLocator(4))
+            ax.set_xlim((0,beta_max))
+            ax.set_ylim((floor(min(data)),ceil(max(data))))
+            ax.set_xlabel(r'$\beta$')
+            ax.set_ylabel(r'$\textnormal{E}(M^2)$')
+            pyplot.subplots_adjust(left=0.15, bottom=0.17, right=0.95)
+            pyplot.savefig(save_name+'_magnetisation_squared.eps', dpi=(300))
+            pyplot.savefig(save_name+'_magnetisation_squared.pdf')
+
+ 
 def parse_options(args):
 
     parser = optparse.OptionParser(usage = __doc__)
@@ -333,4 +541,4 @@ if __name__ == '__main__':
     stats = get_data_stats(data)
     print_stats(stats, estimator_headings, options.with_trace, options.with_shift, options.with_spline, options.with_heat_capacity)
     if options.plot:
-        plot_stats(stats, options.with_shift)
+        plot_stats(stats, data_files[0], options.with_trace, options.with_shift, options.with_spline, options.with_heat_capacity)
