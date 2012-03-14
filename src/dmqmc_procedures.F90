@@ -236,11 +236,7 @@ contains
                 ! Find the corresponding positions for this spin.
                 bit_position = bit_lookup(1,rand_basis)
                 bit_element = bit_lookup(2,rand_basis)
-                if (btest(f(bit_element),bit_position)) then
-                    ! If already flipped up, flip back down.
-                    f(bit_element) = ibclr(f(bit_element),bit_position)
-                    bits_set = bits_set - 1
-                else
+                if (.not. btest(f(bit_element),bit_position)) then
                     ! If not flipped up, flip the spin up.
                     f(bit_element) = ibset(f(bit_element),bit_position)
                     bits_set = bits_set + 1
