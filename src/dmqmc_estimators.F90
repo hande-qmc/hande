@@ -39,7 +39,7 @@ contains
         integer :: ierr, array_size
 
         array_size = sampling_size+2+number_dmqmc_estimators
-        if (allocated(excit_distribution)) array_size = array_size + size(excit_distribution)
+        if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
 
         allocate(ir(1:array_size), stat=ierr)
         call check_allocate('ir',array_size,ierr)
@@ -51,18 +51,14 @@ contains
         ir(sampling_size+1) = rspawn
         ir(sampling_size+2) = trace
         ir(sampling_size+3:sampling_size+2+number_dmqmc_estimators) = estimator_numerators
-        ir(sampling_size+3+number_dmqmc_estimators:array_size) = excit_distribution
+        if (calculate_excit_distribution) ir(sampling_size+3+number_dmqmc_estimators:array_size) = excit_distribution
         ! Merge the lists from each processor together.
         call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
         ntot_particles = nint(ir_sum(1:sampling_size),lint)
         rspawn = ir_sum(sampling_size+1)
-        if (parent) then
-            ! Let the parent processor store the merged data lists, so that these
-            ! can be output afterwards by the parent.
-            trace = nint(ir_sum(sampling_size+2))
-            estimator_numerators = ir_sum(sampling_size+3:sampling_size+2+number_dmqmc_estimators)
-            excit_distribution = ir_sum(sampling_size+3+number_dmqmc_estimators:array_size)
-        end if
+        trace = nint(ir_sum(sampling_size+2))
+        estimator_numerators = ir_sum(sampling_size+3:sampling_size+2+number_dmqmc_estimators)
+        if (calculate_excit_distribution) excit_distribution = ir_sum(sampling_size+3+number_dmqmc_estimators:array_size)
 #else
         ntot_particles = nparticles
 #endif

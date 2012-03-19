@@ -407,16 +407,26 @@ contains
         use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs
         use fciqmc_data, only: excit_distribution, finish_varying_weights
         use fciqmc_data, only: dmqmc_vary_weights, weight_altering_factors
+        use parallel
         use system, only: max_number_excitations
 
-        integer :: i
+        integer :: i, ierr
+#ifdef PARALLEL
+        real(p) :: merged_excit_dist(max_number_excitations) 
+        call mpi_allreduce(excit_distribution, merged_excit_dist, max_number_excitations, &
+            MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        
+        excit_distribution = merged_excit_dist        
+#endif
 
-        do i = 1, max_number_excitations
+        ! It is assumed that there is an even maximum number of excitations.
+        do i = 1, (max_number_excitations/2)
             ! Don't include levels where there are very few psips accumulated.
             if (excit_distribution(i-1) > 10.0_p .and. excit_distribution(i) > 10.0_p) then
                 ! Alter the sampling weights using the relevant excitation distribution.
                 dmqmc_sampling_probs(i) = dmqmc_sampling_probs(i)*&
                     (excit_distribution(i)/excit_distribution(i-1))
+                dmqmc_sampling_probs(max_number_excitations+1-i) = dmqmc_sampling_probs(i)**(-1)
             end if
         end do
         
@@ -426,20 +436,22 @@ contains
         end do
 
         ! If dmqmc_vary_weights is true then the weights are to be introduced gradually at the
-        ! start of each beta loop. This required redifining weight_altering_factors to coincide
+        ! start of each beta loop. This required redefining weight_altering_factors to coincide
         ! with the new sampling weights.
         if (dmqmc_vary_weights) then
             weight_altering_factors = dble(dmqmc_accumulated_probs)**(1/dble(finish_varying_weights))
-            ! Resert the weights for the next loop.
+            ! Reset the weights for the next loop.
             dmqmc_accumulated_probs = 1.0_p
         end if
 
-        ! Print out weights in a form which can be copied into an input file.
-        write(6, '(a28)') 'Importance sampling weights:'
-        do i = 1, max_number_excitations
-            write (6, '(es12.4,2X)', advance = 'no') dmqmc_sampling_probs(i)
-        end do
-        write (6, '()', advance = 'yes')
+        if (parent) then
+            ! Print out weights in a form which can be copied into an input file.
+            write(6, '(a30,2X)', advance = 'no') '# Importance sampling weights:'
+            do i = 1, max_number_excitations
+                write (6, '(es12.4,2X)', advance = 'no') dmqmc_sampling_probs(i)
+            end do
+            write (6, '()', advance = 'yes')
+        end if
 
     end subroutine output_and_alter_weights
 
