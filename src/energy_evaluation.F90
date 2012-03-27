@@ -182,6 +182,7 @@ contains
         ! j at imaginary time \beta.
 
         use fciqmc_data, only: walker_population, tot_walkers
+        use hfs_data, only: alpha0
 
         integer(lint) :: hf_signed_pop
 
@@ -189,7 +190,17 @@ contains
 
         hf_signed_pop = 0_lint
         do i = 1, tot_walkers
-            hf_signed_pop = hf_signed_pop + sign(1, walker_population(1,i))*walker_population(2,i)
+            if (walker_population(1,i) == 0) then
+                if (alpha0 < 0) then
+                    ! letting alpha->0_-
+                    hf_signed_pop = hf_signed_pop - abs(walker_population(2,i))
+                else
+                    ! letting alpha->0_+
+                    hf_signed_pop = hf_signed_pop + abs(walker_population(2,i))
+                end if
+            else
+                hf_signed_pop = hf_signed_pop + sign(1, walker_population(1,i))*walker_population(2,i)
+            end if
         end do
 
     end function calculate_hf_signed_pop

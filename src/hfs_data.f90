@@ -11,6 +11,9 @@ implicit none
 ! Which operator are we sampling?
 integer :: hf_operator
 
+! alpha -> 0 from + or from -?
+integer :: alpha0
+
 !--- Avaiable operators. ---
 
 ! Note that not all operators are implemented for all systems.
