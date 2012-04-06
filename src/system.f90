@@ -2,7 +2,7 @@ module system
 
 ! Module to store system information.  See also the basis module.
 
-! Hubbard and Heisenberg systems:
+! Hubbard, Chung--Landau and Heisenberg systems:
 !
 ! We assume that the lattice is defined by unit vectors and sites are located at
 ! all integer combinations of the primitive vectors.
@@ -28,6 +28,7 @@ integer, parameter :: hub_real = 1
 integer, parameter :: read_in = 2
 integer, parameter :: heisenberg = 3
 integer, parameter :: ueg = 4
+integer, parameter :: chung_landau = 5
 
 ! Which system are we examining?  Hubbard (real space)? Hubbard (k space)? ...?
 integer :: system_type = hub_k
@@ -77,6 +78,8 @@ integer :: nvirt
 ! Spin polarisation is set in set_spin_polarisation in the determinants module.
 ! Only used in Fermionic systems; see note for nel and nvirt for how the spin
 ! polarisation is handled in the Heisenberg system.
+! Note: Chung-Landau Hamiltonian is for spinless fermions; hence nalpha is
+! (without loss of generality) set to nel and nbeta to 0.
 ! # number of alpha, beta electrons
 integer :: nalpha, nbeta
 ! # number of virtual alpha, beta spin-orbitals
@@ -258,6 +261,10 @@ contains
                 nvirt = (nsites-ms_in)/2
             case(hub_k, hub_real)
                 nvirt = 2*nsites - nel
+            case(chung_landau)
+                nvirt = nsites - nel
+                ! Spinless fermions.  Set all fermions to be spin-up.
+                ms_in = nel
             case(ueg)
                 ! set nvirt in basis once the basis set has been generated.
             end select
@@ -273,7 +280,11 @@ contains
 
             ! This logical variable is set true if the system being used has basis functions
             ! in momentum space - the Heisenberg and real Hubbard models are in real space.
-            momentum_space = .not.(system_type == hub_real .or. system_type == heisenberg .or. system_type == read_in)
+            momentum_space = .not.(      system_type == hub_real   &
+                                    .or. system_type == heisenberg &
+                                    .or. system_type == chung_landau &
+                                    .or. system_type == read_in    &
+                                  )
 
             if (triangular_lattice) then
                 ! Triangular lattice, only in 2d. Each site has 6 bonds, but each bond is

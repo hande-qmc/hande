@@ -430,7 +430,7 @@ contains
 
             sym_space_size = nalpha_combinations*nbeta_combinations
 
-        case(heisenberg)
+        case(heisenberg, chung_landau)
 
             ! See notes in system about how the Heisenberg model uses nel and
             ! nvirt.
@@ -570,11 +570,13 @@ contains
 
         select case(system_type)
 
-        case(heisenberg)
+        case(heisenberg, chung_landau)
 
-            ! Just have spin up and spin down sites (no concept of unoccupied
-            ! sites) so just need to arrange nel spin ups.  No need to
-            ! interweave alpha and beta strings.
+            ! Heisenberg model: just have spin up and spin down sites (no
+            ! concept of unoccupied sites) so just need to arrange nel spin ups.
+            ! Chung--Landau model: just have up (or down) spins.
+
+            ! No need to interweave alpha and beta strings.
 
             ! Assume that we're not attempting to do FCI for more than
             ! a i0_length sites , which is quite large... ;-)

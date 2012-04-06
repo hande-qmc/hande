@@ -205,7 +205,7 @@ contains
         if (system_type /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
 
         select case(system_type)
-        case(hub_real,heisenberg)
+        case(hub_real,heisenberg, chung_landau)
             write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
             write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
         case(hub_k,ueg)
@@ -231,13 +231,15 @@ contains
         end if
 
         if (print_long) then
-            if (system_type /= heisenberg) write (6,'(a2)', advance='no') 'ms'
+            if (system_type /= heisenberg .and. system_type /= chung_landau) &
+                write (6,'(a2)', advance='no') 'ms'
 
-            if (system_type == hub_real .or. system_type == heisenberg) then
+            select case(system_type)
+            case(hub_real, heisenberg, chung_landau)
                 write(6,'()')
-            else
+            case default
                 write(6,'(5X,a7)') '<i|h|i>'
-            end if
+            end select
         else
             write (6,'()')
         end if
@@ -265,7 +267,7 @@ contains
         !        associated with the basis function are printed.  If false, only
         !        the quantum numbers are printed.
 
-        use system, only: system_type, read_in, hub_k, ueg, heisenberg
+        use system, only: system_type, read_in, hub_k, ueg, heisenberg, chung_landau
 
         type(basis_fn), intent(in) :: b
         integer, intent(in), optional :: ind
@@ -302,9 +304,16 @@ contains
             write (io,'(")")', advance='no')
         end if
         if (print_all) then
-            if (system_type /= heisenberg) write (io,'(5X,i2)', advance='no') b%ms
-            if (system_type == hub_k .or. system_type == ueg .or. system_type == read_in) &
+            select case (system_type)
+            case(heisenberg, chung_landau)
+            case default
+                write (io,'(5X,i2)', advance='no') b%ms
+            end select
+            select case (system_type)
+            case(heisenberg, chung_landau, hub_real)
+            case default
                 write (io,'(4X,f12.8)', advance='no') b%sp_eigv
+            end select
         end if
         if (present(new_line)) then
             if (new_line) write (io,'()')
@@ -394,7 +403,7 @@ contains
         ! Initially we will only consider the spatial orbitals when constructing
         ! the basis and will expand it out to spin orbitals later.
         select case(system_type)
-        case(hub_k, hub_real, heisenberg)
+        case(hub_k, hub_real, heisenberg, chung_landau)
             nspatial = nsites
             ! Maximum limits...
             ! [Does it show that I've been writing a lot of python recently?]
@@ -458,7 +467,7 @@ contains
         end do
 
         select case(system_type)
-        case(hub_k, hub_real, heisenberg)
+        case(hub_k, hub_real, heisenberg, chung_landau)
             if (ibasis /= nspatial) call stop_all('init_basis_fns','Not enough basis functions found.')
         case(ueg)
         end select
@@ -476,7 +485,7 @@ contains
         case(hub_k, hub_real)
             ! nvirt set in init_system
             nbasis = 2*nspatial
-        case(heisenberg)
+        case(heisenberg, chung_landau)
             ! nvirt set in init_system
             nbasis = nspatial
         end select
@@ -488,7 +497,7 @@ contains
         select case(system_type)
         case(hub_k, ueg)
             call insertion_rank_rp(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking, tolerance=depsilon)
-        case(hub_real, heisenberg)
+        case(hub_real, heisenberg, chung_landau)
             forall (i=1:nsites) basis_fns_ranking(i) = i
         end select
 
@@ -501,12 +510,13 @@ contains
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
-            if (system_type == heisenberg) then
+            select case(system_type)
+            case(heisenberg, chung_landau)
                 call init_basis_fn(basis_fns(i), l=basis_fn_p%l)
-            else
+            case default
                 call init_basis_fn(basis_fns(2*i-1), l=basis_fn_p%l, ms=basis_fn_p%ms)
                 call init_basis_fn(basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
-            end if
+            end select
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
             call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
         end do

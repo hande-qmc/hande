@@ -83,6 +83,8 @@ contains
                 if (item /= nitems) call reada(fcidump)
             case('UEG')
                 system_type = ueg
+            case('CHUNG-LANDAU')
+                system_type = chung_landau
 
             ! System information.
             case('LATTICE')

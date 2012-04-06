@@ -47,17 +47,20 @@ contains
         ! efficiency for not much effort. :-)
 
         use determinants, only: basis_length
+        use hamiltonian_chung_landau, only: get_hmatel_chung_landau
         use hamiltonian_heisenberg, only: get_hmatel_heisenberg
         use hamiltonian_hub_k, only: get_hmatel_hub_k
         use hamiltonian_hub_real, only: get_hmatel_hub_real
         use hamiltonian_molecular, only: get_hmatel_mol
         use hamiltonian_ueg, only: get_hmatel_ueg
-        use system, only: system_type, hub_k, hub_real, heisenberg, read_in, ueg
+        use system, only: system_type, chung_landau, hub_k, hub_real, heisenberg, read_in, ueg
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
 
         select case(system_type)
+        case(chung_landau)
+            hmatel = get_hmatel_chung_landau(f1, f2)
         case(hub_k)
             hmatel = get_hmatel_hub_k(f1, f2)
         case(hub_real)
