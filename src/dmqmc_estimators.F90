@@ -556,13 +556,14 @@ contains
                 ! Add current contirbution to the trace.
                 trace_rdm = trace_rdm + reduced_density_matrix(i,i)
             end do
-            ! Normalise the reduced density matrix, so that the trace equals 1.
-            reduced_density_matrix = reduced_density_matrix/trace_rdm
             
             ! Call the routines to calculate the desired quantities.
             if (doing_von_neumann_entropy) call calculate_vn_entropy()
             if (doing_concurrence) call calculate_concurrence()
+
+            write (6,'(1x,a12,1X,f22.12)') "# RDM trace=", trace_rdm
         end if
+
 
     end subroutine call_rdm_procedures
 
@@ -612,7 +613,7 @@ contains
         do i = 1, ubound(eigv,1)
             vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.0_p))
         end do
-        write (6,'(1x,a23,1X,f22.12)') "# Von-Neumann Entropy= ", vn_entropy
+        write (6,'(1x,a36,1X,f22.12)') "# Unnormalised Von-Neumann Entropy= ", vn_entropy
 
     end subroutine calculate_vn_entropy
     
@@ -637,7 +638,7 @@ contains
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p) :: reigv(4), ieigv(4)
-        real(p) :: concurrence, entanglement_of_formation, x
+        real(p) :: concurrence
         real(p) :: rdm_spin_flip(4,4), rdm_spin_flip_tmp(4,4), VL(4,4), VR(4,4)
         
         ! Make rdm_spin_flip_tmp because sgeev and dgeev delete input matrix
@@ -668,10 +669,7 @@ contains
         ! and then square-rooting
         concurrence = 2._p*maxval(abs(reigv)) - sum(abs(reigv)) 
         concurrence = max(0._p, concurrence)
-        x = 0.5_p + 0.5_p*sqrt(1._p - concurrence**2)
-        entanglement_of_formation = -1._p*(x*log(x)+(1._p-x)*log(1._p-x))/log(2.0_p)
-        write (6,'(1x,a15,1X,f22.12)') "# Concurrence= ", concurrence
-        write (6,'(1x,a29,1X,f22.12)') "# Entanglement of formation= ", entanglement_of_formation
+        write (6,'(1x,a28,1X,f22.12)') "# Unnormalised concurrence= ", concurrence
 
     end subroutine calculate_concurrence
 
