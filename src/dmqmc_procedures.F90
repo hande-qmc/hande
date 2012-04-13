@@ -446,7 +446,7 @@ contains
 
         if (parent) then
             ! Print out weights in a form which can be copied into an input file.
-            write(6, '(a30,2X)', advance = 'no') '# Importance sampling weights:'
+            write(6, '(a31,2X)', advance = 'no') ' # Importance sampling weights:'
             do i = 1, max_number_excitations
                 write (6, '(es12.4,2X)', advance = 'no') dmqmc_sampling_probs(i)
             end do
