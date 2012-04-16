@@ -272,4 +272,4 @@ contains
 
     end function slater_condon2_mol_excit
 
-endmodule hamiltonian_molecular
+end module hamiltonian_molecular
