@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import numpy
 try:
@@ -44,9 +44,9 @@ def propogate_spectrum(beta_min, beta_max, nbeta, spectrum):
 
     energies = [finite_temp_energy(b, spectrum) for b in beta]
 
-    print '#     beta             E(beta)'
+    print('#     beta             E(beta)')
     for i in range(len(beta)):
-        print '%16.8f %16.8f' % (beta[i], energies[i])
+        print('%16.8f %16.8f' % (beta[i], energies[i]))
 
     if USE_MATPLOTLIB:
         plt.plot(beta, energies)
@@ -55,8 +55,8 @@ def propogate_spectrum(beta_min, beta_max, nbeta, spectrum):
 if __name__ == '__main__':
 
     if len(sys.argv) != 5:
-        print 'Usage:', sys.argv[0], 'fci_file beta_min beta_max nbeta'
-        print r'Evaluate E(\beta) from the output of an FCI calculation contained in fci_file produced by hubbard.x, between beta_min and beta_max in steps of (beta_max-beta_min)/(nbeta-1).'
+        print('Usage:', sys.argv[0], 'fci_file beta_min beta_max nbeta')
+        print(r'Evaluate E(\beta) from the output of an FCI calculation contained in fci_file produced by hubbard.x, between beta_min and beta_max in steps of (beta_max-beta_min)/(nbeta-1).')
         sys.exit(1)
 
     (fci_file, beta_min, beta_max, nbeta) = sys.argv[1:]

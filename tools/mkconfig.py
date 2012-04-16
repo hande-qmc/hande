@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 '''Produce a makefile for compiling the source code for a specified target/configuration.
 
 Usage:
@@ -52,7 +52,10 @@ module_flag
     searched for.
 '''
 
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import optparse
 import os
 import pprint
@@ -294,11 +297,11 @@ Multiple configuration files can only be given in conjunction with the --print o
 
     if not (options.print_conf or options.ls):
         if len(args) > 1:
-            print 'Incorrect arguments.'
+            print('Incorrect arguments.')
             parser.print_help()
             sys.exit(1)
         if not config_file:
-            print '.default file not found.'
+            print('.default file not found.')
             parser.print_help()
             sys.exit(1)
 
@@ -309,11 +312,11 @@ def list_configs(config_dir):
     if os.path.isdir(config_dir):
         return [os.path.join(config_dir, f) for f in os.listdir(config_dir)]
     else:
-        raise IOError, 'Config directory specified is not a directory: %s.' % (config_dir)
+        raise IOError('Config directory specified is not a directory: %s.' % (config_dir))
 
 def parse_config(config_file):
     '''Parse the configuration file config_file.'''
-    parser = ConfigParser.RawConfigParser()
+    parser = configparser.RawConfigParser()
 
     valid_sections = ['main', 'opt', 'dbg']
 
@@ -324,20 +327,20 @@ def parse_config(config_file):
     minimal_options = ['fc', 'cxx', 'ld', 'libs', 'module_flag']
 
     if not os.path.exists(config_file):
-        raise IOError,'Config file does not exist: %s' % (config_file)
+        raise IOError('Config file does not exist: %s' % (config_file))
 
     parser.read(config_file)
 
     for s in parser.sections():
         if s not in valid_sections and s not in valid_sections_upper:
-            raise IOError, 'Invalid section in configuration file %s: %s.' % (config_file, s)
+            raise IOError('Invalid section in configuration file %s: %s.' % (config_file, s))
 
     for s in valid_sections:
         if s not in parser.sections() and s.upper() not in parser.sections():
-            raise IOError, 'Section not present in configuration file %s: %s.' % (config_file, s)             
+            raise IOError('Section not present in configuration file %s: %s.' % (config_file, s))
 
     if not parser.sections():
-        raise IOError, 'No sections in configuration file %s: %s.' % (config_file, s)
+        raise IOError('No sections in configuration file %s: %s.' % (config_file, s))
 
     config = {}
 
@@ -349,21 +352,21 @@ def parse_config(config_file):
             config[s].update(parser.items(s.upper()))
 
     for s in valid_sections:
-        for opt in config[s].keys():
+        for opt in list(config[s].keys()):
             if opt not in valid_options:
-                raise IOError, 'Invalid option in configuration file: %s.' % (opt)
+                raise IOError('Invalid option in configuration file: %s.' % (opt))
         # Fill in blanks
         for opt in valid_options:
-            if opt not in config[s].keys():
+            if opt not in list(config[s].keys()):
                 config[s][opt] = ''
 
     config.pop('main')
 
-    for s in config.keys():
+    for s in list(config.keys()):
         # Check minimal options.
         for opt in minimal_options:
             if not config[s][opt]:
-                raise IOError, 'Required option not set: %s' % (opt)
+                raise IOError('Required option not set: %s' % (opt))
         # Treat module_flag specially: append a space if it doesn't end in =.
         # This is to allow the same template to be used no matter how the compiler
         # insists on handling this flag.
@@ -392,7 +395,7 @@ if __name__=='__main__':
     args=sys.argv[1:]
     (options, config_file) = parse_options(args)
     if options.ls:
-        print 'Available configurations are: %s.' % (', '.join(list_configs(options.dir)))
+        print('Available configurations are: %s.' % (', '.join(list_configs(options.dir))))
     elif options.print_conf:
         if config_file:
             config_files = config_file.split()
@@ -400,9 +403,9 @@ if __name__=='__main__':
             config_files = list_configs(options.dir)
         for config_file in config_files:
             config = parse_config(config_file)
-            print 'Settings in configuration file: %s' % (config_file)
+            print('Settings in configuration file: %s' % (config_file))
             pprint.pprint(config)
-            print
+            print()
     else:
         if options.out == '-':
             f = sys.stdout

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 '''Examine variables set by parsing input files and determine if they are being distributed to the other nodes or not.
 
 A non-zero exit code indicates that not all variables are distributed.
@@ -23,15 +23,15 @@ def check_distributed(filename, variables, distributed):
 
     exit = 0
     if distributed.difference(variables):
-        print 'Distributed variables that are not read in file %s are: %s.' % (filename, ', '.join(distributed.difference(variables)))
+        print('Distributed variables that are not read in file %s are: %s.' % (filename, ', '.join(distributed.difference(variables))))
         exit += 1
     else:
-        print 'All distributed variables can be set in the file %s.' % (filename)
+        print('All distributed variables can be set in the file %s.' % (filename))
     if variables.difference(distributed):
-        print 'Variables read in file %s that are not distributed are: %s.' % (filename, ', '.join(variables.difference(distributed)))
+        print('Variables read in file %s that are not distributed are: %s.' % (filename, ', '.join(variables.difference(distributed))))
         exit += 2
     else:
-        print 'All variables set in the input file are distributed.'
+        print('All variables set in the input file are distributed.')
     return exit
 
 def test_input(input_file):

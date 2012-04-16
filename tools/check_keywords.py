@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 '''A simple scipt to check that all the input options are tested and documented.'''
 
 import glob
@@ -64,9 +64,9 @@ def check_docs(doc_files, keywords):
 
     for f in doc_files:
         if not os.path.isdir(os.path.dirname(f)):
-            print 'Documentation directory does not exist.'
+            print('Documentation directory does not exist.')
     if not doc_files:
-        print 'Cannot find documentation files.'
+        print('Cannot find documentation files.')
 
     keywords = [(k,re.compile(r'\*\*%s\*\*' % k,re.I)) for k in keywords]
     for filename in doc_files:
@@ -80,13 +80,13 @@ def check_docs(doc_files, keywords):
         f.close()
 
     if not_found:
-        print 'Undocumented keywords are:'
-        print
+        print('Undocumented keywords are:')
+        print()
         for k in keywords:
-            print k[0]
-        print
+            print(k[0])
+        print()
     else:
-        print 'All keywords appear in the documentation.'
+        print('All keywords appear in the documentation.')
 
 def check_tests(test_files, keywords):
     '''Search for keywords in test_files and print those not found.'''
@@ -95,9 +95,9 @@ def check_tests(test_files, keywords):
 
     for f in test_files:
         if not os.path.isdir(os.path.dirname(f)):
-            print 'Test suite directory does not exist.'
+            print('Test suite directory does not exist.')
     if not test_files:
-        print 'Cannot find test suite input files.'
+        print('Cannot find test suite input files.')
 
     patterns = []
     for k in keywords:
@@ -115,13 +115,13 @@ def check_tests(test_files, keywords):
         f.close()
 
     if not_found:
-        print 'Untested keywords are:'
-        print
+        print('Untested keywords are:')
+        print()
         for k in not_found:
-            print ' or '.join(k[0])
-        print
+            print(' or '.join(k[0]))
+        print()
     else:
-        print 'All keywords (or their synonyms) appear in the input files in the test suite.'
+        print('All keywords (or their synonyms) appear in the input files in the test suite.')
 
 if __name__ == '__main__':
 

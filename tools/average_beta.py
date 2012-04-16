@@ -74,8 +74,7 @@ def get_estimator_headings(data_files):
     in_file = open(data_file)
     estimator_headings = []
     estimator_col_no = []
-    while in_file:
-       line = in_file.next()
+    for line in in_file:
        if re.search(start_regex, line): 
            headings = line.split()
            index = 0
@@ -105,7 +104,7 @@ def get_estimator_headings(data_files):
                    TR_H2RHO_INDEX = index
                    index = index + 1
                else:
-                   print '# Warning: Column name, '+headings[k]+', not recognised...'
+                   print('# Warning: Column name, '+headings[k]+', not recognised...')
            break
            
     return estimator_headings, estimator_col_no
@@ -182,7 +181,7 @@ def extract_data(data_files, estimtor_col_no):
 def get_data_stats(data):
 
     stats = {}
-    for (beta,data_values) in data.iteritems():
+    for (beta,data_values) in data.items():
         covariances = data_values.calculate_covs()
         stats[beta] = data_values.calculate_stats()
         
@@ -221,42 +220,42 @@ def print_stats(stats, estimator_headings, trace=False,  shift=False, with_splin
     betas = []
     weights = []
     if with_spline:
-        for beta in sorted(stats.iterkeys()):
+        for beta in sorted(stats.keys()):
             data = stats[beta]
             weights.append(1./data.estimators.se[0])
             betas.append(beta)
             energies.append(data.estimators.mean[0]) 
         energy_fit, specific_heats = calculate_specific_heat(energies, betas, weights)
             
-    print '#           beta    ',
+    print('#           beta    ', end=' ')
     if trace:
-        print 'trace     trace s.e.',
+        print('trace     trace s.e.', end=' ')
     if shift:
-        print 'shift           shift s.e.    ',
+        print('shift           shift s.e.    ', end=' ')
     for i in range(0,len(estimator_headings)):
-        print estimator_headings[i]+'            s.e.    ',
+        print(estimator_headings[i]+'            s.e.    ', end=' ')
     if H2_is_present and H_is_present and with_heat_capacity:
-       print 'Stoch. Spec. Heat  s.e.    '
+       print('Stoch. Spec. Heat  s.e.    ')
     if with_spline:    
-        print '  Energy Fit    Spline HC'
-    print
+        print('  Energy Fit    Spline HC')
+    print()
     counter = 0
-    for beta in sorted(stats.iterkeys()):
+    for beta in sorted(stats.keys()):
 
         data = stats[beta]
-        print '%16.8f' % (beta) ,
+        print('%16.8f' % (beta), end=' ')
         if trace:
-            print '%16.8f%16.8f' % (data.Tr_rho.mean, data.Tr_rho.se) ,
+            print('%16.8f%16.8f' % (data.Tr_rho.mean, data.Tr_rho.se), end=' ')
         if shift:
-            print '%16.8f%16.8f' % (data.shift.mean, data.shift.se) ,
+            print('%16.8f%16.8f' % (data.shift.mean, data.shift.se), end=' ')
         for i in range(0,len(data.estimators.mean)):
-            print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
+            print('%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]), end=' ')
         if H2_is_present and H_is_present and with_heat_capacity:
-            print '%16.8f%16.8f' % (data.stochastic_specific_heat.mean, data.stochastic_specific_heat.se) ,
+            print('%16.8f%16.8f' % (data.stochastic_specific_heat.mean, data.stochastic_specific_heat.se), end=' ')
         if with_spline:
-            print '%16.8f%16.8f' % (energy_fit[counter], specific_heats[counter]) ,
+            print('%16.8f%16.8f' % (energy_fit[counter], specific_heats[counter]), end=' ')
         counter = counter + 1
-        print
+        print()
 
 def plot_stats(stats, shift=False):
 

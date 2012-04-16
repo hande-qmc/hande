@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 '''Monitor a running job and run a cleanup function when the elapsed time gets to within a specified amount of the walltime allowed for the job.
 
 Usage:
@@ -25,7 +25,7 @@ exit_time = 900
 
 def signal_handler(signal,frame):
     '''Capture interupt signal and leave quietly.'''
-    print 'Interrupt signal has been caught.  Bye!'
+    print('Interrupt signal has been caught.  Bye!')
     sys.exit()
 
 def job_cleanup():
@@ -36,7 +36,7 @@ def job_cleanup():
 
 def hhmmss_to_seconds(hhmmss):
     '''Convert time in the string format of hh:mm:ss to seconds.'''
-    t = map(int,hhmmss.split(':'))
+    t = [int(s) for s in t.split(':')]
     return (t[0]*60+t[1])*60+t[2]
 
 def parse_options(my_args):
@@ -46,9 +46,9 @@ def parse_options(my_args):
     (options,args) = parser.parse_args(my_args)
     if len(args) != 1:
         if len(args) == 0:
-            print 'Must specify the job id.'
+            print('Must specify the job id.')
         else:
-            print 'Do not understand options specified: %s.' % (' '.join(args))
+            print('Do not understand options specified: %s.' % (' '.join(args)))
         parser.print_help()
         sys.exit()
     else:
@@ -59,7 +59,7 @@ def main(job_id):
     '''Monitor a job_id and run job_cleanup when the elapsed_time is within exit_time seconds of the wall_time.'''
     p = PBSQuery.PBSQuery()
     if not p.getjob(job_id):
-        raise Exception,'invalid job id %s.' % job_id
+        raise Exception('invalid job id %s.' % job_id)
     job = p.getjob(job_id)
     wall_time = hhmmss_to_seconds(job[job_id]['Resource_List.walltime'])
     try:
@@ -67,7 +67,7 @@ def main(job_id):
     except NameError:
         # Try to use the default in case watchdog is being used as a module.
         sleep_time = wall_time-exit_time
-    print 'Watchdog sleeping for %i' % (sleep_time)
+    print('Watchdog sleeping for %i' % (sleep_time))
     time.sleep(sleep_time)
     job_cleanup()
     sys.exit
