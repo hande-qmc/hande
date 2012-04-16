@@ -21,7 +21,8 @@ contains
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, hub_real, hub_k, heisenberg, ueg, momentum_space, read_in, cas
+        use system, only: init_system, system_type, chung_landau, hub_real, &
+                          hub_k, heisenberg, ueg, momentum_space, read_in, cas
         use basis, only: init_model_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
@@ -70,7 +71,7 @@ contains
             call init_ueg_proc_pointers()
         case(hub_k)
             call init_momentum_symmetry()
-        case(hub_real, heisenberg)
+        case(hub_real, heisenberg, chung_landau)
             call init_real_space()
         case(read_in)
             call print_pg_symmetry_info()

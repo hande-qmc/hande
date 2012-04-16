@@ -456,6 +456,7 @@ contains
         use excit_gen_hub_k
         use excit_gen_real_lattice
         use folded_spectrum_utils, only: fs_spawner, fs_stochastic_death
+        use hamiltonian_chung_landau, only: slater_condon0_chung_landau
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
@@ -497,11 +498,21 @@ contains
                 gen_excit_finalise_ptr => gen_excit_finalise_hub_k
             end if
 
-        case(hub_real)
+        case(hub_real, chung_landau)
 
+            ! The Hubbard model in a local orbital basis and the Chung--Landau
+            ! Hamiltonian have the same off-diagonal operator so we can use the
+            ! same excitation generators and just a different function for the
+            ! diagonal matrix elements.
+            ! Note that the Chung--Landau model (as in Phys Rev B 85 (2012)
+            ! 115115) is contains spinless fermions.
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_hub_real
-            sc0_ptr => slater_condon0_hub_real
+            if (system_type == hub_real) then
+                sc0_ptr => slater_condon0_hub_real
+            else
+                sc0_ptr => slater_condon0_chung_landau
+            end if
 
             if (no_renorm) then
                 gen_excit_ptr => gen_excit_hub_real_no_renorm

@@ -79,7 +79,7 @@ contains
         use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
         use determinants, only: decode_det
         use system, only: lattice, ndim, box_length, system_type, nsym, sym0, sym_max
-        use system, only: heisenberg, triangular_lattice
+        use system, only: heisenberg, chung_landau, triangular_lattice
         use bit_utils
         use checking, only: check_allocate
         use errors, only: stop_all
@@ -123,13 +123,14 @@ contains
         ! basis_fns(i) refers to alternating alpha and beta orbitals.
         ! In the do loop we therefore loop over every *second* orbital (because
         ! spin must be the same for orbitals to be connected in this case).
-        ! For Heisenberg, we just want to loop over every component of
-        ! basis_fns, so we set isystem = 1
-        if (system_type == heisenberg) then
+        ! For Heisenberg and Chung--Landau models, we just want to loop over
+        ! every component of basis_fns, so we set isystem = 1
+        select case(system_type)
+        case(heisenberg, chung_landau)
             isystem = 1
-        else
+        case default
             isystem = 2
-        endif
+        end select
 
 
         ! Form all lattice vectors

@@ -356,7 +356,7 @@ contains
 
         use errors, only: stop_all
         use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, ueg, nsites, &
-                          heisenberg, J_coupling
+                          heisenberg, J_coupling, chung_landau
         use basis, only: bit_lookup
         use hubbard_real, only: connected_orbs
 
@@ -402,6 +402,10 @@ contains
                 forall (i=1:min(nbeta,nsites/2)) occ_list0(i+nalpha) = 4*i
                 forall (i=1:nbeta-min(nbeta,nsites/2)) &
                     occ_list0(i+nalpha+min(nbeta,nsites/2)) = 4*i-2
+            case(chung_landau)
+                ! As with the hub_real, attempt to keep fermions not on
+                ! neighbouring sites.
+                forall (i=1:nel) occ_list0(i) = 2*i-1
             case(heisenberg)
                 if (J_coupling >= 0) then
                     forall (i=1:nel) occ_list0(i) = i

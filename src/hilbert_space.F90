@@ -46,7 +46,7 @@ contains
 
         select case(system_type)
 
-        case(hub_real)
+        case(hub_real, chung_landau)
 
             ! Symmetry not currently implemented for the real space Hubbard
             ! code.
