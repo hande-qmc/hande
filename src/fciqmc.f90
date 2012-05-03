@@ -29,7 +29,7 @@ contains
         use fciqmc_restart, only: dump_restart
         use system, only: nel
         use spawning, only: create_spawned_particle_initiator
-        use fciqmc_common
+        use qmc_common
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
 

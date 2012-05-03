@@ -143,7 +143,7 @@ contains
         use excitations, only: excit, get_excitation_level
         use energy_evaluation, only: update_energy_estimators
         use fciqmc_data
-        use fciqmc_common
+        use qmc_common
         use fciqmc_restart, only: dump_restart
         use interact, only: fciqmc_interact
         use proc_pointers

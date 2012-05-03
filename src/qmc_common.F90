@@ -1,6 +1,6 @@
-module fciqmc_common
+module qmc_common
 
-! Module containing routines common to different fciqmc algorithms.
+! Module containing routines common to different qmc algorithms.
 
 use fciqmc_data
 
@@ -297,4 +297,4 @@ contains
 
     end subroutine initial_fciqmc_status
 
-end module fciqmc_common
+end module qmc_common

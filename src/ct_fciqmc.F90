@@ -17,7 +17,7 @@ contains
         use determinants, only: det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
-        use fciqmc_common, only: load_balancing_report, initial_fciqmc_status, select_ref_det
+        use qmc_common, only: load_balancing_report, initial_fciqmc_status, select_ref_det
         use fciqmc_restart
         use proc_pointers
         use interact
