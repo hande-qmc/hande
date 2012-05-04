@@ -118,7 +118,6 @@ use const, only: i0, lint, p
 
 implicit none
 
-! TEMPORARY ONLY
 integer :: D0_normalisation
 
 contains
@@ -186,10 +185,16 @@ contains
         do ireport = 1, nreport
 
             call init_report_loop()
-            ! TEMPORARY
-            D0_normalisation = nint(D0_population)
 
             do icycle = 1, ncycles
+
+                ! Population on reference determinant.
+                ! As we might select the reference determinant multiple times in
+                ! a cycle, the running total of D0_population is incorrect (by
+                ! a factor of the number of times it was selected).  Fix.
+                call search_walker_list(f0, 1, tot_walkers, hit, pos)
+                D0_population = walker_population(1,pos)
+
 
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
@@ -233,13 +238,6 @@ contains
             call end_report_loop(ireport, nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit
-
-            ! TEMPORARY: population on reference determinant.
-            ! As we might select the reference determinant multiple times in
-            ! a cycle, the running total of D0_population is incorrect (by
-            ! a factor of the number of times it was selected).  Fix.
-            call search_walker_list(f0, 1, tot_walkers, hit, pos)
-            D0_population = walker_population(1,pos)
 
         end do
 
