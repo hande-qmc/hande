@@ -17,7 +17,7 @@ contains
         ! During a MC cycle we store
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i
         ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! N_0 is stored as D0_population_cycle.  This makes normalisation very
         ! efficient.
         ! This procedure is for the Heisenberg model only
         ! In:
@@ -26,7 +26,7 @@ contains
         !    pop: population on current determinant.
 
         use determinants, only: det_info
-        use fciqmc_data, only: f0, D0_population, proj_energy
+        use fciqmc_data, only: f0, D0_population_cycle, proj_energy
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
         use system, only: J_coupling
@@ -41,7 +41,7 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = D0_population + pop
+            D0_population_cycle = pop
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
@@ -72,7 +72,7 @@ contains
         !    pop: population on current determinant.
 
         use determinants, only: det_info
-        use fciqmc_data, only: proj_energy, D0_population
+        use fciqmc_data, only: proj_energy, D0_population_cycle
         use system, only: J_coupling, nbonds
 
         type(det_info), intent(in) :: cdet
@@ -80,7 +80,7 @@ contains
 
         proj_energy = proj_energy + (J_coupling*nbonds+2*cdet%data(1))*pop
 
-        D0_population = D0_population + pop
+        D0_population_cycle = pop
 
     end subroutine update_proj_energy_heisenberg_positive
 
@@ -102,7 +102,7 @@ contains
         !    pop: population on current determinant.
 
         use determinants, only: det_info
-        use fciqmc_data, only: sampling_size, proj_energy, neel_singlet_amp, D0_population
+        use fciqmc_data, only: sampling_size, proj_energy, neel_singlet_amp, D0_population_cycle
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
         type(det_info), intent(in) :: cdet
@@ -170,8 +170,7 @@ contains
         ! \sum_{i} (a_i * n_i)
         ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
 
-        D0_population = D0_population + &
-                          pop*neel_singlet_amp(n)*importance_sampling_factor
+        D0_population_cycle = pop*neel_singlet_amp(n)*importance_sampling_factor
 
     end subroutine update_proj_energy_heisenberg_neel_singlet
 
