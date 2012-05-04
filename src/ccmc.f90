@@ -141,11 +141,9 @@ contains
         use ccmc_data, only: cluster_t
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, get_excitation_level
-        use energy_evaluation, only: update_energy_estimators
         use fciqmc_data
         use qmc_common
         use fciqmc_restart, only: dump_restart
-        use interact, only: fciqmc_interact
         use proc_pointers
         use spawning, only: create_spawned_particle_truncated
 
@@ -153,7 +151,7 @@ contains
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
-        integer :: nspawned, ierr
+        integer :: nspawned, ndeath, ierr
         type(excit) :: connection
         type(cluster_t), target :: cluster
 
@@ -187,24 +185,16 @@ contains
 
         do ireport = 1, nreport
 
-            ! Zero report cycle quantities.
-            proj_energy = 0.0_p
-            rspawn = 0.0_p
+            call init_report_loop()
             ! TEMPORARY
             D0_normalisation = nint(D0_population)
-            D0_population = 0.0_p
 
             do icycle = 1, ncycles
 
-                ! Reset the current position in the spawning array to be the
-                ! slot preceding the first slot.
-                spawning_head = spawning_block_start
-
-                ! Number of spawning attempts that will be made.
-                ! Each particle gets to attempt to spawn onto a connected
-                ! determinant and a chance to die/clone.
-                ! This is used for accounting later, not for controlling the spawning.
-                nattempts = 2*nparticles(1)
+                ! Note that 'death' in CCMC creates particles in the spawned
+                ! list, so the number of deaths not in the spawned list is
+                ! always 0.
+                call init_mc_cycle(nattempts, ndeath)
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
@@ -234,36 +224,22 @@ contains
 
                 end do
 
-                ! Add the spawning rate (for the processor) to the running
-                ! total.
-                ! Note that 'death' in CCMC creates particles in the spawned
-                ! list, so the number of deaths not in the spawned list is 0.
-                rspawn = rspawn + spawning_rate(0, nattempts)
-
                 call direct_annihilation()
+
+                call end_mc_cycle(ndeath, nattempts)
 
             end do
 
-            ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(nparticles_old)
+            call end_report_loop(ireport, nparticles_old, t1, soft_exit)
+
+            if (soft_exit) exit
+
             ! TEMPORARY: population on reference determinant.
             ! As we might select the reference determinant multiple times in
             ! a cycle, the running total of D0_population is incorrect (by
             ! a factor of the number of times it was selected).  Fix.
             call search_walker_list(f0, 1, tot_walkers, hit, pos)
             D0_population = walker_population(1,pos)
-
-            call cpu_time(t2)
-
-            ! t1 was the time at the previous iteration, t2 the current time.
-            ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-
-            ! cpu_time outputs an elapsed time, so update the reference timer.
-            t1 = t2
-
-            call fciqmc_interact(soft_exit)
-            if (soft_exit) exit
 
         end do
 

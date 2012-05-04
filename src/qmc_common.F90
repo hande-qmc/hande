@@ -297,4 +297,115 @@ contains
 
     end subroutine initial_fciqmc_status
 
+! --- QMC loop and cycle initialisation routines ---
+
+    subroutine init_report_loop()
+
+        ! Initialise a report loop (basically zero quantities accumulated over
+        ! a report loop).
+
+        proj_energy = 0.0_p
+        rspawn = 0.0_p
+        D0_population = 0.0_p
+
+    end subroutine init_report_loop
+
+    subroutine init_mc_cycle(nattempts, ndeath)
+
+        ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
+        ! quantities).
+
+        ! Out:
+        !    nattempts: number of spawning attempts to be made (on the current
+        !        processor) this cycle.
+        !    ndeath: number of particle deaths that occur in a Monte Carlo
+        !        cycle.  Reset to 0 on output.
+
+        use calc, only: doing_calc, ct_fciqmc_calc
+
+        integer(lint), intent(out) :: nattempts
+        integer, intent(out) :: ndeath
+
+        ! Reset the current position in the spawning array to be the
+        ! slot preceding the first slot.
+        spawning_head = spawning_block_start
+
+        ! Reset death counter
+        ndeath = 0
+
+        ! Number of spawning attempts that will be made.
+        ! Each particle gets to attempt to spawn onto a connected
+        ! determinant and a chance to die/clone.
+        ! This is used for accounting later, not for controlling the spawning.
+        if (doing_calc(ct_fciqmc_calc)) then
+            nattempts = nparticles(1)
+        else
+            nattempts = 2*nparticles(1)
+        end if
+
+    end subroutine init_mc_cycle
+
+! --- QMC loop and cycle termination routines ---
+
+    subroutine end_report_loop(ireport, ntot_particles, report_time, soft_exit)
+
+        ! In:
+        !    ireport: index of current report loop.
+        ! In/Out:
+        !    ntot_particles: total number (across all processors) of
+        !        particles in the simulation at end of the previous report loop.
+        !        Returns the current total number of particles for use in the
+        !        next report loop.
+        !    report_time: time at the start of the current report loop.  Returns
+        !        the current time (ie the time for the start of the next report
+        !        loop.
+        ! Out:
+        !    soft_exit: true if the user has requested an immediate exit of the
+        !        QMC algorithm via the interactive functionality.
+
+        use energy_evaluation, only: update_energy_estimators
+        use interact, only: fciqmc_interact
+        use parallel, only: parent
+
+        integer, intent(in) :: ireport
+        integer(lint), intent(inout) :: ntot_particles(sampling_size)
+        real, intent(inout) :: report_time
+        logical, intent(out) :: soft_exit
+
+        real :: curr_time
+
+        ! Update the energy estimators (shift & projected energy).
+        call update_energy_estimators(ntot_particles)
+
+        call cpu_time(curr_time)
+
+        ! report_time was the time at the previous iteration.
+        ! curr_time - report_time is thus the time taken by this report loop.
+        if (parent) call write_fciqmc_report(ireport, ntot_particles(1), curr_time-report_time)
+
+        ! cpu_time outputs an elapsed time, so update the reference timer.
+        report_time = curr_time
+
+        call fciqmc_interact(soft_exit)
+        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
+
+    end subroutine end_report_loop
+
+    subroutine end_mc_cycle(ndeath, nattempts)
+
+        ! Execute common code at the end of a Monte Carlo cycle.
+
+        ! In:
+        !    ndeath: number of particle deaths in the cycle.
+        !    nattempts: number of attempted spawning events in the cycle.
+
+        integer, intent(in) :: ndeath
+        integer(lint), intent(in) :: nattempts
+
+        ! Add the spawning rate (for the processor) to the running
+        ! total.
+        rspawn = rspawn + spawning_rate(ndeath, nattempts)
+
+    end subroutine end_mc_cycle
+
 end module qmc_common
