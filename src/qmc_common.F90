@@ -52,11 +52,11 @@ contains
 
 #ifdef PARALLEL
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population)) then
+        if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle)) then
             in_data = (/ max_pop, iproc /)
         else if (iproc == D0_proc) then
             ! Ensure that D0_proc has the correct (average) population.
-            in_data = (/ nint(D0_population), iproc /)
+            in_data = (/ nint(D0_population_cycle), iproc /)
         else
             ! No det with sufficient population to become reference det on this
             ! processor.
@@ -65,7 +65,7 @@ contains
 
         call mpi_allreduce(in_data, out_data, 1, MPI_2INTEGER, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
-        if (out_data(1) /= nint(D0_population) .and. all(fmax /= f0)) then
+        if (out_data(1) /= nint(D0_population_cycle) .and. all(fmax /= f0)) then
             write (6,*) 'MPI_MAXLOC', out_data
             max_pop = out_data(1)
             updated = .true.
@@ -79,7 +79,7 @@ contains
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. all(fmax /= f0)) then
+        if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle) .and. all(fmax /= f0)) then
             updated = .true.
             f0 = fmax
             H00 = H00_max
@@ -94,7 +94,7 @@ contains
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
+                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population_cycle
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
                 write (6,'(1X,"#",1X,62("-"))')
@@ -250,7 +250,6 @@ contains
         ! and print out.
 
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use fciqmc_data, only: walker_dets, walker_data
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
 
@@ -263,10 +262,9 @@ contains
 #endif
 
         ! Calculate the projected energy based upon the initial walker
-        ! distribution.  proj_energy and D0_population are both accumulated in
+        ! distribution.  proj_energy and D0_population_cycle are both accumulated in
         ! update_proj_energy.
         proj_energy = 0.0_p
-        D0_population = 0
         call alloc_det_info(cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
@@ -281,8 +279,10 @@ contains
         call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
         call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce((D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
         ntot_particles = nparticles(1)
+        D0_population = D0_population_cycle
 #endif
 
         proj_energy = proj_energy/D0_population
@@ -332,6 +332,11 @@ contains
 
         ! Reset death counter
         ndeath = 0
+
+        ! Reset accumulation of the reference population over the MC cycle.
+        ! Only matters if the reference contains more than a single basis
+        ! function/determinant...
+        D0_population_cycle = 0.0_p
 
         ! Number of spawning attempts that will be made.
         ! Each particle gets to attempt to spawn onto a connected
@@ -405,6 +410,9 @@ contains
         ! Add the spawning rate (for the processor) to the running
         ! total.
         rspawn = rspawn + spawning_rate(ndeath, nattempts)
+
+        ! Accumulate population on reference
+        D0_population = D0_population + D0_population_cycle
 
     end subroutine end_mc_cycle
 

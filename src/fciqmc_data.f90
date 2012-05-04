@@ -194,7 +194,7 @@ real(p) :: D0_population = 10.0_p
 ! accumulating it as we go.  This makes it easier to have multiple spawning
 ! events from the same determinant (as required in CCMC).
 ! D0_population is accumulated when updating the energy estimators.
-integer(lint) :: D0_population_cycle
+real(p) :: D0_population_cycle
 
 ! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
 ! operator.  This is only done if no restart file is used *and* |D_0> is not

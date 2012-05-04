@@ -80,7 +80,7 @@ contains
 
         proj_energy = proj_energy + (J_coupling*nbonds+2*cdet%data(1))*pop
 
-        D0_population_cycle = pop
+        D0_population_cycle = D0_population_cycle + pop
 
     end subroutine update_proj_energy_heisenberg_positive
 
@@ -170,7 +170,8 @@ contains
         ! \sum_{i} (a_i * n_i)
         ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
 
-        D0_population_cycle = pop*neel_singlet_amp(n)*importance_sampling_factor
+        D0_population_cycle = D0_population_cycle + &
+                                pop*neel_singlet_amp(n)*importance_sampling_factor
 
     end subroutine update_proj_energy_heisenberg_neel_singlet
 

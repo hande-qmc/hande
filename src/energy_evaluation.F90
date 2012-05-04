@@ -24,8 +24,7 @@ contains
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
-                               vary_shift_from_proje, D0_population_cycle, D0_population,      &
-                               fold_line
+                               vary_shift_from_proje, D0_population, fold_line
         use hfs_data, only: proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
@@ -42,7 +41,7 @@ contains
         ir(1:sampling_size) = nparticles
         ir(sampling_size+1) = proj_energy
         ir(sampling_size+2) = proj_hf_expectation
-        ir(sampling_size+3) = D0_population_cycle + D0_population
+        ir(sampling_size+3) = D0_population
         ir(sampling_size+4) = rspawn
 
         ! Don't bother to optimise for running in serial.  This is a fast
