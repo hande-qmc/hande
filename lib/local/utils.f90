@@ -128,6 +128,9 @@ contains
 
         ! Translated from the C implementation at:
         ! https://compprog.wordpress.com/2007/10/17/generating-combinations-1/.
+        ! The author, Alexandru Scvortov (scvalex@gmail.com), gave permission
+        ! via email that we are 'free to use/modify/redistribute that code
+        ! however [we] like'.  His code is provided as-is.
 
         integer, intent(in) :: n, k
         integer, intent(inout) :: comb(0:k-1) ! 0-indexed for easy translation from original C.
