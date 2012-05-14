@@ -111,6 +111,53 @@ contains
 
     end function factorial_combination_1
 
+    pure subroutine next_comb(n, k, comb, ierr)
+
+        ! Create the next combination of k objects from a set of size n.
+
+        ! In:
+        !    n: size of set.
+        !    k: size of subset/combination.
+        ! In/Out:
+        !    comb: contains the previous combination on input and the next
+        !        combination on output.  Use (0,1,2,...,k-1) for the first
+        !        combination.  The returned combination is 0-indexed.
+        ! Out:
+        !    ierr: 0 if a combination is found and 1 if there are no more
+        !        combinations.
+
+        ! Translated from the C implementation at:
+        ! https://compprog.wordpress.com/2007/10/17/generating-combinations-1/.
+
+        integer, intent(in) :: n, k
+        integer, intent(inout) :: comb(0:k-1) ! 0-indexed for easy translation from original C.
+        integer, intent(out) :: ierr
+
+        integer :: i
+
+        i = k - 1
+        comb(i) = comb(i) + 1
+
+        do while (i >= 0 .and. comb(i) >= n - k + 1 + i)
+            i = i - 1
+            comb(i) = comb(i) + 1
+        end do
+
+        if (comb(0) > n - k) then
+            ! combination (n-k, n-k+1, ..., n) reached.
+            ! no more combinations can be geerated.
+            ierr = 1
+        else
+            ierr = 0
+            ! comb now looks like (..., x, n, n, n, ..., n)
+            ! Turn it into (..., x, x+1, x+1, ...)
+            do i = i+1, k-1
+                comb(i) = comb(i-1) + 1
+            end do
+        end if
+
+    end subroutine next_comb
+
 ! --- File names and file handling ---
 
     function get_free_unit() result(free_unit)
