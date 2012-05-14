@@ -6,6 +6,8 @@ implicit none
 
 contains
 
+! --- Combinatorics ---
+
     elemental function binom_i(m, n) result(binom)
 
         ! ACM Algorithm 160 translated to Fortran.
@@ -109,6 +111,8 @@ contains
 
     end function factorial_combination_1
 
+! --- File names and file handling ---
+
     function get_free_unit() result(free_unit)
 
         ! Returns:
@@ -176,7 +180,7 @@ contains
 
     end function int_fmt
 
-    subroutine append_ext(stem, n, s)
+    elemental subroutine append_ext(stem, n, s)
 
         ! Returns stem.n in s.
 
@@ -235,6 +239,8 @@ contains
         end if
 
     end subroutine get_unique_filename
+
+! --- Array indexing ---
 
     elemental function tri_ind(i,j) result(indx)
 
