@@ -99,8 +99,8 @@ contains
 
         ! In:
         !    occ_list0(optional): list of occupied orbitals in a determinant.
-        !        if present and a truncated space is being used, then use this as
-        !        the reference determinant for the appropriate symmetry block.
+        !        Used as the reference determinant if a truncated CI space is
+        !        being used.  *MUST* be specified if truncate_space is true.
 
         use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i, int_fmt
@@ -108,7 +108,6 @@ contains
         use basis, only: basis_length
         use calc, only: truncate_space, truncation_level
         use excitations, only: get_excitation_level
-        use reference_determinant
         use system, only: sym0, sym_max, nel, system_type, hub_real, heisenberg, ueg
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
@@ -120,7 +119,7 @@ contains
         integer :: i, j, iel, ierr
         integer :: nalpha_combinations, nbeta_combinations
         integer :: sym_beta, sym, Ms
-        integer(i0) :: f_alpha, f_beta, f0(basis_length,sym0:sym_max), f(basis_length)
+        integer(i0) :: f_alpha, f_beta, f0(basis_length), f(basis_length)
         integer, allocatable :: occ(:)
         integer :: k(ndim), k_beta(ndim)
 
@@ -158,17 +157,8 @@ contains
                 ! CBA to find the closed form for the Hubbard model with local
                 ! orbitals (ie no symmetry constraints).
 
-                ! Find reference det if required.
-                if (truncate_space) then
-                    do sym = sym0, sym_max
-                        call set_reference_det(occ, .true., sym)
-                        call encode_det(occ, f0(:,sym))
-                    end do
-                    if (present(occ_list0)) then
-                        sym = symmetry_orb_list(occ_list0)
-                        call encode_det(occ_list0, f0(:,sym))
-                    end if
-                end if
+                ! Find symmetry of reference det if required.
+                if (truncate_space) call encode_det(occ_list0, f0)
 
                 ! Determinants are assigned a given symmetry by the direct product
                 ! of the representations spanned by the occupied orbitals.  For
@@ -236,7 +226,7 @@ contains
                             if (truncate_space) then
                                 ! Check it's within truncated Hilbert space.
                                 call encode_det(occ, f)
-                                if (get_excitation_level(f,f0(:,sym)) <= truncation_level) then
+                                if (get_excitation_level(f,f0) <= truncation_level) then
                                     sym_space_size(sym) = sym_space_size(sym) + 1
                                 end if
                             else
@@ -253,10 +243,17 @@ contains
         if (parent) then
             Ms = nalpha - nbeta
             write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
-            write (6,'(1X,a75,'//int_fmt(Ms,0)//',a1,/)') &
+            write (6,'(1X,a75,'//int_fmt(Ms,0)//',a1)') &
                      'The table below gives the number of determinants for each symmetry with Ms=', &
                      Ms,"."
-            write (6,'(1X,a14,6X,a6)') 'Symmetry index','# dets'
+            if (truncate_space) then
+                write (6,'(1X,a24,'//int_fmt(truncation_level,1)//',1X,a54)') &
+                    'Only determinants within', truncation_level, &
+                    'excitations of the reference determinant are included.'
+                write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
+                call write_det(f0, new_line=.true.)
+            end if
+            write (6,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
             do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
                 write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
             end do
@@ -280,8 +277,8 @@ contains
         !    ref_sym: index of an irreducible representation.  Only determinants
         !        with the same symmetry  are stored.
         !    occ_list0(optional): list of occupied orbitals in a determinant.
-        !        if present and a truncated space is being used, then use this as
-        !        the reference determinant.
+        !        Used as the reference determinant if a truncated CI space is
+        !        being used.  *MUST* be specified if truncate_space is true.
 
         use checking, only: check_allocate, check_deallocate
         use utils, only: binom_i
@@ -324,12 +321,7 @@ contains
 
         ! Find reference det if required.
         if (truncate_space) then
-            if (present(occ_list0)) then
-                occ = occ_list0
-            else
-                call set_reference_det(occ, .true., ref_sym)
-            end if
-            call encode_det(occ, f0)
+            call encode_det(occ_list0, f0)
         end if
 
         select case(system_type)
