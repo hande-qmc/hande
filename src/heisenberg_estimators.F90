@@ -41,7 +41,7 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population_cycle = pop
+            D0_population_cycle = D0_population_cycle + pop
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.

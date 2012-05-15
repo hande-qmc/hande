@@ -167,7 +167,7 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population_cycle = pop
+            D0_population_cycle = D0_population_cycle + pop
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
@@ -211,7 +211,7 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population_cycle = pop
+            D0_population_cycle = D0_population_cycle + pop
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
@@ -262,7 +262,7 @@ contains
         select case(excitation%nexcit)
         case (0)
             ! Have reference determinant.
-            D0_population_cycle = pop
+            D0_population_cycle = D0_population_cycle + pop
         case(1)
             ! Have a determinant connected to the reference determinant by
             ! a single excitation: add to projected energy.
@@ -324,7 +324,7 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population_cycle = walker_population(1,idet)
+            D0_population_cycle = D0_population_cycle + walker_population(1,idet)
             D0_hf_population = D0_hf_population + walker_population(2,idet)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
