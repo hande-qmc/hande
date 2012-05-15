@@ -191,10 +191,9 @@ contains
                 ! Population on reference determinant.
                 ! As we might select the reference determinant multiple times in
                 ! a cycle, the running total of D0_population is incorrect (by
-                ! a factor of the number of times it was selected).  Fix.
+                ! a factor of the number of times it was selected).
                 call search_walker_list(f0, 1, tot_walkers, hit, pos)
-                D0_population = walker_population(1,pos)
-
+                D0_normalisation = walker_population(1,pos)
 
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
@@ -292,8 +291,7 @@ contains
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: genrand_real2
-        use fciqmc_data, only: f0, D0_population, tot_walkers, &
-                               walker_population, walker_dets
+        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
 
