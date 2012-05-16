@@ -141,8 +141,9 @@ contains
         i = k - 1
         comb(i) = comb(i) + 1
 
-        do while (i >= 0 .and. comb(i) >= n - k + 1 + i)
+        do while (comb(i) >= n - k + 1 + i)
             i = i - 1
+            if (i < 0) exit
             comb(i) = comb(i) + 1
         end do
 
