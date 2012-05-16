@@ -18,9 +18,8 @@ contains
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use system, only: nel, nsym, sym_max, sym0, uhf
-        use determinant_enumeration, only: enumerate_determinants, find_sym_space_size
+        use determinant_enumeration, only: enumerate_determinants, ndets, sym_space_size
         use determinants, only: tot_ndets, set_spin_polarisation, spin_orb_list
-        use determinant_enumeration, only: ndets, sym_space_size
         use fciqmc_data, only: occ_list0
         use lanczos
         use full_diagonalisation
@@ -128,9 +127,9 @@ contains
             ! Find and set information about the space.
             call set_spin_polarisation(ms)
             if (allocated(occ_list0)) then
-                call find_sym_space_size(occ_list0)
+                call enumerate_determinants(.true., occ_list0=occ_list0)
             else
-                call find_sym_space_size()
+                call enumerate_determinants(.true.)
             end if
 
             ! Diagonalise each symmetry block in turn.
@@ -152,9 +151,9 @@ contains
 
                 ! Find all determinants with this spin.
                 if (allocated(occ_list0)) then
-                    call enumerate_determinants(isym, occ_list0)
+                    call enumerate_determinants(.false., isym, occ_list0)
                 else
-                    call enumerate_determinants(isym)
+                    call enumerate_determinants(.false., isym)
                 end if
 
                 if (ndets == 1) then

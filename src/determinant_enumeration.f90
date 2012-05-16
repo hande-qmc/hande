@@ -81,30 +81,32 @@ contains
 
 !--- Hilbert space enumeration ---
 
-    subroutine find_sym_space_size(occ_list0)
+    subroutine enumerate_determinants(init, ref_sym, occ_list0)
 
-        ! Finds the number of Slater determinants that can be formed from the
-        ! basis functions belonging to each symmetry.
-        ! Currently only crystal momentum symmetry is implemented.
-        ! Note that this will overflow for large spaces (but we should be not
-        ! doing FCI on such spaces anyway...).
-        ! The spin polarisation of the system must be set first (by calling
-        ! set_spin_polarisation).
-        ! find_sym_space_size must be called first for each value of Ms before
-        ! enumerating the determinant list.
+        ! Find the Slater determinants that can be formed from the
+        ! basis functions.
 
-        ! This finds the exact size of the space.  See estimate_hilbert_space
-        ! for a Monte Carlo approach to estimating the size of the space (better
-        ! for large systems where we can't do FCI).
+        ! On initialisation the number of determinants in each symmetry block
+        ! for the specified spin polarisation is counted and store in
+        ! the module-level variable sym_space_size.  Subseuent calls store
+        ! determinants of the desired symmetry in the module-level variable
+        ! dets_list array.
 
         ! In:
+        !    init: if true, count the number of determinants rather than store
+        !        them.  This must be done for each spin polarisation before
+        !        subsequent calls to store the determinants.
+        !    ref_sym(optional): index of an irreducible representation.  Only determinants
+        !        with the same symmetry  are stored.  *MUST* be specified if
+        !        init is false.
         !    occ_list0(optional): list of occupied orbitals in a determinant.
         !        Used as the reference determinant if a truncated CI space is
         !        being used.  *MUST* be specified if truncate_space is true.
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
-        use utils, only: binom_i, int_fmt
+        use utils, only: binom_i, get_free_unit, int_fmt
+        use bit_utils, only: first_perm, bit_permutation, decode_bit_string
 
         use basis, only: basis_length
         use calc, only: truncate_space, truncation_level
@@ -113,25 +115,43 @@ contains
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
 
-        use bit_utils, only: first_perm, bit_permutation, decode_bit_string
-
+        logical, intent(in) :: init
+        integer, intent(in), optional :: ref_sym
         integer, intent(in), optional :: occ_list0(nel)
 
-        integer :: i, j, iel, ierr
+        integer :: i, j, iel, idet, ierr
         integer :: nbeta_combinations
         integer, allocatable :: nalpha_combinations(:)
         integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
-        integer(i0) :: f_alpha, f_beta, f0(basis_length), f(basis_length)
-        integer, allocatable :: occ(:), comb(:,:)
+        character(4) :: fmt1
+        integer(i0) :: f(basis_length)
+        integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(ndim), k_beta(ndim)
         type(det_info) :: d0
 
-        if (allocated(sym_space_size)) then
-            deallocate(sym_space_size, stat=ierr)
-            call check_deallocate('sym_space_size',ierr)
+        if (init) then
+            if (allocated(sym_space_size)) then
+                deallocate(sym_space_size, stat=ierr)
+                call check_deallocate('sym_space_size',ierr)
+            end if
+            allocate(sym_space_size(sym0:sym_max), stat=ierr)
+            call check_allocate('sym_space_size',nsym,ierr)
+            sym_space_size = 0
+        else
+            if (.not.present(ref_sym)) then
+                call stop_all('enumerate_determinants', 'ref_sym must be specified when storing determinants.')
+            end if
+            if (allocated(dets_list)) then
+                deallocate(dets_list, stat=ierr)
+                call check_deallocate('dets_list',ierr)
+            end if
+
+            ndets = sym_space_size(ref_sym)
+
+            allocate(dets_list(basis_length, ndets), stat=ierr)
+            call check_allocate('dets_list',basis_length*ndets,ierr)
         end if
-        allocate(sym_space_size(sym0:sym_max), stat=ierr)
-        call check_allocate('sym_space_size',nsym,ierr)
+
         call alloc_det_info(d0)
 
         ! For fermionic systems, we generate the alpha string and beta string
@@ -150,12 +170,12 @@ contains
         ! full Hilbert space).
         if (truncate_space) then
             if (.not.present(occ_list0)) then
-                call stop_all('find_sym_space_size', 'Require reference for truncated CI spaces.')
+                call stop_all('enumerate_determinants', 'Require reference for truncated CI spaces.')
             end if
             allocate(nalpha_combinations(0:nbeta), stat=ierr)
             nalpha_combinations = 0
             nbeta_combinations = 0
-            ! Identical to the settings in else statements if truncation_level = nel.
+            ! Identical to the settings in the else statements if truncation_level == nel.
             do i = 0, truncation_level
                 nbeta_combinations = nbeta_combinations + binom_i(nbeta, i)*binom_i(nvirt_beta, i)
                 do j = 0, min(truncation_level-i, nalpha)
@@ -185,34 +205,71 @@ contains
 
             ! See notes in system about how the Heisenberg model uses nel and
             ! nvirt.
-            if (truncate_space) then
-                sym_space_size = 0
-                do i = 0, truncation_level
-                    sym_space_size = sym_space_size + binom_i(nel, truncation_level)*binom_i(nsites-nel, truncation_level)
-                end do
+
+            ! Just have spin up and spin down sites (no concept of unoccupied
+            ! sites) so just need to arrange nel spin ups.  No need to
+            ! interweave alpha and beta strings.
+
+            if (init) then
+                ! Easy to work out the number of spin kets ('determinants') in
+                ! the Hilbert space.  No need to enumerate them all first.
+                if (truncate_space) then
+                    sym_space_size = 0
+                    do i = 0, truncation_level
+                        sym_space_size = sym_space_size + binom_i(nel, truncation_level)*binom_i(nsites-nel, truncation_level)
+                    end do
+                else
+                    sym_space_size = binom_i(nsites, nel)
+                end if
             else
-                sym_space_size = binom_i(nsites, nel)
+                if (truncate_space) then
+                    ! Need list of spin-down sites (ie 'unoccupied' bits).
+                    allocate(unocc(nbasis-nel), stat=ierr)
+                    call check_allocate('unocc', size(unocc), ierr)
+                    call decode_bit_string(d0%f(1), unocc)
+                    do i = 1, ndets
+                        call next_string(i==1, .false., nbasis, nel, d0%occ_list, &
+                                         unocc, truncation_level, comb(:,1),  &
+                                         occ, excit_level_alpha)
+                        call encode_det(occ, dets_list(:,i))
+                    end do
+                    deallocate(unocc, stat=ierr)
+                    call check_deallocate('unocc', ierr)
+                else
+                    ! Easiest just to iterate through all possible bit permutations.
+                    ! No symmetry to check!
+                    ! Assume that we're not attempting to do FCI for more than
+                    ! a i0_length sites , which is quite large... ;-)
+                    if (nbasis > i0_length) then
+                        call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
+                    end if
+                    dets_list(1,1) = first_perm(nel)
+                    do i = 2, ndets
+                        dets_list(1,i) = bit_permutation(dets_list(1,i-1))
+                    end do
+                end if
             end if
 
         case default
 
-            if (system_type == hub_real .and. .not.truncate_space) then
+            if (init .and. system_type == hub_real .and. .not.truncate_space) then
+                ! Closed form for size of Hilbert space.  No symmetry implemented!
                 sym_space_size = nalpha_combinations*nbeta_combinations
             else
                 ! Simply count the number of allowed determinants.
                 ! CBA to find the closed form for the Hubbard model with local
                 ! orbitals (ie no symmetry constraints).
+                ! If not initialising (ie counting the number of allowed
+                ! determinants) then we store the allowed determinants as they
+                ! are generated.
 
                 ! Determinants are assigned a given symmetry by the direct product
                 ! of the representations spanned by the occupied orbitals.  For
                 ! momentum space systems this amounts to the sum of the wavevectors
-                ! of the occupied basis functions.  This is because only doubly
-                ! excitations are connected and D and D_{ij}^{ab} are only connected
-                ! if k_i + k_j - k_a - k_b is a reciprocal lattice vector.  Thus we
-                ! can regard the sum of the wavevectors of the occupied
-                ! spin-orbitals as a symmetry label.
+                ! of the occupied basis functions.  Thus we can regard the sum of
+                ! the wavevectors of the occupied spin-orbitals as a symmetry label.
 
-                sym_space_size = 0
+                idet = 0
 
                 do i = 1, nbeta_combinations
 
@@ -253,20 +310,29 @@ contains
                             sym = cross_product(sym_beta, symmetry_orb_list(occ(nbeta+1:nel)))
                         end if
 
-                        if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
-                            ! Ignore symmetries outside the basis set (only affects
-                            ! UEG currently).
-                            sym_space_size(sym) = sym_space_size(sym) + 1
+                        if (init) then
+                            ! Count determinant.
+                            if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
+                                ! Ignore symmetries outside the basis set (only affects
+                                ! UEG currently).
+                                sym_space_size(sym) = sym_space_size(sym) + 1
+                            end if
+                        else if (sym == ref_sym) then
+                            ! Store determinant.
+                            idet = idet + 1
+                            call encode_det(occ, dets_list(:,idet))
                         end if
 
                     end do
 
                 end do
+
             end if
 
         end select
 
-        if (parent) then
+        if (init .and. parent) then
+            ! Output information about the size of the space.
             Ms = nalpha - nbeta
             write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
             write (6,'(1X,a75,'//int_fmt(Ms,0)//',a1)') &
@@ -284,198 +350,8 @@ contains
                 write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
             end do
             write (6,'()')
-        end if
-
-        deallocate(occ, stat=ierr)
-        call check_deallocate('occ', ierr)
-        deallocate(nalpha_combinations, stat=ierr)
-        call check_deallocate('nalpha_combinations', ierr)
-        deallocate(comb, stat=ierr)
-        call check_deallocate('comb', ierr)
-        call dealloc_det_info(d0)
-
-    end subroutine find_sym_space_size
-
-    subroutine enumerate_determinants(ref_sym, occ_list0)
-
-        ! Find the Slater determinants that can be formed from the
-        ! basis functions.  The list of determinants is stored in the
-        ! module level dets_list array.
-
-        ! find_sym_space_size must be called first for each value of Ms.
-
-        ! In:
-        !    ref_sym: index of an irreducible representation.  Only determinants
-        !        with the same symmetry  are stored.
-        !    occ_list0(optional): list of occupied orbitals in a determinant.
-        !        Used as the reference determinant if a truncated CI space is
-        !        being used.  *MUST* be specified if truncate_space is true.
-
-        use checking, only: check_allocate, check_deallocate
-        use utils, only: binom_i
-        use errors, only: stop_all
-        use utils, only: get_free_unit, int_fmt
-        use bit_utils, only: first_perm, bit_permutation, decode_bit_string
-
-        use calc, only: truncate_space, truncation_level
-        use excitations, only: get_excitation_level
-        use reference_determinant
-        use symmetry, only: cross_product, symmetry_orb_list
-        use ueg_system, only: ueg_basis_index
-
-        integer, intent(in) :: ref_sym
-        integer, intent(in), optional :: occ_list0(nel)
-
-        integer :: i, j, iel, idet, ierr
-        integer :: nbeta_combinations
-        integer, allocatable :: nalpha_combinations(:)
-        integer :: sym_beta, sym, excit_level_alpha, excit_level_beta
-        character(4) :: fmt1
-        integer(i0) :: f0(basis_length), f(basis_length)
-        integer, allocatable :: occ(:), comb(:,:), unocc(:)
-        integer :: k(ndim), k_beta(ndim)
-        type(det_info) :: d0
-
-        call alloc_det_info(d0)
-
-        ! See comments in find_sym_space_size
-        if (truncate_space) then
-            if (.not.present(occ_list0)) then
-                call stop_all('enumerate_determinants', 'Require reference for truncated CI spaces.')
-            end if
-            ! Identical to the else statements if truncation_level = nel.
-            allocate(nalpha_combinations(0:nbeta), stat=ierr)
-            nalpha_combinations = 0
-            nbeta_combinations = 0
-            do i = 0, truncation_level
-                nbeta_combinations = nbeta_combinations + binom_i(nbeta, i)*binom_i(nvirt_beta, i)
-                do j = 0, min(truncation_level-i, nalpha)
-                    nalpha_combinations(i) = nalpha_combinations(i) + binom_i(nalpha, j)*binom_i(nvirt_alpha, j)
-                end do
-            end do
-            call encode_det(occ_list0, d0%f)
-            call decode_det_spinocc_spinunocc(d0%f, d0)
-        else
-            ! No matter what the excitation level of the beta string, all alpha
-            ! combinations are allowed.
-            allocate(nalpha_combinations(0:0), stat=ierr)
-            nbeta_combinations = binom_i(nbasis/2, nbeta)
-            nalpha_combinations = binom_i(nbasis/2, nalpha)
-            truncation_level = nel
-        end if
-        call check_allocate('nalpha_combinations',size(nalpha_combinations),ierr)
-        allocate(comb(2*truncation_level, 2), stat=ierr)
-        call check_allocate('comb', size(comb), ierr)
-
-        allocate(occ(nel), stat=ierr)
-        call check_allocate('occ', nel, ierr)
-
-        if (allocated(dets_list)) then
-            deallocate(dets_list, stat=ierr)
-            call check_deallocate('dets_list',ierr)
-        end if
-
-        ndets = sym_space_size(ref_sym)
-
-        allocate(dets_list(basis_length, ndets), stat=ierr)
-        call check_allocate('dets_list',basis_length*ndets,ierr)
-
-        ! Find reference det if required.
-        if (truncate_space) then
-            call encode_det(occ_list0, f0)
-        end if
-
-        select case(system_type)
-
-        case(heisenberg)
-
-            ! Just have spin up and spin down sites (no concept of unoccupied
-            ! sites) so just need to arrange nel spin ups.  No need to
-            ! interweave alpha and beta strings.
-
-            ! Assume that we're not attempting to do FCI for more than
-            ! a i0_length sites , which is quite large... ;-)
-            if (nbasis > i0_length) then
-                call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
-            end if
-
-            if (truncate_space) then
-                ! Need list of spin-down sites (ie 'unoccupied' bits).
-                allocate(unocc(nbasis-nel), stat=ierr)
-                call check_allocate('unocc', size(unocc), ierr)
-                call decode_bit_string(d0%f(1), unocc)
-                do i = 1, ndets
-                    call next_string(i==1, .false., nbasis, nel, d0%occ_list, &
-                                     unocc, truncation_level, comb(:,1),  &
-                                     occ, excit_level_alpha)
-                    call encode_det(occ, dets_list(:,i))
-                end do
-                deallocate(unocc, stat=ierr)
-                call check_deallocate('unocc', ierr)
-            else
-                ! Easiest just to iterate through all possible bit permutations.
-                ! No symmetry to check!
-                dets_list(1,1) = first_perm(nel)
-                do i = 2, ndets
-                    dets_list(1,i) = bit_permutation(dets_list(1,i-1))
-                end do
-            end if
-
-        case default
-
-            idet = 0
-            do i = 1, nbeta_combinations
-
-                ! Get beta orbitals.
-                call next_string(i==1, .false., nbasis/2, nbeta, d0%occ_list_beta, &
-                                 d0%unocc_list_beta, truncation_level, comb(:,1),  &
-                                 occ(1:nbeta), excit_level_beta)
-
-                ! Symmetry.
-                ! Have to treat the UEG as a special case as we don't consider
-                ! all possible symmetries for the UEG but rather only momenta
-                ! which exist in the basis set.
-                if (system_type == ueg) then
-                    k_beta = 0
-                    do iel = 1, nbeta
-                        k_beta = k_beta + basis_fns(occ(iel))%l
-                    end do
-                else
-                    sym_beta = symmetry_orb_list(occ(1:nbeta))
-                end if
-
-                do j = 1, nalpha_combinations(excit_level_beta)
-
-                    ! Get alpha orbitals.
-                    call next_string(j==1, .true., nbasis/2, nalpha, d0%occ_list_alpha, &
-                                     d0%unocc_list_alpha, truncation_level-excit_level_beta, &
-                                     comb(:,2), occ(nbeta+1:), excit_level_alpha)
-
-                    ! Symmetry of all orbitals.
-                    if (system_type == ueg) then
-                        k = k_beta
-                        do iel = nbeta+1, nel
-                            k = k + basis_fns(occ(iel))%l
-                        end do
-                        ! Symmetry label (convert from basis index).
-                        sym = (ueg_basis_index(k,1)+1)/2
-                    else
-                        sym = cross_product(sym_beta, symmetry_orb_list(occ(nbeta+1:nel)))
-                    end if
-
-                    if (sym == ref_sym) then
-
-                        idet = idet + 1
-                        call encode_det(occ, dets_list(:,idet))
-
-                    end if
-
-                end do
-            end do
-
-        end select
-
-        if (write_determinants .and. parent) then
+        else if (.not. init .and. write_determinants .and. parent) then
+            ! Output the determinants.
             fmt1 = int_fmt(ndets, padding=1)
             do i = 1, ndets
                 write (det_unit,'('//fmt1//',4X)',advance='no') i
