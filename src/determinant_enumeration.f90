@@ -277,7 +277,7 @@ contains
                     'Only determinants within', truncation_level, &
                     'excitations of the reference determinant are included.'
                 write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-                call write_det(f0, new_line=.true.)
+                call write_det(d0%f, new_line=.true.)
             end if
             write (6,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
             do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
