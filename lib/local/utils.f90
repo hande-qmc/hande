@@ -136,12 +136,18 @@ contains
         integer, intent(inout) :: comb(0:k-1) ! 0-indexed for easy translation from original C.
         integer, intent(out) :: ierr
 
-        integer :: i
+        integer :: i, j
 
+        ! The final element of the previous combination must, at very least, be
+        ! incremented.
         i = k - 1
         comb(i) = comb(i) + 1
 
         do while (comb(i) >= n - k + 1 + i)
+            ! The i-th element is greater than the maximum allowed value (note
+            ! that combinations are generated as ascending sequences).  Hence
+            ! there are no more combinations which begin comb(0:i-1).  Increment
+            ! comb(i-1) and use that as the start of the next combination.
             i = i - 1
             if (i < 0) exit
             comb(i) = comb(i) + 1
@@ -153,10 +159,16 @@ contains
             ierr = 1
         else
             ierr = 0
-            ! comb now looks like (..., x, n, n, n, ..., n)
-            ! Turn it into (..., x, x+1, x+1, ...)
-            do i = i+1, k-1
-                comb(i) = comb(i-1) + 1
+            ! comb now looks like (..., x, n_1, n_2, n_3, ..., n_n),
+            ! where n_i ! >= max value of comb.
+            ! Turn it into (..., x, x+1, x+1, ...), ie the first combination
+            ! which starts with ( ..., x).  Subsequent calls to next_comb will
+            ! then iterate over 'higher' combinations with the same starting
+            ! sequence.
+            ! The i-th position at the end of the previous loop holds the
+            ! x entry.
+            do j = i+1, k-1
+                comb(j) = comb(j-1) + 1
             end do
         end if
 
