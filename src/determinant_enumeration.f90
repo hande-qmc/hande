@@ -423,12 +423,6 @@ contains
 
         case default
 
-            ! Assume that we're not attempting to do FCI for more than
-            ! a 2*i0_length spin orbitals, which is quite large... ;-)
-            if (nbasis/2 > i0_length) then
-                call stop_all('enumerate_determinants','Number of alpha spin functions longer than the an i0 integer.')
-            end if
-
             idet = 0
             do i = 1, nbeta_combinations
 
