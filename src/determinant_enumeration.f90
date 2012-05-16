@@ -103,6 +103,7 @@ contains
         !        being used.  *MUST* be specified if truncate_space is true.
 
         use checking, only: check_allocate, check_deallocate
+        use errors, only: stop_all
         use utils, only: binom_i, int_fmt
 
         use basis, only: basis_length
@@ -117,11 +118,13 @@ contains
         integer, intent(in), optional :: occ_list0(nel)
 
         integer :: i, j, iel, ierr
-        integer :: nalpha_combinations, nbeta_combinations
-        integer :: sym_beta, sym, Ms
+        integer :: nbeta_combinations
+        integer, allocatable :: nalpha_combinations(:)
+        integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
         integer(i0) :: f_alpha, f_beta, f0(basis_length), f(basis_length)
-        integer, allocatable :: occ(:)
+        integer, allocatable :: occ(:), comb(:,:)
         integer :: k(ndim), k_beta(ndim)
+        type(det_info) :: d0
 
         if (allocated(sym_space_size)) then
             deallocate(sym_space_size, stat=ierr)
@@ -129,9 +132,49 @@ contains
         end if
         allocate(sym_space_size(sym0:sym_max), stat=ierr)
         call check_allocate('sym_space_size',nsym,ierr)
+        call alloc_det_info(d0)
 
-        nbeta_combinations = binom_i(nbasis/2, nbeta)
-        nalpha_combinations = binom_i(nbasis/2, nalpha)
+        ! For fermionic systems, we generate the alpha string and beta string
+        ! separately and then combine them to form a determinant.
+        ! If the Hilbert space is truncated, then only strings within the
+        ! required excitation level are generated.
+        ! For each beta string we generate, we then generate each
+        ! (excitation-allowed) alpha string.  Hence if the Hilbert space is
+        ! truncated, then the number of possilbe alpha strings is a function of
+        ! the excitation level of the beta string.
+        ! If the Hilbert space is not truncated, then all alpha strings can be
+        ! combined with all beta strings.
+        ! This scheme makes the generation of determinants in a truncated
+        ! Hilbert space fast (as we only generate determinants within the
+        ! truncated space and not those outside the truncated space but in the
+        ! full Hilbert space).
+        if (truncate_space) then
+            if (.not.present(occ_list0)) then
+                call stop_all('find_sym_space_size', 'Require reference for truncated CI spaces.')
+            end if
+            allocate(nalpha_combinations(0:nbeta), stat=ierr)
+            nalpha_combinations = 0
+            nbeta_combinations = 0
+            ! Identical to the settings in else statements if truncation_level = nel.
+            do i = 0, truncation_level
+                nbeta_combinations = nbeta_combinations + binom_i(nbeta, i)*binom_i(nvirt_beta, i)
+                do j = 0, min(truncation_level-i, nalpha)
+                    nalpha_combinations(i) = nalpha_combinations(i) + binom_i(nalpha, j)*binom_i(nvirt_alpha, j)
+                end do
+            end do
+            call encode_det(occ_list0, d0%f)
+            call decode_det_spinocc_spinunocc(d0%f, d0)
+        else
+            ! No matter what the excitation level of the beta string, all alpha
+            ! combinations are allowed.
+            allocate(nalpha_combinations(0:0), stat=ierr)
+            nbeta_combinations = binom_i(nbasis/2, nbeta)
+            nalpha_combinations = binom_i(nbasis/2, nalpha)
+            truncation_level = nel
+        end if
+        call check_allocate('nalpha_combinations',size(nalpha_combinations),ierr)
+        allocate(comb(2*truncation_level, 2), stat=ierr)
+        call check_allocate('comb', size(comb), ierr)
 
         allocate(occ(nel), stat=ierr)
         call check_allocate('occ', nel, ierr)
@@ -143,7 +186,10 @@ contains
             ! See notes in system about how the Heisenberg model uses nel and
             ! nvirt.
             if (truncate_space) then
-                sym_space_size = binom_i(nsites-(nel-truncation_level),truncation_level)
+                sym_space_size = 0
+                do i = 0, truncation_level
+                    sym_space_size = sym_space_size + binom_i(nel, truncation_level)*binom_i(nsites-nel, truncation_level)
+                end do
             else
                 sym_space_size = binom_i(nsites, nel)
             end if
@@ -156,9 +202,6 @@ contains
                 ! Simply count the number of allowed determinants.
                 ! CBA to find the closed form for the Hubbard model with local
                 ! orbitals (ie no symmetry constraints).
-
-                ! Find symmetry of reference det if required.
-                if (truncate_space) call encode_det(occ_list0, f0)
 
                 ! Determinants are assigned a given symmetry by the direct product
                 ! of the representations spanned by the occupied orbitals.  For
@@ -174,15 +217,10 @@ contains
                 do i = 1, nbeta_combinations
 
                     ! Get beta orbitals.
-                    if (i == 1) then
-                        f_beta = first_perm(nbeta)
-                    else
-                        f_beta = bit_permutation(f_beta)
-                    end if
+                    call next_string(i==1, .false., nbasis/2, nbeta, d0%occ_list_beta, &
+                                     d0%unocc_list_beta, truncation_level, comb(:,1),  &
+                                     occ(1:nbeta), excit_level_beta)
 
-                    call decode_bit_string(f_beta, occ)
-                    ! Convert to beta orbitals.
-                    occ = 2*(occ+1)
                     ! Symmetry.
                     ! Have to treat the UEG as a special case as we don't consider
                     ! all possible symmetries for the UEG but rather only momenta
@@ -196,18 +234,13 @@ contains
                         sym_beta = symmetry_orb_list(occ(1:nbeta))
                     end if
 
-                    do j = 1, nalpha_combinations
+                    do j = 1, nalpha_combinations(excit_level_beta)
 
                         ! Get alpha orbitals.
-                        if (j == 1) then
-                            f_alpha = first_perm(nalpha)
-                        else
-                            f_alpha = bit_permutation(f_alpha)
-                        end if
+                        call next_string(j==1, .true., nbasis/2, nalpha, d0%occ_list_alpha, &
+                                         d0%unocc_list_alpha, truncation_level-excit_level_beta, &
+                                         comb(:,2), occ(nbeta+1:), excit_level_alpha)
 
-                        call decode_bit_string(f_alpha, occ(nbeta+1:nel))
-                        ! Convert to alpha orbitals.
-                        occ(nbeta+1:nel) = 2*occ(nbeta+1:nel)+1
                         ! Symmetry of all orbitals.
                         if (system_type == ueg) then
                             k = k_beta
@@ -223,18 +256,11 @@ contains
                         if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
                             ! Ignore symmetries outside the basis set (only affects
                             ! UEG currently).
-                            if (truncate_space) then
-                                ! Check it's within truncated Hilbert space.
-                                call encode_det(occ, f)
-                                if (get_excitation_level(f,f0) <= truncation_level) then
-                                    sym_space_size(sym) = sym_space_size(sym) + 1
-                                end if
-                            else
-                                sym_space_size(sym) = sym_space_size(sym) + 1
-                            end if
+                            sym_space_size(sym) = sym_space_size(sym) + 1
                         end if
 
                     end do
+
                 end do
             end if
 
@@ -262,6 +288,11 @@ contains
 
         deallocate(occ, stat=ierr)
         call check_deallocate('occ', ierr)
+        deallocate(nalpha_combinations, stat=ierr)
+        call check_deallocate('nalpha_combinations', ierr)
+        deallocate(comb, stat=ierr)
+        call check_deallocate('comb', ierr)
+        call dealloc_det_info(d0)
 
     end subroutine find_sym_space_size
 
@@ -296,12 +327,45 @@ contains
         integer, intent(in), optional :: occ_list0(nel)
 
         integer :: i, j, iel, idet, ierr
-        integer :: nalpha_combinations, nbeta_combinations
-        integer :: sym_beta, sym
+        integer :: nbeta_combinations
+        integer, allocatable :: nalpha_combinations(:)
+        integer :: sym_beta, sym, excit_level_alpha, excit_level_beta
         character(4) :: fmt1
-        integer(i0) :: f_alpha, f_beta, f0(basis_length), f(basis_length)
-        integer, allocatable :: occ(:)
+        integer(i0) :: f0(basis_length), f(basis_length)
+        integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(ndim), k_beta(ndim)
+        type(det_info) :: d0
+
+        call alloc_det_info(d0)
+
+        ! See comments in find_sym_space_size
+        if (truncate_space) then
+            if (.not.present(occ_list0)) then
+                call stop_all('enumerate_determinants', 'Require reference for truncated CI spaces.')
+            end if
+            ! Identical to the else statements if truncation_level = nel.
+            allocate(nalpha_combinations(0:nbeta), stat=ierr)
+            nalpha_combinations = 0
+            nbeta_combinations = 0
+            do i = 0, truncation_level
+                nbeta_combinations = nbeta_combinations + binom_i(nbeta, i)*binom_i(nvirt_beta, i)
+                do j = 0, min(truncation_level-i, nalpha)
+                    nalpha_combinations(i) = nalpha_combinations(i) + binom_i(nalpha, j)*binom_i(nvirt_alpha, j)
+                end do
+            end do
+            call encode_det(occ_list0, d0%f)
+            call decode_det_spinocc_spinunocc(d0%f, d0)
+        else
+            ! No matter what the excitation level of the beta string, all alpha
+            ! combinations are allowed.
+            allocate(nalpha_combinations(0:0), stat=ierr)
+            nbeta_combinations = binom_i(nbasis/2, nbeta)
+            nalpha_combinations = binom_i(nbasis/2, nalpha)
+            truncation_level = nel
+        end if
+        call check_allocate('nalpha_combinations',size(nalpha_combinations),ierr)
+        allocate(comb(2*truncation_level, 2), stat=ierr)
+        call check_allocate('comb', size(comb), ierr)
 
         allocate(occ(nel), stat=ierr)
         call check_allocate('occ', nel, ierr)
@@ -310,9 +374,6 @@ contains
             deallocate(dets_list, stat=ierr)
             call check_deallocate('dets_list',ierr)
         end if
-
-        nbeta_combinations = binom_i(nbasis/2, nbeta)
-        nalpha_combinations = binom_i(nbasis/2, nalpha)
 
         ndets = sym_space_size(ref_sym)
 
@@ -339,20 +400,21 @@ contains
             end if
 
             if (truncate_space) then
-                f = first_perm(nel)
-                i = 0
-                if (get_excitation_level(f,f0) <= truncation_level) then
-                    i = i + 1
-                    dets_list(:,i) = f
-                end if
-                do while(i<ndets)
-                    f = bit_permutation(f(1))
-                    if (get_excitation_level(f,f0) <= truncation_level) then
-                        i = i + 1
-                        dets_list(:,i) = f
-                    end if
+                ! Need list of spin-down sites (ie 'unoccupied' bits).
+                allocate(unocc(nbasis-nel), stat=ierr)
+                call check_allocate('unocc', size(unocc), ierr)
+                call decode_bit_string(d0%f(1), unocc)
+                do i = 1, ndets
+                    call next_string(i==1, .false., nbasis, nel, d0%occ_list, &
+                                     unocc, truncation_level, comb(:,1),  &
+                                     occ, excit_level_alpha)
+                    call encode_det(occ, dets_list(:,i))
                 end do
+                deallocate(unocc, stat=ierr)
+                call check_deallocate('unocc', ierr)
             else
+                ! Easiest just to iterate through all possible bit permutations.
+                ! No symmetry to check!
                 dets_list(1,1) = first_perm(nel)
                 do i = 2, ndets
                     dets_list(1,i) = bit_permutation(dets_list(1,i-1))
@@ -371,16 +433,11 @@ contains
             do i = 1, nbeta_combinations
 
                 ! Get beta orbitals.
-                if (i == 1) then
-                    f_beta = first_perm(nbeta)
-                else
-                    f_beta = bit_permutation(f_beta)
-                end if
+                call next_string(i==1, .false., nbasis/2, nbeta, d0%occ_list_beta, &
+                                 d0%unocc_list_beta, truncation_level, comb(:,1),  &
+                                 occ(1:nbeta), excit_level_beta)
 
-                call decode_bit_string(f_beta, occ)
-                ! Convert to beta orbitals.
-                occ = 2*(occ+1)
-                ! Symmetry of the beta orbitals.
+                ! Symmetry.
                 ! Have to treat the UEG as a special case as we don't consider
                 ! all possible symmetries for the UEG but rather only momenta
                 ! which exist in the basis set.
@@ -393,18 +450,13 @@ contains
                     sym_beta = symmetry_orb_list(occ(1:nbeta))
                 end if
 
-                do j = 1, nalpha_combinations
+                do j = 1, nalpha_combinations(excit_level_beta)
 
                     ! Get alpha orbitals.
-                    if (j == 1) then
-                        f_alpha = first_perm(nalpha)
-                    else
-                        f_alpha = bit_permutation(f_alpha)
-                    end if
+                    call next_string(j==1, .true., nbasis/2, nalpha, d0%occ_list_alpha, &
+                                     d0%unocc_list_alpha, truncation_level-excit_level_beta, &
+                                     comb(:,2), occ(nbeta+1:), excit_level_alpha)
 
-                    call decode_bit_string(f_alpha, occ(nbeta+1:nel))
-                    ! Convert to alpha orbitals.
-                    occ(nbeta+1:nel) = 2*occ(nbeta+1:nel)+1
                     ! Symmetry of all orbitals.
                     if (system_type == ueg) then
                         k = k_beta
@@ -419,28 +471,8 @@ contains
 
                     if (sym == ref_sym) then
 
-                        if (truncate_space) then
-                            call encode_det(occ, f)
-                            if (get_excitation_level(f,f0) <= truncation_level) then
-                                ! Within truncation level.
-                                idet = idet + 1
-                                if (separate_strings) then
-                                    ! Merge alpha and beta sets into determinant list.
-                                    dets_list(:,idet) = (/ f_alpha, f_beta /)
-                                else
-                                    dets_list(:,idet) = f
-                                end if
-                            end if
-                        else
-                            idet = idet + 1
-                            if (separate_strings) then
-                                ! Merge alpha and beta sets into determinant list.
-                                dets_list(:,idet) = (/ f_alpha, f_beta /)
-                            else
-                                call encode_det(occ, f)
-                                dets_list(:,idet) = f
-                            end if
-                        end if
+                        idet = idet + 1
+                        call encode_det(occ, dets_list(:,idet))
 
                     end if
 
@@ -459,7 +491,126 @@ contains
 
         deallocate(occ, stat=ierr)
         call check_deallocate('occ', ierr)
+        deallocate(nalpha_combinations, stat=ierr)
+        call check_deallocate('nalpha_combinations', ierr)
+        deallocate(comb, stat=ierr)
+        call check_deallocate('comb', ierr)
+        call dealloc_det_info(d0)
 
     end subroutine enumerate_determinants
+
+!--- Obtain the next basis function string ---
+
+    subroutine next_string(init, alpha, norb_spin, nel_spin, occ_spin, unocc_spin, max_level, comb, string, excit_level)
+
+        ! Generate the next string/list of orbitals occupied by electrons of
+        ! a given spin.
+
+        ! If there is no truncation of the Hilbert space, then all combinations
+        ! of orbitals are generated.  If there is a truncation of the Hilbert
+        ! space, then only combinations within the required number of
+        ! excitations from a reference determinant are generated.
+
+        ! In:
+        !    init: set to true if the first call to next_string, false
+        !        otherwise.  If true then comb is initialised appropriately.
+        !    alpha: set true to produce a string of alpha orbitals; false for
+        !        a string of beta orbitals.  Used only if max_level == nel_spin
+        !        (ie no truncation of the space), otherwise orbitals are
+        !        selected from occ_spin and unocc_spin.
+        !    norb_spin: number of orbitals of the same spin.
+        !    nel_spin: number of electrons of the same spin.
+        !    occ_spin: list of occupied orbitals of the given spin in the
+        !        reference determinant.  If max_level < nel_spin, this is used
+        !        to select orbitals a spin string has in common with the
+        !        reference.
+        !    unocc_spin: list of unoccupied orbitals of the given spin in the
+        !        reference determinant.  If max_level < nel_spin, this is used
+        !        to select the orbitals a spin string does not have in common
+        !        with the reference.
+        !    max_level: maximum number of excitations from the reference to
+        !        consider.  max_level == nel_spin implies no truncation of the
+        !        space.
+        ! In/Out:
+        !    comb: internal state used to generate the next combination.  Do not
+        !        change or set outside this routine.
+        !    excit_level: number of excitations by which string and the
+        !        reference differ.  Set to 0 if max_level == nel_spin and on
+        !        initialisation otherwise.  Updated with the excitation level
+        !        when generating a truncated space.  (Note that next_string
+        !        generates all strings of a given excitation level before going
+        !        to the next excitation level.)  Do not change or set outside
+        !        this routine.
+        ! Out:
+        !    string: unique list of occupied spin-orbitals of the given spin.
+
+        use errors, only: stop_all
+        use utils, only: next_comb
+
+        logical, intent(in) :: init, alpha
+        integer, intent(in) :: norb_spin, nel_spin, max_level, occ_spin(:), unocc_spin(:)
+        integer, intent(inout) :: comb(max(nel_spin, 2*max_level)), excit_level
+        integer, intent(out) :: string(nel_spin)
+
+        integer :: i, ierr
+
+        if (max_level >= nel_spin) then
+            ! Very simple: want all possible combinations.  Find a combination
+            ! and hence create a string from it.
+            excit_level = 0
+            if (init) then
+                forall(i=1:nel_spin) comb(i) = i-1
+            else
+                call next_comb(norb_spin, nel_spin, comb(1:nel_spin), ierr)
+                if (ierr /= 0) &
+                    call stop_all('next_string', 'Too many calls.  No combinations remaining.')
+            end if
+            ! Convert to spin orbitals.
+            ! alpha (up) spin functions are odd.
+            ! beta (down) spin functions are even.
+            ! Elements in comb are in range [0,norb_spin-1]
+            if (alpha) then
+                string = 2*comb(:nel_spin) + 1
+            else
+                string = 2*(comb(:nel_spin)+ 1)
+            end if
+        else
+            if (init) then
+                ! Return reference as the first string.
+                string = occ_spin
+                excit_level = 0
+                ! Prepare combination for first single excitation.
+                ! CARE: this uses an undocumented feature of next_comb, where if
+                ! the input comb is (-1), then next_comb returns (0).
+                comb(1:2) = (/ 0, -1 /)
+            else
+                ! Must be doing (at least) single excitations now.
+                if (excit_level == 0) excit_level = 1
+                ! Select combination of valence orbitals to excite into.
+                call next_comb(norb_spin-nel_spin, excit_level, comb(excit_level+1:2*excit_level), ierr)
+                if (ierr == 1) then
+                    ! Select next combination of core orbitals to excite from.
+                    call next_comb(nel_spin, excit_level, comb(1:excit_level), ierr)
+                    if (ierr == 0) then
+                        ! Everything ok.
+                    else if (excit_level == max_level) then
+                        call stop_all('next_string', 'Too many calls.  No combinations remaining.')
+                    else
+                        ! No more combinations at this excitation level.  Go to the
+                        ! next excitation level.
+                        excit_level = excit_level + 1
+                        forall (i=1:excit_level) comb(i) = i - 1
+                    end if
+                    ! Reset combination of the virtuals.
+                    forall (i=1:excit_level) comb(i+excit_level) = i - 1
+                end if
+                ! Form string by exciting electrons from selected core orbitals
+                ! into selected virtual orbitals.
+                string = occ_spin
+                forall (i=1:excit_level) string(comb(i)+1) = unocc_spin(comb(i+excit_level)+1)
+            end if
+        end if
+
+    end subroutine next_string
 
 end module determinant_enumeration
