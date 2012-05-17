@@ -18,15 +18,16 @@ contains
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use system, only: nel, nsym, sym_max, sym0, uhf
-        use determinant_enumeration, only: enumerate_determinants, find_sym_space_size
+        use determinant_enumeration, only: enumerate_determinants, ndets, sym_space_size
         use determinants, only: tot_ndets, set_spin_polarisation, spin_orb_list
-        use determinant_enumeration, only: ndets, sym_space_size
         use fciqmc_data, only: occ_list0
         use lanczos
         use full_diagonalisation
         use hamiltonian, only: get_hmatel_dets
+        use reference_determinant
         use symmetry, only: symmetry_orb_list
 
+        use errors, only: stop_all
         use utils, only: int_fmt
         use ranking, only: insertion_rank_rp
 
@@ -82,13 +83,28 @@ contains
             isym_max = sym_in
         end if
 
-        if (truncate_space .and. allocated(occ_list0)) then
-            ! If truncating space and a reference determinant was supplied, then
-            ! we need to only consider that spin and symmetry.
+        if (allocated(occ_list0)) then
+            ! If a reference determinant was supplied, then we need to only
+            ! consider that spin and symmetry.
             isym_min = symmetry_orb_list(occ_list0)
             isym_max = isym_min
             ms_min = spin_orb_list(occ_list0)
             ms_max = ms_min
+        end if
+
+        if (truncate_space) then
+            if (isym_min /= isym_max .or. ms_min /= ms_max) then
+                call stop_all('diagonalise', 'Symmetry and spin must be &
+                    &specified or a reference determinant supplied for &
+                    &truncated CI calculations.')
+            end if
+            if (.not. allocated(occ_list0)) then
+                ! Create reference det based upon symmetry labels.
+                call set_spin_polarisation(ms_min)
+                allocate(occ_list0(nel), stat=ierr)
+                call check_allocate('occ_list0', nel, ierr)
+                call set_reference_det(occ_list0, .true., isym_min)
+            end if
         end if
 
         if (doing_calc(lanczos_diag)) then
@@ -111,9 +127,9 @@ contains
             ! Find and set information about the space.
             call set_spin_polarisation(ms)
             if (allocated(occ_list0)) then
-                call find_sym_space_size(occ_list0)
+                call enumerate_determinants(.true., occ_list0=occ_list0)
             else
-                call find_sym_space_size()
+                call enumerate_determinants(.true.)
             end if
 
             ! Diagonalise each symmetry block in turn.
@@ -135,9 +151,9 @@ contains
 
                 ! Find all determinants with this spin.
                 if (allocated(occ_list0)) then
-                    call enumerate_determinants(isym, occ_list0)
+                    call enumerate_determinants(.false., isym, occ_list0)
                 else
-                    call enumerate_determinants(isym)
+                    call enumerate_determinants(.false., isym)
                 end if
 
                 if (ndets == 1) then
