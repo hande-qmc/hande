@@ -335,7 +335,7 @@ contains
         ! If not set, then must be the largest possible cluster
         if (cluster%nexcitors < 0) then
             cluster%nexcitors = truncation_level + 2
-            cluster%pselect = cluster%pselect/(1.0_p - psize)
+            cluster%pselect = cluster%pselect*(1.0_p - psize)
         end if
 
         select case(cluster%nexcitors)
