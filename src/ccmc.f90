@@ -156,7 +156,7 @@ contains
 
         logical :: soft_exit
 
-        integer :: pos
+        integer :: D0_pos
         logical :: hit
 
         real :: t1, t2
@@ -192,8 +192,8 @@ contains
                 ! As we might select the reference determinant multiple times in
                 ! a cycle, the running total of D0_population is incorrect (by
                 ! a factor of the number of times it was selected).
-                call search_walker_list(f0, 1, tot_walkers, hit, pos)
-                D0_normalisation = walker_population(1,pos)
+                call search_walker_list(f0, 1, tot_walkers, hit, D0_pos)
+                D0_normalisation = walker_population(1,D0_pos)
 
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
@@ -205,7 +205,7 @@ contains
                 do iattempt = 1, nparticles(1)
 
                     ! TODO: initiator.
-                    call select_cluster(nparticles(1), cdet, cluster)
+                    call select_cluster(nparticles(1), D0_pos, cdet, cluster)
 
                     if (cluster%excitation_level <= truncation_level+2) then
 
@@ -262,7 +262,7 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(nattempts, cdet, cluster)
+    subroutine select_cluster(nattempts, D0_pos, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -273,6 +273,7 @@ contains
         ! In:
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
+        !    D0_pos: position in the excip list of the reference.
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
         !        reference determinant.  This is a bare det_info variable on input
@@ -296,6 +297,7 @@ contains
         use utils, only: factorial
 
         integer(lint), intent(in) :: nattempts
+        integer, intent(in) :: D0_pos
         type(det_info), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
@@ -343,36 +345,35 @@ contains
             ! Must be the reference.
             cdet%f = f0
             cluster%excitation_level = 0
-            cluster%amplitude = D0_normalisation ! TODO: don't accumulate D0 over report loops
+            cluster%amplitude = D0_normalisation
             cluster%cluster_to_det_sign = 1
             ! Only one cluster of this size to choose => p_clust = 1
         case default
             ! Select cluster from the excitors on the current processor in
             ! a uniform manner.
+            ! Not allowed to select the reference as it is not an excitor.
             ! First excitor 'seeds' the cluster:
-            pos = int(genrand_real2()*tot_walkers) +1
+            pos = int(genrand_real2()*(tot_walkers-1)) + 1 ! TODO: adjust for parallel
+            if (pos >= D0_pos) pos = pos + 1
             cdet%f = walker_dets(:,pos)
             cluster_population = walker_population(1,pos)
             cluster%excitors(1)%f => walker_dets(:,pos)
-            if (all(walker_dets(:,pos) == f0)) then
-                ! Not allowed to select the reference as it is not an excitor.
-                ! Return a null cluster.
-                cluster_population = 0
-            else
-                ! Now the rest...
-                do i = 2, cluster%nexcitors
-                    ! Select a position between in the excitors list.
-                    pos = int(genrand_real2()*tot_walkers) + 1
-                    ! Not allowed to select the reference...
-                    if (all(walker_dets(:,pos) == f0)) then
-                        cluster_population = 0
-                    else
-                        cluster%excitors(i)%f => walker_dets(:,pos)
-                        call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population)
-                    end if
-                    if (cluster_population == 0) exit
-                end do
-            end if
+            ! Now the rest...
+            do i = 2, cluster%nexcitors
+                ! Select a position between in the excitors list.
+                pos = int(genrand_real2()*(tot_walkers-1)) + 1 ! TODO: adjust for parallel
+                if (pos >= D0_pos) pos = pos + 1
+                cluster%excitors(i)%f => walker_dets(:,pos)
+                call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population)
+                if (cluster_population == 0) exit
+            end do
+
+            ! We chose excitors uniformly.
+            !  -> prob. of each excitor is 1./(number of excitors on processor).
+            ! Overall probability is the product of this times the number of
+            ! ways the cluster could have been selected, ie
+            !   n_s!/n_excitors^n_s
+            cluster%pselect = (cluster%pselect*factorial(cluster%nexcitors))/((tot_walkers-1)**cluster%nexcitors)
 
             if (cluster_population /= 0) cluster%excitation_level = get_excitation_level(f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
@@ -385,16 +386,9 @@ contains
                 call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = real(cluster_population,p)/(D0_normalisation**(cluster%nexcitors-1)) ! TODO: don't accumulate D0 over report loops
+                cluster%amplitude = real(cluster_population,p)/(D0_normalisation**(cluster%nexcitors-1))
                 ! Factorial due to the series expansion of exp(\hat{T}).
                 cluster%amplitude = cluster%amplitude/factorial(cluster%nexcitors)
-
-                ! We chose excitors uniformly.
-                !  -> prob. of each excitor is 1./(number of excitors on processor).
-                ! Overall probability is the product of this times the number of
-                ! ways the cluster could have been selected, ie
-                !   n_s!/n_excitors^n_s
-                cluster%pselect = (cluster%pselect*factorial(cluster%nexcitors))/(tot_walkers**cluster%nexcitors)
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
