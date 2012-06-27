@@ -176,7 +176,7 @@ contains
             nalpha_combinations = 0
             nbeta_combinations = 0
             ! Identical to the settings in the else statements if truncation_level == nel.
-            do i = 0, truncation_level
+            do i = 0, min(truncation_level, nbeta)
                 nbeta_combinations = nbeta_combinations + binom_i(nbeta, i)*binom_i(nvirt_beta, i)
                 do j = 0, min(truncation_level-i, nalpha)
                     nalpha_combinations(i) = nalpha_combinations(i) + binom_i(nalpha, j)*binom_i(nvirt_alpha, j)
