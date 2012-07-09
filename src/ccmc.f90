@@ -184,7 +184,6 @@ contains
         use qmc_common
         use fciqmc_restart, only: dump_restart
         use proc_pointers
-        use spawning, only: create_spawned_particle_truncated
         use system, only: nel
 
         integer :: ireport, icycle
@@ -259,7 +258,6 @@ contains
                 ! processor.
                 do iattempt = 1, nparticles(1)
 
-                    ! TODO: initiator.
                     call select_cluster(nparticles(1), D0_pos, max_cluster_size, cdet, cluster)
 
                     if (cluster%excitation_level <= truncation_level+2) then
@@ -269,9 +267,7 @@ contains
                         call spawner_ccmc(cdet, cluster, nspawned, connection)
 
                         if (nspawned /= 0) then
-                            ! TODO: initiator (use create_spawned_particle_ptr
-                            ! proc pointer).
-                            call create_spawned_particle_truncated(cdet, connection, nspawned, spawned_pop)
+                            call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
                         end if
 
                         ! Does the cluster collapsed onto D0 produce
@@ -349,7 +345,7 @@ contains
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: genrand_real2
-        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets
+        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, initiator_population
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
 
@@ -399,6 +395,15 @@ contains
         end if
         cluster%pselect = cluster%pselect*psize
 
+        ! Initiator approximation: no point using a CAS so just use the populations.
+        ! This is sufficiently quick that we'll just do it in all cases, even
+        ! when not using the initiator approximation.  This matches the approach
+        ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
+        ! (unpublished).
+        ! Assume all excitors in the cluster are initiators (initiator_flag=0)
+        ! until proven otherwise (initiator_flag=1).
+        cdet%initiator_flag = 0
+
         select case(cluster%nexcitors)
         case(0)
             ! Must be the reference.
@@ -406,6 +411,12 @@ contains
             cluster%excitation_level = 0
             cluster%amplitude = D0_normalisation
             cluster%cluster_to_det_sign = 1
+            if (cluster%amplitude <= initiator_population) then
+                ! Something has gone seriously wrong and the CC
+                ! approximation is (most likely) not suitably for this system.
+                ! Let the user be an idiot if they want to be...
+                cdet%initiator_flag = 1
+            end if
             ! Only one cluster of this size to choose => p_clust = 1
         case default
             ! Select cluster from the excitors on the current processor in
@@ -417,6 +428,9 @@ contains
             cdet%f = walker_dets(:,pos)
             cluster_population = walker_population(1,pos)
             cluster%excitors(1)%f => walker_dets(:,pos)
+            if (walker_population(1,pos) <= initiator_population) then
+                cdet%initiator_flag = 1
+            end if
             ! Now the rest...
             do i = 2, cluster%nexcitors
                 ! Select a position between in the excitors list.
@@ -424,6 +438,9 @@ contains
                 if (pos >= D0_pos) pos = pos + 1
                 cluster%excitors(i)%f => walker_dets(:,pos)
                 call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population)
+                if (walker_population(1,pos) <= initiator_population) then
+                    cdet%initiator_flag = 1
+                end if
                 if (cluster_population == 0) exit
             end do
 
