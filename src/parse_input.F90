@@ -174,13 +174,17 @@ contains
             case('FCIQMC')
                 calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
-                calc_type = calc_type + initiator_fciqmc
+                calc_type = calc_type + fciqmc_calc
+                initiator_approximation = .true.
             case('CT_FCIQMC')
                 calc_type = calc_type + ct_fciqmc_calc
             case('DMQMC')
                 calc_type = calc_type + dmqmc_calc
             case('CCMC')
                 calc_type = calc_type + ccmc_calc
+            case('ICCMC')
+                calc_type = calc_type + ccmc_calc
+                initiator_approximation = .true.
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
@@ -646,6 +650,7 @@ contains
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lmag2, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)

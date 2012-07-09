@@ -33,7 +33,7 @@ contains
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
-        if (doing_calc(initiator_fciqmc)) call init_ifciqmc()
+        if (initiator_approximation) call init_ifciqmc()
 
         if (doing_calc(dmqmc_calc)) then
             call do_dmqmc()
@@ -75,7 +75,7 @@ contains
                                 annihilate_spawned_list_initiator
         use basis, only: nbasis, basis_length, basis_fns, write_basis_fn, bit_lookup
         use basis, only: nbasis, basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
-        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
+        use calc, only: sym_in, ms_in, initiator_approximation, fciqmc_calc, hfs_fciqmc_calc, ct_fciqmc_calc
         use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation
         use dmqmc_procedures, only: init_dmqmc
@@ -109,7 +109,7 @@ contains
         else
             spawned_hf_pop = spawned_size
         end if
-        if (doing_calc(initiator_fciqmc)) then
+        if (initiator_approximation) then
             spawned_size = spawned_size + 1
             spawned_parent = spawned_size
         end if
@@ -404,9 +404,10 @@ contains
             write (6,'(1X,a44,1X,f11.4,/)') &
                               'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
-            if (doing_calc(initiator_fciqmc)) then
+            if (initiator_approximation) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
-                write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
+                if (doing_calc(fciqmc_calc)) &
+                    write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
                     'CAS space of initiator determinants:',initiator_CAS
                 write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
                     'Population for a determinant outside CAS space to be an initiator:', initiator_population
@@ -566,7 +567,7 @@ contains
         ! 2. Set calculation-specific procedure pointers
 
         ! a) initiator-approximation
-        if (doing_calc(initiator_fciqmc)) then
+        if (initiator_approximation) then
             set_parent_flag_ptr => set_parent_flag
             if (truncate_space) then
                 create_spawned_particle_ptr => create_spawned_particle_initiator_truncated

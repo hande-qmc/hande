@@ -17,20 +17,21 @@ integer, parameter :: lanczos_diag = 2**1
 ! Use the incredibly simple and naive FCIQMC or the optimised implementation?
 integer, parameter :: fciqmc_calc = 2**2
 integer, parameter :: simple_fciqmc_calc = 2**3
-! Doing initiator-FCIQMC?
-integer, parameter :: initiator_fciqmc = 2**4
 ! Doing continuous-time FCIQMC?
-integer, parameter :: ct_fciqmc_calc = 2**5
+integer, parameter :: ct_fciqmc_calc = 2**4
 ! Doing Hellmann--Feynman sampling?
-integer, parameter :: hfs_fciqmc_calc = 2**6
+integer, parameter :: hfs_fciqmc_calc = 2**5
 ! Estimate the size of the Hilbert space using Monte Carlo?
-integer, parameter :: mc_hilbert_space = 2**7
+integer, parameter :: mc_hilbert_space = 2**6
 ! Doing a folded spectrum calculation?
-integer, parameter :: folded_spectrum = 2**8
+integer, parameter :: folded_spectrum = 2**7
 ! Doing Density Matrix Monte Carlo?
-integer, parameter :: dmqmc_calc = 2**9
+integer, parameter :: dmqmc_calc = 2**8
 ! Doing Coupled Cluster Monte Carlo?
-integer, parameter :: ccmc_calc = 2**10
+integer, parameter :: ccmc_calc = 2**9
+
+! Using the initiator approximation in FCIQMC or CCMC?
+logical :: initiator_approximation = .false.
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.

@@ -104,7 +104,7 @@ contains
             call estimate_hilbert_space()
         end if
 
-        if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
+        if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (parent) then
                 write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
                 write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
