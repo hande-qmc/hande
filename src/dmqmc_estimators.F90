@@ -70,7 +70,7 @@ contains
             if (ireport < nreport) shift = shift_profile(ireport+1)
         else
             if (vary_shift) call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
-            if (nparticles(1) > target_particles .and. .not.vary_shift) vary_shift = .true.
+            if (ntot_particles(1) > target_particles .and. .not.vary_shift) vary_shift = .true.
         end if
 
         ntot_particles_old = ntot_particles
