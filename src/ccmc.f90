@@ -131,6 +131,7 @@ contains
         ! in fciqmc_main.
 
         use checking, only: check_allocate, check_deallocate
+        use errors, only: stop_all
         ! TODO: parallelisation.
         use parallel
 
@@ -160,6 +161,13 @@ contains
         logical :: hit
 
         real :: t1, t2
+
+        if (truncation_level+2 > 12) then
+            call stop_all('do_ccmc', 'CCMC can currently only handle clusters up &
+                                     &to size 12 due to integer overflow in &
+                                     &factorial routines for larger clusters.  Please &
+                                     &implement better factorial routines.')
+        end if
 
         ! Allocate det_info components...
         call alloc_det_info(cdet)
