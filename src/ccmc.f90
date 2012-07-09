@@ -185,6 +185,7 @@ contains
         use fciqmc_restart, only: dump_restart
         use proc_pointers
         use spawning, only: create_spawned_particle_truncated
+        use system, only: nel
 
         integer :: ireport, icycle
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
@@ -196,7 +197,7 @@ contains
 
         logical :: soft_exit
 
-        integer :: D0_pos
+        integer :: D0_pos, max_cluster_size
         logical :: hit
 
         real :: t1, t2
@@ -247,12 +248,19 @@ contains
                 ! always 0.
                 call init_mc_cycle(nattempts, ndeath)
 
+                ! Maximum possible cluster size that we can generate.
+                ! Usually this is either the number of electrons or the
+                ! truncation level + 2 but we must handle the case where we are
+                ! growing the initial population from a single/small number of
+                ! excitors.
+                max_cluster_size = min(min(nel, truncation_level+2), tot_walkers-1)
+
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
                 do iattempt = 1, nparticles(1)
 
                     ! TODO: initiator.
-                    call select_cluster(nparticles(1), D0_pos, cdet, cluster)
+                    call select_cluster(nparticles(1), D0_pos, max_cluster_size, cdet, cluster)
 
                     if (cluster%excitation_level <= truncation_level+2) then
 
@@ -309,7 +317,7 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(nattempts, D0_pos, cdet, cluster)
+    subroutine select_cluster(nattempts, D0_pos, max_cluster_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -321,6 +329,8 @@ contains
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
         !    D0_pos: position in the excip list of the reference.
+        !    max_cluster_size: the maximum number of excitors that can be
+        !        included in a single composite cluster of excitors.
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
         !        reference determinant.  This is a bare det_info variable on input
@@ -344,11 +354,11 @@ contains
         use utils, only: factorial
 
         integer(lint), intent(in) :: nattempts
-        integer, intent(in) :: D0_pos
+        integer, intent(in) :: D0_pos, max_cluster_size
         type(det_info), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
-        real(p) :: rand, psize
+        real(p) :: rand, psize, psize_sum
         integer :: i, pos, cluster_population
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
@@ -367,25 +377,27 @@ contains
         ! truncation_level+2 excitors.
         ! Following the process described by Thom in 'Initiator Stochastic
         ! Coupled Cluster Theory' (unpublished), each size, n_s, has probability
-        ! p(n_s) = 1/2^(n_s+1), n_s=0,truncation_level and p(truncation_level+2)
-        ! is such that \sum_{n_s=0}^{truncation_level+2} p(n_s) = 1.
+        ! p(n_s) = 1/2^(n_s+1), n_s=0,max_level-1 and p(max_level)
+        ! is such that \sum_{n_s=0}^{max_level} p(n_s) = 1, and hence
+        ! p(max_level) = 1/2^max_level.
         rand = genrand_real2()
-        psize = 0.0_p
+        psize_sum = 0.0_p
         cluster%nexcitors = -1
-        do i = 0, truncation_level+1
-            psize = psize + 1.0_p/2**(i+1)
-            if (rand < psize) then
+        do i = 0, max_cluster_size -1
+            psize = 1.0_p/2**(i+1)
+            psize_sum = psize_sum + psize
+            if (rand < psize_sum) then
                 ! Found size!
                 cluster%nexcitors = i
-                cluster%pselect = cluster%pselect/2**(i+1)
                 exit
             end if
         end do
-        ! If not set, then must be the largest possible cluster
-        if (cluster%nexcitors < 0) then
-            cluster%nexcitors = truncation_level + 2
-            cluster%pselect = cluster%pselect*(1.0_p - psize)
+        ! If reached end of loop, then must be the largest possible cluster.
+        if (i == max_cluster_size) then
+            cluster%nexcitors = max_cluster_size
+            psize = 1.0_p/2**max_cluster_size
         end if
+        cluster%pselect = cluster%pselect*psize
 
         select case(cluster%nexcitors)
         case(0)
