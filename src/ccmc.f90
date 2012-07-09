@@ -373,7 +373,7 @@ contains
             ! Overall probability is the product of this times the number of
             ! ways the cluster could have been selected, ie
             !   n_s!/n_excitors^n_s
-            cluster%pselect = (cluster%pselect*factorial(cluster%nexcitors))/((tot_walkers-1)**cluster%nexcitors)
+            cluster%pselect = (cluster%pselect*factorial(cluster%nexcitors))/(real(tot_walkers-1,p)**cluster%nexcitors)
 
             if (cluster_population /= 0) cluster%excitation_level = get_excitation_level(f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
