@@ -19,8 +19,11 @@ module ccmc
 ! useful implementation notes that fill in some technical details not (yet)
 ! explicitly described in the CCMC papers.
 
-!  CCMC dynamics
-! =============
+! CCMC
+! ====
+!
+! Analogue with FCIQMC
+! --------------------
 !
 ! In FCIQMC we essentially use first-order finite-difference approximation to the
 ! imaginary-time Schroedinger equation::
@@ -52,6 +55,42 @@ module ccmc
 ! either +1 or -1.  Alex Thom defines a_i such that this term is always +1 in his
 ! CCMC papers but this definition is not convenient for computation.  See
 ! comments in collapse_cluster and convert_excitor_to_determinant.
+!
+! We can only handle uniquely defined excitors, i.e. we consider t_{ij}^{ab} and
+! t_{ji}^{ba} to be one entity (where, unlike the above notation in terms of
+! determinants, the indices refer to spin-orbitals).  This is fine as
+! t_{ij}^{ab} a_{ij}^{ab} = t_{ji}^{ba} a_{ji}^{ba}.  (I apologise for using a in
+! two different senses...)  As a consequence, we must be very careful with the
+! above expansion in (5).  Returning to the notation where the indices label
+! a excitor/determinant, we can simplify (5) such that each unique cluster only
+! occurs once::
+!
+!     e^{T(t)} = 1 + \sum_i t_i(t) a_i + \sum_{i<j} t_i(t) t_j(t) a_i a_j
+!                  + \sum_{i<j<k} t_i(t) t_j(t) t_k(t) a_i a_j a_k + ....     (6)
+!
+! Alternatively, as pointed out by Trygve Helgaker, one can consider::
+!
+!     e^{T(t)} = e^{t_i(t) a_i} e^{t_j(t) a_j} e^{t_k(t) a_k} ...             (7)
+!              = (1+t_i(t) a_i) (1+t_j(t) a_j) (1+t_k(t) a_k) ...             (8)
+!
+! which expands out to (6) and uses the property that a_i a_i = 0.
+!
+! Normalisation
+! -------------
+!
+! The convention that the overlap with the reference is set to unity is rather
+! hard to maintain in CCMC.  Instead we follow the prescription of Alex Thom and
+! introduce an additional variable, N_0, to act as a normalisation constant::
+!
+!     |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >    (9)
+!
+! The number of particles on the reference (not strictly excips though we shall
+! refer to them by this name for the sake of conciseness and generality) is
+! hence N_0 and can be varied stochastically to maintain the required
+! (relative) normalisation.
+!
+! Dynamics
+! --------
 !
 ! Dynamics in FCIQMC involve stochastically sampling the action of the
 ! Hamiltonian.  As the projection onto the CC wavefunction in (3) involves many
@@ -381,6 +420,9 @@ contains
             ! Overall probability is the product of this times the number of
             ! ways the cluster could have been selected, ie
             !   n_s!/n_excitors^n_s
+            ! This is because we consider the cluster t_j t_i and t_i t_j to be
+            ! the same cluster and hence must account for the number of ways the
+            ! specific unique cluster can be generated.
             cluster%pselect = (cluster%pselect*factorial(cluster%nexcitors))/(real(tot_walkers-1,p)**cluster%nexcitors)
 
             if (cluster_population /= 0) cluster%excitation_level = get_excitation_level(f0, cdet%f)
@@ -395,8 +437,6 @@ contains
 
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = real(cluster_population,p)/(D0_normalisation**(cluster%nexcitors-1))
-                ! Factorial due to the series expansion of exp(\hat{T}).
-                cluster%amplitude = cluster%amplitude/factorial(cluster%nexcitors)
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
