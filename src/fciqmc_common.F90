@@ -19,17 +19,21 @@ contains
         ! TODO: make compatible with HFS.
 
         use basis, only: basis_length
+        use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det, write_det
 
         use parallel
+        use errors, only: stop_all
 
         integer, parameter :: particle_type = 1
         integer :: i, fmax(basis_length), max_pop
 #ifdef PARALLEL
         integer :: in_data(2), out_data(2), ierr
 #endif
-        real(p) :: H00_max
+        real(p) :: H00_max, H00_old
         logical :: updated
+
+        H00_old = H00
 
         updated = .false.
         ! Find determinant with largest population.
@@ -90,12 +94,27 @@ contains
         if (updated) then
             ! Update occ_list.
             call decode_det(f0, occ_list0)
+            ! walker_data(1,i) holds <D_i|H|D_i> - H00_old.  Update.
+            ! H00 is currently <D_0|H|D_0> - H00_old.
+            ! Want walker_data(1,i) to be <D_i|H|D_i> - <D_0|H|D_0>
+            ! We'll fix H00 later and avoid an extra tot_walkers*additions.
+            do i = 1, tot_walkers
+                walker_data(1,i) = walker_data(1,i) - H00
+            end do
+            ! The fold line in the folded spectrum approach is set (during
+            ! initialisation) relative to the reference.
+            fold_line = fold_line - H00
+            ! Now set H00 = <D_0|H|D_0> so that future references to it are
+            ! correct.
+            H00 = H00 + H00_old
+            if (doing_calc(hfs_fciqmc_calc)) call stop_all('select_ref_det', 'Not implemented for HFS.')
             if (parent) then
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
+                write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
                 write (6,'(1X,"#",1X,62("-"))')
             end if
