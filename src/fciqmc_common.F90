@@ -70,7 +70,6 @@ contains
         call mpi_allreduce(in_data, out_data, 1, MPI_2INTEGER, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
         if (out_data(1) /= nint(D0_population) .and. all(fmax /= f0)) then
-            write (6,*) 'MPI_MAXLOC', out_data
             max_pop = out_data(1)
             updated = .true.
             D0_proc = out_data(2)
