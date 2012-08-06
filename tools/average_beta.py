@@ -12,6 +12,7 @@ import sys
 from math import sqrt
 from math import ceil
 from math import floor
+from math import exp
 
 try:
     import matplotlib.pyplot as pyplot
@@ -212,6 +213,36 @@ def extract_data(data_files, estimtor_col_no, start_averaging):
 
         f.close()
 
+    return (data, tau)
+
+def reweight_data(data, tau, l):
+    '''Multiply data by necessary factors to remove population control bias.'''
+    # Put the keys into a list.
+    beta_values = list(data)
+    # Sort the list into order, from smallest to largest.
+    beta_values = sorted(beta_values)
+    counter = 0
+    max_index_numerators = len(data[0].numerators[0])
+    max_index_loops = len(data[0].shift)
+    
+    for x in range(0,max_index_loops):
+        accumulated_weight = 1.0
+        counter = 0
+        for beta in beta_values:
+            # If more iterations have passed than the number of reweighting factors to be
+            # used, then remove the oldest factors of e(-tau*shift) from accumulated_weight
+            # so that only the last l factors of e(-tau*shift) will be included.
+            if counter >= l:
+                a = counter-l
+                b = data[beta_values[a]].shift[x]
+                accumulated_weight = accumulated_weight*exp(tau*b)
+            b = data[beta].shift[x]
+            accumulated_weight = accumulated_weight*exp(-tau*b)
+            counter = counter+1
+            data[beta].Tr_rho[x] = data[beta].Tr_rho[x]*accumulated_weight
+            for y in range(0,max_index_numerators):
+                data[beta].numerators[x][y] = data[beta].numerators[x][y]*accumulated_weight
+    
     return data
 
 def get_data_stats(data):
@@ -540,6 +571,8 @@ def parse_options(args):
     parser.add_option('--without-spline', action='store_false', dest='with_spline', help='Do not calcualate heat capacity using spline fit. Default')
     parser.add_option('--with-heat-capacity', action='store_true', dest='with_heat_capacity', default=False, help='Calculate the stochastic heat capacity.')
     parser.add_option('--without-heat-capacity', action='store_false', dest='with_heat_capacity', help='Do not calculate teh stochastic heat capacity')
+    parser.add_option('-b','--remove_bias', action='store_true', dest='remove_bias', default=False, help='Undo the biasing effect of the shift by reweighting the data.')
+    parser.add_option('-a','--averaging_length', dest='averaging_length', type='int', default=100, help='When removing the bias by reweighting, this gives the number of previous iterations over which the weights are accumulated. Default: %default.')
     parser.add_option("-s", "--start-averaging", action="store", dest="start_averaging", type="int")
     (options, filenames) = parser.parse_args(args)
     
@@ -552,7 +585,9 @@ def parse_options(args):
 if __name__ == '__main__':
     (options, data_files) = parse_options(sys.argv[1:])
     estimator_headings, estimtor_col_no = get_estimator_headings(data_files)
-    data = extract_data(data_files, estimtor_col_no, options.start_averaging)
+    (data,tau) = extract_data(data_files, estimtor_col_no, options.start_averaging)
+    if options.remove_bias:
+        data = reweight_data(data,tau,options.averaging_length)
     stats = get_data_stats(data)
     print_stats(stats, estimator_headings, options.with_trace, options.with_shift, options.with_spline, options.with_heat_capacity)
     if options.plot:
