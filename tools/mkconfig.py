@@ -1,13 +1,57 @@
 #!/usr/bin/env python
-'''Produce a makefile for compiling the source code for a specified target/configuration.
+#
+# Script for producing a make.inc file from a ini-style configuration file.
+#
+# http://github.com/jsspencer/generic_makefile
+#
+# copyright (c) 2012, James Spencer.
+#
+# MIT license:
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#
+'''Produce a make.inc file for a specified target/configuration.
 
-Usage:
-    mkconfig.py [options] [configuration_file]
+Usage: mkconfig [options] config_file
 
-Use the --help option to see more details.
+config_file can be either a path to a file or the name of a file in the
+specified configuration directory.
 
-A platform is defined using a simple ini file, consisting of three sections:
-main, opt and dbg.  For instance::
+If no configuration file is given then the .default file in the specified
+configuration directory is used.
+
+A configuration file does not need to be specified with the --ls option.
+
+Options:
+  -h, --help            show help message and exit.
+  --help-long           show this help message and exit.
+  -d CONFIG_DIR, --dir=CONFIG_DIR
+                        Set directory containing the configuration files.
+                        Default: config/.
+  -g, --debug           Use the debug settings.  Default: use optimised
+                        settings.
+  -l, --ls              Print list of available configurations.
+  -o OUT, --out=OUT     Set the output filename to which the makefile settings
+                        are written.  Use -o - to write to stdout.  Default:
+                        make.inc.
+
+A platform is defined using a simple configuration file which is an ini file
+consisting of three sections: main, opt and dbg.  For instance:
 
     [main]
     cc = gfortran
@@ -22,7 +66,7 @@ main, opt and dbg.  For instance::
 
 Any option not specified in the 'opt' and 'dbg' sections is inherited from the
 'main' section.  The settings in 'opt' are used by default; the debug options
-can be selected by passing the -g option to mkconfig.py.
+can be selected by passing the -g option to mkconfig.
 
 Available options are:
 
@@ -30,137 +74,61 @@ fc
     Set the fortran compiler.
 fflags
     Set flags to be passed to the fortran compiler during compilation.
+f90_module_flag
+    Set the flag used by the compiler which is used to specify the directory
+    where module (.mod) files are placed when created and where they should be
+    searched for.
+cc
+    Set the C compiler.
+cflags
+    Set flags to be passed to the C compiler during compilation.
 cxx
     Set the C++ compiler.
 cxxflags
     Set flags to be passed to the C++ compiler during compilation.
-cppdefs
-    Set definitions to be used in the C pre-processing step.
-    C pre-processing is applied to .F90, .c and .cpp files (and not .f90
-    files).
+cpp
+    Set the C preprocessor to be used on Fortran source files.  If not defined
+    then the Fortran compiler is used to do the preprocessing.
 cppflags
     Set flags to be used in the C pre-processing step.
+    C pre-processing is applied to .F90, .F, .c and .cpp files (and not .f90
+    files).
 ld
     Set the linker program.
 ldflags
     Set flags to be passed to the linker during linking of the compiled objects.
 libs
     Set libraries to be used during the linking step.
-module_flag
-    Set the flag used by the compiler which is used to specify the directory
-    where module (.mod) files are placed when created and where they should be
-    searched for.
+ar
+    Set the archive program.  Default: ar.
+arflags
+    Set the flags to be passed to the archive program.  Default: -rcs.
 '''
 
 try:
-    import configparser
-except ImportError:
     import ConfigParser as configparser
+except ImportError:
+    import configparser
 import optparse
 import os
-import pprint
 import sys
 
-#======================================================================
-# Local settings.
-
-PROGRAM_NAME='hubbard.x'
-
-(PROGRAM_STEM, PROGRAM_EXT) = os.path.splitext(PROGRAM_NAME)
-
-# Directory in which compiled objects are placed.
-DEST='dest'
-
-# Directory in which the compiled executable is placed.
-EXE='bin'
-
-# List of directories (colon-separated) containing the source files.
-VPATH='src:lib/dSFMT:lib/external:lib/local'
-
-# Space separated list of file extensions for the source files.
-SOURCE_EXT='.f90 .F90 .c .cpp'
-
-#======================================================================
-
-MAKEFILE_TEMPLATE='''# Generated by mkconfig.py.
+MAKEFILE_TEMPLATE = '''# Generated by mkconfig.
 # Using the %(config)s %(opt_level)s configuration.
-
-SHELL=/bin/bash # For our sanity!
-
-# Name of this makefile.
-my_makefile := $(word $(words $(MAKEFILE_LIST)), $(MAKEFILE_LIST))
-# Command used to recursively call *this* makefile.
-my_make := $(MAKE) -f $(my_makefile)
+#
+# Not all options need to be set.
 
 #-----
-# Compiler configuration.
-
-# Fortran
-FC = %(fc)s
-FFLAGS = -I $(DEST) %(fflags)s
-
-# C++
-CXX = %(cxx)s
-CXXFLAGS = %(cxxflags)s
-
-# Pre-processing
-CPPDEFS = -D_VCS_VERSION='$(VCS_VERSION)' -D_CONFIG='"$(CONFIG).($(OPT))"' -DDSFMT_MEXP=19937 %(cppdefs)s
-CPPFLAGS = $(WORKING_DIR_CHANGES) %(cppflags)s
-
-# Linker
-LD = %(ld)s
-LDFLAGS = %(ldflags)s
-LIBS = %(libs)s
-
-#-----
-# Directory structure and setup.
-
 # Config info.
+
+# Used to create a configuration-level and optimisation-level specific
+# directory in which compiled objects are placed and to uniquely name binaries.
+
 CONFIG = %(config)s
 OPT = %(opt_level)s
 
-# Directories containing source files.
-VPATH = %(VPATH)s
-
-# Directory for objects.
-DEST = %(DEST)s/$(CONFIG)/$(OPT)
-
-# Directory for compiled executables.
-EXE = %(EXE)s
-
-# We put compiled objects and modules in $(DEST).  If it doesn't exist, create it.
-make_dest := $(shell test -e $(DEST) || mkdir -p $(DEST))
-
-# We put the compiled executable in $(EXE).  If it doesn't exist, then create it.
-make_exe := $(shell test -e $(EXE) || mkdir -p $(EXE))
-
-# Specific version of binary.
-PROG_VERSION = %(PROGRAM_STEM)s.$(CONFIG).$(OPT)%(PROGRAM_EXT)s
-
-# Symbolic link which points to $(PROG_VERSION).
-PROG = %(PROGRAM)s
-
 #-----
-# Find source files and resultant object files.
-
-# Source extensions.
-EXTS = %(SOURCE_EXT)s
-
-# Space separated list of source directories.
-SRCDIRS := $(subst :, ,$(VPATH))
-
-# Source filenames.
-find_files = $(foreach ext,$(EXTS), $(wildcard $(dir)/*$(ext)))
-SRCFILES := $(foreach dir,$(SRCDIRS),$(find_files))
-
-# Objects (strip path and replace extension of source files with .o).
-OBJ := $(addsuffix .o,$(basename $(notdir $(SRCFILES))))
-
-# Full path to all objects.
-OBJECTS := $(addprefix $(DEST)/, $(OBJ))
-
-#-----
-# VCS info.
+# Version control information (HANDE specific).
 
 # Get the version control id.  Git only.  Outputs a string.
 VCS_VERSION := $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 --pretty=format:%%H || echo -n 'Not under version control.' ) 2> /dev/null | tr -d '\\r\\n'  && echo -n \\")
@@ -171,148 +139,114 @@ VCS_VERSION := $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1
 WORKING_DIR_CHANGES := $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_WORKING_DIR_CHANGES")
 
 #-----
-# Dependency file.
+# Compiler configuration.
 
-DEPEND = %(DEST)s/.depend
+# If CPP is defined, then this is used to do the preprocessing on Fortran
+# source files and then the Fortran compiler is called.  If CPP is not defined,
+# then CPPFLAGS is passed to the Fortran compiler and the Fortran source files
+# are preprocessed and compiled in a single step.
+# All C and C++ files are preprocessed and compiled in one step by the C and
+# C++ compilers, with CPPFLAGS passed to the C and C++ compilers.
+CPP = %(cpp)s
 
-#-----
-# Compilation macros.
+# Pre-processing flags
+# Used for *.F, *.F90, *.c and *.cpp files.
+# Note three additional defintions specific to HANDE.
+CPPFLAGS = %(cppflags)s $(WORKING_DIR_CHANGES) -D_VCS_VERSION='${VCS_VERSION}' -D_CONFIG='"$(CONFIG).($(OPT))"'
 
-.SUFFIXES:
-.SUFFIXES: $(EXTS)
+# --- Fortran ---
+# compiler
+FC = %(fc)s
+# compiler flags
+FFLAGS = %(fflags)s
+# flag to specify directory to put compiled .mod files (e.g. -module for ifort, -J for gfortran)
+F90_MOD_FLAG = %(f90_module_flag)s
 
-#--- Fortran ---
+# --- C ---
+# compiler
+CC = %(cc)s
+# compiler flags
+CFLAGS = %(cflags)s
 
-# Files to be pre-processed then compiled.
-$(DEST)/%%.o: %%.F90
-\t$(FC) $(CPPDEFS) $(CPPFLAGS) -c $(FFLAGS) $< -o $@ %(module_flag)s$(DEST)
+# --- C++ ---
+# compiler
+CXX = %(cxx)s
+# compiler flags
+CXXFLAGS = %(cxxflags)s
 
-# Files to compiled directly.
-$(DEST)/%%.o: %%.f90
-\t$(FC) -c $(FFLAGS) $< -o $@ %(module_flag)s$(DEST)
+# --- Linker ---
+# linker
+LD = %(ld)s
+# linker flags
+LDFLAGS = %(ldflags)s
+# additional libraries to link to
+LIBS = %(libs)s
 
-#--- C/C++ ---
-
-# All C/C++ files are preprocessed as part of the compilation.
- 
-$(DEST)/%%.o: %%.c
-	$(CXX) $(CPPDEFS) $(CPPFLAGS) -c $(CXXFLAGS) $< -o $@
-
-$(DEST)/%%.o: %%.cpp
-	$(CXX) $(CPPDEFS) $(CPPFLAGS) -c $(CXXFLAGS) $< -o $@
-
-#-----
-# Goals.
-
-.PHONY: clean qt qtests tests depend help $(PROG) ctags
-
-# Compile program.
-$(PROG): $(EXE)/$(PROG_VERSION)
-\tcd $(EXE) && ln -s -f $(notdir $<) $@
-
-$(EXE)/$(PROG_VERSION): $(OBJECTS)
-\t$(my_make) check
-\trm -f $(DEST)/environment_report.o && $(my_make) $(DEST)/environment_report.o $(DEST)/core.o
-\t$(FC) -o $@ $(FFLAGS) $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
-
-# Remove compiled objects and executable.
-clean: 
-\trm -f $(DEST)/*.{d,o} $(EXE)/$(PROG_VERSION)
-
-cleanall:
-\trm -rf %(DEST)s $(EXE)
-
-# Build from scratch.
-new: clean $(PROG)
-
-# Run tests.
-tests:
-\tcd test_suite && testcode.py
-qtests:
-\tcd test_suite && testcode.py --quiet
-
-# Perform sanity tests on the source code.
-check:
-\ttools/check_keywords.py
-\t@echo
-\ttools/check_distribute.py
-
-qt: qtests
-
-# Generate dependency file.
-$(DEPEND):
-\ttools/sfmakedepend --file - --silent $(SRCFILES) --objdir \$$\(DEST\) --moddir \$$\(DEST\) > $@
-
-depend: 
-\t$(my_make) -B $(DEPEND)
-
-# tag files
-# ctags >> etags supplied by emacs
-ctags:
-\tctags $(SRCFILES)
-
-help:
-\t@echo "Please use 'make <target>' where <target> is one of:"
-\t@echo "  %(PROGRAM)-14s       [default target] Compile program in the %(EXE)s directory."
-\t@echo "  clean                Remove the compiled objects."
-\t@echo "  ctags                Run ctags on the source files."
-\t@echo "  new                  Remove all previously compiled objects and re-compile."
-\t@echo "  tests                Run test suite."
-\t@echo "  qtests               Run test suite in quiet mode."
-\t@echo "  check                Run check_keywords.sh and check_distribute.py scripts."
-\t@echo "  depend               Produce the .depend file containing the dependencies."
-\t@echo "                       Requires the makedepf90 tool to be installed."
-\t@echo "  help                 Print this help message."
-
-#-----
-# Include dependency file.
-
-# $(DEPEND) will be generated if it doesn't exist.
-include $(DEPEND)
+# --- Archiver ---
+# archive program (usually ar)
+AR = %(ar)s
+# archive flags (usually -rcs)
+ARFLAGS = %(arflags)s
 '''
 
 def parse_options(my_args):
     '''Parse command line options given in the my_args list.
 
-Returns the options object and a space separated list of configuration files.'''
-    parser = optparse.OptionParser(usage='''mkconfig.py [options] [configuration_file(s)]
+Returns the options object and the path to the selected configuration file.'''
+    parser = optparse.OptionParser(usage='''mkconfig [options] config_file
 
-If no configuration file is given then the .default file in the specified directory is used.
-A configuration file does not need to be specified with the --ls and --print options.
-Multiple configuration files can only be given in conjunction with the --print option.''')
-    parser.add_option('-d', '--dir', default='config/', help='Set directory containing the configuration files. Default: %default.')
-    parser.add_option('-g', '--debug', action='store_true', default=False, help='Use the debug settings.  Default: use optimised settings.')
-    parser.add_option('-l', '--ls', action='store_true', default=False, help='Print list of available configurations.')
-    parser.add_option('-o', '--out', default='Makefile', help='Set the output filename to which the makefile is written.  Use -o - to write to stdout.  Default: %default.')
-    parser.add_option('-p', '--print', dest='print_conf', action='store_true', default=False, help='Print settings in configuration file(s) specified, or all settings if no configuration file is specified.')
+config_file can be either a path to a file or the name of a file in the
+specified configuration directory.
+
+If no configuration file is given then the .default file in the specified
+configuration directory is used.
+
+A configuration file does not need to be specified with the --ls option.''')
+    parser.add_option('--help-long', dest='help_long', action='store_true',
+            help='Show long error message and exit.')
+    parser.add_option('-d', '--dir', default='config/', dest='config_dir',
+            help='Set directory containing the configuration files. '
+                 'Default: %default.')
+    parser.add_option('-g', '--debug', action='store_true', default=False,
+            help='Use the debug settings.  Default: use optimised settings.')
+    parser.add_option('-l', '--ls', action='store_true', default=False,
+            help='Print list of available configurations.')
+    parser.add_option('-o', '--out', default='make.inc',
+            help='Set the output filename to which the makefile settings are '
+                 'written.  Use -o - to write to stdout.  Default: %default.')
 
     (options, args) = parser.parse_args(my_args)
 
-    if len(args) >= 1:
-        config_file = ' '.join(os.path.join(options.dir, c) for c in args)
-    elif len(args) == 0 and os.path.exists(os.path.join(options.dir, '.default')):
-        config_file = os.path.join(options.dir, '.default')
-    else:
-        config_file = None
+    config_file = ''
 
-    if not (options.print_conf or options.ls):
-        if len(args) > 1:
-            print('Incorrect arguments.')
-            parser.print_help()
-            sys.exit(1)
-        if not config_file:
-            print('.default file not found.')
+    if not options.ls and not options.help_long:
+        if len(args) == 1:
+            config_file = args[0]
+            if not os.path.exists(config_file):
+                config_file = os.path.join(options.config_dir, config_file)
+        elif len(args) == 0:
+            if os.path.exists(os.path.join(options.config_dir, '.default')):
+                config_file = os.path.join(options.config_dir, '.default')
+            else:
+                print('No config file provided.')
+                parser.print_help()
+                sys.exit(1)
+        else:
+            print('Too many config files provided.')
             parser.print_help()
             sys.exit(1)
 
     return (options, config_file)
 
 def list_configs(config_dir):
-    '''Return the path to all config files in config_dir.  We assume only config files are in config_dir'''
+    '''Return the path to all config files in config_dir.
+    
+We assume only config files are in config_dir.'''
     if os.path.isdir(config_dir):
         return [os.path.join(config_dir, f) for f in os.listdir(config_dir)]
     else:
-        raise IOError('Config directory specified is not a directory: %s.' % (config_dir))
+        err = 'Config directory is not a directory: %s.' % (config_dir)
+        raise IOError(err)
 
 def parse_config(config_file):
     '''Parse the configuration file config_file.'''
@@ -320,97 +254,99 @@ def parse_config(config_file):
 
     valid_sections = ['main', 'opt', 'dbg']
 
-    valid_sections_upper = [s.upper() for s in valid_sections]
+    valid_sections_upper = [section.upper() for section in valid_sections]
 
-    valid_options = ['fc', 'fflags', 'cxx', 'cxxflags', 'cppdefs', 'cppflags', 'ld', 'ldflags', 'libs', 'module_flag']
+    valid_options = ['fc', 'fflags', 'cc', 'cflags', 'cxx', 'cxxflags',
+            'cpp', 'cppflags', 'ld', 'ldflags', 'libs', 'ar', 'arflags',
+            'f90_module_flag']
 
-    minimal_options = ['fc', 'cxx', 'ld', 'libs', 'module_flag']
-
-    if not os.path.exists(config_file):
-        raise IOError('Config file does not exist: %s' % (config_file))
+    default_settings = dict((key, '') for key in valid_options)
+    default_settings['ar'] = 'ar'
+    default_settings['arflags'] = '-rcs'
 
     parser.read(config_file)
 
-    for s in parser.sections():
-        if s not in valid_sections and s not in valid_sections_upper:
-            raise IOError('Invalid section in configuration file %s: %s.' % (config_file, s))
+    for section in parser.sections():
+        if (section not in valid_sections and 
+                section not in valid_sections_upper):
+            err = ('Invalid section in config file %s: %s.'
+                    % (config_file, section))
+            raise IOError(err)
 
-    for s in valid_sections:
-        if s not in parser.sections() and s.upper() not in parser.sections():
-            raise IOError('Section not present in configuration file %s: %s.' % (config_file, s))
+    for section in valid_sections:
+        if (section not in parser.sections() and
+                section.upper() not in parser.sections()):
+            err = ('Section not present in config file %s: %s.'
+                        % (config_file, section))
+            raise IOError(err)
 
     if not parser.sections():
-        raise IOError('No sections in configuration file %s: %s.' % (config_file, s))
+        err = 'No sections in configuration file %s.' % (config_file)
+        raise IOError(err)
 
     config = {}
 
-    for s in valid_sections:
-        config[s] = dict(parser.items('main'))
-        if s in parser.sections():
-            config[s].update(parser.items(s))
-        elif s.upper() in parser.sections():
-            config[s].update(parser.items(s.upper()))
-
-    for s in valid_sections:
-        for opt in list(config[s].keys()):
+    for section in ['opt', 'dbg']:
+        config[section] = default_settings.copy()
+        config[section].update(parser.items('main'))
+        if section in parser.sections():
+            config[section].update(parser.items(section))
+        elif section.upper() in parser.sections():
+            config[section].update(parser.items(section.upper()))
+        for opt in list(config[section].keys()):
             if opt not in valid_options:
-                raise IOError('Invalid option in configuration file: %s.' % (opt))
+                err = 'Invalid option in configuration file: %s.' % (opt)
+                raise IOError(err)
         # Fill in blanks
         for opt in valid_options:
-            if opt not in list(config[s].keys()):
-                config[s][opt] = ''
-
-    config.pop('main')
-
-    for s in list(config.keys()):
-        # Check minimal options.
-        for opt in minimal_options:
-            if not config[s][opt]:
-                raise IOError('Required option not set: %s' % (opt))
-        # Treat module_flag specially: append a space if it doesn't end in =.
-        # This is to allow the same template to be used no matter how the compiler
-        # insists on handling this flag.
-        if not config[s]['module_flag'][-1] == '=':
-            config[s]['module_flag'] = '%s ' % (config[s]['module_flag'])
+            if opt not in list(config[section].keys()):
+                config[section][opt] = ''
 
     return config
 
 def create_makefile(config_file, use_debug=False):
     '''Returns the makefile using the options given in the config_file.'''
+    # Select the configuration section to use.
     if use_debug:
         config = parse_config(config_file)['dbg']
         config.update(opt_level='debug')
     else:
         config = parse_config(config_file)['opt']
         config.update(opt_level='optimised')
-    # Set the name in the Makefile to be the basename of the config filename.  Follow any links.
+
+    # Set the name in the make.inc to be the basename of the config filename.
+    # Follow any links.
     if os.path.islink(config_file):
         config_name = os.path.basename(os.readlink(config_file))
     else:
         config_name = os.path.basename(config_file)
-    config.update(PROGRAM=PROGRAM_NAME, PROGRAM_STEM=PROGRAM_STEM, PROGRAM_EXT=PROGRAM_EXT, DEST=DEST, EXE=EXE, VPATH=VPATH, SOURCE_EXT=SOURCE_EXT, config=config_name)
-    return MAKEFILE_TEMPLATE % (config)
 
-if __name__=='__main__':
-    args=sys.argv[1:]
+    config.update(config=config_name)
+
+    return (MAKEFILE_TEMPLATE % config)
+
+def main(args):
+    '''Main procedure.
+    
+args: list of arguments.'''
+
     (options, config_file) = parse_options(args)
-    if options.ls:
-        print('Available configurations are: %s.' % (', '.join(list_configs(options.dir))))
-    elif options.print_conf:
-        if config_file:
-            config_files = config_file.split()
-        else:
-            config_files = list_configs(options.dir)
-        for config_file in config_files:
-            config = parse_config(config_file)
-            print('Settings in configuration file: %s' % (config_file))
-            pprint.pprint(config)
-            print()
+
+    if options.help_long:
+        print(__doc__)
+    elif options.ls:
+        configs = ', '.join(list_configs(options.config_dir))
+        print('Available configurations in %s are: %s.'
+                % (options.config_dir, configs))
     else:
         if options.out == '-':
-            f = sys.stdout
+            fout = sys.stdout
         else:
-            f = open(options.out, 'w')
-        f.write(create_makefile(config_file, options.debug))
-        if options.out != '-':
-            f.close()
+            fout = open(options.out, 'w')
+        fout.write(create_makefile(config_file, options.debug))
+        if fout != sys.stdout:
+            fout.close()
+
+if __name__ == '__main__':
+
+    main(sys.argv[1:])

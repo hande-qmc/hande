@@ -2,9 +2,9 @@
 fc = mpif90
 cxx = mpiCC
 ld = impif90
-cppdefs = -DHAVE_SSE2 -DPARALLEL
+cppflags = -DHAVE_SSE2 -DPARALLEL
 libs = -ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas -cxxlib
-module_flag = -module
+f90_module_flag = -module
 
 [opt]
 fflags = -O3
