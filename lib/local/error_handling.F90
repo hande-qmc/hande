@@ -32,7 +32,7 @@ contains
         write (6,'(a9,a)') 'Reason: ',adjustl(error_msg)
         write (6,'(1X,a10)') 'EXITING...'
 
-        call flush(6)
+        flush(6)
 
         ! Abort all processors.
         ! error code is given to mpi_abort which (apparently) returns it to the invoking environment.
@@ -107,7 +107,7 @@ contains
 
         if (present(msg)) then
             write (6,'(1X,a)') adjustl(msg)
-            call flush(6)
+            flush(6)
         end if
 
         ! Abort all processors.

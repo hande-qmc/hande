@@ -231,7 +231,7 @@ contains
             proj_hf_expectation = inst_proj_hf_t1 - proj_energy*D0_hf_population/D0_population
             if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
             write (17,*) ireport, inst_proj_hf_t1, hf_shift, nparticles_old, walker_population(:,1), D0_population, D0_hf_population
-            call flush(17)
+            flush(17)
 
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &

@@ -141,7 +141,7 @@ contains
 
             ! we need to read back from scratch if in binary format
             if (binary_fmt_out) then
-                call flush(scratch)
+                flush(scratch)
                 rewind(scratch)
                 ! best to preserve the binary_fmt state in case of
                 ! alteration of program mechaincs later
@@ -157,7 +157,7 @@ contains
             else
                 ! we can read from the input file and no need for scratch
                 ! Read "self" info back in.
-                call flush(io)
+                flush(io)
                 rewind(io)
                 do
                     ! Read restart file until we've found the start of the

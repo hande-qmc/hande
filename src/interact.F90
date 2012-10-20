@@ -58,7 +58,7 @@ contains
                 ! Flush output from parent processor so that processor which
                 ! has the FCIQMC.COMM file can print out the contents without
                 ! mixing the output.
-                call flush(6)
+                flush(6)
             end if
             ! Quick pause to ensure output is all done by this point.
 #ifdef PARALLEL
