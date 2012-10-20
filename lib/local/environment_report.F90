@@ -64,7 +64,7 @@ contains
     ! repositories.  For instance, if a subversion repository is being used, then the
     ! version id can be obtained using::
     !
-    !     VCS_VERSION:=$(shell echo -n \"`svn info | grep 'Revision'| sed -e 's/Revision: //'`\")
+    !     VCS_VERSION:=$(shell echo -n '"'$(svn info | awk '/Revision/{print $NF}')'"')
     !
     ! and if the working directory contains local changes, then the command::
     !
@@ -84,7 +84,7 @@ contains
     !
     ! Similarly for git::
     !
-    !     VCS_VERSION:=$(shell echo -n \" && git log --max-count=1 --pretty=format:%H && echo -n \")
+    !     VCS_VERSION:=$(shell echo -n '"' && git log --max-count=1 --pretty=format:%H && echo -n '"')
     !     WORKING_DIR_CHANGES := $(shell git diff-index --quiet --cached HEAD
     !                             --ignore-submodules -- && git diff-files --quiet
     !                             --ignore-submodules || echo -n "-D_WORKING_DIR_CHANGES") # on one line.
@@ -118,7 +118,7 @@ contains
     write (io_unit,'(1X,64("="))')
 
 #ifndef NAGF95
-    ! Stupid nag: it uses fpp, which doesn't define __DATE__ and __TIME__ like cpp
+    ! Stupid nag: it uses fpp, which does not define __DATE__ and __TIME__ like cpp
     ! does.
     write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
 #endif
