@@ -68,7 +68,7 @@ Any option not specified in the 'opt' and 'dbg' sections is inherited from the
 'main' section.  The settings in 'opt' are used by default; the debug options
 can be selected by passing the -g option to mkconfig.
 
-Available options are:
+All options are strings unless otherwise specified.  Available options are:
 
 fc
     Set the fortran compiler.
@@ -78,6 +78,9 @@ f90_module_flag
     Set the flag used by the compiler which is used to specify the directory
     where module (.mod) files are placed when created and where they should be
     searched for.
+f90_module_flag_pad [boolean]
+    True if a space needs to be inserted between the defined f90_module_flag
+    and the corresponding directory argument.  Default: true.
 cc
     Set the C compiler.
 cflags
@@ -90,8 +93,8 @@ cpp
     Set the C preprocessor to be used on Fortran source files.  If not defined
     then the Fortran compiler is used to do the preprocessing.
 cppflags
-    Set flags to be used in the C pre-processing step.
-    C pre-processing is applied to .F90, .F, .c and .cpp files (and not .f90
+    Set flags to be used in the C preprocessing step.
+    C preprocessing is applied to .F90, .F, .c and .cpp files (and not .f90
     files).
 ld
     Set the linker program.
@@ -141,6 +144,7 @@ VCS_LOCAL_CHANGES := $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff
 #-----
 # Compiler configuration.
 
+# --- Preprocessor ---
 # If CPP is defined, then this is used to do the preprocessing on Fortran
 # source files and then the Fortran compiler is called.  If CPP is not defined,
 # then CPPFLAGS is passed to the Fortran compiler and the Fortran source files
@@ -149,7 +153,7 @@ VCS_LOCAL_CHANGES := $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff
 # C++ compilers, with CPPFLAGS passed to the C and C++ compilers.
 CPP = %(cpp)s
 
-# Pre-processing flags
+# Preprocessing flags
 # Used for *.F, *.F90, *.c and *.cpp files.
 # Note three additional defintions specific to HANDE.
 CPPFLAGS = %(cppflags)s $(VCS_LOCAL_CHANGES) -D_VCS_VERSION='${VCS_VERSION}' -D_CONFIG='"$(CONFIG).($(OPT))"'
@@ -258,11 +262,24 @@ def parse_config(config_file):
 
     valid_options = ['fc', 'fflags', 'cc', 'cflags', 'cxx', 'cxxflags',
             'cpp', 'cppflags', 'ld', 'ldflags', 'libs', 'ar', 'arflags',
-            'f90_module_flag']
+            'f90_module_flag', 'f90_module_flag_pad']
+
+    boolean_states = {'0': False,
+            '1': True,
+            'false': False,
+            'no': False,
+            'off': False,
+            'on': True,
+            'true': True,
+            'yes': True}
 
     default_settings = dict((key, '') for key in valid_options)
-    default_settings['ar'] = 'ar'
-    default_settings['arflags'] = '-rcs'
+    default_settings.update(
+            dict(ar='ar',
+                 arflags='-rcs',
+                 f90_module_flag_pad='True'
+                )
+            )
 
     parser.read(config_file)
 
@@ -297,10 +314,14 @@ def parse_config(config_file):
             if opt not in valid_options:
                 err = 'Invalid option in configuration file: %s.' % (opt)
                 raise IOError(err)
-        # Fill in blanks
-        for opt in valid_options:
-            if opt not in list(config[section].keys()):
-                config[section][opt] = ''
+        # Update the module flag if a space needs to be appended.
+        pad = config[section].pop('f90_module_flag_pad')
+        # pad is a string rather than bool; use the same comparison that
+        # configparser uses to determine if pad is set to true.
+        if pad.lower() not in boolean_states:
+            raise ValueError('Not a boolean: %s' % pad)
+        if boolean_states[pad.lower()]:
+            config[section]['f90_module_flag'] += ' '
 
     return config
 
