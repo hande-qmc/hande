@@ -44,9 +44,8 @@ contains
         ! The VCS information is passed to environment_report via c-preprocessing.  The
         ! following definitions are used:
         !
-        ! * NAGF95: define if using the nag compiler so that certain nag-only modules are
-        !   used.
-        ! * _WORKING_DIR_CHANGES: define if the working directory contains local
+        ! * __DATE__ and __TIME__: date and time of compilation.
+        ! * _VCS_LOCAL_CHANGES: define if the local source code directory contains local
         !   (uncommitted) changes.
         ! * _VCS_VERSION: set to a (quoted!) string containing the VCS revision id of the current
         !   commit.
@@ -62,24 +61,24 @@ contains
         !
         !     svn st -q | xargs -i test -z {}
         !
-        ! gives a non-zero return code.  Hence the variable WORKING_DIR_CHANGES is
-        ! equal to -D_WORKING_DIR_CHANGES or is a null string depending on whether there
+        ! gives a non-zero return code.  Hence the variable VCS_LOCAL_CHANGES is
+        ! equal to -D_VCS_LOCAL_CHANGES or is a null string depending on whether there
         ! are local changes or not::
         !
-        !    WORKING_DIR_CHANGES:=$(shell svn st -q | xargs -i test -z {} || echo -n "-D_WORKING_DIR_CHANGES")
+        !    VCS_LOCAL_CHANGES:=$(shell svn st -q | xargs -i test -z {} || echo -n "-D_VCS_LOCAL_CHANGES")
         !
         ! environment_report.F90 can thus be appropriately compiled with the command::
         !
-        !    $(FC) $(WORKING_DIR_CHANGES) -D_VCS_VERSION='$(VCS_VERSION)' -c environment_report.F90 -o environment_report.o
+        !    $(FC) $(VCS_LOCAL_CHANGES) -D_VCS_VERSION='$(VCS_VERSION)' -c environment_report.F90 -o environment_report.o
         !
         ! where $(FC) is defined to be the desired fortran compiler.
         !
         ! Similarly for git::
         !
         !     VCS_VERSION:=$(shell echo -n '"' && git log --max-count=1 --pretty=format:%H && echo -n '"')
-        !     WORKING_DIR_CHANGES := $(shell git diff-index --quiet --cached HEAD
+        !     VCS_LOCAL_CHANGES := $(shell git diff-index --quiet --cached HEAD
         !                             --ignore-submodules -- && git diff-files --quiet
-        !                             --ignore-submodules || echo -n "-D_WORKING_DIR_CHANGES") # on one line.
+        !                             --ignore-submodules || echo -n "-D_VCS_LOCAL_CHANGES") # on one line.
         !
         ! environment_report has been tested with gfortran, g95, ifort, pgf90, nag and
         ! pathscale.  Note that hostnm and getcwd are intrinsic functions (at least
@@ -87,19 +86,52 @@ contains
         ! exist the intrinsic subroutines, but pgf90 and ifort gave segmentation faults
         ! when they were used, so we use intrinsic functions unless using nag.
 
-#ifdef NAGF95
-        use f90_unix_dir, only: getcwd
-        use f90_unix_env, only: gethostname
-#endif
+        use, intrinsic :: iso_c_binding, only: c_char, c_ptr, c_size_t, c_int, c_associated
+        use utils, only: carray_to_fstring
 
         implicit none
+
+        ! Accessing the hostname and working directory directly from Fortran are
+        ! (admittedly commonly implemented) extensions so we cannot rely on them
+        ! existing *cough*ibmandnag*cough*.  It is safer to use POSIX-standard
+        ! functions.
+        interface
+            function gethostname(hostname, len) result(stat) bind(c)
+                import :: c_int, c_char, c_size_t
+                integer(c_int) :: stat
+                integer(c_size_t), intent(in), value :: len
+                character(kind=c_char), intent(inout) :: hostname(len)
+            end function gethostname
+            function getcwd(cwd, len) result(path) bind(c)
+                import :: c_ptr, c_size_t, c_char
+                type(c_ptr) :: path
+                integer(c_size_t), intent(in), value :: len
+                character(kind=c_char), intent(inout) :: cwd(len)
+            end function getcwd
+        end interface
+
         integer, intent(in), optional :: io
-        integer :: stat,io_unit
-#ifndef NAGF95
-        integer :: getcwd,hostnm
-#endif
-        character(255) :: dirname,host
+        integer :: io_unit
         integer :: date_values(8)
+        integer(c_size_t), parameter :: str_len = 255
+        character(kind=c_char) :: str(str_len)
+        type(c_ptr) :: path
+        integer(c_int) :: stat
+
+! Set defaults in case not provided by the preprocessor.
+#ifndef __DATE__
+#define __DATE__ 'unknown'
+#endif
+#ifndef __TIME__
+#define __TIME__ 'unknown'
+#endif
+#ifndef _CONFIG
+#define _CONFIG 'unknown'
+#endif
+#ifndef _VCS_VERSION
+#define _VCS_VERSION 'unknown'
+#define _VCS_LOCAL_CHANGES
+#endif
 
         if (present(io)) then
             io_unit = io
@@ -109,35 +141,29 @@ contains
 
         write (io_unit,'(1X,64("="))')
 
-#ifndef NAGF95
-        ! Stupid nag: it uses fpp, which does not define __DATE__ and __TIME__ like cpp
-        ! does.
         write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
-#endif
         write (io_unit,'(a16,a)') 'Compiled using ', _CONFIG
 
         write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',_VCS_VERSION
-#ifdef _WORKING_DIR_CHANGES
-        write (io_unit,'(a42)') 'Working directory contains local changes.'
+#ifdef _VCS_LOCAL_CHANGES
+        write (io_unit,'(a46)') 'Source code directory contains local changes.'
 #endif
 
-#ifdef NAGF95
-        call getcwd(dirname,errno=stat)
-#else
-        stat = getcwd(dirname)
-#endif
-
-        if (stat.eq.0) then
-            write (io_unit,'(a20)') 'Working directory: '
-            write (io_unit,'(5X,a)') trim(dirname)
+        stat = gethostname(str, str_len)
+        if (stat == 0) then
+            write (io_unit, '(a10)') 'Hostname:'
+        else
+            write (io_unit, '(a53)') 'Hostname exceeds 255 characters; truncated hostname:'
         end if
+        write (io_unit,'(5X,a)') trim(carray_to_fstring(str))
 
-#ifdef NAGF95
-        call gethostname(host)
-        stat = 0
-#else
-        stat = hostnm(host)
-#endif
+        path = getcwd(str, str_len)
+        if (c_associated(path)) then
+            write (io_unit,'(a20)') 'Working directory: '
+        else
+            write (io_unit,'(a63)') 'Working directory exceeds 255 characters; truncated directory:'
+        end if
+        write (io_unit,'(5X,a)') trim(carray_to_fstring(str))
 
         call date_and_time(VALUES=date_values)
 

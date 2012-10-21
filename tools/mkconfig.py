@@ -135,8 +135,8 @@ VCS_VERSION := $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1
 
 # Test to see if the working directory contains changes.  Git only.  If the
 # working directory contains changes (or is not under version control) then
-# the _WORKING_DIR_CHANGES flag is set.
-WORKING_DIR_CHANGES := $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_WORKING_DIR_CHANGES")
+# the _VCS_LOCAL_CHANGES flag is set.
+VCS_LOCAL_CHANGES := $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_VCS_LOCAL_CHANGES")
 
 #-----
 # Compiler configuration.
@@ -152,7 +152,7 @@ CPP = %(cpp)s
 # Pre-processing flags
 # Used for *.F, *.F90, *.c and *.cpp files.
 # Note three additional defintions specific to HANDE.
-CPPFLAGS = %(cppflags)s $(WORKING_DIR_CHANGES) -D_VCS_VERSION='${VCS_VERSION}' -D_CONFIG='"$(CONFIG).($(OPT))"'
+CPPFLAGS = %(cppflags)s $(VCS_LOCAL_CHANGES) -D_VCS_VERSION='${VCS_VERSION}' -D_CONFIG='"$(CONFIG).($(OPT))"'
 
 # --- Fortran ---
 # compiler
