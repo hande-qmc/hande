@@ -152,6 +152,14 @@ contains
 
     subroutine end_report(elapsed_time, io)
 
+        ! Print out date at end of calculation and how long it took.
+
+        ! In:
+        !    elapsed_time: number of seconds between the start and end of the
+        !        calculation.
+        !    io (optional): unit to which the environment information is written.
+        !        Default: 6.
+
         real, intent(in) :: elapsed_time
         integer, intent(in), optional :: io
         integer :: date_values(8)
