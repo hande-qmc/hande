@@ -85,10 +85,16 @@ cc
     Set the C compiler.
 cflags
     Set flags to be passed to the C compiler during compilation.
+cxxd
+    Set the C compiler used to generate the C dependency files.  Only required
+    if cc doesn't support -MM and -MT flags.  Default: use cc.
 cxx
     Set the C++ compiler.
 cxxflags
     Set flags to be passed to the C++ compiler during compilation.
+cxxd
+    Set the C++ compiler used to generate the C++ dependency files.  Only
+    required if cxx doesn't support -MM and -MT flags.  Default: use cxx.
 cpp
     Set the C preprocessor to be used on Fortran source files.  If not defined
     then the Fortran compiler is used to do the preprocessing.
@@ -171,12 +177,22 @@ F90_MOD_FLAG = %(f90_module_flag)s
 CC = %(cc)s
 # compiler flags
 CFLAGS = %(cflags)s
+# Not all compilers (e.g. xlc) support -MM -MT that we require to produce the
+# C dependencies.  Fortunately there is (usually) a version of (e.g.) gcc
+# kicking around which does.  If CCD is defined, then use that to generate the
+# C dependency files, otherwise CC is used.
+CCD = %(ccd)s
 
 # --- C++ ---
 # compiler
 CXX = %(cxx)s
 # compiler flags
 CXXFLAGS = %(cxxflags)s
+# Not all compilers (e.g. xlc++) support -MM -MT that we require to produce the
+# C++ dependencies.  Fortunately there is (usually) a version of (e.g.) g++
+# kicking around which does.  If CXXD is defined, then use that to generate the
+# C++ dependency files, otherwise CXX is used.
+CXXD = %(cxxd)s
 
 # --- Linker ---
 # linker
@@ -260,8 +276,8 @@ def parse_config(config_file):
 
     valid_sections_upper = [section.upper() for section in valid_sections]
 
-    valid_options = ['fc', 'fflags', 'cc', 'cflags', 'cxx', 'cxxflags',
-            'cpp', 'cppflags', 'ld', 'ldflags', 'libs', 'ar', 'arflags',
+    valid_options = ['fc', 'fflags', 'cc', 'cflags', 'cxx', 'cxxflags', 'ccd',
+            'cxxd', 'cpp', 'cppflags', 'ld', 'ldflags', 'libs', 'ar', 'arflags',
             'f90_module_flag', 'f90_module_flag_pad']
 
     boolean_states = {'0': False,
