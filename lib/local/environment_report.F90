@@ -97,13 +97,13 @@ contains
         ! functions.
         interface
             function gethostname(hostname, len) result(stat) bind(c)
-                import :: c_int, c_char, c_size_t
+                use, intrinsic :: iso_c_binding, only: c_int, c_char, c_size_t
                 integer(c_int) :: stat
                 integer(c_size_t), intent(in), value :: len
                 character(kind=c_char), intent(inout) :: hostname(len)
             end function gethostname
             function getcwd(cwd, len) result(path) bind(c)
-                import :: c_ptr, c_size_t, c_char
+                use, intrinsic :: iso_c_binding, only: c_ptr, c_size_t, c_char
                 type(c_ptr) :: path
                 integer(c_size_t), intent(in), value :: len
                 character(kind=c_char), intent(inout) :: cwd(len)
