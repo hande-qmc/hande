@@ -25,6 +25,8 @@ module report
 ! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ! OTHER DEALINGS IN THE SOFTWARE.
 
+implicit none
+
 contains
 
     subroutine environment_report(io)
@@ -88,8 +90,6 @@ contains
 
         use, intrinsic :: iso_c_binding, only: c_char, c_ptr, c_size_t, c_int, c_associated
         use utils, only: carray_to_fstring
-
-        implicit none
 
         ! Accessing the hostname and working directory directly from Fortran are
         ! (admittedly commonly implemented) extensions so we cannot rely on them
@@ -188,7 +188,7 @@ contains
 
         real, intent(in) :: elapsed_time
         integer, intent(in), optional :: io
-        integer :: date_values(8)
+        integer :: date_values(8), io_unit
 
         if (present(io)) then
             io_unit = io
@@ -208,4 +208,4 @@ contains
 
     end subroutine end_report
 
-    end module report
+end module report
