@@ -1,0 +1,21 @@
+# Requires IBM, xl, bluegene and scalapack modules
+[main]
+fc = mpixlf90_r
+cc = mpixlc_r
+cxx = mpixlcxx_r
+ld = mpixlf90_r
+ccd = gcc
+cxxd = g++
+cpp = cpp -P -C
+cppflags = -DPARALLEL -DDISABLE_LANCZOS
+libs = -L/opt/ibmcmp/vacpp/11.1/lib -libmc++ -lstdc++ $${KSL_SCALAPACK_LIB} -lxlsmp
+f90_module_flag = -qmoddir=
+f90_module_flag_pad = false
+
+[opt]
+fflags = -O3 -I /opt/share/include/mpi/ibm -I $(DEST)
+cxxflags = -O3
+
+[dbg]
+fflags = -g -traceback -CB -I /opt/share/include/mpi/ibm -I $(DEST)
+cxxflags = -g -traceback 

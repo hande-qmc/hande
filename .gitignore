@@ -1,6 +1,7 @@
 dest/
 bin/
 run/
+/make.inc*
 test*.out*
 testcode*.err*
 DETS
