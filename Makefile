@@ -184,8 +184,12 @@ endif
 C_FILES = $(filter $(addprefix %,$(CEXTS)), $(SRCFILES))
 C_DEPEND = $(addprefix $(DEPEND_DIR)/, $(addsuffix .d, $(basename $(notdir $(C_FILES)))))
 # Use CC (CXX) to generate C (C++) dependency files unless CCD (CXXD) is defined.
-CCD ?= $(CC)
-CXXD ?= $(CXX)
+ifeq ($(CCD),)
+CCD = $(CC)
+endif
+ifeq ($(CXXD),)
+CXXD = $(CXX)
+endif
 
 #-----
 # Compilation macros.
