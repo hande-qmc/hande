@@ -184,6 +184,7 @@ contains
         use qmc_common
         use fciqmc_restart, only: dump_restart
         use proc_pointers
+        use search, only: binary_search
         use system, only: nel
 
         integer :: ireport, icycle
@@ -239,7 +240,7 @@ contains
                 ! As we might select the reference determinant multiple times in
                 ! a cycle, the running total of D0_population is incorrect (by
                 ! a factor of the number of times it was selected).
-                call search_walker_list(f0, 1, tot_walkers, hit, D0_pos)
+                call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
                 D0_normalisation = walker_population(1,D0_pos)
 
                 ! Note that 'death' in CCMC creates particles in the spawned

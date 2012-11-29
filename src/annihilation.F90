@@ -262,6 +262,7 @@ contains
         ! walker list.
 
         use basis, only: total_basis_length
+        use search, only: binary_search
 
         integer :: i, pos, k, nannihilate, istart, iend, old_pop(sampling_size)
         integer(i0) :: f(total_basis_length)
@@ -272,7 +273,7 @@ contains
         iend = tot_walkers
         do i = 1, spawning_head(0)
             f = spawned_walkers(:total_basis_length,i)
-            call search_walker_list(f, istart, iend, hit, pos)
+            call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
                 old_pop = walker_population(:,pos)
@@ -309,6 +310,7 @@ contains
         ! and which are from non-initiator or non-sign-coherent events.
 
         use basis, only: total_basis_length
+        use search, only: binary_search
 
         integer :: i, pos, k, nannihilate, istart, iend, old_pop
         integer(i0) :: f(total_basis_length)
@@ -319,7 +321,7 @@ contains
         iend = tot_walkers
         do i = 1, spawning_head(0)
             f = spawned_walkers(:total_basis_length,i)
-            call search_walker_list(f, istart, iend, hit, pos)
+            call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
                 old_pop = walker_population(1,pos)
@@ -392,6 +394,7 @@ contains
         use basis, only: basis_length, total_basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use determinants, only: decode_det
+        use search, only: binary_search
         use system, only: nel, trial_function, neel_singlet
         use hamiltonian, only: slater_condon0_hub_real
         use hfs_data, only: lmask, O00
@@ -424,7 +427,7 @@ contains
         iend = tot_walkers
         do i = spawning_head(0), 1, -1
             ! spawned det is not in the main walker list
-            call search_walker_list(spawned_walkers(:total_basis_length,i), istart, iend, hit, pos)
+            call binary_search(walker_dets, spawned_walkers(:total_basis_length,i), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
