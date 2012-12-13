@@ -200,6 +200,73 @@ contains
 
     end subroutine find_single_double_prob
 
+    subroutine cumulative_population(pops, nactive, d0_pos, cumulative_pops, tot_pop)
+
+        ! Calculate the cumulative population, i.e. the number of psips/excips
+        ! residing on a determinant/an excitor and all determinants/excitors which
+        ! occur before it in the determinant/excitor list.
+
+        ! This is primarily so in CCMC we can select clusters of excitors with each
+        ! excip being equally likely to be part of a cluster.  (If we just select
+        ! each occupied excitor with equal probability, then we get wildy
+        ! fluctuating selection probabilities and hence large population blooms.)
+        ! As 'excips' on the reference cannot be part of a cluster, then the
+        ! population on the reference is treated as 0 if required.
+
+        ! In:
+        !    pops: list of populations on each determinant/excitor.  Must have
+        !       minimum length of nactive.
+        !    nactive: number of occupied determinants/excitors (ie pops(:,1:nactive)
+        !       contains the population(s) on each currently "active"
+        !       determinat/excitor.
+        !    D0_pos: position in the pops list of the reference.  Only relevant if
+        !       1<=D0_pos<=nactive and the processor holds the reference.
+        ! Out:
+        !    cumulative_pops: running total of excitor population, i.e.
+        !        cumulative_pops(i) = sum(pops(1:i)), excluding the
+        !        population on the reference if appropriate.
+        !    tot_pop: total population (possibly excluding the population on the
+        !       reference).
+
+        ! NOTE: currently only the populations in the first psip/excip space are
+        ! considered.  This should be changed if we do multiple simulations at
+        ! once/Hellmann-Feynman sampling/etc.
+
+        ! WARNING: almost certainly not suitable for a parallel implementation.
+
+        use fciqmc_data, only: D0_proc
+        use parallel, only: iproc
+
+        integer, intent(in) :: pops(:,:), nactive, d0_pos
+        integer, intent(out) :: cumulative_pops(:), tot_pop
+
+        integer :: i
+
+        cumulative_pops(1) = abs(pops(1,1))
+        if (D0_proc == iproc) then
+            ! Let's be a bit faster: unroll loops and skip over the reference
+            ! between the loops.
+            do i = 2, d0_pos-1
+                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+            end do
+            ! Set cumulative on the reference to be the running total merely so we
+            ! can continue accessing the running total from the i-1 element in the
+            ! loop over excitors in slots above the reference.
+            if (d0_pos == 1) cumulative_pops(d0_pos) = 0
+            if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
+            do i = d0_pos+1, nactive
+                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+            end do
+        else
+            ! V simple on other processors: no reference to get in the way!
+            do i = 2, nactive
+                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+            end do
+        end if
+        tot_pop = cumulative_pops(nactive)
+
+    end subroutine cumulative_population
+
     subroutine load_balancing_report()
 
         ! Print out a load-balancing report when run in parallel showing how
