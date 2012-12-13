@@ -79,7 +79,10 @@ real(p) :: shift_damping = 0.050_dp
 !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
 ! and so proj_energy must be 'normalised' and averaged over the report loops
 ! accordingly.
-real(p) :: proj_energy
+! For convenience (especially in CCMC), where the numerator and denominator in
+! the above equation are sampled and hence have to be weighted, we accumulate
+! over each MC cycle and then over each report loop.
+real(p) :: proj_energy, proj_energy_cycle
 
 !--- Walker data ---
 

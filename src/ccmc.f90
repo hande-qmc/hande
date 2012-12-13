@@ -277,13 +277,22 @@ contains
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
-                do iattempt = 1, nparticles(1)
+                do iattempt = 1, nattempts
 
-                    call select_cluster(nparticles(1), D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
+                    call select_cluster(nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
                                         cdet, cluster)
 
                     if (cluster%excitation_level <= truncation_level+2) then
 
+                        ! FCIQMC calculates the projected energy exactly.  To do
+                        ! so in CCMC would involve enumerating over all pairs of
+                        ! single excitors, which is rather painful and slow.
+                        ! Instead, as we are randomly sampling clusters in order
+                        ! to evolve the excip population anyway, we can just use
+                        ! the random clusters to *sample* the projected
+                        ! estimator.  See comments in spawning.F90 for why we
+                        ! must divide through by the probability of selecting
+                        ! the cluster.
                         call update_proj_energy_ptr(cdet, cluster%cluster_to_det_sign*cluster%amplitude/cluster%pselect)
 
                         call spawner_ccmc(cdet, cluster, nspawned, connection)
@@ -302,6 +311,16 @@ contains
                 end do
 
                 call direct_annihilation()
+
+                ! Ok, this is fairly non-obvious.
+                ! Because we sample the projected estimator (and normalisation
+                ! <D_0| \Psi_CC>) N times, where N is the number of excips, we
+                ! must divide through be N in order to avoid introducing a bias.
+                ! Not doing so means that the quality of the sampling of the sum
+                ! (the space of which is constant) varies with population.  The
+                ! bias is small but noticeable in some systems.
+                D0_population_cycle = D0_population_cycle/nattempts
+                proj_energy_cycle = proj_energy_cycle/nattempts
 
                 call end_mc_cycle(ndeath, nattempts)
 

@@ -388,7 +388,7 @@ contains
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
 
-        use calc, only: doing_calc, ct_fciqmc_calc
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc
 
         integer(lint), intent(out) :: nattempts
         integer, intent(out) :: ndeath
@@ -401,17 +401,24 @@ contains
         ndeath = 0
 
         ! Reset accumulation of the reference population over the MC cycle.
-        ! Only matters if the reference contains more than a single basis
-        ! function/determinant...
+        ! Reset accumulation of the projected estimator over MC cycle.
+        ! This is only relevant in CCMC, where the estimators must be weighted
+        ! by the number of times they're sampled.  (In contrast, these are
+        ! currently calculated exactly in FCIQMC.)
+        proj_energy_cycle = 0.0_p
         D0_population_cycle = 0.0_p
 
         ! Number of spawning attempts that will be made.
-        ! Each particle gets to attempt to spawn onto a connected
-        ! determinant and a chance to die/clone.
-        ! This is used for accounting later, not for controlling the spawning.
-        if (doing_calc(ct_fciqmc_calc)) then
+        ! For FCIQMC, this is used for accounting later, not for controlling the
+        ! spawning.
+        if (doing_calc(ct_fciqmc_calc) .or. doing_calc(ccmc_calc)) then
+            ! ct algorithm: kinda poorly defined.
+            ! ccmc: number of excitor clusters we'll randomly generate and
+            ! attempt to spawn from.
             nattempts = nparticles(1)
         else
+            ! Each particle gets to attempt to spawn onto a connected
+            ! determinant and a chance to die/clone.
             nattempts = 2*nparticles(1)
         end if
 
@@ -478,8 +485,9 @@ contains
         ! total.
         rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
-        ! Accumulate population on reference
+        ! Accumulate population on reference and projected estimator.
         D0_population = D0_population + D0_population_cycle
+        proj_energy = proj_energy + proj_energy_cycle
 
     end subroutine end_mc_cycle
 
