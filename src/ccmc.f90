@@ -22,58 +22,70 @@ module ccmc
 ! CCMC
 ! ====
 !
+! In the following, a capital index refers to combined index (ie a single label
+! for a determinant or excitor) and a lower case index referis to a spin
+! orbital.  Hence |D_I> can be equivalently represented as |D_{ij...}^{ab..}.
+!
 ! Analogue with FCIQMC
 ! --------------------
 !
 ! In FCIQMC we essentially use first-order finite-difference approximation to the
 ! imaginary-time Schroedinger equation::
 !
-!     c_i(t+dt) = c_i(t) - < D_i | H - S | \Psi(t) > dt  (1)
+!     c_I(t+dt) = c_I(t) - < D_I | H - S | \Psi(t) > dt  (1)
 !
 ! where::
 !
-!     \Psi(t) = \sum_j c_j(t) | D_j >.  (2)
+!     \Psi(t) = \sum_J c_J(t) | D_J >.  (2)
 !
 ! CCMC involves propogating a very similar equation::
 !
-!     < D_i | a_i D_0 > t_i(t+dt) = < D_i | a_i D_0 > t_i(t) - < D_i | H - S | \Psi_{CC}(t) > dt  (3)
+!     < D_I | a_I D_0 > t_I(t+dt) = < D_I | a_I D_0 > t_I(t) - < D_I | H - S | \Psi_{CC}(t) > dt  (3)
 !
 ! where::
 !
 !     \Psi_{CC}(t) = e^{T(t)} | D_0 >,  (4)
 !
-! and::
+! and the cluster operator, T, is::
 !
-!     e^{T(t)} = 1 + \sum_i t_i(t) a_i + 1/2! \sum_{ij} t_i(t) t_j(t) a_i a_j + ...  (5)
+!     T(t) = \sum_{ia} t_i^a(t) a_i^a + 1/2!^2 \sum_{ijab} t_{ij}^{ab}(t) a_{ij}^{ab} + ...  (5)
 !
-! The operators, {a_i}, known as excitors, cause electrons to be excited from
-! occupied orbitals in the reference determinant to virtual orbitals and have
-! corresponding amplitudes, {t_i}, which evolve in time.  In the infinite-time
-! limit, the amplitudes converge onto the true CC wavefunction.
+! (I apologise for using a in two different senses...)
 !
-! Note that, depending upon the definition of a_i, < D_i | a_i D_0 > can be
-! either +1 or -1.  Alex Thom defines a_i such that this term is always +1 in his
+! The operators, {a_I=a_{ij...}^{ab...}}, known as excitors, cause electrons to
+! be excited from occupied orbitals in the reference determinant to virtual
+! orbitals and have corresponding amplitudes, {t_I}, which evolve in time.  In
+! the infinite-time limit, the amplitudes converge onto the true CC
+! wavefunction.
+!
+! Note that, depending upon the definition of a_I, < D_I | a_I D_0 > can be
+! either +1 or -1.  Alex Thom defines a_I such that this term is always +1 in his
 ! CCMC papers but this definition is not convenient for computation.  See
 ! comments in collapse_cluster and convert_excitor_to_determinant.
 !
-! We can only handle uniquely defined excitors, i.e. we consider t_{ij}^{ab} and
-! t_{ji}^{ba} to be one entity (where, unlike the above notation in terms of
-! determinants, the indices refer to spin-orbitals).  This is fine as
-! t_{ij}^{ab} a_{ij}^{ab} = t_{ji}^{ba} a_{ji}^{ba}.  (I apologise for using a in
-! two different senses...)  As a consequence, we must be very careful with the
-! above expansion in (5).  Returning to the notation where the indices label
-! a excitor/determinant, we can simplify (5) such that each unique cluster only
-! occurs once::
+! We can only handle uniquely defined excitors, i.e. we consider t_{ij}^{ab}, 
+! t_{ji}^{ba}, t_{ji}^{ab} and t_{ij}^{ba} to be one entity.  This is fine as
+! t_{ij}^{ab} a_{ij}^{ab} = t_{ji}^{ba} a_{ji}^{ba} = -t_{ji}^{ab} = -t_{ij}^{ba}.
+! As a consequence, we must be very careful with the above expansion in (5).  We
+! can simplify (5) such that each unique cluster only occurs once::
 !
-!     e^{T(t)} = 1 + \sum_i t_i(t) a_i + \sum_{i<j} t_i(t) t_j(t) a_i a_j
-!                  + \sum_{i<j<k} t_i(t) t_j(t) t_k(t) a_i a_j a_k + ....     (6)
+!     T(t) = \sum_{ia} t_i^a(t) a_i^a + \sum_{i<j,a<b} t_{ij}^{ab}(t) a_{ij}^{ab} + ...  (6)
+!
+! Evaluating e^{T(t)} is, as in traditional CC, performed using a series
+! expansion::
+!
+!     e^{T(t)} = e^{\sum_I t_I a_I}                                           (7)
+!              = 1 + sum_I t_I a_I + 1/2! sum_{IJ} t_I t_J a_I a_J + ...      (8)
 !
 ! Alternatively, as pointed out by Trygve Helgaker, one can consider::
 !
-!     e^{T(t)} = e^{t_i(t) a_i} e^{t_j(t) a_j} e^{t_k(t) a_k} ...             (7)
-!              = (1+t_i(t) a_i) (1+t_j(t) a_j) (1+t_k(t) a_k) ...             (8)
+!     e^{T(t)} = e^{t_I(t) a_I} e^{t_J(t) a_J} e^{t_K(t) a_K} ...             (9)
+!              = (1+t_I(t) a_I) (1+t_J(t) a_J) (1+t_K(t) a_K) ...             (10)
 !
-! which expands out to (6) and uses the property that a_i a_i = 0.
+! which expands out to (8), except for the absence of the factorial prefactors,
+! and uses the property that a_I a_I = 0.  However, there is no computational
+! advantage to using this and, due to the need to consider an order for {I}, it
+! is actually trickier to code than using (8).
 !
 ! Normalisation
 ! -------------
@@ -82,7 +94,7 @@ module ccmc
 ! hard to maintain in CCMC.  Instead we follow the prescription of Alex Thom and
 ! introduce an additional variable, N_0, to act as a normalisation constant::
 !
-!     |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >    (9)
+!     |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >    (11)
 !
 ! The number of particles on the reference (not strictly excips though we shall
 ! refer to them by this name for the sake of conciseness and generality) is
@@ -102,12 +114,12 @@ module ccmc
 !
 ! The CC wavefunction can be sampled by selected a random cluster of excitors.
 ! Applying this cluster to the reference determinant generates a determinant,
-! D_i.  The action of the Hamiltonian is sampled in an identical fashion to
+! D_I.  The action of the Hamiltonian is sampled in an identical fashion to
 ! FCIQMC:
 !
-! #. Generate D_j, a random (single or double) excitation of D_i.  Create a new
-!    particle on D_j with a probability proportional to |H_{ij}| dt.
-! #. Create a particle on D_i with a probability proportional to |H_{ii}-S| dt.
+! #. Generate D_J, a random (single or double) excitation of D_I.  Create a new
+!    particle on D_J with a probability proportional to |H_{IJ}| dt.
+! #. Create a particle on D_I with a probability proportional to |H_{II}-S| dt.
 !
 ! As with FCIQMC, because we do not allow every possible event to take place each
 ! iteration, the probabilities must be weighted accordingly by the probability
@@ -138,15 +150,15 @@ module ccmc
 !    set of annihilation and creation operators.  Each permutation causes a sign
 !    change and thus an overall odd number of permutations causes a sign change
 !    in the excip population.  See collapse_cluster.
-! #. Applying the i-th excitor to D_0 can result in a sign change due to the
+! #. Applying the I-th excitor to D_0 can result in a sign change due to the
 !    different definitions of an excitor and determinant which also requires
 !    permutations of creation and annihilation operators.  See
 !    convert_excitor_to_determinant.
-! #. As we are creating an excip on the j-th excitor from the i-th excitor, we
+! #. As we are creating an excip on the J-th excitor from the I-th excitor, we
 !    must be consistent with our definition of the excitor; in particular they
 !    might produce determinants of different signs when applied to the reference
-!    determinant.  Thus if we consider creating an excip on t_j from t_i (where
-!    j can be i or any connected excitor), we *must* take into account the signs
+!    determinant.  Thus if we consider creating an excip on t_J from t_I (where
+!    J can be I or any connected excitor), we *must* take into account the signs
 !    of the excitors relative to the reference determinant.
 !
 ! In order for the correct dynamics to be performed, we must carefully
@@ -476,7 +488,8 @@ contains
             ! label an excitor), the probability of selecting a given cluster is
             ! proportional to the number of ways the cluster could have been
             ! formed.  (One can view this factorial contribution as the
-            ! factorial prefactors in the series expansion of e^T.)
+            ! factorial prefactors in the series expansion of e^T---see Eq (8)
+            ! in the module-level comments.)
             cluster%pselect = cluster%pselect*factorial(cluster%nexcitors)
 
             if (cluster_population /= 0) cluster%excitation_level = get_excitation_level(f0, cdet%f)
