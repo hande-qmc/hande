@@ -86,7 +86,7 @@ endif
 ifeq ($(MAKECMDGOALS),)
 __COMPILE_TARGET__ := yes
 else
-ifneq ($(filter-out help clean cleanall ctags,$(MAKECMDGOALS)),)
+ifneq ($(filter-out help check clean cleanall ctags,$(MAKECMDGOALS)),)
 __COMPILE_TARGET__ := yes
 else
 __COMPILE_TARGET__ := no
@@ -248,7 +248,7 @@ $(DEPEND_DIR)/%.d: %.cpp
 #-----
 # Goals.
 
-.PHONY: clean cleanall new help ctags program library
+.PHONY: check clean cleanall new help ctags program library
 
 LINK_MACRO = cd $(@D) && ln -s -f $(<F) $(@F)
 
@@ -257,6 +257,7 @@ $(EXE)/$(PROG): $(EXE)/$(PROG_VERSION)
 	$(LINK_MACRO)
 
 $(EXE)/$(PROG_VERSION): $(OBJECTS)
+	$(MAKE) check
 	$(LD) -o $@ $(FFLAGS) $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
 
 # Compile library.
@@ -264,6 +265,7 @@ $(EXE)/$(LIB): $(EXE)/$(LIB_VERSION)
 	$(LINK_MACRO)
 
 $(EXE)/$(LIB_VERSION): $(LIB_OBJECTS)
+	$(MAKE) check
 	$(AR) $(ARFLAGS) $@ $^
 
 # Remove compiled objects and executable.
@@ -279,6 +281,11 @@ new: clean $(EXE)/$(PROG)
 # Generate dependency file.
 $(F_DEPEND): $(F_FILES)
 	tools/sfmakedepend --file - --silent $^ --objdir \$$\(DEST\) --moddir \$$\(DEST\) > $@
+
+# Some quick sanity checks.
+check:
+	tools/check_distribute.py
+	tools/check_keywords.py
 
 # tag files
 # ctags >> etags supplied by emacs
@@ -316,6 +323,8 @@ help:
 	@echo -e "\tDelete all object files, dependency files, binaries and libraries created by all configurations."
 	@echo new
 	@echo -e "\tRun the clean and then $(EXE)/$(PROG) targets."
+	@echo check
+	@echo -e "\tRun the (non-exhaustive) checker scripts to sanity check the input parser."
 
 #-----
 # Include dependency file.
