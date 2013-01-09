@@ -140,6 +140,10 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
 
         self.data = [Data(data_col) for data_col in data_cols]
 
+        # We need to store the total size of the data set when we find the optimal number
+        # of blocking transformations
+        self.data_set_size = 0
+
         self.combination = combination
         if self.combination == '/':
             self.combination_fn = self.calculate_combination_division
@@ -153,6 +157,11 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
         # These are symmetric and thus we choose to work using i<j.
         self.covariance = {}
         self.combination_stats = {}
+
+        # Store the optimal block length for each column and combinations
+        self.optimal_block_len_col = [0 for data_col in data_cols ]
+        self.optimal_block_len_com = [0 for data_col in data_cols ]
+
 
     def get_data(self):
         '''Extract the relevant data from the datafiles.'''
@@ -179,6 +188,8 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
         # Now we sort the data according to the index.
         for data in self.data:
             data.sort_by_index(indices)
+        # Store the total size of the data set
+        self.data_set_size = len(data.data)
 
     def blocking(self):
         '''Perform a blocking analysis on the data.
@@ -213,6 +224,30 @@ This destroys the data stored in self.data.data'''
                     block_size /= 2
 
                 data.reblock()
+
+    def find_optimal_transformations(self):
+        '''Find the optimal number of blocking transformations.
+
+We use the method in R.M. Lee et al. Phys. Rev. E 83, 0066706 (2011), which is explicitly derived in
+Comp. Phys. Com 156 2 (2004) 146 http://dx.doi.org/10.1016/S0010-4655(03)00467-3  '''
+
+    # The optimal number of transformations is the smallest number of blocking transformations such that
+    # B^3 > 2n*(\sigma(B)/\sigma(0))^4 is true.  Where B is the number of data points averaged to form
+    # a block, n is the total number of data points and \sigma(B) is the standard error after B
+    # blocking transformations. This finds a appropriate balance between the systematic error in the
+    # error, caused by the blocks being serially correlated and the statistical error caused by having
+    # a finite number of Blocks.
+
+        for s in reversed(range(len(self.data[0].stats))):
+
+            B = self.data_set_size/self.data[0].stats[s].block_size
+            for i, data in enumerate(self.data):
+                if (B)**3 > 2*self.data_set_size*(data.stats[s].se/data.stats[0].se)**4:
+                    self.optimal_block_len_col[i] = s
+
+            for i, comb in enumerate(self.combination_stats.itervalues()):
+                if (B)**3 > 2*self.data_set_size*(comb[s].se/comb[0].se)**4:
+                    self.optimal_block_len_com[i] = s
 
     def calculate_covariance(self, i, j):
         '''Calculate the covariance between the i-th data item and the j-th data item.
@@ -275,7 +310,7 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
         # print blocking output
         # header...
         print '%-11s' % ('# of blocks'),
-        fmt = '%-14s %-12s %-18s '
+        fmt = '   %-14s %-12s %-18s '
         header = ('mean (X_%i)', 'std.err. (X_%i)', 'std.err.err. (X_%i)')
         for data in self.data:
             data_header = tuple(x % (data.data_col) for x in header)
@@ -286,20 +321,36 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
         for key in self.combination_stats:
             fmt = ['mean (X_%s'+self.combination+'X_%s)', 'std.err. (X_%s'+self.combination+'X_%s)']
             strs = tuple([s % tuple(key.split(',')) for s in fmt])
-            print '%-16s %-18s' % strs,
+            print '    %-16s %-18s' % strs,
         print
         # data
         block_fmt = '%-11i'
         fmt = '%-#14.12g %-#12.8e %-#18.8e '
         for s in range(len(self.data[0].stats)):
             print block_fmt % (self.data[0].stats[s].block_size),
-            for data in self.data:
+            for row, data in enumerate(self.data):
+                if s == self.optimal_block_len_col[row]:
+                    print '%-2s' % ('->'),
+                else :
+                    print '%-2s' % ('  '),
                 print fmt % (data.stats[s].mean, data.stats[s].se, data.stats[s].se_error),
             for cov in self.covariance.itervalues():
                 print '%+-#12.5e' % (cov[s]),
-            for comb in self.combination_stats.itervalues():
+            for row, comb in enumerate(self.combination_stats.itervalues()):
+                if s == self.optimal_block_len_com[row]:
+                    print '%-2s' % ('->'),
+                else :
+                    print '%-2s' % ('  '),
                 print '%-#16.12f %-#18.12e' % (comb[s].mean, comb[s].se),
             print
+
+        # We now print the average and standard error of each col.
+        for (i, data) in enumerate(self.data):
+            print 'mean (X_%i)=' %(data.data_col) ,data.stats[0].mean,  '+/-', data.stats[self.optimal_block_len_col[i]].se
+        for i, key in enumerate(self.combination_stats):
+            fmt = ['mean (X_%s'+self.combination+'X_%s)=']
+            strs = tuple([s % tuple(key.split(',')) for s in fmt])
+            print '%-15s' % strs , comb[0].mean, '+/-', comb[self.optimal_block_len_com[i]].se
 
         # plot standard error 
         if PYLAB:
@@ -311,6 +362,7 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
                 se = [stat.se for stat in data.stats]
                 se_error = [stat.se_error for stat in data.stats]
                 pylab.semilogx(blocks, se, 'g-', basex=2, label=r'$\sigma(X_%s)$' % (data.data_col))
+                pylab.semilogx(blocks[self.optimal_block_len_col[i]],se[self.optimal_block_len_col[i]], 'ro', basex=2)
                 pylab.errorbar(blocks, se, yerr=se_error, fmt=None, ecolor='g')
                 xmax = 2**pylab.ceil(pylab.log2(blocks[0]+1))
                 pylab.xlim(xmax, 1)
@@ -359,4 +411,5 @@ if __name__ == '__main__':
 
     my_data.get_data()
     my_data.blocking()
+    my_data.find_optimal_transformations()
     my_data.show_blocking(options.plotfile)
