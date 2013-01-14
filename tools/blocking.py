@@ -159,8 +159,8 @@ block_all: assume all lines contain data apart from comment lines.  The regular 
         self.combination_stats = {}
 
         # Store the optimal block length for each column and combinations
-        self.optimal_block_len_col = [0 for data_col in data_cols ]
-        self.optimal_block_len_com = [0 for data_col in data_cols ]
+        self.optimal_block_len_col = [-1 for data_col in data_cols ]
+        self.optimal_block_len_com = [-1 for data_col in data_cols ]
 
 
     def get_data(self):
@@ -344,15 +344,23 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
                 print '%-#16.12f %-#18.12e' % (comb[s].mean, comb[s].se),
             print
 
-        # We now print the average and standard error of each col.
+        # We now print the average and standard error of each col if blocking was successful
         for (i, data) in enumerate(self.data):
-            print 'mean (X_%i)=' %(data.data_col) ,data.stats[0].mean,  '+/-', data.stats[self.optimal_block_len_col[i]].se
+            if(self.optimal_block_len_col[i] != -1):
+                print 'mean (X_%i) =' %(data.data_col) ,data.stats[0].mean,  '+/-', data.stats[self.optimal_block_len_col[i]].se
+            else:
+                print 'Warning: Could not find a satisfactory block length for mean (X_%i)' %(data.data_col)
+                print 'If the population dynamics look sensible, run the simulation for longer, for an accurate estimate of the error.'
         for i, key in enumerate(self.combination_stats):
-            fmt = ['mean (X_%s'+self.combination+'X_%s)=']
+            fmt = ['mean (X_%s'+self.combination+'X_%s)']
             strs = tuple([s % tuple(key.split(',')) for s in fmt])
-            print '%-15s' % strs , comb[0].mean, '+/-', comb[self.optimal_block_len_com[i]].se
+            if(self.optimal_block_len_com[i] != -1):
+                print '%-14s' % strs, '='  , comb[0].mean, '+/-', comb[self.optimal_block_len_com[i]].se
+            else:
+                print 'Warning: Could not find a satisfactory block length for %-15s' % strs
+                print 'If the population dynamics look sensible, run the simulation for longer, for an accurate estimate of the error.'
 
-        # plot standard error 
+        # plot standard error
         if PYLAB:
             # one sub plot per data set.
             nplots = len(self.data)
@@ -362,7 +370,8 @@ If plotfile is given, then the graph is saved to the specifed file rather than b
                 se = [stat.se for stat in data.stats]
                 se_error = [stat.se_error for stat in data.stats]
                 pylab.semilogx(blocks, se, 'g-', basex=2, label=r'$\sigma(X_%s)$' % (data.data_col))
-                pylab.semilogx(blocks[self.optimal_block_len_col[i]],se[self.optimal_block_len_col[i]], 'ro', basex=2)
+                if(self.optimal_block_len_col[i] != -1):
+                    pylab.semilogx(blocks[self.optimal_block_len_col[i]],se[self.optimal_block_len_col[i]], 'ro', basex=2)
                 pylab.errorbar(blocks, se, yerr=se_error, fmt=None, ecolor='g')
                 xmax = 2**pylab.ceil(pylab.log2(blocks[0]+1))
                 pylab.xlim(xmax, 1)
