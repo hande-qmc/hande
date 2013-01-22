@@ -1,6 +1,7 @@
 module calc
 
 use const
+use csr, only: csrpsy_t
 use parallel, only: blacs_info
 
 implicit none
@@ -47,6 +48,14 @@ integer :: sym_in = huge(1)
 ! Best contained within a module to allow easy access from the Lanczos
 ! matrix-vector multiplication routines.
 real(p), allocatable :: hamil(:,:) ! (ndets, ndets)
+! For single-node calculations, we can also store the hamiltonian matrix in
+! sparse format.  This is typically *far* smaller than hamil and hence it is
+! usually better to run on a single node than distribute the Hamiltonian matrix.
+! Of course, perhaps one day a kind soul will implement a parallel sparse matrix
+! storage format.
+type(csrpsy_t) :: hamil_csr
+! Use sparse matrix rather than dense matrix?
+logical :: use_sparse_hamil = .false.
 
 ! If either of the following options are true, then the eigenvectors are found
 ! during exact diagonalisation as well as the eigenvalues.  Doing this is

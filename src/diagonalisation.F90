@@ -255,6 +255,7 @@ contains
         !        for descriptions of the different behaviours.
 
         use checking, only: check_allocate, check_deallocate
+        use csr, only: init_csrpsy, end_csrpsy
         use utils, only: get_free_unit
         use errors
         use parallel
@@ -265,7 +266,8 @@ contains
 
         integer, intent(in), optional :: distribute_mode
         integer :: ierr, iunit, n1, n2, ind_offset
-        integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal
+        integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
+        real(p) :: hmatel
 
         ! Store how many determinants have already been considered.
         ! This allows for the correct indexing scheme to be used in
@@ -279,6 +281,7 @@ contains
             deallocate(hamil, stat=ierr)
             call check_deallocate('hamil',ierr)
         end if
+        if (allocated(hamil_csr%mat)) call end_csrpsy(hamil_csr)
 
         if (present(distribute_mode)) then
             distribute = distribute_mode
@@ -320,8 +323,25 @@ contains
             call stop_all('generate_hamil','Unknown distribution scheme.')
         end select
 
-        allocate(hamil(n1,n2), stat=ierr)
-        call check_allocate('hamil',n1*n2,ierr)
+        if (use_sparse_hamil) then
+            if (distribute /= distribute_off) then
+                write (6,'(1X,a58,/,1X,a26,/,1X,a83)') &
+                    'Sparse distributed matrices are not currently implemented.', &
+                    'Not using sparse matrices.', &
+                    'If this is disagreeable to you, please contribute patches resolving this situation.'
+            end if
+            if (doing_calc(exact_diag)) then
+                write (6,'(1X,a47,1X,a26,/,1X,a83)') &
+                    'Sparse matrices are not compatible with LAPACK.', &
+                    'Not using sparse matrices.', &
+                    'If this is disagreeable to you, please contribute patches resolving this situation.'
+            end if
+        end if
+
+        if (distribute /= distribute_off .or. doing_calc(exact_diag) .or. .not. use_sparse_hamil) then
+            allocate(hamil(n1,n2), stat=ierr)
+            call check_allocate('hamil',n1*n2,ierr)
+        end if
 
         ! index offset for the symmetry block compared to the index of the
         ! determinant list.
@@ -331,9 +351,45 @@ contains
         ! Form the Hamiltonian matrix < D_i | H | D_j >.
         select case(distribute)
         case(distribute_off)
-            forall (i=1:ndets)
-                forall (j=i:ndets) hamil(i,j) = get_hmatel_dets(i+ind_offset,j+ind_offset)
-            end forall
+            if (use_sparse_hamil .and. .not. doing_calc(exact_diag)) then
+                ! First, find out how many non-zero elements there are.
+                ! We'll be naive and not just test for non-zero by symmetry, but
+                ! actually calculate all matrix elements for now.
+                ! Then, store the Hamiltonian.
+                do imode = 1, 2
+                    nnz = 0
+                    do i = 1, ndets
+                        do j = i, ndets
+                            hmatel = get_hmatel_dets(i+ind_offset, j+ind_offset)
+                            if (abs(hmatel) > depsilon) then
+                                nnz = nnz + 1
+                                if (imode == 2) then
+                                    hamil_csr%mat(nnz) = hmatel
+                                    hamil_csr%col_ind(nnz) = j
+                                    if (hamil_csr%row_ptr(i) == 0) hamil_csr%row_ptr(i) = nnz
+                                end if
+                            end if
+                        end do
+                    end do
+                    if (imode == 1) then
+                        write (6,'(1X,a50,i8/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
+                        call init_csrpsy(hamil_csr, ndets, nnz)
+                        hamil_csr%row_ptr(1:ndets) = 0
+                    else
+                        ! Any element not set in row_ptr means that the
+                        ! corresponding row has no non-zero elements.
+                        ! Set it to be identical to the next row (this avoids
+                        ! looping over the zero-row).
+                        do i = ndets, 1, -1
+                            if (hamil_csr%row_ptr(i) == 0) hamil_csr%row_ptr(i) = hamil_csr%row_ptr(i+1)
+                        end do
+                    end if
+                end do
+            else
+                forall (i=1:ndets)
+                    forall (j=i:ndets) hamil(i,j) = get_hmatel_dets(i+ind_offset,j+ind_offset)
+                end forall
+            end if
         case(distribute_blocks, distribute_cols)
             ! blacs divides the matrix up into sub-matrices of size block_size x block_size.
             ! The blocks are distributed in a cyclic fashion amongst the
@@ -379,12 +435,22 @@ contains
                 deallocate(work_print)
                 call check_deallocate('work_print', ierr)
             else
-                do i=1, ndets
-                    write (iunit,*) i,i,hamil(i,i)
-                    do j=i+1, ndets
-                        if (abs(hamil(i,j)) > depsilon) write (iunit,*) i+ndets_prev,j+ndets_prev,hamil(i,j)
+                if (allocated(hamil)) then
+                    do i=1, ndets
+                        write (iunit,*) i,i,hamil(i,i)
+                        do j=i+1, ndets
+                            if (abs(hamil(i,j)) > depsilon) write (iunit,*) i+ndets_prev,j+ndets_prev,hamil(i,j)
+                        end do
                     end do
-                end do
+                else if (allocated(hamil_csr%mat)) then
+                    j = 1
+                    do i = 1, size(hamil_csr%mat)
+                        if (abs(hamil_csr%mat(i)) > depsilon) then
+                            if (hamil_csr%row_ptr(j+1) <= i) j = j+1
+                            write (iunit,*) j+ndets_prev, hamil_csr%col_ind(i)+ndets_prev, hamil_csr%mat(i)
+                        end if
+                    end do
+                end if
                 ndets_prev = ndets
             end if
             close(iunit, status='keep')
