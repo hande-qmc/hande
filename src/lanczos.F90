@@ -158,9 +158,10 @@ contains
         ! Out:
         !    yout: the array to store results of the multiplication.
 
+        use csr, only: csrpsymv
         use parallel, only: nprocs
 
-        use calc, only: hamil, proc_blacs_info
+        use calc, only: hamil, hamil_csr, use_sparse_hamil, proc_blacs_info
         use determinants, only: ndets
 
         integer, intent(in) :: nrow, ncol, ldx, ldy
@@ -172,6 +173,7 @@ contains
 #endif
         ! local variables
         integer :: i
+        logical :: sparse
 
         ! TRLan requires an interface with xin and yout being double precision.
         ! This is not conducive with running in single precision, where we only
@@ -183,6 +185,9 @@ contains
         xin_p = xin
 #endif
 
+        ! Might not be using sparsity if encountered issues earlier...
+        sparse = allocated(hamil_csr%mat) .and. use_sparse_hamil
+
         if (nprocs == 1) then
             ! Use blas to perform matrix-vector multiplication.
             do i = 1, ncol
@@ -190,13 +195,25 @@ contains
                 ! where H is the Hamiltonian matrix, x is the input Lanczos vector
                 ! and y the output Lanczos vector.
 #ifdef SINGLE_PRECISION
-                call ssymv('U', nrow, 1.0_p, hamil, nrow, xin_p(:,i), 1, 0.0_p, yout_p(:,i), 1)
+                if (sparse) then
+                    ! This could be improved by multiplying the sparse
+                    ! hamiltonian matrix by the dense xin matrix, rather than
+                    ! doing one vector at a time.
+                    call csrpsymv(hamil_csr, xin_p(:,i), yout_p(:,i))
+                else
+                    call ssymv('U', nrow, 1.0_p, hamil, nrow, xin_p(:,i), 1, 0.0_p, yout_p(:,i), 1)
+                end if
 #else
-                call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
+                if (sparse) then
+                    call csrpsymv(hamil_csr, xin(:,i), yout(:,i))
+                else
+                    call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
+                end if
 #endif
             end do
         else
 #ifdef PARALLEL
+            if (sparse) write (6,'(1X, a81)') 'WARNING.  Sparsity not implemented in parallel.  This is not going to end well...'
             ! Use pblas to perform matrix-vector multiplication.
             if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
                 ! Some of the matrix on this processor.
