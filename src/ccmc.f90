@@ -406,9 +406,9 @@ contains
         type(det_info), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
-        real(p) :: rand, psize
-        integer :: i, pos, pop, cluster_population, excitor_sgn
-        logical :: hit
+        real(p) :: rand, psize, cluster_population
+        integer :: i, pos, pop, excitor_sgn
+        logical :: hit, allowed
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -455,6 +455,10 @@ contains
         ! until proven otherwise (initiator_flag=1).
         cdet%initiator_flag = 0
 
+        ! Assume cluster is allowed unless collapse_cluster finds out otherwise
+        ! when collapsing/combining excitors.
+        allowed = .true.
+
         select case(cluster%nexcitors)
         case(0)
             ! Must be the reference.
@@ -494,39 +498,37 @@ contains
                     cdet%f = walker_dets(:,pos)
                     cluster_population = walker_population(1,pos)
                 else
-                    call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population)
+                    call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population, allowed)
+                    if (.not.allowed) exit
                 end if
-                if (cluster_population == 0) exit
                 if (walker_population(1,pos) <= initiator_population) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = pop/tot_pop.
                 cluster%pselect = (cluster%pselect*abs(walker_population(1,pos)))/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
             end do
 
-            ! We chose excitors with a probability proportional to their
-            ! occupation.  However, because (for example) the cluster t_X t_Y
-            ! and t_Y t_X collapse onto the same excitor (where X and Y each
-            ! label an excitor), the probability of selecting a given cluster is
-            ! proportional to the number of ways the cluster could have been
-            ! formed.  (One can view this factorial contribution as the
-            ! factorial prefactors in the series expansion of e^T---see Eq (8)
-            ! in the module-level comments.)
-            cluster%pselect = cluster%pselect*factorial(cluster%nexcitors)
-
-            if (cluster_population /= 0) cluster%excitation_level = get_excitation_level(f0, cdet%f)
+            if (allowed) cluster%excitation_level = get_excitation_level(f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
             ! the maximum excitation included in the CC wavefunction.
-            if (cluster%excitation_level > truncation_level+2) cluster_population = 0
+            if (cluster%excitation_level > truncation_level+2) allowed = .false.
 
-            if (cluster_population /= 0) then
+            if (allowed) then
+                ! We chose excitors with a probability proportional to their
+                ! occupation.  However, because (for example) the cluster t_X t_Y
+                ! and t_Y t_X collapse onto the same excitor (where X and Y each
+                ! label an excitor), the probability of selecting a given cluster is
+                ! proportional to the number of ways the cluster could have been
+                ! formed.  (One can view this factorial contribution as the
+                ! factorial prefactors in the series expansion of e^T---see Eq (8)
+                ! in the module-level comments.)
+                cluster%pselect = cluster%pselect*factorial(cluster%nexcitors)
+
                 ! Sign change due to difference between determinant
                 ! representation and excitors and excitation level.
                 call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = real(cluster_population,p)/(D0_normalisation**(cluster%nexcitors-1))
-                ! Factorial due to the series expansion of exp(\hat{T}).
-                cluster%amplitude = cluster%amplitude!/factorial(cluster%nexcitors)
+                cluster%amplitude = cluster_population/(D0_normalisation**(cluster%nexcitors-1))
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
@@ -687,22 +689,28 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    subroutine collapse_cluster(excitor, excitor_population, cluster_excitor, cluster_population)
+    subroutine collapse_cluster(excitor, excitor_population, cluster_excitor, cluster_population, allowed)
 
         ! Collapse two excitors.  The result is returned in-place.
 
         ! In:
         !    excitor: bit string of the Slater determinant formed by applying
-        !        the excitor to the reference determinant.
-        !    excitor_population: number of excips on the excitor.
+        !        the excitor, e1, to the reference determinant.
+        !    excitor_population: number of excips on the excitor e1.
         ! In/Out:
         !    cluster_excitor: bit string of the Slater determinant formed by applying
-        !        the excitor to the reference determinant.
-        !    cluster_population: number of excips on the 'cluster' excitor.
+        !        the excitor, e2, to the reference determinant.
+        !    cluster_population: number of excips on the 'cluster' excitor, e2.
+        ! Out:
+        !    allowed: true if excitor e1 can be applied to excitor e2 (i.e. e1
+        !    and e2 do not involve exciting from/to the any identical
+        !    spin-orbitals).
 
-        ! On input, cluster excitor refers to an existing excitor.  On output,
+        ! On input, cluster excitor refers to an existing excitor, e2.  On output,
         ! cluster excitor refers to the excitor formed from applying the excitor
-        ! to the cluster.
+        ! e1 to the cluster e2.
+        ! ***WARNING***: if allowed is false then cluster_excitor and
+        ! cluster_population are *not* updated.
 
         use basis, only: basis_length, basis_lookup
         use excitations, only: excit_mask
@@ -714,7 +722,8 @@ contains
         integer(i0), intent(in) :: excitor(basis_length)
         integer, intent(in) :: excitor_population
         integer(i0), intent(inout) :: cluster_excitor(basis_length)
-        integer, intent(inout) :: cluster_population
+        real(p), intent(inout) :: cluster_population
+        logical,  intent(out) :: allowed
 
         integer :: ibasis, ibit
         integer(i0) :: excitor_excitation(basis_length), excitor_annihilation(basis_length), excitor_creation(basis_length)
@@ -740,10 +749,11 @@ contains
             ! the cluster or into an orbital already excited into by the
             ! cluster.
             ! => not valid
-            cluster_population = 0
+            allowed = .false.
         else
             ! Applying the excitor to the existing cluster of excitors results
             ! in a valid cluster.
+            allowed = .true.
 
             ! Combine amplitudes.
             ! Might need a sign change as well...see below!
