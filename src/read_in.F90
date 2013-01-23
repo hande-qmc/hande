@@ -326,11 +326,11 @@ contains
         ! Freezing core orbitals amounts to changing the Hamiltonian.  In
         ! particular:
 
-        ! E_core = E_nuc + \sum_{i=1}^{N_fr} <i|h|i> + \sum_{i<j}^{N_fr} <ij|ij> - <ij|ji>
-        ! <a|h'|b> = <a|h|b> + \sum_{i=1}^{N_fr} <ia|ib> - <ia|bi>
+        ! E_core = E_nuc + \sum_{i=1}^{N_fr} <i|h|i> + \sum_{i<j}^{N_fr} <ij|ij> - <ij|ji>  [1]
+        ! <a|h'|b> = <a|h|b> + \sum_{i=1}^{N_fr} <ia|ib> - <ia|bi>                          [2]
 
-        ! where we use i,j to refer to frozen core orbitals and a,b to refer to
-        ! active orbitals.
+        ! where we use i,j to refer to frozen core spin-orbitals and a,b to refer to
+        ! active spin-orbitals.
 
         ! See J. Chem. Phys. 62, 4764 (1975), An Introduction to
         ! Configuration Interaction Theory by C. David Sherrill
@@ -428,6 +428,8 @@ contains
                             if (ii < 1 .and. ii == aa) then
                                 ! Have <i|h|i> from a core orbital.  Add
                                 ! contribution to Ecore.
+                                ! If RHF need to include <i,up|h|i,up> and
+                                ! <i,down|h|i,down>.
                                 Ecore = Ecore + x*rhf_fac
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
@@ -446,20 +448,38 @@ contains
                             select case(count(orbs > 0))
                             case(0)
                                 ! Have <ij|ab> involving only core orbitals.
+                                ! We should only run over i<j but there's no
+                                ! guarantee that the FCIDUMP file contains the
+                                ! permutations we expect (ie it might contain
+                                ! <ji|ji> but not <ij|ij>, where i<j), so
+                                ! instead we let the seen_ijij array make sure
+                                ! we only use a unique integral once, no matter
+                                ! which permutation(s) occur in the FCIDUMP
+                                ! file.
                                 if (ii == aa .and. jj == bb .and. ii == jj) then
-                                    ! RHF calculations: need to include <i,up i,down|i,up i,down>
                                     if (.not.uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
+                                        ! RHF calculations: need to include <i,up i,down|i,up i,down>.
                                         Ecore = Ecore + x
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
-                                else if (ii == aa .and. jj == bb .and. ii < jj) then
+                                else if (ii == aa .and. jj == bb .and. ii /= jj) then
+                                    ! <ij|ij>, i/=j
                                     if (mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
-                                        Ecore = Ecore + x*rhf_fac
+                                        ! If RHF, then need to include:
+                                        !   <i,up j,up|i,up, j,up>
+                                        !   <i,up j,down|i,up, j,down>
+                                        !   <i,down j,up|i,down, j,up>
+                                        !   <i,down j,down|i,down, j,down>
+                                        Ecore = Ecore + x*rhf_fac**2
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
-                                else if (ii == bb .and. jj == aa .and. ii < jj) then
+                                else if (ii == bb .and. jj == aa .and. ii /= jj) then
+                                    ! <ij|ji>, i/=j
                                     if (seen_ijij(tri_ind_reorder(i,j)) < 2) then
-                                        Ecore = Ecore - x
+                                        ! If RHF, then need to include:
+                                        !   <i,up j,up|j,up, i,up>
+                                        !   <i,down j,down|j,down, i,down>
+                                        Ecore = Ecore - rhf_fac*x
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 2
                                     end if
                                 end if
