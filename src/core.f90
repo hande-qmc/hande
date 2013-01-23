@@ -26,7 +26,7 @@ contains
         use basis, only: init_model_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
-        use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
+        use parallel, only: init_parallel, parallel_report, iproc, nprocs, nthreads, parent
         use hubbard_real, only: init_real_space
         use momentum_symmetry, only: init_momentum_symmetry
         use point_group_symmetry, only: print_pg_symmetry_info
@@ -43,7 +43,7 @@ contains
             call environment_report()
         end if
 
-        if (nprocs > 1 .and. parent) call parallel_report()
+        if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
         if (parent) call read_input()
 
