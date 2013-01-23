@@ -176,17 +176,19 @@ contains
 
     end subroutine environment_report
 
-    subroutine end_report(elapsed_time, io)
+    subroutine end_report(wall_time, cpu_time_used, io)
 
         ! Print out date at end of calculation and how long it took.
 
         ! In:
-        !    elapsed_time: number of seconds between the start and end of the
+        !    wall_time: number of seconds between the start and end of the
         !        calculation.
+        !    cpu_time_used: number of seconds took by process and any and all
+        !       child processes.
         !    io (optional): unit to which the environment information is written.
         !        Default: 6.
 
-        real, intent(in) :: elapsed_time
+        real, intent(in) :: wall_time, cpu_time_used
         integer, intent(in), optional :: io
         integer :: date_values(8), io_unit
 
@@ -202,7 +204,8 @@ contains
 
         write (io_unit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
-        write (io_unit,'(1X,a17,10X,f14.2,a1)') "Calculation took:", elapsed_time, "s"
+        write (io_unit,'(1X,a10,17X,f14.2,a1)') "Wall time:", wall_time, "s"
+        write (io_unit,'(1X,a25,2X,f14.2,a1)') "CPU time (per processor):", cpu_time_used, "s"
 
         write (io_unit,'(1X,64("="),/)')
 
