@@ -101,16 +101,32 @@ contains
         real(p), intent(out) :: y(:)
 
         integer :: irow, icol, iz
+        real(p) :: rowx
         
         y = 0.0_p
+        ! Avoid overhead of creating thread pool.
+        ! However, by not just doing "!$omp parallel do", we must be *very*
+        ! careful when accessing or updating any shared value.
+        !$omp parallel
         do irow = 1, size(spm%row_ptr)-1
-            ! TODO: OpenMP.
+            !$omp master
+            rowx = 0.0_p
+            !$omp end master
+            !$omp barrier
+            ! OpenMP chunk size determined completely empirically from a single
+            ! test.  Please feel free to improve...
+            !$omp do private(icol) reduction(+:rowx) schedule(dynamic, 200)
             do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
                 icol = spm%col_ind(iz)
                 y(icol) = y(icol) + spm%mat(iz)*x(irow)
-                if (icol /= irow) y(irow) = y(irow) + spm%mat(iz)*x(icol)
+                if (icol /= irow) rowx = rowx + spm%mat(iz)*x(icol)
             end do
+            !$omp end do
+            !$omp master
+            y(irow) = y(irow) + rowx
+            !$omp end master
         end do
+        !$omp end parallel
 
     end subroutine csrpsymv
 
