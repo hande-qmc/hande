@@ -358,19 +358,27 @@ contains
                 ! Then, store the Hamiltonian.
                 do imode = 1, 2
                     nnz = 0
+                    !$omp parallel
                     do i = 1, ndets
+                        ! OpenMP chunk size determined completely empirically
+                        ! from a single test.  Please feel free to improve...
+                        !$omp do private(j, hmatel) schedule(dynamic, 200)
                         do j = i, ndets
                             hmatel = get_hmatel_dets(i+ind_offset, j+ind_offset)
                             if (abs(hmatel) > depsilon) then
+                                !$omp critical
                                 nnz = nnz + 1
                                 if (imode == 2) then
                                     hamil_csr%mat(nnz) = hmatel
                                     hamil_csr%col_ind(nnz) = j
                                     if (hamil_csr%row_ptr(i) == 0) hamil_csr%row_ptr(i) = nnz
                                 end if
+                                !$omp end critical
                             end if
                         end do
+                        !$omp end do
                     end do
+                    !$omp end parallel
                     if (imode == 1) then
                         write (6,'(1X,a50,i8/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
                         call init_csrpsy(hamil_csr, ndets, nnz)
@@ -386,9 +394,15 @@ contains
                     end if
                 end do
             else
-                forall (i=1:ndets)
-                    forall (j=i:ndets) hamil(i,j) = get_hmatel_dets(i+ind_offset,j+ind_offset)
-                end forall
+                !$omp parallel
+                do i = 1, ndets
+                    !$omp do private(j) schedule(dynamic, 200)
+                    do j = i, ndets
+                        hamil(i,j) = get_hmatel_dets(i+ind_offset,j+ind_offset)
+                    end do
+                    !$omp end do
+                end do
+                !$omp end parallel
             end if
         case(distribute_blocks, distribute_cols)
             ! blacs divides the matrix up into sub-matrices of size block_size x block_size.
