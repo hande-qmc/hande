@@ -319,7 +319,9 @@ contains
                 ! Not doing so means that the quality of the sampling of the sum
                 ! (the space of which is constant) varies with population.  The
                 ! bias is small but noticeable in some systems.
-                D0_population_cycle = D0_population_cycle/nattempts
+! JSS: Need to discuss with AJWT, but it looks like we should *not* normalise D0
+! as well as proj_energy_cycle.
+!                D0_population_cycle = D0_population_cycle/nattempts
                 proj_energy_cycle = proj_energy_cycle/nattempts
 
                 call end_mc_cycle(ndeath, nattempts)
