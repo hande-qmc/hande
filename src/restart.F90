@@ -136,9 +136,9 @@ contains
             do i = 1, nprocs-1
                 ! Receive walker infor from all other processors.
                 ! This overwrites the root processor's walkers
-                call mpi_recv(walker_population, nwalkers(i), mpi_integer, i, comm_tag, mpi_comm_world, stat, ierr)
-                call mpi_recv(walker_dets, nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
-                call mpi_recv(walker_data, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_population, sampling_size*nwalkers(i), mpi_integer, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_dets, basis_length*nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_data, (sampling_size+info_size)*nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
                 ! Write out walkers from all other processors.
                 call write_walkers(io, nwalkers(i))
             end do
@@ -168,9 +168,9 @@ contains
         else
 #ifdef PARALLEL
             ! Send walker info to root processor.
-            call mpi_send(walker_population, tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, ierr)
-            call mpi_send(walker_dets, tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, ierr)
-            call mpi_send(walker_data, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_population, sampling_size*tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_dets, basis_length*tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_data, (sampling_size+info_size)*tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
 
