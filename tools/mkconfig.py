@@ -140,12 +140,12 @@ OPT = %(opt_level)s
 # Version control information (HANDE specific).
 
 # Get the version control id.  Git only.  Outputs a string.
-VCS_VERSION := $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 --pretty=format:%%H || echo -n 'Not under version control.' ) 2> /dev/null | tr -d '\\r\\n'  && echo -n \\")
+VCS_VERSION = $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 --pretty=format:%%H || echo -n 'Not under version control.' ) 2> /dev/null | tr -d '\\r\\n'  && echo -n \\")
 
 # Test to see if the working directory contains changes.  Git only.  If the
 # working directory contains changes (or is not under version control) then
 # the _VCS_LOCAL_CHANGES flag is set.
-VCS_LOCAL_CHANGES := $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_VCS_LOCAL_CHANGES")
+VCS_LOCAL_CHANGES = $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_VCS_LOCAL_CHANGES")
 
 #-----
 # Compiler configuration.
