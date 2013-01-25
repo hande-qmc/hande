@@ -2,7 +2,8 @@ program hubbard_fciqmc
 
 implicit none
 
-real :: start_time
+real :: start_cpu_time
+integer :: start_wall_time
 
 call init_calc()
 
@@ -26,7 +27,7 @@ contains
         use basis, only: init_model_basis_fns
         use determinants, only: init_determinants
         use excitations, only: init_excitations
-        use parallel, only: init_parallel, parallel_report, iproc, nprocs, parent
+        use parallel, only: init_parallel, parallel_report, iproc, nprocs, nthreads, parent
         use hubbard_real, only: init_real_space
         use momentum_symmetry, only: init_momentum_symmetry
         use point_group_symmetry, only: print_pg_symmetry_info
@@ -36,14 +37,15 @@ contains
 
         call init_parallel()
 
-        call cpu_time(start_time)
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         if (parent) then
             write (6,'(/,a8,/)') 'Hubbard'
             call environment_report()
         end if
 
-        if (nprocs > 1 .and. parent) call parallel_report()
+        if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
         if (parent) call read_input()
 
@@ -136,7 +138,8 @@ contains
         use momentum_symmetry, only: end_momentum_symmetry
         use report, only: end_report
 
-        real :: end_time
+        real :: end_cpu_time, wall_time
+        integer :: end_wall_time, count_rate, count_max
 
         ! Deallocation routines.
         ! NOTE:
@@ -153,8 +156,16 @@ contains
         call end_ifciqmc()
 
         ! Calculation time.
-        call cpu_time(end_time)
-        if (parent) call end_report(end_time-start_time)
+        call cpu_time(end_cpu_time)
+        call system_clock(end_wall_time, count_rate, count_max)
+        if (end_wall_time < start_wall_time) then
+            ! system_clock returns the time modulo count_max.
+            ! Have ticked over to the next "block" (assume only one as this
+            ! happens roughly once every 1 2/3 years with gfortran!)
+            end_wall_time = end_wall_time + count_max
+        end if
+        wall_time = real(end_wall_time-start_wall_time)/count_rate
+        if (parent) call end_report(wall_time, end_cpu_time-start_cpu_time)
 
         call end_parallel()
 

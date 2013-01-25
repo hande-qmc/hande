@@ -223,6 +223,8 @@ contains
                 call readi(lanczos_basis_length)
             case('LANCZOS_SOLUTIONS','LANCZOS_SOLNS')
                 call readi(nlanczos_eigv)
+            case('SPARSE_HAMILTONIAN')
+                use_sparse_hamil = .true.
 
             ! Calculation options: lanczos/exact diagonalisation.
             case('PRINT_GROUND_STATE')
@@ -581,6 +583,7 @@ contains
 
         call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(use_sparse_hamil, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(print_ground_state, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(analyse_ground_state, 1, mpi_logical, 0, mpi_comm_world, ierr)

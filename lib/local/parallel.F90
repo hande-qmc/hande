@@ -15,6 +15,10 @@ use const
 
 implicit none
 
+!=== Processor ID ===
+
+!--- MPI ---
+
 ! Processor id/rank.
 integer :: iproc
 
@@ -30,6 +34,16 @@ integer, parameter :: root = 0
 ! True if the processor is the root (i.e. iproc==root) processor.
 ! In particular, output should only be performed on the parent processor.
 logical :: parent
+
+!--- OpenMP ---
+
+! WARNING: we assume that we *never* do any I/O that is not either in a (e.g.)
+! master block or outside of the OpenMP region.
+integer :: nthreads
+
+!=== Comms info ===
+
+!--- BLACS/ScaLAPACK ---
 
 ! blacs and scalapack split a matrix up into n x n blocks which are then
 ! distributed around the processors in a cyclic fashion.
@@ -53,6 +67,8 @@ type blacs_info
     ! Descriptor for distributing vector of length N:
     integer :: desc_v(9)
 end type blacs_info
+
+!--- MPI Communication data types ---
 
 ! MPI data type for 32-bit or 64-bit integer used in determinant bit arrays.
 #ifdef PARALLEL
@@ -81,6 +97,12 @@ contains
 
         use errors
 
+        interface
+            function omp_get_num_threads() result(omp_nthreads)
+                integer :: omp_nthreads
+            end function omp_get_num_threads
+        end interface
+
 #ifdef PARALLEL
         integer :: ierr
 
@@ -91,6 +113,15 @@ contains
 #else
         iproc = 0
         nprocs = 1
+#endif
+#ifdef _OPENMP
+        !$omp parallel
+        !$omp master
+        nthreads = omp_get_num_threads()
+        !$omp end master
+        !$omp end parallel
+#else
+        nthreads = 1
 #endif
 
         parent = iproc == root
@@ -106,7 +137,9 @@ contains
         character(4) :: fmt1
 
         fmt1 = int_fmt(nprocs)
-        write (6,'(1X,"Running on"'//fmt1//'" processors.",/)') nprocs
+        write (6,'(1X,"Running on"'//fmt1//'" processors.")') nprocs
+        fmt1 = int_fmt(nthreads)
+        write (6,'(1X,"Running with"'//fmt1//'" threads per processor.",/)') nthreads
 
     end subroutine parallel_report
 
