@@ -119,56 +119,45 @@ contains
             call write_out(io,'# walker info')
             call write_walkers(io,tot_walkers)
 
-            ! if writing in binary, there is no character marker telling us
-            ! where the root processor's walkers are stored - thus use scratch
-            ! so that we can get root's walkers back
+            ! Use scratch so that we can get root's walkers back.
+            ! Best to store this in binary, not matter what the user input
+            ! options are.
+            scratch = get_free_unit()
+            open(scratch,status="scratch",form='unformatted')
             if (binary_fmt_out) then
-                scratch = get_free_unit()
-                open(scratch,status="scratch",form='unformatted')
                 call write_walkers(scratch,tot_walkers)
+            else
+                binary_fmt_out = .true.
+                call write_walkers(scratch,tot_walkers)
+                binary_fmt_out = .false.
             end if
 
             ! Communicate with all other processors.
             do i = 1, nprocs-1
                 ! Receive walker infor from all other processors.
                 ! This overwrites the root processor's walkers
-                call mpi_recv(walker_population, nwalkers(i), mpi_integer, i, comm_tag, mpi_comm_world, stat, ierr)
-                call mpi_recv(walker_dets, nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
-                call mpi_recv(walker_data, nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_population, sampling_size*nwalkers(i), mpi_integer, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_dets, basis_length*nwalkers(i), mpi_det_integer, i, comm_tag, mpi_comm_world, stat, ierr)
+                call mpi_recv(walker_data, (sampling_size+info_size)*nwalkers(i), mpi_preal, i, comm_tag, mpi_comm_world, stat, ierr)
                 ! Write out walkers from all other processors.
                 call write_walkers(io, nwalkers(i))
             end do
 
-            ! we need to read back from scratch if in binary format
-            if (binary_fmt_out) then
-                flush(scratch)
-                rewind(scratch)
-                ! best to preserve the binary_fmt state in case of
-                ! alteration of program mechaincs later
-                if (binary_fmt_in) then
-                    call read_walkers(scratch,tot_walkers)
-                else
-                    binary_fmt_in = .true.
-                    call read_walkers(scratch,tot_walkers)
-                    binary_fmt_in = .false.
-                end if
-                !no longer need the scratchfile
-                close(scratch)
+            ! We need to read back from scratch as we overwrote walker data on
+            ! root.
+            flush(scratch)
+            rewind(scratch)
+            ! best to preserve the binary_fmt state in case of
+            ! alteration of program mechaincs later
+            if (binary_fmt_in) then
+                call read_walkers(scratch,tot_walkers)
             else
-                ! we can read from the input file and no need for scratch
-                ! Read "self" info back in.
-                flush(io)
-                rewind(io)
-                do
-                    ! Read restart file until we've found the start of the
-                    ! walker information.
-                    call read_in(io,junk,'(a255)')
-                    if (index(junk,'walker info') /= 0) exit
-                end do
-                ! The next tot_walkers lines contain the walker info that came
-                ! from the root processor.
-                call read_walkers(io,tot_walkers)
+                binary_fmt_in = .true.
+                call read_walkers(scratch,tot_walkers)
+                binary_fmt_in = .false.
             end if
+            ! No longer need the scratch file.
+            close(scratch)
 #else
             call write_out(io,tot_walkers)
             call write_out(io,'# walker info')
@@ -179,9 +168,9 @@ contains
         else
 #ifdef PARALLEL
             ! Send walker info to root processor.
-            call mpi_send(walker_population, tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, ierr)
-            call mpi_send(walker_dets, tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, ierr)
-            call mpi_send(walker_data, tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_population, sampling_size*tot_walkers, mpi_integer, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_dets, basis_length*tot_walkers, mpi_det_integer, root, comm_tag, mpi_comm_world, ierr)
+            call mpi_send(walker_data, (sampling_size+info_size)*tot_walkers, mpi_preal, root, comm_tag, mpi_comm_world, ierr)
 #endif
         end if
 
