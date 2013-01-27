@@ -188,7 +188,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
-        use calc, only: truncation_level
+        use calc, only: truncation_level, truncate_space
         use ccmc_data, only: cluster_t
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, get_excitation_level
@@ -214,6 +214,15 @@ contains
         logical :: hit
 
         real :: t1, t2
+
+        if (.not.truncate_space) then
+            ! User did not specify a truncation level.
+            ! We're hence doing Full CC (equivalent but more expensive than
+            ! FCI), for reasons best known to the user---perhaps testing?
+            ! Anyway, need to set truncation level as it's used in the
+            ! select_cluster routine.
+            truncation_level = nel
+        end if
 
         if (truncation_level+2 > 12) then
             call stop_all('do_ccmc', 'CCMC can currently only handle clusters up &
