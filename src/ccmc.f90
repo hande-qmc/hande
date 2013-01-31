@@ -537,7 +537,7 @@ contains
                 call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = cluster_population/(D0_normalisation**(cluster%nexcitors-1))
+                cluster%amplitude = cluster_population/(real(D0_normalisation,p)**(cluster%nexcitors-1))
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
@@ -627,6 +627,15 @@ contains
             excitor_level = get_excitation_level(f0, fexcit)
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign)
             if (excitor_sign < 0) nspawn = -nspawn
+        end if
+
+        if (abs(nspawn) > 5000) then
+            write (6,*) '# WARNING: bloom', nspawn
+            write (6,*) '# occ', cdet%occ_list
+            write (6,*) '# cluster', cluster%nexcitors, cluster%excitation_level, cluster%amplitude, cluster%pselect
+            write (6,*) '# connection', connection%from_orb(1:2), connection%to_orb(1:2)
+            write (6,*) '# hmatel', hmatel/(cluster%amplitude*cluster%cluster_to_det_sign)
+            write (6,*) '# pgen', pgen/cluster%pselect
         end if
 
     end subroutine spawner_ccmc
