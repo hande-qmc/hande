@@ -15,7 +15,7 @@ import sys
 try:
     import pylab
     PYLAB = True
-except ImportError:
+except (ImportError, RuntimeError):
     print "Can't import matplotlib.  Skipping graph production."
     PYLAB = False
 
