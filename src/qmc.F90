@@ -677,11 +677,11 @@ contains
                 select case(hf_operator)
                 case(kinetic_operator)
                     op0_ptr => kinetic0_hub_k
-                    update_proj_energy_ptr => update_proj_hfs_diagonal_hub_k
+                    update_proj_energy_hfs_ptr => update_proj_hfs_diagonal_hub_k
                     spawner_hfs_ptr => spawn_null
                 case(hamiltonian_operator)
                     op0_ptr => sc0_ptr
-                    update_proj_energy_ptr => update_proj_hfs_hamiltonian_hub_k
+                    update_proj_energy_hfs_ptr => update_proj_hfs_hamiltonian_hub_k
                     spawner_hfs_ptr => spawner_ptr
                 case default
                     call stop_all('init_proc_pointers','Operator given is not yet supported')

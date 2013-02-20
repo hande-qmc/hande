@@ -6,80 +6,119 @@ implicit none
 
 contains
 
-    subroutine update_proj_energy_heisenberg_basic(idet)
+    subroutine update_proj_energy_heisenberg_basic(f, fpop, fdata, D0_population, proj_energy, excitation, hmatel)
 
-        ! Add the contribution of the current determinant to the projected
+        ! Add the contribution of the current spin tensor product to the projected
         ! energy.
         ! The correlation energy given by the projected energy is:
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
-        ! where N_i is the population on the i-th determinant, D_i,
-        ! and 0 refers to the reference determinant.
+        ! where N_i is the population on the i-th spin product, D_i,
+        ! and D_0 refers to the trial wavefunction (here, a single spin tensor
+        ! product).
         ! During a MC cycle we store
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i
-        ! If the current determinant is the reference determinant, then
+        ! If the current spin product is the trial wavefunction, then
         ! N_0 is stored as D0_population.  This makes normalisation very
         ! efficient.
         ! This procedure is for the Heisenberg model only
-        ! In:
-        !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, &
-                               proj_energy
+        ! In:
+        !    f(basis_length): bit string representation of the spin product, D_i.
+        !    fpop: population on the spin product.
+        !    fdata(:): additional information about the spin product (unused, for
+        !       interface compatibility only).
+        ! In/Out:
+        !    D0_population: running total of the population on the reference.
+        !       Only updated if D_i *is* the trial wavefunction.
+        !    proj_energy: running total of the numerator, \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! Out:
+        !    excitation: excitation connecting the spin product to the trial wavefunction.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       spin product and the trial wavefunction.
+
+        use basis, only: basis_length
+        use fciqmc_data, only: f0
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
         use system, only: J_coupling
         use hubbard_real, only: connected_orbs
 
-        integer, intent(in) :: idet
-        type(excit) :: excitation
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop
+        real(p), intent(in) :: fdata(:)
+        real(p), intent(inout) :: D0_population, proj_energy
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
         integer :: bit_position, bit_element
 
-        excitation = get_excitation(walker_dets(:,idet), f0)
+        hmatel = 0.0_p
+        excitation = get_excitation(f, f0)
 
         if (excitation%nexcit == 0) then
-            ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,idet)
+            ! Have trial wavefunction.
+            D0_population = D0_population + fpop
         else if (excitation%nexcit == 1) then
-            ! Have a determinant connected to the reference determinant: add to
+            ! Have a spin product connected to the trial wavefunction: add to
             ! projected energy.
 
             bit_position = bit_lookup(1,excitation%from_orb(1))
             bit_element = bit_lookup(2,excitation%from_orb(1))
 
-            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
-                     proj_energy = proj_energy - 2.0_p*J_coupling*walker_population(1,idet)
+            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
+                 proj_energy = proj_energy - 2.0_p*J_coupling*fpop
+                 hmatel = -2.0_p*J_coupling
+             end if
         end if
 
     end subroutine update_proj_energy_heisenberg_basic
 
-    subroutine update_proj_energy_heisenberg_positive(idet)
+    subroutine update_proj_energy_heisenberg_positive(f, fpop, fdata, D0_population, proj_energy, excitation, hmatel)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
         ! This uses the trial function
         ! |psi> = \sum_{i} |D_i>
-        ! Meaning that every single basis function has a weight of one in
+        ! Meaning that every single spin tensor product has a weight of one in
         ! the sum. A unitary transformation is applied to h when using this
         ! estimator, so that all components of the true ground state
         ! are positive, and hence we get a good overlap.
         ! This procedure is for the Heisenberg model only.
-        ! In:
-        !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, walker_data, &
-                               proj_energy, D0_population
+        ! In:
+        !    f(basis_length): bit string representation of the spin product, D_i.
+        !    fpop: population on the spin product.
+        !    fdata(:): additional information about the spin product.  The first
+        !       element must contain <D_i|H|D_i>.
+        ! In/Out:
+        !    D0_population: running total of the population on the trial function.
+        !    proj_energy: running total of the numerator, \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! Out:
+        !    excitation: excitation connecting the spin product to the trial wavefunction.
+        !       As each spin product is in the trial wavefunction, this is
+        !       simply null, but included for interface compatibility.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       spin product and the trial wavefunction.
+
+        use basis, only: basis_length
+        use excitations, only: excit
         use system, only: J_coupling, nbonds
 
-        integer, intent(in) :: idet
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop
+        real(p), intent(in) :: fdata(:)
+        real(p), intent(inout) :: D0_population, proj_energy
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
-        proj_energy = proj_energy + (J_coupling*nbonds+2*walker_data(1,idet))* &
-                                     walker_population(1,idet)
+        excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
+        hmatel = J_coupling*nbonds+2*fdata(1)
+        proj_energy = proj_energy + hmatel*fpop
 
-        D0_population = D0_population + walker_population(1,idet)
+        D0_population = D0_population + fpop
 
     end subroutine update_proj_energy_heisenberg_positive
 
-    subroutine update_proj_energy_heisenberg_neel_singlet(idet)
+    subroutine update_proj_energy_heisenberg_neel_singlet(f, fpop, fdata, D0_population, proj_energy, excitation, hmatel)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -91,19 +130,41 @@ contains
         ! makes this state a suitable trial function. For details on the state, see
         ! K. Runge, Phys. Rev. B 45, 7229 (1992).
         ! This procedure is for the Heisenberg model only.
-        ! In:
-        !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, walker_data, &
-                               sampling_size, proj_energy, neel_singlet_amp, D0_population
+        ! In:
+        !    f(basis_length): bit string representation of the spin product, D_i.
+        !    fpop: population on the spin product.
+        !    fdata(:): additional information about the spin product.  The first
+        !       element must contain <D_i|H|D_i>.
+        ! In/Out:
+        !    D0_population: running total of the population on the trial function.
+        !    proj_energy: running total of the numerator, \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! Out:
+        !    excitation: excitation connecting the spin product to the trial wavefunction.
+        !       As each spin product is in the trial wavefunction, this is
+        !       simply null, but included for interface compatibility.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       spin product and the trial wavefunction.
+
+        use basis, only: basis_length
+        use excitations, only: excit
+        use fciqmc_data, only: neel_singlet_amp, sampling_size
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
-        integer, intent(in) :: idet
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop
+        real(p), intent(in) :: fdata(:)
+        real(p), intent(inout) :: D0_population, proj_energy
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
+
         integer :: n, lattice_1_up, lattice_2_up
         real(dp) :: importance_sampling_factor = 1.0
 
-        n = nint(walker_data(sampling_size+1,idet))
-        lattice_1_up = nint(walker_data(sampling_size+2,idet))
+        excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
+
+        n = nint(fdata(sampling_size+1))
+        lattice_1_up = nint(fdata(sampling_size+2))
 
         ! If importance sampling is applied then the psip amplitudes, n_i,
         ! will represent the quantities
@@ -118,27 +179,27 @@ contains
         ! Deduce the number of 0-1 bonds, where the 1's are on the
         ! second sublattice:
         ! The total number of 0-1 bonds, n(0-1) can be found from the diagonal
-        ! element of the current basis function:
+        ! element of the current spin tensor product:
         ! hmatel = -J_coupling*(nbonds - 2*n(0-1))
         ! This means we can avoid calculating n(0-1) again, which is expensive.
         ! We know the number of 0-1 bonds where the 1 (the spin up) is on sublattice 1,
         ! so can then deduce the number where the 1 is on sublattice 2.
-        lattice_2_up = ((nbonds) + nint(walker_data(1,idet)/J_coupling))/2 - lattice_1_up
+        lattice_2_up = ((nbonds) + nint(fdata(1)/J_coupling))/2 - lattice_1_up
 
         ! There are three contributions to add to the projected energy from
-        ! the current basis function. Consider the Neel singlet state:
+        ! the current spin tensor product. Consider the Neel singlet state:
         ! |NS> = \sum_{i} a_i|D_i>
         ! The amplitude a_i only depend on the number of spins up on sublattice 1.
         ! We want to calculate \sum_{i} (a_i * <D_i|H|D_j> * n_j) where |D_j> is the
-        ! current basis function, and then add this to the current projected energy.
+        ! current spin tensor product, and then add this to the current projected energy.
 
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
-        proj_energy = proj_energy + (neel_singlet_amp(n) * walker_data(1,idet) * &
-                                          walker_population(1,idet) * importance_sampling_factor)
+        proj_energy = proj_energy + (neel_singlet_amp(n) * fdata(1) * &
+                                          fpop * importance_sampling_factor)
 
-        ! Now, to find all other basis functions connected to |D_j>, we find 0-1 bonds
-        ! and then flip both of these spins. The resulting basis function, |D_i> will be
+        ! Now, to find all other spin tensor products connected to |D_j>, we find 0-1 bonds
+        ! and then flip both of these spins. The resulting spin tensor product, |D_i> will be
         ! connected. The amplitude a_i only depends on the number of spins up on
         ! sublattice 1. This will depend on whether, for the 0-1 bond flipped,
         ! the 1 (up spin) was one sublattice 1 or 2. If the up spin was on lattice
@@ -150,20 +211,22 @@ contains
         ! Finally note that the matrix element is -2*J_coupling, and we can put this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        proj_energy = proj_energy - (2 * J_coupling * lattice_1_up * &
-                    walker_population(1,idet) * neel_singlet_amp(n-1) * importance_sampling_factor)
+        hmatel = - (2 * J_coupling * lattice_1_up * &
+                    neel_singlet_amp(n-1) * importance_sampling_factor)
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        proj_energy = proj_energy - (2 * J_coupling * lattice_2_up * &
-                    walker_population(1,idet) * neel_singlet_amp(n+1) * importance_sampling_factor)
+        hmatel = hmatel - (2 * J_coupling * lattice_2_up * &
+                           neel_singlet_amp(n+1) * importance_sampling_factor)
+
+        proj_energy = proj_energy + fpop*hmatel
 
         ! Now we just need to find the contribution to the denominator. The total
         ! denominator is
         ! \sum_{i} (a_i * n_i)
-        ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
+        ! Hence from this particular spin tensor product, |D_j>, we just add (a_j * n_j)
 
         D0_population = D0_population + &
-                          walker_population(1,idet)*neel_singlet_amp(n)*importance_sampling_factor
+                          fpop*neel_singlet_amp(n)*importance_sampling_factor
 
     end subroutine update_proj_energy_heisenberg_neel_singlet
 
@@ -175,12 +238,13 @@ contains
         ! later used in the update_proj_energy_heisenberg_neel_singlet subroutine.
         ! This procedure is for the Heisenberg model only.
         ! In:
-        !    f: bit string representation of the basis function.
+        !    f: bit string representation of the spin tensor product.
         ! Returns:
         !    spin_config_data: A two component integer vector, where the first
-        !       component stores the total number of spins up on the first sublattice
-        !       for this basis function, and the second component stores the numbers
-        !       of 0-1 bonds, where the 1 (the up spin) is on the first sublattice.
+        !       component stores the total number of spins up on the first
+        !       sublattice for this spin tensor product, and the second
+        !       component stores the numbers of 0-1 bonds, where the 1 (the up
+        !       spin) is on the first sublattice.
 
         use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits

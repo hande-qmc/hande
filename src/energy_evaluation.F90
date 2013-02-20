@@ -165,7 +165,7 @@ contains
         !                                 - \frac{\tilde{N}_w(\beta-A\tau)}{N_w(\beta-A\tau)} ]
         ! where N_w(\beta) is the total population of (Hamiltonian) walkers at
         ! imaginary time \beta and \tilde{N}_w = \frac{dN_w}{d\alpha}|_{\alpha=0}.
-        ! The latter quantity is calculated in calculate_hf_signed pop.
+        ! The latter quantity is calculated in calculate_hf_signed fpop.
 
         hf_shift = hf_shift - &
                  (shift_damping/(tau*nupdate_steps)) &
@@ -205,7 +205,7 @@ contains
 
     end function calculate_hf_signed_pop
 
-    subroutine update_proj_energy_hub_k(idet)
+    subroutine update_proj_energy_hub_k(f, fpop, fdata, D0_population, proj_energy, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -219,33 +219,50 @@ contains
         ! N_0 is stored as D0_population.  This makes normalisation very
         ! efficient.
         ! This procedure is for the Hubbard model in momentum space only.
-        ! In:
-        !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        ! In:
+        !    f(basis_length): bit string representation of the Slater determinant, D_i.
+        !    fpop: population on the determinant.
+        !    fdata(:): additional information about the determinant (unused, for
+        !       interface compatibility only).
+        ! In/Out:
+        !    D0_population: running total of the population on the reference.
+        !       Only updated if D_i *is* the reference determinant.
+        !    proj_energy: running total of the numerator, \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! Out:
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+
+        use basis, only: basis_length
         use excitations, only: excit, get_excitation
+        use fciqmc_data, only: f0
         use hamiltonian_hub_k, only: slater_condon2_hub_k
 
-        integer, intent(in) :: idet
-        type(excit) :: excitation
-        real(p) :: hmatel
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop
+        real(p), intent(in) :: fdata(:)
+        real(p), intent(inout) :: D0_population, proj_energy
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(walker_dets(:,idet), f0)
+        excitation = get_excitation(f, f0)
+        hmatel = 0.0_p
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,idet)
+            D0_population = D0_population + fpop
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            proj_energy = proj_energy + hmatel*walker_population(1,idet)
+            proj_energy = proj_energy + hmatel*fpop
         end if
 
     end subroutine update_proj_energy_hub_k
 
-    subroutine update_proj_energy_hub_real(idet)
+    subroutine update_proj_energy_hub_real(f, fpop, fdata, D0_population, proj_energy, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -259,32 +276,49 @@ contains
         ! N_0 is stored as D0_population.  This makes normalisation very
         ! efficient.
         ! This procedure is for the Hubbard model in real space only.
-        ! In:
-        !    idet: index of current determinant in the main walker list.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        ! In:
+        !    f(basis_length): bit string representation of the Slater determinant, D_i.
+        !    fpop: population on the determinant.
+        !    fdata(:): additional information about the determinant (unused, for
+        !       interface compatibility only).
+        ! In/Out:
+        !    D0_population: running total of the population on the reference.
+        !       Only updated if D_i *is* the reference determinant.
+        !    proj_energy: running total of the numerator, \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! Out:
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+
+        use basis, only: basis_length
         use excitations, only: excit, get_excitation
+        use fciqmc_data, only: f0
         use hamiltonian_hub_real, only: slater_condon1_hub_real
 
-        integer, intent(in) :: idet
-        type(excit) :: excitation
-        real(p) :: hmatel
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop
+        real(p), intent(in) :: fdata(:)
+        real(p), intent(inout) :: D0_population, proj_energy
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(walker_dets(:,idet), f0)
+        excitation = get_excitation(f, f0)
+        hmatel = 0.0_p
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,idet)
+            D0_population = D0_population + fpop
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            proj_energy = proj_energy + hmatel*walker_population(1,idet)
+            proj_energy = proj_energy + hmatel*fpop
         end if
 
     end subroutine update_proj_energy_hub_real
 
-    subroutine update_proj_energy_mol(idet)
+    subroutine update_proj_energy_mol(f, fpop, fdata, D0_population, proj_energy, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -299,30 +333,45 @@ contains
         ! efficient.
         ! This procedure is for molecular systems (i.e. those defined by an
         ! FCIDUMP file).
-        !
-        ! In:
-        !    idet: index of current determinant in the main walker list.
 
-        use basis, only: basis_fns
+        ! In:
+        !    f(basis_length): bit string representation of the Slater determinant, D_i.
+        !    fpop: population on the determinant.
+        !    fdata(:): additional information about the determinant (unused, for
+        !       interface compatibility only).
+        ! In/Out:
+        !    D0_population: running total of the population on the reference.
+        !       Only updated if D_i *is* the reference determinant.
+        !    proj_energy: running total of the numerator, \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! Out:
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+
+        use basis, only: basis_fns, basis_length
         use determinants, only: decode_det
         use excitations, only: excit, get_excitation
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use fciqmc_data, only: f0
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
         use system, only: nel
 
-        integer, intent(in) :: idet
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop
+        real(p), intent(in) :: fdata(:)
+        real(p), intent(inout) :: D0_population, proj_energy
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
-        type(excit) :: excitation
-        real(p) :: hmatel
         integer :: occ_list(nel), ij_sym, ab_sym
 
-        excitation = get_excitation(walker_dets(:,idet), f0)
+        excitation = get_excitation(f, f0)
+        hmatel = 0.0_p
 
         select case(excitation%nexcit)
         case (0)
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,idet)
+            D0_population = D0_population + fpop
         case(1)
             ! Have a determinant connected to the reference determinant by
             ! a single excitation: add to projected energy.
@@ -330,10 +379,10 @@ contains
             ! Is excitation symmetry allowed?
             if (basis_fns(excitation%from_orb(1))%Ms == basis_fns(excitation%to_orb(1))%Ms .and. &
                     basis_fns(excitation%from_orb(1))%sym == basis_fns(excitation%to_orb(1))%sym) then
-                call decode_det(walker_dets(:,idet), occ_list)
+                call decode_det(f, occ_list)
                 hmatel = slater_condon1_mol_excit(occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
-                proj_energy = proj_energy + hmatel*walker_population(1,idet)
+                proj_energy = proj_energy + hmatel*fpop
             end if
         case(2)
             ! Have a determinant connected to the reference determinant by
@@ -347,7 +396,7 @@ contains
                     hmatel = slater_condon2_mol_excit(excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
-                    proj_energy = proj_energy + hmatel*walker_population(1,idet)
+                    proj_energy = proj_energy + hmatel*fpop
                 end if
             end if
         end select

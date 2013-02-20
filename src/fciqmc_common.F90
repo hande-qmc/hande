@@ -272,10 +272,13 @@ contains
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
+        use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         integer :: idet
         integer(lint) :: ntot_particles(sampling_size)
+        real(p):: hmatel
+        type(excit) :: D0_excit
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum
@@ -287,7 +290,9 @@ contains
         proj_energy = 0.0_p
         D0_population = 0
         do idet = 1, tot_walkers
-            call update_proj_energy_ptr(idet)
+            call update_proj_energy_ptr(walker_dets(:,idet), walker_population(1,idet), &
+                                        walker_data(:,idet), D0_population,             &
+                                        proj_energy, D0_excit, hmatel)
         end do
         rspawn = 0.0_p
 

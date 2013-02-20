@@ -38,6 +38,8 @@ contains
         type(excit) :: connection
         type(excit), allocatable :: connection_list(:)
         logical :: soft_exit
+        real(p):: hmatel
+        type(excit) :: D0_excit
 
         if (system_type == hub_k) then
             max_nexcitations = nalpha*nbeta*min(nsites-nalpha,nsites-nbeta)
@@ -90,7 +92,8 @@ contains
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                call update_proj_energy_ptr(idet)
+                call update_proj_energy_ptr(cdet%f, tmp_pop, walker_data(:,idet), &
+                                            D0_population, proj_energy, D0_excit, hmatel)
 
                 ! Loop over each walker on the determinant.
                 do iparticle = 1, abs(walker_population(1,idet))

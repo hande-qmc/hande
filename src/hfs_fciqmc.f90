@@ -107,7 +107,7 @@ contains
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(idet)
+                    call update_proj_energy_hfs_ptr(idet)
 
                     ! Is this determinant an initiator?
                     ! A determinant can be an initiator in the Hamiltonian space

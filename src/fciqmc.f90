@@ -39,6 +39,7 @@ contains
 
         integer :: nspawned, ndeath
         type(excit) :: connection
+        real(p) :: hmatel
 
         logical :: soft_exit
 
@@ -89,7 +90,9 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(idet)
+                    call update_proj_energy_ptr(cdet%f, walker_population(1,idet),  &
+                                                cdet%data, D0_population,           &
+                                                proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
                     call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)
