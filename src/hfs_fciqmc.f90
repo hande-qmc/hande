@@ -131,13 +131,13 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
-                        call spawner_hfs_ptr(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_hfs_ptr(cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_hf_pop)
 
@@ -149,7 +149,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(cdet, walker_population(2,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_hf_pop)
 

@@ -45,14 +45,6 @@ abstract interface
         integer, intent(in) :: idet
         type(excit), intent(in) :: excitation
     end subroutine i_update_dmqmc_estimators
-    subroutine i_spawner(d, parent_sign, nspawned, connection)
-        import :: det_info, excit
-        implicit none
-        type(det_info), intent(in) :: d
-        integer, intent(in) :: parent_sign
-        integer, intent(out) :: nspawned
-        type(excit), intent(out) :: connection
-    end subroutine i_spawner
     subroutine i_gen_excit(d, pgen, connection, hmatel)
         import :: det_info, excit, p
         implicit none
@@ -128,13 +120,6 @@ procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_correlation_ptr => null()
 
-procedure(i_spawner), pointer :: spawner_ptr => null()
-procedure(i_spawner), pointer :: spawner_hfs_ptr => null()
-
-procedure(i_gen_excit), pointer :: gen_excit_ptr => null()
-procedure(i_gen_excit), pointer :: gen_excit_init_ptr => null()
-procedure(i_gen_excit_finalise), pointer :: gen_excit_finalise_ptr => null()
-
 procedure(i_death), pointer :: death_ptr => null()
 
 procedure(i_sc0), pointer :: sc0_ptr => null()
@@ -150,5 +135,30 @@ procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => 
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
 
 procedure(i_trial_fn), pointer :: trial_fn_ptr => null()
+
+! Single structure for all types of excitation generator so we can use the same
+! interface for spawning routines which use different types of generator.
+type gen_excit_ptr_t
+    procedure(i_gen_excit), nopass, pointer :: full => null()
+    procedure(i_gen_excit), nopass, pointer :: init => null()
+    procedure(i_gen_excit_finalise), nopass, pointer :: finalise => null()
+end type gen_excit_ptr_t
+
+type(gen_excit_ptr_t) :: gen_excit_ptr
+
+abstract interface
+    subroutine i_spawner(d, parent_sign, gen_excit_ptr, nspawned, connection)
+        import :: det_info, excit, gen_excit_ptr_t
+        implicit none
+        type(det_info), intent(in) :: d
+        integer, intent(in) :: parent_sign
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        integer, intent(out) :: nspawned
+        type(excit), intent(out) :: connection
+    end subroutine i_spawner
+end interface
+
+procedure(i_spawner), pointer :: spawner_ptr => null()
+procedure(i_spawner), pointer :: spawner_hfs_ptr => null()
 
 end module proc_pointers

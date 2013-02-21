@@ -31,7 +31,7 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn(cdet, parent_sign, nspawn, connection)
+    subroutine spawn(cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -43,6 +43,9 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%full *must* be set to a procedure which generates
+        !        a complete excitation.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -51,24 +54,25 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use proc_pointers, only: gen_excit_ptr
+        use proc_pointers, only: gen_excit_ptr_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr(cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
 
     end subroutine spawn
 
-    subroutine spawn_importance_sampling(cdet, parent_sign, nspawn, connection)
+    subroutine spawn_importance_sampling(cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -84,6 +88,9 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%full *must* be set to a procedure which generates
+        !        a complete excitation.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -92,17 +99,18 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use proc_pointers, only: gen_excit_ptr, trial_fn_ptr
+        use proc_pointers, only: gen_excit_ptr_t, trial_fn_ptr
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr(cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call trial_fn_ptr(cdet, connection, hmatel)
@@ -112,7 +120,7 @@ contains
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(cdet, parent_sign, nspawn, connection)
+    subroutine spawn_lattice_split_gen(cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -135,6 +143,12 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%init and gen_excit_ptr%finalise *must* be set to 
+        !        a pair of procedures which generate a complete excitation.
+        !        gen_excit_ptr%init must return (at least) the connecting matrix
+        !        element and gen_excit_ptr%finalise must fill in the rest of the
+        !        information about the excitation.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -144,10 +158,11 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use proc_pointers, only: gen_excit_init_ptr, gen_excit_finalise_ptr
+        use proc_pointers, only: gen_excit_ptr_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
@@ -155,7 +170,7 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_init_ptr(cdet, pgen, connection, abs_hmatel)
+        call gen_excit_ptr%init(cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
         nspawn = nspawn_from_prob(tau*abs_hmatel/pgen)
@@ -163,7 +178,7 @@ contains
         if (nspawn /= 0) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_finalise_ptr(cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(cdet, connection, hmatel)
 
             ! 4. Find sign of offspring.
             call set_child_sign(hmatel, parent_sign, nspawn)
@@ -172,7 +187,7 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(cdet, parent_sign, nspawn, connection)
+    subroutine spawn_lattice_split_gen_importance_sampling(cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -192,6 +207,12 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%init and gen_excit_ptr%finalise *must* be set to 
+        !        a pair of procedures which generate a complete excitation.
+        !        gen_excit_ptr%init must return (at least) the connecting matrix
+        !        element and gen_excit_ptr%finalise must fill in the rest of the
+        !        information about the excitation.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -201,10 +222,11 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use proc_pointers, only: gen_excit_init_ptr, gen_excit_finalise_ptr, gen_excit_ptr, trial_fn_ptr
+        use proc_pointers, only: gen_excit_ptr_t, trial_fn_ptr
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
@@ -212,7 +234,7 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_init_ptr(cdet, pgen, connection, tilde_hmatel)
+        call gen_excit_ptr%init(cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call trial_fn_ptr(cdet, connection, hmatel)
@@ -223,7 +245,7 @@ contains
         if (nspawn /= 0) then
 
             ! 4. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_finalise_ptr(cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(cdet, connection, hmatel)
 
             ! 5. Find sign of offspring.
             ! Note that we don't care about the value of H_ij at this step, only
@@ -234,17 +256,18 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(cdet, parent_sign, nspawn, connection)
+    subroutine spawn_null(cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
-        ! Hellmann-Feynman sampling.
+        ! Hellmann-Feynman sampling.  It does *nothing*.
 
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        !    gen_excit_ptr: procedure pointer to excitation generators.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -253,16 +276,16 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use proc_pointers, only: gen_excit_ptr
+        use proc_pointers, only: gen_excit_ptr_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         ! Just some null operations to avoid -Wall -Werror causing errors.
         connection%nexcit = huge(0)
-        nspawn = cdet%initiator_flag + parent_sign
 
         ! Return nspawn = 0 as we don't want to do any spawning.
         nspawn = 0

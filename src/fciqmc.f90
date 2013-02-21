@@ -100,7 +100,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn.
-                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then

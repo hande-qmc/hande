@@ -534,13 +534,13 @@ contains
 
             spawner_ptr => spawn_lattice_split_gen
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_hub_k_no_renorm
-                gen_excit_init_ptr => gen_excit_init_hub_k_no_renorm
-                gen_excit_finalise_ptr => gen_excit_finalise_hub_k_no_renorm
+                gen_excit_ptr%full => gen_excit_hub_k_no_renorm
+                gen_excit_ptr%init => gen_excit_init_hub_k_no_renorm
+                gen_excit_ptr%finalise => gen_excit_finalise_hub_k_no_renorm
             else
-                gen_excit_ptr => gen_excit_hub_k
-                gen_excit_init_ptr => gen_excit_init_hub_k
-                gen_excit_finalise_ptr => gen_excit_finalise_hub_k
+                gen_excit_ptr%full => gen_excit_hub_k
+                gen_excit_ptr%init => gen_excit_init_hub_k
+                gen_excit_ptr%finalise => gen_excit_finalise_hub_k
             end if
 
         case(hub_real, chung_landau)
@@ -560,9 +560,9 @@ contains
             end if
 
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_hub_real_no_renorm
+                gen_excit_ptr%full => gen_excit_hub_real_no_renorm
             else
-                gen_excit_ptr => gen_excit_hub_real
+                gen_excit_ptr%full => gen_excit_hub_real
             end if
 
         case(heisenberg)
@@ -586,9 +586,9 @@ contains
 
             ! Set which guiding wavefunction to use, if requested.
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_heisenberg_no_renorm
+                gen_excit_ptr%full => gen_excit_heisenberg_no_renorm
             else
-                    gen_excit_ptr => gen_excit_heisenberg
+                    gen_excit_ptr%full => gen_excit_heisenberg
             end if
             select case(guiding_function)
             case (neel_singlet_guiding)
@@ -602,10 +602,10 @@ contains
             sc0_ptr => slater_condon0_mol
 
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_mol_no_renorm
+                gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             else
-                gen_excit_ptr => gen_excit_mol
+                gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
             end if
 
