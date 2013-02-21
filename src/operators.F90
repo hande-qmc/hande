@@ -142,6 +142,40 @@ contains
 
     end function double_occ2_hub_k
 
+!=== Hubbard model (real space) ===
+
+!--- Double occupancy ---
+
+! \hat{D} = 1/L \sum_i n_{i,\uparrow} n_{i,downarrow} (in local orbitals) gives the
+! fraction of sites which contain two electrons, where L is the total number of
+! sites.  See Becca et al (PRB 61 (2000) R16288).
+
+     pure function double_occ0_hub_real(f) result(occ)
+
+        ! In:
+        !    f: bit string representation of the Slater determinant (unused,
+        !       just for interface compatibility).
+        ! Returns:
+        !    < D_i | \hat{D} | D_i >, the diagonal matrix element for the double
+        !    occupancy operator.
+
+        use basis, only: basis_length
+        use bit_utils, only: count_set_bits
+        use hubbard_real, only: get_coulomb_matel_real
+        use system, only: hubu, nsites
+
+        use const, only: p, i0
+
+        real(p) :: occ
+        integer(i0), intent(in) :: f(basis_length)
+
+        ! As for momentum space, can use standard integrals of the potential and
+        ! then scale.
+
+        occ = get_coulomb_matel_real(f) / (hubu * nsites)
+
+     end function double_occ0_hub_real
+
 !== Debug/test routines for operating on exact wavefunction ===
 
     subroutine analyse_wavefunction(wfn)
@@ -157,7 +191,7 @@ contains
         use calc, only: proc_blacs_info, distribute, distribute_off
         use determinants, only: dets_list, ndets
         use parallel
-        use system, only: system_type, hub_k
+        use system, only: system_type, hub_k, hub_real
 
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
@@ -180,6 +214,8 @@ contains
                 case(hub_k)
                     expectation_val(1) = expectation_val(1) + wfn(idet)**2*kinetic0_hub_k(dets_list(:,idet))
                     expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(dets_list(:,idet))
+                case(hub_real)
+                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*double_occ0_hub_real(dets_list(:,idet))
                 end select
                 do jdet = idet+1, ndets
                     cicj = wfn(idet) * wfn(jdet)
@@ -198,6 +234,8 @@ contains
                     select case(system_type)
                     case(hub_k)
                         expectation_val(1) = expectation_val(1) + wfn(ilocal)**2*kinetic0_hub_k(dets_list(:,idet))
+                    case(hub_real)
+                        expectation_val(1) = expectation_val(1) + wfn(idet)**2*double_occ0_hub_real(dets_list(:,idet))
                     end select
                     do j = 1, proc_blacs_info%ncols, block_size
                         do jj = 1, min(block_size, proc_blacs_info%nrows - j + 1)
@@ -225,6 +263,8 @@ contains
             case(hub_k)
                 write (6,'(1X,a16,f12.8)') '<\Psi|T|\Psi> = ', expectation_val(1)
                 write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(2)
+            case(hub_real)
+                write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(1)
                 write (6,'()')
             end select
         end if
