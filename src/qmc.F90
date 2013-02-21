@@ -672,22 +672,21 @@ contains
 
         ! d) Hellmann--Feynman operator sampling
         if (doing_calc(hfs_fciqmc_calc)) then
-            select case(system_type)
-            case(hub_k)
-                select case(hf_operator)
-                case(kinetic_operator)
+            select case(hf_operator)
+            case(hamiltonian_operator)
+                op0_ptr => sc0_ptr
+                update_proj_hfs_ptr => update_proj_hfs_hamiltonian
+                spawner_hfs_ptr => spawner_ptr
+            case(kinetic_operator)
+                update_proj_hfs_ptr => update_proj_hfs_diagonal
+                spawner_hfs_ptr => spawn_null
+                if (system_type == hub_k) then
                     op0_ptr => kinetic0_hub_k
-                    update_proj_energy_hfs_ptr => update_proj_hfs_diagonal_hub_k
-                    spawner_hfs_ptr => spawn_null
-                case(hamiltonian_operator)
-                    op0_ptr => sc0_ptr
-                    update_proj_energy_hfs_ptr => update_proj_hfs_hamiltonian_hub_k
-                    spawner_hfs_ptr => spawner_ptr
-                case default
-                    call stop_all('init_proc_pointers','Operator given is not yet supported')
-                end select
+                else
+                    call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
+                end if
             case default
-                call stop_all('init_proc_pointers','System not supported in HFS yet.')
+                call stop_all('init_proc_pointers','Operator given is not yet supported')
             end select
         end if
 

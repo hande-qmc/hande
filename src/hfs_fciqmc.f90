@@ -51,6 +51,7 @@ contains
 
         integer :: nspawned, ndeath
         type(excit) :: connection
+        real(p) :: hmatel
         type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         logical :: soft_exit
@@ -101,13 +102,20 @@ contains
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
                     cdet%f = walker_dets(:,idet)
+                    cdet%data => walker_data(:,idet)
 
                     call decoder_ptr(cdet%f, cdet)
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_hfs_ptr(idet)
+                    call update_proj_energy_ptr(cdet%f, walker_population(1,idet),  &
+                                                cdet%data, D0_population,           &
+                                                proj_energy, connection, hmatel)
+                    call update_proj_hfs_ptr(cdet%f, walker_population(1,idet),     &
+                                             walker_population(2,idet), cdet%data,  &
+                                             connection, hmatel, D0_hf_population,  &
+                                             proj_hf_O_hpsip, proj_hf_H_hfpsip)
 
                     ! Is this determinant an initiator?
                     ! A determinant can be an initiator in the Hamiltonian space
