@@ -6,7 +6,11 @@ implicit none
 
 contains
 
+!=== Hubbard model (k-space) ===
+
 !--- Kinetic energy ---
+
+! Kinetic operator is diagonal in the Hubbard model in the Bloch basis.
 
     pure function kinetic0_hub_k(f) result(kin)
 
@@ -27,8 +31,6 @@ contains
 
         integer :: i, occ(nel)
 
-        ! Kinetic operator is diagonal in the Hubbard model in the Bloch basis.
-
         ! <D|T|D> = \sum_k \epsilon_k
         kin = 0.0_p
         call decode_det(f, occ)
@@ -38,7 +40,109 @@ contains
 
     end function kinetic0_hub_k
 
-!-- Debug/test routines for operating on exact wavefunction ---
+!--- Double occupancy ---
+
+! \hat{D} = 1/L \sum_i n_{i,\uparrow} n_{i,downarrow} (in local orbitals) gives the
+! fraction of sites which contain two electrons, where L is the total number of
+! sites.  See Becca et al (PRB 61 (2000) R16288).
+
+! In momentum space this becomes (similar to the potential in the Hamiltonian
+! operator): 1/L^2 \sum_{k_1,k_2,k_3} c^{\dagger}_{k_1,\uparrow} c^{\dagger}_{k_2,\downarrow} c_{k_3,\downarrow} c_{k_1+k_2-k_3,\uparrow}
+! Hence this is trivial to evaluate...it's just like (parts of) the Hamiltonian operator!
+
+    pure function double_occ_hub_k(f1, f2) result(occ)
+
+        ! In:
+        !    f1, f2: bit string representation of the Slater
+        !        determinants D1 and D2 respectively.
+        ! Returns:
+        !    Hamiltonian matrix element between the two determinants,
+        !    < D1 | \hat{D} | D2 >, where the determinants are formed from
+        !    momentum space basis functions.
+
+        use determinants, only: basis_length
+        use excitations, only: excit, get_excitation
+
+        use const, only: p, i0
+
+        real(p) :: occ 
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        logical :: non_zero
+        type(excit) :: excitation
+
+        excitation = get_excitation(f1,f2)
+
+        select case(excitation%nexcit)
+        case(0)
+            occ = double_occ0_hub_k(f1)
+        case(2)
+            occ = double_occ2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
+                                    excitation%to_orb(1), excitation%to_orb(2),     &
+                                    excitation%perm)
+        case default
+            occ = 0.0_p
+        end select
+
+    end function double_occ_hub_k
+    
+    pure function double_occ0_hub_k(f) result(occ)
+
+        ! In:
+        !    f: bit string representation of the Slater determinant (unused,
+        !       just for interface compatibility).
+        ! Returns:
+        !    < D_i | \hat{D} | D_i >, the diagonal matrix element for the double
+        !    occupancy operator.
+
+        use basis, only: basis_length
+        use system, only: nalpha, nbeta, nsites
+
+        use const, only: p, i0
+
+        real(p) :: occ
+        integer(i0), intent(in) :: f(basis_length)
+
+        ! As with the potential operator, the double occupancy operator is
+        ! constant for all diagonal elements (see slater_condon0_hub_k).
+
+        occ = real(nalpha*nbeta,p)/(nsites**2)
+
+    end function double_occ0_hub_k
+
+    pure function double_occ2_hub_k(i, j, a, b, perm) result(occ)
+
+        ! In:
+        !    i,j:  index of the spin-orbital from which an electron is excited in
+        !          the reference determinant.
+        !    a,b:  index of the spin-orbital into which an electron is excited in
+        !          the excited determinant.
+        !    perm: true if D and D_i^a are connected by an odd number of
+        !          permutations.
+        ! Returns:
+        !    < D | \hat{D} | D_ij^ab >, the matrix element of the
+        !    double-occupancy operator between a determinant and a double
+        !    excitation of it in the momemtum space formulation of the Hubbard
+        !    model.
+
+        use hubbard_k, only: get_two_e_int_k
+        use system, only: hubu, nsites
+
+        use const, only: p, i0
+
+        real(p) :: occ
+        integer, intent(in) :: i, j, a, b
+        logical, intent(in) :: perm
+
+        ! This actual annihilation and creation operators of \hat{D} are
+        ! identical to the off-diagonal operators of H.  Hence, we can use the
+        ! same integrals and just scale accordingly...
+        occ = get_two_e_int_k(i, j, a, b) / (hubu * nsites)
+
+        if (perm) occ = -occ
+
+    end function double_occ2_hub_k
+
+!== Debug/test routines for operating on exact wavefunction ===
 
     subroutine analyse_wavefunction(wfn)
 
@@ -56,15 +160,13 @@ contains
 
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
-        real(p) :: expectation_val
+        real(p) :: expectation_val(2)
         integer :: idet, iorb, i, ii, ilocal
 
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: esum
 #endif
-
-        ! TODO: tidy and generalise.  Currently not functional!
 
         expectation_val = 0.0_p
 
