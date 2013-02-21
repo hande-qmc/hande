@@ -157,33 +157,77 @@ contains
         use calc, only: proc_blacs_info, distribute, distribute_off
         use determinants, only: dets_list, ndets
         use parallel
+        use system, only: system_type, hub_k
 
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
-        real(p) :: expectation_val(2)
-        integer :: idet, iorb, i, ii, ilocal
+        real(p) :: expectation_val(2), cicj
+        integer :: idet, i, ii, ilocal, jdet, j, jj, jlocal
 
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: esum
+        real(p) :: esum(2)
 #endif
 
         expectation_val = 0.0_p
 
-        do i = 1, proc_blacs_info%nrows, block_size
-            do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
-                ilocal = i - 1 + ii
-                idet =  (i-1)*nproc_rows + proc_blacs_info%procx* block_size + ii
-                expectation_val = expectation_val + wfn(ilocal)**2*kinetic0_hub_k(dets_list(:,idet))
+        ! NOTE: we don't pretend to be efficient here but rather just get the
+        ! job done...
+
+        if (nprocs == 1) then
+            do idet = 1, ndets
+                select case(system_type)
+                case(hub_k)
+                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*kinetic0_hub_k(dets_list(:,idet))
+                    expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(dets_list(:,idet))
+                end select
+                do jdet = idet+1, ndets
+                    cicj = wfn(idet) * wfn(jdet)
+                    select case(system_type)
+                    case(hub_k)
+                        expectation_val(2) = expectation_val(2) + &
+                                             2*cicj*double_occ_hub_k(dets_list(:,jdet), dets_list(:,idet))
+                    end select
+                end do
             end do
-        end do
+        else
+            do i = 1, proc_blacs_info%nrows, block_size
+                do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
+                    ilocal = i - 1 + ii
+                    idet =  (i-1)*nproc_rows + proc_blacs_info%procx* block_size + ii
+                    select case(system_type)
+                    case(hub_k)
+                        expectation_val(1) = expectation_val(1) + wfn(ilocal)**2*kinetic0_hub_k(dets_list(:,idet))
+                    end select
+                    do j = 1, proc_blacs_info%ncols, block_size
+                        do jj = 1, min(block_size, proc_blacs_info%nrows - j + 1)
+                            jlocal = j - 1 + jj
+                            jdet = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj
+                            cicj = wfn(ilocal) * wfn(jlocal)
+                            select case(system_type)
+                            case(hub_k)
+                                expectation_val(2) = expectation_val(2) + &
+                                                    cicj*double_occ_hub_k(dets_list(:,idet), dets_list(:,jdet))
+                            end select
+                        end do
+                    end do
+                end do
+            end do
+        end if
 
 #ifdef PARALLEL
-        call mpi_allreduce(expectation_val, esum, 1, mpi_preal, MPI_SUM, mpi_comm_world, ierr)
+        call mpi_allreduce(expectation_val, esum, size(esum), mpi_preal, MPI_SUM, mpi_comm_world, ierr)
         expectation_val = esum
 #endif
 
-        if (parent) write (6,'(1X,a16,f12.8,/)') '<\Psi|T|\Psi> = ', expectation_val
+        if (parent) then
+            select case(system_type)
+            case(hub_k)
+                write (6,'(1X,a16,f12.8)') '<\Psi|T|\Psi> = ', expectation_val(1)
+                write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(2)
+                write (6,'()')
+            end select
+        end if
 
     end subroutine analyse_wavefunction
 
