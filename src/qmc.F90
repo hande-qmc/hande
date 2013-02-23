@@ -593,7 +593,7 @@ contains
             select case(guiding_function)
             case (neel_singlet_guiding)
                 spawner_ptr => spawn_importance_sampling
-                trial_fn_ptr => neel_trial_state
+                gen_excit_ptr%trial_fn => neel_trial_state
             end select
 
         case(read_in)

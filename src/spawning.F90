@@ -99,7 +99,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use proc_pointers, only: gen_excit_ptr_t, trial_fn_ptr
+        use proc_pointers, only: gen_excit_ptr_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -113,7 +113,7 @@ contains
         call gen_excit_ptr%full(cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call trial_fn_ptr(cdet, connection, hmatel)
+        call gen_excit_ptr%trial_fn(cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
@@ -222,7 +222,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use proc_pointers, only: gen_excit_ptr_t, trial_fn_ptr
+        use proc_pointers, only: gen_excit_ptr_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
@@ -237,7 +237,7 @@ contains
         call gen_excit_ptr%init(cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call trial_fn_ptr(cdet, connection, hmatel)
+        call gen_excit_ptr%trial_fn(cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
         nspawn = nspawn_from_prob(tau*abs(tilde_hmatel)/pgen)

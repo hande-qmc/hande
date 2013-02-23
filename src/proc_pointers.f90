@@ -134,7 +134,6 @@ procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
 
-procedure(i_trial_fn), pointer :: trial_fn_ptr => null()
 
 ! Single structure for all types of excitation generator so we can use the same
 ! interface for spawning routines which use different types of generator.
@@ -142,6 +141,7 @@ type gen_excit_ptr_t
     procedure(i_gen_excit), nopass, pointer :: full => null()
     procedure(i_gen_excit), nopass, pointer :: init => null()
     procedure(i_gen_excit_finalise), nopass, pointer :: finalise => null()
+    procedure(i_trial_fn), nopass, pointer :: trial_fn => null()
 end type gen_excit_ptr_t
 
 type(gen_excit_ptr_t) :: gen_excit_ptr
