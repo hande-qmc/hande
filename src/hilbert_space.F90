@@ -19,7 +19,7 @@ contains
         ! of the space (which is needed for FCI calculations).
 
         use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns, nbasis
-        use calc, only: ms_in, truncate_space, truncation_level
+        use calc, only: sym_in, ms_in, truncate_space, truncation_level
         use const, only: dp
         use determinants, only: set_spin_polarisation, encode_det
         use excitations, only: get_excitation_level
@@ -77,7 +77,11 @@ contains
 
                 ! Perform a Monte Carlo sampling of the space.
 
-                call set_reference_det(occ_list0, .false.)
+                if (sym_in < sym_max) then
+                    call set_reference_det(occ_list0, .false., sym_in)
+                else
+                    call set_reference_det(occ_list0, .false.)
+                end if
                 call encode_det(occ_list0, f0)
 
                 ! Symmetry of the reference determinant.

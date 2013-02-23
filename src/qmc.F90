@@ -85,7 +85,7 @@ contains
         use fciqmc_restart, only: read_restart
         use reference_determinant, only: set_reference_det
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
-        use system, only: trial_function, neel_singlet, single_basis
+        use system, only: trial_function, neel_singlet, single_basis, sym_max
         use symmetry, only: symmetry_orb_list
         use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
@@ -226,7 +226,11 @@ contains
             ! single-particle eigenvalues which satisfy the spin polarisation.
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
-            call set_reference_det(occ_list0, .false.)
+            if (sym_in < sym_max) then
+                call set_reference_det(occ_list0, .false., sym_in)
+            else
+                call set_reference_det(occ_list0, .false.)
+            end if
 
             call encode_det(occ_list0, f0)
 
