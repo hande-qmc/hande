@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine read_in_fcidump(store_info, cas_info)
+    subroutine read_in_integrals(store_info, cas_info)
 
         ! Read in a FCIDUMP file, which contains the kinetic and coulomb
         ! integrals, one-particle eigenvalues and other system information.
@@ -153,7 +153,7 @@ contains
         if (parent) then
             ir = get_free_unit()
             inquire(file=fcidump, exist=t_exists)
-            if (.not.t_exists) call stop_all('read_in_fcidump', 'FCIDUMP does not &
+            if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
                                                                &exist:'//trim(fcidump))
             open (ir, file=fcidump, status='old', form='formatted')
 
@@ -205,7 +205,7 @@ contains
                 ! loop over lines.
                 read (ir,*, iostat=ios) x, i, a, j, b
                 if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_in_fcidump','Problem reading integrals file: '//trim(FCIDUMP))
+                if (ios /= 0) call stop_all('read_in_integrals','Problem reading integrals file: '//trim(FCIDUMP))
                 if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
                     ! \epsilon_i --- temporarily store for all basis functions,
                     ! including inactive (frozen) orbitals.
@@ -215,7 +215,7 @@ contains
             end do
 
             if (not_found_sp_eigv) &
-                call stop_all('read_in_fcidump',fcidump//' file does not contain &
+                call stop_all('read_in_integrals',fcidump//' file does not contain &
                               &single-particle eigenvalues.  Please implement &
                               &calculating them from the integrals.')
         end if
@@ -385,7 +385,7 @@ contains
                 ! loop over lines.
                 read (ir,*, iostat=ios) x, i, a, j, b
                 if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_in_fcidump','Problem reading integrals file: '//trim(FCIDUMP))
+                if (ios /= 0) call stop_all('read_in_integrals','Problem reading integrals file: '//trim(FCIDUMP))
 
                 ! Working in spin orbitals but FCIDUMP is in spatial orbitals in RHF
                 ! calculations and spin orbitals in UHF calculations, and te basis
@@ -585,7 +585,7 @@ contains
             call end_basis_fns()
         end if
 
-    end subroutine read_in_fcidump
+    end subroutine read_in_integrals
 
     subroutine init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank, basis_arr)
 
