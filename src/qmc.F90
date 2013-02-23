@@ -498,6 +498,7 @@ contains
         use energy_evaluation
         use excit_gen_mol
         use excit_gen_hub_k
+        use excit_gen_op_hub_k
         use excit_gen_real_lattice
         use folded_spectrum_utils, only: fs_spawner, fs_stochastic_death
         use hamiltonian_chung_landau, only: slater_condon0_chung_landau
@@ -682,6 +683,21 @@ contains
                 spawner_hfs_ptr => spawn_null
                 if (system_type == hub_k) then
                     op0_ptr => kinetic0_hub_k
+                else
+                    call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
+                end if
+            case(double_occ_operator)
+                if (system_type == hub_k) then
+                    ! Shamelessly re-use the Hamiltonian excitation generators.
+                    gen_excit_hfs_ptr%full => gen_excit_ptr%full
+                    gen_excit_hfs_ptr%init => gen_excit_ptr%init
+                    gen_excit_hfs_ptr%finalise => gen_excit_ptr%finalise
+                    spawner_hfs_ptr => spawner_ptr
+                    ! Scale the Hamiltonian matrix element to obtain the matrix
+                    ! element of this operator.
+                    gen_excit_hfs_ptr%trial_fn => gen_excit_double_occ_matel_hub_k
+                    update_proj_hfs_ptr => update_proj_hfs_double_occ_hub_k
+                    op0_ptr => double_occ0_hub_k
                 else
                     call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
                 end if

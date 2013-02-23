@@ -351,6 +351,8 @@ contains
                     hf_operator = hamiltonian_operator
                 case('KINETIC')
                     hf_operator = kinetic_operator
+                case('DOUBLE_OCCUPANCY')
+                    hf_operator = double_occ_operator
                 end select
             case('ALPHA0')
                 call readi(alpha0)

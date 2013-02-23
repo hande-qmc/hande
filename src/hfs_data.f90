@@ -26,6 +26,9 @@ integer, parameter :: hamiltonian_operator = 2**0
 ! Kinetic operator, T.
 integer, parameter :: kinetic_operator = 2**1
 
+! Double occupancy operator, D.
+integer, parameter :: double_occ_operator = 2**2
+
 !--- Operator parameters. ---
 
 !--- HFS-specific variables. ---

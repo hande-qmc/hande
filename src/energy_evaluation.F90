@@ -462,18 +462,17 @@ contains
     subroutine update_proj_hfs_diagonal(f, fpop, f_hfpop, fdata, excitation, hmatel, &
                                               D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
 
-        ! Add the contribution of the current determinant to the projected
-        ! energy in an identical way to update_proj_energy_hub_k.
-
-        ! Also add the contribution of the current determinant to the running
+        ! Add the contribution of the current determinant to the running
         ! total of the projected Hellmann--Feynman estimator.
 
         ! This procedure is for when we are sampling an operator, O, which is
         ! diagonal in the Slater determinant space.
 
         ! In:
-        !    f(basis_length): bit string representation of the Slater determinant, D_i.
-        !    fpop: Hamiltonian population on the determinant.
+        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !       (unused, for interface compatibility only).
+        !    fpop: Hamiltonian population on the determinant (unused, for interface
+        !       compatibility only).
         !    f_hfpop: Hellmann-Feynman population on the determinant.
         !    fdata(:): additional information about the determinant (unused, for
         !       interface compatibility only).
@@ -513,5 +512,63 @@ contains
         end if
 
     end subroutine update_proj_hfs_diagonal
+
+    subroutine update_proj_hfs_double_occ_hub_k(f, fpop, f_hfpop, fdata, excitation, hmatel, &
+                                              D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
+
+        ! Add the contribution of the current determinant to the running
+        ! total of the projected Hellmann--Feynman estimator.
+
+        ! This procedure is for when we are sampling D, the double occupancy
+        ! operator, in the Bloch (momentum) basis set for the Hubbard model.
+
+        ! In:
+        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !       (unused, for interface compatibility only).
+        !    fpop: Hamiltonian population on the determinant.
+        !    f_hfpop: Hellmann-Feynman population on the determinant.
+        !    fdata(:): additional information about the determinant (unused, for
+        !       interface compatibility only).
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+        ! In/Out:
+        !    D0_hf_population: running total of the Hellmann-Feynman population
+        !       on the reference.  Only updated if D_i *is* the reference determinant.
+        !    proj_hf_O_hpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|O|D_0> N_i, where N_i is the Hamiltonian population on D_i.
+        !    proj_hf_H_fhpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
+        !       Hellmann-Feynman population on D_i.
+
+        use basis, only: basis_length
+        use excitations, only: excit
+        use system, only: hubu, nsites
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop, f_hfpop
+        real(p), intent(in) :: fdata(:), hmatel
+        type(excit), intent(in) :: excitation
+        real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
+
+        ! Note: two-electron operator.
+
+        select case(excitation%nexcit)
+        case(0)
+            ! Have reference determinant.
+            D0_hf_pop = D0_hf_pop + f_hfpop
+        case(2)
+            ! Have a determinant connected to the reference determinant: add to
+            ! projected energy.
+
+            ! D_0j = H_0j / (U L), where L is the number of sites.
+            ! sampling O - <D0|ddO|D0>, this means that \sum_j O_j0 c_j = 0.
+            proj_hf_O_hpsip = proj_hf_O_hpsip + (hmatel/(hubu*nsites))*fpop
+
+            ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+        end select
+
+    end subroutine update_proj_hfs_double_occ_hub_k
 
 end module energy_evaluation

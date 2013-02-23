@@ -144,7 +144,7 @@ type gen_excit_ptr_t
     procedure(i_trial_fn), nopass, pointer :: trial_fn => null()
 end type gen_excit_ptr_t
 
-type(gen_excit_ptr_t) :: gen_excit_ptr
+type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
     subroutine i_spawner(d, parent_sign, gen_excit_ptr, nspawned, connection)
