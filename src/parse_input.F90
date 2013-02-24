@@ -419,7 +419,15 @@ contains
                                          & currently.')
         end if
 
-        if (system_type /= read_in) then
+        if (system_type == read_in) then
+
+            if (analyse_ground_state .and. dipole_int_file == '') then
+                call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
+                             &integrals file.  Turning analyse_ground_state option off...')
+                analyse_ground_state = .false.
+            end if
+
+        else
 
             if (system_type /= ueg) then
                 if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')

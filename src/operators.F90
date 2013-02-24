@@ -65,7 +65,7 @@ contains
 
         use const, only: p, i0
 
-        real(p) :: occ 
+        real(p) :: occ
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         logical :: non_zero
         type(excit) :: excitation
@@ -84,7 +84,7 @@ contains
         end select
 
     end function double_occ_hub_k
-    
+
     pure function double_occ0_hub_k(f) result(occ)
 
         ! In:
@@ -177,6 +177,110 @@ contains
 
      end function double_occ0_hub_real
 
+!=== Molecular (integrals read in) ===
+
+!--- One-body operator (arbitrary) ---
+
+! Because we read in the integrals for generic systems, any one-body operator is
+! identical in form.
+
+    pure function one_body_mol(f1, f2) result(occ)
+
+        ! In:
+        !    f1, f2: bit string representation of the Slater
+        !        determinants D1 and D2 respectively.
+        ! Returns:
+        !    Hamiltonian matrix element between the two determinants,
+        !    < D1 | O_1 | D2 >, where the determinants are formed from
+        !    molecular orbitals read in from an FCIDUMP file and O_1 is
+        !    a one-body operator.
+
+        use determinants, only: basis_length
+        use excitations, only: excit, get_excitation
+
+        use const, only: p, i0
+
+        real(p) :: occ
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        logical :: non_zero
+        type(excit) :: excitation
+
+        excitation = get_excitation(f1,f2)
+
+        select case(excitation%nexcit)
+        case(0)
+            occ = one_body0_mol(f1)
+        case(1)
+            occ = one_body1_mol(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+        case default
+            occ = 0.0_p
+        end select
+
+    end function one_body_mol
+
+    pure function one_body0_mol(f) result(intgrl)
+
+        ! In:
+        !    f: bit string representation of a Slater determinant, |D>.
+        ! Returns:
+        !    <D|O_1|D>, the diagonal Hamiltonian matrix element involving D for
+        !    systems defined by integrals read in from an FCIDUMP file and O_1
+        !    is a one-body operator.
+
+        use basis, only: basis_length
+        use determinants, only: decode_det
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, one_body_op_integrals
+        use point_group_symmetry, only: gamma_sym
+        use system, only: nel
+
+        use const, only: p, i0
+
+        real(p) :: intgrl
+        integer(i0), intent(in) :: f(basis_length)
+
+        integer :: occ_list(nel)
+        integer :: i
+
+        call decode_det(f, occ_list)
+
+        ! <D | O_1 | D > = \sum_i <i|O_1|i>
+        ! The integrals can only be non-zero if the operator is totally symmetric.
+
+        intgrl = 0.0_p
+        if (one_body_op_integrals%op_sym == gamma_sym) then
+            do i = 1, nel
+                intgrl = intgrl + get_one_body_int_mol_nonzero(one_body_op_integrals, i, i)
+            end do
+        end if
+
+    end function one_body0_mol
+
+    pure function one_body1_mol(i, a, perm) result(intgrl)
+
+        ! In:
+        !    i: the spin-orbital from which an electron is excited in
+        !       the reference determinant.
+        !    a: the spin-orbital into which an electron is excited in
+        !       the excited determinant.
+        !    perm: true if an odd number of permutations are required for
+        !       D and D_i^a to be maximally coincident.
+        ! Returns:
+        !    < D | O_1 | D_i^a >, the matrix element of a one-body operator
+        !        between a determinant and a single excitation of it for systems
+        !        defined by integrals read in from an FCIDUMP file.
+
+        use molecular_integrals, only: get_one_body_int_mol, one_body_op_integrals
+
+        use const, only: p
+
+        real(p) :: intgrl
+        integer, intent(in) :: i, a
+        logical, intent(in) :: perm
+
+        intgrl = get_one_body_int_mol(one_body_op_integrals, i, a)
+
+    end function one_body1_mol
+
 !== Debug/test routines for operating on exact wavefunction ===
 
     subroutine analyse_wavefunction(wfn)
@@ -192,7 +296,7 @@ contains
         use calc, only: proc_blacs_info, distribute, distribute_off
         use determinants, only: dets_list, ndets
         use parallel
-        use system, only: system_type, hub_k, hub_real
+        use system, only: system_type, hub_k, hub_real, read_in
 
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
@@ -217,6 +321,8 @@ contains
                     expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(dets_list(:,idet))
                 case(hub_real)
                     expectation_val(1) = expectation_val(1) + wfn(idet)**2*double_occ0_hub_real(dets_list(:,idet))
+                case(read_in)
+                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(dets_list(:,idet))
                 end select
                 do jdet = idet+1, ndets
                     cicj = wfn(idet) * wfn(jdet)
@@ -224,6 +330,9 @@ contains
                     case(hub_k)
                         expectation_val(2) = expectation_val(2) + &
                                              2*cicj*double_occ_hub_k(dets_list(:,jdet), dets_list(:,idet))
+                    case (read_in)
+                        expectation_val(1) = expectation_val(1) + &
+                                             2*cicj*one_body_mol(dets_list(:,jdet), dets_list(:,idet))
                     end select
                 end do
             end do
@@ -235,8 +344,11 @@ contains
                     select case(system_type)
                     case(hub_k)
                         expectation_val(1) = expectation_val(1) + wfn(ilocal)**2*kinetic0_hub_k(dets_list(:,idet))
+                        expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(dets_list(:,idet))
                     case(hub_real)
                         expectation_val(1) = expectation_val(1) + wfn(idet)**2*double_occ0_hub_real(dets_list(:,idet))
+                    case(read_in)
+                        expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(dets_list(:,idet))
                     end select
                     do j = 1, proc_blacs_info%ncols, block_size
                         do jj = 1, min(block_size, proc_blacs_info%nrows - j + 1)
@@ -247,6 +359,9 @@ contains
                             case(hub_k)
                                 expectation_val(2) = expectation_val(2) + &
                                                     cicj*double_occ_hub_k(dets_list(:,idet), dets_list(:,jdet))
+                            case (read_in)
+                                expectation_val(1) = expectation_val(1) + &
+                                                     2*cicj*one_body_mol(dets_list(:,idet), dets_list(:,jdet))
                             end select
                         end do
                     end do
@@ -266,6 +381,9 @@ contains
                 write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(2)
             case(hub_real)
                 write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(1)
+                write (6,'()')
+            case(read_in)
+                write (6,'(1X,a18,f12.8)') '<\Psi|O_1|\Psi> = ', expectation_val(1)
                 write (6,'()')
             end select
         end if
