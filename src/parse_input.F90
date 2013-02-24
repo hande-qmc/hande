@@ -86,7 +86,7 @@ contains
             case('CHUNG-LANDAU')
                 system_type = chung_landau
 
-            ! System information.
+                ! System information.
             case('LATTICE')
                 ! Lattice block
                 call read_line(eof)
@@ -143,6 +143,10 @@ contains
                 call readf(r_s)
             case('ECUTOFF')
                 call readf(ueg_ecutoff)
+
+            ! Additional information for systems read in (i.e. molecular)
+            case('DIPOLE_INTEGRALS')
+                call reada(dipole_int_file)
 
             ! Select symmetry of wavefunction.
             case('MS')
@@ -354,6 +358,7 @@ contains
                 case('DOUBLE_OCCUPANCY')
                     hf_operator = double_occ_operator
                 end select
+            ! Integral file for dipole moment.
             case('ALPHA0')
                 call readi(alpha0)
 
@@ -577,6 +582,7 @@ contains
         end if
         call mpi_bcast(r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(ueg_ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dipole_int_file, len(dipole_int_file), mpi_character, 0, mpi_comm_world, ierr)
         call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)

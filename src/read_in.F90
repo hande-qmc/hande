@@ -29,7 +29,7 @@ contains
                          write_basis_fn_header
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry
-        use system, only: fcidump, uhf, ecore, nel, nvirt
+        use system, only: fcidump, uhf, ecore, nel, nvirt, dipole_int_file, dipole_frozen_core
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -543,11 +543,6 @@ contains
 
         end if
 
-        deallocate(sp_eigv_rank, stat=ierr)
-        call check_deallocate('sp_eigv_rank', ierr)
-        deallocate(sp_fcidump_rank, stat=ierr)
-        call check_deallocate('sp_fcidump_rank', ierr)
-
 #ifdef PARALLEL
         call MPI_BCast(ECore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
@@ -579,6 +574,16 @@ contains
             end do
             write (6,'(/,1X,a8,f18.12)') 'E_core =', Ecore
         end if
+
+        if (t_store .and. dipole_int_file /= '') then
+            call read_in_one_body(dipole_int_file, sp_fcidump_rank(1:), active_basis_offset, &
+                                  one_body_op_integrals, dipole_frozen_core)
+        end if
+
+        deallocate(sp_eigv_rank, stat=ierr)
+        call check_deallocate('sp_eigv_rank', ierr)
+        deallocate(sp_fcidump_rank, stat=ierr)
+        call check_deallocate('sp_fcidump_rank', ierr)
 
         if (.not.t_store) then
             ! Should tidy up and deallocate everything we allocated.
@@ -647,5 +652,144 @@ contains
         end do
 
     end subroutine init_basis_fns_read_in
+
+    subroutine read_in_one_body(integral_file, sp_fcidump_rank, active_basis_offset, store, frozen_core_expectation)
+
+        ! Read in an integral file containing the integrals <i|O|a>, where O is
+        ! a one-body operator which is not part of the Hamiltonian.
+
+        ! The integral file consists soley of lines with the format:
+        !    x i a
+        ! where <i|O|a> = x.
+
+        ! We assume the orbitals have the same indexing as used in the FCIDUMP
+        ! file and i,a are in spatial (spin) indices if produced by a RHF (UHF)
+        ! calculation.
+
+        ! In:
+        !    integral_file: file containing integrals.
+        !    sp_fcidump_rank: ranking array which converts index in the
+        !         integrals file(s) to the (energy-ordered) index used in HANDE,
+        !         i.e. sp_fcidump_rank(a) = i, where a is the a-th
+        !         orbital according to the ordering used in the integral files
+        !         and i is the i-th orbital by energy ordering.
+        !    active_basis_offset: number of frozen core orbitals.
+        ! Out:
+        !    store: one-body store of integrals given in integral_file..
+        !    frozen_core_expectation: contribution to <\Psi|O|\Psi> from the
+        !         frozen core orbitals.
+
+        use basis, only: nbasis
+        use system, only: uhf
+        use point_group_symmetry, only: cross_product_pg_basis
+        use molecular_integrals, only: one_body, init_one_body_int_store,              &
+                                       end_one_body_int_store, store_one_body_int_mol, &
+                                       broadcast_one_body_int
+
+        use errors, only: stop_all
+        use parallel, only: parent, root
+        use utils, only: get_free_unit
+
+        use, intrinsic :: iso_fortran_env, only: iostat_end
+
+        character(*), intent(in) :: integral_file
+        integer, intent(in) :: sp_fcidump_rank(:), active_basis_offset
+        type(one_body), intent(out) :: store
+        real(p), intent(out) :: frozen_core_expectation
+
+        integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac
+        logical :: t_exists
+
+        real(p) :: x
+
+        if (uhf) then
+            rhf_fac = 1
+        else
+            rhf_fac = 2  ! need to double count some integrals.
+        end if
+
+        ! Only do i/o on root processor.
+        if (parent) then
+            ! We don't know the symmetry of the operator.
+            ! However, we do know that a non-zero integral must have a totally
+            ! symmetric integrand *and* we know the symmetries of all the orbitals.
+            ir = get_free_unit()
+            inquire(file=integral_file, exist=t_exists)
+            if (.not.t_exists) call stop_all('read_in_one_body', 'Integral file does not &
+                                                               &exist:'//trim(integral_file))
+            open (ir, file=integral_file, status='old', form='formatted')
+
+            do
+                read (ir,*, iostat=ios) x, i, a
+                if (ios == iostat_end) exit ! reached end of file
+                if (ios /= 0) call stop_all('read_in_one_body','Problem reading integrals file: '//trim(integral_file))
+                ii = rhf_fac*sp_fcidump_rank(i) - active_basis_offset
+                aa = rhf_fac*sp_fcidump_rank(a) - active_basis_offset
+                if (abs(x) > depsilon .and. ii > 0 .and. aa > 0) exit ! Found the first non-zero integral in active space.
+            end do
+            ! We only use Abelian symmetries so all representations are their own
+            ! inverse.
+            op_sym = cross_product_pg_basis(ii,aa)
+        else
+            ! We'll broadcast the symmetry and the integrals to all other
+            ! processors later.
+            op_sym = -1
+        end if
+
+        ! Allocate integral store on *all* processors.
+        if (allocated(store%integrals)) call end_one_body_int_store(store)
+        call init_one_body_int_store(op_sym, store)
+
+        ! In addition to reading in the integrals, we must also calculate the
+        ! contribution from the core (frozen) orbitals.
+        !
+        ! Consider |\Psi> = c_i |D_i>, where {|D_i>} includes the frozen core
+        ! electrons and Einstein summation is used throughout. Then:
+        !
+        !     <\Psi | O | \Psi> = <D_i|O|D_j> c_i^* c_j
+        !
+        ! where, for spin-orbitals {|a>}:
+        !
+        !     <D_i|O|D_j> = | <a|O|a> if |D_i>=|D_j>
+        !                   | <a|O|b> if |D_i> and |D_j> are related by the excitation a->b
+        !                   | 0       otherwise
+        !
+        !     <\Psi |O | \Psi > = <a_c|O|a_c> c_i^* c_i + <D_i'|O|D_j'> c_i^* c_j
+        !
+        ! where {|D_i'>} now only incude active occupied orbitals and {|a_c>} are
+        ! the frozen core electrons.  As {|a_c>} is indentical for all
+        ! determinants and |\Psi> is normalised, the summation over i in the first
+        ! term is unity and hence:
+        !
+        !     <\Psi |O | \Psi > = <a_c|O|a_c> + <D_i'|O|D_j'> c_i^* c_j
+        !
+        ! The contribution from the frozen core electrons is hence just the sum
+        ! over the diagonal integrals.
+
+        ! And back to root...
+        frozen_core_expectation = 0.0_p
+        if (parent) then
+            rewind(ir)
+            do
+                read (ir,*, iostat=ios) x, i, a
+                if (ios == iostat_end) exit ! reached end of file
+                if (ios /= 0) call stop_all('read_in_one_body','Problem reading integrals file: '//trim(integral_file))
+                ii = rhf_fac*sp_fcidump_rank(i) - active_basis_offset
+                aa = rhf_fac*sp_fcidump_rank(a) - active_basis_offset
+                if (ii < 1 .and. ii == aa) then
+                    frozen_core_expectation = frozen_core_expectation + rhf_fac*x
+                else if (min(ii,aa) >= 1 .and. max(ii,aa) <= nbasis) then
+                    call store_one_body_int_mol(ii, aa, x, store)
+                end if
+            end do
+        end if
+
+        ! And now send info everywhere...
+#ifdef PARALLEL
+        call MPI_BCast(frozen_core_expectation, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+#endif
+        call broadcast_one_body_int(store, root)
+
+    end subroutine read_in_one_body
 
 end module read_in_system

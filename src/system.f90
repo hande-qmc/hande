@@ -169,14 +169,20 @@ real(p) :: staggered_magnetic_field = 0
 
 ! --- Read-in system ---
 
-! FCIDUMP filename
+! FCIDUMP filename (contains integrals which make up the Hamiltonian matrix).
 character(255) :: fcidump = 'FCIDUMP'
+
+! Dipole integral file, contains integrals <i|O|a>, where O=x, y or z.
+character(255) :: dipole_int_file = ''
 
 ! UHF or RHF orbitals?
 logical :: uhf = .false.
 
 ! Core energy (e.g. nuclear-nuclear terms, contributions from frozen orbitals...
 real(p) :: Ecore
+
+! Contribution from frozen core orbitals to dipole moment
+real(p) :: dipole_frozen_core
 
 contains
 
