@@ -56,9 +56,9 @@ contains
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
-        !    Hamiltonian matrix element between the two determinants,
-        !    < D1 | \hat{D} | D2 >, where the determinants are formed from
-        !    momentum space basis functions.
+        !    < D1 | \hat{D} | D2 >, the matrix element of the double occupancy
+        !    operator, where the determinants are formed from momentum space
+        !    basis functions.
 
         use determinants, only: basis_length
         use excitations, only: excit, get_excitation
@@ -92,7 +92,8 @@ contains
         !       just for interface compatibility).
         ! Returns:
         !    < D_i | \hat{D} | D_i >, the diagonal matrix element for the double
-        !    occupancy operator.
+        !    occupancy operator in the momentum space formulation of the Hubbard
+        !    model.
 
         use basis, only: basis_length
         use system, only: nalpha, nbeta, nsites
