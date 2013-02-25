@@ -339,10 +339,17 @@ contains
 
         ! We don't wish to incur the overhead of ever storing integrals
         ! involving frozen orbitals so instead we simply accumulate the
-        ! quantities above.  Hence we must zero them:
+        ! quantities above.  Hence we must zero them.
+        ! Furthermore, some integrals, which are allowed to be non-zero by the
+        ! symmetry information provided, might be zero and so not included in
+        ! FCIDUMP.  We must zero the stores to hence avoid accessing unitialised
+        ! memory.
 
         Ecore = 0.0_p
-        if (t_store) call zero_one_body_int_store(one_e_h_integrals)
+        if (t_store) then
+            call zero_one_body_int_store(one_e_h_integrals)
+            call zero_two_body_int_store(coulomb_integrals)
+        end if
 
         ! Now, there is no guarantee that FCIDUMP files will include all
         ! permutation symmetry and so we must avoid double-counting when
@@ -684,7 +691,7 @@ contains
         use point_group_symmetry, only: cross_product_pg_basis
         use molecular_integrals, only: one_body, init_one_body_int_store,              &
                                        end_one_body_int_store, store_one_body_int_mol, &
-                                       broadcast_one_body_int
+                                       zero_one_body_int_store, broadcast_one_body_int
 
         use errors, only: stop_all
         use parallel, only: parent, root
@@ -739,6 +746,10 @@ contains
         ! Allocate integral store on *all* processors.
         if (allocated(store%integrals)) call end_one_body_int_store(store)
         call init_one_body_int_store(op_sym, store)
+        ! Integrals might be allowed by symmetry (and hence stored) but still
+        ! be zero (and so not be included in the integral file).  To protect
+        ! ourselves against accessing uninitialised memory:
+        call zero_one_body_int_store(store)
 
         ! In addition to reading in the integrals, we must also calculate the
         ! contribution from the core (frozen) orbitals.
