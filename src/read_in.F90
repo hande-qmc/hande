@@ -694,7 +694,7 @@ contains
                                        zero_one_body_int_store, broadcast_one_body_int
 
         use errors, only: stop_all
-        use parallel, only: parent, root
+        use parallel
         use utils, only: get_free_unit
 
         use, intrinsic :: iso_fortran_env, only: iostat_end
@@ -704,7 +704,7 @@ contains
         type(one_body), intent(out) :: store
         real(p), intent(out) :: frozen_core_expectation
 
-        integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac
+        integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac, ierr
         logical :: t_exists
 
         real(p) :: x
