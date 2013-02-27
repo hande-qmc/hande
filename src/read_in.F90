@@ -583,7 +583,7 @@ contains
         end if
 
         if (t_store .and. dipole_int_file /= '') then
-            call read_in_one_body(dipole_int_file, sp_fcidump_rank(1:), active_basis_offset, &
+            call read_in_one_body(dipole_int_file, sp_fcidump_rank, active_basis_offset, &
                                   one_body_op_integrals, dipole_frozen_core)
         end if
 
@@ -680,6 +680,8 @@ contains
         !         i.e. sp_fcidump_rank(a) = i, where a is the a-th
         !         orbital according to the ordering used in the integral files
         !         and i is the i-th orbital by energy ordering.
+        !         Note: must be 0-indexed and sp_fcidump_rank(0) = 0.  See above
+        !         commments about this special case.
         !    active_basis_offset: number of frozen core orbitals.
         ! Out:
         !    store: one-body store of integrals given in integral_file..
@@ -700,7 +702,7 @@ contains
         use, intrinsic :: iso_fortran_env, only: iostat_end
 
         character(*), intent(in) :: integral_file
-        integer, intent(in) :: sp_fcidump_rank(:), active_basis_offset
+        integer, intent(in) :: sp_fcidump_rank(0:), active_basis_offset
         type(one_body), intent(out) :: store
         real(p), intent(out) :: frozen_core_expectation
 
@@ -787,7 +789,10 @@ contains
                 if (ios /= 0) call stop_all('read_in_one_body','Problem reading integrals file: '//trim(integral_file))
                 ii = rhf_fac*sp_fcidump_rank(i) - active_basis_offset
                 aa = rhf_fac*sp_fcidump_rank(a) - active_basis_offset
-                if (ii < 1 .and. ii == aa) then
+                if (i == 0 .and. a == 0) then
+                    ! Nuclear contributions.
+                    frozen_core_expectation = frozen_core_expectation + x
+                else if (ii < 1 .and. ii == aa) then
                     frozen_core_expectation = frozen_core_expectation + rhf_fac*x
                 else if (min(ii,aa) >= 1 .and. max(ii,aa) <= nbasis) then
                     call store_one_body_int_mol(ii, aa, x, store)
