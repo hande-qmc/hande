@@ -239,7 +239,7 @@ contains
         integer(i0), intent(in) :: f(basis_length)
 
         integer :: occ_list(nel)
-        integer :: i
+        integer :: iel, iorb
 
         call decode_det(f, occ_list)
 
@@ -248,8 +248,9 @@ contains
 
         intgrl = 0.0_p
         if (one_body_op_integrals%op_sym == gamma_sym) then
-            do i = 1, nel
-                intgrl = intgrl + get_one_body_int_mol_nonzero(one_body_op_integrals, i, i)
+            do iel = 1, nel
+                iorb = occ_list(iel)
+                intgrl = intgrl + get_one_body_int_mol_nonzero(one_body_op_integrals, iorb, iorb)
             end do
         end if
 
@@ -279,6 +280,8 @@ contains
 
         intgrl = get_one_body_int_mol(one_body_op_integrals, i, a)
 
+        if (perm) intgrl = -intgrl
+
     end function one_body1_mol
 
 !== Debug/test routines for operating on exact wavefunction ===
@@ -296,7 +299,7 @@ contains
         use calc, only: proc_blacs_info, distribute, distribute_off
         use determinants, only: dets_list, ndets
         use parallel
-        use system, only: system_type, hub_k, hub_real, read_in
+        use system, only: system_type, hub_k, hub_real, read_in, dipole_frozen_core
 
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
@@ -383,7 +386,7 @@ contains
                 write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(1)
                 write (6,'()')
             case(read_in)
-                write (6,'(1X,a18,f12.8)') '<\Psi|O_1|\Psi> = ', expectation_val(1)
+                write (6,'(1X,a18,f12.8)') '<\Psi|O_1|\Psi> = ', expectation_val(1)+dipole_frozen_core
                 write (6,'()')
             end select
         end if
