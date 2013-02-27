@@ -32,7 +32,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: pattempt_single
+        use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
 
@@ -56,7 +56,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = calc_pgen_single_mol(cdet%occ_list, cdet%symunocc, connection%to_orb(1))
+                pgen = pattempt_single*calc_pgen_single_mol(cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(cdet%f, connection)
@@ -83,7 +83,7 @@ contains
             if (allowed_excitation) then
 
                 ! 3b. Probability of generating this excitation.
-                pgen = calc_pgen_double_mol(ij_sym, connection%to_orb(1), connection%to_orb(2), &
+                pgen = pattempt_double*calc_pgen_double_mol(ij_sym, connection%to_orb(1), connection%to_orb(2), &
                                             ij_spin, cdet%symunocc)
 
                 ! 4b. Parity of permutation required to line up determinants.
@@ -133,7 +133,7 @@ contains
         use basis, only: basis_fns
         use determinants, only: det_info
         use excitations, only: excit
-        use fciqmc_data, only: pattempt_single
+        use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
 
@@ -156,7 +156,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = calc_pgen_single_mol_no_renorm(connection%to_orb(1))
+                pgen = pattempt_single*calc_pgen_single_mol_no_renorm(connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(cdet%f, connection)
@@ -178,7 +178,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3b. Probability of generating this excitation.
-                pgen = calc_pgen_double_mol_no_renorm(connection%to_orb(1), connection%to_orb(2), ij_spin)
+                pgen = pattempt_double*calc_pgen_double_mol_no_renorm(connection%to_orb(1), connection%to_orb(2), ij_spin)
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
@@ -653,7 +653,8 @@ contains
         !    i uniformly from the list of occupied orbitals with allowed
         !    excitations (i.e. at least one single excitation exists involving
         !    those orbitals) and a is selected from the list of unoccupied
-        !    orbitals which conserve spin and spatial symmetry.
+        !    orbitals which conserve spin and spatial symmetry *and* given that
+        !    a single excitation has been selected.
 
         ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
@@ -663,7 +664,6 @@ contains
         ! excitations correctly take into account such rejected events.
 
         use basis, only: basis_fns
-        use fciqmc_data, only: pattempt_single
         use system, only: nel, sym0
 
         real(p) :: pgen
@@ -684,7 +684,7 @@ contains
 
         ims = (basis_fns(a)%Ms+3)/2
         isym = basis_fns(a)%sym
-        pgen = pattempt_single/(ni*symunocc(ims,isym))
+        pgen = 1.0_p/(ni*symunocc(ims,isym))
 
     end function calc_pgen_single_mol
 
@@ -707,7 +707,8 @@ contains
         !    determinant D_{ij}^{ab} from determinant D, assuming that (i,j)
         !    have been selected from the occupied orbitals, a is selected from
         !    an unoccupied orbital and b is selected from the set of unoccupied
-        !    orbitals which conserve spin and spatial symmetry.
+        !    orbitals which conserve spin and spatial symmetry *and* given that
+        !    a double excitation has been selected.
 
         ! WARNING: We assume that the excitation is actually valid.
         ! This routine does *not* calculate the correct probability that
@@ -718,7 +719,6 @@ contains
         ! events.
 
         use basis, only: basis_fns
-        use fciqmc_data, only: pattempt_double
         use system, only: nel, nvirt, nvirt_alpha, nvirt_beta, sym0, sym_max
         use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym
 
@@ -807,7 +807,7 @@ contains
             end if
         end select
 
-        pgen = 2*pattempt_double/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
+        pgen = 2.0_p/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
 
     end function calc_pgen_double_mol
 
@@ -819,7 +819,8 @@ contains
         !    The probability of generating the excitation i->a, where we select
         !    i uniformly from the list of occupied orbitals and a is selected
         !    from the list of orbitals (both occupied and unoccupied) which
-        !    conserve spin and spatial symmetry.  Note that the probability is
+        !    conserve spin and spatial symmetry *and* given that a single
+        !    excitation has been selected.  Note that the probability is
         !    actually independent of i due to the uniform selection of i.
 
         ! WARNING: We assume that the excitation is actually valid.
@@ -830,7 +831,6 @@ contains
         ! excitations correctly take into account such rejected events.
 
         use basis, only: basis_fns
-        use fciqmc_data, only: pattempt_single
         use system, only: nel
         use point_group_symmetry, only: nbasis_sym_spin
 
@@ -846,7 +846,7 @@ contains
 
         ims = (basis_fns(a)%Ms+3)/2
         isym = basis_fns(a)%sym
-        pgen = pattempt_single/(nel*nbasis_sym_spin(ims,isym))
+        pgen = 1.0_p/(nel*nbasis_sym_spin(ims,isym))
 
     end function calc_pgen_single_mol_no_renorm
 
@@ -863,7 +863,8 @@ contains
         !    determinant D_{ij}^{ab} from determinant D, assuming that (i,j)
         !    have been selected from the occupied orbitals, a is selected from
         !    an unoccupied orbital and b is selected from the set of orbitals
-        !    which conserve spin and spatial symmetry.  (Note: in this scheme,
+        !    which conserve spin and spatial symmetry *and* given that a double
+        !    excitation has been selected.  (Note: in this scheme,
         !    b is not necessarily unoccupied.)
 
         ! WARNING: We assume that the excitation is actually valid.
@@ -876,7 +877,6 @@ contains
         ! then p(a|ijb) or p(b|ijb) = 0.  We do not handle such cases here.
 
         use basis, only: basis_fns
-        use fciqmc_data, only: pattempt_double
         use system, only: nel, nvirt, nvirt_alpha, nvirt_beta
         use point_group_symmetry, only: nbasis_sym_spin
 
@@ -924,7 +924,7 @@ contains
             p_bija = 1.0_p/nbasis_sym_spin(imsb, isymb)
         end if
 
-        pgen = 2*pattempt_double/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
+        pgen = 2.0_p/(nel*(nel-1)*n_aij)*(p_bija+p_aijb)
 
     end function calc_pgen_double_mol_no_renorm
 
