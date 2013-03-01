@@ -497,6 +497,7 @@ contains
         use dmqmc_procedures
         use energy_evaluation
         use excit_gen_mol
+        use excit_gen_op_mol
         use excit_gen_hub_k
         use excit_gen_op_hub_k
         use excit_gen_real_lattice
@@ -698,6 +699,19 @@ contains
                     gen_excit_hfs_ptr%trial_fn => gen_excit_double_occ_matel_hub_k
                     update_proj_hfs_ptr => update_proj_hfs_double_occ_hub_k
                     op0_ptr => double_occ0_hub_k
+                else
+                    call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
+                end if
+            case(dipole_operator)
+                if (system_type == read_in) then
+                    op0_ptr => one_body0_mol
+                    update_proj_hfs_ptr => update_proj_hfs_one_body_mol
+                    spawner_hfs_ptr => spawner_ptr
+                    if (no_renorm) then
+                        gen_excit_hfs_ptr%full => gen_excit_one_body_mol_no_renorm
+                    else
+                        gen_excit_hfs_ptr%full => gen_excit_one_body_mol
+                    end if
                 else
                     call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
                 end if

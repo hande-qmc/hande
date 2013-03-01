@@ -29,6 +29,10 @@ integer, parameter :: kinetic_operator = 2**1
 ! Double occupancy operator, D.
 integer, parameter :: double_occ_operator = 2**2
 
+! Dipole occupancy operator, \mu_i, where the component i depends upon the
+! supplied integrals.
+integer, parameter :: dipole_operator = 2**3
+
 !--- Operator parameters. ---
 
 !--- HFS-specific variables. ---

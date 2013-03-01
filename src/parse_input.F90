@@ -357,6 +357,8 @@ contains
                     hf_operator = kinetic_operator
                 case('DOUBLE_OCCUPANCY')
                     hf_operator = double_occ_operator
+                case('DIPOLE')
+                    hf_operator = dipole_operator
                 end select
             ! Integral file for dipole moment.
             case('ALPHA0')
