@@ -284,6 +284,39 @@ contains
 
     end function one_body1_mol
 
+    pure function one_body1_mol_excit(i, a, perm) result(intgrl)
+
+        ! In:
+        !    i: the spin-orbital from which an electron is excited in
+        !       the reference determinant.
+        !    a: the spin-orbital into which an electron is excited in
+        !       the excited determinant.
+        !    perm: true if an odd number of permutations are required for
+        !       D and D_i^a to be maximally coincident.
+        ! Returns:
+        !    < D | O_1 | D_i^a >, the matrix element of a one-body operator
+        !        between a determinant and a single excitation of it for systems
+        !        defined by integrals read in from an FCIDUMP file.
+
+        ! WARNING: This function assumes that the D_i^a is a symmetry allowed
+        ! excitation from D (and so the matrix element is *not* zero by
+        ! symmetry).  This is less safe that one_body1_mol but much faster as it
+        ! allows symmetry checking to be skipped in the integral lookups.
+
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, one_body_op_integrals
+
+        use const, only: p
+
+        real(p) :: intgrl
+        integer, intent(in) :: i, a
+        logical, intent(in) :: perm
+
+        intgrl = get_one_body_int_mol_nonzero(one_body_op_integrals, i, a)
+
+        if (perm) intgrl = -intgrl
+
+    end function one_body1_mol_excit
+
 !== Debug/test routines for operating on exact wavefunction ===
 
     subroutine analyse_wavefunction(wfn)
