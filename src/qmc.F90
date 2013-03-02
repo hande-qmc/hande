@@ -693,7 +693,7 @@ contains
                     gen_excit_hfs_ptr%full => gen_excit_ptr%full
                     gen_excit_hfs_ptr%init => gen_excit_ptr%init
                     gen_excit_hfs_ptr%finalise => gen_excit_ptr%finalise
-                    spawner_hfs_ptr => spawner_ptr
+                    spawner_hfs_ptr => spawn_lattice_split_gen_importance_sampling
                     ! Scale the Hamiltonian matrix element to obtain the matrix
                     ! element of this operator.
                     gen_excit_hfs_ptr%trial_fn => gen_excit_double_occ_matel_hub_k
