@@ -237,7 +237,7 @@ contains
         call gen_excit_ptr%init(cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(cdet, connection, hmatel)
+        call gen_excit_ptr%trial_fn(cdet, connection, tilde_hmatel)
 
         ! 3. Attempt spawning.
         nspawn = nspawn_from_prob(tau*abs(tilde_hmatel)/pgen)
@@ -245,6 +245,8 @@ contains
         if (nspawn /= 0) then
 
             ! 4. Complete excitation and find sign of connecting matrix element.
+            ! *NOTE*: this returns the original matrix element and *not* the
+            ! matrix element after the trial function transformation.
             call gen_excit_ptr%finalise(cdet, connection, hmatel)
 
             ! 5. Find sign of offspring.
