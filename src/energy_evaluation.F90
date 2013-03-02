@@ -561,8 +561,8 @@ contains
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
 
-            ! D_0j = H_0j / (U L), where L is the number of sites.
-            ! sampling O - <D0|ddO|D0>, this means that \sum_j O_j0 c_j = 0.
+            !\hat{O}_0j = H_0j / (U L), where L is the number of sites.
+            ! sampling \hat{O} - <D0|O|D0>, this means that \sum_j O_j0 c_j = 0.
             proj_hf_O_hpsip = proj_hf_O_hpsip + (hmatel/(hubu*nsites))*fpop
 
             ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
@@ -621,11 +621,17 @@ contains
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
 
-            ! D_0j = O_1
+            ! \sum_j O_0j c_j
             matel = one_body1_mol(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
             proj_hf_O_hpsip = proj_hf_O_hpsip + matel*fpop
 
-            ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
+            ! \sum_j H_0j \tilde{c}_j
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+        case(2)
+            ! O is a one-body operator => no contributions from double
+            ! excitations to \sum_j O_0j c_j.
+
+            ! \sum_j H_0j \tilde{c}_j
             proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
         end select
 
