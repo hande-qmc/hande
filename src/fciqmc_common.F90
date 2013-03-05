@@ -231,9 +231,10 @@ contains
 #ifdef PARALLEL
         use annihilation, only: annihilation_comms_time
         use parallel
+        use utils, only: int_fmt
 
-        integer(lint) :: load_data(nprocs)
-        integer :: ierr
+        integer(lint) :: load_data(sampling_size, nprocs)
+        integer :: i, ierr
         real(dp) :: comms(nprocs)
 
         if (nprocs > 1) then
@@ -241,17 +242,20 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, 1, mpi_integer8, load_data, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, sampling_size, mpi_integer8, load_data, sampling_size, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                write (6,'(1X,a34,6X,i8)') 'Min # of particles on a processor:', minval(load_data)
-                write (6,'(1X,a34,6X,i8)') 'Max # of particles on a processor:', maxval(load_data)
-                write (6,'(1X,a35,5X,f11.2)') 'Mean # of particles on a processor:', real(sum(load_data), p)/nprocs
+                do i = 1, sampling_size
+                    if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
+                    write (6,'(1X,a34,6X,i8)') 'Min # of particles on a processor:', minval(load_data(i,:))
+                    write (6,'(1X,a34,6X,i8)') 'Max # of particles on a processor:', maxval(load_data(i,:))
+                    write (6,'(1X,a35,5X,f11.2,/)') 'Mean # of particles on a processor:', real(sum(load_data(i,:)), p)/nprocs
+                end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer, load_data, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(tot_walkers, 1, mpi_integer, load_data(1,:), 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data)
-                write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data)
+                write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data(1,:))
+                write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data(1,:))
                 write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data), p)/nprocs
                 write (6,'()')
                 write (6,'(1X,a38,5X,f8.2,a1)') 'Min time take by walker communication:', minval(comms),'s'
