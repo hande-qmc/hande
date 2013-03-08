@@ -62,7 +62,7 @@ contains
                                  connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Calculate the generation probability of the excitation.
-        ! For two-band systems this depends only upon the orbitals excited from.
+        ! For one-band systems this depends only upon the orbitals excited from.
         pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha)
 
         ! The hubbard model in momentum space is a special case. Connected
@@ -314,7 +314,7 @@ contains
         call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2))
 
         ! 3. Calculate the generation probability of the excitation.
-        ! For two-band systems this depends only upon the orbitals excited from.
+        ! For one-band systems this depends only upon the orbitals excited from.
         pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha)
 
         ! 4. find the connecting matrix element.
@@ -621,7 +621,7 @@ contains
         !   \Gamma_i* x \Gamma_i = 1
         ! and direct products in Abelian groups commute, it follows that:
         !   \Gamma_b = \Gamma_i x \Gamma_j x \Gamma_a*
-        ! Thus k_b is defined by i,j and a.  As we only consider two-band
+        ! Thus k_b is defined by i,j and a.  As we only consider one-band
         ! systems, b is thus defined by spin conservation.
 
         ! One electron must be in unocc_list_alpha, so we can use the
@@ -650,7 +650,7 @@ contains
 
         ! Calculate the generation probability of a given excitation for the
         ! Hubbard model in momentum space.  The Hubbard model is a special case
-        ! as it is a two-band system and so the generation probability is
+        ! as it is a one-band system and so the generation probability is
         ! independent of the virtual spin-orbitals into which electrons are
         ! excited and depends only upon the spin-orbitals from which we excite.
         !
