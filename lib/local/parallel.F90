@@ -137,9 +137,17 @@ contains
         character(4) :: fmt1
 
         fmt1 = int_fmt(nprocs)
-        write (6,'(1X,"Running on"'//fmt1//'" processors.")') nprocs
+        if (nprocs == 1) then
+            write (6,'(1X,"Running on"'//fmt1//'" processor.")') nprocs
+        else
+            write (6,'(1X,"Running on"'//fmt1//'" processors.")') nprocs
+        end if
         fmt1 = int_fmt(nthreads)
-        write (6,'(1X,"Running with"'//fmt1//'" threads per processor.",/)') nthreads
+        if (nthreads == 1) then
+            write (6,'(1X,"Running with"'//fmt1//'" thread per processor.",/)') nthreads
+        else
+            write (6,'(1X,"Running with"'//fmt1//'" threads per processor.",/)') nthreads
+        end if
 
     end subroutine parallel_report
 
