@@ -167,7 +167,7 @@ contains
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt
+        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(out) :: connection
@@ -183,18 +183,42 @@ contains
         call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Chose a random pair of spin orbitals to excite to.
+        ! WARNING: if the implementation of generating the excitation is
+        ! changed, the generation probability will also (probably) need to
+        ! be altered.
         call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
         connection%nexcit = 2
 
         if (allowed_excitation) then
 
             ! 3. probability of this excitation.
-            ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
-            ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel) + 1/(basis-nel) ]
-            !                    2
-            !      =  -------------------------
-            !         nalpha*nbeta*(nbasis-nel)
-            pgen = 2.0_dp/(nalpha*nbeta*nvirt)
+            !
+            ! Usually:
+            !   pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
+            ! We must be very, very careful here.
+            ! Consider the excitation (i,j) -> (a,b).
+            ! As the excitation must be alpha,beta->alpha,beta, we chose to pick
+            ! a first *and* require a to be alpha spin.
+            !   ***WARNING: this is purely an implementation detail***
+            ! As such, we cannot generate an excitation where the alpha orbital
+            ! in the virtal pair (a,b) is already occupied (even though the beta
+            ! orbital in the (a,b) pair can be).  This asymmetry results in the
+            ! probability being simply:
+            !   pgen = p(i,j) p(a|i,j) p(b|i,j,a)
+            ! Here's an example to show this asymmetry.  Consider a system with
+            ! N_a alpha electrons, N_b beta electrons and M sites (so M-N_a
+            ! (M-N_b) virtual alpha (beta) orbitals). There are N_a*N_b ways of
+            ! choosing (i,j).  However, because we choose alpha first in the
+            ! (a,b) pair and because the Hubbard model is a one-band system,
+            ! there are N_a ways of choosing (a,b) (as we don't require b to be
+            ! unoccupied).  Another way of saying this is that our
+            ! implementation choices make it to generate an excitation which
+            ! attempts to excite into an occupied alpha orbital.
+            !
+            !   p(i,j) = 1/(nalpha*nbeta)
+            !   p(b|i,j,a) = 1
+            !   p(a|i,j) = n_virt_alpha
+            pgen = 1.0_p/(nalpha*nbeta*nvirt_alpha)
 
             ! 4. |H_ij| is constant for this system.
             abs_hmatel = abs(hub_k_coulomb)
@@ -325,7 +349,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt
+        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
 
         type(det_info), intent(in) :: cdet
@@ -346,12 +370,11 @@ contains
         if (allowed_excitation) then
 
             ! 3. probability of this excitation.
-            ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
-            ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel) + 1/(basis-nel) ]
-            !                    2
-            !      =  -------------------------
-            !         nalpha*nbeta*(nbasis-nel)
-            pgen = 2.0_dp/(nalpha*nbeta*nvirt)
+            !    ***WARNING: dependent upon (arbitrary) implementation choices***
+            !    See comments in gen_excit_init_hub_k_no_renorm.
+            ! pgen = p(i,j) p(a|i,j) p(b|i,j,a)
+            !      = 1/(nalpha*nbeta) 1/nvirt_alpha
+            pgen = 1.0_p/(nalpha*nbeta*nvirt_alpha)
 
             ! 4. find the connecting matrix element.
             connection%nexcit = 2
