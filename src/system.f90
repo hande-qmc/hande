@@ -181,8 +181,8 @@ logical :: uhf = .false.
 ! Core energy (e.g. nuclear-nuclear terms, contributions from frozen orbitals...
 real(p) :: Ecore
 
-! Contribution from frozen core orbitals to dipole moment
-real(p) :: dipole_frozen_core
+! Contribution from frozen core orbitals and nucleii terms to dipole moment
+real(p) :: dipole_core
 
 contains
 

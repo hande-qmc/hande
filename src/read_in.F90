@@ -29,7 +29,7 @@ contains
                          write_basis_fn_header
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry
-        use system, only: fcidump, uhf, ecore, nel, nvirt, dipole_int_file, dipole_frozen_core
+        use system, only: fcidump, uhf, ecore, nel, nvirt, dipole_int_file, dipole_core
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -584,7 +584,7 @@ contains
 
         if (t_store .and. dipole_int_file /= '') then
             call read_in_one_body(dipole_int_file, sp_fcidump_rank, active_basis_offset, &
-                                  one_body_op_integrals, dipole_frozen_core)
+                                  one_body_op_integrals, dipole_core)
         end if
 
         deallocate(sp_eigv_rank, stat=ierr)
@@ -660,7 +660,7 @@ contains
 
     end subroutine init_basis_fns_read_in
 
-    subroutine read_in_one_body(integral_file, sp_fcidump_rank, active_basis_offset, store, frozen_core_expectation)
+    subroutine read_in_one_body(integral_file, sp_fcidump_rank, active_basis_offset, store, core_term)
 
         ! Read in an integral file containing the integrals <i|O|a>, where O is
         ! a one-body operator which is not part of the Hamiltonian.
@@ -685,8 +685,8 @@ contains
         !    active_basis_offset: number of frozen core orbitals.
         ! Out:
         !    store: one-body store of integrals given in integral_file..
-        !    frozen_core_expectation: contribution to <\Psi|O|\Psi> from the
-        !         frozen core orbitals.
+        !    core_term: contribution to <\Psi|O|\Psi> from the
+        !         frozen core orbitals and the nucleii.
 
         use basis, only: nbasis
         use system, only: uhf
@@ -704,7 +704,7 @@ contains
         character(*), intent(in) :: integral_file
         integer, intent(in) :: sp_fcidump_rank(0:), active_basis_offset
         type(one_body), intent(out) :: store
-        real(p), intent(out) :: frozen_core_expectation
+        real(p), intent(out) :: core_term
 
         integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac, ierr
         logical :: t_exists
@@ -780,7 +780,7 @@ contains
         ! over the diagonal integrals.
 
         ! And back to root...
-        frozen_core_expectation = 0.0_p
+        core_term = 0.0_p
         if (parent) then
             rewind(ir)
             do
@@ -791,9 +791,9 @@ contains
                 aa = rhf_fac*sp_fcidump_rank(a) - active_basis_offset
                 if (i == 0 .and. a == 0) then
                     ! Nuclear contributions.
-                    frozen_core_expectation = frozen_core_expectation + x
+                    core_term = core_term + x
                 else if (ii < 1 .and. ii == aa) then
-                    frozen_core_expectation = frozen_core_expectation + rhf_fac*x
+                    core_term = core_term + rhf_fac*x
                 else if (min(ii,aa) >= 1 .and. max(ii,aa) <= nbasis) then
                     call store_one_body_int_mol(ii, aa, x, store)
                 end if
@@ -802,7 +802,7 @@ contains
 
         ! And now send info everywhere...
 #ifdef PARALLEL
-        call MPI_BCast(frozen_core_expectation, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(core_term, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
         call broadcast_one_body_int(store, root)
 
