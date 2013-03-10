@@ -23,6 +23,7 @@ contains
                           hub_k, heisenberg, ueg, momentum_space, read_in, cas
         use basis, only: init_model_basis_fns
         use determinants, only: init_determinants
+        use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, nthreads, parent
         use hubbard_real, only: init_real_space
@@ -63,6 +64,7 @@ contains
         end if
 
         call init_determinants()
+        call init_determinant_enumeration()
 
         call init_excitations()
 
@@ -105,7 +107,7 @@ contains
             call estimate_hilbert_space()
         end if
 
-        if (doing_calc(fciqmc_calc+initiator_fciqmc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc)) then
+        if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (parent) then
                 write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
                 write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'

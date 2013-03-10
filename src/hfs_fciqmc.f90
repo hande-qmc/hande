@@ -77,7 +77,7 @@ contains
         use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use spawning, only: create_spawned_particle
-        use fciqmc_common
+        use qmc_common
 
         ! It seems this interface block cannot go in a module when we're passing
         ! subroutines around as arguments.  Bummer.
@@ -204,8 +204,6 @@ contains
                 ! total.
                 rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
-                ! D0_population is communicated in the direct_annihilation
-                ! algorithm for efficiency.
                 call direct_annihilation()
 
                 ! Form HF projected expectation value and add to running

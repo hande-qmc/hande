@@ -104,7 +104,7 @@ integer, allocatable :: bit_lookup(:,:) ! (2, nbasis)
 ! The reverse lookup to bit_lookup.
 ! basis_lookup(i,j) gives the basis function corresponding to
 ! the i-th bit in the j-th element of a determinant array.
-integer, allocatable :: basis_lookup(:,:) ! (i0_length, basis_length)
+integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, basis_length)
 
 contains
 

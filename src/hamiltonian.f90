@@ -20,7 +20,7 @@ contains
         ! elements (slowly!) when we have the entire Hilbert space of
         ! determinants stored in dets_list.
 
-        use determinants, only: dets_list
+        use determinant_enumeration, only: dets_list
 
         real(p) :: hmatel
         integer, intent(in) :: d1, d2

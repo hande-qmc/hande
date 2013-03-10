@@ -23,13 +23,11 @@ contains
         use basis, only: basis_length, nbasis
         use calc, only: folded_spectrum, doing_calc
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
-        use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use system, only: nel
         use spawning, only: create_spawned_particle_initiator
-        use fciqmc_common
+        use qmc_common
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
 
@@ -42,7 +40,7 @@ contains
 
         logical :: soft_exit
 
-        real :: t1, t2
+        real :: t1
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
@@ -60,24 +58,11 @@ contains
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
-            proj_energy = 0.0_p
-            rspawn = 0.0_p
-            D0_population = 0.0_p
+            call init_report_loop()
 
             do icycle = 1, ncycles
 
-                ! Reset the current position in the spawning array to be the
-                ! slot preceding the first slot.
-                spawning_head = spawning_block_start
-
-                ! Number of spawning attempts that will be made.
-                ! Each particle gets to attempt to spawn onto a connected
-                ! determinant and a chance to die/clone.
-                ! This is used for accounting later, not for controlling the spawning.
-                nattempts = 2*nparticles(1)
-
-                ! Reset death counter
-                ndeath = 0
+                call init_mc_cycle(nattempts, ndeath)
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -89,7 +74,7 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(idet)
+                    call update_proj_energy_ptr(cdet, real(walker_population(1,idet),p))
 
                     ! Is this determinant an initiator?
                     call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)
@@ -111,34 +96,15 @@ contains
 
                 end do
 
-                ! Add the spawning rate (for the processor) to the running
-                ! total.
-                rspawn = rspawn + spawning_rate(ndeath, nattempts)
-
-                ! D0_population is communicated in the direct_annihilation
-                ! algorithm for efficiency.
                 call direct_annihilation()
+
+                call end_mc_cycle(ndeath, nattempts)
 
             end do
 
-            ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(nparticles_old)
+            call end_report_loop(ireport, nparticles_old, t1, soft_exit)
 
-            call cpu_time(t2)
-
-            ! t1 was the time at the previous iteration, t2 the current time.
-            ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            ! Write restart file if required.
-            if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
-
-            ! cpu_time outputs an elapsed time, so update the reference timer.
-            t1 = t2
-
-            call fciqmc_interact(soft_exit)
             if (soft_exit) exit
-            if (mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
 
         end do
 

@@ -15,12 +15,10 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use determinants, only: det_info, alloc_det_info
-        use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
-        use fciqmc_common, only: load_balancing_report, initial_fciqmc_status, select_ref_det
+        use qmc_common
         use fciqmc_restart
         use proc_pointers
-        use interact
         use system, only: ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
 
         use checking
@@ -67,17 +65,8 @@ contains
         ! Main fciqmc loop
         do ireport = 1, nreport
 
-            ! Zero cycle quantities
-            rspawn = 0.0_p
-            proj_energy = 0.0_p
-            D0_population = 0.0_p
-
-            ! Reset the pointer to the current position in the spawning array to
-            ! be the slot preceding the first
-            spawning_head = spawning_block_start
-            ! This is used for accounting later, not for controlling the spawning.
-            nattempts = nparticles(1)
-            ndeath = 0
+            call init_report_loop()
+            call init_mc_cycle(nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
@@ -90,7 +79,7 @@ contains
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                call update_proj_energy_ptr(idet)
+                call update_proj_energy_ptr(cdet, real(walker_population(1,idet),p))
 
                 ! Loop over each walker on the determinant.
                 do iparticle = 1, abs(walker_population(1,idet))
@@ -208,28 +197,13 @@ contains
 
             end do
 
-
-            ! Calculate spawning rate.  We only use the spawning from the main
-            ! walker list for this.
-            rspawn = rspawn + spawning_rate(ndeath, nattempts)
+            call end_mc_cycle(ndeath, nattempts)
 
             call direct_annihilation()
 
-            ! Update projected energy and shift
-            call update_energy_estimators(nparticles_old)
+            call end_report_loop(ireport, nparticles_old, t1, soft_exit)
 
-            call cpu_time(t2)
-
-            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            ! Write restart file if required.
-            if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
-
-            t1 = t2
-
-            call fciqmc_interact(soft_exit)
             if (soft_exit) exit
-            if (mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
 
         end do
 
@@ -265,7 +239,7 @@ contains
         !    connection: the excitation connection between the parent and child
         !        determinants
 
-        use excitations, only: enumerate_all_excitations_hub_real, excit
+        use excitations, only: excit
         use determinants, only: det_info
         use dSFMT_interface, only: genrand_real2
         use system, only: ndim, nel, system_type, hub_real, hub_k

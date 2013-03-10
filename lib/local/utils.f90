@@ -6,6 +6,8 @@ implicit none
 
 contains
 
+! --- Combinatorics ---
+
     elemental function binom_i(m, n) result(binom)
 
         ! ACM Algorithm 160 translated to Fortran.
@@ -56,6 +58,30 @@ contains
 
     end function binom_r
 
+    elemental function factorial(n) result(fac)
+
+        ! In:
+        !   n: integer
+        ! Returns:
+        !   factorial of n, n!
+
+        ! WARNING:
+        ! This does *not* safeguard against integer overflow.  As such, it is
+        ! only suitably for 0 <= n <= 12.  Investigating using log(n!) or the
+        ! Gamma function if required for larger values.
+
+        integer :: fac
+        integer, intent(in) :: n
+
+        integer :: i
+
+        fac = 1
+        do i = 2, n
+            fac = fac*i
+        end do
+
+    end function factorial
+
     elemental function factorial_combination_1(m,n) result (combination)
 
         ! Given m and n input, this function returns
@@ -84,6 +110,71 @@ contains
         combination = combination/(m1+n1+1)
 
     end function factorial_combination_1
+
+    pure subroutine next_comb(n, k, comb, ierr)
+
+        ! Create the next combination of k objects from a set of size n.
+
+        ! In:
+        !    n: size of set.
+        !    k: size of subset/combination.
+        ! In/Out:
+        !    comb: contains the previous combination on input and the next
+        !        combination on output.  Use (0,1,2,...,k-1) for the first
+        !        combination.  The returned combination is 0-indexed.
+        ! Out:
+        !    ierr: 0 if a combination is found and 1 if there are no more
+        !        combinations.
+
+        ! Translated from the C implementation at:
+        ! https://compprog.wordpress.com/2007/10/17/generating-combinations-1/.
+        ! The author, Alexandru Scvortov (scvalex@gmail.com), gave permission
+        ! via email that we are 'free to use/modify/redistribute that code
+        ! however [we] like'.  His code is provided as-is.
+
+        integer, intent(in) :: n, k
+        integer, intent(inout) :: comb(0:k-1) ! 0-indexed for easy translation from original C.
+        integer, intent(out) :: ierr
+
+        integer :: i, j
+
+        ! The final element of the previous combination must, at very least, be
+        ! incremented.
+        i = k - 1
+        comb(i) = comb(i) + 1
+
+        do while (comb(i) >= n - k + 1 + i)
+            ! The i-th element is greater than the maximum allowed value (note
+            ! that combinations are generated as ascending sequences).  Hence
+            ! there are no more combinations which begin comb(0:i-1).  Increment
+            ! comb(i-1) and use that as the start of the next combination.
+            i = i - 1
+            if (i < 0) exit
+            comb(i) = comb(i) + 1
+        end do
+
+        if (comb(0) > n - k) then
+            ! combination (n-k, n-k+1, ..., n) reached.
+            ! no more combinations can be geerated.
+            ierr = 1
+        else
+            ierr = 0
+            ! comb now looks like (..., x, n_1, n_2, n_3, ..., n_n),
+            ! where n_i ! >= max value of comb.
+            ! Turn it into (..., x, x+1, x+1, ...), ie the first combination
+            ! which starts with ( ..., x).  Subsequent calls to next_comb will
+            ! then iterate over 'higher' combinations with the same starting
+            ! sequence.
+            ! The i-th position at the end of the previous loop holds the
+            ! x entry.
+            do j = i+1, k-1
+                comb(j) = comb(j-1) + 1
+            end do
+        end if
+
+    end subroutine next_comb
+
+! --- File names and file handling ---
 
     function get_free_unit() result(free_unit)
 
@@ -152,7 +243,7 @@ contains
 
     end function int_fmt
 
-    subroutine append_ext(stem, n, s)
+    elemental subroutine append_ext(stem, n, s)
 
         ! Returns stem.n in s.
 
@@ -211,6 +302,8 @@ contains
         end if
 
     end subroutine get_unique_filename
+
+! --- Array indexing ---
 
     elemental function tri_ind(i,j) result(indx)
 

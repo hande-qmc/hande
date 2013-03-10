@@ -24,8 +24,8 @@ contains
         use dmqmc_procedures, only: random_distribution_heisenberg
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
         use excitations, only: excit, get_excitation_level
-        use fciqmc_common
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
+        use qmc_common
         use interact, only: fciqmc_interact
         use system, only: nel
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy

@@ -7,14 +7,11 @@ module simple_fciqmc
 ! Nonetheless, it is useful for debugging and having a simple algorithm which
 ! definitely works...
 
-! Based on GHB's ModelFCIQMC code.
-
 use const
 use dSFMT_interface
 use errors
 
 use calc
-use determinants
 use fciqmc_data
 
 implicit none
@@ -33,6 +30,7 @@ contains
         use checking, only: check_allocate
         use utils, only: int_fmt
 
+        use determinant_enumeration
         use diagonalisation, only: generate_hamil
         use fciqmc_restart, only: read_restart
 
@@ -43,10 +41,19 @@ contains
 
         ! Find and set information about the space.
         call set_spin_polarisation(ms_in)
-        call find_sym_space_size()
+        if (allocated(occ_list0)) then
+            call enumerate_determinants(.true., occ_list0=occ_list0)
+        else
+            call enumerate_determinants(.true.)
+        end if
 
         ! Find all determinants with desired spin and symmetry.
-        call enumerate_determinants(sym_in)
+        if (allocated(occ_list0)) then
+            call enumerate_determinants(.false., sym_in, occ_list0)
+        else
+            call enumerate_determinants(.false., sym_in)
+        end if
+
 
         ! Set up hamiltonian matrix.
         call generate_hamil(distribute_off)
@@ -122,6 +129,7 @@ contains
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
+        use determinant_enumeration, only: ndets
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use energy_evaluation, only: update_shift
 
@@ -226,6 +234,8 @@ contains
         ! only gets one opportunity per FCIQMC cycle to spawn.
         ! In:
         !    iwalker: walker whose particles attempt to clone/die.
+
+        use determinant_enumeration, only: ndets
 
         integer, intent(in) :: iwalker
 

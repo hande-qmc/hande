@@ -1,6 +1,6 @@
-module fciqmc_common
+module qmc_common
 
-! Module containing routines common to different fciqmc algorithms.
+! Module containing routines common to different qmc algorithms.
 
 use fciqmc_data
 
@@ -56,11 +56,11 @@ contains
 
 #ifdef PARALLEL
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population)) then
+        if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle)) then
             in_data = (/ max_pop, iproc /)
         else if (iproc == D0_proc) then
             ! Ensure that D0_proc has the correct (average) population.
-            in_data = (/ nint(D0_population), iproc /)
+            in_data = (/ nint(D0_population_cycle), iproc /)
         else
             ! No det with sufficient population to become reference det on this
             ! processor.
@@ -69,7 +69,7 @@ contains
 
         call mpi_allreduce(in_data, out_data, 1, MPI_2INTEGER, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
-        if (out_data(1) /= nint(D0_population) .and. all(fmax /= f0)) then
+        if (out_data(1) /= nint(D0_population_cycle) .and. all(fmax /= f0)) then
             max_pop = out_data(1)
             updated = .true.
             D0_proc = out_data(2)
@@ -82,7 +82,7 @@ contains
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. all(fmax /= f0)) then
+        if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle) .and. all(fmax /= f0)) then
             updated = .true.
             f0 = fmax
             H00 = H00_max
@@ -111,7 +111,7 @@ contains
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
+                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population_cycle
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
@@ -218,6 +218,73 @@ contains
 
     end subroutine find_single_double_prob
 
+    subroutine cumulative_population(pops, nactive, d0_pos, cumulative_pops, tot_pop)
+
+        ! Calculate the cumulative population, i.e. the number of psips/excips
+        ! residing on a determinant/an excitor and all determinants/excitors which
+        ! occur before it in the determinant/excitor list.
+
+        ! This is primarily so in CCMC we can select clusters of excitors with each
+        ! excip being equally likely to be part of a cluster.  (If we just select
+        ! each occupied excitor with equal probability, then we get wildy
+        ! fluctuating selection probabilities and hence large population blooms.)
+        ! As 'excips' on the reference cannot be part of a cluster, then the
+        ! population on the reference is treated as 0 if required.
+
+        ! In:
+        !    pops: list of populations on each determinant/excitor.  Must have
+        !       minimum length of nactive.
+        !    nactive: number of occupied determinants/excitors (ie pops(:,1:nactive)
+        !       contains the population(s) on each currently "active"
+        !       determinat/excitor.
+        !    D0_pos: position in the pops list of the reference.  Only relevant if
+        !       1<=D0_pos<=nactive and the processor holds the reference.
+        ! Out:
+        !    cumulative_pops: running total of excitor population, i.e.
+        !        cumulative_pops(i) = sum(pops(1:i)), excluding the
+        !        population on the reference if appropriate.
+        !    tot_pop: total population (possibly excluding the population on the
+        !       reference).
+
+        ! NOTE: currently only the populations in the first psip/excip space are
+        ! considered.  This should be changed if we do multiple simulations at
+        ! once/Hellmann-Feynman sampling/etc.
+
+        ! WARNING: almost certainly not suitable for a parallel implementation.
+
+        use fciqmc_data, only: D0_proc
+        use parallel, only: iproc
+
+        integer, intent(in) :: pops(:,:), nactive, d0_pos
+        integer, intent(out) :: cumulative_pops(:), tot_pop
+
+        integer :: i
+
+        cumulative_pops(1) = abs(pops(1,1))
+        if (D0_proc == iproc) then
+            ! Let's be a bit faster: unroll loops and skip over the reference
+            ! between the loops.
+            do i = 2, d0_pos-1
+                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+            end do
+            ! Set cumulative on the reference to be the running total merely so we
+            ! can continue accessing the running total from the i-1 element in the
+            ! loop over excitors in slots above the reference.
+            if (d0_pos == 1) cumulative_pops(d0_pos) = 0
+            if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
+            do i = d0_pos+1, nactive
+                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+            end do
+        else
+            ! V simple on other processors: no reference to get in the way!
+            do i = 2, nactive
+                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+            end do
+        end if
+        tot_pop = cumulative_pops(nactive)
+
+    end subroutine cumulative_population
+
     subroutine load_balancing_report()
 
         ! Print out a load-balancing report when run in parallel showing how
@@ -267,30 +334,40 @@ contains
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
+        use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
+
         integer :: idet
         integer(lint) :: ntot_particles
+        type(det_info) :: cdet
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum
 #endif
 
         ! Calculate the projected energy based upon the initial walker
-        ! distribution.  proj_energy and D0_population are both accumulated in
+        ! distribution.  proj_energy and D0_population_cycle are both accumulated in
         ! update_proj_energy.
         proj_energy = 0.0_p
-        D0_population = 0
+        call alloc_det_info(cdet)
         do idet = 1, tot_walkers
-            call update_proj_energy_ptr(idet)
+            cdet%f = walker_dets(:,idet)
+            cdet%data => walker_data(:,idet)
+            ! WARNING!  We assume only the bit string and data field are
+            ! required to update the projected estimator.
+            call update_proj_energy_ptr(cdet, real(walker_population(1,idet),p))
         end do
+        call dealloc_det_info(cdet)
 
 #ifdef PARALLEL
         call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
         call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
         ntot_particles = nparticles(1)
+        D0_population = D0_population_cycle
 #endif
 
         proj_energy = proj_energy/D0_population
@@ -305,4 +382,136 @@ contains
 
     end subroutine initial_fciqmc_status
 
-end module fciqmc_common
+! --- QMC loop and cycle initialisation routines ---
+
+    subroutine init_report_loop()
+
+        ! Initialise a report loop (basically zero quantities accumulated over
+        ! a report loop).
+
+        proj_energy = 0.0_p
+        rspawn = 0.0_p
+        D0_population = 0.0_p
+
+    end subroutine init_report_loop
+
+    subroutine init_mc_cycle(nattempts, ndeath)
+
+        ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
+        ! quantities).
+
+        ! Out:
+        !    nattempts: number of spawning attempts to be made (on the current
+        !        processor) this cycle.
+        !    ndeath: number of particle deaths that occur in a Monte Carlo
+        !        cycle.  Reset to 0 on output.
+
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc
+
+        integer(lint), intent(out) :: nattempts
+        integer, intent(out) :: ndeath
+
+        ! Reset the current position in the spawning array to be the
+        ! slot preceding the first slot.
+        spawning_head = spawning_block_start
+
+        ! Reset death counter
+        ndeath = 0
+
+        ! Reset accumulation of the reference population over the MC cycle.
+        ! Reset accumulation of the projected estimator over MC cycle.
+        ! This is only relevant in CCMC, where the estimators must be weighted
+        ! by the number of times they're sampled.  (In contrast, these are
+        ! currently calculated exactly in FCIQMC.)
+        proj_energy_cycle = 0.0_p
+        D0_population_cycle = 0.0_p
+
+        ! Number of spawning attempts that will be made.
+        ! For FCIQMC, this is used for accounting later, not for controlling the
+        ! spawning.
+        if (doing_calc(ct_fciqmc_calc) .or. doing_calc(ccmc_calc)) then
+            ! ct algorithm: kinda poorly defined.
+            ! ccmc: number of excitor clusters we'll randomly generate and
+            ! attempt to spawn from.
+            nattempts = nparticles(1)
+        else
+            ! Each particle gets to attempt to spawn onto a connected
+            ! determinant and a chance to die/clone.
+            nattempts = 2*nparticles(1)
+        end if
+
+    end subroutine init_mc_cycle
+
+! --- QMC loop and cycle termination routines ---
+
+    subroutine end_report_loop(ireport, ntot_particles, report_time, soft_exit)
+
+        ! In:
+        !    ireport: index of current report loop.
+        ! In/Out:
+        !    ntot_particles: total number (across all processors) of
+        !        particles in the simulation at end of the previous report loop.
+        !        Returns the current total number of particles for use in the
+        !        next report loop.
+        !    report_time: time at the start of the current report loop.  Returns
+        !        the current time (ie the time for the start of the next report
+        !        loop.
+        ! Out:
+        !    soft_exit: true if the user has requested an immediate exit of the
+        !        QMC algorithm via the interactive functionality.
+
+        use energy_evaluation, only: update_energy_estimators
+        use interact, only: fciqmc_interact
+        use parallel, only: parent
+        use fciqmc_restart, only: write_restart_file_every_nreports, dump_restart
+
+        integer, intent(in) :: ireport
+        integer(lint), intent(inout) :: ntot_particles(sampling_size)
+        real, intent(inout) :: report_time
+        logical, intent(out) :: soft_exit
+
+        real :: curr_time
+
+        ! Update the energy estimators (shift & projected energy).
+        call update_energy_estimators(ntot_particles)
+
+        call cpu_time(curr_time)
+
+        ! report_time was the time at the previous iteration.
+        ! curr_time - report_time is thus the time taken by this report loop.
+        if (parent) call write_fciqmc_report(ireport, ntot_particles(1), curr_time-report_time)
+
+        ! Write restart file if required.
+        if (mod(ireport,write_restart_file_every_nreports) == 0) &
+            call dump_restart(mc_cycles_done+ncycles*ireport, ntot_particles(1))
+
+        ! cpu_time outputs an elapsed time, so update the reference timer.
+        report_time = curr_time
+
+        call fciqmc_interact(soft_exit)
+        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
+
+    end subroutine end_report_loop
+
+    subroutine end_mc_cycle(ndeath, nattempts)
+
+        ! Execute common code at the end of a Monte Carlo cycle.
+
+        ! In:
+        !    ndeath: number of particle deaths in the cycle.
+        !    nattempts: number of attempted spawning events in the cycle.
+
+        integer, intent(in) :: ndeath
+        integer(lint), intent(in) :: nattempts
+
+        ! Add the spawning rate (for the processor) to the running
+        ! total.
+        rspawn = rspawn + spawning_rate(ndeath, nattempts)
+
+        ! Accumulate population on reference and projected estimator.
+        D0_population = D0_population + D0_population_cycle
+        proj_energy = proj_energy + proj_energy_cycle
+
+    end subroutine end_mc_cycle
+
+end module qmc_common

@@ -48,14 +48,6 @@ integer :: initiator_cas(2) = (/ 0,0 /)
 ! Population above which a determinant is an initiator.
 integer :: initiator_population = 3
 
-!--- Input data: Hilbert space truncation ---
-
-! Currently only implemented for DMQMC.
-! If true, truncate the density matrix space such that it only contains elements which
-! differ by at most truncation_level excitations.
-logical :: truncate_space = .false.
-integer :: truncation_level
-
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless
@@ -87,7 +79,10 @@ real(p) :: shift_damping = 0.050_dp
 !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
 ! and so proj_energy must be 'normalised' and averaged over the report loops
 ! accordingly.
-real(p) :: proj_energy
+! For convenience (especially in CCMC), where the numerator and denominator in
+! the above equation are sampled and hence have to be weighted, we accumulate
+! over each MC cycle and then over each report loop.
+real(p) :: proj_energy, proj_energy_cycle
 
 !--- Walker data ---
 
@@ -110,9 +105,9 @@ integer :: sampling_size
 ! (e.g.) importance sampling.
 integer :: info_size
 ! a) determinants
-integer(i0), allocatable :: walker_dets(:,:) ! (basis_length, walker_length)
+integer(i0), allocatable, target :: walker_dets(:,:) ! (basis_length, walker_length)
 ! b) walker population
-integer, allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
+integer, allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
 ! c) Walker information.  This contains:
 ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
@@ -197,6 +192,12 @@ integer, allocatable :: occ_list0(:)
 ! For DMQMC, this variable stores the initial number of psips to be
 ! randomly distributed along the diagonal elements of the density matrix.
 real(p) :: D0_population = 10.0_p
+
+! Store value population of reference over a Monte Carlo cycle rather than
+! accumulating it as we go.  This makes it easier to have multiple spawning
+! events from the same determinant (as required in CCMC).
+! D0_population is accumulated when updating the energy estimators.
+real(p) :: D0_population_cycle
 
 ! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
 ! operator.  This is only done if no restart file is used *and* |D_0> is not
@@ -337,133 +338,6 @@ real(p) :: P__=0.05, Po_=0.475, P_o=0.475
 real(p) :: X__=0, Xo_=0, X_o=0
 
 contains
-
-    !--- Initialisation. ---
-
-    subroutine set_reference_det()
-
-        ! Set the list of occupied orbitals in the reference determinant to be
-        ! the spin-orbitals with the lowest kinetic energy which satisfy the
-        ! spin polarisation.
-
-        ! Note: this is for testing only!  The symmetry input is currently
-        ! ignored.
-
-        ! This should be used as a last resort if the user doesn't specify
-        ! a reference determinant.
-
-        use checking, only: check_allocate
-
-        use errors, only: stop_all
-        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, ueg, nsites, &
-                          heisenberg, J_coupling, chung_landau
-        use basis, only: bit_lookup
-        use hubbard_real, only: connected_orbs
-
-        integer :: i, j, ierr, spins_set, connections
-        integer :: bit_element, bit_pos
-
-        ! Leave the reference determinant unchanged if it's already been
-        ! allocated (and presumably set).
-
-        if (allocated(occ_list0)) then
-            if (size(occ_list0) /= nel) then
-                select case(system_type)
-                case(heisenberg)
-                    call stop_all('set_reference_det', &
-                        'Reference determinant supplied does not contain the &
-                        &specified number of up electrons.')
-                case default
-                    call stop_all('set_reference_det', &
-                        'Reference determinant supplied does not contain the &
-                        &specified number of electrons.')
-                end select
-            end if
-        else
-            allocate(occ_list0(nel), stat=ierr)
-            call check_allocate('occ_list0',nel,ierr)
-            select case(system_type)
-            case(hub_k,read_in,ueg)
-                ! Orbitals are ordered by their single-particle eigenvalues.
-                ! Occupy the Fermi sphere/HF det.
-                forall (i=1:nalpha) occ_list0(i) = 2*i-1
-                forall (i=1:nbeta) occ_list0(i+nalpha) = 2*i
-            case(hub_real)
-                ! Attempt to keep electrons on different sites where possible.
-                ! Sites 1, 3, 5, ... (occupy every other alpha orbital first, ie
-                ! place a max of nsites/2 electrons.  (nsites+1)/2 accounts for
-                ! the possibility that we have an odd number of sites.)
-                forall (i=1:min(nalpha,(nsites+1)/2)) occ_list0(i) = 4*i-3
-                ! now occupy the alternate alpha orbitals
-                forall (i=1:nalpha-min(nalpha,(nsites+1)/2)) &
-                    occ_list0(i+min(nalpha,(nsites+1)/2)) = 4*i-1
-                ! Similarly for beta, but now occupying orbitals sites 2, 4,
-                ! ..., preferentially.
-                forall (i=1:min(nbeta,nsites/2)) occ_list0(i+nalpha) = 4*i
-                forall (i=1:nbeta-min(nbeta,nsites/2)) &
-                    occ_list0(i+nalpha+min(nbeta,nsites/2)) = 4*i-2
-            case(chung_landau)
-                ! As with the hub_real, attempt to keep fermions not on
-                ! neighbouring sites.
-                forall (i=1:nel) occ_list0(i) = 2*i-1
-            case(heisenberg)
-                if (J_coupling >= 0) then
-                    forall (i=1:nel) occ_list0(i) = i
-                ! For the antiferromagnetic case, below. This is messy but should
-                ! give a reasonable reference determinant for general cases, even
-                ! for bizarre lattices. For bipartite lattices (eg 4x4, 6x6...)
-                ! it will give the best possible reference determinant.
-                else if (J_coupling < 0) then
-                    ! Always set the first spin up
-                    occ_list0(1) = 1
-                    spins_set = 1
-                    ! Loop over other sites to find orbitals which are not connected to
-                    ! the other sites previously chosen.
-                    do i=2,nsites
-                        bit_pos = bit_lookup(1,i)
-                        bit_element = bit_lookup(2,i)
-                        connections = 0
-                        ! Loop over all chosen sites to see if they neighbour this site.
-                        do j=1,spins_set
-                            if (btest(connected_orbs(bit_element, occ_list0(j)), bit_pos)) then
-                                  connections = connections + 1
-                            end if
-                        end do
-                        ! If this site has no neighbours which have been previously added
-                        ! to the reference determinant, then we include it.
-                        if (connections == 0) then
-                            spins_set = spins_set + 1
-                            occ_list0(spins_set) = i
-                        end if
-                    end do
-                    ! If, after finding all the sites which are not connected, we still haven't
-                    ! chosen enough sites, we accept that we must have some neigbouring sites
-                    ! included in the reference determinant and start choosing the remaining sites.
-                    if (spins_set /= nel) then
-                        ! Loop over all sites looking for extra spins to include in the
-                        ! reference detereminant.
-                        fill_sites: do i=2,nsites
-                            connections = 0
-                            ! Check if this site is already included.
-                            do j=1,spins_set
-                                if (occ_list0(j) == i) connections = connections + 1
-                            end do
-                            ! If connection = 0, this site is not currently included in the
-                            ! reference determinant, so add it.
-                            if (connections == 0) then
-                                spins_set = spins_set + 1
-                                occ_list0(spins_set) = i
-                            end if
-                            ! When the correct number of spins have been chosen to be up,
-                            ! we are finished.
-                            if (spins_set == nel) exit fill_sites
-                        end do fill_sites
-                    end if
-                end if
-            end select
-        end if
-
-    end subroutine set_reference_det
 
     !--- Statistics. ---
 
@@ -627,110 +501,6 @@ contains
         end subroutine swap_spawned
 
     end subroutine sort_spawned_lists
-
-    pure subroutine search_walker_list(f, istart, iend, hit, pos)
-
-        ! Find where a determinant belongs in the main walker list.
-        ! Only elements between istart and iend are examined (use the
-        ! array boundaries in the worst case).
-        !
-        ! In:
-        !    f: bit string representation of the Slater determinant.
-        !    istart: first position to examine in the walker list.
-        !    iend: last position to examine in the walker list.
-        ! Out:
-        !    hit: true if found f in the main walker list.
-        !    pos : the corresponding position in the main walker list
-        !        where the determinant belongs.  If hit is true, then
-        !        the determinant in this position is the same as f, else
-        !        this is where f should go to keep the main walker list sorted.
-
-        use basis, only: total_basis_length
-        use determinants, only: det_compare
-
-        integer(i0), intent(in) :: f(total_basis_length)
-        integer, intent(in) :: istart, iend
-        logical, intent(out) :: hit
-        integer, intent(out) :: pos
-
-        integer :: hi, lo, compare
-
-        if (istart > iend) then
-
-            ! Already know the element has to be appended to the list.
-            ! This should only occur if istart = iend + 1.
-            pos = istart
-            hit = .false.
-
-        else
-
-            ! Search range.
-            lo = istart
-            hi = iend
-
-            ! Assume f doesn't exist in the main walkers list initially.
-            hit = .false.
-
-            do while (hi /= lo)
-                ! Narrow the search range down in steps.
-
-                ! Mid-point.
-                ! We shift one of the search limits to be the mid-point.
-                ! The successive dividing the search range by 2 gives a O[log N]
-                ! search algorithm.
-                pos = (hi+lo)/2
-
-                compare = det_compare(walker_dets(:,pos), f)
-                select case(compare)
-                case (0)
-                    ! hit!
-                    hit = .true.
-                    exit
-                case(1)
-                    ! walker_dets(:,pos) is "smaller" than f.
-                    ! The lowest position f can take is hence pos + 1 (i.e. if
-                    ! f is greater than pos by smaller than pos + 1).
-                    lo = pos + 1
-                case(-1)
-                    ! walker_dets(:,pos) is "greater" than f.
-                    ! The highest position f can take is hence pos (i.e. if f is
-                    ! smaller than pos but greater than pos - 1).  This is why
-                    ! we differ slightly from a standard binary search (where lo
-                    ! is set to be pos+1 and hi to be pos-1 accordingly), as
-                    ! a standard binary search assumes that the element you are
-                    ! searching for actually appears in the array being
-                    ! searched...
-                    hi = pos
-                end select
-
-            end do
-
-            ! If hi == lo, then we have narrowed the search down to one position but
-            ! not checked if that position is the item we're hunting for.
-            ! Because walker_dets can expand (i.e. we might be searching for an
-            ! element which doesn't exist yet) the binary search can find either
-            ! the element before or after where f should be placed.
-            if (hi == lo) then
-                compare = det_compare(walker_dets(:,hi), f)
-                select case(compare)
-                case (0)
-                    ! hit!
-                    hit = .true.
-                    pos = hi
-                case(1)
-                    ! walker_dets(:,pos) is "smaller" than f.
-                    ! f should be placed in the next slot.
-                    pos = hi + 1
-                case(-1)
-                    ! walker_dets(:,pos) is "greater" than f.
-                    ! f should ber placed here.
-                    pos = hi
-                end select
-            end if
-
-        end if
-
-    end subroutine search_walker_list
 
     !--- Output procedures ---
 

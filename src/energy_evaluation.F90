@@ -23,9 +23,8 @@ contains
         !        next report loop.
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
-                               proj_energy, shift, vary_shift, vary_shift_from,                  &
-                               vary_shift_from_proje, D0_population,                           &
-                               fold_line
+                               proj_energy, shift, vary_shift, vary_shift_from,                &
+                               vary_shift_from_proje, D0_population, fold_line
         use hfs_data, only: proj_hf_expectation
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
@@ -135,7 +134,7 @@ contains
 
     end subroutine update_hf_shift
 
-    subroutine update_proj_energy_hub_k(idet)
+    subroutine update_proj_energy_hub_k(cdet, pop)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -146,36 +145,40 @@ contains
         ! During a MC cycle we store
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i
         ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! N_0 is stored as D0_population_cycle.  This makes normalisation very
         ! efficient.
         ! This procedure is for the Hubbard model in momentum space only.
         ! In:
-        !    idet: index of current determinant in the main walker list.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.  Only the bit string field needs to be set.
+        !    pop: population on current determinant.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use determinants, only: det_info
+        use fciqmc_data, only: f0, D0_population_cycle, proj_energy
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_k, only: slater_condon2_hub_k
 
-        integer, intent(in) :: idet
+        type(det_info), intent(in) :: cdet
+        real(p), intent(in) :: pop
         type(excit) :: excitation
         real(p) :: hmatel
 
-        excitation = get_excitation(walker_dets(:,idet), f0)
+        excitation = get_excitation(cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,idet)
+            D0_population_cycle = D0_population_cycle + pop
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            proj_energy = proj_energy + hmatel*walker_population(1,idet)
+            proj_energy = proj_energy + hmatel*pop
         end if
 
     end subroutine update_proj_energy_hub_k
 
-    subroutine update_proj_energy_hub_real(idet)
+    subroutine update_proj_energy_hub_real(cdet, pop)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -186,35 +189,39 @@ contains
         ! During a MC cycle we store
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i
         ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! N_0 is stored as D0_population_cycle.  This makes normalisation very
         ! efficient.
         ! This procedure is for the Hubbard model in real space only.
         ! In:
-        !    idet: index of current determinant in the main walker list.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.  Only the bit string field needs to be set.
+        !    pop: population on current determinant.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use determinants, only: det_info
+        use fciqmc_data, only: f0, D0_population_cycle, proj_energy
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
 
-        integer, intent(in) :: idet
+        type(det_info), intent(in) :: cdet
+        real(p), intent(in) :: pop
         type(excit) :: excitation
         real(p) :: hmatel
 
-        excitation = get_excitation(walker_dets(:,idet), f0)
+        excitation = get_excitation(cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,idet)
+            D0_population_cycle = D0_population_cycle + pop
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            proj_energy = proj_energy + hmatel*walker_population(1,idet)
+            proj_energy = proj_energy + hmatel*pop
         end if
 
     end subroutine update_proj_energy_hub_real
 
-    subroutine update_proj_energy_mol(idet)
+    subroutine update_proj_energy_mol(cdet, pop)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -225,34 +232,37 @@ contains
         ! During a MC cycle we store
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i
         ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! N_0 is stored as D0_population_cycle.  This makes normalisation very
         ! efficient.
         ! This procedure is for molecular systems (i.e. those defined by an
         ! FCIDUMP file).
         !
         ! In:
-        !    idet: index of current determinant in the main walker list.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.  Only the bit string field needs to be set.
+        !    pop: population on current determinant.
 
         use basis, only: basis_fns
-        use determinants, only: decode_det
+        use determinants, only: decode_det, det_info
         use excitations, only: excit, get_excitation
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use fciqmc_data, only: f0, D0_population_cycle, proj_energy
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
         use system, only: nel
 
-        integer, intent(in) :: idet
+        type(det_info), intent(in) :: cdet
+        real(p), intent(in) :: pop
 
         type(excit) :: excitation
         real(p) :: hmatel
         integer :: occ_list(nel), ij_sym, ab_sym
 
-        excitation = get_excitation(walker_dets(:,idet), f0)
+        excitation = get_excitation(cdet%f, f0)
 
         select case(excitation%nexcit)
         case (0)
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,idet)
+            D0_population_cycle = D0_population_cycle + pop
         case(1)
             ! Have a determinant connected to the reference determinant by
             ! a single excitation: add to projected energy.
@@ -260,10 +270,10 @@ contains
             ! Is excitation symmetry allowed?
             if (basis_fns(excitation%from_orb(1))%Ms == basis_fns(excitation%to_orb(1))%Ms .and. &
                     basis_fns(excitation%from_orb(1))%sym == basis_fns(excitation%to_orb(1))%sym) then
-                call decode_det(walker_dets(:,idet), occ_list)
+                call decode_det(cdet%f, occ_list)
                 hmatel = slater_condon1_mol_excit(occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
-                proj_energy = proj_energy + hmatel*walker_population(1,idet)
+                proj_energy = proj_energy + hmatel*pop
             end if
         case(2)
             ! Have a determinant connected to the reference determinant by
@@ -277,7 +287,7 @@ contains
                     hmatel = slater_condon2_mol_excit(excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
-                    proj_energy = proj_energy + hmatel*walker_population(1,idet)
+                    proj_energy = proj_energy + hmatel*pop
                 end if
             end if
         end select
@@ -300,7 +310,7 @@ contains
         !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population, proj_energy
+        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population_cycle, proj_energy
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_k, only: slater_condon2_hub_k
         use hfs_data, only: D0_hf_population
@@ -314,7 +324,7 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,idet)
+            D0_population_cycle = D0_population_cycle + walker_population(1,idet)
             D0_hf_population = D0_hf_population + walker_population(2,idet)
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to

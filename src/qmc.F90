@@ -14,6 +14,7 @@ contains
 
         use calc
 
+        use ccmc, only: do_ccmc
         use ct_fciqmc, only: do_ct_fciqmc
         use dmqmc, only: do_dmqmc
         use fciqmc, only: do_fciqmc
@@ -32,12 +33,14 @@ contains
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
-        if (doing_calc(initiator_fciqmc)) call init_ifciqmc()
+        if (initiator_approximation) call init_ifciqmc()
 
         if (doing_calc(dmqmc_calc)) then
             call do_dmqmc()
         else if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(hub_matel)
+        else if (doing_calc(ccmc_calc)) then
+            call do_ccmc()
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
@@ -72,16 +75,17 @@ contains
                                 annihilate_spawned_list_initiator
         use basis, only: nbasis, basis_length, basis_fns, write_basis_fn, bit_lookup
         use basis, only: nbasis, basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
-        use calc, only: sym_in, ms_in, initiator_fciqmc, hfs_fciqmc_calc, ct_fciqmc_calc
+        use calc, only: sym_in, ms_in, initiator_approximation, fciqmc_calc, hfs_fciqmc_calc, ct_fciqmc_calc
         use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: encode_det, set_spin_polarisation, write_det
         use hamiltonian, only: get_hmatel
-        use fciqmc_common, only: find_single_double_prob
+        use qmc_common, only: find_single_double_prob
         use fciqmc_restart, only: read_restart
+        use reference_determinant, only: set_reference_det
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
-        use system, only: trial_function, neel_singlet, single_basis
+        use system, only: trial_function, neel_singlet, single_basis, sym_max
         use symmetry, only: symmetry_orb_list
         use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
@@ -105,7 +109,7 @@ contains
         else
             spawned_hf_pop = spawned_size
         end if
-        if (doing_calc(initiator_fciqmc)) then
+        if (initiator_approximation) then
             spawned_size = spawned_size + 1
             spawned_parent = spawned_size
         end if
@@ -215,12 +219,18 @@ contains
             end if
             call read_restart()
         else
+
             ! Reference det
+
             ! Set the reference determinant to be the spin-orbitals with the lowest
-            ! kinetic energy which satisfy the spin polarisation.
+            ! single-particle eigenvalues which satisfy the spin polarisation.
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
-            call set_reference_det()
+            if (sym_in < sym_max) then
+                call set_reference_det(occ_list0, .false., sym_in)
+            else
+                call set_reference_det(occ_list0, .false.)
+            end if
 
             call encode_det(occ_list0, f0)
 
@@ -398,9 +408,10 @@ contains
             write (6,'(1X,a44,1X,f11.4,/)') &
                               'Initial population on reference determinant:',D0_population
             write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
-            if (doing_calc(initiator_fciqmc)) then
+            if (initiator_approximation) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
-                write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
+                if (doing_calc(fciqmc_calc)) &
+                    write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
                     'CAS space of initiator determinants:',initiator_CAS
                 write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
                     'Population for a determinant outside CAS space to be an initiator:', initiator_population
@@ -573,14 +584,22 @@ contains
         ! 2. Set calculation-specific procedure pointers
 
         ! a) initiator-approximation
-        if (doing_calc(initiator_fciqmc)) then
+        if (initiator_approximation) then
             set_parent_flag_ptr => set_parent_flag
-            create_spawned_particle_ptr => create_spawned_particle_initiator
+            if (truncate_space) then
+                create_spawned_particle_ptr => create_spawned_particle_initiator_truncated
+            else
+                create_spawned_particle_ptr => create_spawned_particle_initiator
+            end if
             annihilate_main_list_ptr => annihilate_main_list_initiator
             annihilate_spawned_list_ptr => annihilate_spawned_list_initiator
         else
             set_parent_flag_ptr => set_parent_flag_dummy
-            create_spawned_particle_ptr => create_spawned_particle
+            if (truncate_space) then
+                create_spawned_particle_ptr => create_spawned_particle_truncated
+            else
+                create_spawned_particle_ptr => create_spawned_particle
+            end if
             annihilate_main_list_ptr => annihilate_main_list
             annihilate_spawned_list_ptr => annihilate_spawned_list
         end if
