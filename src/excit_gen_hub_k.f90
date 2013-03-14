@@ -62,8 +62,8 @@ contains
                                  connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Calculate the generation probability of the excitation.
-        ! For two-band systems this depends only upon the orbitals excited from.
-        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
+        ! For one-band systems this depends only upon the orbitals excited from.
+        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha)
 
         ! The hubbard model in momentum space is a special case. Connected
         ! non-identical determinants have the following properties:
@@ -167,7 +167,7 @@ contains
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt
+        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(out) :: connection
@@ -183,18 +183,42 @@ contains
         call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Chose a random pair of spin orbitals to excite to.
+        ! WARNING: if the implementation of generating the excitation is
+        ! changed, the generation probability will also (probably) need to
+        ! be altered.
         call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
         connection%nexcit = 2
 
         if (allowed_excitation) then
 
             ! 3. probability of this excitation.
-            ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
-            ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel) + 1/(basis-nel) ]
-            !                    2
-            !      =  -------------------------
-            !         nalpha*nbeta*(nbasis-nel)
-            pgen = 2.0_dp/(nalpha*nbeta*nvirt)
+            !
+            ! Usually:
+            !   pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
+            ! We must be very, very careful here.
+            ! Consider the excitation (i,j) -> (a,b).
+            ! As the excitation must be alpha,beta->alpha,beta, we chose to pick
+            ! a first *and* require a to be alpha spin.
+            !   ***WARNING: this is purely an implementation detail***
+            ! As such, we cannot generate an excitation where the alpha orbital
+            ! in the virtal pair (a,b) is already occupied (even though the beta
+            ! orbital in the (a,b) pair can be).  This asymmetry results in the
+            ! probability being simply:
+            !   pgen = p(i,j) p(a|i,j) p(b|i,j,a)
+            ! Here's an example to show this asymmetry.  Consider a system with
+            ! N_a alpha electrons, N_b beta electrons and M sites (so M-N_a
+            ! (M-N_b) virtual alpha (beta) orbitals). There are N_a*N_b ways of
+            ! choosing (i,j).  However, because we choose alpha first in the
+            ! (a,b) pair and because the Hubbard model is a one-band system,
+            ! there are N_a ways of choosing (a,b) (as we don't require b to be
+            ! unoccupied).  Another way of saying this is that our
+            ! implementation choices make it to generate an excitation which
+            ! attempts to excite into an occupied alpha orbital.
+            !
+            !   p(i,j) = 1/(nalpha*nbeta)
+            !   p(b|i,j,a) = 1
+            !   p(a|i,j) = n_virt_alpha
+            pgen = 1.0_p/(nalpha*nbeta*nvirt_alpha)
 
             ! 4. |H_ij| is constant for this system.
             abs_hmatel = abs(hub_k_coulomb)
@@ -290,8 +314,8 @@ contains
         call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2))
 
         ! 3. Calculate the generation probability of the excitation.
-        ! For two-band systems this depends only upon the orbitals excited from.
-        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha, cdet%unocc_list_beta)
+        ! For one-band systems this depends only upon the orbitals excited from.
+        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha)
 
         ! 4. find the connecting matrix element.
         call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
@@ -325,7 +349,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt
+        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
 
         type(det_info), intent(in) :: cdet
@@ -346,12 +370,11 @@ contains
         if (allowed_excitation) then
 
             ! 3. probability of this excitation.
-            ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) ]
-            ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel) + 1/(basis-nel) ]
-            !                    2
-            !      =  -------------------------
-            !         nalpha*nbeta*(nbasis-nel)
-            pgen = 2.0_dp/(nalpha*nbeta*nvirt)
+            !    ***WARNING: dependent upon (arbitrary) implementation choices***
+            !    See comments in gen_excit_init_hub_k_no_renorm.
+            ! pgen = p(i,j) p(a|i,j) p(b|i,j,a)
+            !      = 1/(nalpha*nbeta) 1/nvirt_alpha
+            pgen = 1.0_p/(nalpha*nbeta*nvirt_alpha)
 
             ! 4. find the connecting matrix element.
             connection%nexcit = 2
@@ -598,7 +621,7 @@ contains
         !   \Gamma_i* x \Gamma_i = 1
         ! and direct products in Abelian groups commute, it follows that:
         !   \Gamma_b = \Gamma_i x \Gamma_j x \Gamma_a*
-        ! Thus k_b is defined by i,j and a.  As we only consider two-band
+        ! Thus k_b is defined by i,j and a.  As we only consider one-band
         ! systems, b is thus defined by spin conservation.
 
         ! One electron must be in unocc_list_alpha, so we can use the
@@ -623,11 +646,11 @@ contains
 
 !--- Excitation generation probabilities ---
 
-    pure function calc_pgen_hub_k(ab_sym, f, unocc_alpha, unocc_beta) result(pgen)
+    pure function calc_pgen_hub_k(ab_sym, f, unocc_alpha) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
         ! Hubbard model in momentum space.  The Hubbard model is a special case
-        ! as it is a two-band system and so the generation probability is
+        ! as it is a one-band system and so the generation probability is
         ! independent of the virtual spin-orbitals into which electrons are
         ! excited and depends only upon the spin-orbitals from which we excite.
         !
@@ -641,20 +664,19 @@ contains
         !        spin-orbitals into which electrons are excited.
         !    f: bit string representation of the determinant we're exciting
         !        from.
-        !    unocc_alpha, unocc_beta: integer list of the unoccupied alpha and
-        !        beta (respectively) spin-orbitals.
+        !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
         ! Returns:
         !    pgen: the generation probability of the excitation.  See notes in
         !        spawning.
 
         use basis, only: basis_length, bit_lookup, nbasis
-        use system, only: nvirt, nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
+        use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
         use momentum_symmetry, only: sym_table, inv_sym
 
         real(p) :: pgen
         integer, intent(in) :: ab_sym
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_alpha(nvirt_alpha), unocc_beta(nvirt_beta)
+        integer, intent(in) :: unocc_alpha(nvirt_alpha)
 
         integer :: forbidden_excitations, a, b, a_pos, a_el, b_pos, b_el, ka, kb
 
@@ -679,15 +701,39 @@ contains
         !
         ! The number of spin-orbitals from which a can be chosen is
         !
-        !  nbasis - nel - delta_d
+        !  nbasis - nel - delta
         !
-        ! where delta_d is the number of a orbitals which are forbidden due to b being occupied.
-        ! p(b|i,j) is identical.  Hence:
+        ! where delta is the number of a orbitals which are forbidden due to b being occupied.
+        ! -> p(a|i,j) = 1/(nbasis - nel - delta).
+        ! p(b|i,j) is clearly identical to p(a|i,j).
+        ! -> p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) = 2/(nbasis - nel - delta).
         !
-        ! pgen = 1/(nalpha*nbeta) [ 1/(nbasis-nel-delta_d) + 1/(basis-nel-delta_d) ]
-        !                       2
-        !      =  ---------------------------------
-        !         nalpha*nbeta*(nbasis-nel-delta_d)
+        ! However, we can be a bit faster.
+        !  nel = nalpha + nbeta
+        !  nvirt_alpha = nbasis/2 - nalpha
+        !  delta = delta_alpha + delta_beta
+        ! where delta_alpha is the number of alpha orbitals which cannot be
+        ! excited into because the correspoinding beta orbital is occupied and
+        ! similarly for delta_beta.  Note that delta_alpha /= delta_beta in
+        ! general.
+        !
+        ! However, as the Hubbard model is one-band model, for every possible
+        ! alpha virtual orbital, there is exactly one possible beta virtual
+        ! orbital.  Therefore:
+        !  nvirt_alpha - delta_alpha = nvirt_beta - delta_beta
+        ! even when delta_alpha /= delta_beta.
+        ! This means we need only calculate delta_alpha or delta_beta.
+        !
+        ! Hence
+        !  p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) = 1/(nvirt_alpha - delta_alpha)
+        !
+        !                           1
+        ! pgen =  --------------------------------------
+        !         nalpha*nbeta*(nvirt_alpha-delta_alpha)
+
+        ! Note that we could also use the implementation choice of always
+        ! choosing alpha first in the (a,b) pair to obtain the same result (as
+        ! must be done for the no_renorm pgen).
 
         ! We count the number of a orbitals which cannot be excited into due to
         ! the corresponding b orbital not being available.
@@ -715,16 +761,8 @@ contains
             ! Are (a,b) both unoccupied?
             if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
         end do
-        do b = 1, nvirt_beta
-            kb = unocc_beta(b)/2
-            a = 2*sym_table(ab_sym, inv_sym(kb)) - 1
-            a_pos = bit_lookup(1,a)
-            a_el = bit_lookup(2,a)
-            ! Are (a,b) both unoccupied?
-            if (btest(f(a_el), a_pos)) forbidden_excitations = forbidden_excitations + 1
-        end do
 
-        pgen = 2.0_p/(nalpha*nbeta*(nvirt - forbidden_excitations))
+        pgen = 1.0_p/(nalpha*nbeta*(nvirt_alpha - forbidden_excitations))
 
     end function calc_pgen_hub_k
 
