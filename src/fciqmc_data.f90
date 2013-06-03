@@ -294,6 +294,10 @@ logical :: doing_concurrence = .false.
 ! If true then calculate the Von-Neumann entanglement entropy for specified subsystem
 logical :: doing_von_neumann_entropy = .false.
 
+! If true then, if doing an exact diagonalisation, calculate and output the
+! eigenvalues of the reduced density matrix requested.
+logical :: doing_exact_rdm_eigv
+
 integer :: subsystem_A_size
 ! If finding a reduced density matrix for subsystem A, then the
 ! following list stores the sites on the lattice which belong
@@ -310,6 +314,12 @@ integer(i0), allocatable :: subsystem_B_mask(:)
 ! This stored the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
 real(p), allocatable :: reduced_density_matrix(:,:)
+
+! If true then the reduced density matrix is output to a file, 'reduced_dm'
+! each beta loop.
+logical :: output_rdm
+! The unit of the file reduced_dm.
+integer :: rdm_unit
 
 ! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
 ! concurrence is to be calculated

@@ -518,28 +518,45 @@ contains
 
     end subroutine update_reduced_density_matrix_heisenberg
 
-    subroutine call_rdm_procedures()
+    subroutine call_rdm_procedures(beta_cycle)
 
         ! Wrapper for calling relevant reduced density matrix procedures
 
+        use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
         use fciqmc_data, only: doing_von_neumann_entropy, doing_concurrence
+        use fciqmc_data, only: output_rdm, rdm_unit
         use parallel
 
+        integer, intent(in) :: beta_cycle
         real(p) :: trace_rdm
-        integer :: i, j
+        real(p), allocatable :: old_rdm_elements(:)
+        integer :: i, j, k, stat, ierr
+        character(len=:), allocatable :: buffer
         ! If in paralell then merge the reduced density matrix onto one processor
 #ifdef PARALLEL
 
-        real(dp) :: dm(2**subsystem_A_size,2**subsystem_A_size)
-        real(dp) :: dm_sum(2**subsystem_A_size,2**subsystem_A_size)
-        integer :: ierr
+        real(dp), allocatable :: dm(:,:)
+        real(dp), allocatable :: dm_sum(:,:)
+        integer :: ierr, num_eigv
+
+        num_eigv = 2**subsystem_A_size
+
+        allocate(dm(num_eigv,num_eigv), stat=ierr)
+        call check_allocate('dm',num_eigv**2,ierr)
+        allocate(dm_sum(num_eigv,num_eigv), stat=ierr)
+        call check_allocate('dm_sum',num_eigv**2,ierr)
 
         dm = reduced_density_matrix
 
         call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 
         reduced_density_matrix = dm_sum
+
+        deallocate(dm)
+        call check_deallocate('dm',ierr)
+        deallocate(dm_sum)
+        call check_deallocate('dm_sum',ierr)
 
 #endif
 
@@ -556,18 +573,29 @@ contains
                 ! Add current contirbution to the trace.
                 trace_rdm = trace_rdm + reduced_density_matrix(i,i)
             end do
-            
+
             ! Call the routines to calculate the desired quantities.
-            if (doing_von_neumann_entropy) call calculate_vn_entropy()
+            if (doing_von_neumann_entropy) call calculate_vn_entropy(trace_rdm)
             if (doing_concurrence) call calculate_concurrence()
 
             write (6,'(1x,a12,1X,f22.12)') "# RDM trace=", trace_rdm
         end if
 
+        if (output_rdm) then
+            open(rdm_unit, file='reduced_dm', status='old', position='append')
+            write(rdm_unit,'(/,a16)'), "# New beta loop."
+            write(rdm_unit,'(a12, es15.8)') "# RDM trace=", trace_rdm
+            do i = 1, ubound(reduced_density_matrix,1)
+                do j = i, ubound(reduced_density_matrix,1)
+                    write(rdm_unit,'(es15.8)') reduced_density_matrix(i,j)
+                end do
+            end do
+            close(rdm_unit)
+        end if
 
     end subroutine call_rdm_procedures
 
-    subroutine calculate_vn_entropy()
+    subroutine calculate_vn_entropy(trace_rdm)
 
         ! Calculate the Von Neumann Entropy. Use lapack to calculate the
         ! eigenvalues {\lambda_j} of the reduced density matrix.
@@ -580,15 +608,17 @@ contains
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: subsystem_A_size, reduced_density_matrix
 
+        real(p), intent(in) :: trace_rdm
         integer :: i, j, rdm_size
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
+        real(p), allocatable :: dm_tmp(:,:)
         real(p) :: eigv(2**subsystem_A_size)
         real(p) :: vn_entropy
         
         rdm_size = 2**subsystem_A_size
         vn_entropy = 0._p
-        
+
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
@@ -597,6 +627,7 @@ contains
 #else
         call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
 #endif
+
         lwork = nint(work(1))
         deallocate(work)
         call check_deallocate('work',ierr)
@@ -605,15 +636,31 @@ contains
         allocate(work(lwork), stat=ierr)
         call check_allocate('work',lwork,ierr)
 
+        ! The matrix input into the following diagonalisation routines will have their upper half
+        ! (including the diagonal) destroyed. We might want reduced_desntiy_matrix later, so
+        ! use some temporary space:
+        allocate(dm_tmp(rdm_size,rdm_size), stat=ierr)
+        call check_allocate('dm_tmp',rdm_size**2,ierr)
+        dm_tmp = reduced_density_matrix
+
 #ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
+        call ssyev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
 #else
-        call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, lwork, info)
+        call dsyev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
 #endif
+        write(6,'(a24)',advance='no') "Eigenvalues thrown away:"
         do i = 1, ubound(eigv,1)
+            if (eigv(i) < 0.0_p) then
+                write(6,'(es15.8,2x)',advance='no') eigv(i)/trace_rdm
+                cycle
+            end if
             vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.0_p))
         end do
-        write (6,'(1x,a36,1X,f22.12)') "# Unnormalised Von-Neumann Entropy= ", vn_entropy
+        write(6,'()',advance='yes')
+        write (6,'(1x,a36,1X,f22.9)') "# Unnormalised von Neumann entropy= ", vn_entropy
+
+        deallocate(dm_tmp)
+        call check_deallocate('dm_tmp',ierr)
 
     end subroutine calculate_vn_entropy
     
@@ -633,7 +680,6 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: subsystem_A_size, reduced_density_matrix, flip_spin_matrix
-        use utils, only: print_matrix
         integer :: i,j
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)

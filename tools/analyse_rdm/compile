@@ -1,0 +1,2 @@
+gfortran -c -I ../../dest/no_trlan/optimised -O3 analyse_rdm.f90 -o analyse_rdm.o
+gfortran -o analyse.x analyse_rdm.o ../../dest/no_trlan/optimised/dSFMT_interface.o ../../dest/no_trlan/optimised/dSFMT.o ../../dest/no_trlan/optimised/dSFMT_wrapper.o -lacml -lstdc++

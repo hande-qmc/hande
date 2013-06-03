@@ -17,11 +17,14 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
+        use errors
         use system, only: nel, nsym, sym_max, sym0, uhf
         use determinants, only: enumerate_determinants, find_sym_space_size, &
                                 set_spin_polarisation
         use determinants, only: tot_ndets, ndets, sym_space_size
+        use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
+        use fciqmc_data, only: doing_exact_rdm_eigv, reduced_density_matrix
         use full_diagonalisation
         use hamiltonian, only: get_hmatel_dets
 
@@ -44,6 +47,10 @@ contains
         ! For sorting the solutions by energy rather than by energy within each
         ! spin block.
         integer, allocatable :: eigv_rank(:)
+
+        ! This stores the reduced density matrix eigenvalues, when being calculated.
+        real(p), allocatable :: rdm_eigenvalues(:)
+        integer :: rdm_size
 
         character(50) :: fmt1
 
@@ -177,6 +184,28 @@ contains
 
                 end if
 
+                ! Reduced density matrix eigenvalues calculation.
+                if (doing_exact_rdm_eigv) then
+                    if (nprocs > 1) then
+                        call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. &
+                                      &Skipping this calculation.', 3)
+                    else
+                        if (doing_calc(lanczos_diag)) then
+                            call warning('diagonalise','RDM eigenvalues cannot be calculated with the Lanczos &
+                                                        &routine. Skipping this calculation.', 3)
+                        else if (doing_calc(exact_diag)) then
+                            write(6,'(1x,a46)') "Performing reduced density matrix calculation."
+                            call setup_rdm_arrays()
+                            rdm_size = size(reduced_density_matrix, 1)
+
+                            allocate(rdm_eigenvalues(rdm_size), stat=ierr)
+                            call check_allocate('rdm_eigenvalues',rdm_size,ierr)
+
+                            call get_rdm_eigenvalues(rdm_eigenvalues)
+                        end if
+                    end if
+                end if
+
                 if (parent) write (6,'(1X,15("-"),/)')
 
             end do
@@ -226,6 +255,17 @@ contains
             write (6,'(/,1X,a19,f18.12,/)') 'Exact ground state:', exact_solns(eigv_rank(1))%energy
             deallocate(eigv_rank, stat=ierr)
             call check_deallocate('eigv_rank',ierr)
+            if (doing_exact_rdm_eigv) then
+                write(6, '(1x,a35,/,1X,35("-"))') 'Reduced density matrix eigenvalues:'
+                do i = 1, size(reduced_density_matrix, 1)
+                    write(6, '(1x,i6,1x,es12.4)') i, rdm_eigenvalues(i)
+                end do
+                write(6,'()')
+                deallocate(reduced_density_matrix, stat=ierr)
+                call check_deallocate('reduced_density_matrix',ierr)
+                deallocate(rdm_eigenvalues, stat=ierr)
+                call check_deallocate('rdm_eigenvalues',ierr)
+            end if
         end if
 
         if (doing_calc(lanczos_diag)) then
@@ -391,6 +431,87 @@ contains
         end if
 
     end subroutine generate_hamil
+
+    subroutine get_rdm_eigenvalues(rdm_eigenvalues)
+
+        use basis, only: basis_length
+        use checking, only: check_allocate, check_deallocate
+        use determinants, only: ndets, dets_list
+        use dmqmc_procedures, only: decode_dm_bitstring
+        use fciqmc_data, only: reduced_density_matrix, subsystem_B_mask
+
+        real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))
+        integer(i0) :: f1(basis_length), f2(basis_length)
+        integer(i0) :: f3(2*basis_length)
+        integer :: i, j, rdm_size, info, ierr, lwork
+        integer(i0) :: end1, end2
+        real(p), allocatable :: work(:)
+        real(p) :: rdm_element
+
+        write(6,'(1x,a36)') "Setting up reduced density matrix..."
+
+        ! Loop over all elements of the density matrix and add all contributing elements to the RDM.
+        do i = 1, ndets
+            do j = 1, ndets
+                f1 = iand(subsystem_B_mask,dets_list(:,i))
+                f2 = iand(subsystem_B_mask,dets_list(:,j))
+                ! If the two bitstrings are the same after bits corresponding to subsystem B have
+                ! been unset, then these two bitstrings contribute to the RDM.
+                if (sum(abs(f1-f2)) == 0) then
+                    ! In f3, concatenate the two bitstrings.
+                    f3(1:basis_length) = dets_list(:,i)
+                    f3(basis_length+1:basis_length*2) = dets_list(:,j)
+
+                    ! Get the position in the RDM of this density matrix element.
+                    call decode_dm_bitstring(f3,end1,end2)
+
+                    ! The ground state wave function is stored in hamil(:,1).
+                    rdm_element = hamil(i,1)*hamil(j,1)
+                    ! Finally add in the contribution from this density matrix element.
+                    reduced_density_matrix(end1,end2) = reduced_density_matrix(end1,end2) + &
+                                                        rdm_element
+                end if
+            end do
+        end do
+
+        rdm_size = size(reduced_density_matrix, 1)
+        write(6,*) "RDM elements:"
+        do i = 1, rdm_size
+            do j = i, rdm_size
+                write(6,*) reduced_density_matrix(i,j)
+            end do
+        end do
+        write(6,*)
+
+        ! Now the RDM is completley calculated.
+
+        ! Calculate the eigenvalues:
+        write(6,'(1x,a39,/)') "Diagonalising reduced density matrix..."
+
+        rdm_size = size(reduced_density_matrix, 1)
+        ! Find the optimal size of the workspace.
+        allocate(work(1), stat=ierr)
+        call check_allocate('work',1,ierr)
+#ifdef SINGLE_PRECISION
+        call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, rdm_eigenvalues, work, -1, info)
+#else
+        call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, rdm_eigenvalues, work, -1, info)
+#endif
+        lwork = nint(work(1))
+        deallocate(work)
+        call check_deallocate('work',ierr)
+
+        ! Perform the diagonalisation.
+        allocate(work(lwork), stat=ierr)
+        call check_allocate('work',lwork,ierr)
+
+#ifdef SINGLE_PRECISION
+        call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, rdm_eigenvalues, work, lwork, info)
+#else
+        call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, rdm_eigenvalues, work, lwork, info)
+#endif
+
+    end subroutine get_rdm_eigenvalues
 
     subroutine end_hamil()
 

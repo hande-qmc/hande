@@ -225,6 +225,10 @@ contains
                 do i = 1, nitems-1
                     call readi(subsystem_A_list(i))
                 end do
+            case('OUTPUT_RDM')
+                output_rdm = .true.
+            case('EXACT_RDM_EIGENVALUES')
+                doing_exact_rdm_eigv = .true.
             case('CONCURRENCE')
                 doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
@@ -620,6 +624,8 @@ contains
         call mpi_bcast(average_shift_until, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_von_neumann_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)

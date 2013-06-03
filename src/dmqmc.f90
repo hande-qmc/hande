@@ -212,7 +212,7 @@ contains
             end if
             
             ! Calculate and output all requested estimators based on the reduced dnesity matrix.
-            if (doing_reduced_dm) call call_rdm_procedures()
+            if (doing_reduced_dm) call call_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in the previous loop.
             if (dmqmc_find_weights) call output_and_alter_weights()
         end do

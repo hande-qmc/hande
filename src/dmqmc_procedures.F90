@@ -12,20 +12,17 @@ contains
          use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation
          use checking, only: check_allocate, check_deallocate
          use fciqmc_data, only: trace, energy_index, energy_squared_index, correlation_index
-         use fciqmc_data, only: staggered_mag_index, estimator_numerators, subsystem_A_size
-         use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
-         use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
-         use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau, dmqmc_weighted_sampling
+         use fciqmc_data, only: staggered_mag_index, estimator_numerators, doing_reduced_dm
+         use fciqmc_data, only: dmqmc_factor, number_dmqmc_estimators, ncycles, tau, dmqmc_weighted_sampling
          use fciqmc_data, only: correlation_mask, correlation_sites, half_density_matrix
          use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, flip_spin_matrix
          use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use parallel, only: parent
-         use system, only: system_type, heisenberg, nsites, max_number_excitations
+         use system, only: max_number_excitations
 
-         integer :: ierr
-         integer :: i, ipos, basis_find, bit_position, bit_element
+         integer :: ierr, i, bit_position, bit_element
 
          number_dmqmc_estimators = 0
          trace = 0
@@ -123,54 +120,9 @@ contains
                                       = 2.0_p*dmqmc_accumulated_probs(1:max_number_excitations)
          end if
 
-         ! If doing a reduced density matrix calculation, then allocate and define the
-         ! bit masks that have 1's at the positions referring to either subsystems A or B.
-         if (doing_reduced_dm) then
-             subsystem_A_size = ubound(subsystem_A_list,1)
-             allocate(subsystem_A_mask(1:basis_length), stat=ierr)
-             call check_allocate('subsystem_A_mask',basis_length,ierr)
-             allocate(subsystem_B_mask(1:basis_length), stat=ierr)
-             call check_allocate('subsystem_B_mask',basis_length,ierr)
-             allocate(subsystem_A_bit_positions(subsystem_A_size,2), stat=ierr)
-             call check_allocate('subsystem_A_bit_positions',2*subsystem_A_size,ierr)
-             subsystem_A_mask = 0
-             subsystem_B_mask = 0
-             subsystem_A_bit_positions = 0
-             ! For the Heisenberg model only currently.
-             if (system_type==heisenberg) then
-                 do i = 1, subsystem_A_size
-                     bit_position = bit_lookup(1,subsystem_A_list(i))
-                     bit_element = bit_lookup(2,subsystem_A_list(i))
-                     subsystem_A_mask(bit_element) = ibset(subsystem_A_mask(bit_element), bit_position)
-                     subsystem_A_bit_positions(i,1) = bit_position
-                     subsystem_A_bit_positions(i,2) = bit_element
-                 end do
-                 subsystem_B_mask = subsystem_A_mask
-                 ! We cannot just flip the mask for system A to get that for system B, because
-                 ! there the trailing bits on the end don't refer to anything and should be
-                 ! set to 0. So, first set these to 1 and then flip all the bits.
-                 do ipos = 0, i0_end
-                     basis_find = basis_lookup(ipos, basis_length)
-                     if (basis_find == 0) then
-                         subsystem_B_mask(basis_length) = ibset(subsystem_B_mask(basis_length),ipos)
-                     end if
-                 end do
-                 subsystem_B_mask = not(subsystem_B_mask)
-             end if
-             if (subsystem_A_size <= int(nsites/2)) then
-                 ! In this case, for an ms = 0 subspace (as the ground state of the Heisenberg model
-                 ! will be) then any combination of spins can occur in the subsystem, from all spins
-                 ! down to all spins up. Hence the total size of the reduced density matrix will be
-                 ! 2**(number of spins in subsystem A).
-                 allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
-                 call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
-                 reduced_density_matrix = 0
-             else if (subsystem_A_size == nsites) then
-                 allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
-                 call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
-                 reduced_density_matrix = 0
-             end if
-         end if
+         ! If doing a reduced density matrix calculation, allocate and define the bit masks that
+         ! have 1's at the positions referring to either subsystems A or B.
+         if (doing_reduced_dm) call setup_rdm_arrays()
 
          ! If doing concurrence calculation then construct and store the 4x4 flip spin matrix i.e.
          ! \sigma_y \otimes \sigma_y
@@ -186,6 +138,83 @@ contains
          end if
 
     end subroutine init_dmqmc
+
+    subroutine setup_rdm_arrays()
+
+        ! Setup the bit masks needed for RDM calculations. These are masks for the bits referring
+        ! to either subsystem A or B. Also calculate the positions and elements of the sites
+        ! in subsyetsm A, and finally allocate the RDM itself.
+
+        use basis, only: basis_length, bit_lookup, basis_lookup
+        use checking, only: check_allocate, check_deallocate
+        use errors
+        use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
+        use fciqmc_data, only: subsystem_A_list, reduced_density_matrix, subsystem_A_size
+        use fciqmc_data, only: output_rdm, rdm_unit
+        use system, only: system_type, heisenberg, nsites
+        use utils, only: get_free_unit
+
+        integer :: i, ierr, ipos, basis_find, bit_position, bit_element
+
+        subsystem_A_size = ubound(subsystem_A_list,1)
+        allocate(subsystem_A_mask(1:basis_length), stat=ierr)
+        call check_allocate('subsystem_A_mask',basis_length,ierr)
+        allocate(subsystem_B_mask(1:basis_length), stat=ierr)
+        call check_allocate('subsystem_B_mask',basis_length,ierr)
+        allocate(subsystem_A_bit_positions(subsystem_A_size,2), stat=ierr)
+        call check_allocate('subsystem_A_bit_positions',2*subsystem_A_size,ierr)
+        subsystem_A_mask = 0
+        subsystem_B_mask = 0
+        subsystem_A_bit_positions = 0
+
+        ! For the Heisenberg model only currently.
+        if (system_type==heisenberg) then
+            do i = 1, subsystem_A_size
+                bit_position = bit_lookup(1,subsystem_A_list(i))
+                bit_element = bit_lookup(2,subsystem_A_list(i))
+                subsystem_A_mask(bit_element) = ibset(subsystem_A_mask(bit_element), bit_position)
+                subsystem_A_bit_positions(i,1) = bit_position
+                subsystem_A_bit_positions(i,2) = bit_element
+            end do
+            subsystem_B_mask = subsystem_A_mask
+            ! We cannot just flip the mask for system A to get that for system B, because
+            ! there the trailing bits on the end don't refer to anything and should be
+            ! set to 0. So, first set these to 1 and then flip all the bits.
+            do ipos = 0, i0_end
+                basis_find = basis_lookup(ipos, basis_length)
+                if (basis_find == 0) then
+                    subsystem_B_mask(basis_length) = ibset(subsystem_B_mask(basis_length),ipos)
+                end if
+            end do
+            subsystem_B_mask = not(subsystem_B_mask)
+        else
+            call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for the &
+                           &Heisenberg model.")
+        end if
+
+        if (subsystem_A_size <= int(nsites/2)) then
+            ! In this case, for an ms = 0 subspace (as the ground state of the Heisenberg model
+            ! will be) then any combination of spins can occur in the subsystem, from all spins
+            ! down to all spins up. Hence the total size of the reduced density matrix will be
+            ! 2**(number of spins in subsystem A).
+            allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
+            call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
+            reduced_density_matrix = 0
+        else if (subsystem_A_size == nsites) then
+            allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
+            call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
+            reduced_density_matrix = 0
+        end if
+        
+        if (output_rdm) then
+            rdm_unit = get_free_unit()
+            open(rdm_unit, file='reduced_dm', status='replace')
+            write(rdm_unit,'(a37,i6)') "# Number of elements in each RDM row:", &
+                                       ubound(reduced_density_matrix,1)
+            close(rdm_unit)
+        end if
+
+    end subroutine setup_rdm_arrays
 
     subroutine random_distribution_heisenberg()
 
@@ -306,11 +335,11 @@ contains
         ! giving the corresponding position of the bitstring in the reduced
         ! density matrix.
 
-        use basis, only: total_basis_length, basis_length
+        use basis, only: basis_length
         use fciqmc_data, only: subsystem_A_bit_positions, subsystem_A_bit_positions
         use fciqmc_data, only: subsystem_A_size
 
-        integer(i0), intent(in) :: f(total_basis_length)
+        integer(i0), intent(in) :: f(basis_length*2)
         integer(i0), intent(out) :: index1, index2
         integer :: i
 
