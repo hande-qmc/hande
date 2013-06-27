@@ -72,7 +72,7 @@ contains
             tot_walkers = 0
             shift = initial_shift
             nparticles = 0
-            if (allocated(reduced_density_matrix)) reduced_density_matrix = 0
+            if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
             if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
             if (dmqmc_find_weights) excit_distribution = 0
             vary_shift = .false.
@@ -102,8 +102,8 @@ contains
             do ireport = 1, nreport
                 ! Zero report cycle quantities.
                 rspawn = 0.0_p
-                trace = 0
-                estimator_numerators = 0
+                trace = 0.0_p
+                estimator_numerators = 0.0_p
                 if (calculate_excit_distribution) excit_distribution = 0
                 nparticles_start_report = nparticles_old(1)
 

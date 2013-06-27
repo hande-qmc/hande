@@ -25,7 +25,7 @@ contains
          integer :: ierr, i, bit_position, bit_element
 
          number_dmqmc_estimators = 0
-         trace = 0
+         trace = 0.0_p
 
          if (doing_dmqmc_calc(dmqmc_energy)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
@@ -199,11 +199,11 @@ contains
             ! 2**(number of spins in subsystem A).
             allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
             call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
-            reduced_density_matrix = 0
+            reduced_density_matrix = 0.0_p
         else if (subsystem_A_size == nsites) then
             allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
             call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
-            reduced_density_matrix = 0
+            reduced_density_matrix = 0.0_p
         end if
         
         if (output_rdm) then
