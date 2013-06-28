@@ -27,7 +27,7 @@ def extract_data(data_file):
     return eigv
 
 def calculate_vn_entropy(eigvs):
-    vn_entropy = 0
+    vn_entropy = 0.0
 
     for eigv in eigvs:
         vn_entropy = vn_entropy - eigv*math.log(eigv,2)
@@ -35,7 +35,7 @@ def calculate_vn_entropy(eigvs):
     return vn_entropy
 
 def calculate_renyi_2(eigvs):
-    renyi_2 = 0
+    renyi_2 = 0.0
 
     for eigv in eigvs:
         renyi_2 = renyi_2 + eigv*eigv
@@ -52,8 +52,8 @@ if __name__ == '__main__':
 
     if len(eigv) > 0: 
         vn_entropy = calculate_vn_entropy(eigv)
-        print "Von Neumann entropy = ", vn_entropy
+        print "Von Neumann entropy = ", "%.18g" % vn_entropy
         renyi_2 = calculate_renyi_2(eigv)
-        print "Renyi 2 entropy = ", renyi_2
+        print "Renyi 2 entropy = ", "%.18g" % renyi_2
     else:
         print "No RDM eigenvalues were found."

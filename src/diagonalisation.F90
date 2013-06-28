@@ -258,7 +258,7 @@ contains
             if (doing_exact_rdm_eigv) then
                 write(6, '(1x,a35,/,1X,35("-"))') 'Reduced density matrix eigenvalues:'
                 do i = 1, size(reduced_density_matrix, 1)
-                    write(6, '(1x,i6,1x,es12.4)') i, rdm_eigenvalues(i)
+                    write(6, '(1x,i6,1x,es15.8)') i, rdm_eigenvalues(i)
                 end do
                 write(6,'()')
                 deallocate(reduced_density_matrix, stat=ierr)
