@@ -42,7 +42,6 @@ contains
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
 
         ! Find and set information about the space.
-        sym_in = 1
         call set_spin_polarisation(ms_in)
         call find_sym_space_size()
 
@@ -291,7 +290,7 @@ contains
         ! We store the Hamiltonian matrix rather than the K matrix.
         ! It is efficient to allow all particles on a given determinant to
         ! attempt to die in one go (like lemmings) in a stochastic process.
-        rate = abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-shift)
+        rate = abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
         ! Number to definitely kill.
         nkill = int(rate)
         rate = rate - nkill
@@ -309,7 +308,7 @@ contains
         ! Don't allow creation of anti-particles in simple_fciqmc.
         if (nkill > abs(walker_population(1,iwalker))) then
             write (6,*) iwalker, walker_population(1,iwalker), &
-            abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-shift)
+            abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 
