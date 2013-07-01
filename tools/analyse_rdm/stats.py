@@ -3,7 +3,6 @@
 import numpy
 import scipy
 import sys
-import matplotlib.pyplot as plt
 
 def extract_data(data_file):
 
@@ -50,5 +49,3 @@ if __name__ == '__main__':
         renyi_mean = scipy.mean(renyi_data)
         renyi_se = numpy.std(renyi_data,ddof=1)
         print 'renyi_estimate:', renyi_estimate, 'mean:', renyi_mean, 'renyi_se:', renyi_se
-        plt.hist(renyi_data,bins=50)
-        plt.show()
