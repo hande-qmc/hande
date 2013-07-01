@@ -527,12 +527,13 @@ contains
         use fciqmc_data, only: doing_von_neumann_entropy, doing_concurrence
         use fciqmc_data, only: output_rdm, rdm_unit
         use parallel
+        use utils, only: get_free_unit, append_ext, int_fmt
 
         integer, intent(in) :: beta_cycle
         real(p) :: trace_rdm
         real(p), allocatable :: old_rdm_elements(:)
-        integer :: i, j, k, stat, ierr
-        character(len=:), allocatable :: buffer
+        integer :: i, j, k, stat, ierr, new_unit
+        character(10) :: rdm_filename
         ! If in paralell then merge the reduced density matrix onto one processor
 #ifdef PARALLEL
 
@@ -579,18 +580,21 @@ contains
             if (doing_concurrence) call calculate_concurrence()
 
             write (6,'(1x,a12,1X,f22.12)') "# RDM trace=", trace_rdm
-        end if
 
-        if (output_rdm) then
-            open(rdm_unit, file='reduced_dm', status='old', position='append')
-            write(rdm_unit,'(/,a16)'), "# New beta loop."
-            write(rdm_unit,'(a12, es15.8)') "# RDM trace=", trace_rdm
-            do i = 1, ubound(reduced_density_matrix,1)
-                do j = i, ubound(reduced_density_matrix,1)
-                    write(rdm_unit,'(es15.8)') reduced_density_matrix(i,j)
+            if (output_rdm) then
+                new_unit = get_free_unit()
+                call append_ext('rdm', beta_cycle, rdm_filename)
+                open(new_unit, file=trim(rdm_filename), status='replace')
+                write(new_unit,'(a5,1x,es15.8)') "Trace", trace_rdm
+                do i = 1, ubound(reduced_density_matrix,1)
+                    do j = i, ubound(reduced_density_matrix,1)
+                        write(new_unit,'(a1,'//int_fmt(i,0)//',a1,'//int_fmt(j,0)//',a1,1x,es15.8)') &
+                            "(",i,",",j,")", reduced_density_matrix(i,j)
+                    end do
                 end do
-            end do
-            close(rdm_unit)
+                close(new_unit)
+            end if
+
         end if
 
     end subroutine call_rdm_procedures

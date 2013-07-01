@@ -206,14 +206,6 @@ contains
             reduced_density_matrix = 0.0_p
         end if
         
-        if (output_rdm) then
-            rdm_unit = get_free_unit()
-            open(rdm_unit, file='reduced_dm', status='replace')
-            write(rdm_unit,'(a37,i6)') "# Number of elements in each RDM row:", &
-                                       ubound(reduced_density_matrix,1)
-            close(rdm_unit)
-        end if
-
     end subroutine setup_rdm_arrays
 
     subroutine random_distribution_heisenberg()
