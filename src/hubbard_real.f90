@@ -92,7 +92,7 @@ contains
         integer :: lvecs(ndim, 3**ndim)
         integer :: difference_vec(2), shifted_vec(2), unshifted_vec(2)
 
-        logical :: connected = .false.
+        logical :: diag_connection
 
         nsym = 1
         sym0 = 1
@@ -163,7 +163,12 @@ contains
                 ! Allow j=i in case i is its own periodic image.
                 r = basis_fns(i)%l - basis_fns(j)%l
                 do ivec = 1, 3**ndim
-                    if (sum(abs(r-lvecs(:,ivec))) == 1) then
+                    ! For the triangular lattice, there are extra diagonal bonds between pairs
+                    ! of sites which obey this condition.
+                    diag_connection = all((r-lvecs(:,ivec)) == (/1,1/)) .or. &
+                                      all((r-lvecs(:,ivec)) == (/-1,-1/))
+                    if (sum(abs(r-lvecs(:,ivec))) == 1 .or. &
+                        (triangular_lattice .and. diag_connection)) then
                         ! i and j are on sites which are nearest neighbours
                         if (all(lvecs(:,ivec) == 0)) then
                             ! Nearest neighbours within unit cell.
@@ -180,7 +185,7 @@ contains
                         ! If we only want a discrete molecule and the lattice
                         ! vector connecting the 2 sites is the 0-vector then the
                         ! 2 sites are connected in a unit cell and thus are
-                        ! actually connected. (If they "connect" accross cell
+                        ! actually connected. (If they "connect" across cell
                         ! boundaries then they are not connected for a single
                         ! molecule).
                         if ( (finite_cluster .and. all(lvecs(:,ivec) == 0)) .or. &
@@ -194,93 +199,6 @@ contains
                                 if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
                             end if
                         end if
-                    end if
-
-                    if (triangular_lattice) then
-
-                        ! We want to find all the connected sites for the triangular lattice.
-                        ! We already have some connections - all connections from the
-                        ! square lattice are still present in the triangular lattice,
-                        ! just with some potential extra ones. We find these below.
-
-                        ! We can treat a triangular lattice as a 2d rectangular lattice
-                        ! by taking a triangular lattice (with n rows of m columns) and
-                        ! shifting every other row across, to get a n by m rectangular
-                        ! lattice. The only difference to a rectangular lattice are the
-                        ! extra connections. So long as we keep these, we still have a
-                        ! have a triangular lattice for all purposes.
-
-                        ! The picture below shows (very roughly!) the various connections
-                        ! for a (4 by 4) triangular lattice. The extra conectons are the
-                        ! zig-zag ones.
-                        !    _ _ _
-                        !   |/|/|/|
-                        !   |\|\|\|
-                        !   |/|/|/|
-                        !   |\|\|\|
-
-                        ! Once all the appropriate vectors have been taken away,
-                        ! we will want their difference to be the vector below. In this case,
-                        ! the two sites will be connected.
-                        difference_vec = (/1,0/)
-                        ! Depending on whether we are on an odd or even numbered row (if we
-                        ! number the rows 1,2,3...) the extra connected sites will be in different
-                        ! positions relative to the site - either both to the right of it
-                        ! or both to the left of it (see picture above).
-                        ! It is important to distinguish between these two cases, by taking
-                        ! mod(row_1,2) and mod(row_2,2) to see which of the two cases each row is.
-                        row_1 = basis_fns(i)%l(1)-basis_fns(1)%l(1)
-                        row_2 = basis_fns(j)%l(1)-basis_fns(1)%l(1)
-
-                        ! If the two sites are on these different types of rows, the corresponding
-                        ! sites may be connected.
-                        ! If on same types, they won't be (atleast not via the new connections
-                        ! which we are adding)...
-                        if (mod(row_1,2) == 0 .and. mod(row_2,2) == 0) then
-                            connected = .false.
-                        ! If the first sites is on the correct row type, we shift it, and also
-                        ! take the lvec away to allow for periodic boundaries.
-                        else if (mod(row_1,2) == 0) then
-                            shifted_vec = basis_fns(i)%l
-                            shifted_vec(2) = shifted_vec(2) - 1
-                            shifted_vec = shifted_vec - lvecs(:,ivec)
-                            unshifted_vec = basis_fns(j)%l
-                            connected = .true.
-                        ! If the second site is on the correct row type, shift this.
-                        else if (mod(row_2,2) == 0) then
-                            shifted_vec = basis_fns(j)%l
-                            shifted_vec(2) = shifted_vec(2) - 1
-                            shifted_vec = shifted_vec - lvecs(:,ivec)
-                            unshifted_vec = basis_fns(i)%l
-                            connected = .true.
-                        end if
-
-                        ! If the two are on the correct rows to have a possible extra
-                        ! connection on the triangular lattice then...
-                        if (connected) then
-                            ! If connected not through boundary conditions:
-                            if (all(lvecs(:,ivec) == 0)) then
-                                ! If, after the shifting, the sites are vertically above each
-                                ! other by one position, then there is an extra connection.
-                                if (sum(abs(shifted_vec-unshifted_vec)-difference_vec) == 0) then
-                                    call set_orb(connected_orbs(:,i),j)
-                                    if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)
-                                    call set_orb(connected_orbs(:,j),i)
-                                    if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
-                                    end if
-                            ! If connected through boundary conditions, and boundary conditions
-                            ! are turned on:
-                            else if (.not.finite_cluster) then
-                                if (sum(abs(shifted_vec-unshifted_vec)-difference_vec) == 0) then
-                                    call set_orb(connected_orbs(:,i),j)
-                                    if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)
-                                    call set_orb(connected_orbs(:,j),i)
-                                    if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
-                                end if
-                            end if
-                        end if
-                        ! For triangular lattice, just set tmat and connected orbs to be the same...
-                        tmat = connected_orbs
                     end if
 
                 end do

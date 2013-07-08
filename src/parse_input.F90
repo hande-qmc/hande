@@ -464,12 +464,6 @@ contains
             if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
             if (system_type == ueg .and. ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
 
-            if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
-                call warning('check_input','Periodic boundary conditions may not be applied for these particular &
-                               &triangular lattice. Periodic boundary conditions are being turned off.')
-                finite_cluster = .true.
-            end if
-
         end if
 
         if (init_spin_inv_D0 .and. ms_in /= 0) then
