@@ -186,6 +186,9 @@ contains
             case('FOLDED_SPECTRUM')
                 calc_type = calc_type + folded_spectrum
 
+            case('REPLICA_TRICKS')
+                replica_tricks = .true.
+
             ! DMQMC expectation values to be calculated
             case('DMQMC_ENERGY')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
@@ -566,6 +569,7 @@ contains
             end if
             call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
+        call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)

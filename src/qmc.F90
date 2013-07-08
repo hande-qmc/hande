@@ -102,6 +102,8 @@ contains
             spawned_size = spawned_size + 1
             spawned_hf_pop = spawned_size
             sampling_size = sampling_size + 1
+        else if (replica_tricks) then
+            sampling_size = sampling_size + 1
         else
             spawned_hf_pop = spawned_size
         end if

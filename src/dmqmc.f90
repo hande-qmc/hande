@@ -35,7 +35,7 @@ contains
         use dSFMT_interface, only: dSFMT_init
         use utils, only: int_fmt
 
-        integer :: idet, ireport, icycle, iparticle, iteration
+        integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
         integer(lint) :: nparticles_old(sampling_size)
         integer(lint) :: nattempts, nparticles_start_report
@@ -115,7 +115,7 @@ contains
                     ! Each particle and each end gets to attempt to
                     ! spawn onto a connected determinant and a chance
                     ! to die/clone.
-                    nattempts = 4*nparticles(1)
+                    nattempts = 4*nparticles(1)*sampling_size
 
                     ! Reset death counter
                     ndeath = 0
@@ -140,30 +140,33 @@ contains
 
                         if (icycle == 1) call call_dmqmc_estimators(idet, iteration)
 
-                        do iparticle = 1, abs(walker_population(1,idet))
-                            ! Spawn from the first end.
-                            spawning_end = 1
-                            ! Attempt to spawn.
-                            call spawner_ptr(cdet1, walker_population(1,idet), nspawned, connection)
-                            ! Spawn if attempt was successful.
-                            if (nspawned /= 0) then
-                                call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
-                            end if
+                        do ireplica = 1, sampling_size
+                            do iparticle = 1, abs(walker_population(ireplica,idet))
+                                ! Spawn from the first end.
+                                spawning_end = 1
+                                ! Attempt to spawn.
+                                call spawner_ptr(cdet1, walker_population(ireplica,idet), nspawned, connection)
+                                ! Spawn if attempt was successful.
+                                if (nspawned /= 0) then
+                                    call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
+                                end if
 
-                            ! Now attempt to spawn from the second end.
-                            spawning_end = 2
-                            call spawner_ptr(cdet2, walker_population(1,idet), nspawned, connection)
-                            if (nspawned /= 0) then
-                                call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
-                            end if
+                                ! Now attempt to spawn from the second end.
+                                spawning_end = 2
+                                call spawner_ptr(cdet2, walker_population(ireplica,idet), nspawned, connection)
+                                if (nspawned /= 0) then
+                                    call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
+                                end if
+                            end do
+
+                            ! Clone or die.
+                            ! We have contributions to the clone/death step from both ends of the
+                            ! current walker. We do both of these at once by using walker_data(:,idet)
+                            ! which, when running a DMQMC algorithm, stores the average of the two diagonal
+                            ! elements corresponding to the two indicies of the density matrix (the two ends).
+                            call stochastic_death(walker_data(ireplica,idet), walker_population(ireplica,idet), &
+                                                  nparticles(ireplica), ndeath)
                         end do
-
-                        ! Clone or die.
-                        ! We have contirbutions to the clone/death step from both ends of the
-                        ! current walker. We do both of these at once by using walker_data(1,idet)
-                        ! which, when running a DMQMC algorithm, stores the average of the two diagonal
-                        ! elements corresponding to the two indicies of the density matrix (the two ends).
-                        call stochastic_death(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
                     end do
 
                     ! Add the spawning rate (for the processor) to the running

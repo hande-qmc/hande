@@ -278,6 +278,10 @@ logical :: dmqmc_find_weights
 ! symmetric.
 logical :: half_density_matrix = .false.
 
+! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
+! Currently only implemented for DMQMC.
+logical :: replica_tricks = .false.
+
 ! For DMQMC: If this locial is true then the fraction of psips at each
 ! excitation level will be output at each report loop. These fractions
 ! will be stored in the array below.
