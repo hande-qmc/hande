@@ -44,7 +44,7 @@ def extract_data(data_file):
     rdm_row_size = int(-0.5 + 0.5*math.sqrt(1 + 8*(n-1)))
 
     # For the first line of the output, print the row size.
-    print rdm_row_size
+    print(rdm_row_size)
 
     f.close()
 
@@ -69,4 +69,4 @@ if __name__ == '__main__':
             error = 0.0
         else:
             error = scipy.sqrt((elem_se[i]/elem_mean[i])**2 + (trace_se/trace_mean)**2 - (2*covariances[i]/(elem_mean[i]*trace_mean)) )*abs(normalised_elem)
-        print "%.18g" % normalised_elem, error
+        print("%.18g  %.18g" % (normalised_elem, error))

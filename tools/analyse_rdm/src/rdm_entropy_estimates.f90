@@ -4,14 +4,15 @@ program analyse_rdm
 
     implicit none
 
-    integer :: seed = 328576
     integer :: rdm_unit, stat, lwork, ierr, info
     real(dp), allocatable :: work(:)
     real(dp) :: rand_var
     integer :: rdm_size
     integer :: i, j, k
     logical :: does_exist
-    character(11) :: filename = 'average_rdm'
+
+    integer :: seed, nRDM, nargs
+    character(256) :: filename, arg
 
     real(dp) :: next_gaussian_rv
     logical :: gaussian_rv_left
@@ -21,10 +22,41 @@ program analyse_rdm
     real(dp) :: temp_store(2)
     real(dp) :: vn_entropy, renyi_2
 
+    seed = 328576
+    nRDM = 10000
+    nargs = command_argument_count()
+
+    if (nargs == 0 .or. nargs > 3) then
+        call get_command_argument(0,arg)
+        write (6,*) trim(arg)//' calculate entropy estimates from an averaged RDM and produce a'
+        write (6,*) 'set of RDMs with random (Gaussian noise added).'
+        write (6,*)
+        write (6,*) 'Usage:'
+        write (6,*)
+        write (6,*) trim(arg)//' AVERAGE_RDM [SEED [nRDM]]'
+        write (6,*) 
+        write (6,*) 'where AVERAGE_RDM is produced by average_rdm.py,'
+        write (6,*) 'SEED (optional, default 328576), is the random number seed'
+        write (6,*) 'and nRDM (optional, default 10000) is the number of noisy RDMs to produce.'
+        write (6,*) '(Noisy RDMs are produced by adding Gaussian noise to each element'
+        write (6,*) 'according to the standard error in the estimate of that element.'
+        stop 999
+    end if
+
+    call get_command_argument(1,filename)
+    if (nargs > 1) then
+        call get_command_argument(2,arg)
+        read(arg,*) seed
+    end if
+    if (nargs > 2) then
+        call get_command_argument(3,arg)
+        read(arg,*) nRDM
+    end if
+
     inquire(file=filename, exist=does_exist)
 
     if (.not. does_exist) then
-        write(6,'(a21)') "No RDM file detected."
+        write(6,'(a21)') "RDM file "//trim(filename)//" does not exist."
         stop 999
     end if
 
@@ -71,8 +103,7 @@ program analyse_rdm
 
     ! Now, estimate the error on the estimate of the above VN entropy by adding Gaussian noise
     ! to the mean RDM elements.
-    ! For testing, just do this 10000 times.
-    do k = 1, 10000
+    do k = 1, nRDM
 
         ! Loop over all elements and add the appropriate noise.
         do i = 1, rdm_size
@@ -100,8 +131,8 @@ program analyse_rdm
     renyi_2 = calculate_renyi_2_entropy(eigv)
     write(6,'(a33,f12.7)') "# Renyi 2 entropy mean estimate =", renyi_2
 
-    ! Then, once again, add noise 10000 times to estimate the error.
-    do k = 1, 10000
+    ! Then, once again, add noise to estimate the error.
+    do k = 1, nRDM
 
         do i = 1, rdm_size
             do j = i, rdm_size
