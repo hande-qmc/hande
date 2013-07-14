@@ -539,7 +539,7 @@ contains
 
         real(dp), allocatable :: dm(:,:)
         real(dp), allocatable :: dm_sum(:,:)
-        integer :: ierr, num_eigv
+        integer :: num_eigv
 
         num_eigv = 2**subsystem_A_size
 
