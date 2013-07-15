@@ -291,7 +291,7 @@ module hash_table
 
 !--- Query hashed store ---
 
-        pure subroutine lookup_hash_table_element(ht, label, register, pos, err_flag)
+        subroutine lookup_hash_table_element(ht, label, register, pos, err_flag)
 
             ! Find the position/location of a data item.
 

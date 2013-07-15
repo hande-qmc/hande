@@ -14,9 +14,8 @@ interface
     !    N: length of array to be hashed.
     !    seed: random(ish!) number to seed the hash (MurmurHash2 only).
     ! Note that MurmurHash2 algorithms destroy N so it's recommended to use the
-    ! wrapper function below.  (We lie about this so murmurhash_bit_string can
-    ! be used inside a pure procedure.)
-    pure function MurmurHash2(key, N, seed) result(hash) bind(c)
+    ! wrapper function below.
+    function MurmurHash2(key, N, seed) result(hash) bind(c)
         use, intrinsic:: iso_c_binding
         use const
         integer(c_i0) :: hash
@@ -60,7 +59,7 @@ end interface
 
 contains
 
-    pure function murmurhash_bit_string(f, N) result(hash)
+    function murmurhash_bit_string(f, N) result(hash)
 
         ! Wrapper around MurmurHash2.
 
@@ -83,6 +82,8 @@ contains
         ! The size parameter used in Murmurhash is the number of bytes...
         tmp = 4*N
 
+        ! Unfortunately it seems c_loc is not required to be pure by the
+        ! F2003 standards! :-(
         key = c_loc(f(1))
 
         hash = MurmurHash2(key, tmp, seed)
