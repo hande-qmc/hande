@@ -14,8 +14,9 @@ interface
     !    N: length of array to be hashed.
     !    seed: random(ish!) number to seed the hash (MurmurHash2 only).
     ! Note that MurmurHash2 algorithms destroy N so it's recommended to use the
-    ! wrapper function below.
-    function MurmurHash2(key, N, seed) result(hash) bind(c)
+    ! wrapper function below.  (We lie about this so murmurhash_bit_string can
+    ! be used inside a pure procedure.)
+    pure function MurmurHash2(key, N, seed) result(hash) bind(c)
         use, intrinsic:: iso_c_binding
         use const
         integer(c_i0) :: hash
@@ -59,7 +60,7 @@ end interface
 
 contains
 
-    function murmurhash_bit_string(f, N) result(hash)
+    pure function murmurhash_bit_string(f, N) result(hash)
 
         ! Wrapper around MurmurHash2.
 
