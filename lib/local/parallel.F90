@@ -95,13 +95,8 @@ contains
         ! If in serial mode, then the appropriate dummy module variables are
         ! set.
 
+        use omp_lib
         use errors
-
-        interface
-            function omp_get_num_threads() result(omp_nthreads)
-                integer :: omp_nthreads
-            end function omp_get_num_threads
-        end interface
 
 #ifdef PARALLEL
         integer :: ierr
@@ -115,11 +110,7 @@ contains
         nprocs = 1
 #endif
 #ifdef _OPENMP
-        !$omp parallel
-        !$omp master
-        nthreads = omp_get_num_threads()
-        !$omp end master
-        !$omp end parallel
+        nthreads = omp_get_max_threads()
 #else
         nthreads = 1
 #endif

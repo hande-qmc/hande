@@ -118,7 +118,7 @@ contains
 
     end subroutine init_dmqmc
 
-    subroutine random_distribution_entire_space()
+    subroutine random_distribution_entire_space(rng)
 
         ! Distribute the initial number of psips along the main diagonal.
         ! Each diagonal element should be chosen with the same probability.
@@ -138,12 +138,16 @@ contains
 
         ! So each configuartion will be chosen with equal probability, as desired.
 
+        ! In/Out:
+        !    rng: random number generator.
+
         use basis, only: nbasis, basis_length, bit_lookup, basis_lookup
-        use dSFMT_interface, only:  genrand_real2
+        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use fciqmc_data, only: D0_population
         use parallel
         use utils, only: binom_r
 
+        type(dSFMT_t), intent(inout) :: rng
         integer(i0) :: total_hilbert_space, subspace_size
         integer :: i, rand_basis, bits_set, total_bits_set
         integer :: bit_element, bit_position, npsips, basis_find, ipos
@@ -159,11 +163,11 @@ contains
             ! First we need to decide how many bits will be set, total_bits_set, with
             ! probability equal to prob = fraction of configs with i bits set
             do
-                rand_num = genrand_real2()
+                rand_num = get_rand_close_open(rng)
                 total_bits_set = int(rand_num*(nbasis+1))
                 subspace_size = nint(binom_r(nbasis, total_bits_set))
                 prob_of_acceptance = subspace_size/total_hilbert_space
-                rand_num = genrand_real2()
+                rand_num = get_rand_close_open(rng)
                 if (prob_of_acceptance < rand_num) exit
             end do
 
@@ -194,7 +198,7 @@ contains
                 ! bitstring that we want, so exit the loop.
                 if (bits_set==total_bits_set) exit
                 ! Choose a random spin to flip.
-                rand_num = genrand_real2()
+                rand_num = get_rand_close_open(rng)
                 rand_basis = ceiling(rand_num*nbasis)
                 ! Find the corresponding positions for this spin.
                 bit_position = bit_lookup(1,rand_basis)
@@ -218,7 +222,7 @@ contains
 
     end subroutine random_distribution_entire_space
 
-    subroutine random_distribution_heisenberg()
+    subroutine random_distribution_heisenberg(rng)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -233,13 +237,17 @@ contains
         ! Start from state with all spins down, then choose the above number of
         ! spins to flip up with equal probability.
 
+        ! In/Out:
+        !    rng: random number generator.
+
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
-        use dSFMT_interface, only:  genrand_real2
+        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use fciqmc_data, only: D0_population
         use parallel
         use system, only: nsites
 
+        type(dSFMT_t), intent(inout) :: rng
         integer :: i, up_spins, rand_basis, bits_set
         integer :: bit_element, bit_position, npsips
         integer(i0) :: f(basis_length)
@@ -259,7 +267,7 @@ contains
                 ! function fully created, so exit the loop.
                 if (bits_set==up_spins) exit
                 ! Choose a random spin to flip.
-                rand_num = genrand_real2()
+                rand_num = get_rand_close_open(rng)
                 rand_basis = ceiling(rand_num*nbasis)
                 ! Find the corresponding positions for this spin.
                 bit_position = bit_lookup(1,rand_basis)

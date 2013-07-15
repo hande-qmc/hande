@@ -615,14 +615,6 @@ contains
         ! c) density-matrix
         if (doing_calc(dmqmc_calc)) then
 
-            ! Initial particle distribution.
-            select case(system_type)
-            case(heisenberg)
-                dmqmc_initial_distribution_ptr => random_distribution_heisenberg
-            case default
-                call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
-            end select
-
             ! Spawned particle creation. 
             if (truncate_space) then
                 create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix

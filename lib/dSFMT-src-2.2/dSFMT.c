@@ -1,5 +1,5 @@
-/** 
- * @file dSFMT.c 
+/**
+ * @file dSFMT.c
  * @brief double precision SIMD-oriented Fast Mersenne Twister (dSFMT)
  * based on IEEE 754 format.
  *
@@ -15,6 +15,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include "dSFMT-params.h"
+#include "dSFMT-common.h"
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 /** dsfmt internal state vector */
 dsfmt_t dsfmt_global_data;
@@ -39,17 +44,12 @@ static void initial_mask(dsfmt_t *dsfmt);
 static void period_certification(dsfmt_t *dsfmt);
 
 #if defined(HAVE_SSE2)
-#  include <emmintrin.h>
-/** mask data for sse2 */
-static __m128i sse2_param_mask;
 /** 1 in 64bit for sse2 */
-static __m128i sse2_int_one;
+static const union X128I_T sse2_int_one = {{1, 1}};
 /** 2.0 double for sse2 */
-static __m128d sse2_double_two;
+static const union X128D_T sse2_double_two = {{2.0, 2.0}};
 /** -1.0 double for sse2 */
-static __m128d sse2_double_m_one;
-
-static void setup_const(void);
+static const union X128D_T sse2_double_m_one = {{-1.0, -1.0}};
 #endif
 
 /**
@@ -66,105 +66,6 @@ inline static int idxof(int i) {
 }
 #endif
 
-/**
- * This function represents the recursion formula.
- * @param r output
- * @param a a 128-bit part of the internal state array
- * @param b a 128-bit part of the internal state array
- * @param lung a 128-bit part of the internal state array
- */
-#if defined(HAVE_ALTIVEC)
-inline static void do_recursion(w128_t *r, w128_t *a, w128_t * b,
-				w128_t *lung) {
-    const vector unsigned char sl1 = ALTI_SL1;
-    const vector unsigned char sl1_perm = ALTI_SL1_PERM;
-    const vector unsigned int sl1_msk = ALTI_SL1_MSK;
-    const vector unsigned char sr1 = ALTI_SR;
-    const vector unsigned char sr1_perm = ALTI_SR_PERM;
-    const vector unsigned int sr1_msk = ALTI_SR_MSK;
-    const vector unsigned char perm = ALTI_PERM;
-    const vector unsigned int msk1 = ALTI_MSK;
-    vector unsigned int w, x, y, z;
-
-    z = a->s;
-    w = lung->s;
-    x = vec_perm(w, (vector unsigned int)perm, perm);
-    y = vec_perm(z, sl1_perm, sl1_perm);
-    y = vec_sll(y, sl1);
-    y = vec_and(y, sl1_msk);
-    w = vec_xor(x, b->s);
-    w = vec_xor(w, y);
-    x = vec_perm(w, (vector unsigned int)sr1_perm, sr1_perm);
-    x = vec_srl(x, sr1);
-    x = vec_and(x, sr1_msk);
-    y = vec_and(w, msk1);
-    z = vec_xor(z, y);
-    r->s = vec_xor(z, x);
-    lung->s = w;
-}
-#elif defined(HAVE_SSE2)
-/**
- * This function setup some constant variables for SSE2.
- */
-static void setup_const(void) {
-    static int first = 1;
-    if (!first) {
-	return;
-    }
-    sse2_param_mask = _mm_set_epi32(DSFMT_MSK32_3, DSFMT_MSK32_4,
-				    DSFMT_MSK32_1, DSFMT_MSK32_2);
-    sse2_int_one = _mm_set_epi32(0, 1, 0, 1);
-    sse2_double_two = _mm_set_pd(2.0, 2.0);
-    sse2_double_m_one = _mm_set_pd(-1.0, -1.0);
-    first = 0;
-}
-
-/**
- * This function represents the recursion formula.
- * @param r output 128-bit
- * @param a a 128-bit part of the internal state array
- * @param b a 128-bit part of the internal state array
- * @param d a 128-bit part of the internal state array (I/O)
- */
-inline static void do_recursion(w128_t *r, w128_t *a, w128_t *b, w128_t *u) {
-    __m128i v, w, x, y, z;
-    
-    x = a->si;
-    z = _mm_slli_epi64(x, DSFMT_SL1);
-    y = _mm_shuffle_epi32(u->si, SSE2_SHUFF);
-    z = _mm_xor_si128(z, b->si);
-    y = _mm_xor_si128(y, z);
-
-    v = _mm_srli_epi64(y, DSFMT_SR);
-    w = _mm_and_si128(y, sse2_param_mask);
-    v = _mm_xor_si128(v, x);
-    v = _mm_xor_si128(v, w);
-    r->si = v;
-    u->si = y;
-}
-#else /* standard C */
-/**
- * This function represents the recursion formula.
- * @param r output 128-bit
- * @param a a 128-bit part of the internal state array
- * @param b a 128-bit part of the internal state array
- * @param lung a 128-bit part of the internal state array (I/O)
- */
-inline static void do_recursion(w128_t *r, w128_t *a, w128_t * b,
-				w128_t *lung) {
-    uint64_t t0, t1, L0, L1;
-
-    t0 = a->u[0];
-    t1 = a->u[1];
-    L0 = lung->u[0];
-    L1 = lung->u[1];
-    lung->u[0] = (t0 << DSFMT_SL1) ^ (L1 >> 32) ^ (L1 << 32) ^ b->u[0];
-    lung->u[1] = (t1 << DSFMT_SL1) ^ (L0 >> 32) ^ (L0 << 32) ^ b->u[1];
-    r->u[0] = (lung->u[0] >> DSFMT_SR) ^ (lung->u[0] & DSFMT_MSK1) ^ t0;
-    r->u[1] = (lung->u[1] >> DSFMT_SR) ^ (lung->u[1] & DSFMT_MSK2) ^ t1;
-}
-#endif
-
 #if defined(HAVE_SSE2)
 /**
  * This function converts the double precision floating point numbers which
@@ -173,7 +74,7 @@ inline static void do_recursion(w128_t *r, w128_t *a, w128_t * b,
  * @param w 128bit stracture of double precision floating point numbers (I/O)
  */
 inline static void convert_c0o1(w128_t *w) {
-    w->sd = _mm_add_pd(w->sd, sse2_double_m_one);
+    w->sd = _mm_add_pd(w->sd, sse2_double_m_one.d128);
 }
 
 /**
@@ -183,7 +84,7 @@ inline static void convert_c0o1(w128_t *w) {
  * @param w 128bit stracture of double precision floating point numbers (I/O)
  */
 inline static void convert_o0c1(w128_t *w) {
-    w->sd = _mm_sub_pd(sse2_double_two, w->sd);
+    w->sd = _mm_sub_pd(sse2_double_two.d128, w->sd);
 }
 
 /**
@@ -193,8 +94,8 @@ inline static void convert_o0c1(w128_t *w) {
  * @param w 128bit stracture of double precision floating point numbers (I/O)
  */
 inline static void convert_o0o1(w128_t *w) {
-    w->si = _mm_or_si128(w->si, sse2_int_one);
-    w->sd = _mm_add_pd(w->sd, sse2_double_m_one);
+    w->si = _mm_or_si128(w->si, sse2_int_one.i128);
+    w->sd = _mm_add_pd(w->sd, sse2_double_m_one.d128);
 }
 #else /* standard C and altivec */
 /**
@@ -237,7 +138,7 @@ inline static void convert_o0o1(w128_t *w) {
  * This function fills the user-specified array with double precision
  * floating point pseudorandom numbers of the IEEE 754 format.
  * @param dsfmt dsfmt state vector.
- * @param array an 128-bit array to be filled by pseudorandom numbers.  
+ * @param array an 128-bit array to be filled by pseudorandom numbers.
  * @param size number of 128-bit pseudorandom numbers to be generated.
  */
 inline static void gen_rand_array_c1o2(dsfmt_t *dsfmt, w128_t *array,
@@ -275,7 +176,7 @@ inline static void gen_rand_array_c1o2(dsfmt_t *dsfmt, w128_t *array,
  * This function fills the user-specified array with double precision
  * floating point pseudorandom numbers of the IEEE 754 format.
  * @param dsfmt dsfmt state vector.
- * @param array an 128-bit array to be filled by pseudorandom numbers.  
+ * @param array an 128-bit array to be filled by pseudorandom numbers.
  * @param size number of 128-bit pseudorandom numbers to be generated.
  */
 inline static void gen_rand_array_c0o1(dsfmt_t *dsfmt, w128_t *array,
@@ -318,7 +219,7 @@ inline static void gen_rand_array_c0o1(dsfmt_t *dsfmt, w128_t *array,
  * This function fills the user-specified array with double precision
  * floating point pseudorandom numbers of the IEEE 754 format.
  * @param dsfmt dsfmt state vector.
- * @param array an 128-bit array to be filled by pseudorandom numbers.  
+ * @param array an 128-bit array to be filled by pseudorandom numbers.
  * @param size number of 128-bit pseudorandom numbers to be generated.
  */
 inline static void gen_rand_array_o0o1(dsfmt_t *dsfmt, w128_t *array,
@@ -361,7 +262,7 @@ inline static void gen_rand_array_o0o1(dsfmt_t *dsfmt, w128_t *array,
  * This function fills the user-specified array with double precision
  * floating point pseudorandom numbers of the IEEE 754 format.
  * @param dsfmt dsfmt state vector.
- * @param array an 128-bit array to be filled by pseudorandom numbers.  
+ * @param array an 128-bit array to be filled by pseudorandom numbers.
  * @param size number of 128-bit pseudorandom numbers to be generated.
  */
 inline static void gen_rand_array_o0c1(dsfmt_t *dsfmt, w128_t *array,
@@ -634,15 +535,12 @@ void dsfmt_chk_init_gen_rand(dsfmt_t *dsfmt, uint32_t seed, int mexp) {
     psfmt = &dsfmt->status[0].u32[0];
     psfmt[idxof(0)] = seed;
     for (i = 1; i < (DSFMT_N + 1) * 4; i++) {
-        psfmt[idxof(i)] = 1812433253UL 
+        psfmt[idxof(i)] = 1812433253UL
 	    * (psfmt[idxof(i - 1)] ^ (psfmt[idxof(i - 1)] >> 30)) + i;
     }
     initial_mask(dsfmt);
     period_certification(dsfmt);
     dsfmt->idx = DSFMT_N64;
-#if defined(HAVE_SSE2)
-    setup_const();
-#endif
 }
 
 /**
@@ -685,7 +583,7 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
     } else {
 	count = size;
     }
-    r = ini_func1(psfmt32[idxof(0)] ^ psfmt32[idxof(mid % size)] 
+    r = ini_func1(psfmt32[idxof(0)] ^ psfmt32[idxof(mid % size)]
 		  ^ psfmt32[idxof((size - 1) % size)]);
     psfmt32[idxof(mid % size)] += r;
     r += key_length;
@@ -693,8 +591,8 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
     psfmt32[idxof(0)] = r;
     count--;
     for (i = 1, j = 0; (j < count) && (j < key_length); j++) {
-	r = ini_func1(psfmt32[idxof(i)] 
-		      ^ psfmt32[idxof((i + mid) % size)] 
+	r = ini_func1(psfmt32[idxof(i)]
+		      ^ psfmt32[idxof((i + mid) % size)]
 		      ^ psfmt32[idxof((i + size - 1) % size)]);
 	psfmt32[idxof((i + mid) % size)] += r;
 	r += init_key[j] + i;
@@ -703,8 +601,8 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
 	i = (i + 1) % size;
     }
     for (; j < count; j++) {
-	r = ini_func1(psfmt32[idxof(i)] 
-		      ^ psfmt32[idxof((i + mid) % size)] 
+	r = ini_func1(psfmt32[idxof(i)]
+		      ^ psfmt32[idxof((i + mid) % size)]
 		      ^ psfmt32[idxof((i + size - 1) % size)]);
 	psfmt32[idxof((i + mid) % size)] += r;
 	r += i;
@@ -713,8 +611,8 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
 	i = (i + 1) % size;
     }
     for (j = 0; j < size; j++) {
-	r = ini_func2(psfmt32[idxof(i)] 
-		      + psfmt32[idxof((i + mid) % size)] 
+	r = ini_func2(psfmt32[idxof(i)]
+		      + psfmt32[idxof((i + mid) % size)]
 		      + psfmt32[idxof((i + size - 1) % size)]);
 	psfmt32[idxof((i + mid) % size)] ^= r;
 	r -= i;
@@ -725,10 +623,11 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
     initial_mask(dsfmt);
     period_certification(dsfmt);
     dsfmt->idx = DSFMT_N64;
-#if defined(HAVE_SSE2)
-    setup_const();
-#endif
 }
 #if defined(__INTEL_COMPILER)
 #  pragma warning(default:981)
+#endif
+
+#if defined(__cplusplus)
+}
 #endif

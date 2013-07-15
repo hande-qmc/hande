@@ -29,31 +29,39 @@ abstract interface
         integer, intent(in) :: idet
         type(excit), intent(in) :: excitation
     end subroutine i_update_dmqmc_estimators
-    subroutine i_spawner(d, parent_sign, nspawned, connection)
+    subroutine i_spawner(rng, d, parent_sign, nspawned, connection)
+        use dSFMT_interface, only: dSFMT_t
         import :: det_info, excit
         implicit none
+        type(dSFMT_t), intent(inout) :: rng
         type(det_info), intent(in) :: d
         integer, intent(in) :: parent_sign
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
     end subroutine i_spawner
-    subroutine i_gen_excit(d, pgen, connection, hmatel)
+    subroutine i_gen_excit(rng, d, pgen, connection, hmatel)
+        use dSFMT_interface, only: dSFMT_t
         import :: det_info, excit, p
         implicit none
+        type(dSFMT_t), intent(inout) :: rng
         type(det_info), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
     end subroutine i_gen_excit
-    subroutine i_gen_excit_finalise(d, connection, hmatel)
+    subroutine i_gen_excit_finalise(rng, d, connection, hmatel)
+        use dSFMT_interface, only: dSFMT_t
         import :: det_info, excit, p
         implicit none
+        type(dSFMT_t), intent(inout) :: rng
         type(det_info), intent(in) :: d
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
     end subroutine i_gen_excit_finalise
-    subroutine i_death(mat, pop, tot_pop, ndeath)
+    subroutine i_death(rng, mat, pop, tot_pop, ndeath)
+        use dSFMT_interface, only: dSFMT_t
         import :: p, lint
         implicit none
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: mat
         integer, intent(inout) :: pop, ndeath
         integer(lint), intent(inout) :: tot_pop
@@ -116,7 +124,6 @@ procedure(i_death), pointer :: death_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
 procedure(i_sub), pointer :: annihilate_spawned_list_ptr => null()
-procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()

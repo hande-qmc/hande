@@ -89,7 +89,6 @@ contains
 
         use calc
         use diagonalisation, only: diagonalise
-        use dSFMT_interface, only: dSFMT_init
         use qmc, only: do_qmc
         use hilbert_space, only: estimate_hilbert_space
         use parallel, only: iproc, parent
@@ -99,20 +98,10 @@ contains
         if (doing_calc(exact_diag+lanczos_diag)) call diagonalise()
 
         if (doing_calc(mc_hilbert_space)) then
-            if (parent) then
-                write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
-                write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
-            end if
-            call dSFMT_init(seed + iproc)
             call estimate_hilbert_space()
         end if
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
-            if (parent) then
-                write (6,'(1X,a3,/,1X,3("-"),/)') 'RNG'
-                write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
-            end if
-            call dSFMT_init(seed + iproc)
             if (doing_calc(simple_fciqmc_calc)) then
                 call init_simple_fciqmc()
                 call do_simple_fciqmc()

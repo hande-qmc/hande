@@ -26,7 +26,7 @@ contains
 ! gen_excit_finalise_hub_k*: provides rest of excitation required to determine
 !                            the sign of the child walkers.
 
-    subroutine gen_excit_init_hub_k(cdet, pgen, connection, abs_hmatel)
+    subroutine gen_excit_init_hub_k(rng, cdet, pgen, connection, abs_hmatel)
 
         ! Select orbitals from which to excite electrons and hence the
         ! generation probability (which is independent of the virtual orbitals
@@ -35,6 +35,8 @@ contains
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: from_orb field is set to be the orbitals from which
@@ -47,8 +49,10 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use system, only: hub_k_coulomb
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(out) :: connection
         real(p), intent(out) :: pgen, abs_hmatel
 
@@ -58,7 +62,7 @@ contains
         ! momentum space formulation of the Hubbard model.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, &
+        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, &
                                  connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Calculate the generation probability of the excitation.
@@ -90,7 +94,7 @@ contains
 
     end subroutine gen_excit_init_hub_k
 
-    subroutine gen_excit_finalise_hub_k(cdet, connection, hmatel)
+    subroutine gen_excit_finalise_hub_k(rng, cdet, connection, hmatel)
 
         ! Complete the excitation started in gen_excit_hub_k:
         !    * select the virtual orbitals electrons are excited into.
@@ -100,6 +104,7 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
+        !    rng: random number generator.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
         !        On input the from_orb field must be given.  On output the
@@ -113,8 +118,10 @@ contains
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use momentum_symmetry, only: sym_table
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 
@@ -128,7 +135,7 @@ contains
         ! 4. Well, I suppose we should find out which determinant we're spawning
         ! on...
         connection%nexcit = 2
-        call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, &
+        call choose_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, &
                                  connection%to_orb(1), connection%to_orb(2))
 
         ! 5. Is connecting matrix element positive (in which case we spawn with
@@ -138,7 +145,7 @@ contains
 
     end subroutine gen_excit_finalise_hub_k
 
-    subroutine gen_excit_init_hub_k_no_renorm(cdet, pgen, connection, abs_hmatel)
+    subroutine gen_excit_init_hub_k_no_renorm(rng, cdet, pgen, connection, abs_hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -154,6 +161,8 @@ contains
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -163,13 +172,14 @@ contains
         !        the Hubbard model in a Bloch basis.
 
         use determinants, only: det_info
-        use dSFMT_interface, only:  genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(out) :: connection
         real(p), intent(out) :: pgen, abs_hmatel
 
@@ -180,13 +190,13 @@ contains
         ! momentum space formulation of the Hubbard model.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
+        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Chose a random pair of spin orbitals to excite to.
         ! WARNING: if the implementation of generating the excitation is
         ! changed, the generation probability will also (probably) need to
         ! be altered.
-        call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+        call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
         connection%nexcit = 2
 
         if (allowed_excitation) then
@@ -233,7 +243,7 @@ contains
 
     end subroutine gen_excit_init_hub_k_no_renorm
 
-    subroutine gen_excit_finalise_hub_k_no_renorm(cdet, connection, hmatel)
+    subroutine gen_excit_finalise_hub_k_no_renorm(rng, cdet, connection, hmatel)
 
         ! Complete the excitation started in gen_excit_hub_k_no_renorm:
         !    * find the connecting Hamiltonian matrix element.
@@ -243,6 +253,8 @@ contains
         !        from.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
+        ! In/Out:
+        !    rng: random number generator (interface compatibility only).
         ! Out:
         !    hmatel: < D | H | D' >, the value of the Hamiltonian matrix element
         !        between a determinant and the connected determinant in the Hubbard
@@ -251,8 +263,10 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(inout) :: connection ! inout for interface compatibility
         real(p), intent(out) :: hmatel
 
@@ -267,7 +281,7 @@ contains
 
 !--- Excitation generation (see also split excitation generators) ---
 
-    subroutine gen_excit_hub_k(cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_k(rng, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -276,6 +290,8 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! Out:
+        ! In/Out:
+        !    rng: random number generator.
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
@@ -288,8 +304,10 @@ contains
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
@@ -308,10 +326,10 @@ contains
         connection%nexcit = 2
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
+        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Select a random pair of spin orbitals to excite to.
-        call choose_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2))
+        call choose_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2))
 
         ! 3. Calculate the generation probability of the excitation.
         ! For one-band systems this depends only upon the orbitals excited from.
@@ -322,7 +340,7 @@ contains
 
     end subroutine gen_excit_hub_k
 
-    subroutine gen_excit_hub_k_no_renorm(cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_k_no_renorm(rng, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -338,6 +356,8 @@ contains
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -351,8 +371,10 @@ contains
         use fciqmc_data, only: tau
         use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
@@ -362,10 +384,10 @@ contains
         ! See notes in gen_excit_init_hub_k and gen_excit_hub_k for more details regarding this algorithm.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
+        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Chose a random pair of spin orbitals to excite to.
-        call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+        call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
 
         if (allowed_excitation) then
 
@@ -392,7 +414,7 @@ contains
 
 !--- Select random orbitals involved in a valid double excitation ---
 
-    subroutine choose_ij_k(occ_list, i ,j, ij_sym, ij_spin)
+    subroutine choose_ij_k(rng, occ_list, i ,j, ij_sym, ij_spin)
 
         ! Randomly choose a pair of spin-orbitals for 1-band systems with
         ! Bloch orbitals.
@@ -402,6 +424,8 @@ contains
         !
         ! In:
         !    occ_list: integer list of occupied spin-orbitals in a determinant.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    i, j: randomly selected spin-orbitals.
         !    ij_sym: symmetry label of the (i,j) combination.
@@ -412,9 +436,10 @@ contains
         use basis, only: basis_fns
         use momentum_symmetry, only: sym_table
         use system, only: nel
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         integer, intent(in) :: occ_list(nel)
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i,j, ij_sym, ij_spin
         integer :: ind, spin_sum
         real(dp) :: r
@@ -448,7 +473,7 @@ contains
         ! excite with half the calls to the random number generator, which
         ! represents a substantial saving. :-)
 
-        r = genrand_real2()
+        r = get_rand_close_open(rng)
         ind = int(r*nel*(nel-1)/2) + 1
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
@@ -480,7 +505,7 @@ contains
 
     end subroutine choose_ij_k
 
-    subroutine choose_ij_hub_k(occ_list_alpha, occ_list_beta, i ,j, ij_sym)
+    subroutine choose_ij_hub_k(rng, occ_list_alpha, occ_list_beta, i ,j, ij_sym)
 
         ! Randomly choose a pair of spin-orbitals.
         !
@@ -492,15 +517,18 @@ contains
         ! In:
         !    occ_list_alpha: Integer list of occupied alpha spin-orbitals.
         !    occ_list_beta: Integer list of occupied beta spin-orbitals.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    i, j: randomly selected spin-orbitals.
         !    ij_sym: symmetry label of the (i,j) combination.
 
         use momentum_symmetry, only: sym_table
         use system, only: nalpha, nbeta
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         integer, intent(in) :: occ_list_alpha(nalpha), occ_list_beta(nbeta)
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i,j, ij_sym
         integer :: ind
         real(dp) :: r
@@ -520,7 +548,7 @@ contains
         !  i = floor( (p-1)/n_j ) + 1
         !  j = p - (i-1)*n_j
 
-        r = genrand_real2()
+        r = get_rand_close_open(rng)
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
@@ -539,7 +567,7 @@ contains
 
     end subroutine choose_ij_hub_k
 
-    subroutine choose_ab_hub_k(f, unocc_list_alpha, ij_sym, a, b)
+    subroutine choose_ab_hub_k(rng, f, unocc_list_alpha, ij_sym, a, b)
 
         ! Choose a random pair of (a,b) unoccupied virtual spin-orbitals into
         ! which electrons are excited.
@@ -551,15 +579,19 @@ contains
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
         !    ij_sym: symmetry spanned by the (i,j) combination of unoccupied
         !        spin-orbitals into which electrons are excited.
-        ! Returns:
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
         !    a,b: virtual spin orbitals involved in the excitation.
 
         use basis, only: basis_length
         use system, only: nvirt_alpha
+        use dSFMT_interface, only:  dSFMT_t
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
         integer, intent(in) :: ij_sym
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
 
         logical :: allowed_excitation
@@ -570,7 +602,7 @@ contains
 
             ! Until we find an allowed excitation.
 
-            call find_ab_hub_k(f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+            call find_ab_hub_k(rng, f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
 
         end do
 
@@ -578,7 +610,7 @@ contains
 
 !--- Select random orbitals in double excitations ---
 
-    subroutine find_ab_hub_k(f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+    subroutine find_ab_hub_k(rng, f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
 
         ! Choose a random pair of (a,b) spin-orbitals.
         ! (a,b) are chosen such that the (i,j)->(a,b) excitation is symmetry-
@@ -591,19 +623,22 @@ contains
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
         !    ij_sym: symmetry spanned by the (i,j) combination of unoccupied
         !        spin-orbitals into which electrons are excited.
-        ! Returns:
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
         !    a,b: spin orbitals involved in the excitation.
         !    allowed_excitation: is true if the excitation (i,j)->(a,b) is
         !        allowed (i.e. both a and b are indeed spin orbitals).
 
         use basis, only: basis_length, bit_lookup, nbasis
-        use dSFMT_interface, only:  genrand_real2
+        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use system, only: nvirt_alpha
         use momentum_symmetry, only: sym_table, inv_sym
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
         integer, intent(in) :: ij_sym
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
 
@@ -628,7 +663,7 @@ contains
         ! random number just to find which unoccupied alpha orbital is in
         ! the excitation.
 
-        r = int(genrand_real2()*(nvirt_alpha)) + 1
+        r = int(get_rand_close_open(rng)*(nvirt_alpha)) + 1
 
         a = unocc_list_alpha(r)
         ! Find corresponding beta orbital which satisfies conservation

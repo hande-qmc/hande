@@ -1,5 +1,6 @@
-/** 
- * @file dSFMT.h 
+#pragma once
+/**
+ * @file dSFMT.h
  *
  * @brief double precision SIMD oriented Fast Mersenne Twister(dSFMT)
  * pseudorandom number generator based on IEEE 754 format.
@@ -9,6 +10,9 @@
  *
  * Copyright (C) 2007, 2008 Mutsuo Saito, Makoto Matsumoto and
  * Hiroshima University. All rights reserved.
+ * Copyright (C) 2012 Mutsuo Saito, Makoto Matsumoto,
+ * Hiroshima University and The University of Tokyo.
+ * All rights reserved.
  *
  * The new BSD License is applied to this software.
  * see LICENSE.txt
@@ -18,7 +22,7 @@
  * and you have to define PRIu64 and PRIx64 in this file as follows:
  * @verbatim
  typedef unsigned int uint32_t
- typedef unsigned long long uint64_t  
+ typedef unsigned long long uint64_t
  #define PRIu64 "llu"
  #define PRIx64 "llx"
 @endverbatim
@@ -30,6 +34,9 @@
 
 #ifndef DSFMT_H
 #define DSFMT_H
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 #include <stdio.h>
 #include <assert.h>
@@ -43,7 +50,7 @@
 /*-----------------
   BASIC DEFINITIONS
   -----------------*/
-/* Mersenne Exponent. The period of the sequence 
+/* Mersenne Exponent. The period of the sequence
  *  is a multiple of 2^DSFMT_MEXP-1.
  * #define DSFMT_MEXP 19937 */
 /** DSFMT generator has an internal state array of 128-bit integers,
@@ -117,7 +124,7 @@ typedef unsigned __int64 uint64_t;
 #endif
 
 #ifndef UINT64_C
-#  define UINT64_C(v) (v ## ULL) 
+#  define UINT64_C(v) (v ## ULL)
 #endif
 
 /*------------------------------------------
@@ -311,7 +318,7 @@ inline static double dsfmt_gv_genrand_close_open(void) {
  * This function generates and returns double precision pseudorandom
  * number which distributes uniformly in the range (0, 1].
  * dsfmt_init_gen_rand() or dsfmt_init_by_array() must be called
- * before this function. 
+ * before this function.
  * @param dsfmt dsfmt internal state date
  * @return double precision floating point pseudorandom number
  */
@@ -619,5 +626,9 @@ inline static void fill_array_close1_open2(double array[], int size) {
     dsfmt_gv_fill_array_close1_open2(array, size);
 }
 #endif /* DSFMT_DO_NOT_USE_OLD_NAMES */
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* DSFMT_H */

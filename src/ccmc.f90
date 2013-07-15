@@ -182,6 +182,7 @@ contains
         ! in fciqmc_main.
 
         use checking, only: check_allocate, check_deallocate
+        use dSFMT_interface, only: dSFMT_t
         use errors, only: stop_all
         ! TODO: parallelisation.
         use parallel
@@ -206,6 +207,7 @@ contains
         integer :: nspawned, ndeath, ierr
         type(excit) :: connection
         type(cluster_t), target :: cluster
+        type(dSFMT_t) :: rng
 
         logical :: soft_exit
 
@@ -288,7 +290,7 @@ contains
                 ! processor.
                 do iattempt = 1, nattempts
 
-                    call select_cluster(nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
+                    call select_cluster(rng, nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
                                         cdet, cluster)
 
                     if (cluster%excitation_level <= truncation_level+2) then
@@ -304,7 +306,7 @@ contains
                         ! the cluster.
                         call update_proj_energy_ptr(cdet, cluster%cluster_to_det_sign*cluster%amplitude/cluster%pselect)
 
-                        call spawner_ccmc(cdet, cluster, nspawned, connection)
+                        call spawner_ccmc(rng, cdet, cluster, nspawned, connection)
 
                         if (nspawned /= 0) then
                             call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
@@ -313,7 +315,7 @@ contains
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
-                        if (cluster%excitation_level <= truncation_level) call stochastic_ccmc_death(cdet, cluster)
+                        if (cluster%excitation_level <= truncation_level) call stochastic_ccmc_death(rng, cdet, cluster)
 
                     end if
 
@@ -365,7 +367,7 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(nattempts, D0_pos, cumulative_excip_pop, tot_excip_pop, max_size, cdet, cluster)
+    subroutine select_cluster(rng, nattempts, D0_pos, cumulative_excip_pop, tot_excip_pop, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -387,6 +389,7 @@ contains
         ! in the same format).
 
         ! In/Out:
+        !    rng: random number generator.
         !    cdet: information about the cluster of excitors applied to the
         !        reference determinant.  This is a bare det_info variable on input
         !        with only the relevant fields allocated.  On output the
@@ -403,7 +406,7 @@ contains
         use determinants, only: det_info
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, initiator_population
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
@@ -412,6 +415,7 @@ contains
         integer(lint), intent(in) :: nattempts
         integer, intent(in) :: D0_pos
         integer, intent(in) :: cumulative_excip_pop(:), tot_excip_pop, max_size
+        type(dSFMT_t), intent(inout) :: rng
         type(det_info), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
@@ -437,7 +441,7 @@ contains
         ! Coupled Cluster Theory' (unpublished), each size, n_s, has probability
         ! p(n_s) = 1/2^(n_s+1), n_s=0,truncation_level and p(truncation_level+2)
         ! is such that \sum_{n_s=0}^{truncation_level+2} p(n_s) = 1.
-        rand = genrand_real2()
+        rand = get_rand_close_open(rng)
         psize = 0.0_p
         cluster%nexcitors = -1
         do i = 0, max_size-1
@@ -488,7 +492,7 @@ contains
             ! population on that excitor.
             do i = 1, cluster%nexcitors
                 ! Select a position in the excitors list.
-                pop = int(genrand_real2()*tot_excip_pop) + 1 ! TODO: adjust for parallel
+                pop = int(get_rand_close_open(rng)*tot_excip_pop) + 1 ! TODO: adjust for parallel
                 call binary_search(cumulative_excip_pop, pop, 1, tot_walkers, hit, pos)
                 ! Not allowed to select the reference as it is not an excitor.
                 ! Because we treat (for the purposes of the cumulative
@@ -551,7 +555,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine spawner_ccmc(cdet, cluster, nspawn, connection)
+    subroutine spawner_ccmc(rng, cdet, cluster, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -577,6 +581,8 @@ contains
         !        particular, we use the amplitude, cluster_to_det_sign and pselect
         !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
         !        the excitation generator.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -586,6 +592,7 @@ contains
         use basis, only: basis_length
         use ccmc_data, only: cluster_t
         use determinants, only: det_info
+        use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr
@@ -593,6 +600,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
@@ -608,14 +616,14 @@ contains
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr(cdet, pgen, connection, hmatel)
+        call gen_excit_ptr(rng, cdet, pgen, connection, hmatel)
 
         ! 2, Apply additional factors.
         hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
 
         if (nspawn /= 0) then
             ! 4. Convert the random excitation from a determinant into an
@@ -640,7 +648,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(cdet, cluster)
+    subroutine stochastic_ccmc_death(rng, cdet, cluster)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -658,6 +666,8 @@ contains
         !    amplitude: amplitude of cluster.
         !    pcluster: Overall probabilites of selecting this cluster, ie
         !        n_sel.p_s.p_clust.
+        ! In/Out:
+        !    rng: random number generator.
 
         use ccmc_data, only: cluster_t
         use determinants, only: det_info
@@ -665,10 +675,11 @@ contains
         use excitations, only: excit, get_excitation_level
         use proc_pointers, only: sc0_ptr
         use spawning, only: create_spawned_particle_truncated
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
+        type(dSFMT_t), intent(inout) :: rng
 
         real(p) :: pdeath, KiiAi
         integer :: nkill
@@ -689,7 +700,7 @@ contains
 
         ! Stochastic death...
         pdeath = pdeath - nkill
-        if (pdeath > genrand_real2()) then
+        if (pdeath > get_rand_close_open(rng)) then
             ! Increase magnitude of nkill...
             nkill = nkill + 1
         end if

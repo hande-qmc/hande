@@ -18,7 +18,7 @@ contains
 
 !--- Excitation generators: Hubbard model ---
 
-    subroutine gen_excit_hub_real(cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_real(rng, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -26,6 +26,8 @@ contains
         ! In:
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -37,8 +39,10 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
@@ -49,7 +53,7 @@ contains
         connection%nexcit = 1
 
         ! 1. Chose a random connected excitation.
-        call choose_ia_real(cdet%occ_list, cdet%f, connection%from_orb(1), connection%to_orb(1), nvirt_avail)
+        call choose_ia_real(rng, cdet%occ_list, cdet%f, connection%from_orb(1), connection%to_orb(1), nvirt_avail)
 
         ! 2. Find probability of generating this excited determinant.
         pgen = calc_pgen_real(cdet%occ_list, cdet%f, nvirt_avail)
@@ -59,7 +63,7 @@ contains
 
     end subroutine gen_excit_hub_real
 
-    subroutine gen_excit_hub_real_no_renorm(cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_real_no_renorm(rng, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -77,6 +81,8 @@ contains
         ! In:
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -86,7 +92,7 @@ contains
         !    formulation of the Hubbard model.
 
         use determinants, only: det_info
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit
         use system, only: nel
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
@@ -95,6 +101,7 @@ contains
         use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(out) :: connection
         real(p), intent(out) :: pgen, hmatel
 
@@ -103,10 +110,10 @@ contains
         ! 1. Generate random excitation from cdet and probability of spawning
         ! there.
         ! Random selection of i.
-        i = int(genrand_real2()*nel) + 1
+        i = int(get_rand_close_open(rng)*nel) + 1
         connection%from_orb(1) = cdet%occ_list(i)
         ! Select a at random from one of the connected orbitals.
-        i = int(genrand_real2()*connected_sites(0,connection%from_orb(1)) + 1)
+        i = int(get_rand_close_open(rng)*connected_sites(0,connection%from_orb(1)) + 1)
         connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
 
         ipos = bit_lookup(1, connection%to_orb(1))
@@ -137,7 +144,7 @@ contains
 
 !--- Excitation generators: Heisenberg model ---
 
-    subroutine gen_excit_heisenberg(cdet, pgen, connection, hmatel)
+    subroutine gen_excit_heisenberg(rng, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -145,6 +152,8 @@ contains
         ! In:
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -156,8 +165,10 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use system, only: J_coupling
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
@@ -169,7 +180,7 @@ contains
         ! 1. Chose a random connected excitation.
         ! (Use real space hubbard model procedure, since condition for
         ! connected 'determinants' is the same)
-        call choose_ia_real(cdet%occ_list, cdet%f, connection%from_orb(1), connection%to_orb(1), nvirt_avail)
+        call choose_ia_real(rng, cdet%occ_list, cdet%f, connection%from_orb(1), connection%to_orb(1), nvirt_avail)
 
         ! 2. Find probability of generating this excited determinant.
         ! Again, same procedure for Heisenberg as for real space Hubbard
@@ -181,7 +192,7 @@ contains
 
     end subroutine gen_excit_heisenberg
 
-    subroutine gen_excit_heisenberg_no_renorm(cdet, pgen, connection, hmatel)
+    subroutine gen_excit_heisenberg_no_renorm(rng, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -199,6 +210,8 @@ contains
         ! In:
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -213,9 +226,10 @@ contains
         use hubbard_real, only: connected_sites
         use system, only: J_coupling, nel
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
@@ -223,11 +237,11 @@ contains
 
         ! 1. Chose a random connected excitation.
         ! Random selection of i (an up spin).
-        i = int(genrand_real2()*nel) + 1
+        i = int(get_rand_close_open(rng)*nel) + 1
         connection%from_orb(1) = cdet%occ_list(i)
         ! Select a at random from one of the connected sites.
         ! nb: a might already be up.
-        i = int(genrand_real2()*connected_sites(0,connection%from_orb(1)) + 1)
+        i = int(get_rand_close_open(rng)*connected_sites(0,connection%from_orb(1)) + 1)
         connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
 
         ! Is a already up?  If so, not an allowed excitation: return a null
@@ -263,7 +277,7 @@ contains
 
 !--- Selecting random orbitals ---
 
-    subroutine choose_ia_real(occ_list, f, i, a, nvirt_avail)
+    subroutine choose_ia_real(rng, occ_list, f, i, a, nvirt_avail)
 
         ! Find a random connected excitation from a Slater determinant for the
         ! Hubbard model in the real space formulation.
@@ -274,14 +288,16 @@ contains
         !    f: bit string representation of the Slater determinant.
         !    occ_list: integer list of the occupied spin-orbitals in
         !        the Slater determinant.
-        ! Returns:
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
         !    i,a: spin orbitals excited from/to respectively.
         !    nvirt_avail: the number of virtual orbitals which can be excited
         !        into from the i-th orbital.
 
         use basis, only: basis_length, bit_lookup, nbasis
 
-        use dSFMT_interface, only:  genrand_real2
+        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
 
         use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
@@ -290,6 +306,7 @@ contains
 
         integer, intent(in) :: occ_list(nel)
         integer(i0), intent(in) :: f(basis_length)
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a, nvirt_avail
         integer(i0) :: virt_avail(basis_length)
         integer :: ivirt, ipos, iel, virt(3*ndim) ! 3*ndim to allow for triangular lattices; minor memory waste for other cases is irrelevant!
@@ -299,7 +316,7 @@ contains
             ! excitation.
 
             ! Random selection of i.
-            i = int(genrand_real2()*nel) + 1
+            i = int(get_rand_close_open(rng)*nel) + 1
             i = occ_list(i)
 
             ! Does this have at least one allowed excitation?
@@ -331,7 +348,7 @@ contains
                 virt(nvirt_avail) = connected_sites(ivirt,i)
             end if
         end do
-        a = virt(int(genrand_real2()*nvirt_avail) + 1)
+        a = virt(int(get_rand_close_open(rng)*nvirt_avail) + 1)
 
     end subroutine choose_ia_real
 

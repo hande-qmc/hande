@@ -30,8 +30,10 @@ contains
         use system, only: nel
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
-        use dSFMT_interface, only: dSFMT_init
+        use system, only: system_type, heisenberg
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: int_fmt
+        use errors, only: stop_all
 
         integer :: idet, ireport, icycle, iparticle
         integer :: beta_cycle
@@ -43,6 +45,7 @@ contains
         integer :: spawning_end
         logical :: soft_exit
         real :: t1, t2
+        type(dSFMT_t) :: rng
 
         ! Allocate det_info components. We need two cdet objects
         ! for each 'end' which may be spawned from in the DMQMC algorithm.
@@ -76,19 +79,25 @@ contains
             ! start of every iteration. Pick orbitals randomly, each
             ! with equal probability, so that when electrons are placed
             ! on these orbitals they will have the correct spin and symmetry.
-            call dmqmc_initial_distribution_ptr()
+            ! Initial particle distribution.
+            select case(system_type)
+            case(heisenberg)
+                call random_distribution_heisenberg(rng)
+            case default
+                call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
+            end select
 
             call direct_annihilation()
 
             if (beta_cycle .ne. 1 .and. parent) then
                 write (6,'(a32,i7)') &
                        " # Resetting beta... Beta loop =", beta_cycle
-                ! Reset the random number generator with seed = seed + 1
-                seed = seed + 1
-                call dSFMT_init(seed + iproc)
                 write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
-                    " # Resetting random number generator with a seed of:", seed, "."
+                    " # Resetting random number generator with a seed of:", seed+iproc+beta_cycle-1, "."
             end if
+            ! Reset the random number generator with seed = seed + 1 (each
+            ! iteration)
+            call dSFMT_init(seed+iproc+beta_cycle-1, 50000, rng)
 
             nparticles_old = nint(D0_population)
 
@@ -130,7 +139,7 @@ contains
                             ! Spawn from the first end.
                             spawning_end = 1
                             ! Attempt to spawn.
-                            call spawner_ptr(cdet1, walker_population(1,idet), nspawned, connection)
+                            call spawner_ptr(rng, cdet1, walker_population(1,idet), nspawned, connection)
                             ! Spawn if attempt was successful.
                             if (nspawned /= 0) then
                                 call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
@@ -138,7 +147,7 @@ contains
 
                             ! Now attempt to spawn from the second end.
                             spawning_end = 2
-                            call spawner_ptr(cdet2, walker_population(1,idet), nspawned, connection)
+                            call spawner_ptr(rng, cdet2, walker_population(1,idet), nspawned, connection)
                             if (nspawned /= 0) then
                                 call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
                             end if
@@ -149,7 +158,7 @@ contains
                         ! current walker. We do both of these at once by using walker_data(1,idet)
                         ! which, when running a DMQMC algorithm, stores the average of the two diagonal
                         ! elements corresponding to the two indicies of the density matrix (the two ends).
-                        call stochastic_death(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                        call stochastic_death(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
                     end do
 
                     ! Add the spawning rate (for the processor) to the running

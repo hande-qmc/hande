@@ -13,7 +13,7 @@ contains
 
 !--- Excitation generation ---
 
-    subroutine gen_excit_mol(cdet, pgen, connection, hmatel)
+    subroutine gen_excit_mol(rng, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -23,6 +23,8 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -36,9 +38,10 @@ contains
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
         logical :: allowed_excitation
@@ -47,10 +50,10 @@ contains
 
         ! 1. Select single or double.
 
-        if (genrand_real2() < pattempt_single) then
+        if (get_rand_close_open(rng) < pattempt_single) then
 
             ! 2a. Select orbital to excite from and orbital to excit into.
-            call choose_ia_mol(cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
+            call choose_ia_mol(rng, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
                                connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
 
@@ -75,8 +78,8 @@ contains
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
-            call choose_ij_mol(cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
-            call choose_ab_mol(cdet%f, ij_sym, ij_spin, cdet%symunocc, connection%to_orb(1), &
+            call choose_ij_mol(rng, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
+            call choose_ab_mol(rng, cdet%f, ij_sym, ij_spin, cdet%symunocc, connection%to_orb(1), &
                                connection%to_orb(2), allowed_excitation)
             connection%nexcit = 2
 
@@ -106,7 +109,7 @@ contains
 
     end subroutine gen_excit_mol
 
-    subroutine gen_excit_mol_no_renorm(cdet, pgen, connection, hmatel)
+    subroutine gen_excit_mol_no_renorm(rng, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -123,6 +126,8 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    pgen: probability of generating the excited determinant from cdet.
         !    connection: excitation connection between the current determinant
@@ -137,9 +142,10 @@ contains
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(det_info), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
@@ -148,10 +154,10 @@ contains
 
         ! 1. Select single or double.
 
-        if (genrand_real2() < pattempt_single) then
+        if (get_rand_close_open(rng) < pattempt_single) then
 
             ! 2a. Select orbital to excite from and orbital to excit into.
-            call find_ia_mol(cdet%f, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), allowed_excitation)
+            call find_ia_mol(rng, cdet%f, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
 
             if (allowed_excitation) then
@@ -172,8 +178,8 @@ contains
         else
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
-            call choose_ij_mol(cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
-            call find_ab_mol(cdet%f, ij_sym, ij_spin, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+            call choose_ij_mol(rng, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
+            call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
             connection%nexcit = 2
 
             if (allowed_excitation) then
@@ -199,7 +205,7 @@ contains
 
 !--- Select random orbitals involved in a valid single excitation ---
 
-    subroutine choose_ia_mol(f, occ_list, symunocc, i, a, allowed_excitation)
+    subroutine choose_ia_mol(rng, f, occ_list, symunocc, i, a, allowed_excitation)
 
         ! Randomly choose a single excitation, i->a, of a determinant for
         ! molecular systems.
@@ -211,6 +217,8 @@ contains
         !    symunocc: number of unoccupied orbitals of each spin and
         !        irreducible representation.  The same indexing scheme as
         !        nbasis_sym_spin (in the point_group_symmetry module) is used.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    i: orbital in determinant from which an electron is excited.
         !    a: previously unoccupied orbital into which an electron is excited.
@@ -223,10 +231,11 @@ contains
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns
         use system, only: nel, sym0
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: occ_list(nel), symunocc(:,sym0:)
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a
         logical, intent(out) :: allowed_excitation
 
@@ -250,7 +259,7 @@ contains
 
             do
                 ! Select an occupied orbital at random.
-                i = occ_list(int(genrand_real2()*nel)+1)
+                i = occ_list(int(get_rand_close_open(rng)*nel)+1)
                 ! Conserve symmetry (spatial and spin) in selecting a.
                 ims = (basis_fns(i)%Ms+3)/2
                 isym = basis_fns(i)%sym
@@ -261,7 +270,7 @@ contains
                         ! especially as the number of basis functions is usually
                         ! much larger than the number of electrons.
                         do
-                            ind = int(nbasis_sym_spin(ims,isym)*genrand_real2())+1
+                            ind = int(nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
                             a = sym_spin_basis_fns(ind,ims,isym)
                             if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) exit
                         end do
@@ -275,13 +284,15 @@ contains
 
 !--- Select random orbitals involved in a valid double excitation ---
 
-    subroutine choose_ij_mol(occ_list, i, j, ij_sym, ij_spin)
+    subroutine choose_ij_mol(rng, occ_list, i, j, ij_sym, ij_spin)
 
         ! Randomly select two occupied orbitals in a determinant from which
         ! electrons are excited as part of a double excitation.
         !
         ! In:
         !    occ_list: integer list of occupied spin-orbitals in the determinant.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    i, j: orbitals in determinant from which two electrons are excited.
         !        Note that i,j are ordered such that i<j.
@@ -296,9 +307,10 @@ contains
         use system, only: nel
         use point_group_symmetry, only: cross_product_pg_basis
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         integer, intent(in) :: occ_list(nel)
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, j, ij_sym, ij_spin
 
         integer :: ind
@@ -306,7 +318,7 @@ contains
         ! See comments in choose_ij_k for how the occupied orbitals are indexed
         ! to allow one random number to decide the ij pair.
 
-        ind = int(genrand_real2()*nel*(nel-1)/2) + 1
+        ind = int(get_rand_close_open(rng)*nel*(nel-1)/2) + 1
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
@@ -327,7 +339,7 @@ contains
 
     end subroutine choose_ij_mol
 
-    subroutine choose_ab_mol(f, sym, spin, symunocc, a, b, allowed_excitation)
+    subroutine choose_ab_mol(rng, f, sym, spin, symunocc, a, b, allowed_excitation)
 
         ! Select a random pair of orbitals to excite into as part of a double
         ! excitation, given that the (i,j) pair of orbitals to excite from have
@@ -342,6 +354,8 @@ contains
         !    symunocc: number of unoccupied orbitals of each spin and
         !        irreducible representation.  The same indexing scheme as
         !        nbasis_sym_spin (in the point_group_symmetry module) is used.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    a, b: unoccupied orbitals into which electrons are excited.
         !        Note that a,b are ordered such that a<b.
@@ -354,10 +368,11 @@ contains
         use system, only: nel, sym0, sym_max
         use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: sym, spin, symunocc(:,sym0:)
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
 
@@ -430,7 +445,7 @@ contains
 
             do
                 ! Find a.  See notes in find_ab_mol.
-                a = int(genrand_real2()*na) + 1
+                a = int(get_rand_close_open(rng)*na) + 1
                 ! convert to down or up orbital
                 a = fac*a-shift
                 ! If a is unoccupied and there's a possbible b, then have found
@@ -444,7 +459,7 @@ contains
                             (symunocc(imsb,isymb) == 1 .and. (isymb /= basis_fns(a)%sym .or. spin == 0)) ) then
                         ! Possible b.  Find it.
                         do
-                            ind = int(nbasis_sym_spin(imsb,isymb)*genrand_real2())+1
+                            ind = int(nbasis_sym_spin(imsb,isymb)*get_rand_close_open(rng))+1
                             b = sym_spin_basis_fns(ind,imsb,isymb)
                             ! If b is unoccupied and is different from a then
                             ! we've found the excitation.
@@ -468,7 +483,7 @@ contains
 
 !--- Select random orbitals in single excitations ---
 
-    subroutine find_ia_mol(f, occ_list, i, a, allowed_excitation)
+    subroutine find_ia_mol(rng, f, occ_list, i, a, allowed_excitation)
 
         ! Randomly choose a single excitation, i->a, of a determinant for
         ! molecular systems.  This routine does not reject a randomly selected
@@ -481,6 +496,8 @@ contains
         !    f: bit string representation of the Slater determinant from which
         !        an electron is excited.
         !    occ_list: integer list of occupied spin-orbitals in the determinant.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    i: orbital in determinant from which an electron is excited.
         !    a: previously unoccupied orbital into which an electron is excited.
@@ -493,22 +510,23 @@ contains
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns
         use system, only: nel
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: occ_list(nel)
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a
         logical, intent(out) :: allowed_excitation
 
         integer :: ims, isym, ind
 
         ! Select an occupied orbital at random.
-        i = occ_list(int(genrand_real2()*nel)+1)
+        i = occ_list(int(get_rand_close_open(rng)*nel)+1)
 
         ! Conserve symmetry (spatial and spin) in selecting a.
         ims = (basis_fns(i)%Ms+3)/2
         isym = basis_fns(i)%sym
-        ind = int(nbasis_sym_spin(ims,isym)*genrand_real2())+1
+        ind = int(nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
         if (nbasis_sym_spin(ims,isym) == 0) then
             ! No orbitals with the correct symmetry.
             allowed_excitation = .false.
@@ -523,7 +541,7 @@ contains
 
 !--- Select random orbitals in double excitations ---
 
-    subroutine find_ab_mol(f, sym, spin, a, b, allowed_excitation)
+    subroutine find_ab_mol(rng, f, sym, spin, a, b, allowed_excitation)
 
         ! Select a random pair of orbitals to excite into as part of a double
         ! excitation, given that the (i,j) pair of orbitals to excite from have
@@ -543,6 +561,8 @@ contains
         !    sym: irreducible representation spanned by the (i,j) codensity.
         !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
         !        and j are down, +2 if both are up and 0 otherwise.
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    a, b: unoccupied orbitals into which electrons are excited.
         !        Note that a,b are ordered such that a<b.
@@ -555,10 +575,11 @@ contains
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym
         use system, only: nel
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: sym, spin
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
 
@@ -595,7 +616,7 @@ contains
             ! running a calculation where there exists no virtual
             ! orbitals of a given spin.
             ! random integer between 1 and # possible a orbitals.
-            a = int(genrand_real2()*na) + 1
+            a = int(get_rand_close_open(rng)*na) + 1
             ! convert to down orbital (ie odd integer between 1 and
             ! nbasis-1) or up orbital (ie even integer between 2 and nbasis)
             ! or to any orbital.
@@ -619,7 +640,7 @@ contains
             allowed_excitation = .false.
         else
             do
-                ind = int(nbasis_sym_spin(ims,isym)*genrand_real2())+1
+                ind = int(nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
                 b = sym_spin_basis_fns(ind,ims,isym)
                 if (b /= a) exit
             end do

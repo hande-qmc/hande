@@ -129,14 +129,21 @@ contains
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
+        use calc, only: seed
         use determinant_enumeration, only: ndets
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use energy_evaluation, only: update_shift
+        use parallel, only: parent, iproc
+        use utils, only: rng_init_info
 
         integer :: ireport, icycle, iwalker, ipart
         integer(lint) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
+        type(dSFMT_t) :: rng
+
+        if (parent) call rng_init_info(seed+iproc)
+        call dSFMT_init(seed+iproc, 50000, rng)
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -175,10 +182,10 @@ contains
                     do ipart = 1, abs(walker_population(1,iwalker))
                         ! Attempt to spawn from the current particle onto all
                         ! connected determinants.
-                        call attempt_spawn(iwalker)
+                        call attempt_spawn(rng, iwalker)
                     end do
 
-                    call simple_death(iwalker)
+                    call simple_death(rng, iwalker)
 
                 end do
 
@@ -225,7 +232,7 @@ contains
 
     end subroutine do_simple_fciqmc
 
-    subroutine attempt_spawn(iwalker)
+    subroutine attempt_spawn(rng, iwalker)
 
         ! Simulate spawning part of FCIQMC algorithm.
         ! We attempt to spawn on all determinants connected to the current
@@ -234,10 +241,13 @@ contains
         ! only gets one opportunity per FCIQMC cycle to spawn.
         ! In:
         !    iwalker: walker whose particles attempt to clone/die.
+        ! In/Out:
+        !    rng: random number generator.
 
         use determinant_enumeration, only: ndets
 
         integer, intent(in) :: iwalker
+        type(dSFMT_t), intent(inout) :: rng
 
         integer :: j, nspawn
         real(p) :: rate
@@ -259,7 +269,7 @@ contains
             rate = abs(Tau*hamil(iwalker,j))
             nspawn = int(rate)
             rate = rate - nspawn
-            r = genrand_real2()
+            r = get_rand_close_open(rng)
             if (rate > r) nspawn = nspawn + 1
 
             ! Create particles.
@@ -285,13 +295,16 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(iwalker)
+    subroutine simple_death(rng, iwalker)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
         ! In:
         !    iwalker: walker whose particles attempt to clone/die.
+        ! In/Out:
+        !    rng: random number generator.
 
         integer, intent(in) :: iwalker
+        type(dSFMT_t), intent(inout) :: rng
 
         integer :: nkill
         real(p) :: rate
@@ -310,7 +323,7 @@ contains
         rate = rate - nkill
 
         ! Additional stochasitic death?
-        r = genrand_real2()
+        r = get_rand_close_open(rng)
         if (abs(rate) > r) then
             if (rate > 0.0_p) then
                 nkill = nkill + 1

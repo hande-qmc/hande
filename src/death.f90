@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(Kii, population, tot_population, ndeath)
+    subroutine stochastic_death(rng, Kii, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -21,6 +21,7 @@ contains
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
         ! In/Out:
+        !    rng: random number generator.
         !    population: number of particles on determinant D_i.
         !    tot_population: total number of particles.
         ! Out:
@@ -30,9 +31,10 @@ contains
         ! population, i.e. either a set of Hamiltonian walkers or a set of
         ! Hellmann--Feynman walkers.
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         real(p), intent(in) :: Kii
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(inout) :: population, ndeath
         integer(lint), intent(inout) :: tot_population
 
@@ -67,7 +69,7 @@ contains
 
         ! In addition, stochastic death (bad luck! ;-))
         pd = pd - kill ! Remaining chance...
-        r = genrand_real2()
+        r = get_rand_close_open(rng)
         if (abs(pd) > r) then
             if (pd > 0.0_p) then
                 ! die die die!
@@ -93,7 +95,7 @@ contains
 
     end subroutine stochastic_death
 
-    subroutine stochastic_hf_cloning(Oii, hamiltonian_pop, hf_pop, tot_hf_pop)
+    subroutine stochastic_hf_cloning(rng, Oii, hamiltonian_pop, hf_pop, tot_hf_pop)
 
         ! Clone Hellmann--Feynman particles from Hamiltonian particles.
         ! HF particles are created from Hamiltonian particles on the same
@@ -109,15 +111,17 @@ contains
         !    hamiltonian_pop: number of Hamiltonian particles on determinant
         !        D_i.
         ! In/Out:
+        !    rng: random number generator.
         !    hf_pop: number of Hellmann--Feynman particles on determinant D_i.
         !    tot_hf_pop: total number of Hellmann--Feynman particles.
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         use hfs_data, only: hf_shift
 
         real(p), intent(in) :: Oii
         integer, intent(in) :: hamiltonian_pop
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(inout) :: hf_pop
         integer(lint), intent(inout) :: tot_hf_pop
 
@@ -137,7 +141,7 @@ contains
 
         ! In addition, stochastic cloning.
         pd = pd - clone
-        r = genrand_real2()
+        r = get_rand_close_open(rng)
         if (pd > r) clone = clone + 1
 
         ! Hellmann--Feynman offsping have the same sign as the Hamiltonian

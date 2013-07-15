@@ -106,7 +106,7 @@ contains
 
     end subroutine create_cdet_excit
 
-    subroutine fs_spawner(cdet, parent_sign, nspawn, connection)
+    subroutine fs_spawner(rng, cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a daughter or granddaughter determinant according to
         ! the folded spectrum algorithm for a given system
@@ -116,6 +116,8 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -126,12 +128,13 @@ contains
         use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
         use excitations, only: create_excited_det, get_excitation
         use basis, only: basis_length
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use spawning, only: nspawn_from_prob, set_child_sign
 
         implicit none
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
@@ -144,7 +147,7 @@ contains
         type(excit)      :: connection_ki, connection_jk
 
         ! 0. Choose the type of double element you're going to spawn
-        choose_double_elt_type = genrand_real2()
+        choose_double_elt_type = get_rand_close_open(rng)
 
         if (choose_double_elt_type <= Po_ ) then
             !     _
@@ -161,19 +164,19 @@ contains
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
 
                 ! Generate the second random excitation
-                call gen_excit_ptr(cdet, Pgen_jk, connection_jk, hmatel_jk)
+                call gen_excit_ptr(rng, cdet, Pgen_jk, connection_jk, hmatel_jk)
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -207,13 +210,13 @@ contains
             !    i    k,j
 
             ! Generate first random excitation and probability of spawning there from cdet
-            call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
+            call gen_excit_ptr(rng, cdet, Pgen_ki, connection_ki, hmatel_ki)
 
             ! Calculate P_gen for the first excitation
             pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -230,7 +233,7 @@ contains
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -270,13 +273,13 @@ contains
             ! The latter is taken care of automatically.
 
             ! Generate first random excitation and probability of spawning there from cdet
-            call gen_excit_ptr(cdet, Pgen_ki, connection_ki, hmatel_ki)
+            call gen_excit_ptr(rng, cdet, Pgen_ki, connection_ki, hmatel_ki)
 
             ! Calculate P_gen for the first excitation
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -285,13 +288,13 @@ contains
                 ! (i)  generate the first excited determinant
                 call create_cdet_excit(cdet, connection_ki, cdet_excit)
                 ! (ii) excite again
-                call gen_excit_ptr(cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
+                call gen_excit_ptr(rng, cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -338,7 +341,7 @@ contains
 
     end subroutine fs_spawner
 
-    subroutine fs_stochastic_death(Kii, population, tot_population, ndeath)
+    subroutine fs_stochastic_death(rng, Kii, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -353,6 +356,7 @@ contains
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
         ! In/Out:
+        !    rng: random number generator.
         !    population: number of particles on determinant D_i.
         !    tot_population: total number of particles.
         ! Out:
@@ -363,8 +367,10 @@ contains
         ! Hellmann--Feynman walkers.
 
         use death, only: stochastic_death
+        use dSFMT_interface, only: dSFMT_t
 
         real(p), intent(in) :: Kii
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(inout) :: population, ndeath
         integer(lint), intent(inout) :: tot_population
 
@@ -374,7 +380,7 @@ contains
         !    | / \ |
         !     \\.//
 
-        call stochastic_death((Kii-fold_line)**2, population, tot_population, ndeath)
+        call stochastic_death(rng, (Kii-fold_line)**2, population, tot_population, ndeath)
 
     end subroutine fs_stochastic_death
 

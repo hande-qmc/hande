@@ -19,17 +19,17 @@ contains
         ! of the space (which is needed for FCI calculations).
 
         use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns, nbasis
-        use calc, only: sym_in, ms_in, truncate_space, truncation_level
+        use calc, only: sym_in, ms_in, truncate_space, truncation_level, seed
         use const, only: dp
         use determinants, only: set_spin_polarisation, encode_det
         use excitations, only: get_excitation_level
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, get_rand_close_open
         use fciqmc_data, only: occ_list0
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
         use system
         use parallel
-        use utils, only: binom_r
+        use utils, only: binom_r, rng_init_info
 
         integer :: iel, icycle, naccept
         integer :: a, a_el, a_pos, b, b_el, b_pos
@@ -42,7 +42,12 @@ contains
         real(dp) :: proc_space_size(nprocs), sd_space_size
 #endif
 
+        type(dSFMT_t) :: rng
+
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
+
+        if (parent) call rng_init_info(seed+iproc)
+        call dSFMT_init(seed+iproc, 50000, rng)
 
         call set_spin_polarisation(ms_in)
 
@@ -106,7 +111,7 @@ contains
                     iel = 0
                     do
                         ! generate random number 1,3,5,...
-                        a = 2*int(genrand_real2()*(nbasis/2))+1
+                        a = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
                         a_pos = bit_lookup(1,a)
                         a_el = bit_lookup(2,a)
                         if (.not.btest(f(a_el), a_pos)) then
@@ -120,7 +125,7 @@ contains
                     ! Beta electrons.
                     do
                         ! generate random number 2,4,6,...
-                        b = 2*int(genrand_real2()*(nbasis/2))+2
+                        b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
                         b_pos = bit_lookup(1,b)
                         b_el = bit_lookup(2,b)
                         if (.not.btest(f(b_el), b_pos)) then

@@ -70,6 +70,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
+        use calc, only: seed
         use death, only: stochastic_hf_cloning
         use determinants, only:det_info, alloc_det_info
         use energy_evaluation, only: update_energy_estimators
@@ -78,6 +79,8 @@ contains
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use spawning, only: create_spawned_particle
         use qmc_common
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use utils, only: rng_init_info
 
         ! It seems this interface block cannot go in a module when we're passing
         ! subroutines around as arguments.  Bummer.
@@ -97,12 +100,16 @@ contains
 
         integer :: nspawned, ndeath
         type(excit) :: connection
+        type(dSFMT_t) :: rng
 
         real(p) :: inst_proj_hf_t1
 
         logical :: soft_exit
 
         real :: t1, t2
+
+        if (parent) call rng_init_info(seed+iproc)
+        call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
@@ -163,7 +170,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(rng, cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
 
@@ -171,7 +178,7 @@ contains
                         ! Hamiltonian walkers.
                         ! Currently only using operators diagonal in the basis,
                         ! so this isn't possible.
-                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(rng, cdet, walker_population(1,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
@@ -181,21 +188,21 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(cdet, walker_population(2,idet), nspawned, connection)
+                        call spawner_ptr(rng, cdet, walker_population(2,idet), nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
 
                     end do
 
                     ! Clone or die: Hamiltonian walkers.
-                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! CHECK
-                    call stochastic_hf_cloning(walker_data(1,idet), walker_population(1,idet), &
+                    call stochastic_hf_cloning(rng, walker_data(1,idet), walker_population(1,idet), &
                                                walker_population(2,idet), nparticles(2))
 
                 end do

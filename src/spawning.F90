@@ -31,7 +31,7 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn(cdet, parent_sign, nspawn, connection)
+    subroutine spawn(rng, cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -43,6 +43,8 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -52,23 +54,25 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use proc_pointers, only: gen_excit_ptr
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr(cdet, pgen, connection, hmatel)
+        call gen_excit_ptr(rng, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
 
     end subroutine spawn
 
-    subroutine spawn_importance_sampling(cdet, parent_sign, nspawn, connection)
+    subroutine spawn_importance_sampling(rng, cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -84,6 +88,8 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -93,26 +99,28 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use proc_pointers, only: gen_excit_ptr, trial_fn_ptr
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr(cdet, pgen, connection, hmatel)
+        call gen_excit_ptr(rng, cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call trial_fn_ptr(cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(cdet, parent_sign, nspawn, connection)
+    subroutine spawn_lattice_split_gen(rng, cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -135,6 +143,8 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -145,9 +155,11 @@ contains
         use excitations, only: excit
         use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_init_ptr, gen_excit_finalise_ptr
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
@@ -155,15 +167,15 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_init_ptr(cdet, pgen, connection, abs_hmatel)
+        call gen_excit_init_ptr(rng, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = nspawn_from_prob(tau*abs_hmatel/pgen)
+        nspawn = nspawn_from_prob(rng, tau*abs_hmatel/pgen)
 
         if (nspawn /= 0) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_finalise_ptr(cdet, connection, hmatel)
+            call gen_excit_finalise_ptr(rng, cdet, connection, hmatel)
 
             ! 4. Find sign of offspring.
             call set_child_sign(hmatel, parent_sign, nspawn)
@@ -172,7 +184,7 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(cdet, parent_sign, nspawn, connection)
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, cdet, parent_sign, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -192,6 +204,8 @@ contains
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    nspawn: number of particles spawned.  0 indicates the spawning
         !        attempt was unsuccessful.
@@ -202,9 +216,11 @@ contains
         use excitations, only: excit
         use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_init_ptr, gen_excit_finalise_ptr, gen_excit_ptr, trial_fn_ptr
+        use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
@@ -212,18 +228,18 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_init_ptr(cdet, pgen, connection, tilde_hmatel)
+        call gen_excit_init_ptr(rng, cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call trial_fn_ptr(cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = nspawn_from_prob(tau*abs(tilde_hmatel)/pgen)
+        nspawn = nspawn_from_prob(rng, tau*abs(tilde_hmatel)/pgen)
 
         if (nspawn /= 0) then
 
             ! 4. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_finalise_ptr(cdet, connection, hmatel)
+            call gen_excit_finalise_ptr(rng, cdet, connection, hmatel)
 
             ! 5. Find sign of offspring.
             ! Note that we don't care about the value of H_ij at this step, only
@@ -236,7 +252,7 @@ contains
 
 !--- Attempt spawning based upon random excitation ---
 
-    function nspawn_from_prob(probability) result(number_spawned)
+    function nspawn_from_prob(rng, probability) result(number_spawned)
 
         ! Generate the number spawned from a probability. If probability is greater than
         ! zero, then number spawned = int(probability) + stochastic{0,1}
@@ -244,19 +260,22 @@ contains
         !
         ! In:
         !    probability: the spawning probability
+        ! In/Out:
+        !    rng: random number generator.
         !
         ! Returns:
         !    number_spawned: the number spawned from this probability
 
-        use dSFMT_interface , only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         implicit none
         real(p), intent(in) :: probability
+        type(dSFMT_t), intent(inout) :: rng
         integer             :: number_spawned
         real(p)             :: psuccess, pstochastic
 
         ! Generate random number
-        psuccess = genrand_real2()
+        psuccess = get_rand_close_open(rng)
 
         ! Multiple offspring
         number_spawned = int(probability)
@@ -298,7 +317,7 @@ contains
 
     end subroutine set_child_sign
 
-    function attempt_to_spawn(hmatel, pgen, parent_sign) result(nspawn)
+    function attempt_to_spawn(rng, hmatel, pgen, parent_sign) result(nspawn)
 
         ! In:
         !    hmatel: Hamiltonian matrix element connecting a determinant and an
@@ -306,17 +325,20 @@ contains
         !    pgen: probability of generating the excitation.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
         ! Returns:
         !    number of particles spawned.  0 indicates the spawning attempt was
         !    unsuccessful.
 
-        use dSFMT_interface, only:  genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: tau
 
         integer :: nspawn
 
         real(p), intent(in) :: pgen, hmatel
         integer, intent(in) :: parent_sign
+        type(dSFMT_t), intent(inout) :: rng
 
         real(p) :: pspawn
 
@@ -335,7 +357,7 @@ contains
         nspawn = int(pspawn)
         pspawn = pspawn - nspawn
 
-        if (pspawn > genrand_real2()) nspawn = nspawn + 1
+        if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
 
         if (nspawn > 0) then
 

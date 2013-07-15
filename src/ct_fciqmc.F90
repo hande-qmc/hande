@@ -14,6 +14,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
+        use calc, only: seed
         use determinants, only: det_info, alloc_det_info
         use excitations, only: excit
         use qmc_common
@@ -22,7 +23,9 @@ contains
         use system, only: ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
 
         use checking
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
+        use utils, only: rng_init_info
 
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
@@ -36,6 +39,10 @@ contains
         type(excit) :: connection
         type(excit), allocatable :: connection_list(:)
         logical :: soft_exit
+        type(dSFMT_t) :: rng
+
+        if (parent) call rng_init_info(seed+iproc)
+        call dSFMT_init(seed+iproc, 50000, rng)
 
         if (system_type == hub_k) then
             max_nexcitations = nalpha*nbeta*min(nsites-nalpha,nsites-nbeta)
@@ -92,11 +99,11 @@ contains
                         ! i/=j are the same for the hubbard model (U or
                         ! t - stored in matel),  and there are nexcitations of them.
                         R = abs(walker_data(1,idet) - shift) + sum_off_diag
-                        time = time + timestep(R)
+                        time = time + timestep(rng, R)
 
                         if ( time > t_barrier ) exit
 
-                        call ct_spawn(cdet, walker_data(1,idet), walker_population(1,idet), &
+                        call ct_spawn(rng, cdet, walker_data(1,idet), walker_population(1,idet), &
                                       R, nspawned, connection)
 
                         if (nspawned /= 0) then
@@ -158,11 +165,11 @@ contains
                         do
 
                             R = abs(K_ii - shift) + sum_off_diag
-                            time = time + timestep(R)
+                            time = time + timestep(rng, R)
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(cdet, K_ii, int(spawned_walkers(spawned_pop,current_pos(proc_id))), &
+                            call ct_spawn(rng, cdet, K_ii, int(spawned_walkers(spawned_pop,current_pos(proc_id))), &
                                           R, nspawned, connection)
 
                             if (nspawned /= 0) then
@@ -224,7 +231,7 @@ contains
     end subroutine do_ct_fciqmc
 
 
-    subroutine ct_spawn(cdet, K_ii, parent_sgn, R, nspawned, connection)
+    subroutine ct_spawn(rng, cdet, K_ii, parent_sgn, R, nspawned, connection)
 
         ! Randomly select a (valid) excitation
 
@@ -233,6 +240,8 @@ contains
         !    K_ii: the diagonal matrix element for the determinant |D>,
         !        < D | H - E_HF - S | D >.
         !    parent_sgn: sgn on the parent determinant (i.e. +ve or -ve integer)
+        ! In/Out:
+        !    rng: random number generator.
         ! Out:
         !    nspawned: +/- 1 as @ the end of each time "jump" we only spawn
         !        1 walker.
@@ -241,7 +250,7 @@ contains
 
         use excitations, only: excit
         use determinants, only: det_info
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: ndim, nel, system_type, hub_real, hub_k
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
@@ -250,7 +259,7 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: K_ii, R
         integer, intent(in) :: parent_sgn
-
+        type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: nspawned
         type(excit), intent(out) :: connection
 
@@ -258,7 +267,7 @@ contains
         logical :: allowed_excitation
         integer :: i, j, a, b, ij_sym
 
-        rand = genrand_real2()*R
+        rand = get_rand_close_open(rng)*R
 
         if (rand < abs(K_ii - shift)) then
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
@@ -268,13 +277,13 @@ contains
             ! the orbitals are already occupied).
             if (system_type == hub_k) then
                 ! Choose a random (i,j) pair to excite from.
-                call choose_ij_hub_k(cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
+                call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
                 ! Choose a random (a,b) pair to attempt to excite to.
                 ! The symmetry of (a,b) is set by the symmetry of (i,j) and
                 ! hence b is uniquely determined by the choice of i,j and a.
                 ! We choose a to be an unoccupied alpha spin-orbital and then
                 ! reject the spawning attempt if b is in fact occupied.
-                call find_ab_hub_k(cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+                call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
                 if (allowed_excitation) then
                     connection%nexcit = 2
                     connection%from_orb(1:2) = (/ i,j /)
@@ -363,21 +372,24 @@ contains
 
     end subroutine create_spawned_particle_ct
 
-    function timestep(R) result(dt)
+    function timestep(rng, R) result(dt)
 
         ! In:
         !    R: \sum_i < D | H - E_0 - S | D_i >, the sum of all non-zero matrix
         !       elements connected to the current determinant, D.
+        ! In/Out:
+        !    rng: random number generator.
         ! Returns:
         !    dt: the (stochastic) time which elapses before the next spawning
         !        event.
 
-        use dSFMT_interface, only: genrand_real2
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         real(p) :: dt
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in)  :: R
 
-        dt = -(1.0_p/R)*log(genrand_real2())
+        dt = -(1.0_p/R)*log(get_rand_close_open(rng))
 
     end function timestep
 

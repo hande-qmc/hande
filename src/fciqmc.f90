@@ -21,7 +21,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
-        use calc, only: folded_spectrum, doing_calc
+        use calc, only: folded_spectrum, doing_calc, seed
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
@@ -30,10 +30,13 @@ contains
         use qmc_common
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use utils, only: rng_init_info
 
         integer :: idet, ireport, icycle, iparticle
         integer(lint) :: nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
+        type(dSFMT_t) :: rng
 
         integer :: nspawned, ndeath
         type(excit) :: connection
@@ -41,6 +44,9 @@ contains
         logical :: soft_exit
 
         real :: t1
+
+        if (parent) call rng_init_info(seed+iproc)
+        call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Allocate det_info components.
         call alloc_det_info(cdet)
@@ -82,7 +88,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn.
-                        call spawner_ptr(cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(rng, cdet, walker_population(1,idet), nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
@@ -92,7 +98,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    call death_ptr(walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
