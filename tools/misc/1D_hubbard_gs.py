@@ -26,11 +26,11 @@ def wu_lieb_1d(U):
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
-        print __doc__
+        print(__doc__)
         sys.exit(1)
 
     U = float(sys.argv[1])
 
     (energy, err) = wu_lieb_1d(U)
 
-    print 'Energy of the U=%dt half-filled 1D Hubbard model in the thermodynamic limit: %.16ft.\nEstimated absolute error in numerical integration: %g.'  % (U, energy, err)
+    print('Energy of the U=%dt half-filled 1D Hubbard model in the thermodynamic limit: %.16ft.\nEstimated absolute error in numerical integration: %g.'  % (U, energy, err))

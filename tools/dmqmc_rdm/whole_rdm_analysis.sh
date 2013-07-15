@@ -30,5 +30,5 @@ tools=$(dirname $0)
 
 $tools/join_rdms.sh $RDM_FILES > $STEM.rdm
 $tools/average_rdm.py $STEM.rdm > $STEM.average_rdm
-$tools/analyse_rdm/analyse.x $STEM.average_rdm > $STEM.entropy_estimates
-$tools/analyse_rdm/stats.py $STEM.entropy_estimates > $STEM.final_estimates
+$tools/../dmqmc_rdm_noise/bin/rdm_entropy_noise.x $STEM.average_rdm > $STEM.entropy_estimates
+$tools/rdm_entropy_stats.py $STEM.entropy_estimates > $STEM.final_estimates
