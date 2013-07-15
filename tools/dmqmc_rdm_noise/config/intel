@@ -1,0 +1,13 @@
+[main]
+fc = ifort
+cc = icc
+cxx = icpc
+ld = ifort
+libs = -mkl
+f90_module_flag = -module
+
+[opt]
+fflags = -O3
+
+[dbg]
+fflags = -g -check all
