@@ -394,7 +394,8 @@ contains
         !        Hellmann--Feynman particles).
 
         use hashing
-        use parallel, only: iproc, nprocs
+        use parallel, only: iproc, nprocs, nthreads
+        use omp_lib
 
         use basis, only: basis_length
         use determinants, only: det_info
@@ -412,6 +413,13 @@ contains
 #else
         integer :: iproc_spawn
 #endif
+#ifndef _OPENMP
+        integer, parameter :: thread_id = 0
+#else
+        integer :: thread_id
+        thread_id = omp_get_thread_num()
+#endif
+        
 
         ! Create bit string of new determinant.
         call create_excited_det(cdet%f, connection, f_new)
@@ -425,13 +433,13 @@ contains
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+        spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
-        spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
+        spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
+        spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
+        spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
 
     end subroutine create_spawned_particle
 
@@ -453,7 +461,8 @@ contains
         !        Hellmann--Feynman particles).
 
         use hashing
-        use parallel, only: iproc, nprocs
+        use parallel, only: iproc, nprocs, nthreads
+        use omp_lib
 
         use basis, only: basis_length
         use determinants, only: det_info
@@ -471,6 +480,12 @@ contains
 #else
         integer :: iproc_spawn
 #endif
+#ifndef _OPENMP
+        integer, parameter :: thread_id = 0
+#else
+        integer :: thread_id
+        thread_id = omp_get_thread_num()
+#endif
 
         ! Create bit string of new determinant.
         call create_excited_det(cdet%f, connection, f_new)
@@ -484,17 +499,17 @@ contains
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+        spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
-        spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
+        spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
+        spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
+        spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
         ! initiator_flag: flag indicating the staturs of the parent determinant.
         !     initiator_flag = 0 indicates the parent is an initiator.
         !     initiator_flag = 1 indicates the parent is not an initiator.
-        spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = cdet%initiator_flag
+        spawned_walkers(spawned_parent,spawning_head(thread_id,iproc_spawn)) = cdet%initiator_flag
 
     end subroutine create_spawned_particle_initiator
 
@@ -518,7 +533,8 @@ contains
         !        Hellmann--Feynman particles).
 
         use hashing
-        use parallel, only: iproc, nprocs
+        use parallel, only: iproc, nprocs, nthreads
+        use omp_lib
 
         use basis, only: basis_length
         use calc, only: truncation_level
@@ -537,6 +553,12 @@ contains
 #else
         integer :: iproc_spawn
 #endif
+#ifndef _OPENMP
+        integer, parameter :: thread_id = 0
+#else
+        integer :: thread_id
+        thread_id = omp_get_thread_num()
+#endif
 
         ! Create bit string of new determinant.
         call create_excited_det(cdet%f, connection, f_new)
@@ -553,13 +575,13 @@ contains
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(iproc_spawn)) = 0
-            spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-            spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
+            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
+            spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
+            spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
 
         end if
 
@@ -585,7 +607,8 @@ contains
         !        Hellmann--Feynman particles).
 
         use hashing
-        use parallel, only: iproc, nprocs
+        use parallel, only: iproc, nprocs, nthreads
+        use omp_lib
 
         use basis, only: basis_length
         use calc, only: truncation_level
@@ -604,6 +627,12 @@ contains
 #else
         integer :: iproc_spawn
 #endif
+#ifndef _OPENMP
+        integer, parameter :: thread_id = 0
+#else
+        integer :: thread_id
+        thread_id = omp_get_thread_num()
+#endif
 
         ! Create bit string of new determinant.
         call create_excited_det(cdet%f, connection, f_new)
@@ -620,17 +649,17 @@ contains
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(iproc_spawn)) = 0
-            spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-            spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
+            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
+            spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
+            spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
             ! initiator_flag: flag indicating the staturs of the parent determinant.
             !     initiator_flag = 0 indicates the parent is an initiator.
             !     initiator_flag = 1 indicates the parent is not an initiator.
-            spawned_walkers(spawned_parent,spawning_head(iproc_spawn)) = cdet%initiator_flag
+            spawned_walkers(spawned_parent,spawning_head(thread_id,iproc_spawn)) = cdet%initiator_flag
 
         end if
 
@@ -663,7 +692,7 @@ contains
         use fciqmc_data, only: spawned_walkers, spawning_head
         use fciqmc_data, only: spawned_parent, spawned_pop
         use hashing
-        use parallel, only: iproc, nprocs
+        use parallel, only: iproc, nprocs, nthreads
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn
@@ -678,6 +707,7 @@ contains
 #else
         integer :: iproc_spawn
 #endif
+        integer, parameter :: thread_id = 0
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
@@ -700,13 +730,13 @@ contains
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+        spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
-        spawned_walkers(:(total_basis_length),spawning_head(iproc_spawn)) = f_new_tot
-        spawned_walkers((total_basis_length)+1,spawning_head(iproc_spawn)) = nspawn
+        spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
+        spawned_walkers(:(total_basis_length),spawning_head(thread_id,iproc_spawn)) = f_new_tot
+        spawned_walkers((total_basis_length)+1,spawning_head(thread_id,iproc_spawn)) = nspawn
 
     end subroutine create_spawned_particle_density_matrix
 
@@ -742,7 +772,7 @@ contains
         use fciqmc_data, only: spawned_walkers, spawning_head
         use fciqmc_data, only: spawned_parent, spawned_pop
         use hashing
-        use parallel, only: iproc, nprocs
+        use parallel, only: iproc, nprocs, nthreads
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn
@@ -757,6 +787,7 @@ contains
 #else
         integer :: iproc_spawn
 #endif
+        integer, parameter :: thread_id = 0
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
@@ -782,13 +813,13 @@ contains
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(iproc_spawn)) = 0
-            spawned_walkers(:(total_basis_length),spawning_head(iproc_spawn)) = f_new_tot
-            spawned_walkers((total_basis_length)+1,spawning_head(iproc_spawn)) = nspawn
+            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
+            spawned_walkers(:(total_basis_length),spawning_head(thread_id,iproc_spawn)) = f_new_tot
+            spawned_walkers((total_basis_length)+1,spawning_head(thread_id,iproc_spawn)) = nspawn
 
         end if
 

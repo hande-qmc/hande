@@ -21,13 +21,15 @@ contains
 
         use proc_pointers, only: annihilate_main_list_ptr, annihilate_spawned_list_ptr
 
+        integer, parameter :: thread_id = 0
+
 #ifdef PARALLEL
         ! 0. Send spawned walkers to the processor which "owns" them and receive
         ! the walkers "owned" by this processor.
         call distribute_walkers()
 #endif
 
-        if (spawning_head(0) > 0) then
+        if (spawning_head(thread_id,0) > 0) then
             ! Have spawned walkers on this processor.
 
             ! 1. Sort spawned walkers list.
@@ -72,6 +74,7 @@ contains
         integer(i0), pointer :: tmp_walkers(:,:)
 
         real(dp) :: t1
+        integer, parameter :: thread_id = 0
 
         t1 = MPI_WTIME()
 
@@ -93,7 +96,7 @@ contains
 
         ! Find out how many walkers we are going to send and receive.
         forall (i=0:nprocs-1)
-            send_counts(i) = spawning_head(i) - spawning_block_start(i)
+            send_counts(i) = spawning_head(thread_id,i) - spawning_block_start(thread_id,i)
         end forall
 
         call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
@@ -105,12 +108,12 @@ contains
             receive_displacements(i) = receive_displacements(i-1) + receive_counts(i-1)
         end do
 
-        ! Set spawning_head(0) to be the number of walkers now on this
+        ! Set spawning_head(thread_id,0) to be the number of walkers now on this
         ! processor.
         ! This is given by the number of items sent by the last processor plus
         ! the displacement used by the last processor (which is the number of
         ! items sent by all other processors).
-        spawning_head(0) = receive_displacements(nprocs-1) + receive_counts(nprocs-1)
+        spawning_head(thread_id,0) = receive_displacements(nprocs-1) + receive_counts(nprocs-1)
 
         ! Send spawned_walkers.
         ! Each element contains spawned_size integers (of type
@@ -118,7 +121,7 @@ contains
         ! displacements accordingly:
         send_counts = send_counts*spawned_size
         receive_counts = receive_counts*spawned_size
-        send_displacements = spawning_block_start(:nprocs-1)*spawned_size
+        send_displacements = spawning_block_start(thread_id,:nprocs-1)*spawned_size
         receive_displacements = receive_displacements*spawned_size
 
         call MPI_AlltoAllv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
@@ -148,6 +151,7 @@ contains
         use basis, only: total_basis_length
 
         integer :: islot, k
+        integer, parameter :: thread_id = 0
 
         ! islot is the current element in the spawned walkers lists.
         islot = 1
@@ -159,7 +163,7 @@ contains
             spawned_walkers(:,islot) = spawned_walkers(:,k)
             compress: do
                 k = k + 1
-                if (k > spawning_head(0)) exit self_annihilate
+                if (k > spawning_head(thread_id,0)) exit self_annihilate
                 if (all(spawned_walkers(:total_basis_length,k) == spawned_walkers(:total_basis_length,islot))) then
                     ! Add the populations of the subsequent identical walkers.
                     spawned_walkers(spawned_pop:spawned_hf_pop,islot) =    &
@@ -171,7 +175,7 @@ contains
                 end if
             end do compress
             ! All done?
-            if (islot == spawning_head(0)) exit self_annihilate
+            if (islot == spawning_head(thread_id,0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
             if (any(spawned_walkers(spawned_pop:spawned_hf_pop,islot) /= 0)) islot = islot + 1
@@ -181,8 +185,8 @@ contains
         ! completely annihilated or not.
         if (all(spawned_walkers(spawned_pop:spawned_hf_pop, islot) == 0)) islot = islot - 1
 
-        ! update spawning_head(0)
-        spawning_head(0) = islot
+        ! update spawning_head(thread_id,0)
+        spawning_head(thread_id,0) = islot
 
     end subroutine annihilate_spawned_list
 
@@ -202,6 +206,7 @@ contains
         use basis, only: total_basis_length
 
         integer :: islot, k, pop_sign
+        integer, parameter :: thread_id = 0
 
         ! islot is the current element in the spawned walkers lists.
         islot = 1
@@ -213,7 +218,7 @@ contains
             spawned_walkers(:,islot) = spawned_walkers(:,k)
             compress: do
                 k = k + 1
-                if (k > spawning_head(0)) exit self_annihilate
+                if (k > spawning_head(thread_id,0)) exit self_annihilate
                 if (all(spawned_walkers(:total_basis_length,k) == spawned_walkers(:total_basis_length,islot))) then
                     ! Update the parent flag.
                     ! Note we ignore the possibility of multiple spawning events
@@ -241,7 +246,7 @@ contains
                 end if
             end do compress
             ! All done?
-            if (islot == spawning_head(0)) exit self_annihilate
+            if (islot == spawning_head(thread_id,0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
             if (spawned_walkers(spawned_pop,islot) /= 0) islot = islot + 1
@@ -251,8 +256,8 @@ contains
         ! completely annihilated or not.
         if (spawned_walkers(spawned_pop, islot) == 0) islot = islot - 1
 
-        ! update spawning_head(0)
-        spawning_head(0) = islot
+        ! update spawning_head(thread_id,0)
+        spawning_head(thread_id,0) = islot
 
     end subroutine annihilate_spawned_list_initiator
 
@@ -267,11 +272,12 @@ contains
         integer :: i, pos, k, nannihilate, istart, iend, old_pop(sampling_size)
         integer(i0) :: f(total_basis_length)
         logical :: hit
+        integer, parameter :: thread_id = 0
 
         nannihilate = 0
         istart = 1
         iend = tot_walkers
-        do i = 1, spawning_head(0)
+        do i = 1, spawning_head(thread_id,0)
             f = spawned_walkers(:total_basis_length,i)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
@@ -296,7 +302,7 @@ contains
             end if
         end do
 
-        spawning_head(0) = spawning_head(0) - nannihilate
+        spawning_head(thread_id,0) = spawning_head(thread_id,0) - nannihilate
 
     end subroutine annihilate_main_list
 
@@ -315,11 +321,12 @@ contains
         integer :: i, pos, k, nannihilate, istart, iend, old_pop
         integer(i0) :: f(total_basis_length)
         logical :: hit
+        integer, parameter :: thread_id = 0
 
         nannihilate = 0
         istart = 1
         iend = tot_walkers
-        do i = 1, spawning_head(0)
+        do i = 1, spawning_head(thread_id,0)
             f = spawned_walkers(:total_basis_length,i)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
@@ -356,7 +363,7 @@ contains
             end if
         end do
 
-        spawning_head(0) = spawning_head(0) - nannihilate
+        spawning_head(thread_id,0) = spawning_head(thread_id,0) - nannihilate
 
     end subroutine annihilate_main_list_initiator
 
@@ -403,6 +410,7 @@ contains
 
         integer :: i, istart, iend, j, k, pos
         logical :: hit
+        integer, parameter :: thread_id = 0
 
         ! Merge new walkers into the main list.
 
@@ -424,7 +432,7 @@ contains
 
         istart = 1
         iend = tot_walkers
-        do i = spawning_head(0), 1, -1
+        do i = spawning_head(thread_id,0), 1, -1
             ! spawned det is not in the main walker list
             call binary_search(walker_dets, spawned_walkers(:total_basis_length,i), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
@@ -455,7 +463,7 @@ contains
         end do
 
         ! Update tot_walkers
-        tot_walkers = tot_walkers + spawning_head(0)
+        tot_walkers = tot_walkers + spawning_head(thread_id,0)
 
     end subroutine insert_new_walkers
 

@@ -191,6 +191,7 @@ contains
         integer :: io
         logical :: exists
         integer :: restart_version
+        integer, parameter :: thread_id = 0
 #ifdef PARALLEL
         integer :: global_tot_walkers, pop, iread, nread, ierr, dest, i
         real(p), allocatable :: scratch_energies(:)
@@ -249,7 +250,7 @@ contains
         ! spawning_head_start gives the first slot in the spawning array for
         ! each processor.  Also want the last slot in the spawning array for
         ! each processor.
-        forall (i=0:nprocs-2) spawn_max(i) = spawning_head(i+1) - 1
+        forall (i=0:nprocs-2) spawn_max(i) = spawning_block_start(thread_id,i+1) - 1
         spawn_max(nprocs-1) = spawned_walker_length
         iread = 0
         do
@@ -259,12 +260,12 @@ contains
                 do i = iread+1, global_tot_walkers
                     call read_in(io,det,pop,energy)
                     dest = modulo(murmurhash_bit_string(det, basis_length), nprocs)
-                    spawning_head(dest) = spawning_head(dest) + 1
-                    spawned_walkers(:basis_length, spawning_head(dest)) = det
-                    spawned_walkers(spawned_pop, spawning_head(dest)) = pop
-                    scratch_energies(spawning_head(dest)) = energy
+                    spawning_head(thread_id,dest) = spawning_head(thread_id,dest) + 1
+                    spawned_walkers(:basis_length, spawning_head(thread_id,dest)) = det
+                    spawned_walkers(spawned_pop, spawning_head(thread_id,dest)) = pop
+                    scratch_energies(spawning_head(thread_id,dest)) = energy
                     ! Filled up spawning/scratch arrays?
-                    if (any(spawning_head(:nprocs-1)-spawn_max == 0)) exit
+                    if (any(spawning_head(thread_id,:nprocs-1)-spawn_max == 0)) exit
                 end do
                 iread = i
                 done = iread == global_tot_walkers + 1
@@ -272,8 +273,8 @@ contains
 
             ! update the number of walkers on this processor from the number of
             ! walkers just read in.
-            send_counts = spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1)
-            send_displacements = spawning_block_start(:nprocs-1)
+            send_counts = spawning_head(thread_id,:nprocs-1) - spawning_block_start(thread_id,:nprocs-1)
+            send_displacements = spawning_block_start(thread_id,:nprocs-1)
             call mpi_scatter(send_counts, 1, mpi_integer, nread, 1, mpi_integer, root, mpi_comm_world, ierr)
             ! send walkers to their appropriate processor.
             call mpi_scatterv(scratch_energies, send_counts, send_displacements, mpi_preal,   &
