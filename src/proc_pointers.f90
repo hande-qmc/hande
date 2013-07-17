@@ -10,7 +10,7 @@ implicit none
 ! that's imported as a array size in abstract interfaces.
 
 abstract interface
-    subroutine i_decoder(f,d)
+    pure subroutine i_decoder(f,d)
         use basis, only: basis_length
         import :: i0, det_info
         implicit none
@@ -66,7 +66,7 @@ abstract interface
         integer, intent(inout) :: pop, ndeath
         integer(lint), intent(inout) :: tot_pop
     end subroutine i_death
-    function i_sc0(f) result(hmatel)
+    pure function i_sc0(f) result(hmatel)
         use basis, only: basis_length
         import :: p, i0
         implicit none
