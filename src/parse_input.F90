@@ -15,6 +15,7 @@ use fciqmc_restart, only: read_restart_number, write_restart_number,&
                           binary_fmt_in, binary_fmt_out
 use hubbard_real, only: finite_cluster
 use hfs_data, only: lmag2
+use dmqmc_procedures, only: rdms
 
 implicit none
 
@@ -44,7 +45,7 @@ contains
         character(100) :: w
         integer :: ios
         logical :: eof, t_exists
-        integer :: ivec, i, ierr, nweights
+        integer :: ivec, i, j, ierr, nweights, nrdms
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
@@ -220,13 +221,20 @@ contains
                 dmqmc_weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 calculate_excit_distribution = .true.
-            ! Calculate a reduced density matrix
             case('REDUCED_DENSITY_MATRIX')
+                call readi(nrdms)
+                allocate(rdms(nrdms), stat=ierr)
+                call check_allocate('rdms', nrdms, ierr)
                 doing_reduced_dm = .true.
-                allocate(subsystem_A_list(nitems-1), stat=ierr)
-                call check_allocate('subsystem_A_list',nitems-1,ierr)
-                do i = 1, nitems-1
-                    call readi(subsystem_A_list(i))
+                do i = 1, nrdms
+                    call read_line(eof)
+                    if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
+                    rdms(i)%A_size = nitems
+                    allocate(rdms(i)%subsystem_A(nitems))
+                    call check_allocate('rdms(i)%subsystem_A',nitems,ierr)
+                    do j = 1, nitems
+                        call readi(rdms(i)%subsystem_A(j))
+                    end do
                 end do
             case('OUTPUT_RDM')
                 output_rdm = .true.
@@ -489,8 +497,6 @@ contains
 
         if ((.not.doing_calc(dmqmc_calc)) .and. dmqmc_calc_type /= 0) call warning('check_input',&
                'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
-        if (doing_concurrence .and. size(subsystem_A_list) /= 2) call stop_all(this, 'You must select exactly two sites for the &
-               & subsystem when calculating concurrence.')
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
                 if (walker_length == 0) call stop_all(this,'Walker length zero.')
@@ -646,16 +652,23 @@ contains
             call mpi_bcast(dmqmc_sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
-        if (parent) option_set = allocated(subsystem_A_list)
+        if (parent) option_set = allocated(rdms)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(subsystem_A_list)
+            occ_list_size = size(rdms)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(subsystem_A_list(occ_list_size), stat=ierr)
-                call check_allocate('subsystem_A_list',occ_list_size,ierr)
+                allocate(rdms(occ_list_size), stat=ierr)
+                call check_allocate('rdms',occ_list_size,ierr)
             end if
-            call mpi_bcast(subsystem_A_list, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            do i = 1, occ_list_size
+                call mpi_bcast(rdms(i)%A_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                if (.not.parent) then
+                    allocate(rdms(i)%subsystem_A(rdms(i)%A_size), stat=ierr)
+                    call check_allocate('rdms(i)%subsystem_A',rdms(i)%A_size,ierr)
+                end if
+                call mpi_bcast(rdms(i)%subsystem_A, rdms(i)%A_size, mpi_integer, 0, mpi_comm_world, ierr)
+            end do
         end if
         option_set = .false.
         if (parent) option_set = allocated(correlation_sites)

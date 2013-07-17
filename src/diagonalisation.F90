@@ -437,8 +437,8 @@ contains
         use basis, only: basis_length
         use checking, only: check_allocate, check_deallocate
         use determinants, only: ndets, dets_list
-        use dmqmc_procedures, only: decode_dm_bitstring
-        use fciqmc_data, only: reduced_density_matrix, subsystem_B_mask
+        use dmqmc_procedures, only: decode_dm_bitstring, rdms
+        use fciqmc_data, only: reduced_density_matrix
 
         real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))
         integer(i0) :: f1(basis_length), f2(basis_length)
@@ -453,8 +453,8 @@ contains
         ! Loop over all elements of the density matrix and add all contributing elements to the RDM.
         do i = 1, ndets
             do j = 1, ndets
-                f1 = iand(subsystem_B_mask,dets_list(:,i))
-                f2 = iand(subsystem_B_mask,dets_list(:,j))
+                f1 = iand(rdms(1)%B_masks(1,:),dets_list(:,i))
+                f2 = iand(rdms(1)%B_masks(1,:),dets_list(:,j))
                 ! If the two bitstrings are the same after bits corresponding to subsystem B have
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then

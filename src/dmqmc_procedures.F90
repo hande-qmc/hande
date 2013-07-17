@@ -3,6 +3,30 @@ module dmqmc_procedures
 use const
 implicit none
 
+! This type contains information for the RDM corresponding to a
+! given subsystem. It takes translational symmetry into account by
+! storing information for all subsystems which are equivlanet by
+! translational symmetry.
+type rdm
+    ! The total number of sites in subsystem A.
+    integer :: A_size
+    ! The sites in subsystem A, as entered by the user.
+    integer, allocatable :: subsystem_A(:)
+    ! B_masks(i,:) has bits set at all bit positions corresponding to
+    ! sites in version i of subsystem B, where the different 'versions'
+    ! correspond to subsystems which are equivalent by symmetry.
+    integer, allocatable :: B_masks(:,:)
+    ! bit_pos(i,j,1) contains the position of the bit corresponding to
+    ! site j in 'version' i of subsystem A.
+    ! bit_pos(i,j,2) contains the element of the bit corresponding to
+    ! site j in 'version' i of subsystem A.
+    integer, allocatable :: bit_pos(:,:,:)
+end type rdm
+
+! This stores all the information for the various RDMs that the user asks
+! to be calculated. Each element of this array corresponds to one of these RDMs.
+type(rdm), allocatable :: rdms(:)
+
 contains
 
     subroutine init_dmqmc()
@@ -10,7 +34,7 @@ contains
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
          use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation
-         use checking, only: check_allocate, check_deallocate
+         use checking, only: check_allocate
          use fciqmc_data, only: trace, energy_index, energy_squared_index, correlation_index
          use fciqmc_data, only: staggered_mag_index, estimator_numerators, doing_reduced_dm
          use fciqmc_data, only: dmqmc_factor, number_dmqmc_estimators, ncycles, tau, dmqmc_weighted_sampling
@@ -145,68 +169,161 @@ contains
         ! to either subsystem A or B. Also calculate the positions and elements of the sites
         ! in subsyetsm A, and finally allocate the RDM itself.
 
-        use basis, only: basis_length, bit_lookup, basis_lookup
-        use checking, only: check_allocate, check_deallocate
+        use checking, only: check_allocate
         use errors
-        use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
-        use fciqmc_data, only: subsystem_A_list, reduced_density_matrix, subsystem_A_size
-        use fciqmc_data, only: output_rdm, rdm_unit
-        use system, only: system_type, heisenberg, nsites
-        use utils, only: get_free_unit
+        use fciqmc_data, only: reduced_density_matrix
+        use system, only: system_type, heisenberg
 
         integer :: i, ierr, ipos, basis_find, bit_position, bit_element
 
-        subsystem_A_size = ubound(subsystem_A_list,1)
-        allocate(subsystem_A_mask(1:basis_length), stat=ierr)
-        call check_allocate('subsystem_A_mask',basis_length,ierr)
-        allocate(subsystem_B_mask(1:basis_length), stat=ierr)
-        call check_allocate('subsystem_B_mask',basis_length,ierr)
-        allocate(subsystem_A_bit_positions(subsystem_A_size,2), stat=ierr)
-        call check_allocate('subsystem_A_bit_positions',2*subsystem_A_size,ierr)
-        subsystem_A_mask = 0
-        subsystem_B_mask = 0
-        subsystem_A_bit_positions = 0
-
         ! For the Heisenberg model only currently.
         if (system_type==heisenberg) then
-            do i = 1, subsystem_A_size
-                bit_position = bit_lookup(1,subsystem_A_list(i))
-                bit_element = bit_lookup(2,subsystem_A_list(i))
-                subsystem_A_mask(bit_element) = ibset(subsystem_A_mask(bit_element), bit_position)
-                subsystem_A_bit_positions(i,1) = bit_position
-                subsystem_A_bit_positions(i,2) = bit_element
-            end do
-            subsystem_B_mask = subsystem_A_mask
-            ! We cannot just flip the mask for system A to get that for system B, because
-            ! there the trailing bits on the end don't refer to anything and should be
-            ! set to 0. So, first set these to 1 and then flip all the bits.
-            do ipos = 0, i0_end
-                basis_find = basis_lookup(ipos, basis_length)
-                if (basis_find == 0) then
-                    subsystem_B_mask(basis_length) = ibset(subsystem_B_mask(basis_length),ipos)
-                end if
-            end do
-            subsystem_B_mask = not(subsystem_B_mask)
+            call find_rdm_masks()
         else
             call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for the &
                            &Heisenberg model.")
         end if
 
-        if (subsystem_A_size <= int(nsites/2)) then
-            ! In this case, for an ms = 0 subspace (as the ground state of the Heisenberg model
-            ! will be) then any combination of spins can occur in the subsystem, from all spins
-            ! down to all spins up. Hence the total size of the reduced density matrix will be
-            ! 2**(number of spins in subsystem A).
-            allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
-            call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
-            reduced_density_matrix = 0.0_p
-        else if (subsystem_A_size == nsites) then
-            allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
-            call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
-            reduced_density_matrix = 0.0_p
-        end if
+        ! Note: Only one RDM is calculated at the moment. This is temporary. For now I have just
+        ! created the infrastructure to use translational symmetry and multiple RDMs. Will add the
+        ! ability to use them when the sparse implementation is added...
+
+        ! For an ms = 0 subspace (as the ground state of the Heisenberg model will be), assuming less
+        ! than half the spins in the subsystem are in the subsystem, then any combination of spins can
+        ! occur in the subsystem, from all spins down to all spins up. Hence the total size of the reduced
+        ! density matrix will be 2**(number of spins in subsystem A).
+        allocate(reduced_density_matrix(2**rdms(1)%A_size,2**rdms(1)%A_size), stat=ierr)
+        call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_size),ierr)
+        reduced_density_matrix = 0.0_p
         
     end subroutine setup_rdm_arrays
+
+    subroutine find_rdm_masks()
+
+        use basis, only: basis_length, bit_lookup, basis_lookup, basis_fns, nbasis
+        use checking, only: check_allocate, check_deallocate
+        use errors
+        use hubbard_real, only: map_vec_to_cell
+        use system, only: ndim, nsites, lattice
+
+        integer :: i, j, k, l, ipos, ierr, nvec_tot
+        integer :: basis_find, bit_position, bit_element
+        integer :: r(ndim), nvecs(3), A_mask(basis_length)
+        real(p) :: v(ndim), test_vec(ndim), temp_vec(ndim)
+        real(p), allocatable :: trans_vecs(:,:)
+        integer :: scale_fac
+
+        ! The maximum number of translational symmetry vectors is nsites (for
+        ! the case of a non-tilted lattice), so allocate this much storage.
+        allocate(trans_vecs(ndim,nsites),stat=ierr)
+        call check_allocate('trans_vecs',ndim*nsites,ierr)
+
+        ! The number of symmetry vectors in each direction.
+        nvecs = 0
+        ! The total number of symmetry vectors.
+        nvec_tot = 0
+
+        do i = 1, ndim
+            scale_fac = maxval(abs(lattice(:,i)))
+            v = real(lattice(:,i),p)/real(scale_fac,p)
+
+            do j = 1, scale_fac-1
+                test_vec = v*j
+                if (all(.not. (abs(test_vec-real(nint(test_vec),p)) > 0.0_p) )) then
+                    ! If test_vec has all integer components.
+                    ! This is a symmetry vector, so store it.
+                    nvecs(i) = nvecs(i) + 1
+                    nvec_tot = nvec_tot + 1
+                    trans_vecs(:,nvec_tot) = test_vec
+                end if
+            end do
+        end do
+
+        ! Next, add all combinations of the above generated vectors to form a closed group.
+
+        ! Add all pairs of the above vectors.
+        do i = 1, nvecs(1)
+            do j = nvecs(1)+1, sum(nvecs)
+                nvec_tot = nvec_tot + 1
+                trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)
+            end do
+        end do
+        do i = nvecs(1)+1, nvecs(1)+nvecs(2)
+            do j = nvecs(1)+nvecs(2)+1, sum(nvecs)
+                nvec_tot = nvec_tot + 1
+                trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)
+            end do
+        end do
+
+        ! Add all triples of the above vectors.
+        do i = 1, nvecs(1)
+            do j = nvecs(1)+1, nvecs(1)+nvecs(2)
+                do k = nvecs(1)+nvecs(2)+1, sum(nvecs)
+                    nvec_tot = nvec_tot + 1
+                    trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)+trans_vecs(:,k)
+                end do
+            end do
+        end do
+
+        ! Include the identity transformation vector in the first slot.
+        trans_vecs(:,2:nvec_tot+1) = trans_vecs(:,1:nvec_tot)
+        trans_vecs(:,1) = 0
+        nvec_tot = nvec_tot + 1
+
+        ! Allocate the RDM arrays.
+        do i = 1, size(rdms)
+            allocate(rdms(i)%B_masks(nvec_tot,basis_length), stat=ierr)
+            call check_allocate('rdms(i)%B_masks', nvec_tot*basis_length,ierr)
+            allocate(rdms(i)%bit_pos(nvec_tot,rdms(i)%A_size,2), stat=ierr)
+            call check_allocate('rdms(i)%bit_pos', nvec_tot*rdms(i)%A_size*2,ierr)
+            rdms(i)%B_masks = 0
+            rdms(i)%bit_pos = 0
+        end do
+
+        ! Run through every site on every subsystem and add every translational symmetry vector.
+        do i = 1, size(rdms) ! Over every subsystem.
+            do j = 1, nvec_tot ! Over every symmetry vector.
+                A_mask = 0
+                do k = 1, rdms(i)%A_size ! Over every site in the subsystem.
+                    r = basis_fns(rdms(i)%subsystem_A(k))%l
+                    r = r + nint(trans_vecs(:,j))
+                    ! If r is outside the cell considered in this simulation, shift it by the
+                    ! appropriate lattice vector so that it is in this cell.
+                    call map_vec_to_cell(r)
+                    ! Now need to find which basis state this site corresponds to. Simply loop
+                    ! over all basis functions and check...
+                    do l = 1, nbasis
+                        if (all(basis_fns(l)%l == r)) then
+                            bit_position = bit_lookup(1,l)
+                            bit_element = bit_lookup(2,l)
+
+                            A_mask(bit_element) = ibset(A_mask(bit_element), bit_position)
+
+                            rdms(i)%bit_pos(j,k,1) = bit_position
+                            rdms(i)%bit_pos(j,k,2) = bit_element
+                        end if
+                    end do
+                end do
+
+                rdms(i)%B_masks(j,:) = A_mask
+                ! We cannot just flip the mask for system A to get that for system B,
+                ! because the trailing bits on the end don't refer to anything and should
+                ! be set to 0. So, first set these to 1 and then flip all the bits.
+                do ipos = 0, i0_end
+                    basis_find = basis_lookup(ipos, basis_length)
+                    if (basis_find == 0) then
+                        rdms(i)%B_masks(j,basis_length) = ibset(rdms(i)%B_masks(j,basis_length),ipos)
+                    end if
+                end do
+                rdms(i)%B_masks(j,:) = not(rdms(i)%B_masks(j,:))
+
+            end do
+        end do
+
+        deallocate(trans_vecs,stat=ierr)
+        call check_deallocate('trans_vecs',ierr)
+
+    end subroutine find_rdm_masks
 
     subroutine random_distribution_heisenberg()
 
@@ -328,8 +445,6 @@ contains
         ! density matrix.
 
         use basis, only: basis_length
-        use fciqmc_data, only: subsystem_A_bit_positions, subsystem_A_bit_positions
-        use fciqmc_data, only: subsystem_A_size
 
         integer(i0), intent(in) :: f(basis_length*2)
         integer(i0), intent(out) :: index1, index2
@@ -340,16 +455,16 @@ contains
         index2 = 0
 
         ! Loop over all the sites in the sublattice considered for the reduced density matrix.
-        do i = 1, subsystem_A_size
+        do i = 1, rdms(1)%A_size
             ! If the spin is up, flip the corresponding bit in the first index up.
-            if (btest(f(subsystem_A_bit_positions(i,2)),subsystem_A_bit_positions(i,1))) &
+            if (btest(f(rdms(1)%bit_pos(1,i,2)),rdms(1)%bit_pos(1,i,1))) &
                 index1 = ibset(index1,i-1)
             ! Similarly for the second index, by looking at the second end of the bitstring.
-            if (btest(f(subsystem_A_bit_positions(i,2)+basis_length),subsystem_A_bit_positions(i,1))) &
+            if (btest(f(rdms(1)%bit_pos(1,i,2)+basis_length),rdms(1)%bit_pos(1,i,1))) &
                 index2 = ibset(index2,i-1)
         end do
 
-        ! The process above maps to numbers between 0 and 2^subsystem_A_size-1, but the smallest
+        ! The process above maps to numbers between 0 and 2^rdms(1)%A_size-1, but the smallest
         ! and largest of the reduced density matrix are one more than these, so add one...
         index1 = index1+1
         index2 = index2+1

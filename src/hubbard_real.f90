@@ -78,7 +78,7 @@ contains
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
         use determinants, only: decode_det
-        use system, only: lattice, ndim, box_length, system_type, nsym, sym0, sym_max
+        use system, only: lattice, ndim, box_length, system_type, nsym, sym0, sym_max, lvecs
         use system, only: heisenberg, triangular_lattice
         use bit_utils
         use checking, only: check_allocate
@@ -86,12 +86,7 @@ contains
         use parallel, only: parent
 
         integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
-        integer :: row_1, row_2
         integer :: r(ndim)
-
-        integer :: lvecs(ndim, 3**ndim)
-        integer :: difference_vec(2), shifted_vec(2), unshifted_vec(2)
-
         logical :: diag_connection
 
         nsym = 1
@@ -104,6 +99,8 @@ contains
         call check_allocate('tmat',basis_length*nbasis,ierr)
         allocate(connected_orbs(basis_length,nbasis), stat=ierr)
         call check_allocate('connected_orbs',basis_length*nbasis,ierr)
+        allocate(lvecs(ndim,3**ndim))
+        call check_allocate('lvecs',ndim*(3**ndim),ierr)
         if (triangular_lattice) then
             allocate(connected_sites(0:3*ndim,nbasis), stat=ierr)
             call check_allocate('connected_sites', size(connected_sites), ierr)
@@ -348,5 +345,33 @@ contains
         end do
 
     end subroutine create_next_nearest_orbs
+
+    subroutine map_vec_to_cell(r)
+
+        ! This subroutine assumes that the site specified by r is outside the cell
+        ! by no more than one lattice vector, along each lattice vector.
+
+        use basis, only: basis_fns, nbasis
+        use system, only: lvecs, ndim
+
+        integer, intent(inout) :: r(ndim)        
+        integer :: v(ndim)
+        integer :: i, j
+
+        do i = 1, 3**ndim
+            ! Add all combinations of lattices vectors in lvecs.
+            v = r + lvecs(:,i)
+            do j = 1, nbasis
+                ! Loop over all basis functions and check if the shifted vector is
+                ! now the same as any of these vectors. If so, it is in the cell,
+                ! so keep it and return.
+                if (all(v == basis_fns(j)%l)) then
+                    r = v
+                    return
+                end if
+            end do
+        end do
+
+    end subroutine map_vec_to_cell
 
 end module hubbard_real

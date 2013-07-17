@@ -116,6 +116,11 @@ real(p) :: ueg_ecutoff = 3.0_p
 ! Not used for the UEG (see box_length).
 integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
+! lvecs contains all combinations of the above lattice vectors, where the
+! amplitude for each lattice vector can be either -1, 0 or +1. lvec(:,i)
+! stores the i'th such combination.
+integer, allocatable :: lvecs(:,:) ! ndim, 3**ndim
+
 ! If a triangular lattice is being used, this variable is true (Hubbard; Heisenberg).
 logical :: triangular_lattice
 

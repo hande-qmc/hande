@@ -491,8 +491,8 @@ contains
        !        element.
 
        use basis, only: basis_length, total_basis_length
-       use dmqmc_procedures, only: decode_dm_bitstring
-       use fciqmc_data, only: subsystem_B_mask, reduced_density_matrix
+       use dmqmc_procedures, only: decode_dm_bitstring, rdms
+       use fciqmc_data, only: reduced_density_matrix
        use fciqmc_data, only: walker_dets, walker_population
 
        integer, intent(in) :: idet
@@ -500,8 +500,8 @@ contains
        integer(i0) :: f1(basis_length), f2(basis_length)
        integer(i0) :: end1, end2
        ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
-       f1 = iand(subsystem_B_mask,walker_dets(:basis_length,idet))
-       f2 = iand(subsystem_B_mask,walker_dets(basis_length+1:total_basis_length,idet))
+       f1 = iand(rdms(1)%B_masks(1,:),walker_dets(:basis_length,idet))
+       f2 = iand(rdms(1)%B_masks(1,:),walker_dets(basis_length+1:total_basis_length,idet))
 
        ! Once this is done, check if the resulting bitstring (which can only possibly
        ! have 1's in the B subsystem) are identical. If they are, then this psip gives
@@ -523,7 +523,8 @@ contains
         ! Wrapper for calling relevant reduced density matrix procedures
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: reduced_density_matrix, subsystem_A_size
+        use dmqmc_procedures, only: rdms
+        use fciqmc_data, only: reduced_density_matrix
         use fciqmc_data, only: doing_von_neumann_entropy, doing_concurrence
         use fciqmc_data, only: output_rdm, rdm_unit
         use parallel
@@ -532,7 +533,7 @@ contains
         integer, intent(in) :: beta_cycle
         real(p) :: trace_rdm
         real(p), allocatable :: old_rdm_elements(:)
-        integer :: i, j, k, stat, ierr, new_unit
+        integer :: i, j, k, ierr, new_unit
         character(10) :: rdm_filename
         ! If in paralell then merge the reduced density matrix onto one processor
 #ifdef PARALLEL
@@ -541,7 +542,7 @@ contains
         real(dp), allocatable :: dm_sum(:,:)
         integer :: num_eigv
 
-        num_eigv = 2**subsystem_A_size
+        num_eigv = 2**rdms(1)%A_size
 
         allocate(dm(num_eigv,num_eigv), stat=ierr)
         call check_allocate('dm',num_eigv**2,ierr)
@@ -610,17 +611,18 @@ contains
         ! paralell.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: subsystem_A_size, reduced_density_matrix
+        use dmqmc_procedures, only: rdms
+        use fciqmc_data, only: reduced_density_matrix
 
         real(p), intent(in) :: trace_rdm
-        integer :: i, j, rdm_size
+        integer :: i, rdm_size
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p), allocatable :: dm_tmp(:,:)
-        real(p) :: eigv(2**subsystem_A_size)
+        real(p) :: eigv(2**rdms(1)%A_size)
         real(p) :: vn_entropy
         
-        rdm_size = 2**subsystem_A_size
+        rdm_size = 2**rdms(1)%A_size
         vn_entropy = 0._p
 
         ! Find the optimal size of the workspace.
@@ -683,8 +685,7 @@ contains
         ! Below we have named {\sigma_y \otimes \sigma_y} flip_spin_matrix as in the literature.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: subsystem_A_size, reduced_density_matrix, flip_spin_matrix
-        integer :: i,j
+        use fciqmc_data, only: reduced_density_matrix, flip_spin_matrix
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p) :: reigv(4), ieigv(4)
