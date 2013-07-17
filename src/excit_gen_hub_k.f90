@@ -190,13 +190,15 @@ contains
         ! momentum space formulation of the Hubbard model.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
+        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), &
+                             connection%from_orb(2), ij_sym)
 
         ! 2. Chose a random pair of spin orbitals to excite to.
         ! WARNING: if the implementation of generating the excitation is
         ! changed, the generation probability will also (probably) need to
         ! be altered.
-        call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+        call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), &
+                           connection%to_orb(2), allowed_excitation)
         connection%nexcit = 2
 
         if (allowed_excitation) then
@@ -384,10 +386,12 @@ contains
         ! See notes in gen_excit_init_hub_k and gen_excit_hub_k for more details regarding this algorithm.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
+        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), &
+                             connection%from_orb(2), ij_sym)
 
         ! 2. Chose a random pair of spin orbitals to excite to.
-        call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+        call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), &
+                           connection%to_orb(2), allowed_excitation)
 
         if (allowed_excitation) then
 
