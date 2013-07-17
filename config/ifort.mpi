@@ -1,5 +1,6 @@
 [main]
 fc = mpif90
+cc = mpicc
 cxx = mpiCC
 ld = impif90
 cppflags = -DHAVE_SSE2 -DPARALLEL

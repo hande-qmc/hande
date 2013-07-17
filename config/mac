@@ -1,5 +1,6 @@
 [main]
 fc = gfortran -m64
+cc = gcc -m64
 cxx = g++ -m64
 ld = gfortran -m64
 libs = -ltrlan -framework Accelerate -lstdc++

@@ -1,5 +1,6 @@
 [main]
 fc = ifort
+cc = icc
 cxx = icpc
 cppflags = -DHAVE_SSE2
 ld = ifort

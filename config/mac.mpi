@@ -1,5 +1,6 @@
 [main]
 fc = mpif90 -m64
+cc = mpicc -m64
 cxx = mpic++ -m64
 ld = mpif90 -m64
 cppflags = -DPARALLEL
