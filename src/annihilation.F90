@@ -19,15 +19,18 @@ contains
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process.
 
+        use parallel, only: nthreads, nprocs
         use proc_pointers, only: annihilate_main_list_ptr, annihilate_spawned_list_ptr
 
         integer, parameter :: thread_id = 0
 
-#ifdef PARALLEL
+        ! -1. Compress the successful spawning events from each thread so the
+        ! spawned list being sent to each processor contains no gaps.
+        if (nthreads > 1) call compress_threaded_spawned_list(spawning_head, spawned_walkers)
+
         ! 0. Send spawned walkers to the processor which "owns" them and receive
         ! the walkers "owned" by this processor.
-        call distribute_walkers()
-#endif
+        if (nprocs > 1) call distribute_walkers()
 
         if (spawning_head(thread_id,0) > 0) then
             ! Have spawned walkers on this processor.
@@ -58,6 +61,48 @@ contains
         end if
 
     end subroutine direct_annihilation
+
+    pure subroutine compress_threaded_spawned_list(spawning_head, spawned_walkers)
+
+        ! In/Out:
+        !    spawning_head: array listing the head spawned element by each
+        !        thread to be sent to each processor in the subarrays of
+        !        spawned_walkers.  On output, spawning_head(0,i) contains the
+        !        number of elements to be sent to processor i and all other
+        !        elements are meaningless.
+        !    spawned_walkers: array containing the spawned elements.  On output,
+        !        there are no gaps in each subarray to be sent to a given
+        !        processor.
+
+        ! (See fciqmc_data for more description of both these objects.)
+
+        use parallel, only: nthreads, nprocs
+
+        integer, intent(inout) :: spawning_head(:,:)
+        integer(i0), intent(inout) :: spawned_walkers(:,:)
+
+        integer :: iproc, ithread, i, offset
+
+        do iproc = 0, nprocs-1
+            offset = 0
+            do ithread = 0, nthreads-1
+                ! Assuming a large enough number of spawning events, each thread
+                ! should have had roughly the same number of successful spawning
+                ! events, so this loop should be fast.
+                do i = minval(spawning_head(:,iproc))+1, maxval(spawning_head(:,iproc))
+                    ! element i was created (or should have been) by thread
+                    ! index mod(i,nthreads).
+                    if (spawning_head(mod(i,nthreads),iproc) < i) then
+                        ! This element was *not* spawned into.  Filling in this gap...
+                        offset = offset + 1
+                    else
+                        spawned_walkers(:,i-offset) = spawned_walkers(:,i)
+                    end if
+                end do
+            end do
+        end do
+
+    end subroutine compress_threaded_spawned_list
 
     subroutine distribute_walkers()
 
