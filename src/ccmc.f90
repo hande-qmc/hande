@@ -182,14 +182,15 @@ contains
         ! in fciqmc_main.
 
         use checking, only: check_allocate, check_deallocate
-        use dSFMT_interface, only: dSFMT_t
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
+        use utils, only: rng_init_info
         ! TODO: parallelisation.
         use parallel
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
-        use calc, only: truncation_level, truncate_space
+        use calc, only: seed, truncation_level, truncate_space
         use ccmc_data, only: cluster_t
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, get_excitation_level
@@ -241,6 +242,9 @@ contains
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_pops(walker_length), stat=ierr)
         call check_allocate('cumulative_abs_pops', walker_length, ierr)
+
+        if (parent) call rng_init_info(seed+iproc)
+        call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Whilst cluster data can be accessed from cdet, I recommend explicitly
         ! passing it as an argument rather than accessing cdet%cluster both for
