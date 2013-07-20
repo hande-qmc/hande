@@ -201,14 +201,14 @@ contains
         use search, only: binary_search
         use system, only: nel
 
-        integer :: ireport, icycle
+        integer :: i, ireport, icycle, it
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, ndeath, ierr
         type(excit) :: connection
         type(cluster_t), target :: cluster
-        type(dSFMT_t) :: rng
+        type(dSFMT_t), allocatable :: rng(:)
 
         logical :: soft_exit
 
@@ -243,8 +243,12 @@ contains
         allocate(cumulative_abs_pops(walker_length), stat=ierr)
         call check_allocate('cumulative_abs_pops', walker_length, ierr)
 
+        allocate(rng(0:nthreads-1), stat=ierr)
+        call check_allocate('rng', size(rng), ierr)
         if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        do i = 0, nthreads-1
+            call dSFMT_init(seed+(iproc*nthreads)+i, 50000, rng(i))
+        end do
 
         ! Whilst cluster data can be accessed from cdet, I recommend explicitly
         ! passing it as an argument rather than accessing cdet%cluster both for
@@ -292,9 +296,14 @@ contains
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
+                ! OpenMP chunk size determined completely empirically from a single
+                ! test.  Please feel free to improve...
+                !$omp parallel private(it)
+                it = get_thread_id()
+                !$omp do private(cdet, cluster, it) schedule(dynamic,200)
                 do iattempt = 1, nattempts
 
-                    call select_cluster(rng, nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
+                    call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
                                         cdet, cluster)
 
                     if (cluster%excitation_level <= truncation_level+2) then
@@ -310,7 +319,7 @@ contains
                         ! the cluster.
                         call update_proj_energy_ptr(cdet, cluster%cluster_to_det_sign*cluster%amplitude/cluster%pselect)
 
-                        call spawner_ccmc(rng, cdet, cluster, nspawned, connection)
+                        call spawner_ccmc(rng(it), cdet, cluster, nspawned, connection)
 
                         if (nspawned /= 0) then
                             call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
@@ -319,11 +328,13 @@ contains
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
-                        if (cluster%excitation_level <= truncation_level) call stochastic_ccmc_death(rng, cdet, cluster)
+                        if (cluster%excitation_level <= truncation_level) call stochastic_ccmc_death(rng(it), cdet, cluster)
 
                     end if
 
                 end do
+                !$omp end do
+                !$omp end parallel
 
                 call direct_annihilation()
 

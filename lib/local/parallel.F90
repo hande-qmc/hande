@@ -241,4 +241,22 @@ contains
 
     end function get_blacs_info
 
+    function get_thread_id() result(id)
+
+        ! Returns:
+        !    Thread index.  This is just 0 outside an OpenMP region,
+        !    omp_get_thread_num() is returned inside an OpenMP region.
+
+        use omp_lib
+
+        integer :: id
+
+#ifdef _OPENMP
+        id = omp_get_thread_num()
+#else
+        id = 0
+#endif
+
+    end function get_thread_id
+
 end module parallel
