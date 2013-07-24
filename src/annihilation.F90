@@ -78,27 +78,25 @@ contains
 
         use parallel, only: nthreads, nprocs
 
-        integer, intent(inout) :: spawning_head(:,:)
+        integer, intent(inout) :: spawning_head(0:nthreads-1,0:nprocs-1)
         integer(i0), intent(inout) :: spawned_walkers(:,:)
 
         integer :: iproc, ithread, i, offset
 
         do iproc = 0, nprocs-1
             offset = 0
-            do ithread = 0, nthreads-1
-                ! Assuming a large enough number of spawning events, each thread
-                ! should have had roughly the same number of successful spawning
-                ! events, so this loop should be fast.
-                do i = minval(spawning_head(:,iproc))+1, maxval(spawning_head(:,iproc))
-                    ! element i was created (or should have been) by thread
-                    ! index mod(i,nthreads).
-                    if (spawning_head(mod(i,nthreads),iproc) < i) then
-                        ! This element was *not* spawned into.  Filling in this gap...
-                        offset = offset + 1
-                    else
-                        spawned_walkers(:,i-offset) = spawned_walkers(:,i)
-                    end if
-                end do
+            ! Assuming a large enough number of spawning events, each thread
+            ! should have had roughly the same number of successful spawning
+            ! events, so this loop should be fast.
+            do i = minval(spawning_head(:,iproc))+1, maxval(spawning_head(:,iproc))
+                ! element i was created (or should have been) by thread
+                ! index mod(i,nthreads).
+                if (spawning_head(mod(i,nthreads),iproc) < i) then
+                    ! This element was *not* spawned into.  Filling in this gap...
+                    offset = offset + 1
+                else
+                    spawned_walkers(:,i-offset) = spawned_walkers(:,i)
+                end if
             end do
         end do
 
