@@ -81,7 +81,7 @@ contains
 
     end subroutine end_csrpsy
 
-    pure subroutine csrpsymv(spm, x, y)
+    subroutine csrpsymv(spm, x, y)
 
         ! Calculate y = m*x, where m is a sparse matrix and x and y are dense
         ! vectors.
