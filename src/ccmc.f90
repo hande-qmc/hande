@@ -182,7 +182,6 @@ contains
         ! in fciqmc_main.
 
         use checking, only: check_allocate, check_deallocate
-        use omp_lib
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
         use utils, only: rng_init_info
@@ -308,7 +307,7 @@ contains
                 ! test.  Please feel free to improve...
                 !$omp parallel private(it)
                 it = get_thread_id()
-                !$omp do schedule(dynamic,200)
+                !$omp do schedule(dynamic,200) private(nspawned, connection)
                 do iattempt = 1, nattempts
 
                     call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
@@ -325,8 +324,10 @@ contains
                         ! estimator.  See comments in spawning.F90 for why we
                         ! must divide through by the probability of selecting
                         ! the cluster.
+                        !$omp critical
                         call update_proj_energy_ptr(cdet(it), &
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect)
+                        !$omp end critical
 
                         call spawner_ccmc(rng(it), cdet(it), cluster(it), nspawned, connection)
 
@@ -745,7 +746,7 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    subroutine collapse_cluster(excitor, excitor_population, cluster_excitor, cluster_population, allowed)
+    pure subroutine collapse_cluster(excitor, excitor_population, cluster_excitor, cluster_population, allowed)
 
         ! Collapse two excitors.  The result is returned in-place.
 
