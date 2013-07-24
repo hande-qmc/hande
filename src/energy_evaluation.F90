@@ -134,7 +134,7 @@ contains
 
     end subroutine update_hf_shift
 
-    subroutine update_proj_energy_hub_k(cdet, pop)
+    pure subroutine update_proj_energy_hub_k(cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -142,24 +142,30 @@ contains
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
         ! where N_i is the population on the i-th determinant, D_i,
         ! and 0 refers to the reference determinant.
-        ! During a MC cycle we store
-        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
-        ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population_cycle.  This makes normalisation very
-        ! efficient.
+        ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the Hubbard model in momentum space only.
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
+        ! In/Out:
+        !    D0_pop_sum: running total of N_0, the population on the reference
+        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
+        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !        Updated only if <D_i|H|D_0> is non-zero.
+
+        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
+        ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
-        use fciqmc_data, only: f0, D0_population_cycle, proj_energy
+        use fciqmc_data, only: f0
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_k, only: slater_condon2_hub_k
 
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
+        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+
         type(excit) :: excitation
         real(p) :: hmatel
 
@@ -167,18 +173,18 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population_cycle = D0_population_cycle + pop
+            D0_pop_sum = D0_pop_sum + pop
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            proj_energy = proj_energy + hmatel*pop
+            proj_energy_sum = proj_energy_sum + hmatel*pop
         end if
 
     end subroutine update_proj_energy_hub_k
 
-    subroutine update_proj_energy_hub_real(cdet, pop)
+    pure subroutine update_proj_energy_hub_real(cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -186,24 +192,30 @@ contains
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
         ! where N_i is the population on the i-th determinant, D_i,
         ! and 0 refers to the reference determinant.
-        ! During a MC cycle we store
-        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
-        ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population_cycle.  This makes normalisation very
-        ! efficient.
+        ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the Hubbard model in real space only.
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
+        ! In/Out:
+        !    D0_pop_sum: running total of N_0, the population on the reference
+        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
+        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !        Updated only if <D_i|H|D_0> is non-zero.
+
+        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
+        ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
-        use fciqmc_data, only: f0, D0_population_cycle, proj_energy
+        use fciqmc_data, only: f0
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
 
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
+        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+
         type(excit) :: excitation
         real(p) :: hmatel
 
@@ -211,17 +223,17 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population_cycle = D0_population_cycle + pop
+            D0_pop_sum = D0_pop_sum + pop
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            proj_energy = proj_energy + hmatel*pop
+            proj_energy_sum = proj_energy_sum + hmatel*pop
         end if
 
     end subroutine update_proj_energy_hub_real
 
-    subroutine update_proj_energy_mol(cdet, pop)
+    pure subroutine update_proj_energy_mol(cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -229,11 +241,7 @@ contains
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
         ! where N_i is the population on the i-th determinant, D_i,
         ! and 0 refers to the reference determinant.
-        ! During a MC cycle we store
-        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
-        ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population_cycle.  This makes normalisation very
-        ! efficient.
+        ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for molecular systems (i.e. those defined by an
         ! FCIDUMP file).
         !
@@ -241,17 +249,26 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
+        ! In/Out:
+        !    D0_pop_sum: running total of N_0, the population on the reference
+        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
+        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !        Updated only if <D_i|H|D_0> is non-zero.
+
+        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
+        ! proj_energy_sum are zero before the first call.
 
         use basis, only: basis_fns
         use determinants, only: decode_det, det_info
         use excitations, only: excit, get_excitation
-        use fciqmc_data, only: f0, D0_population_cycle, proj_energy
+        use fciqmc_data, only: f0
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
         use system, only: nel
 
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
+        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
 
         type(excit) :: excitation
         real(p) :: hmatel
@@ -262,7 +279,7 @@ contains
         select case(excitation%nexcit)
         case (0)
             ! Have reference determinant.
-            D0_population_cycle = D0_population_cycle + pop
+            D0_pop_sum = D0_pop_sum + pop
         case(1)
             ! Have a determinant connected to the reference determinant by
             ! a single excitation: add to projected energy.
@@ -273,7 +290,7 @@ contains
                 call decode_det(cdet%f, occ_list)
                 hmatel = slater_condon1_mol_excit(occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
-                proj_energy = proj_energy + hmatel*pop
+                proj_energy_sum = proj_energy_sum + hmatel*pop
             end if
         case(2)
             ! Have a determinant connected to the reference determinant by
@@ -287,7 +304,7 @@ contains
                     hmatel = slater_condon2_mol_excit(excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
-                    proj_energy = proj_energy + hmatel*pop
+                    proj_energy_sum = proj_energy_sum + hmatel*pop
                 end if
             end if
         end select

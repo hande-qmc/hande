@@ -17,11 +17,12 @@ abstract interface
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
     end subroutine i_decoder
-    subroutine i_update_proj_energy(d, pop)
+    pure subroutine i_update_proj_energy(d, pop, D0_pop_sum, proj_energy_sum)
         import :: det_info, p
         implicit none
         type(det_info), intent(in) :: d
         real(p), intent(in) :: pop
+        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
     end subroutine i_update_proj_energy
     subroutine i_update_dmqmc_estimators(idet,excitation)
         import :: excit

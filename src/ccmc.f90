@@ -307,7 +307,7 @@ contains
                 ! test.  Please feel free to improve...
                 !$omp parallel private(it)
                 it = get_thread_id()
-                !$omp do schedule(dynamic,200) private(nspawned, connection)
+                !$omp do schedule(dynamic,200) private(nspawned, connection) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
                     call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
@@ -324,10 +324,9 @@ contains
                         ! estimator.  See comments in spawning.F90 for why we
                         ! must divide through by the probability of selecting
                         ! the cluster.
-                        !$omp critical
                         call update_proj_energy_ptr(cdet(it), &
-                                 cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect)
-                        !$omp end critical
+                                 cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
+                                 D0_population_cycle, proj_energy)
 
                         call spawner_ccmc(rng(it), cdet(it), cluster(it), nspawned, connection)
 
