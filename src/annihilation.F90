@@ -81,7 +81,7 @@ contains
         integer, intent(inout) :: spawning_head(0:nthreads-1,0:nprocs-1)
         integer(i0), intent(inout) :: spawned_walkers(:,:)
 
-        integer :: iproc, ithread, i, offset
+        integer :: iproc, i, offset
 
         do iproc = 0, nprocs-1
             offset = 0
@@ -98,6 +98,7 @@ contains
                     spawned_walkers(:,i-offset) = spawned_walkers(:,i)
                 end if
             end do
+            spawning_head(0,iproc) = i - 1 - offset
         end do
 
     end subroutine compress_threaded_spawned_list
