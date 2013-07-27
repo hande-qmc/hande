@@ -2,14 +2,17 @@
 fc = gfortran
 cc = gcc
 cxx = g++
+cppflags = -DDISABLE_LANCZOS
 ld = gfortran
-libs = -ltrlan -llapack -lblas -lstdc++
+libs = -llapack -lblas -lstdc++
 f90_module_flag = -J
 
 [opt]
 fflags = -O3
+cflags = -O3
 cxxflags = -O3
 
 [dbg]
 fflags = -g -fbounds-check -Wall -Wextra -fbacktrace
+cflags = -g -Wall -Wextra -fbacktrace
 cxxflags = -g -Wall -Wextra -fbacktrace

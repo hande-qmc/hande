@@ -67,7 +67,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
-        use parallel, only: iproc, nprocs, parent
+        use parallel, only: iproc, nprocs, nthreads, parent
         use utils, only: int_fmt
 
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
@@ -91,7 +91,7 @@ contains
         use utils, only: factorial_combination_1
 
         integer :: ierr
-        integer :: i, D0_inv_proc, ipos, occ_list0_inv(nel)
+        integer :: i, j, D0_inv_proc, ipos, occ_list0_inv(nel)
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
@@ -191,19 +191,22 @@ contains
         call check_allocate('spawned_walkers2',spawned_size*spawned_walker_length,ierr)
         spawned_walkers_recvd => spawned_walkers2
 
-        ! Set spawning_head to be the same size as spawning_block_start.
-        allocate(spawning_head(0:max(1,nprocs-1)), stat=ierr)
-        call check_allocate('spawning_head',max(2,nprocs),ierr)
-
         ! Find the start position within the spawned walker lists for each
         ! processor.
-        ! spawning_block_start(1) should contain the number of elements allocated
+        ! spawning_block_start(nthreads-1,1) should contain the number of elements allocated
         ! for each processor so we allow it to be accessible even if the number
         ! of processors is 1.
-        allocate(spawning_block_start(0:max(1,nprocs-1)), stat=ierr)
-        call check_allocate('spawning_block_start',max(2,nprocs),ierr)
+        allocate(spawning_block_start(0:nthreads-1,0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('spawning_block_start',size(spawning_block_start),ierr)
         step = spawned_walker_length/nprocs
-        forall (i=0:nprocs-1) spawning_block_start(i) = i*step
+        forall (i=0:nprocs-1) 
+            forall (j=0:nthreads-1) spawning_block_start(j,i) = i*step+j
+        end forall
+        spawning_block_start(nthreads-1,1) = step
+
+        ! Set spawning_head to be the same size as spawning_block_start.
+        allocate(spawning_head(0:nthreads-1,0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('spawning_head', size(spawning_head), ierr)
 
         ! Set spin variables for non-Heisenberg systems
         if (system_type /= heisenberg) call set_spin_polarisation(ms_in)

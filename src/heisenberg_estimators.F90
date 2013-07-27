@@ -6,7 +6,7 @@ implicit none
 
 contains
 
-    subroutine update_proj_energy_heisenberg_basic(cdet, pop)
+    pure subroutine update_proj_energy_heisenberg_basic(cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -14,19 +14,23 @@ contains
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
         ! where N_i is the population on the i-th determinant, D_i,
         ! and 0 refers to the reference determinant.
-        ! During a MC cycle we store
-        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
-        ! If the current determinant is the reference determinant, then
-        ! N_0 is stored as D0_population_cycle.  This makes normalisation very
-        ! efficient.
+        ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the Heisenberg model only
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
+        ! In/Out:
+        !    D0_pop_sum: running total of N_0, the population on the reference
+        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
+        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !        Updated only if <D_i|H|D_0> is non-zero.
+
+        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
+        ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
-        use fciqmc_data, only: f0, D0_population_cycle, proj_energy
+        use fciqmc_data, only: f0
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
         use system, only: J_coupling
@@ -34,6 +38,8 @@ contains
 
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
+        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+
         type(excit) :: excitation
         integer :: bit_position, bit_element
 
@@ -41,7 +47,7 @@ contains
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population_cycle = D0_population_cycle + pop
+            D0_pop_sum = D0_pop_sum + pop
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
@@ -50,12 +56,12 @@ contains
             bit_element = bit_lookup(2,excitation%from_orb(1))
 
             if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
-                     proj_energy = proj_energy - 2.0_p*J_coupling*pop
+                     proj_energy_sum = proj_energy_sum - 2.0_p*J_coupling*pop
         end if
 
     end subroutine update_proj_energy_heisenberg_basic
 
-    subroutine update_proj_energy_heisenberg_positive(cdet, pop)
+    pure subroutine update_proj_energy_heisenberg_positive(cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -70,21 +76,29 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
         !    pop: population on current determinant.
+        ! In/Out:
+        !    D0_pop_sum: running total of N_0, the population on the reference
+        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
+        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !        Updated only if <D_i|H|D_0> is non-zero.
+
+        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
+        ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
-        use fciqmc_data, only: proj_energy, D0_population_cycle
         use system, only: J_coupling, nbonds
 
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
+        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
 
-        proj_energy = proj_energy + (J_coupling*nbonds+2*cdet%data(1))*pop
+        proj_energy_sum = proj_energy_sum + (J_coupling*nbonds+2*cdet%data(1))*pop
 
-        D0_population_cycle = D0_population_cycle + pop
+        D0_pop_sum = D0_pop_sum + pop
 
     end subroutine update_proj_energy_heisenberg_positive
 
-    subroutine update_proj_energy_heisenberg_neel_singlet(cdet, pop)
+    pure subroutine update_proj_energy_heisenberg_neel_singlet(cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -100,16 +114,27 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
         !    pop: population on current determinant.
+        ! In/Out:
+        !    D0_pop_sum: running total of N_0, the population on the reference
+        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
+        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !        Updated only if <D_i|H|D_0> is non-zero.
+
+        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
+        ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
-        use fciqmc_data, only: sampling_size, proj_energy, neel_singlet_amp, D0_population_cycle
+        use fciqmc_data, only: sampling_size, neel_singlet_amp
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
-        integer :: n, lattice_1_up, lattice_2_up
-        real(dp) :: importance_sampling_factor = 1.0
+        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
 
+        integer :: n, lattice_1_up, lattice_2_up
+        real(dp) :: importance_sampling_factor
+
+        importance_sampling_factor = 1.0_dp
         n = nint(cdet%data(sampling_size+1))
         lattice_1_up = nint(cdet%data(sampling_size+2))
 
@@ -142,7 +167,7 @@ contains
 
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
-        proj_energy = proj_energy + (neel_singlet_amp(n) * cdet%data(1) * &
+        proj_energy_sum = proj_energy_sum + (neel_singlet_amp(n) * cdet%data(1) * &
                                           pop * importance_sampling_factor)
 
         ! Now, to find all other basis functions connected to |D_j>, we find 0-1 bonds
@@ -158,11 +183,11 @@ contains
         ! Finally note that the matrix element is -2*J_coupling, and we can put this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        proj_energy = proj_energy - (2 * J_coupling * lattice_1_up * &
+        proj_energy_sum = proj_energy_sum - (2 * J_coupling * lattice_1_up * &
                     pop * neel_singlet_amp(n-1) * importance_sampling_factor)
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        proj_energy = proj_energy - (2 * J_coupling * lattice_2_up * &
+        proj_energy_sum = proj_energy_sum - (2 * J_coupling * lattice_2_up * &
                     pop * neel_singlet_amp(n+1) * importance_sampling_factor)
 
         ! Now we just need to find the contribution to the denominator. The total
@@ -170,7 +195,7 @@ contains
         ! \sum_{i} (a_i * n_i)
         ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
 
-        D0_population_cycle = D0_population_cycle + &
+        D0_pop_sum = D0_pop_sum + &
                                 pop*neel_singlet_amp(n)*importance_sampling_factor
 
     end subroutine update_proj_energy_heisenberg_neel_singlet

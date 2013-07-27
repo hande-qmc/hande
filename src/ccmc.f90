@@ -201,14 +201,14 @@ contains
         use search, only: binary_search
         use system, only: nel
 
-        integer :: ireport, icycle
+        integer :: i, ireport, icycle, it
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
-        type(det_info) :: cdet
+        type(det_info), allocatable :: cdet(:)
 
         integer :: nspawned, ndeath, ierr
         type(excit) :: connection
-        type(cluster_t), target :: cluster
-        type(dSFMT_t) :: rng
+        type(cluster_t), allocatable, target :: cluster(:)
+        type(dSFMT_t), allocatable :: rng(:)
 
         logical :: soft_exit
 
@@ -234,24 +234,35 @@ contains
                                      &implement better factorial routines.')
         end if
 
-        ! Allocate det_info components...
-        call alloc_det_info(cdet)
-        ! ...and cluster_t components
-        allocate(cluster%excitors(truncation_level+2), stat=ierr)
-        call check_allocate('cluster%excitors', truncation_level+2, ierr)
+        ! Allocate and initialise per thread...
+        allocate(rng(0:nthreads-1), stat=ierr)
+        call check_allocate('rng', size(rng), ierr)
+        if (parent) call rng_init_info(seed+iproc)
+        allocate(cdet(0:nthreads-1), stat=ierr)
+        call check_allocate('cdet', size(cdet), ierr)
+        allocate(cluster(0:nthreads-1), stat=ierr)
+        call check_allocate('cluster', size(cluster), ierr)
+        do i = 0, nthreads-1
+            ! Initialise and allocate RNG store.
+            call dSFMT_init(seed+(iproc*nthreads)+i, 50000, rng(i))
+            ! ...and allocate det_info components...
+            call alloc_det_info(cdet(i))
+            ! ...and cluster_t components
+            allocate(cluster(i)%excitors(truncation_level+2), stat=ierr)
+            call check_allocate('cluster%excitors', truncation_level+2, ierr)
+        end do
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_pops(walker_length), stat=ierr)
         call check_allocate('cumulative_abs_pops', walker_length, ierr)
-
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Whilst cluster data can be accessed from cdet, I recommend explicitly
         ! passing it as an argument rather than accessing cdet%cluster both for
         ! the sake of brevity and clarity.  In particular, I wish to encourage
         ! not using cdet%cluster in order to maintain (where possible and
         ! relevant) generality in routines applicable to FCIQMC and CCMC.
-        cdet%cluster => cluster
+        do i = 0, nthreads-1
+            cdet(i)%cluster => cluster(i)
+        end do
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -292,12 +303,17 @@ contains
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
+                ! OpenMP chunk size determined completely empirically from a single
+                ! test.  Please feel free to improve...
+                !$omp parallel private(it)
+                it = get_thread_id()
+                !$omp do schedule(dynamic,200) private(nspawned, connection) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
-                    call select_cluster(rng, nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
-                                        cdet, cluster)
+                    call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
+                                        cdet(it), cluster(it))
 
-                    if (cluster%excitation_level <= truncation_level+2) then
+                    if (cluster(it)%excitation_level <= truncation_level+2) then
 
                         ! FCIQMC calculates the projected energy exactly.  To do
                         ! so in CCMC would involve enumerating over all pairs of
@@ -308,22 +324,28 @@ contains
                         ! estimator.  See comments in spawning.F90 for why we
                         ! must divide through by the probability of selecting
                         ! the cluster.
-                        call update_proj_energy_ptr(cdet, cluster%cluster_to_det_sign*cluster%amplitude/cluster%pselect)
+                        call update_proj_energy_ptr(cdet(it), &
+                                 cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
+                                 D0_population_cycle, proj_energy)
 
-                        call spawner_ccmc(rng, cdet, cluster, nspawned, connection)
+                        call spawner_ccmc(rng(it), cdet(it), cluster(it), nspawned, connection)
 
                         if (nspawned /= 0) then
-                            call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
+                            call create_spawned_particle_ptr(cdet(it), connection, nspawned, spawned_pop)
                         end if
 
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
-                        if (cluster%excitation_level <= truncation_level) call stochastic_ccmc_death(rng, cdet, cluster)
+                        if (cluster(it)%excitation_level <= truncation_level) then
+                            call stochastic_ccmc_death(rng(it), cdet(it), cluster(it))
+                        end if
 
                     end if
 
                 end do
+                !$omp end do
+                !$omp end parallel
 
                 call direct_annihilation()
 
@@ -364,10 +386,11 @@ contains
 
         if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
 
-        call dealloc_det_info(cdet)
-        cdet%cluster => NULL()
-        deallocate(cluster%excitors, stat=ierr)
-        call check_deallocate('cluster%excitors', ierr)
+        ! TODO: deallocation...
+!        call dealloc_det_info(cdet)
+!        cdet%cluster => NULL()
+!        deallocate(cluster%excitors, stat=ierr)
+!        call check_deallocate('cluster%excitors', ierr)
 
     end subroutine do_ccmc
 
@@ -722,7 +745,7 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    subroutine collapse_cluster(excitor, excitor_population, cluster_excitor, cluster_population, allowed)
+    pure subroutine collapse_cluster(excitor, excitor_population, cluster_excitor, cluster_population, allowed)
 
         ! Collapse two excitors.  The result is returned in-place.
 

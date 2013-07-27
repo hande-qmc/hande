@@ -125,19 +125,24 @@ contains
 
         use utils, only: int_fmt
 
-        character(4) :: fmt1
+        character(4) :: fmt1, fmt2
 
         fmt1 = int_fmt(nprocs)
+        fmt2 = int_fmt(nthreads)
         if (nprocs == 1) then
             write (6,'(1X,"Running on"'//fmt1//'" processor.")') nprocs
+            if (nthreads == 1) then
+                write (6,'(1X,"Running with"'//fmt2//'" thread.",/)') nthreads
+            else
+                write (6,'(1X,"Running with"'//fmt2//'" threads.",/)') nthreads
+            end if
         else
-            write (6,'(1X,"Running on"'//fmt1//'" processors.")') nprocs
-        end if
-        fmt1 = int_fmt(nthreads)
-        if (nthreads == 1) then
-            write (6,'(1X,"Running with"'//fmt1//'" thread per processor.",/)') nthreads
-        else
-            write (6,'(1X,"Running with"'//fmt1//'" threads per processor.",/)') nthreads
+            write (6,'(1X,"Running on"'//fmt1//'" MPI processes.")') nprocs
+            if (nthreads == 1) then
+                write (6,'(1X,"Running with"'//fmt2//'" thread per MPI process.",/)') nthreads
+            else
+                write (6,'(1X,"Running with"'//fmt2//'" threads per MPI process.",/)') nthreads
+            end if
         end if
 
     end subroutine parallel_report
@@ -235,5 +240,23 @@ contains
         my_blacs_info = blacs_info(procx, procy, nrows, ncols, desc_m, desc_v)
 
     end function get_blacs_info
+
+    function get_thread_id() result(id)
+
+        ! Returns:
+        !    Thread index.  This is just 0 outside an OpenMP region,
+        !    omp_get_thread_num() is returned inside an OpenMP region.
+
+        use omp_lib
+
+        integer :: id
+
+#ifdef _OPENMP
+        id = omp_get_thread_num()
+#else
+        id = 0
+#endif
+
+    end function get_thread_id
 
 end module parallel

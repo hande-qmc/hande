@@ -162,17 +162,19 @@ real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
 integer(i0), pointer :: spawned_walkers(:,:), spawned_walkers_recvd(:,:)
 ! d) current (filled) slot in the spawning arrays.
 ! In parallel we divide the spawning lists into blocks (one for each processor).
-! spawning_head(i) gives the current filled slot in the spawning arrays for the
-! block associated with the i-th processor.
+! spawning_head(j,i) gives the current filled slot in the spawning arrays for the
+! block associated with the j-th thread on the i-th processor.
+! After compress_spawned is called, spawning_head(0,i) gives the current filled
+! slot on the i-th processor (all other elements are not meaningful).
 ! After distribute_walkers is called in the annihilation algorithm,
-! spawning_head(0) is the number of spawned_walkers on the *current* processor
+! spawning_head(0,0) is the number of spawned_walkers on the *current* processor
 ! and all other elements are not meaningful.
 ! It is convenient if the minimum size of spawning_head and spawning_block_start
-! are both 0:1.
-integer, allocatable :: spawning_head(:) ! (0:(max(1,nprocs-1))
+! are both 0:1 along the processor dimension.
+integer, allocatable :: spawning_head(:,:) ! (0:nthreads, max_0:(max(1,nprocs-1))
 ! spawning_block_start(i) contains the first position to be used in the spawning
 ! lists for storing a walker which is to be sent to the i-th processor.
-integer, allocatable :: spawning_block_start(:) ! (0:max(1,nprocs-1))
+integer, allocatable :: spawning_block_start(:,:) ! (0:nthreads,0:max(1,nprocs-1))
 
 ! Rate of spawning.  This is a running total over MC cycles on each processor
 ! until it is summed over processors and averaged over cycles in
@@ -354,7 +356,7 @@ contains
         !    Note that this is *not* the same as nparticles as nparticles is
         !    updated during the Monte Carlo cycle as particles die.
         !    It is, however, identical to the number of particles on the
-        !    processor at the beginning of the Monte Carlo cycle (miltiplied by
+        !    processor at the beginning of the Monte Carlo cycle (multiplied by
         !    2 for the timestep algorithm).
 
         real(p) :: rate
@@ -362,7 +364,7 @@ contains
         integer(lint), intent(in) :: nattempts
         integer :: nspawn
 
-        nspawn = sum(spawning_head(:nprocs-1) - spawning_block_start(:nprocs-1))
+        nspawn = sum(spawning_head(0,:nprocs-1) - spawning_block_start(0,:nprocs-1))
         ! The total spawning rate is
         !   (nspawn + ndeath) / nattempts
         ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different
@@ -398,7 +400,7 @@ contains
 
         nstack = 0
         lo = 1
-        hi = spawning_head(0)
+        hi = spawning_head(0,0)
         do
             ! If the section/partition we are looking at is smaller than
             ! switch_threshold then perform an insertion sort.

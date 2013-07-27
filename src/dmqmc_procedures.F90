@@ -327,15 +327,15 @@ contains
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+        spawning_head(0,iproc_spawn) = spawning_head(0,iproc_spawn) + 1
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
+        spawned_walkers(:,spawning_head(0,iproc_spawn)) = 0
         ! indices 1 to total_basis_length store the bitstring.
-        spawned_walkers(:(2*basis_length),spawning_head(iproc_spawn)) = f_new_diagonal
+        spawned_walkers(:(2*basis_length),spawning_head(0,iproc_spawn)) = f_new_diagonal
         ! The final index stores the number of psips created, always 1 in this situation.
-        spawned_walkers((2*basis_length)+1,spawning_head(iproc_spawn)) = 1
+        spawned_walkers((2*basis_length)+1,spawning_head(0,iproc_spawn)) = 1
 
     end subroutine create_diagonal_particle
 

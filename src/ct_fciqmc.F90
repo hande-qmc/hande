@@ -32,7 +32,7 @@ contains
         integer :: nspawned, ndeath, ireport, idet
         integer(lint) :: nattempts, nparticles_old(sampling_size)
         integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
-        integer, allocatable :: current_pos(:) ! (0:max(1,nprocs-1))
+        integer, allocatable :: current_pos(:,:) ! (nthreads, 0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
         type(det_info) :: cdet
@@ -40,6 +40,7 @@ contains
         type(excit), allocatable :: connection_list(:)
         logical :: soft_exit
         type(dSFMT_t) :: rng
+        integer, parameter :: thread_id = 0
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -52,8 +53,8 @@ contains
 
         allocate(connection_list(max_nexcitations), stat=ierr)
         call check_allocate('connection_list', max_nexcitations, ierr)
-        allocate(current_pos(0:max(1,nprocs-1)), stat=ierr)
-        call check_allocate('current_pos', max(2,nprocs), ierr)
+        allocate(current_pos(nthreads,0:max(1,nprocs-1)), stat=ierr)
+        call check_allocate('current_pos', size(current_pos), ierr)
 
         sum_off_diag = max_nexcitations*matel
 
@@ -86,7 +87,7 @@ contains
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                call update_proj_energy_ptr(cdet, real(walker_population(1,idet),p))
+                call update_proj_energy_ptr(cdet, real(walker_population(1,idet),p), D0_population_cycle, proj_energy)
 
                 ! Loop over each walker on the determinant.
                 do iparticle = 1, abs(walker_population(1,idet))
@@ -150,18 +151,18 @@ contains
             do
                 do proc_id = 0, nprocs-1
 
-                    if (current_pos(proc_id) <= spawning_head(proc_id)) then
+                    if (current_pos(thread_id,proc_id) <= spawning_head(0,proc_id)) then
                         ! Have spawned walkers in the block to be sent to
                         ! processor proc_id.  Need to advance them to the barrier.
 
                         ! decode the spawned walker bitstring
-                        cdet%f = spawned_walkers(:basis_length,current_pos(proc_id))
+                        cdet%f = spawned_walkers(:basis_length,current_pos(thread_id,proc_id))
                         K_ii = sc0_ptr(cdet%f) - H00
                         call decoder_ptr(cdet%f,cdet)
 
                         ! Spawn from this walker & append to the spawned array until
                         ! we hit the barrier
-                        time = spawn_times(current_pos(proc_id))
+                        time = spawn_times(current_pos(thread_id,proc_id))
                         do
 
                             R = abs(K_ii - shift) + sum_off_diag
@@ -169,16 +170,16 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(rng, cdet, K_ii, int(spawned_walkers(spawned_pop,current_pos(proc_id))), &
+                            call ct_spawn(rng, cdet, K_ii, int(spawned_walkers(spawned_pop,current_pos(thread_id,proc_id))), &
                                           R, nspawned, connection)
 
                             if (nspawned /= 0) then
 
                                 ! Handle walker death
                                 if(connection%nexcit == 0 .and. &
-                                        spawned_walkers(spawned_pop,current_pos(proc_id))*nspawned < 0) then
-                                    spawned_walkers(spawned_pop,current_pos(proc_id)) = &
-                                            spawned_walkers(spawned_pop,current_pos(proc_id)) + nspawned
+                                        spawned_walkers(spawned_pop,current_pos(thread_id,proc_id))*nspawned < 0) then
+                                    spawned_walkers(spawned_pop,current_pos(thread_id,proc_id)) = &
+                                            spawned_walkers(spawned_pop,current_pos(thread_id,proc_id)) + nspawned
                                     ndeath = ndeath + 1
                                     exit ! The walker is dead - do not continue
                                 end if
@@ -193,7 +194,7 @@ contains
                         end do
 
                         ! go on to the next element
-                        current_pos(proc_id) = current_pos(proc_id) + 1
+                        current_pos(thread_id,proc_id) = current_pos(thread_id,proc_id) + 1
 
                     end if
 
@@ -361,14 +362,14 @@ contains
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(iproc_spawn) = spawning_head(iproc_spawn) + 1
+        spawning_head(0,iproc_spawn) = spawning_head(0,iproc_spawn) + 1
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(iproc_spawn)) = 0
-        spawned_walkers(:basis_length,spawning_head(iproc_spawn)) = f_new
-        spawned_walkers(particle_type,spawning_head(iproc_spawn)) = nspawn
-        spawn_times(spawning_head(iproc_spawn)) = spawn_time
+        spawned_walkers(:,spawning_head(0,iproc_spawn)) = 0
+        spawned_walkers(:basis_length,spawning_head(0,iproc_spawn)) = f_new
+        spawned_walkers(particle_type,spawning_head(0,iproc_spawn)) = nspawn
+        spawn_times(spawning_head(0,iproc_spawn)) = spawn_time
 
     end subroutine create_spawned_particle_ct
 
