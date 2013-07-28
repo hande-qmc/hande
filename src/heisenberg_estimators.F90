@@ -132,9 +132,9 @@ contains
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
 
         integer :: n, lattice_1_up, lattice_2_up
-        real(dp) :: importance_sampling_factor
+        real(p) :: importance_sampling_factor
 
-        importance_sampling_factor = 1.0_dp
+        importance_sampling_factor = 1.0_p
         n = nint(cdet%data(sampling_size+1))
         lattice_1_up = nint(cdet%data(sampling_size+2))
 
@@ -146,7 +146,7 @@ contains
         ! must remove this extra factor if we wish to calculate the projected eneergy
         ! in the same way. This is done with the factor, importance_sampling_factor.
         if (guiding_function==neel_singlet_guiding) importance_sampling_factor = &
-                                                               1.0/neel_singlet_amp(n)
+                                                               1.0_p/neel_singlet_amp(n)
 
         ! Deduce the number of 0-1 bonds, where the 1's are on the
         ! second sublattice:
