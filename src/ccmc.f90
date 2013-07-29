@@ -324,7 +324,7 @@ contains
                         ! estimator.  See comments in spawning.F90 for why we
                         ! must divide through by the probability of selecting
                         ! the cluster.
-                        call update_proj_energy_ptr(cdet(it), &
+                        call update_proj_energy_ptr(f0, cdet(it), &
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy)
 
