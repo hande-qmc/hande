@@ -26,7 +26,7 @@ contains
 
         ! -1. Compress the successful spawning events from each thread so the
         ! spawned list being sent to each processor contains no gaps.
-        if (nthreads > 1) call compress_threaded_spawned_list(spawning_head, spawned_walkers)
+        if (nthreads > 1) call compress_threaded_spawned_list(spawning_block_start, spawning_head, spawned_walkers)
 
         ! 0. Send spawned walkers to the processor which "owns" them and receive
         ! the walkers "owned" by this processor.
@@ -62,9 +62,11 @@ contains
 
     end subroutine direct_annihilation
 
-    pure subroutine compress_threaded_spawned_list(spawning_head, spawned_walkers)
+    pure subroutine compress_threaded_spawned_list(spawning_block_start, spawning_head, spawned_walkers)
 
         ! In/Out:
+        !    spawning_block_start: array listing the initial values of
+        !        spawning_head (ie before any spawning has occurred).
         !    spawning_head: array listing the head spawned element by each
         !        thread to be sent to each processor in the subarrays of
         !        spawned_walkers.  On output, spawning_head(0,i) contains the
@@ -78,6 +80,7 @@ contains
 
         use parallel, only: nthreads, nprocs
 
+        integer, intent(inout) :: spawning_block_start(0:nthreads-1,0:nprocs-1)
         integer, intent(inout) :: spawning_head(0:nthreads-1,0:nprocs-1)
         integer(i0), intent(inout) :: spawned_walkers(:,:)
 
@@ -88,10 +91,12 @@ contains
             ! Assuming a large enough number of spawning events, each thread
             ! should have had roughly the same number of successful spawning
             ! events, so this loop should be fast.
-            do i = minval(spawning_head(:,iproc))+1, maxval(spawning_head(:,iproc))
+            ! Start from the first element which might have been spawned into.
+            do i = max(1,minval(spawning_head(:,iproc))), maxval(spawning_head(:,iproc))
                 ! element i was created (or should have been) by thread
                 ! index mod(i,nthreads).
-                if (spawning_head(mod(i,nthreads),iproc) < i) then
+                if (spawning_head(mod(i,nthreads),iproc) < i .or. &
+                        spawning_head(mod(i,nthreads),iproc) == spawning_block_start(mod(i,nthreads),iproc)) then
                     ! This element was *not* spawned into.  Filling in this gap...
                     offset = offset + 1
                 else
