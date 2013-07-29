@@ -7,7 +7,7 @@ finite_cluster
 lattice
 4
 
-spawned_walker_length 50
+spawned_walker_length 500
 walker_length 500
 nreports 100
 mc_cycles 25
