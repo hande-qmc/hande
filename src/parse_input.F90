@@ -157,6 +157,11 @@ contains
                 do i = 1,2
                     call readi(CAS(i))
                 end do
+            case('RAS')
+                do i = 1,2
+                    call readi(RAS(i))
+                end do
+                call readi(ras3_max)
             case('TWIST')
                 allocate(ktwist(nitems-item), stat=ierr)
                 call check_allocate('ktwist',nitems-item,ierr)
@@ -585,6 +590,8 @@ contains
         call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(cas, 2, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ras, 2, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ras3_max, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
