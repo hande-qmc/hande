@@ -600,7 +600,9 @@ contains
         ! a) initiator-approximation
         if (initiator_approximation) then
             set_parent_flag_ptr => set_parent_flag
-            if (truncate_space) then
+            if (all(ras > 0)) then
+                create_spawned_particle_ptr => create_spawned_particle_initiator_ras
+            else if (truncate_space) then
                 create_spawned_particle_ptr => create_spawned_particle_initiator_truncated
             else
                 create_spawned_particle_ptr => create_spawned_particle_initiator
@@ -609,7 +611,9 @@ contains
             annihilate_spawned_list_ptr => annihilate_spawned_list_initiator
         else
             set_parent_flag_ptr => set_parent_flag_dummy
-            if (truncate_space) then
+            if (all(ras > 0)) then
+                create_spawned_particle_ptr => create_spawned_particle_ras
+            else if (truncate_space) then
                 create_spawned_particle_ptr => create_spawned_particle_truncated
             else
                 create_spawned_particle_ptr => create_spawned_particle
