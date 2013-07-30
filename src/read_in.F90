@@ -473,8 +473,9 @@ contains
                                         Ecore = Ecore + x*rhf_fac**2
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
-                                else if (ii == bb .and. jj == aa .and. ii /= jj) then
-                                    ! <ij|ji>, i/=j
+                                else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
+                                         ii == jj .and. aa == bb .and. ii /= aa) then
+                                    ! <ij|ji>, i/=j (or <ii|jj> version)
                                     if (seen_ijij(tri_ind_reorder(i,j)) < 2) then
                                         ! If RHF, then need to include:
                                         !   <i,up j,up|j,up, i,up>
