@@ -48,6 +48,8 @@ contains
         ! spin block.
         integer, allocatable :: eigv_rank(:)
 
+        logical :: spin_flip
+
         character(50) :: fmt1
 
         if (parent) write (6,'(1X,a15,/,1X,15("="),/)') 'Diagonalisation'
@@ -83,22 +85,31 @@ contains
             isym_max = sym_in
         end if
 
+        spin_flip = .false.
         if (allocated(occ_list0)) then
             ! If a reference determinant was supplied, then we need to only
             ! consider that spin and symmetry.
-            isym_min = symmetry_orb_list(occ_list0)
-            isym_max = isym_min
-            ms_min = spin_orb_list(occ_list0)
-            ms_max = ms_min
-        end if
+            if (isym_min /= isym_max) then
+                isym_min = symmetry_orb_list(occ_list0)
+                isym_max = isym_min
+            else
+                spin_flip = .true.
+            end if
+            if (ms_min /= ms_max) then
+                ms_min = spin_orb_list(occ_list0)
+                ms_max = ms_min
+            else
+                spin_flip = .true.
+            end if
+        endif
 
         if (truncate_space) then
-            if (isym_min /= isym_max .or. ms_min /= ms_max) then
-                call stop_all('diagonalise', 'Symmetry and spin must be &
-                    &specified or a reference determinant supplied for &
-                    &truncated CI calculations.')
-            end if
             if (.not. allocated(occ_list0)) then
+                if (isym_min /= isym_max .or. ms_min /= ms_max) then
+                    call stop_all('diagonalise', 'Symmetry and spin must be &
+                        &specified or a reference determinant supplied for &
+                        &truncated CI calculations.')
+                end if
                 ! Create reference det based upon symmetry labels.
                 call set_spin_polarisation(ms_min)
                 allocate(occ_list0(nel), stat=ierr)
@@ -127,9 +138,9 @@ contains
             ! Find and set information about the space.
             call set_spin_polarisation(ms)
             if (allocated(occ_list0)) then
-                call enumerate_determinants(.true., occ_list0=occ_list0)
+                call enumerate_determinants(.true., spin_flip, occ_list0=occ_list0)
             else
-                call enumerate_determinants(.true.)
+                call enumerate_determinants(.true., spin_flip)
             end if
 
             ! Diagonalise each symmetry block in turn.
@@ -151,9 +162,9 @@ contains
 
                 ! Find all determinants with this spin.
                 if (allocated(occ_list0)) then
-                    call enumerate_determinants(.false., isym, occ_list0)
+                    call enumerate_determinants(.false., spin_flip, isym, occ_list0)
                 else
-                    call enumerate_determinants(.false., isym)
+                    call enumerate_determinants(.false., spin_flip, isym)
                 end if
 
                 if (ndets == 1) then

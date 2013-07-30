@@ -81,7 +81,7 @@ contains
 
 !--- Hilbert space enumeration ---
 
-    subroutine enumerate_determinants(init, ref_sym, occ_list0)
+    subroutine enumerate_determinants(init, spin_flip, ref_sym, occ_list0)
 
         ! Find the Slater determinants that can be formed from the
         ! basis functions.
@@ -96,6 +96,8 @@ contains
         !    init: if true, count the number of determinants rather than store
         !        them.  This must be done for each spin polarisation before
         !        subsequent calls to store the determinants.
+        !    spin_flip: if true doing a spin-flip calculation (so the reference
+        !        has a different spin & symmetry to the desired space).
         !    ref_sym(optional): index of an irreducible representation.  Only determinants
         !        with the same symmetry  are stored.  *MUST* be specified if
         !        init is false.
@@ -106,7 +108,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use utils, only: binom_i, get_free_unit, int_fmt
-        use bit_utils, only: first_perm, bit_permutation, decode_bit_string
+        use bit_utils, only: first_perm, bit_permutation, decode_bit_string, count_set_bits
 
         use basis, only: basis_length
         use calc, only: truncate_space, truncation_level
@@ -115,7 +117,7 @@ contains
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
 
-        logical, intent(in) :: init
+        logical, intent(in) :: init, spin_flip
         integer, intent(in), optional :: ref_sym
         integer, intent(in), optional :: occ_list0(nel)
 
@@ -128,8 +130,9 @@ contains
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(ndim), k_beta(ndim)
         type(det_info) :: d0
-        logical :: in_space
+        logical :: in_space, force_full
 
+        force_full = .false.
         if (init) then
             if (allocated(sym_space_size)) then
                 deallocate(sym_space_size, stat=ierr)
@@ -184,7 +187,13 @@ contains
                 end do
             end do
             call encode_det(occ_list0, d0%f)
-            call decode_det_spinocc_spinunocc(d0%f, d0)
+            ! Check symmetries of reference matches the desired symmetries.  If
+            ! not, are doing spin flip and need to do a full enumeration!
+            if (spin_flip) then
+                force_full = .true.
+            else
+                call decode_det_spinocc_spinunocc(d0%f, d0)
+            end if
         else
             ! No matter what the excitation level of the beta string, all alpha
             ! combinations are allowed.
@@ -230,7 +239,7 @@ contains
                     call decode_bit_string(d0%f(1), unocc)
                     do i = 1, ndets
                         call next_string(i==1, .false., nbasis, nel, d0%occ_list, &
-                                         unocc, truncation_level, comb(:,1),  &
+                                         unocc, truncation_level, force_full, comb(:,1),  &
                                          occ, excit_level_alpha)
                         call encode_det(occ, dets_list(:,i))
                     end do
@@ -276,7 +285,7 @@ contains
 
                     ! Get beta orbitals.
                     call next_string(i==1, .false., nbasis/2, nbeta, d0%occ_list_beta, &
-                                     d0%unocc_list_beta, truncation_level, comb(:,1),  &
+                                     d0%unocc_list_beta, truncation_level, force_full, comb(:,1),  &
                                      occ(1:nbeta), excit_level_beta)
 
                     ! Symmetry.
@@ -296,7 +305,7 @@ contains
 
                         ! Get alpha orbitals.
                         call next_string(j==1, .true., nbasis/2, nalpha, d0%occ_list_alpha, &
-                                         d0%unocc_list_alpha, truncation_level-excit_level_beta, &
+                                         d0%unocc_list_alpha, truncation_level-excit_level_beta, force_full, &
                                          comb(:,2), occ(nbeta+1:), excit_level_alpha)
 
                         ! Symmetry of all orbitals.
@@ -383,7 +392,7 @@ contains
 
 !--- Obtain the next basis function string ---
 
-    subroutine next_string(init, alpha, norb_spin, nel_spin, occ_spin, unocc_spin, max_level, comb, string, excit_level)
+    subroutine next_string(init, alpha, norb_spin, nel_spin, occ_spin, unocc_spin, max_level, force_full, comb, string, excit_level)
 
         ! Generate the next string/list of orbitals occupied by electrons of
         ! a given spin.
@@ -413,6 +422,8 @@ contains
         !    max_level: maximum number of excitations from the reference to
         !        consider.  max_level == nel_spin implies no truncation of the
         !        space.
+        !    force_full: if true, do a complete enumeration of the space, even
+        !        if max_level is not nel_spin.
         ! In/Out:
         !    comb: internal state used to generate the next combination.  Do not
         !        change or set outside this routine.
@@ -431,12 +442,13 @@ contains
 
         logical, intent(in) :: init, alpha
         integer, intent(in) :: norb_spin, nel_spin, max_level, occ_spin(:), unocc_spin(:)
+        logical, intent(in) :: force_full
         integer, intent(inout) :: comb(max(nel_spin, 2*max_level)), excit_level
         integer, intent(out) :: string(nel_spin)
 
         integer :: i, ierr
 
-        if (max_level >= nel_spin) then
+        if (max_level >= nel_spin .or. force_full) then
             ! Very simple: want all possible combinations.  Find a combination
             ! and hence create a string from it.
             excit_level = 0

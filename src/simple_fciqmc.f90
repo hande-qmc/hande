@@ -42,16 +42,16 @@ contains
         ! Find and set information about the space.
         call set_spin_polarisation(ms_in)
         if (allocated(occ_list0)) then
-            call enumerate_determinants(.true., occ_list0=occ_list0)
+            call enumerate_determinants(.true., .false., occ_list0=occ_list0)
         else
-            call enumerate_determinants(.true.)
+            call enumerate_determinants(.true., .false.)
         end if
 
         ! Find all determinants with desired spin and symmetry.
         if (allocated(occ_list0)) then
-            call enumerate_determinants(.false., sym_in, occ_list0)
+            call enumerate_determinants(.false., .false., sym_in, occ_list0)
         else
-            call enumerate_determinants(.false., sym_in)
+            call enumerate_determinants(.false., .false., sym_in)
         end if
 
 
