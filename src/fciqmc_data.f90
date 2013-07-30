@@ -189,6 +189,14 @@ integer(i0), allocatable :: f0(:)
 ! List of occupied orbitals in reference determinant.
 integer, allocatable :: occ_list0(:)
 
+! Bit string of reference determinant used to generate the Hilbert space.
+! This is usually identical to f0, but not necessarily (e.g. if we're doing
+! a spin-flip calculation).
+integer(i0), allocatable :: hs_f0(:)
+
+! hs_f0:hs_occ_list0 as f0:occ_list0.
+integer, allocatable :: hs_occ_list0(:)
+
 ! Population of walkers on reference determinant.
 ! The initial value can be overridden by a restart file or input option.
 ! For DMQMC, this variable stores the initial number of psips to be

@@ -540,7 +540,7 @@ contains
         use calc, only: truncation_level
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, f0
+        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, hs_f0
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
@@ -564,7 +564,7 @@ contains
         call create_excited_det(cdet%f, connection, f_new)
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(f0, f_new) <= truncation_level) then
+        if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
 #ifdef PARALLEL
             ! (Extra credit for parallel calculations)
@@ -614,7 +614,7 @@ contains
         use calc, only: truncation_level
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, spawned_parent, f0
+        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, spawned_parent, hs_f0
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
@@ -638,7 +638,7 @@ contains
         call create_excited_det(cdet%f, connection, f_new)
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(f0, f_new) <= truncation_level) then
+        if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
 #ifdef PARALLEL
             ! (Extra credit for parallel calculations)

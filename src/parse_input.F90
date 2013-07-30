@@ -292,6 +292,12 @@ contains
                 do i = 1, nitems-1
                     call readi(occ_list0(i))
                 end do
+            case('HS_REFERENCE_DET')
+                allocate(hs_occ_list0(nitems-1), stat=ierr)
+                call check_allocate('hs_occ_list0',nitems-1,ierr)
+                do i = 1, nitems-1
+                    call readi(hs_occ_list0(i))
+                end do
             case('NO_RENORM')
                 no_renorm = .true.
             case('SELECT_REFERENCE_DET')
@@ -644,6 +650,18 @@ contains
                 call check_allocate('occ_list0', occ_list_size, ierr)
             end if
             call mpi_bcast(occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+        end if
+        if (parent) option_set = allocated(hs_occ_list0)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            ! Have not yet set nel in the Heisenberg model.
+            occ_list_size = size(hs_occ_list0)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(hs_occ_list0(occ_list_size), stat=ierr)
+                call check_allocate('hs_occ_list0', occ_list_size, ierr)
+            end if
+            call mpi_bcast(hs_occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)

@@ -237,6 +237,17 @@ contains
 
             call encode_det(occ_list0, f0)
 
+            allocate(hs_f0(basis_length), stat=ierr)
+            call check_allocate('hs_f0', size(hs_f0), ierr)
+            if (allocated(hs_occ_list0)) then
+                call encode_det(hs_occ_list0, hs_f0)
+            else
+                allocate(hs_occ_list0(nel), stat=ierr)
+                call check_allocate('hs_occ_list0', size(hs_occ_list0), ierr)
+                hs_occ_list0 = occ_list0
+                hs_f0 = f0
+            end if
+
             ! In general FCIQMC, we start with psips only on the
             ! reference determinant, so set tot_walkers = 1 and
             ! initialise walker_population. For DMQMC, this is
