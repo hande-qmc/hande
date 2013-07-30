@@ -248,7 +248,7 @@ contains
         !
         ! WARNING: This function assumes that the D_{ij}^{ab} is a symmetry allowed
         ! excitation from D (and so the matrix element is *not* zero by
-        ! symmetry).  This is less safe that slater_condon1_mol but much faster
+        ! symmetry).  This is less safe that slater_condon2_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
         use basis, only: basis_fns
@@ -264,7 +264,7 @@ contains
         hmatel = 0.0_p
 
         if (basis_fns(i)%Ms == basis_fns(a)%Ms) &
-            hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, a, b)
+            hmatel = get_two_body_int_mol_nonzero(coulomb_integrals, i, j, a, b)
         if (basis_fns(i)%Ms == basis_fns(b)%Ms) &
             hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, b, a)
 
