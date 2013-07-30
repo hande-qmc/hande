@@ -128,6 +128,7 @@ contains
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(ndim), k_beta(ndim)
         type(det_info) :: d0
+        logical :: in_space
 
         if (init) then
             if (allocated(sym_space_size)) then
@@ -310,17 +311,28 @@ contains
                             sym = cross_product(sym_beta, symmetry_orb_list(occ(nbeta+1:nel)))
                         end if
 
-                        if (init) then
-                            ! Count determinant.
-                            if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
-                                ! Ignore symmetries outside the basis set (only affects
-                                ! UEG currently).
-                                sym_space_size(sym) = sym_space_size(sym) + 1
+                        ! Inside truncated space?  TODO: fix above code so it
+                        ! actually produces the correct truncated space without
+                        ! requiring this test...
+                        in_space = .true.
+                        if (truncate_space) then
+                            call encode_det(occ, f)
+                            in_space = get_excitation_level(d0%f,f) <= truncation_level
+                        end if
+
+                        if (in_space) then
+                            if (init) then
+                                ! Count determinant.
+                                if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
+                                    ! Ignore symmetries outside the basis set (only affects
+                                    ! UEG currently).
+                                    sym_space_size(sym) = sym_space_size(sym) + 1
+                                end if
+                            else if (sym == ref_sym) then
+                                ! Store determinant.
+                                idet = idet + 1
+                                call encode_det(occ, dets_list(:,idet))
                             end if
-                        else if (sym == ref_sym) then
-                            ! Store determinant.
-                            idet = idet + 1
-                            call encode_det(occ, dets_list(:,idet))
                         end if
 
                     end do
