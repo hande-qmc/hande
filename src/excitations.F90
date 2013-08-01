@@ -403,7 +403,7 @@ contains
         integer(i0), intent(in) :: ras1_mask(:), ras3_mask(:), f(:)
         integer, intent(in) :: nelec1, nelec3
 
-        in_ras = sum(count_set_bits(iand(f, ras1_mask))) <= nelec1 .and. sum(count_set_bits(iand(f, ras3_mask))) <= nelec3
+        in_ras = sum(count_set_bits(iand(f, ras1_mask))) >= nelec1 .and. sum(count_set_bits(iand(f, ras3_mask))) <= nelec3
 
     end function in_ras
 
