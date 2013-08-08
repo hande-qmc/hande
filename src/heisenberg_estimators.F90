@@ -6,7 +6,7 @@ implicit none
 
 contains
 
-    pure subroutine update_proj_energy_heisenberg_basic(cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_heisenberg_basic(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -17,6 +17,7 @@ contains
         ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the Heisenberg model only
         ! In:
+        !    f0: reference basis function.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -30,12 +31,12 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
-        use fciqmc_data, only: f0
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
         use system, only: J_coupling
         use hubbard_real, only: connected_orbs
 
+        integer, intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -61,7 +62,7 @@ contains
 
     end subroutine update_proj_energy_heisenberg_basic
 
-    pure subroutine update_proj_energy_heisenberg_positive(cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_heisenberg_positive(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -73,6 +74,7 @@ contains
         ! are positive, and hence we get a good overlap.
         ! This procedure is for the Heisenberg model only.
         ! In:
+        !    f0: reference basis function (unused, for interface compatibility only).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
         !    pop: population on current determinant.
@@ -88,6 +90,7 @@ contains
         use determinants, only: det_info
         use system, only: J_coupling, nbonds
 
+        integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -98,7 +101,7 @@ contains
 
     end subroutine update_proj_energy_heisenberg_positive
 
-    pure subroutine update_proj_energy_heisenberg_neel_singlet(cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_heisenberg_neel_singlet(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -111,6 +114,7 @@ contains
         ! K. Runge, Phys. Rev. B 45, 7229 (1992).
         ! This procedure is for the Heisenberg model only.
         ! In:
+        !    f0: reference basis function (unused, for interface compatibility only).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
         !    pop: population on current determinant.
@@ -127,6 +131,7 @@ contains
         use fciqmc_data, only: sampling_size, neel_singlet_amp
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
+        integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum

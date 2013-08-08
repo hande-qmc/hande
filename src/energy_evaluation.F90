@@ -134,7 +134,7 @@ contains
 
     end subroutine update_hf_shift
 
-    pure subroutine update_proj_energy_hub_k(cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_hub_k(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -145,6 +145,7 @@ contains
         ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the Hubbard model in momentum space only.
         ! In:
+        !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -158,10 +159,10 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
-        use fciqmc_data, only: f0
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_k, only: slater_condon2_hub_k
 
+        integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -184,7 +185,7 @@ contains
 
     end subroutine update_proj_energy_hub_k
 
-    pure subroutine update_proj_energy_hub_real(cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_hub_real(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -195,6 +196,7 @@ contains
         ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the Hubbard model in real space only.
         ! In:
+        !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -208,10 +210,10 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
-        use fciqmc_data, only: f0
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
 
+        integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -233,7 +235,7 @@ contains
 
     end subroutine update_proj_energy_hub_real
 
-    pure subroutine update_proj_energy_mol(cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_mol(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -246,6 +248,7 @@ contains
         ! FCIDUMP file).
         !
         ! In:
+        !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -261,11 +264,11 @@ contains
         use basis, only: basis_fns
         use determinants, only: decode_det, det_info
         use excitations, only: excit, get_excitation
-        use fciqmc_data, only: f0
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
         use system, only: nel
 
+        integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
