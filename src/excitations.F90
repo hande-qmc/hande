@@ -382,4 +382,29 @@ contains
 
     end subroutine create_excited_det
 
+    pure function in_ras(ras1_mask, ras3_mask, nelec1, nelec3, f)
+
+        ! In:
+        !    ras1_mask: bit mask containing the orbitals in the RAS1 space.
+        !    ras3_mask: bit mask containing the orbitals in the RAS3 space.
+        !    nelec1: minimum number of electrons allowed in the RAS1 space.
+        !    nelec3: maximum number of electrons allowed in the RAS3 space.
+        !    f: bit string of determinant.
+
+        ! Returns:
+        !    True if determinant is inside the restricted active space.
+
+        ! Note: the RAS2 space (if it exists) lies between RAS1 and RAS3 and
+        ! can, like a CAS, contain an arbitrary number of electrons.
+
+        use bit_utils, only: count_set_bits
+
+        logical :: in_ras
+        integer(i0), intent(in) :: ras1_mask(:), ras3_mask(:), f(:)
+        integer, intent(in) :: nelec1, nelec3
+
+        in_ras = sum(count_set_bits(iand(f, ras1_mask))) >= nelec1 .and. sum(count_set_bits(iand(f, ras3_mask))) <= nelec3
+
+    end function in_ras
+
 end module excitations

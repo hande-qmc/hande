@@ -111,8 +111,8 @@ contains
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string, count_set_bits
 
         use basis, only: basis_length
-        use calc, only: truncate_space, truncation_level
-        use excitations, only: get_excitation_level
+        use calc, only: truncate_space, truncation_level, ras, ras1, ras3, ras1_min, ras3_max
+        use excitations, only: get_excitation_level, in_ras
         use system, only: sym0, sym_max, nel, system_type, hub_real, heisenberg, ueg
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
@@ -180,16 +180,16 @@ contains
             nalpha_combinations = 0
             nbeta_combinations = 0
             ! Identical to the settings in the else statements if truncation_level == nel.
-            do i = 0, min(truncation_level, nbeta)
+            do i = 0, minval([truncation_level, nbeta, nvirt_beta])
                 nbeta_combinations = nbeta_combinations + binom_i(nbeta, i)*binom_i(nvirt_beta, i)
-                do j = 0, min(truncation_level-i, nalpha)
+                do j = 0, minval([truncation_level-i, nalpha, nvirt_alpha])
                     nalpha_combinations(i) = nalpha_combinations(i) + binom_i(nalpha, j)*binom_i(nvirt_alpha, j)
                 end do
             end do
             call encode_det(occ_list0, d0%f)
             ! Check symmetries of reference matches the desired symmetries.  If
             ! not, are doing spin flip and need to do a full enumeration!
-            if (spin_flip) then
+            if (spin_flip .or. all(ras > 0)) then
                 force_full = .true.
             else
                 call decode_det_spinocc_spinunocc(d0%f, d0)
@@ -324,7 +324,10 @@ contains
                         ! actually produces the correct truncated space without
                         ! requiring this test...
                         in_space = .true.
-                        if (truncate_space) then
+                        if (all(ras > 0)) then
+                            call encode_det(occ, f)
+                            in_space = in_ras(ras1, ras3, ras1_min, ras3_max, f)
+                        else if (truncate_space) then
                             call encode_det(occ, f)
                             in_space = get_excitation_level(d0%f,f) <= truncation_level
                         end if

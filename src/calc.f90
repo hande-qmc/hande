@@ -107,6 +107,22 @@ integer :: distribute = distribute_off
 logical :: truncate_space = .false.
 integer :: truncation_level
 
+! RAS-CI (only in QMC currently)
+! The ras1 space can have at most truncation_level holes.
+! The ras3 space can have at most ras3_max electrons.
+! If all orbitals are either in the frozen core, ras1 or ras3 spaces, then
+! ras3_max must equal truncation_level.
+! The RAS2 space is analogous to the complete active space (CAS).
+! Number of spatial orbitals in RAS1 and RAS3 spaces (counting from lowest
+! orbitals up and highest orbitals down, respectively).
+integer :: RAS(2) = (/ -1, -1 /)
+! Min number of electrons in RAS1 space.
+integer :: ras1_min
+! Max number of electrons in RAS3 space.
+integer :: ras3_max
+! Bit masks for showing only orbitals in RAS1 and RAS3 spaces.
+integer(i0), allocatable :: ras1(:), ras3(:) ! (basis_length)
+
 !--- Info for stocastic calculations ---
 
 ! Seed used to initialise the dSFMT random number generator.

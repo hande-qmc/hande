@@ -118,11 +118,11 @@ contains
         ! they are stored as bit strings, lookup arrays for converting from
         ! integer list of orbitals to bit strings and vice versa.
 
-        use calc, only: doing_calc, dmqmc_calc
         use checking, only: check_allocate
         use utils, only: binom_i
         use utils, only: get_free_unit, int_fmt
-        use calc, only: doing_calc, exact_diag, lanczos_diag
+        use calc, only: doing_calc, exact_diag, lanczos_diag, doing_calc, &
+                        dmqmc_calc, ras, ras1, ras3, ras1_min, truncation_level
 
         integer :: i, j, k, bit_pos, bit_element, ierr, site_index
         character(4) :: fmt1(5)
@@ -222,6 +222,28 @@ contains
             end do
         end if
 
+        if (all(ras > 0)) then
+            allocate(ras1(basis_length), stat=ierr)
+            call check_allocate('ras1', basis_length, ierr)
+            allocate(ras3(basis_length), stat=ierr)
+            call check_allocate('ras3', basis_length, ierr)
+            ras1 = 0
+            ras3 = 0
+            ras1_min = nel - truncation_level
+            do i = 1, 2*ras(1) ! RAS is in *spatial* orbitals.
+                bit_pos = bit_lookup(1,i)
+                bit_element = bit_lookup(2,i)
+                ras1(bit_element) = ibset(ras1(bit_element), bit_pos)
+            end do
+            do i = nbasis-2*ras(2)+1, nbasis
+                bit_pos = bit_lookup(1,i)
+                bit_element = bit_lookup(2,i)
+                ras3(bit_element) = ibset(ras3(bit_element), bit_pos)
+            end do
+        else
+            ras = -1
+        end if
+
     end subroutine init_determinants
 
     subroutine end_determinants()
@@ -229,6 +251,8 @@ contains
         ! Clean up after determinants.
 
         use checking, only: check_deallocate
+
+        use calc, only: ras1, ras3
 
         integer :: ierr
 
@@ -239,6 +263,12 @@ contains
         if (allocated(lattice_mask)) then
             deallocate(lattice_mask, stat=ierr)
             call check_deallocate('lattice_mask',ierr)
+        end if
+        if (allocated(ras1)) then
+            deallocate(ras1, stat=ierr)
+            call check_deallocate('ras1',ierr)
+            deallocate(ras3, stat=ierr)
+            call check_deallocate('ras3',ierr)
         end if
 
     end subroutine end_determinants
