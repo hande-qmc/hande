@@ -480,12 +480,14 @@ contains
         use excit_gen_mol
         use excit_gen_hub_k
         use excit_gen_real_lattice
+        use excit_gen_ueg, only: gen_excit_ueg_no_renorm
         use folded_spectrum_utils, only: fs_spawner, fs_stochastic_death
         use hamiltonian_chung_landau, only: slater_condon0_chung_landau
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol
+        use hamiltonian_ueg, only: slater_condon0_ueg
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
         use importance_sampling
@@ -590,7 +592,20 @@ contains
             end if
 
         case(ueg)
-            call stop_all('init_proc_pointers','QMC not implemented for the UEG yet.')
+
+            update_proj_energy_ptr => update_proj_energy_ueg
+            sc0_ptr => slater_condon0_ueg
+
+            if (no_renorm) then
+                gen_excit_ptr => gen_excit_ueg_no_renorm
+                decoder_ptr => decode_det_occ
+            else
+                write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
+                write (6,'(1X,"WARNING: If this upsets you, please send patches (or bribe James with beer).",/)')
+                gen_excit_ptr => gen_excit_ueg_no_renorm
+                decoder_ptr => decode_det_occ
+            end if
+
         case default
             call stop_all('init_proc_pointers','QMC not implemented for this system yet.')
         end select

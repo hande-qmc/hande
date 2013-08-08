@@ -133,4 +133,39 @@ contains
 
     end function slater_condon2_ueg
 
+    pure function slater_condon2_ueg_excit(i, j, a, b, perm) result(hmatel)
+
+        ! In:
+        !    i,j:  index of the spin-orbital from which an electron is excited in
+        !          the reference determinant.
+        !    a,b:  index of the spin-orbital into which an electron is excited in
+        !          the excited determinant.
+        !    perm: true if D and D_i^a are connected by an odd number of
+        !          permutations.
+        ! Returns:
+        !    < D | H | D_ij^ab >, the Hamiltonian matrix element between a
+        !    determinant and a double excitation of it in the UEG.
+
+        ! WARNING: This function assumes that the D_{ij}^{ab} is a symmetry allowed
+        ! excitation from D (and so the matrix element is *not* zero by
+        ! symmetry).  This is less safe that slater_condon2_ueg but much faster
+        ! as it allows symmetry checking to be skipped in the integral
+        ! calculation.
+
+        use basis, only: basis_fns
+        use ueg_system, only: coulomb_int_ueg
+
+        real(p) :: hmatel
+        integer, intent(in) :: i, j, a, b
+        logical, intent(in) :: perm
+
+        hmatel = 0.0_p
+
+        if (basis_fns(i)%Ms == basis_fns(a)%Ms) hmatel = coulomb_int_ueg(i, a)
+        if (basis_fns(i)%Ms == basis_fns(b)%Ms) hmatel = hmatel - coulomb_int_ueg(i, b)
+
+        if (perm) hmatel = -hmatel
+
+    end function slater_condon2_ueg_excit
+
 end module hamiltonian_ueg

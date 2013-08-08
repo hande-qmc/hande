@@ -33,6 +33,22 @@ integer :: ueg_basis_origin
 ! Note that N_x = 2*kmax+1
 integer :: ueg_basis_max
 
+! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
+! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and
+! k_a, k_b is uniquely defined.  Further, once we've chosen k_i and k_j and if
+! we require k_b to exist in the basis, then only certain values of k_a are
+! permitted.  ueg_ternary_conserve(0,i,j) gives how many k_a are permitted for
+! a given k_i and k_j and ueg_ternary_conserve(1,i,j) gives a bit string with
+! only bytes set corresponding to permitted k_a values.  Note only basis
+! functions corresponding to *alpha* orbitals are set.  Finally, we use
+! tri_ind((j+1)/2,(i+1)/2), j>=i, to store only the lower triangular section of
+! the array and only store it for one set of spin functions.
+! (j+1)/2 gives the same value for the indices of both alpha and beta basis
+! functions of the same wavevector.
+! TODO: reduce this to minimum memory required (several k_i+k_j will have the
+! same value!).
+integer(i0), allocatable :: ueg_ternary_conserve(:,:) ! (0:basis_length,nbasis/2*(nbasis/2+1)/2)
+
 abstract interface
 
     ! UEG-specific integral procedure pointers.
@@ -80,12 +96,13 @@ contains
 
         ! Create arrays and data for index mapping needed for UEG.
 
-        use basis, only: basis_fns, nbasis
+        use basis, only: basis_fns, nbasis, bit_lookup, basis_length
         use system, only: box_length, ueg_ecutoff, ndim
 
         use checking, only: check_allocate
+        use utils, only: tri_ind
 
-        integer :: ierr, i, N_kx, k_min(ndim)
+        integer :: ierr, i, j, a, ind, N_kx, k_min(ndim), bit_pos, bit_el, k(ndim)
 
         ueg_basis_max = ceiling(sqrt(2*ueg_ecutoff))
 
@@ -109,6 +126,28 @@ contains
 
         ! Now fill in the values for the alpha orbitals which are in the basis.
         forall (i=1:nbasis:2) ueg_basis_lookup(dot_product(basis_fns(i)%l, ueg_basis_dim) + ueg_basis_origin) = i
+
+        ! Now fill in the values for permitted k_a in an excitation
+        ! k_i,k_j->k_a,k_b, given a choice of k_i ad k_j and requiring k_b is in
+        ! the basis.
+        allocate(ueg_ternary_conserve(0:basis_length, nbasis/2*(nbasis/2+1)/2), stat=ierr)
+        call check_allocate('ueg_ternary_conserve', size(ueg_ternary_conserve), ierr)
+        ueg_ternary_conserve = 0_i0
+        do i = 2, nbasis, 2
+            do j = i, nbasis, 2
+                ind = tri_ind(j/2,i/2)
+                do a = 1, nbasis-1, 2 ! only alpha orbitals
+                    k = basis_fns(i)%l + basis_fns(j)%l - basis_fns(a)%l
+                    if (real(dot_product(k,k),p)/2 - ueg_ecutoff < 1.e-8) then
+                        ! There exists an allowed b in the basis!
+                        ueg_ternary_conserve(0,ind) = ueg_ternary_conserve(0,ind) + 1
+                        bit_pos = bit_lookup(1, a)
+                        bit_el = bit_lookup(2, a)
+                        ueg_ternary_conserve(bit_el,ind) = ibset(ueg_ternary_conserve(bit_el,ind), bit_pos)
+                    end if
+                end do
+            end do
+        end do
 
     end subroutine init_ueg_indexing
 
@@ -157,6 +196,10 @@ contains
         if (allocated(ueg_basis_dim)) then
             deallocate(ueg_basis_dim, stat=ierr)
             call check_deallocate('ueg_basis_dim', ierr)
+        end if
+        if (allocated(ueg_ternary_conserve)) then
+            deallocate(ueg_ternary_conserve, stat=ierr)
+            call check_deallocate('ueg_ternary_conserve', ierr)
         end if
 
     end subroutine end_ueg_indexing
