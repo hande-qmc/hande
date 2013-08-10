@@ -25,11 +25,12 @@ abstract interface
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
     end subroutine i_update_proj_energy
-    subroutine i_update_dmqmc_estimators(idet,excitation)
-        import :: excit
+    subroutine i_update_dmqmc_estimators(idet,excitation,walker_pop)
+        import :: excit, p
         implicit none
         integer, intent(in) :: idet
         type(excit), intent(in) :: excitation
+        real(p), intent(in) :: walker_pop
     end subroutine i_update_dmqmc_estimators
     subroutine i_spawner(rng, d, parent_sign, nspawned, connection)
         use dSFMT_interface, only: dSFMT_t

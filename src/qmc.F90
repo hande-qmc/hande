@@ -106,6 +106,8 @@ contains
             spawned_size = spawned_size + 1
             spawned_hf_pop = spawned_size
             sampling_size = sampling_size + 1
+        else if (replica_tricks) then
+            sampling_size = sampling_size + 1
         else
             spawned_hf_pop = spawned_size
         end if
@@ -649,10 +651,24 @@ contains
         if (doing_calc(dmqmc_calc)) then
 
             ! Spawned particle creation. 
-            if (truncate_space) then
-                create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix
+            if (half_density_matrix) then
+                if (truncate_space) then
+                    create_spawned_particle_dm_ptr => create_spawned_particle_truncated_half_density_matrix
+                else
+                    create_spawned_particle_dm_ptr => create_spawned_particle_half_density_matrix
+                    spawner_ptr => spawn_importance_sampling
+                    trial_fn_ptr => dmqmc_weighting_fn
+                end if
             else
-                create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+                if (truncate_space) then
+                    create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix
+                else if (dmqmc_weighted_sampling) then
+                    spawner_ptr => spawn_importance_sampling
+                    trial_fn_ptr => dmqmc_weighting_fn
+                    create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+                else
+                    create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+                end if
             end if
 
             ! Expectation values.

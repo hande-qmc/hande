@@ -72,7 +72,7 @@ contains
         use basis, only: basis_length
         use calc, only: seed
         use death, only: stochastic_hf_cloning
-        use determinants, only:det_info, alloc_det_info
+        use determinants, only:det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use interact, only: fciqmc_interact
@@ -112,7 +112,7 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Allocate det_info components.
-        call alloc_det_info(cdet)
+        call alloc_det_info(cdet, .false.)
 
         ! from restart
         nparticles_old = nparticles_old_restart
@@ -158,7 +158,7 @@ contains
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
-                    cdet%f = walker_dets(:,idet)
+                    cdet%f => walker_dets(:,idet)
 
                     call decoder_ptr(cdet%f, cdet)
 
@@ -258,6 +258,8 @@ contains
         call load_balancing_report()
 
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
+
+        call dealloc_det_info(cdet, .false.)
 
     end subroutine do_hfs_fciqmc
 

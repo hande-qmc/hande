@@ -20,6 +20,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
+        use fciqmc_data, only: doing_exact_rdm_eigv
         use parallel, only: parent, nprocs
 
         use calc
@@ -36,7 +37,7 @@ contains
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
-        if (analyse_ground_state .or. print_ground_state) then
+        if (analyse_ground_state .or. print_ground_state .or. doing_exact_rdm_eigv) then
             job = 'V'
         else
             job = 'N'

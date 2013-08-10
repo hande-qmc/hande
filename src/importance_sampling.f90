@@ -44,7 +44,7 @@ contains
     subroutine neel_trial_state(cdet, connection, hmatel)
 
         ! Apply the transformation to the Hamiltonian matrix element due to
-        ! useing the Neel singlet state as the trial function.
+        ! using the Neel singlet state as the trial function.
 
         ! In:
         !    cdet: info on the current determinant (cdet) that we will spawn
@@ -88,5 +88,49 @@ contains
         hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
 
     end subroutine neel_trial_state
+
+    subroutine dmqmc_weighting_fn(cdet, connection, hmatel)
+
+        ! Apply a transformation to the Hamiltonian matrix element by
+        ! reducing the probability of spawning to higher excitation levels
+        ! between the two ends of the DMQMC bitstring. The exact trial function
+        ! used is specified by the users upon input, and stored in the vector
+        ! dmqmc_accumulated_probs.
+
+        ! In:
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        ! In/Out:
+        !    hmatel: on input, untransformed matrix element connecting two spin
+        !        functions (kets).  On output, transformed matrix element,
+        !        \Psi^T(cdet%f,cdet%f2) H_{ij} 1/\Psi(f_new,cdet%f2).
+        !        The factors which the Hamiltonian are multiplied by depend
+        !        on the level which we come from, and go to, and so depend on
+        !        the two ends of the bitstring we spawn from, and the new
+        !        bitstring we spawn onto. Note this is different to more conventional
+        !        importance sampling.
+
+        use basis, only: basis_length
+        use determinants, only: det_info
+        use excitations, only: excit, get_excitation_level, create_excited_det
+        use fciqmc_data, only: dmqmc_accumulated_probs
+
+        type(det_info), intent(in) :: cdet
+        type(excit), intent(in) :: connection
+        real(p), intent(inout) :: hmatel
+        integer(i0) :: f_new(basis_length)
+        integer :: excit_level_old, excit_level_new
+
+        excit_level_old = get_excitation_level(cdet%f,cdet%f2)
+
+        call create_excited_det(cdet%f, connection, f_new)
+
+        excit_level_new = get_excitation_level(f_new,cdet%f2)
+
+        hmatel = dmqmc_accumulated_probs(excit_level_old)*hmatel*(1/dmqmc_accumulated_probs(excit_level_new))
+
+    end subroutine dmqmc_weighting_fn
 
 end module importance_sampling

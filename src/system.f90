@@ -119,6 +119,11 @@ real(p) :: ueg_ecutoff = 3.0_p
 ! Not used for the UEG (see box_length).
 integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
+! lvecs contains all combinations of the above lattice vectors, where the
+! amplitude for each lattice vector can be either -1, 0 or +1. lvec(:,i)
+! stores the i'th such combination.
+integer, allocatable :: lvecs(:,:) ! ndim, 3**ndim
+
 ! If a triangular lattice is being used, this variable is true (Hubbard; Heisenberg).
 logical :: triangular_lattice
 
@@ -139,6 +144,9 @@ real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
 ! Twist applied to wavevectors (Hubbard; UEG).
 real(p), allocatable :: ktwist(:)
+
+! The maximum number of excitations which a system can have.
+integer :: max_number_excitations
 
 ! --- Hubbard model ---
 
@@ -298,6 +306,8 @@ contains
             end if
 
             hub_k_coulomb = hubu/nsites
+
+            max_number_excitations = min(nel, (nsites-nel))
 
         end if
 

@@ -64,7 +64,6 @@ logical :: vary_shift_from_proje = .false.
 ! Initial shift, needed in DMQMC to reset the shift at the start of each
 ! beta loop.
 real(p) :: initial_shift = 0.0_p
-real(p) :: old_shift = 0.0_p
 
 ! Factor by which the changes in the population are damped when updating the
 ! shift.
@@ -225,11 +224,6 @@ logical :: init_spin_inv_D0 = .false.
 ! performing a DMQMC calculation, and so can be ignored in these cases.
 real(p) :: dmqmc_factor = 1.0_p
 
-! The modulus squared of the wavefunction which the psips represent
-! This is used in calculating the expectation value of the
-! staggered magnetisation.
-real(p) :: population_squared = 0.0_p
-
 ! This variable stores the number of estimators which are to be
 ! calculated and printed out in a DMQMC calculation.
 integer :: number_dmqmc_estimators = 0
@@ -262,26 +256,96 @@ integer :: energy_squared_index = 0
 integer :: correlation_index = 0
 integer :: staggered_mag_index = 0
 
+! If this logical is true then the program runs the DMQMC algorithm with
+! importance sampling.
+! dmqmc_sampling_prob stores the factors by which the probabilities of
+! spawning to a larger excitation are reduced by. So, when spawning from
+! a diagonal element to a element with one excitation, the probability
+! of spawning is reduced by a factor dmqmc_sampling_probs(1).
+! dmqmc_accumulated_probs(i) stores the multiplication of all the elements
+! of dmqmc_sampling_probs up to the ith element. This quantity is often
+! needed, so it is stored.
+logical :: dmqmc_weighted_sampling
+real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
+real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
+! If dmqmc_vary_weights is true, then instead of using the final sampling
+! weights for all the iterations, the weights will be gradually increased
+! until finish_varying_weights, at which point they will be held constant.
+! weight_altering_factors stores the factors by which each weight is
+! multiplied at each step. 
+logical :: dmqmc_vary_weights = .false.
+integer :: finish_varying_weights = 0
+real(dp), allocatable :: weight_altering_factors(:)
+! If this logical is true then the program will calculate the ratios
+! of the numbers of the psips on neighbouring excitation levels. These
+! are output so that they can be used when doing importance sampling
+! for DMQMC, so that each level will have roughly equal numbers of psips.
+! The resulting new weights are used in the next beta loop.
+logical :: dmqmc_find_weights
+
+! If half_density_matrix is true then half the density matrix will be 
+! calculated by reflecting spawning onto the lower triangle into the
+! upper triangle. This is allowed because the density matrix is 
+! symmetric.
+logical :: half_density_matrix = .false.
+
+! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
+! Currently only implemented for DMQMC.
+logical :: replica_tricks = .false.
+
+! For DMQMC: If this locial is true then the fraction of psips at each
+! excitation level will be output at each report loop. These fractions
+! will be stored in the array below.
+logical :: calculate_excit_distribution = .false.
+real(p), allocatable :: excit_distribution(:) ! (min(nel, nsites-nel) + 1)
+
 ! If true, then the reduced density matrix will be calulated
 ! for the subsystem A specified by the user.
 logical :: doing_reduced_dm = .false.
 
-integer :: subsystem_A_size
-! If finding a reduced density matrix for subsystem A, then the
-! following list stores the sites on the lattice which belong
-! to subsystem A, stored in array, as input by the user.
-integer, allocatable :: subsystem_A_list(:)
-! This stores the bit positions and bit elements corresponding
-! to the basis functions which belong to sublattice A, so that
-! these do not have to be calculated the many times they are required.
-integer, allocatable :: subsystem_A_bit_positions(:,:)
-! The two below masks have 1's for all bit positions corresponding
-! to sites which belong to sublattice A or B, respectively. 0's elsewhere.
-integer(i0), allocatable :: subsystem_A_mask(:)
-integer(i0), allocatable :: subsystem_B_mask(:)
-! This stored the reduces matrix, which is slowly accumulated over time
+! If true then calculate the concurrence for reduced density matrix of two sites
+logical :: doing_concurrence = .false.
+
+! If true then calculate the Von-Neumann entanglement entropy for specified subsystem
+logical :: doing_von_neumann_entropy = .false.
+
+! If true then, if doing an exact diagonalisation, calculate and output the
+! eigenvalues of the reduced density matrix requested.
+logical :: doing_exact_rdm_eigv
+
+! This stores the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
-integer, allocatable :: reduced_density_matrix(:,:)
+real(p), allocatable :: reduced_density_matrix(:,:)
+
+! If true then the reduced density matrix is output to a file, 'reduced_dm'
+! each beta loop.
+logical :: output_rdm
+! The unit of the file reduced_dm.
+integer :: rdm_unit
+
+! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
+! concurrence is to be calculated
+real(p), allocatable :: flip_spin_matrix(:,:)
+
+! When calculating certain DMQMC properties, we only want to start
+! averaging once the ground state is reached. The below integer is input
+! by the user, and gives the iteration at which data should start being
+! accumulated for the quantity. This is currently only used for the
+! reduced density matrix and calculating importance sampling weights.
+integer :: start_averaging = 0
+
+! In DMQMC, the user may want want the shift as a function of beta to be
+! the same for each beta loop. If average_shift_until is non-zero then
+! shift_profile is allocated, and for the first average_shift_until
+! beta loops, the shift is stored at each beta value and then averaged
+! over all these beta loops afterwards. These shift values are stored
+! in shift profile, and then used in future beta loops as the shift
+! profile for each one.
+! When average_shift_until is set equal to -1, all the averaging has
+! finished, and the algorithm uses the averaged values stored in
+! shift_profile.
+integer :: average_shift_until = 0
+real(p), allocatable :: shift_profile(:) ! (nreport)
 
 ! correlation_mask is a bit string with a 1 at positions i and j which
 ! are considered when finding the spin correlation function, C(r_{i,j}).
@@ -519,6 +583,8 @@ contains
         use calc, only: doing_calc, folded_spectrum, dmqmc_calc, doing_dmqmc_calc, dmqmc_correlation
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
 
+        integer :: i
+
         if (doing_calc(dmqmc_calc)) then
            write (6,'(1X,a12,3X,a13,8X,a5)', advance = 'no') &
            '# iterations','Instant shift','Trace'
@@ -534,6 +600,11 @@ contains
             end if
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
+            end if
+            if (calculate_excit_distribution) then
+                do i = 0, ubound(excit_distribution,1)
+                    write (6, '(4X,a13,1X,i3)', advance = 'no') 'Excit. level:', i
+                end do
             end if
 
             write (6, '(2X,a11,2X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
@@ -566,12 +637,18 @@ contains
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(5X,i8,2X,es17.10,i10)',advance = 'no') &
-                                             (mc_cycles_done+mc_cycles-ncycles), old_shift, trace
+                                             (mc_cycles_done+mc_cycles-ncycles), shift, trace
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             do i = 1, number_dmqmc_estimators
                 write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
             end do
+            if (calculate_excit_distribution) then
+                excit_distribution = excit_distribution/ntot_particles
+                do i = 0, ubound(excit_distribution,1)
+                    write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
+                end do
+            end if
             write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
         else
             write (6,'(5X,i8,2X,2(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &

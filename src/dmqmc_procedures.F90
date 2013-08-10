@@ -3,6 +3,30 @@ module dmqmc_procedures
 use const
 implicit none
 
+! This type contains information for the RDM corresponding to a
+! given subsystem. It takes translational symmetry into account by
+! storing information for all subsystems which are equivlanet by
+! translational symmetry.
+type rdm
+    ! The total number of sites in subsystem A.
+    integer :: A_size
+    ! The sites in subsystem A, as entered by the user.
+    integer, allocatable :: subsystem_A(:)
+    ! B_masks(i,:) has bits set at all bit positions corresponding to
+    ! sites in version i of subsystem B, where the different 'versions'
+    ! correspond to subsystems which are equivalent by symmetry.
+    integer, allocatable :: B_masks(:,:)
+    ! bit_pos(i,j,1) contains the position of the bit corresponding to
+    ! site j in 'version' i of subsystem A.
+    ! bit_pos(i,j,2) contains the element of the bit corresponding to
+    ! site j in 'version' i of subsystem A.
+    integer, allocatable :: bit_pos(:,:,:)
+end type rdm
+
+! This stores all the information for the various RDMs that the user asks
+! to be calculated. Each element of this array corresponds to one of these RDMs.
+type(rdm), allocatable :: rdms(:)
+
 contains
 
     subroutine init_dmqmc()
@@ -12,19 +36,20 @@ contains
          use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation
          use checking, only: check_allocate
          use fciqmc_data, only: trace, energy_index, energy_squared_index, correlation_index
-         use fciqmc_data, only: staggered_mag_index, estimator_numerators, subsystem_A_size
-         use fciqmc_data, only: subsystem_A_mask, subsystem_B_mask, subsystem_A_bit_positions
-         use fciqmc_data, only: subsystem_A_list, dmqmc_factor, number_dmqmc_estimators, ncycles
-         use fciqmc_data, only: reduced_density_matrix, doing_reduced_dm, tau
-         use fciqmc_data, only: correlation_mask, correlation_sites
+         use fciqmc_data, only: staggered_mag_index, estimator_numerators, doing_reduced_dm
+         use fciqmc_data, only: dmqmc_factor, number_dmqmc_estimators, ncycles, tau, dmqmc_weighted_sampling
+         use fciqmc_data, only: correlation_mask, correlation_sites, half_density_matrix
+         use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs, flip_spin_matrix
+         use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
+         use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
+         use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use parallel, only: parent
-         use system, only: system_type, heisenberg, nsites
+         use system, only: max_number_excitations
 
-         integer :: ierr
-         integer :: i, ipos, basis_find, bit_position, bit_element
+         integer :: ierr, i, bit_position, bit_element
 
          number_dmqmc_estimators = 0
-         trace = 0
+         trace = 0.0_p
 
          if (doing_dmqmc_calc(dmqmc_energy)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
@@ -55,6 +80,18 @@ contains
          call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
          estimator_numerators = 0
 
+         if (calculate_excit_distribution .or. dmqmc_find_weights) then
+             allocate(excit_distribution(0:max_number_excitations), stat=ierr)
+             call check_allocate('excit_distribution',max_number_excitations+1,ierr)             
+             excit_distribution = 0.0_p
+         end if
+
+         if (average_shift_until > 0) then
+             allocate(shift_profile(1:nreport+1), stat=ierr)
+             call check_allocate('shift_profile',nreport+1,ierr)
+             shift_profile = 0.0_p
+         end if
+
          ! In DMQMC we want the spawning probabilities to have an extra factor of a half,
          ! because we spawn from two different ends with half probability. To avoid having
          ! to multiply by an extra variable in every spawning routine to account for this, we
@@ -66,161 +103,227 @@ contains
          ! This factor is also used in updated the shift, where the true tau is needed.
          dmqmc_factor = 2.0_p
 
-         ! If doing a reduced density matrix calculation, then allocate and define the
-         ! bit masks that have 1's at the positions referring to either subsystems A or B.
-         if (doing_reduced_dm) then
-             subsystem_A_size = ubound(subsystem_A_list,1)
-             allocate(subsystem_A_mask(1:basis_length), stat=ierr)
-             call check_allocate('subsystem_A_mask',basis_length,ierr)
-             allocate(subsystem_B_mask(1:basis_length), stat=ierr)
-             call check_allocate('subsystem_B_mask',basis_length,ierr)
-             allocate(subsystem_A_bit_positions(subsystem_A_size,2), stat=ierr)
-             call check_allocate('subsystem_A_bit_positions',2*subsystem_A_size,ierr)
-             subsystem_A_mask = 0
-             subsystem_B_mask = 0
-             subsystem_A_bit_positions = 0
-             ! For the Heisenberg model only currently.
-             if (system_type==heisenberg) then
-                 subsystem_A_mask = 0
-                 do i = 1, subsystem_A_size
-                     bit_position = bit_lookup(1,subsystem_A_list(i))
-                     bit_element = bit_lookup(2,subsystem_A_list(i))
-                     subsystem_A_mask(bit_element) = ibset(subsystem_A_mask(bit_element), bit_position)
-                 end do
-                 subsystem_B_mask = subsystem_A_mask
-                 ! We cannot just flip the mask for system A to get that for system B, because
-                 ! there the trailing bits on the end don't refer to anything and should be
-                 ! set to 0. So, first set these to 1 and then flip all the bits.
-                 do ipos = 0, i0_end
-                     basis_find = basis_lookup(ipos, basis_length)
-                     if (basis_find == 0) then
-                         subsystem_B_mask(basis_length) = ibset(subsystem_B_mask(basis_length),ipos)
-                     end if
-                 end do
-                 subsystem_B_mask = not(subsystem_B_mask)
+         if (dmqmc_weighted_sampling) then
+             ! dmqmc_sampling_probs stores the factors by which probabilities are to
+             ! be reduced when spawning away from the diagonal. The trial function required
+             ! from these probabilities, for use in importance sampling, is actually that of
+             ! the accumulated factors, ie, if dmqmc_sampling_probs = (a, b, c, ...) then
+             ! dmqmc_accumulated_factors = (1, a, ab, abc, ...). This is the array which we
+             ! need to create and store. dmqmc_sampling_probs is no longer needed and so can
+             ! be deallocated. Also, the user may have only input factors for the first few
+             ! excitation levels, but we need to store factors for all levels, as done below.
+             if (.not.allocated(dmqmc_sampling_probs)) then
+                 allocate(dmqmc_sampling_probs(1:max_number_excitations), stat=ierr)
+                 call check_allocate('dmqmc_sampling_probs',max_number_excitations,ierr)
+                 dmqmc_sampling_probs = 1.0_p
              end if
-             if (subsystem_A_size <= int(nsites/2)) then
-                 ! In this case, for an ms = 0 subspace (as the ground state of the Heisenberg model
-                 ! will be) then any combination of spins can occur in the subsystem, from all spins
-                 ! down to all spins up. Hence the total size of the reduced density matrix will be
-                 ! 2**(number of spins in subsystem A).
-                 allocate(reduced_density_matrix(2**subsystem_A_size,2**subsystem_A_size), stat=ierr)
-                 call check_allocate('reduced_density_matrix', 2**(2*subsystem_A_size),ierr)
-                 reduced_density_matrix = 0
-             end if
-             do i = 1, subsystem_A_size
-                 bit_position = bit_lookup(1,subsystem_A_list(i))
-                 bit_element = bit_lookup(2,subsystem_A_list(i))
-                 subsystem_A_bit_positions(i,1) = bit_position
-                 subsystem_A_bit_positions(i,2) = bit_element
+             if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
+             allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
+             dmqmc_accumulated_probs(0) = 1.0_p
+             do i = 1, size(dmqmc_sampling_probs)
+                 dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
              end do
+             dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:max_number_excitations) = &
+                                    dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
+             if (dmqmc_vary_weights) then
+                 ! Allocate an array to store the factors by which the weights will change each
+                 ! iteration.
+                 allocate(weight_altering_factors(0:max_number_excitations), stat=ierr)
+                 call check_allocate('weight_altering_factors',max_number_excitations+1,ierr) 
+                 weight_altering_factors = dble(dmqmc_accumulated_probs)**(1/dble(finish_varying_weights))
+                 ! If varying the weights, start the accumulated probabilties as all 1.0
+                 ! initially, and then alter them gradually later.
+                 dmqmc_accumulated_probs = 1.0_p
+             end if
+         else
+             allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
+             dmqmc_accumulated_probs = 1.0_p
+             if (half_density_matrix) dmqmc_accumulated_probs(1:max_number_excitations) &
+                                      = 2.0_p*dmqmc_accumulated_probs(1:max_number_excitations)
+         end if
+
+         ! If doing a reduced density matrix calculation, allocate and define the bit masks that
+         ! have 1's at the positions referring to either subsystems A or B.
+         if (doing_reduced_dm) call setup_rdm_arrays()
+
+         ! If doing concurrence calculation then construct and store the 4x4 flip spin matrix i.e.
+         ! \sigma_y \otimes \sigma_y
+ 
+         if (doing_concurrence) then
+             allocate(flip_spin_matrix(4,4), stat=ierr)
+             call check_allocate('flip_spin_matrix', 16,ierr)
+             flip_spin_matrix = 0.0_p
+             flip_spin_matrix(1,4) = -1.0_p
+             flip_spin_matrix(4,1) = -1.0_p
+             flip_spin_matrix(3,2) = 1.0_p
+             flip_spin_matrix(2,3) = 1.0_p    
          end if
 
     end subroutine init_dmqmc
 
-    subroutine random_distribution_entire_space(rng)
+    subroutine setup_rdm_arrays()
 
-        ! Distribute the initial number of psips along the main diagonal.
-        ! Each diagonal element should be chosen with the same probability.
-        ! Note that this does not only create psips within a particular
-        ! subspace, but can create psips anywhere in the entire Hilbert space.
+        ! Setup the bit masks needed for RDM calculations. These are masks for the bits referring
+        ! to either subsystem A or B. Also calculate the positions and elements of the sites
+        ! in subsyetsm A, and finally allocate the RDM itself.
 
-        ! To pick each configuration with equal probability, we first choose
-        ! a number of bits to be set, i, out of a total of N = nbasis bits. Then
-        ! we set choose i bits to set, each with equal probability. So the
-        ! probability that a particular configuration is chosen is
+        use checking, only: check_allocate
+        use errors
+        use fciqmc_data, only: reduced_density_matrix
+        use system, only: system_type, heisenberg
 
-        ! prob(config) = prob(config with i bits set) * prob(config | config with i bits set)
-        !              = fraction of configs with i bits set * (1/number of configs with i bits set)
-        !              = (number of configs with i bits set/total number of configs)
-        !                            * (1/number of configs with i bits set)
-        ! => prob(config) =  1/total number of configs
+        integer :: i, ierr, ipos, basis_find, bit_position, bit_element
 
-        ! So each configuartion will be chosen with equal probability, as desired.
+        ! For the Heisenberg model only currently.
+        if (system_type==heisenberg) then
+            call find_rdm_masks()
+        else
+            call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for the &
+                           &Heisenberg model.")
+        end if
 
-        ! In/Out:
-        !    rng: random number generator.
+        ! Note: Only one RDM is calculated at the moment. This is temporary. For now I have just
+        ! created the infrastructure to use translational symmetry and multiple RDMs. Will add the
+        ! ability to use them when the sparse implementation is added...
 
-        use basis, only: nbasis, basis_length, bit_lookup, basis_lookup
-        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: D0_population
-        use parallel
-        use utils, only: binom_r
+        ! For an ms = 0 subspace (as the ground state of the Heisenberg model will be), assuming less
+        ! than half the spins in the subsystem are in the subsystem, then any combination of spins can
+        ! occur in the subsystem, from all spins down to all spins up. Hence the total size of the reduced
+        ! density matrix will be 2**(number of spins in subsystem A).
+        allocate(reduced_density_matrix(2**rdms(1)%A_size,2**rdms(1)%A_size), stat=ierr)
+        call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_size),ierr)
+        reduced_density_matrix = 0.0_p
+        
+    end subroutine setup_rdm_arrays
 
-        type(dSFMT_t), intent(inout) :: rng
-        integer(i0) :: total_hilbert_space, subspace_size
-        integer :: i, rand_basis, bits_set, total_bits_set
-        integer :: bit_element, bit_position, npsips, basis_find, ipos
-        integer(i0) :: f(basis_length)
-        real(dp) prob_of_acceptance
-        real(dp) :: rand_num
+    subroutine find_rdm_masks()
 
-        total_hilbert_space = 2**(nbasis)
-        npsips = int(D0_population/nprocs)
+        use basis, only: basis_length, bit_lookup, basis_lookup, basis_fns, nbasis
+        use checking, only: check_allocate, check_deallocate
+        use errors
+        use hubbard_real, only: map_vec_to_cell
+        use system, only: ndim, nsites, lattice
 
-        do i = 1, npsips
+        integer :: i, j, k, l, ipos, ierr, nvec_tot
+        integer :: basis_find, bit_position, bit_element
+        integer :: r(ndim), nvecs(3), A_mask(basis_length)
+        real(p) :: v(ndim), test_vec(ndim), temp_vec(ndim)
+        real(p), allocatable :: trans_vecs(:,:)
+        integer :: scale_fac
 
-            ! First we need to decide how many bits will be set, total_bits_set, with
-            ! probability equal to prob = fraction of configs with i bits set
-            do
-                rand_num = get_rand_close_open(rng)
-                total_bits_set = int(rand_num*(nbasis+1))
-                subspace_size = nint(binom_r(nbasis, total_bits_set))
-                prob_of_acceptance = subspace_size/total_hilbert_space
-                rand_num = get_rand_close_open(rng)
-                if (prob_of_acceptance < rand_num) exit
+        ! The maximum number of translational symmetry vectors is nsites (for
+        ! the case of a non-tilted lattice), so allocate this much storage.
+        allocate(trans_vecs(ndim,nsites),stat=ierr)
+        call check_allocate('trans_vecs',ndim*nsites,ierr)
+
+        ! The number of symmetry vectors in each direction.
+        nvecs = 0
+        ! The total number of symmetry vectors.
+        nvec_tot = 0
+
+        do i = 1, ndim
+            scale_fac = maxval(abs(lattice(:,i)))
+            v = real(lattice(:,i),p)/real(scale_fac,p)
+
+            do j = 1, scale_fac-1
+                test_vec = v*j
+                if (all(.not. (abs(test_vec-real(nint(test_vec),p)) > 0.0_p) )) then
+                    ! If test_vec has all integer components.
+                    ! This is a symmetry vector, so store it.
+                    nvecs(i) = nvecs(i) + 1
+                    nvec_tot = nvec_tot + 1
+                    trans_vecs(:,nvec_tot) = test_vec
+                end if
             end do
+        end do
 
-            ! Now form the initial bitstring, f, which will be modified to create the
-            ! final desired bitstring
-            if (total_bits_set <= int(nbasis/2)) then
-                ! If less than half bits are to be set, start from all down.
-                f = 0
-                bits_set = 0
-            else
-                ! If more than half bits are to be set, start from all up,
-                ! remembering to set the bits on the end down, which don't
-                ! correspond to an orbital, so must always be 0.
-                f = 0
+        ! Next, add all combinations of the above generated vectors to form a closed group.
+
+        ! Add all pairs of the above vectors.
+        do i = 1, nvecs(1)
+            do j = nvecs(1)+1, sum(nvecs)
+                nvec_tot = nvec_tot + 1
+                trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)
+            end do
+        end do
+        do i = nvecs(1)+1, nvecs(1)+nvecs(2)
+            do j = nvecs(1)+nvecs(2)+1, sum(nvecs)
+                nvec_tot = nvec_tot + 1
+                trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)
+            end do
+        end do
+
+        ! Add all triples of the above vectors.
+        do i = 1, nvecs(1)
+            do j = nvecs(1)+1, nvecs(1)+nvecs(2)
+                do k = nvecs(1)+nvecs(2)+1, sum(nvecs)
+                    nvec_tot = nvec_tot + 1
+                    trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)+trans_vecs(:,k)
+                end do
+            end do
+        end do
+
+        ! Include the identity transformation vector in the first slot.
+        trans_vecs(:,2:nvec_tot+1) = trans_vecs(:,1:nvec_tot)
+        trans_vecs(:,1) = 0
+        nvec_tot = nvec_tot + 1
+
+        ! Allocate the RDM arrays.
+        do i = 1, size(rdms)
+            allocate(rdms(i)%B_masks(nvec_tot,basis_length), stat=ierr)
+            call check_allocate('rdms(i)%B_masks', nvec_tot*basis_length,ierr)
+            allocate(rdms(i)%bit_pos(nvec_tot,rdms(i)%A_size,2), stat=ierr)
+            call check_allocate('rdms(i)%bit_pos', nvec_tot*rdms(i)%A_size*2,ierr)
+            rdms(i)%B_masks = 0
+            rdms(i)%bit_pos = 0
+        end do
+
+        ! Run through every site on every subsystem and add every translational symmetry vector.
+        do i = 1, size(rdms) ! Over every subsystem.
+            do j = 1, nvec_tot ! Over every symmetry vector.
+                A_mask = 0
+                do k = 1, rdms(i)%A_size ! Over every site in the subsystem.
+                    r = basis_fns(rdms(i)%subsystem_A(k))%l
+                    r = r + nint(trans_vecs(:,j))
+                    ! If r is outside the cell considered in this simulation, shift it by the
+                    ! appropriate lattice vector so that it is in this cell.
+                    call map_vec_to_cell(r)
+                    ! Now need to find which basis state this site corresponds to. Simply loop
+                    ! over all basis functions and check...
+                    do l = 1, nbasis
+                        if (all(basis_fns(l)%l == r)) then
+                            bit_position = bit_lookup(1,l)
+                            bit_element = bit_lookup(2,l)
+
+                            A_mask(bit_element) = ibset(A_mask(bit_element), bit_position)
+
+                            rdms(i)%bit_pos(j,k,1) = bit_position
+                            rdms(i)%bit_pos(j,k,2) = bit_element
+                        end if
+                    end do
+                end do
+
+                rdms(i)%B_masks(j,:) = A_mask
+                ! We cannot just flip the mask for system A to get that for system B,
+                ! because the trailing bits on the end don't refer to anything and should
+                ! be set to 0. So, first set these to 1 and then flip all the bits.
                 do ipos = 0, i0_end
                     basis_find = basis_lookup(ipos, basis_length)
                     if (basis_find == 0) then
-                        f(basis_length) = ibset(f(basis_length),ipos)
+                        rdms(i)%B_masks(j,basis_length) = ibset(rdms(i)%B_masks(j,basis_length),ipos)
                     end if
                 end do
-                f = not(f)
-                bits_set = nbasis
-            end if
+                rdms(i)%B_masks(j,:) = not(rdms(i)%B_masks(j,:))
 
-            ! Now create the bitstring.
-            do
-                ! If the correct number of bits are set, we have the
-                ! bitstring that we want, so exit the loop.
-                if (bits_set==total_bits_set) exit
-                ! Choose a random spin to flip.
-                rand_num = get_rand_close_open(rng)
-                rand_basis = ceiling(rand_num*nbasis)
-                ! Find the corresponding positions for this spin.
-                bit_position = bit_lookup(1,rand_basis)
-                bit_element = bit_lookup(2,rand_basis)
-                if (btest(f(bit_element),bit_position)) then
-                    ! If already flipped up, flip back down.
-                    f(bit_element) = ibclr(f(bit_element),bit_position)
-                    bits_set = bits_set - 1
-                else
-                    ! If not flipped up, flip the spin up.
-                    f(bit_element) = ibset(f(bit_element),bit_position)
-                    bits_set = bits_set + 1
-                end if
             end do
-
-            ! Now call a routine to add the corresponding diagonal element to
-            ! the spawned walkers list.
-            call create_diagonal_particle(f)
-
         end do
 
-    end subroutine random_distribution_entire_space
+        deallocate(trans_vecs,stat=ierr)
+        call check_deallocate('trans_vecs',ierr)
+
+    end subroutine find_rdm_masks
 
     subroutine random_distribution_heisenberg(rng)
 
@@ -255,6 +358,9 @@ contains
 
         up_spins = (ms_in+nsites)/2
         npsips = int(D0_population/nprocs)
+        ! If initial number of psips does not split evenly between all processors,
+        ! add the leftover psips to the first processors in order.
+        if (D0_population-(nprocs*int(D0_population/nprocs)) > iproc) npsips = npsips+1
 
         do i = 1, npsips
 
@@ -272,11 +378,7 @@ contains
                 ! Find the corresponding positions for this spin.
                 bit_position = bit_lookup(1,rand_basis)
                 bit_element = bit_lookup(2,rand_basis)
-                if (btest(f(bit_element),bit_position)) then
-                    ! If already flipped up, flip back down.
-                    f(bit_element) = ibclr(f(bit_element),bit_position)
-                    bits_set = bits_set - 1
-                else
+                if (.not. btest(f(bit_element),bit_position)) then
                     ! If not flipped up, flip the spin up.
                     f(bit_element) = ibset(f(bit_element),bit_position)
                     bits_set = bits_set + 1
@@ -285,13 +387,13 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_diagonal_particle(f)
+            call create_particle(f,f,1)
 
         end do
 
     end subroutine random_distribution_heisenberg
 
-    subroutine create_diagonal_particle(f_new)
+    subroutine create_particle(f1,f2,nspawn)
 
         ! Create a psip on a diagonal element of the density
         ! matrix by adding it to the spawned walkers list. This
@@ -307,22 +409,23 @@ contains
         use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop
         use parallel
 
-        integer(i0), intent(in) :: f_new(basis_length)
-        integer(i0) :: f_new_diagonal(total_basis_length)
+        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer, intent(in) :: nspawn
+        integer(i0) :: f_new(total_basis_length)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
         integer :: iproc_spawn
 #endif
 
-        ! Create the bitstring of a psip on a diagonal element.
-        f_new_diagonal = 0
-        f_new_diagonal(:basis_length) = f_new
-        f_new_diagonal((basis_length+1):(total_basis_length)) = f_new
+        ! Create the bitstring of the psip.
+        f_new = 0
+        f_new(:basis_length) = f1
+        f_new((basis_length+1):(total_basis_length)) = f2
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned walker should be sent to.
-        iproc_spawn = modulo(murmurhash_bit_string(f_new_diagonal, &
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, &
                                 (total_basis_length)), nprocs)
 #endif
 
@@ -333,35 +436,164 @@ contains
         ! Zero it as not all fields are set.
         spawned_walkers(:,spawning_head(0,iproc_spawn)) = 0
         ! indices 1 to total_basis_length store the bitstring.
-        spawned_walkers(:(2*basis_length),spawning_head(0,iproc_spawn)) = f_new_diagonal
-        ! The final index stores the number of psips created, always 1 in this situation.
-        spawned_walkers((2*basis_length)+1,spawning_head(0,iproc_spawn)) = 1
+        spawned_walkers(:(2*basis_length),spawning_head(0,iproc_spawn)) = f_new
+        ! The final index stores the number of psips created.
+        spawned_walkers((2*basis_length)+1,spawning_head(0,iproc_spawn)) = nspawn
 
-    end subroutine create_diagonal_particle
+    end subroutine create_particle
 
     subroutine decode_dm_bitstring(f, index1, index2)
 
-        use basis, only: total_basis_length, basis_length
-        use fciqmc_data, only: subsystem_A_bit_positions, subsystem_A_bit_positions
-        use fciqmc_data, only: subsystem_A_size
+        ! This function maps an input DMQMC bitstring to two indices
+        ! giving the corresponding position of the bitstring in the reduced
+        ! density matrix.
 
-        integer(i0), intent(in) :: f(total_basis_length)
+        use basis, only: basis_length
+
+        integer(i0), intent(in) :: f(basis_length*2)
         integer(i0), intent(out) :: index1, index2
         integer :: i
 
+        ! Start from all bits down, so that we can flip bits up one by one.
         index1 = 0
         index2 = 0
 
-        do i = 1, subsystem_A_size
-            if (btest(f(subsystem_A_bit_positions(i,2)),subsystem_A_bit_positions(i,1))) &
+        ! Loop over all the sites in the sublattice considered for the reduced density matrix.
+        do i = 1, rdms(1)%A_size
+            ! If the spin is up, flip the corresponding bit in the first index up.
+            if (btest(f(rdms(1)%bit_pos(1,i,2)),rdms(1)%bit_pos(1,i,1))) &
                 index1 = ibset(index1,i-1)
-            if (btest(f(subsystem_A_bit_positions(i,2)+basis_length),subsystem_A_bit_positions(i,1))) &
+            ! Similarly for the second index, by looking at the second end of the bitstring.
+            if (btest(f(rdms(1)%bit_pos(1,i,2)+basis_length),rdms(1)%bit_pos(1,i,1))) &
                 index2 = ibset(index2,i-1)
         end do
 
+        ! The process above maps to numbers between 0 and 2^rdms(1)%A_size-1, but the smallest
+        ! and largest of the reduced density matrix are one more than these, so add one...
         index1 = index1+1
         index2 = index2+1
 
     end subroutine decode_dm_bitstring
+ 
+    subroutine update_sampling_weights(rng)
+        
+        ! This routine updates the values of the weights used in importance sampling. It also
+        ! removes or adds psips from the various levels accordingly.
+
+        ! In/Out:
+        !    rng: random number generator.
+
+        use annihilation, only: remove_unoccupied_dets
+        use basis, only: basis_length, total_basis_length
+        use excitations, only: get_excitation_level
+        use fciqmc_data, only: dmqmc_accumulated_probs, finish_varying_weights
+        use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
+        use fciqmc_data, only: nparticles
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+        integer :: idet, excit_level, nspawn, sign_factor, old_population
+        real(p) :: new_factor
+        real(dp) :: rand_num, prob
+
+        ! Alter weights for the next iteration.
+        dmqmc_accumulated_probs = dble(dmqmc_accumulated_probs)*weight_altering_factors
+
+        ! When the weights for an excitation level are increased by a factor, the number
+        ! of psips on that level has to decrease by the same factor, else the wavefunction
+        ! which the psips represent will not be the correct importance sampled wavefunction
+        ! for the new weights. The code below loops over every psips and destorys (or creates)
+        ! it with the appropriate probability.
+        do idet = 1, tot_walkers
+            excit_level = get_excitation_level(walker_dets(1:basis_length,idet),&
+                    walker_dets(basis_length+1:total_basis_length,idet))
+            old_population = abs(walker_population(1,idet))
+            rand_num = get_rand_close_open(rng)
+            ! If weight_altering_factors(excit_level) > 1, need to kill psips.
+            ! If weight_altering_factors(excit_level) < 1, need to create psips.
+            prob = abs(1.0_dp - weight_altering_factors(excit_level)**(-1))*old_population
+            nspawn = int(prob)
+            prob = prob - nspawn
+            if (rand_num < prob) nspawn = nspawn + 1
+            if (weight_altering_factors(excit_level) > 1.0_dp) then
+                sign_factor = -1
+            else
+                sign_factor = +1
+            end if
+            nspawn = sign(nspawn,walker_population(1,idet)*sign_factor)
+            ! Update the population on this determinant.
+            walker_population(1,idet) = walker_population(1,idet) + nspawn
+            ! Update the total number of walkers
+            nparticles(1) = nparticles(1) - old_population + abs(walker_population(1,idet))
+        end do
+
+        ! Call the annihilation routine to update the main walker list, as some
+        ! sites will now have no psips on and so need removing from the simulation.
+        call remove_unoccupied_dets()
+
+    end subroutine update_sampling_weights
+
+    subroutine output_and_alter_weights()
+
+        ! This routine will alter and output the sampling weights used in importance 
+        ! sampling. It uses the excitation distribution, calculated on the beta loop
+        ! which has just finished, and finds the weights needed so that each excitation
+        ! level will have roughly equal numbers of psips in the next loop. For example,
+        ! to find the weights of psips on the 1st excitation level, divide the number of
+        ! psips on the 1st excitation level by the number on the 0th level, then multiply
+        ! the old sampling weight by this number to give the new weight. This can be used
+        ! when the weights are being introduced gradually each beta loop, too. The weights
+        ! are output and can then be used in future DMQMC runs.
+
+        use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs
+        use fciqmc_data, only: excit_distribution, finish_varying_weights
+        use fciqmc_data, only: dmqmc_vary_weights, weight_altering_factors
+        use parallel
+        use system, only: max_number_excitations
+
+        integer :: i, ierr
+#ifdef PARALLEL
+        real(p) :: merged_excit_dist(max_number_excitations) 
+        call mpi_allreduce(excit_distribution, merged_excit_dist, max_number_excitations, &
+            MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        
+        excit_distribution = merged_excit_dist        
+#endif
+
+        ! It is assumed that there is an even maximum number of excitations.
+        do i = 1, (max_number_excitations/2)
+            ! Don't include levels where there are very few psips accumulated.
+            if (excit_distribution(i-1) > 10.0_p .and. excit_distribution(i) > 10.0_p) then
+                ! Alter the sampling weights using the relevant excitation distribution.
+                dmqmc_sampling_probs(i) = dmqmc_sampling_probs(i)*&
+                    (excit_distribution(i)/excit_distribution(i-1))
+                dmqmc_sampling_probs(max_number_excitations+1-i) = dmqmc_sampling_probs(i)**(-1)
+            end if
+        end do
+        
+        ! Recalculate dmqmc_accumulated_probs with the new weights.
+        do i = 1, max_number_excitations
+            dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
+        end do
+
+        ! If dmqmc_vary_weights is true then the weights are to be introduced gradually at the
+        ! start of each beta loop. This required redefining weight_altering_factors to coincide
+        ! with the new sampling weights.
+        if (dmqmc_vary_weights) then
+            weight_altering_factors = dble(dmqmc_accumulated_probs)**(1/dble(finish_varying_weights))
+            ! Reset the weights for the next loop.
+            dmqmc_accumulated_probs = 1.0_p
+        end if
+
+        if (parent) then
+            ! Print out weights in a form which can be copied into an input file.
+            write(6, '(a31,2X)', advance = 'no') ' # Importance sampling weights:'
+            do i = 1, max_number_excitations
+                write (6, '(es12.4,2X)', advance = 'no') dmqmc_sampling_probs(i)
+            end do
+            write (6, '()', advance = 'yes')
+        end if
+
+    end subroutine output_and_alter_weights
 
 end module dmqmc_procedures

@@ -82,6 +82,8 @@ contains
         ! The size parameter used in Murmurhash is the number of bytes...
         tmp = 4*N
 
+        ! Unfortunately it seems c_loc is not required to be pure by the
+        ! F2003 standards! :-(
         key = c_loc(f(1))
 
         hash = MurmurHash2(key, tmp, seed)

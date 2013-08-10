@@ -17,6 +17,7 @@ use fciqmc_restart, only: read_restart_number, write_restart_number,&
                           write_restart_file_every_nreports
 use hubbard_real, only: finite_cluster
 use hfs_data, only: lmag2
+use dmqmc_procedures, only: rdms
 
 implicit none
 
@@ -46,7 +47,7 @@ contains
         character(100) :: w
         integer :: ios
         logical :: eof, t_exists
-        integer :: ivec, i, ierr
+        integer :: ivec, i, j, ierr, nweights, nrdms
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
@@ -201,6 +202,9 @@ contains
             case('FOLDED_SPECTRUM')
                 calc_type = calc_type + folded_spectrum
 
+            case('REPLICA_TRICKS')
+                replica_tricks = .true.
+
             ! DMQMC expectation values to be calculated
             case('DMQMC_ENERGY')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
@@ -216,19 +220,53 @@ contains
             print *, correlation_sites
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
-            ! Calculate a reduced density matrix
-            case('REDUCED_DENSITY_MATRIX')
-                doing_reduced_dm = .true.
-            case('SUBSYSTEM_SITES')
-                allocate(subsystem_A_list(nitems-1), stat=ierr)
-                call check_allocate('subsystem_A_list',nitems-1,ierr)
-                do i = 1, nitems-1
-                    call readi(subsystem_A_list(i))
+            case('DMQMC_WEIGHTED_SAMPLING')
+                call readi(nweights)
+                allocate(dmqmc_sampling_probs(nweights), stat=ierr)
+                call check_allocate('dmqmc_sampling_probs', nweights, ierr)
+                dmqmc_weighted_sampling = .true.
+                do i = 1, nweights
+                    call getf(dmqmc_sampling_probs(i))
                 end do
+            case('DMQMC_VARY_WEIGHTS')
+                call readi(finish_varying_weights)
+                dmqmc_vary_weights = .true.
+            case('DMQMC_FIND_WEIGHTS')
+                dmqmc_find_weights = .true.
+                dmqmc_weighted_sampling = .true.
+            case('OUTPUT_EXCITATION_DISTRIBUTION')
+                calculate_excit_distribution = .true.
+            case('REDUCED_DENSITY_MATRIX')
+                call readi(nrdms)
+                allocate(rdms(nrdms), stat=ierr)
+                call check_allocate('rdms', nrdms, ierr)
+                doing_reduced_dm = .true.
+                do i = 1, nrdms
+                    call read_line(eof)
+                    if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
+                    rdms(i)%A_size = nitems
+                    allocate(rdms(i)%subsystem_A(nitems))
+                    call check_allocate('rdms(i)%subsystem_A',nitems,ierr)
+                    do j = 1, nitems
+                        call readi(rdms(i)%subsystem_A(j))
+                    end do
+                end do
+            case('OUTPUT_RDM')
+                output_rdm = .true.
+            case('EXACT_RDM_EIGENVALUES')
+                doing_exact_rdm_eigv = .true.
+            case('CONCURRENCE')
+                doing_concurrence = .true.
+            case('VON_NEUMANN_ENTROPY')
+                doing_von_neumann_entropy = .true.
+            case('START_AVERAGING')
+                call readi(start_averaging)
             ! calculation options: DMQMC
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
                 call readi(truncation_level)
+            case('HALF_DENSITY_MATRIX')
+                half_density_matrix = .true.
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -287,6 +325,8 @@ contains
                     call reread(0)
                     call readf(vary_shift_from)
                 end if
+            case('DMQMC_AVERAGE_SHIFT')
+                call readi(average_shift_until)
             case('VARYSHIFT_TARGET')
                 call readli(target_particles)
             case('INIT_POP')
@@ -461,12 +501,6 @@ contains
             if (ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
             if (system_type == ueg .and. ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
 
-            if (triangular_lattice .and. (.not.bipartite_lattice) .and. (.not.finite_cluster)) then
-                call warning('check_input','Periodic boundary conditions may not be applied for these particular &
-                               &triangular lattice. Periodic boundary conditions are being turned off.')
-                finite_cluster = .true.
-            end if
-
         end if
 
         if (init_spin_inv_D0 .and. ms_in /= 0) then
@@ -478,6 +512,9 @@ contains
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
                &sites for the correlation function option.')
 
+          if (dmqmc_find_weights .and. calculate_excit_distribution) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
+              &_DISTRIBUTION options should cannot be used together.')
+
         ! Calculation specific checking.
         if (doing_calc(lanczos_diag)) then
             if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
@@ -486,7 +523,6 @@ contains
 
         if ((.not.doing_calc(dmqmc_calc)) .and. dmqmc_calc_type /= 0) call warning('check_input',&
                'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
-
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
                 if (walker_length == 0) call stop_all(this,'Walker length zero.')
@@ -565,6 +601,7 @@ contains
             end if
             call mpi_bcast(lattice, ndim*ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
+        call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -617,19 +654,50 @@ contains
         call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(average_shift_until, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_von_neumann_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.
-        if (parent) option_set = allocated(subsystem_A_list)
+        if (parent) option_set = allocated(dmqmc_sampling_probs)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(subsystem_A_list)
-            call mpi_bcast(subsystem_A_list, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            occ_list_size = size(dmqmc_sampling_probs)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(subsystem_A_list(occ_list_size), stat=ierr)
-                call check_allocate('subsystem_A_list',occ_list_size,ierr)
+                allocate(dmqmc_sampling_probs(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_sampling_probs',occ_list_size,ierr)
             end if
-            call mpi_bcast(subsystem_A_list, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(dmqmc_sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
+        end if
+        option_set = .false.
+        if (parent) option_set = allocated(rdms)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            occ_list_size = size(rdms)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(rdms(occ_list_size), stat=ierr)
+                call check_allocate('rdms',occ_list_size,ierr)
+            end if
+            do i = 1, occ_list_size
+                call mpi_bcast(rdms(i)%A_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                if (.not.parent) then
+                    allocate(rdms(i)%subsystem_A(rdms(i)%A_size), stat=ierr)
+                    call check_allocate('rdms(i)%subsystem_A',rdms(i)%A_size,ierr)
+                end if
+                call mpi_bcast(rdms(i)%subsystem_A, rdms(i)%A_size, mpi_integer, 0, mpi_comm_world, ierr)
+            end do
         end if
         option_set = .false.
         if (parent) option_set = allocated(correlation_sites)

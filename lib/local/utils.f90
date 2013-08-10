@@ -367,6 +367,8 @@ contains
 
     end function tri_ind_reorder
 
+! --- String conversion ---
+
     pure function fstring_to_carray(string_f03) result(array_c)
 
         ! Convert a Fortran string into a C string.  The result can be passed to
@@ -429,5 +431,26 @@ contains
         write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
 
     end subroutine rng_init_info
+
+    subroutine print_matrix(matrix)
+
+        ! Print out a given real matrix in a neat format.
+
+        ! In:
+        !    matrix: The matrix which is to be output to the screen. 
+
+        use const, only: p
+
+        real(p), intent(in) :: matrix(:,:)
+        integer :: i,j
+
+        do i = 1, ubound(matrix,1)
+            do j = 1, ubound(matrix,2)
+                write(6, '(es17.10,2X)', advance = 'no') matrix(i,j)
+            end do
+            write(6,'(1X)', advance = 'yes')
+        end do
+
+    end subroutine print_matrix
 
 end module utils

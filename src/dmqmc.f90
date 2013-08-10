@@ -22,7 +22,9 @@ contains
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_procedures, only: random_distribution_heisenberg
+        use dmqmc_procedures, only: update_sampling_weights, output_and_alter_weights
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
+        use dmqmc_estimators, only: call_rdm_procedures
         use excitations, only: excit, get_excitation_level
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use qmc_common
@@ -35,7 +37,7 @@ contains
         use utils, only: int_fmt
         use errors, only: stop_all
 
-        integer :: idet, ireport, icycle, iparticle
+        integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
         integer(lint) :: nparticles_old(sampling_size)
         integer(lint) :: nattempts, nparticles_start_report
@@ -49,8 +51,8 @@ contains
 
         ! Allocate det_info components. We need two cdet objects
         ! for each 'end' which may be spawned from in the DMQMC algorithm.
-        call alloc_det_info(cdet1)
-        call alloc_det_info(cdet2)
+        call alloc_det_info(cdet1, .false.)
+        call alloc_det_info(cdet2, .false.)
 
         ! Main DMQMC loop.
         if (parent) call write_fciqmc_report_header()
@@ -73,6 +75,9 @@ contains
             tot_walkers = 0
             shift = initial_shift
             nparticles = 0
+            if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
+            if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
+            if (dmqmc_find_weights) excit_distribution = 0
             vary_shift = .false.
 
             ! Need to place psips randomly along the diagonal at the
@@ -102,28 +107,34 @@ contains
             nparticles_old = nint(D0_population)
 
             do ireport = 1, nreport
-
                 ! Zero report cycle quantities.
                 rspawn = 0.0_p
-                trace = 0
-                estimator_numerators = 0
+                trace = 0.0_p
+                estimator_numerators = 0.0_p
+                if (calculate_excit_distribution) excit_distribution = 0
                 nparticles_start_report = nparticles_old(1)
 
                 do icycle = 1, ncycles
                     spawning_head = spawning_block_start
+                    iteration = (ireport-1)*ncycles + icycle
 
                     ! Number of spawning attempts that will be made.
                     ! Each particle and each end gets to attempt to
                     ! spawn onto a connected determinant and a chance
                     ! to die/clone.
-                    nattempts = 4*nparticles(1)
+                    nattempts = 4*nparticles(1)*sampling_size
 
                     ! Reset death counter
                     ndeath = 0
 
                     do idet = 1, tot_walkers ! loop over walkers/dets
-                        cdet1%f = walker_dets(:basis_length,idet)
-                        cdet2%f = walker_dets((basis_length+1):(2*basis_length),idet)
+
+                        ! f points to the bitstring that is spawning, f2 to the
+                        ! other bit string.
+                        cdet1%f => walker_dets(:basis_length,idet)
+                        cdet1%f2 => walker_dets((basis_length+1):(2*basis_length),idet)
+                        cdet2%f => walker_dets((basis_length+1):(2*basis_length),idet)
+                        cdet2%f2 => walker_dets(:basis_length,idet)
 
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
@@ -133,32 +144,35 @@ contains
 
                         ! Call wrapper function which calls all requested estimators
                         ! to be updated, and also always updates the trace separately.
-                        if (icycle == 1) call call_dmqmc_estimators(idet)
+                        if (icycle == 1) call call_dmqmc_estimators(idet, iteration)
 
-                        do iparticle = 1, abs(walker_population(1,idet))
-                            ! Spawn from the first end.
-                            spawning_end = 1
-                            ! Attempt to spawn.
-                            call spawner_ptr(rng, cdet1, walker_population(1,idet), nspawned, connection)
-                            ! Spawn if attempt was successful.
-                            if (nspawned /= 0) then
-                                call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
-                            end if
+                        do ireplica = 1, sampling_size
+                            do iparticle = 1, abs(walker_population(ireplica,idet))
+                                ! Spawn from the first end.
+                                spawning_end = 1
+                                ! Attempt to spawn.
+                                call spawner_ptr(rng, cdet1, walker_population(ireplica,idet), nspawned, connection)
+                                ! Spawn if attempt was successful.
+                                if (nspawned /= 0) then
+                                    call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
+                                end if
 
-                            ! Now attempt to spawn from the second end.
-                            spawning_end = 2
-                            call spawner_ptr(rng, cdet2, walker_population(1,idet), nspawned, connection)
-                            if (nspawned /= 0) then
-                                call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
-                            end if
+                                ! Now attempt to spawn from the second end.
+                                spawning_end = 2
+                                call spawner_ptr(rng, cdet2, walker_population(ireplica,idet), nspawned, connection)
+                                if (nspawned /= 0) then
+                                    call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
+                                end if
+                            end do
+
+                            ! Clone or die.
+                            ! We have contributions to the clone/death step from both ends of the
+                            ! current walker. We do both of these at once by using walker_data(:,idet)
+                            ! which, when running a DMQMC algorithm, stores the average of the two diagonal
+                            ! elements corresponding to the two indicies of the density matrix (the two ends).
+                            call stochastic_death(rng, walker_data(ireplica,idet), walker_population(ireplica,idet), &
+                                                  nparticles(ireplica), ndeath)
                         end do
-
-                        ! Clone or die.
-                        ! We have contirbutions to the clone/death step from both ends of the
-                        ! current walker. We do both of these at once by using walker_data(1,idet)
-                        ! which, when running a DMQMC algorithm, stores the average of the two diagonal
-                        ! elements corresponding to the two indicies of the density matrix (the two ends).
-                        call stochastic_death(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
                     end do
 
                     ! Add the spawning rate (for the processor) to the running
@@ -170,11 +184,17 @@ contains
                     ! annihilated.
                     call direct_annihilation()
 
+                    ! If doing importance sampling *and* varying the weights of the trial function, call a routine
+                    ! to update these weights and alter the number of psips on each excitation level accordingly.
+                    if (dmqmc_vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng)
+
                 end do
 
-                old_shift=shift
+                ! If averaging the shift to use in future beta loops, add contirubtion from this report.
+                if (average_shift_until > 0) shift_profile(ireport) = shift_profile(ireport) + shift
+
                 ! Update the shift and desired thermal quantites.
-                call update_dmqmc_estimators(nparticles_old)
+                call update_dmqmc_estimators(nparticles_old, ireport)
 
                 call cpu_time(t2)
 
@@ -193,6 +213,20 @@ contains
 
             end do
 
+            if (soft_exit) exit
+
+            ! If have just finished last beta loop of accumulating the shift, then perform
+            ! the averaging and set average_shift_until to -1. This tells the shift update
+            ! algorithm to use the values for shift stored in shift_profile.
+            if (beta_cycle == average_shift_until) then
+                shift_profile = shift_profile/average_shift_until
+                average_shift_until = -1
+            end if
+
+            ! Calculate and output all requested estimators based on the reduced dnesity matrix.
+            if (doing_reduced_dm) call call_rdm_procedures(beta_cycle)
+            ! Calculate and output new weights based on the psip distirubtion in the previous loop.
+            if (dmqmc_find_weights) call output_and_alter_weights()
         end do
 
         if (parent) then
@@ -204,8 +238,8 @@ contains
 
         if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
 
-        call dealloc_det_info(cdet1)
-        call dealloc_det_info(cdet2)
+        call dealloc_det_info(cdet1, .false.)
+        call dealloc_det_info(cdet2, .false.)
 
     end subroutine do_dmqmc
 

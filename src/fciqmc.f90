@@ -49,7 +49,9 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Allocate det_info components.
-        call alloc_det_info(cdet)
+        call alloc_det_info(cdet, .false.)
+        ! Folded spectrum *needs* the bit strings to be allocated as it needs
+        ! be able to manipulate the bit string to create excited states.
         if (doing_calc(folded_spectrum)) call alloc_det_info(cdet_excit)
 
         ! from restart
@@ -72,7 +74,7 @@ contains
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
-                    cdet%f = walker_dets(:,idet)
+                    cdet%f => walker_dets(:,idet)
                     cdet%data => walker_data(:,idet)
 
                     call decoder_ptr(cdet%f, cdet)
@@ -129,7 +131,7 @@ contains
 
         if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
 
-        call dealloc_det_info(cdet)
+        call dealloc_det_info(cdet, .false.)
         if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)
 
     end subroutine do_fciqmc

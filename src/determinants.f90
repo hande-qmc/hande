@@ -82,6 +82,7 @@ integer :: tot_ndets
 type det_info
     ! bit representation of determinant.
     integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
+    integer(i0), pointer :: f2(:)  => NULL()  ! (basis_length); for DMQMC
     ! List of occupied spin-orbitals.
     integer, pointer :: occ_list(:)  => NULL()  ! (nel)
     ! List of occupied alpha/beta spin-orbitals
@@ -275,20 +276,38 @@ contains
 
 !--- Initialisation and finalisation of det_info objects ---
 
-    subroutine alloc_det_info(det_info_t)
+    subroutine alloc_det_info(det_info_t, allocate_bit_strings)
 
         ! Allocate the components of a det_info variable.
+
+        ! In:
+        !    allocate_bit_strings (optional): if true (default), allocate the
+        !        bit string attributes.  If false, then the bit string attributes
+        !        can be used to point to already allocated bit strings.
+        !        If set to false, the programmer *must* set allocated_bit_strings to
+        !        false when calling dealloc_det_info.
         ! Out:
         !    det_info_t: det_info variable with components allocated to the
-        !    appropriate sizes.
+        !        appropriate sizes.
 
         use checking, only: check_allocate
 
+        logical, intent(in), optional :: allocate_bit_strings
         type(det_info), intent(inout) :: det_info_t
+        logical :: alloc_f
         integer :: ierr
 
-        allocate(det_info_t%f(basis_length), stat=ierr)
-        call check_allocate('det_info_t%f',basis_length,ierr)
+        if (present(allocate_bit_strings)) then
+            alloc_f = allocate_bit_strings
+        else
+            alloc_f = .true.
+        end if
+        if (alloc_f) then
+            allocate(det_info_t%f(basis_length), stat=ierr)
+            call check_allocate('det_info_t%f',basis_length,ierr)
+            allocate(det_info_t%f2(basis_length), stat=ierr)
+            call check_allocate('det_info_t%f2',basis_length,ierr)
+        end if
         allocate(det_info_t%occ_list(nel), stat=ierr)
         call check_allocate('det_info_t%occ_list',nel,ierr)
         allocate(det_info_t%occ_list_alpha(nalpha), stat=ierr)
@@ -304,19 +323,40 @@ contains
 
     end subroutine alloc_det_info
 
-    subroutine dealloc_det_info(det_info_t)
+    subroutine dealloc_det_info(det_info_t, allocated_bit_strings)
 
         ! Deallocate the components of a det_info variable.
+
+        ! In:
+        !    allocated_bit_strings (optional): if true (default), the
+        !        bit string attributes are allocated and must be deallocated.
+        !        If false, then the bit string attributes were just used to
+        !        point to already allocated bit strings and don't need to be
+        !        deallocated.  This *must* correspond to the alloc_bit_strings
+        !        argument given to alloc_det_info.
         ! Out:
         !    det_info_t: det_info variable with all components deallocated.
 
         use checking, only: check_deallocate
 
+        logical, intent(in), optional :: allocated_bit_strings
         type(det_info), intent(inout) :: det_info_t
         integer :: ierr
 
-        deallocate(det_info_t%f, stat=ierr)
-        call check_deallocate('det_info_t%f',ierr)
+        logical :: alloc_f
+
+        if (present(allocated_bit_strings)) then
+            alloc_f = allocated_bit_strings
+        else
+            alloc_f = .true.
+        end if
+
+        if (alloc_f) then
+            deallocate(det_info_t%f, stat=ierr)
+            call check_deallocate('det_info_t%f',ierr)
+            deallocate(det_info_t%f2, stat=ierr)
+            call check_deallocate('det_info_t%f2',ierr)
+        end if
         deallocate(det_info_t%occ_list, stat=ierr)
         call check_deallocate('det_info_t%occ_list',ierr)
         deallocate(det_info_t%occ_list_alpha, stat=ierr)
@@ -769,14 +809,14 @@ contains
 
     end function det_gt
 
-    pure function det_compare(f1, f2) result(compare)
+    pure function det_compare(f1, f2, flength) result(compare)
 
         ! In:
-        !    f1(total_basis_length): bit string representation of the Slater
-        !        determinant.
-        !    f2(total_basis_length): bit string representation of the Slater
-        !        determinant.
-        !    (For DMQMC this bitstring contains information for both determinants)
+        !    f1(flength): bit string.
+        !    f2(flength): bit string.
+        !    flength: size of bit string.  Should be basis_length for comparing
+        !    determinants and total_basis_length for comparing pairs of density
+        !    matrix labels (DMQMC only).
         ! Returns:
         !    0 if f1 and f2 are identical;
         !    1 if the first non-identical element in f1 is smaller than the
@@ -785,12 +825,13 @@ contains
         !    corresponding element in f2;
 
         integer :: compare
-        integer(i0), intent(in) :: f1(total_basis_length), f2(total_basis_length)
+        integer, intent(in) :: flength
+        integer(i0), intent(in) :: f1(flength), f2(flength)
 
         integer :: i
 
         compare = 0
-        do i = 1, total_basis_length
+        do i = 1, flength
             if (f1(i) < f2(i)) then
                 compare = 1
                 exit
