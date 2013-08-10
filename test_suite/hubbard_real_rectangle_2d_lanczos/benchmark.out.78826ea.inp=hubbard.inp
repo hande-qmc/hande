@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
-     /home/jspencer/projects/hubbard_fciqmc/test_suite/rspace_rectangle_2d_lanczos
- Started running on 02/02/2012 at 15:32:43
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/hubbard_real_rectangle_2d_lanczos
+ Started running on 10/08/2013 at 17:09:00
  ================================================================
 
  Input options
@@ -74,21 +76,21 @@ lanczos_solns 6
 
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:32:44.430 (-00:00)
+                                        2013/08/10 17:09:01.252 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          6 (computed),          6 (wanted)
-Times the operator is applied:        163 (MAX:             3136 ).
+Times the operator is applied:        162 (MAX:             3136 ).
 Problem size:                        3136 (PE:   0),        3136 (Global)
 Convergence tolerance:           1.49E-08 (rel),       2.563E-07 (abs)
 Maximum basis size:                    40
 Restarting scheme:                      0
-Number of re-orthogonalizations       163
+Number of re-orthogonalizations       162
 Number of (re)start loops:              6
 Number of eigenpairs locked:            2
-OP(MATVEC):             5.8290E-01 sec, -1.8646E+09 FLOP/S (-1.0869E+09 FLOP)
-Re-Orthogonalization:   1.3700E-02 sec,  4.0377E+09 FLOP/S ( 5.5317E+07 FLOP)
-Restarting:             5.0000E-03 sec,  3.9451E+09 FLOP/S ( 1.9725E+07 FLOP)
-TRLAN on this PE:       6.0440E-01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+OP(MATVEC):             5.5120E-01 sec, -2.0075E+09 FLOP/S (-1.1066E+09 FLOP)
+Re-Orthogonalization:   1.1900E-02 sec,  4.6298E+09 FLOP/S ( 5.5094E+07 FLOP)
+Restarting:             4.1000E-03 sec,  4.8707E+09 FLOP/S ( 1.9970E+07 FLOP)
+TRLAN on this PE:       5.6960E-01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -108,21 +110,21 @@ TRLAN on this PE:       6.0440E-01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:32:44.823 (-00:00)
+                                        2013/08/10 17:09:01.609 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          7 (computed),          6 (wanted)
-Times the operator is applied:        181 (MAX:             1960 ).
+Times the operator is applied:        182 (MAX:             1960 ).
 Problem size:                        1960 (PE:   0),        1960 (Global)
 Convergence tolerance:           1.49E-08 (rel),       2.244E-07 (abs)
 Maximum basis size:                    40
 Restarting scheme:                      0
-Number of re-orthogonalizations       181
+Number of re-orthogonalizations       182
 Number of (re)start loops:              7
 Number of eigenpairs locked:            7
-OP(MATVEC):             2.7180E-01 sec,  5.1217E+09 FLOP/S ( 1.3921E+09 FLOP)
-Re-Orthogonalization:   8.9000E-03 sec,  4.3916E+09 FLOP/S ( 3.9085E+07 FLOP)
-Restarting:             4.3000E-03 sec,  3.4177E+09 FLOP/S ( 1.4696E+07 FLOP)
-TRLAN on this PE:       2.8710E-01 sec,  5.0450E+09 FLOP/S ( 1.4484E+09 FLOP)
+OP(MATVEC):             2.3310E-01 sec,  6.0050E+09 FLOP/S ( 1.3998E+09 FLOP)
+Re-Orthogonalization:   8.3000E-03 sec,  4.7306E+09 FLOP/S ( 3.9264E+07 FLOP)
+Restarting:             3.8000E-03 sec,  3.8333E+09 FLOP/S ( 1.4567E+07 FLOP)
+TRLAN on this PE:       2.4700E-01 sec,  5.8954E+09 FLOP/S ( 1.4562E+09 FLOP)
 
  ---------------
 
@@ -142,7 +144,7 @@ TRLAN on this PE:       2.8710E-01 sec,  5.0450E+09 FLOP/S ( 1.4484E+09 FLOP)
 
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:32:44.840 (-00:00)
+                                        2013/08/10 17:09:01.624 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:         11 (computed),          6 (wanted)
 Times the operator is applied:        110 (MAX:             1000 ).
@@ -153,8 +155,8 @@ Restarting scheme:                      0
 Number of re-orthogonalizations       110
 Number of (re)start loops:              4
 Number of eigenpairs locked:            3
-OP(MATVEC):             5.3000E-03 sec,  8.3683E+09 FLOP/S ( 4.4352E+07 FLOP)
-Re-Orthogonalization:   1.0000E-03 sec,  5.2332E+09 FLOP/S ( 5.2332E+06 FLOP)
+OP(MATVEC):             3.4000E-03 sec,  1.3045E+10 FLOP/S ( 4.4352E+07 FLOP)
+Re-Orthogonalization:   5.0000E-04 sec,  1.0466E+10 FLOP/S ( 5.2332E+06 FLOP)
 Restarting:             1.4000E-03 sec,  1.4701E+09 FLOP/S ( 2.0581E+06 FLOP)
 TRLAN on this PE:       2.1475E+05 sec,  2.4221E+02 FLOP/S ( 5.2015E+07 FLOP)
 
@@ -176,7 +178,7 @@ TRLAN on this PE:       2.1475E+05 sec,  2.4221E+02 FLOP/S ( 5.2015E+07 FLOP)
 
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:32:44.840 (-00:00)
+                                        2013/08/10 17:09:01.624 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:         11 (computed),          6 (wanted)
 Times the operator is applied:         18 (MAX:             1000 ).
@@ -187,10 +189,10 @@ Restarting scheme:                      0
 Number of re-orthogonalizations        18
 Number of (re)start loops:              1
 Number of eigenpairs locked:            0
-OP(MATVEC):             1.0000E-04 sec,  3.0240E+08 FLOP/S ( 3.0240E+04 FLOP)
+time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
 time in restarting:           0.00000E+00 sec
-TRLAN on this PE:       2.1475E+05 sec,  3.0295E-01 FLOP/S ( 6.5058E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -244,7 +246,8 @@ TRLAN on this PE:       2.1475E+05 sec,  3.0295E-01 FLOP/S ( 6.5058E+04 FLOP)
  Lanczos ground state:  -14.947969433097
 
  ================================================================
- Finished running on 02/02/2012 at 15:32:44
- Calculation took:                    1.31s
+ Finished running on 10/08/2013 at 17:09:01
+ Wall time:                           1.24s
+ CPU time (per processor):            1.24s
  ================================================================
 

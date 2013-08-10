@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
      /home/jspencer/projects/hubbard_fciqmc/test_suite/heisenberg_1d_fci
- Started running on 02/02/2012 at 15:32:27
+ Started running on 10/08/2013 at 17:09:00
  ================================================================
 
  Input options
@@ -91,7 +93,7 @@ fci
      16       0   -11.070539539342
      17       0   -10.057197916845
      18       0   -10.057197916845
-     19       0    -9.950651431906
+     19       0    -9.950651431905
      20       0    -9.950651431905
      21       0    -9.755261282063
      22       0    -9.336972737256
@@ -159,7 +161,7 @@ fci
      84       0    -3.596040882202
      85       0    -3.450187912157
      86       0    -3.450187912157
-     87       0    -3.431523613619
+     87       0    -3.431523613620
      88       0    -3.431523613619
      89       0    -3.236067977500
      90       0    -3.236067977500
@@ -329,7 +331,8 @@ fci
  Exact ground state:  -18.061785417968
 
  ================================================================
- Finished running on 02/02/2012 at 15:32:27
- Calculation took:                    0.02s
+ Finished running on 10/08/2013 at 17:09:00
+ Wall time:                           0.01s
+ CPU time (per processor):            0.01s
  ================================================================
 

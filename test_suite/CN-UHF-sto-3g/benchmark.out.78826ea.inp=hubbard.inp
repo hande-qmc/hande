@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
      /home/jspencer/projects/hubbard_fciqmc/test_suite/CN-UHF-sto-3g
- Started running on 02/02/2012 at 15:32:28
+ Started running on 10/08/2013 at 17:09:13
  ================================================================
 
  Input options
@@ -123,21 +125,21 @@ lanczos_solns 20
 
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:32:42.890 (-00:00)
+                                        2013/08/10 17:09:27.818 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:         24 (computed),         20 (wanted)
-Times the operator is applied:        917 (MAX:             6240 ).
+Times the operator is applied:        903 (MAX:             6240 ).
 Problem size:                        6240 (PE:   0),        6240 (Global)
 Convergence tolerance:           1.49E-08 (rel),       1.359E-06 (abs)
 Maximum basis size:                    40
 Restarting scheme:                      0
-Number of re-orthogonalizations       917
-Number of (re)start loops:             52
+Number of re-orthogonalizations       903
+Number of (re)start loops:             51
 Number of eigenpairs locked:           10
-OP(MATVEC):             1.2877E+01 sec, -1.2270E+08 FLOP/S (-1.5800E+09 FLOP)
-Re-Orthogonalization:   1.6760E-01 sec,  4.3785E+09 FLOP/S ( 7.3384E+08 FLOP)
-Restarting:             6.4800E-02 sec,  6.0852E+09 FLOP/S ( 3.9432E+08 FLOP)
-TRLAN on this PE:       1.3138E+01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+OP(MATVEC):             1.2225E+01 sec,  1.3288E+08 FLOP/S ( 1.6244E+09 FLOP)
+Re-Orthogonalization:   1.7430E-01 sec,  4.1415E+09 FLOP/S ( 7.2187E+08 FLOP)
+Restarting:             7.1400E-02 sec,  5.4388E+09 FLOP/S ( 3.8833E+08 FLOP)
+TRLAN on this PE:       1.2497E+01 sec,  5.7217E+09 FLOP/S ( 7.1502E+10 FLOP)
 
  ---------------
 
@@ -145,8 +147,8 @@ TRLAN on this PE:       1.3138E+01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
  -------------------------------
 
     State   Spin   Total energy
-      1       1   -91.177672131061
-      2       1   -91.032825562773
+      1       1   -91.177672131060
+      2       1   -91.032825562772
       3       1   -90.949714393713
       4       1   -90.882270887625
       5       1   -90.828944366538
@@ -158,7 +160,7 @@ TRLAN on this PE:       1.3138E+01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
      11       1   -90.675367196816
      12       1   -90.630314810382
      13       1   -90.588971583818
-     14       1   -90.588136083158
+     14       1   -90.588136083159
      15       1   -90.549884502821
      16       1   -90.535666473225
      17       1   -90.507877389090
@@ -166,10 +168,11 @@ TRLAN on this PE:       1.3138E+01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
      19       1   -90.463123303989
      20       1   -90.460680962222
 
- Lanczos ground state:  -91.177672131061
+ Lanczos ground state:  -91.177672131060
 
  ================================================================
- Finished running on 02/02/2012 at 15:32:42
- Calculation took:                   14.39s
+ Finished running on 10/08/2013 at 17:09:27
+ Wall time:                          14.03s
+ CPU time (per processor):           13.97s
  ================================================================
 

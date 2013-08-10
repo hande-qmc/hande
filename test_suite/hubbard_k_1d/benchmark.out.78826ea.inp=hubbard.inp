@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
-     /home/jspencer/projects/hubbard_fciqmc/test_suite/kspace_1d
- Started running on 02/02/2012 at 15:34:44
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/hubbard_k_1d
+ Started running on 10/08/2013 at 17:08:59
  ================================================================
 
  Input options
@@ -92,7 +94,7 @@ end
   **    It is more appropriate to use LAPACK dsyev/ssyev.
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:34:44.948 (-00:00)
+                                        2013/08/10 17:08:59.186 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          9 (computed),          5 (wanted)
 Times the operator is applied:         10 (MAX:             1000 ).
@@ -103,10 +105,10 @@ Restarting scheme:                      0
 Number of re-orthogonalizations         9
 Number of (re)start loops:              1
 Number of eigenpairs locked:            0
-OP(MATVEC):             2.0000E-03 sec,  1.2000E+06 FLOP/S ( 2.4000E+03 FLOP)
+OP(MATVEC):             1.3000E-03 sec,  1.8462E+06 FLOP/S ( 2.4000E+03 FLOP)
 Re-Orthogonalization:   1.0000E-04 sec,  2.1960E+07 FLOP/S ( 2.1960E+03 FLOP)
-Restarting:             4.0000E-04 sec,  4.5000E+06 FLOP/S ( 1.8000E+03 FLOP)
-TRLAN on this PE:       2.7000E-03 sec,  2.5956E+06 FLOP/S ( 7.0080E+03 FLOP)
+Restarting:             2.0000E-04 sec,  9.0000E+06 FLOP/S ( 1.8000E+03 FLOP)
+TRLAN on this PE:       1.7000E-03 sec,  4.1224E+06 FLOP/S ( 7.0080E+03 FLOP)
 
 
  Performing exact diagonalisation...
@@ -124,7 +126,7 @@ TRLAN on this PE:       2.7000E-03 sec,  2.5956E+06 FLOP/S ( 7.0080E+03 FLOP)
            8 ).  Please use LAPACK or EISPACK instead.
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:34:44.948 (-00:00)
+                                        2013/08/10 17:08:59.187 (+01:00)
  TRLAN execution summary (exit status =          -4 )
 Number of SMALLEST eigenpairs:          0 (computed),          5 (wanted)
 Times the operator is applied:          0 (MAX:             1000 ).
@@ -138,7 +140,7 @@ Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
 time in restarting:           0.00000E+00 sec
-total time in TRLAN:          0.00000E+00 sec
+TRLAN on this PE:       1.0000E-04 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
 
  Performing exact diagonalisation...
@@ -156,7 +158,7 @@ total time in TRLAN:          0.00000E+00 sec
            8 ).  Please use LAPACK or EISPACK instead.
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:34:44.948 (-00:00)
+                                        2013/08/10 17:08:59.187 (+01:00)
  TRLAN execution summary (exit status =          -4 )
 Number of SMALLEST eigenpairs:          0 (computed),          5 (wanted)
 Times the operator is applied:          0 (MAX:             1000 ).
@@ -186,7 +188,7 @@ total time in TRLAN:          0.00000E+00 sec
   **    It is more appropriate to use LAPACK dsyev/ssyev.
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:34:44.949 (-00:00)
+                                        2013/08/10 17:08:59.187 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          9 (computed),          5 (wanted)
 Times the operator is applied:         10 (MAX:             1000 ).
@@ -194,13 +196,13 @@ Problem size:                          10 (PE:   0),          10 (Global)
 Convergence tolerance:           1.49E-08 (rel),       7.887E-08 (abs)
 Maximum basis size:                    40
 Restarting scheme:                      0
-Number of re-orthogonalizations        12
+Number of re-orthogonalizations        13
 Number of (re)start loops:              1
 Number of random vectors used:          1
 Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
-Re-Orthogonalization:   1.0000E-04 sec,  3.3160E+07 FLOP/S ( 3.3160E+03 FLOP)
-Restarting:             1.0000E-04 sec,  1.8000E+07 FLOP/S ( 1.8000E+03 FLOP)
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
 TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
 
@@ -232,7 +234,7 @@ TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
            4 ).  Please use LAPACK or EISPACK instead.
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:34:44.949 (-00:00)
+                                        2013/08/10 17:08:59.187 (+01:00)
  TRLAN execution summary (exit status =          -4 )
 Number of SMALLEST eigenpairs:          0 (computed),          4 (wanted)
 Times the operator is applied:          0 (MAX:             1000 ).
@@ -264,7 +266,7 @@ total time in TRLAN:          0.00000E+00 sec
            4 ).  Please use LAPACK or EISPACK instead.
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:34:44.949 (-00:00)
+                                        2013/08/10 17:08:59.187 (+01:00)
  TRLAN execution summary (exit status =          -4 )
 Number of SMALLEST eigenpairs:          0 (computed),          4 (wanted)
 Times the operator is applied:          0 (MAX:             1000 ).
@@ -278,7 +280,7 @@ Number of eigenpairs locked:            0
 time in OP:                   0.00000E+00 sec
 time in orth:                 0.00000E+00 sec
 time in restarting:           0.00000E+00 sec
-total time in TRLAN:          0.00000E+00 sec
+TRLAN on this PE:       1.0000E-04 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
 
  Performing exact diagonalisation...
@@ -296,7 +298,7 @@ total time in TRLAN:          0.00000E+00 sec
            4 ).  Please use LAPACK or EISPACK instead.
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:34:44.949 (-00:00)
+                                        2013/08/10 17:08:59.187 (+01:00)
  TRLAN execution summary (exit status =          -4 )
 Number of SMALLEST eigenpairs:          0 (computed),          4 (wanted)
 Times the operator is applied:          0 (MAX:             1000 ).
@@ -328,7 +330,7 @@ total time in TRLAN:          0.00000E+00 sec
            4 ).  Please use LAPACK or EISPACK instead.
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:34:44.949 (-00:00)
+                                        2013/08/10 17:08:59.187 (+01:00)
  TRLAN execution summary (exit status =          -4 )
 Number of SMALLEST eigenpairs:          0 (computed),          4 (wanted)
 Times the operator is applied:          0 (MAX:             1000 ).
@@ -388,8 +390,8 @@ total time in TRLAN:          0.00000E+00 sec
       2       0    -3.292951380696
       3       0    -2.863876339070
       4       0    -2.785260864830
-      5       0     0.000000000000
-      6       0     0.000000000000
+      5       0    -0.358650082603
+      6       0    -0.358650082603
       7       0     0.000000000000
       8       0     0.000000000000
       9       0     0.000000000000
@@ -519,7 +521,8 @@ total time in TRLAN:          0.00000E+00 sec
  Exact ground state:   -3.340847617248
 
  ================================================================
- Finished running on 02/02/2012 at 15:34:44
- Calculation took:                    0.00s
+ Finished running on 10/08/2013 at 17:08:59
+ Wall time:                           0.01s
+ CPU time (per processor):            0.00s
  ================================================================
 

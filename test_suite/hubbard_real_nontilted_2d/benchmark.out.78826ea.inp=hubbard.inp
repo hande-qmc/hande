@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
-     /home/jspencer/projects/hubbard_fciqmc/test_suite/rspace_nontilted_2d
- Started running on 02/02/2012 at 15:32:43
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/hubbard_real_nontilted_2d
+ Started running on 10/08/2013 at 17:09:00
  ================================================================
 
  Input options
@@ -66,7 +68,7 @@ lanczos_direct
 
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:32:43.421 (-00:00)
+                                        2013/08/10 17:09:00.391 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          8 (computed),          5 (wanted)
 Times the operator is applied:         28 (MAX:             1000 ).
@@ -77,10 +79,10 @@ Restarting scheme:                      0
 Number of re-orthogonalizations        28
 Number of (re)start loops:              1
 Number of eigenpairs locked:            0
-OP(MATVEC):             6.5000E-03 sec,  1.1786E+07 FLOP/S ( 7.6608E+04 FLOP)
-Re-Orthogonalization:   1.6000E-03 sec,  3.8452E+07 FLOP/S ( 6.1524E+04 FLOP)
-Restarting:             3.0000E-04 sec,  5.3760E+07 FLOP/S ( 1.6128E+04 FLOP)
-TRLAN on this PE:       9.1000E-03 sec,  1.7620E+07 FLOP/S ( 1.6035E+05 FLOP)
+OP(MATVEC):             3.3000E-03 sec,  2.3215E+07 FLOP/S ( 7.6608E+04 FLOP)
+Re-Orthogonalization:   1.2000E-03 sec,  5.1270E+07 FLOP/S ( 6.1524E+04 FLOP)
+Restarting:             2.0000E-04 sec,  8.0640E+07 FLOP/S ( 1.6128E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  7.4667E-01 FLOP/S ( 1.6035E+05 FLOP)
 
 
  Performing exact diagonalisation...
@@ -103,7 +105,7 @@ TRLAN on this PE:       9.1000E-03 sec,  1.7620E+07 FLOP/S ( 1.6035E+05 FLOP)
 
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:32:43.422 (-00:00)
+                                        2013/08/10 17:09:00.392 (+01:00)
  TRLAN execution summary (exit status =           0 )
 Number of SMALLEST eigenpairs:          9 (computed),          5 (wanted)
 Times the operator is applied:         14 (MAX:             1000 ).
@@ -111,13 +113,13 @@ Problem size:                          16 (PE:   0),          16 (Global)
 Convergence tolerance:           1.49E-08 (rel),       1.307E-07 (abs)
 Maximum basis size:                    40
 Restarting scheme:                      0
-Number of re-orthogonalizations        16
+Number of re-orthogonalizations        15
 Number of (re)start loops:              1
 Number of eigenpairs locked:            0
-OP(MATVEC):             7.0000E-04 sec,  1.1520E+07 FLOP/S ( 8.0640E+03 FLOP)
+OP(MATVEC):             4.0000E-04 sec,  2.0160E+07 FLOP/S ( 8.0640E+03 FLOP)
 time in orth:                 0.00000E+00 sec
 Restarting:             1.0000E-04 sec,  4.0320E+07 FLOP/S ( 4.0320E+03 FLOP)
-TRLAN on this PE:       2.1475E+05 sec,  1.0523E-01 FLOP/S ( 2.2598E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  1.0136E-01 FLOP/S ( 2.1766E+04 FLOP)
 
 
  Performing exact diagonalisation...
@@ -242,7 +244,8 @@ TRLAN on this PE:       2.1475E+05 sec,  1.0523E-01 FLOP/S ( 2.2598E+04 FLOP)
  Exact ground state:   -7.297973443536
 
  ================================================================
- Finished running on 02/02/2012 at 15:32:43
- Calculation took:                    0.01s
+ Finished running on 10/08/2013 at 17:09:00
+ Wall time:                           0.01s
+ CPU time (per processor):            0.01s
  ================================================================
 

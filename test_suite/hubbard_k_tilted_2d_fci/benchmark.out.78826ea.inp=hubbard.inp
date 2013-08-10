@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
-     /home/jspencer/projects/hubbard_fciqmc/test_suite/kspace_tilted_2d_fci
- Started running on 02/02/2012 at 15:32:28
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/hubbard_k_tilted_2d_fci
+ Started running on 10/08/2013 at 17:08:59
  ================================================================
 
  Input options
@@ -454,7 +456,7 @@ twist 0.1 0.1
     166       2    -4.930804747812
     167      -2    -4.930804747812
     168       0    -4.924020239521
-    169       0    -4.924020239521
+    169       0    -4.924020239522
     170       0    -4.924020239521
     171       0    -4.924020239521
     172       0    -4.895027780452
@@ -1451,8 +1453,8 @@ twist 0.1 0.1
    1163       0     1.577072739363
    1164       0     1.577072739363
    1165       0     1.666837769830
-   1166       2     1.666837769831
-   1167      -2     1.666837769831
+   1166       2     1.666837769830
+   1167      -2     1.666837769830
    1168       0     1.712497373933
    1169       0     1.712497373933
    1170       0     1.747410291306
@@ -2110,7 +2112,8 @@ twist 0.1 0.1
  Exact ground state:  -10.725047620185
 
  ================================================================
- Finished running on 02/02/2012 at 15:32:28
- Calculation took:                    0.02s
+ Finished running on 10/08/2013 at 17:08:59
+ Wall time:                           0.02s
+ CPU time (per processor):            0.02s
  ================================================================
 

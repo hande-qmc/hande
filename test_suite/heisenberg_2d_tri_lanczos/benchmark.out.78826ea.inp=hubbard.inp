@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
      /home/jspencer/projects/hubbard_fciqmc/test_suite/heisenberg_2d_tri_lanczos
- Started running on 02/02/2012 at 15:32:48
+ Started running on 10/08/2013 at 17:09:03
  ================================================================
 
  Input options
@@ -66,7 +68,7 @@ lanczos
  Size of determinant space
  -------------------------
 
- The table below gives the number of determinants for each symmetry with Ms=2.
+ The table below gives the number of determinants for each symmetry with Ms=0.
 
  Symmetry index      # dets
          1            11440
@@ -77,21 +79,21 @@ lanczos
 
  TRLan (Lanczos) information:
 
-                                        2012/02/02 15:33:02.701 (-00:00)
+                                        2013/08/10 17:09:13.537 (+01:00)
  TRLAN execution summary (exit status =           0 )
-Number of SMALLEST eigenpairs:          7 (computed),          5 (wanted)
-Times the operator is applied:        168 (MAX:             5000 ).
+Number of SMALLEST eigenpairs:          5 (computed),          5 (wanted)
+Times the operator is applied:        147 (MAX:             5000 ).
 Problem size:                       11440 (PE:   0),       11440 (Global)
 Convergence tolerance:           1.49E-08 (rel),       7.153E-07 (abs)
 Maximum basis size:                    40
 Restarting scheme:                      0
-Number of re-orthogonalizations       169
-Number of (re)start loops:              6
-Number of eigenpairs locked:            2
-OP(MATVEC):             9.8554E+00 sec,  1.0467E+08 FLOP/S ( 1.0315E+09 FLOP)
-Re-Orthogonalization:   6.1100E-02 sec,  3.3609E+09 FLOP/S ( 2.0535E+08 FLOP)
-Restarting:             1.6100E-02 sec,  4.3955E+09 FLOP/S ( 7.0768E+07 FLOP)
-TRLAN on this PE:       9.9430E+00 sec,  4.4524E+09 FLOP/S ( 4.4270E+10 FLOP)
+Number of re-orthogonalizations       148
+Number of (re)start loops:              5
+Number of eigenpairs locked:            0
+OP(MATVEC):             6.5265E+00 sec, -2.6222E+07 FLOP/S (-1.7114E+08 FLOP)
+Re-Orthogonalization:   4.1200E-02 sec,  4.2570E+09 FLOP/S ( 1.7539E+08 FLOP)
+Restarting:             1.0800E-02 sec,  4.9150E+09 FLOP/S ( 5.3082E+07 FLOP)
+TRLAN on this PE:       6.5862E+00 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
 
  ---------------
 
@@ -99,21 +101,22 @@ TRLAN on this PE:       9.9430E+00 sec,  4.4524E+09 FLOP/S ( 4.4270E+10 FLOP)
  -------------------------------
 
     State   Spin   Total energy
-      1       2   -34.365735851988
-      2      -2   -34.365735851988
-      3       2   -34.365735851988
-      4      -2   -34.365735851988
-      5       2   -33.985039421100
-      6      -2   -33.985039421100
-      7       2   -32.943049586548
-      8      -2   -32.943049586548
-      9       2   -32.239193226700
-     10      -2   -32.239193226700
+      1       2   -30.690921406679
+      2      -2   -30.690921406679
+      3       2   -30.355948966893
+      4      -2   -30.355948966893
+      5       2   -30.350802035334
+      6      -2   -30.350802035334
+      7       2   -30.070724321002
+      8      -2   -30.070724321002
+      9       2   -29.841428810565
+     10      -2   -29.841428810565
 
- Lanczos ground state:  -34.365735851988
+ Lanczos ground state:  -30.690921406679
 
  ================================================================
- Finished running on 02/02/2012 at 15:33:02
- Calculation took:                   14.35s
+ Finished running on 10/08/2013 at 17:09:13
+ Wall time:                          10.38s
+ CPU time (per processor):           10.33s
  ================================================================
 

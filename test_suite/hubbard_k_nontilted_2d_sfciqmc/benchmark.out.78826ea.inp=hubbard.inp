@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
-     /home/jspencer/projects/hubbard_fciqmc/test_suite/kspace_nontilted_2d_sfciqmc
- Started running on 02/02/2012 at 15:32:44
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/hubbard_k_nontilted_2d_sfciqmc
+ Started running on 10/08/2013 at 17:08:59
  ================================================================
 
  Input options
@@ -71,11 +73,6 @@ seed 5234
   3  4  1  2
   4  3  2  1
 
- RNG
- ---
-
- Initialised random number generator with a seed of: 5234.
-
  Size of determinant space
  -------------------------
 
@@ -100,6 +97,11 @@ seed 5234
  E0 = <D0|H|D0> =     -7.750000000000
 
  Note that FCIQMC calculates the correlation energy relative to |D0>.
+
+ RNG
+ ^^^
+
+ Initialised random number generator with a seed of: 5234.
 
  # iterations   Instant shift      \sum H_0j Nj       # D0                # particles  R_spawn  time
            50   0.0000000000E+00  -5.0000000000E-03   1.0000000000E+00              1   0.0200  0.00
@@ -329,7 +331,8 @@ seed 5234
  E0 + proj. energy =           -7.768528134312
 
  ================================================================
- Finished running on 02/02/2012 at 15:32:45
- Calculation took:                    0.68s
+ Finished running on 10/08/2013 at 17:09:00
+ Wall time:                           0.69s
+ CPU time (per processor):            0.69s
  ================================================================
 

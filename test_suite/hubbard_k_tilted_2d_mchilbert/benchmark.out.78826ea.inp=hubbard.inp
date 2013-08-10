@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
-     /home/jspencer/projects/hubbard_fciqmc/test_suite/kspace_tilted_2d_mchilbert
- Started running on 02/02/2012 at 15:35:44
+     /home/jspencer/projects/hubbard_fciqmc/test_suite/hubbard_k_tilted_2d_mchilbert
+ Started running on 10/08/2013 at 17:08:59
  ================================================================
 
  Input options
@@ -122,19 +124,20 @@ estimate_hilbert_space 10000
   17   5  11  13  18   8   9  16  15   4  12   3  10   1   7   6  14   2
   18  17  16  15  14  11  13  12  10   9   6   8   7   5   4   3   2   1
 
- RNG
- ---
-
- Initialised random number generator with a seed of: 7.
-
  Hilbert space
  -------------
+
+ RNG
+ ^^^
+
+ Initialised random number generator with a seed of: 7.
 
  Symmetry of reference determinant: (  0,  0)
  Monte-Carlo estimate of size of space is: 1.3238E+08
 
  ================================================================
- Finished running on 02/02/2012 at 15:35:44
- Calculation took:                    0.01s
+ Finished running on 10/08/2013 at 17:08:59
+ Wall time:                           0.01s
+ CPU time (per processor):            0.01s
  ================================================================
 

@@ -2,13 +2,15 @@
  Hubbard
 
  ================================================================
- Compiled on Feb 02 2012 at 15:29:08
+ Compiled on Aug 10 2013 at 17:08:30
  Compiled using cmth.(optimised)
  VCS BASE repository version:
-     e623fc403929858a89d8e9b3d0a4ababe0b8baff
+     78826eac355e9fa663a9b7f7bcf053545d66c12a
+ Hostname:
+     tycpc31
  Working directory: 
      /home/jspencer/projects/hubbard_fciqmc/test_suite/ueg_n4_rs2_e1_fci
- Started running on 02/02/2012 at 15:33:02
+ Started running on 10/08/2013 at 17:09:41
  ================================================================
 
  Input options
@@ -691,7 +693,8 @@ hamil hamil.hfq
  Exact ground state:    1.285524498812
 
  ================================================================
- Finished running on 02/02/2012 at 15:33:02
- Calculation took:                    0.08s
+ Finished running on 10/08/2013 at 17:09:41
+ Wall time:                           0.09s
+ CPU time (per processor):            0.07s
  ================================================================
 
