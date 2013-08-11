@@ -33,7 +33,7 @@ contains
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
         use system, only: system_type, heisenberg
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use utils, only: int_fmt
         use errors, only: stop_all
 
@@ -80,6 +80,16 @@ contains
             if (dmqmc_find_weights) excit_distribution = 0
             vary_shift = .false.
 
+            if (beta_cycle .ne. 1 .and. parent) then
+                write (6,'(a32,i7)') &
+                       " # Resetting beta... Beta loop =", beta_cycle
+                write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
+                    " # Resetting random number generator with a seed of:", seed+iproc+beta_cycle-1, "."
+            end if
+            ! Reset the random number generator with seed = seed + 1 (each
+            ! iteration)
+            call dSFMT_init(seed+iproc+beta_cycle-1, 50000, rng)
+
             ! Need to place psips randomly along the diagonal at the
             ! start of every iteration. Pick orbitals randomly, each
             ! with equal probability, so that when electrons are placed
@@ -93,16 +103,6 @@ contains
             end select
 
             call direct_annihilation()
-
-            if (beta_cycle .ne. 1 .and. parent) then
-                write (6,'(a32,i7)') &
-                       " # Resetting beta... Beta loop =", beta_cycle
-                write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
-                    " # Resetting random number generator with a seed of:", seed+iproc+beta_cycle-1, "."
-            end if
-            ! Reset the random number generator with seed = seed + 1 (each
-            ! iteration)
-            call dSFMT_init(seed+iproc+beta_cycle-1, 50000, rng)
 
             nparticles_old = nint(D0_population)
 
@@ -227,6 +227,8 @@ contains
             if (doing_reduced_dm) call call_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in the previous loop.
             if (dmqmc_find_weights) call output_and_alter_weights()
+
+            call dSFMT_end(rng)
         end do
 
         if (parent) then
