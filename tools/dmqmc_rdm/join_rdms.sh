@@ -31,4 +31,4 @@ done
 
 cat $rdmtmp
 
-rm $rdmtmp $worktmp
+rm -f $rdmtmp $worktmp
