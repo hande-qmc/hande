@@ -23,8 +23,6 @@ except ImportError:
 # data columns
 BETA_COL = 0
 SHIFT_COL = 1
-TR_HRHO_COL = 4
-TR_H2RHO_COL = 5
 TR_RHO_COL = 2
 H2_is_present = False
 H_is_present = False
@@ -131,8 +129,6 @@ def get_estimator_headings(data_files):
                    H2_is_present = True
                    TR_H2RHO_INDEX = index
                    index = index + 1
-               else:
-                   print '# Warning: Column name, '+headings[k]+', not recognised...'
            PARTICLES_COL = TR_RHO_COL + index + 1
            break
            
