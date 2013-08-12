@@ -600,15 +600,6 @@ contains
             end do
         end do
 
-        rdm_size = size(reduced_density_matrix, 1)
-        write(6,*) "RDM elements:"
-        do i = 1, rdm_size
-            do j = i, rdm_size
-                write(6,*) reduced_density_matrix(i,j)
-            end do
-        end do
-        write(6,*)
-
         ! Now the RDM is completley calculated.
 
         ! Calculate the eigenvalues:
