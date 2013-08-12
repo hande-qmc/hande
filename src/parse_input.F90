@@ -217,7 +217,6 @@ contains
                 do i = 1, nitems-1
                     call readi(correlation_sites(i))
                 end do
-            print *, correlation_sites
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             case('DMQMC_WEIGHTED_SAMPLING')
