@@ -1,6 +1,6 @@
 #! /bin/bash
 
-if [ $# -eq 0]; then
+if [ $# -eq 0 ]; then
     cat <<END
 $0: analyse a set of DMQMC RDM files.
 

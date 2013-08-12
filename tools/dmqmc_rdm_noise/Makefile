@@ -35,7 +35,7 @@ PROG_NAME = rdm_entropy_noise
 # Colon-separated list of directories containing source files.
 # Can be relative to the working directory.  Use . or $(PWD) to indicate the
 # working directory.
-VPATH = src:../../lib/dSFMT
+VPATH = src:../../lib/dSFMT_F03_interface:../../lib/dSFMT-src-2.2
 
 # Name of source file (if any) containing the entry-point to the program (e.g.
 # main function in C or C++ or the file containing the program procedure in

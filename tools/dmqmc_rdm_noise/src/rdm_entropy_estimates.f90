@@ -1,6 +1,7 @@
 program analyse_rdm
 
     use dSFMT_interface
+    use const
 
     implicit none
 
@@ -11,6 +12,7 @@ program analyse_rdm
     integer :: i, j, k
     logical :: does_exist
 
+    type(dSFMT_t) :: rng
     integer :: seed, nRDM, nargs
     character(256) :: filename, arg
 
@@ -60,7 +62,7 @@ program analyse_rdm
         stop 999
     end if
 
-    call dSFMT_init(seed)
+    call dSFMT_init(seed, nRDM*2, rng)
 
     rdm_unit = 10
     open(rdm_unit, file=filename, status='old')
@@ -108,7 +110,7 @@ program analyse_rdm
         ! Loop over all elements and add the appropriate noise.
         do i = 1, rdm_size
             do j = i, rdm_size
-                rand_var = generate_gaussian_rv(rdm_errors(i,j))
+                rand_var = rdm_errors(i,j)*get_rand_gaussian(rng)
                 rdm_with_noise(i,j) = rdm_elements(i,j) + rand_var
                 rdm_with_noise(j,i) = rdm_with_noise(i,j)
             end do
@@ -136,7 +138,7 @@ program analyse_rdm
 
         do i = 1, rdm_size
             do j = i, rdm_size
-                rand_var = generate_gaussian_rv(rdm_errors(i,j))
+                rand_var = rdm_errors(i,j)*get_rand_gaussian(rng)
                 rdm_with_noise(i,j) = rdm_elements(i,j) + rand_var
                 rdm_with_noise(j,i) = rdm_with_noise(i,j)
             end do
@@ -148,6 +150,8 @@ program analyse_rdm
         write(6,'(f12.7)') renyi_2
 
     end do
+
+    call dSFMT_end(rng)
 
 contains
 
@@ -236,52 +240,5 @@ contains
             renyi_2 = -log(renyi_2)/log(2.0_dp)
 
         end function calculate_renyi_2_entropy
-
-        function generate_gaussian_rv(sd) result(gaussian_rv)
-
-            ! This function returns a random variable from a Gaussian distribution with
-            ! standard deviation sd (and mean of 0) as input by the user. It uses the
-            ! polar form of the Box-Muller transform. This transform generates two
-            ! Gaussian random variables each time it is performed, and so the second unused
-            ! random variable is stored and used next time this function is called to save
-            ! time.
-
-            real(dp), intent(in) :: sd
-            real(dp) :: gaussian_rv
-            real(dp) :: u, v, s
-
-            ! If there is still a Gaussian random variable left over from
-            ! last time, simply return with this.
-            if (gaussian_rv_left) then
-                gaussian_rv = sd*next_gaussian_rv
-                gaussian_rv_left = .false.
-                return
-            end if
-
-            do
-                ! Uniform random variable between 0 and 1.
-                u =  genrand_real2()
-                ! Uniform random variable between -1 and 1.
-                u = 2.0_dp*u - 1
-                v =  genrand_real2()
-                v = 2.0_dp*v - 1
-                s = u*u + v*v
-                ! Only exit the loop if s < 1.0 (if u and v are within a circle with unit radius).
-                ! If not, generate another pair.
-                if (s < 1.0_dp) exit
-            end do
-
-            ! This produces a random variable from a Gaussian distribution with mean 0 and standard
-            ! deviation 1.
-            gaussian_rv = u*sqrt((-2.0_dp*log(s))/s)
-            ! And this transforms the random variable to be from a Gaussian with mean
-            ! 0 and standard deviation sd.
-            gaussian_rv = sd*gaussian_rv
-
-            ! Store the second produced random variable for next time.
-            next_gaussian_rv = v*sqrt((-2.0_dp*log(s))/s)
-            gaussian_rv_left = .true.
-
-        end function generate_gaussian_rv
 
 end program analyse_rdm

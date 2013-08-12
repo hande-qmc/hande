@@ -6,6 +6,7 @@ the mean provided by rdm_entropy_estimates.x, the mean and standard error are
 calculated by evaluating the entropy measure over the noisy RDMs produced by
 rdm_entropy_estimates.x.'''
 import scipy
+import numpy
 import sys
 
 def extract_data(data_file):
@@ -63,4 +64,4 @@ where FILE contains the output from rdm_entropy_estimates.x.''' % (sys.argv[0], 
         if (len(renyi_data)) > 0:
             renyi_mean = scipy.mean(renyi_data)
             renyi_se = numpy.std(renyi_data,ddof=1)
-            print('renyi_estimate: %s  mean: %s  se: %s' % renyi_estimate, renyi_mean, renyi_se)
+            print('renyi_estimate: %s  mean: %s  se: %s' % (renyi_estimate, renyi_mean, renyi_se))

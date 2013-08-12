@@ -2,6 +2,7 @@ dest/
 bin/
 run/
 /make.inc*
+tools/dmqmc_rdm_noise/make.inc
 test*.out*
 testcode*.err*
 DETS
