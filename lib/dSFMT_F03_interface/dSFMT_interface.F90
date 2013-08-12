@@ -116,7 +116,7 @@ type dSFMT_t
     ! Type of distribution in the random store
     integer, public :: distribution
     ! Pointer to the dsfmt_t internal state (as defined in dSFMT.h).
-    type(c_ptr) :: dSFMT_state
+    type(c_ptr) :: dSFMT_state = c_null_ptr
     ! Testing indicates that 50000 is a very good size for the array storing the
     ! random numbers.  Testing was done standalone, so undoubtedly influenced by
     ! cache size and this might be different for real-world applications.
@@ -135,7 +135,7 @@ contains
 
 !--- Initialisation, termination and state interaction ---
 
-    pure subroutine dSFMT_init(seed, rng_store_size, rng)
+    subroutine dSFMT_init(seed, rng_store_size, rng)
 
         ! Initialise the dSFMT RNG and fill rng%random_store with
         ! a block of random numbers in interval [0,1).
@@ -148,6 +148,8 @@ contains
         ! Out:
         !    rng: dSFMT_t with internal variables initialised and associated
         !       with an initialised psuedo-random number stream.
+        !       If rng has already been initialised, then no additional memory
+        !       allocations are performed unless rng_store_size has changed.
 
         integer, intent(in) :: seed, rng_store_size
         type(dSFMT_t), intent(inout) :: rng
@@ -158,7 +160,14 @@ contains
             rng%random_store_size = rng_store_size
         end if
 
-        allocate(rng%random_store(rng%random_store_size))
+        if (allocated(rng%random_store)) then
+            if (size(rng%random_store) /= rng%random_store_size) then
+                deallocate(rng%random_store)
+                allocate(rng%random_store(rng%random_store_size))
+            end if
+        else
+            allocate(rng%random_store(rng%random_store_size))
+        end if
 
         ! Set current element to be larger than the store, so it is
         ! filled in the first call to the get_* functions.
@@ -169,7 +178,9 @@ contains
         rng%seed = int(seed, c_int32_t)
 
         ! Create dSFMT state
-        rng%dSFMT_state = malloc_dsfmt_t()
+        ! Why is c_associated not pure?  I have not been able to find any good
+        ! reason for this to be the case...
+        if (.not.c_associated(rng%dSFMT_state)) rng%dSFMT_state = malloc_dsfmt_t()
 
         ! Initialise dSFMT PRNG.
         call dsfmt_chk_init_gen_rand(rng%dSFMT_state, rng%seed, DSFMT_MEXP)

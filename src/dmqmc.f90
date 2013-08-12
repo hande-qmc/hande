@@ -228,7 +228,6 @@ contains
             ! Calculate and output new weights based on the psip distirubtion in the previous loop.
             if (dmqmc_find_weights) call output_and_alter_weights()
 
-            call dSFMT_end(rng)
         end do
 
         if (parent) then
