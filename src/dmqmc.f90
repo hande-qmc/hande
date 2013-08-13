@@ -40,7 +40,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
         integer(lint) :: nparticles_old(sampling_size)
-        integer(lint) :: nattempts, nparticles_start_report
+        integer(lint) :: nattempts
         type(det_info) :: cdet1, cdet2
         integer :: nspawned, ndeath
         type(excit) :: connection
@@ -112,7 +112,6 @@ contains
                 trace = 0.0_p
                 estimator_numerators = 0.0_p
                 if (calculate_excit_distribution) excit_distribution = 0
-                nparticles_start_report = nparticles_old(1)
 
                 do icycle = 1, ncycles
                     spawning_head = spawning_block_start
@@ -151,7 +150,7 @@ contains
                                 ! Spawn from the first end.
                                 spawning_end = 1
                                 ! Attempt to spawn.
-                                call spawner_ptr(rng, cdet1, walker_population(ireplica,idet), nspawned, connection)
+                                call spawner_ptr(rng, cdet1, walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                 ! Spawn if attempt was successful.
                                 if (nspawned /= 0) then
                                     call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
@@ -159,7 +158,7 @@ contains
 
                                 ! Now attempt to spawn from the second end.
                                 spawning_end = 2
-                                call spawner_ptr(rng, cdet2, walker_population(ireplica,idet), nspawned, connection)
+                                call spawner_ptr(rng, cdet2, walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                 if (nspawned /= 0) then
                                     call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
                                 end if
@@ -200,10 +199,10 @@ contains
 
                 ! t1 was the time at the previous iteration, t2 the current time.
                 ! t2-t1 is thus the time taken by this report loop.
-                if (parent) call write_fciqmc_report(ireport, nparticles_start_report, t2-t1)
+                if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
                 ! Write restart file if required.
                 if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                    call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
+                    call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
 
                 ! cpu_time outputs an elapsed time, so update the reference timer.
                 t1 = t2
@@ -236,7 +235,13 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
+        if (soft_exit) then
+            mc_cycles_done = mc_cycles_done + ncycles*ireport
+        else
+            mc_cycles_done = mc_cycles_done + ncycles*nreport
+        end if
+
+        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
 
         call dealloc_det_info(cdet1, .false.)
         call dealloc_det_info(cdet2, .false.)

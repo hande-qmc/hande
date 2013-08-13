@@ -95,6 +95,8 @@ integer :: tot_walkers
 ! The first element is the number of normal (Hamiltonian) particles.
 ! Subsequent elements are the number of Hellmann--Feynamnn particles.
 integer(lint), allocatable :: nparticles(:) ! (sampling_size)
+! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
+integer(lint), allocatable :: tot_nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -398,7 +400,6 @@ logical :: dump_restart_file = .false.
 
 ! Restart data.
 integer :: mc_cycles_done = 0
-integer(lint) :: nparticles_old_restart = 0
 
 !--- Folded spectrum data ---
 
@@ -580,7 +581,7 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        use calc, only: doing_calc, folded_spectrum, dmqmc_calc, doing_dmqmc_calc, dmqmc_correlation
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc, dmqmc_correlation
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
 
         integer :: i
@@ -610,33 +611,49 @@ contains
             write (6, '(2X,a11,2X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
 
         else
-            write (6,'(1X,a12,3X,a13,6X,a12,7X,a4,16X,a11,2X,a7,2X,a4)') &
-              '# iterations','Instant shift','\sum H_0j Nj',    &
-              '# D0','# particles','R_spawn','time'
+            write (6,'(1X,a13,3(2X,a17))', advance='no') &
+                     "# iterations ", "Shift            ", "\sum H_0j N_j    ", "N_0              "
+            if (doing_calc(hfs_fciqmc_calc)) then
+                write (6,'(4(2X,a17),3X,a11,2X,a10)', advance='no') &
+                    "H.F. Shift       ","\sum O_0j N_j    ","\sum H_0j N'_j   ","N'_0              ", &
+                    "# H psips","# HF psips"
+            else
+                write (6,'(3X,a11)', advance='no') "# H psips"
+            end if
+            write (6,'(2X,a8,2X,a4)') "R_spawn ",  "time"
         end if
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(ireport, ntot_particles, elapsed_time)
+    subroutine write_fciqmc_report(ireport, ntot_particles, elapsed_time, comment)
 
         ! Write the report line at the end of a report loop.
         ! In:
         !    ireport: index of the report loop.
         !    ntot_particles: total number of particles in main walker list.
         !    elapsed_time: time taken for the report loop.
+        !    comment: if true, then prefix the line with a #.
 
-        use calc, only: doing_calc, dmqmc_calc
+        use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc
+        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
-        integer(lint), intent(in) :: ntot_particles
+        integer(lint), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
+        logical :: comment
         integer :: mc_cycles, i
 
         mc_cycles = ireport*ncycles
 
+        if (comment) then
+            write (6,'(1X,"#",3X)', advance='no')
+        else
+            write (6,'(5X)', advance='no')
+        end if
+
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
-            write (6,'(5X,i8,2X,es17.10,i10)',advance = 'no') &
+            write (6,'(i8,2X,es17.10,i10)',advance = 'no') &
                                              (mc_cycles_done+mc_cycles-ncycles), shift, trace
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
@@ -650,12 +667,20 @@ contains
                 end do
             end if
             write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
-        else
-            write (6,'(5X,i8,2X,2(es17.10,2X),es17.10,4X,i11,3X,f6.4,2X,f4.2)') &
+        else if (doing_calc(hfs_fciqmc_calc)) then
+            write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift,   &
                                              proj_energy, D0_population, &
-                                             ntot_particles, rspawn, elapsed_time/ncycles
+                                             hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
+                                             D0_hf_population, &
+                                             ntot_particles
+        else
+            write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,i11)', advance='no') &
+                                             mc_cycles_done+mc_cycles, shift,   &
+                                             proj_energy, D0_population, &
+                                             ntot_particles
         end if
+        write (6,'(2X,f7.4,2X,f6.3)') rspawn, elapsed_time/ncycles
 
     end subroutine write_fciqmc_report
 

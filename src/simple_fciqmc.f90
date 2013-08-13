@@ -145,10 +145,8 @@ contains
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
-        ! from restart
-        nparticles_old = nparticles_old_restart
-
         nparticles = sum(abs(walker_population(1,:)))
+        nparticles_old = nparticles
 
         call write_fciqmc_report_header()
 
@@ -215,11 +213,11 @@ contains
             call cpu_time(t2)
 
             ! Output stats
-            call write_fciqmc_report(ireport, nparticles, t2-t1)
+            call write_fciqmc_report(ireport, (/nparticles/), t2-t1, .false.)
 
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
+                call dump_restart(mc_cycles_done+ncycles*ireport, (/nparticles_old/))
 
             t1 = t2
 
@@ -228,7 +226,7 @@ contains
         call write_fciqmc_final(ireport)
         write (6,'()')
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old)
+        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, (/nparticles_old/), vspace=.true.)
 
     end subroutine do_simple_fciqmc
 

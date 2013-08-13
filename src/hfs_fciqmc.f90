@@ -1,70 +1,35 @@
 module hellmann_feynman_sampling
 
-! Module for performing Hellmann--Feynman sampling in FCIQMC.
+! Module for performing Hellmann--Feynman sampling in FCIQMC in order to obtain
+! expectation values of arbitrary operators which do not commute with the
+! Hamiltonian.
+
+! This involves sampling a 'pumped' diffusion equation in an adjoint space to
+! that used to sample the Hamiltonian.  Fortunately we can use essentially the
+! same dynamics to sample the adjoint space.  The connection between the
+! Hamiltonian space and the adjoint 'Hellmann--Feynman' space is defined by the
+! operator being sampled.
+
+! See documentation/theory/hellmann_feynman/hf.tex for details.
 
 use const
-
-use hfs_data
-
-use proc_pointers
 
 implicit none
 
 contains
 
-    subroutine init_hellmann_feynman_sampling()
-
-        ! Initialisation of HF sampling: setup parameters for the operators being
-        ! sampled.
-
-        use basis, only: basis_length, set_orb_mask
-        use fciqmc_data, only: D0_proc, f0, walker_data, tot_walkers
-        use hfs_data, only: lmask
-        use operators, only: calc_orb_occ
-
-        use errors, only: stop_all
-        use parallel, only: iproc
-
-        integer :: ierr
-
-        allocate(lmask(basis_length), stat=ierr)
-
-        call set_orb_mask(lmag2, lmask)
-
-        if (all(lmask == 0)) then
-            call stop_all('init_hellmann_feynman_sampling','Setting lmask failed.  Invalid value of lmag2 given?')
-        end if
-
-        if (iproc == D0_proc) then
-            walker_data(2,tot_walkers) = 0.0_p
-        end if
-
-        O00 = calc_orb_occ(f0, lmask)
-
-    end subroutine init_hellmann_feynman_sampling
-
-    subroutine do_hfs_fciqmc(update_proj_energy)
+    subroutine do_hfs_fciqmc()
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
         ! the instantaneous wavefunction.
 
-        ! This is implemented by abusing fortran's ability to pass procedures as
-        ! arguments (if only function pointers (F2003) were implemented in more
-        ! compilers!).  This allows us to avoid many system dependent if blocks,
-        ! which are constant for a given calculation.  Avoiding such branching
-        ! is worth the extra verbosity (especially if procedures are written to
-        ! be sufficiently modular that implementing a new system can reuse many
-        ! existing routines) as it leads to much faster code.
-
-        ! In:
-        !    decoder: relevant subroutine to decode/extract the necessary
-        !        information from the determinant bit string.  See the
-        !        determinants module.
-        !    update_proj_energy: relevant subroutine to update the projected
-        !        energy.  See the energy_evaluation module.
-        !    spawner: relevant subroutine to attempt to spawn a walker from an
-        !        existing walker.  See the spawning module.
+        ! This is implemented using F2003 function pointers.  This allows us to
+        ! avoid many system dependent if blocks, which are constant for a given
+        ! calculation.  Avoiding such branching is worth the extra verbosity
+        ! (especially if procedures are written to be sufficiently modular that
+        ! implementing a new system can reuse many existing routines) as it
+        ! leads to much faster code.
 
         use parallel
 
@@ -75,34 +40,23 @@ contains
         use determinants, only:det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use hfs_data
         use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
-        use spawning, only: create_spawned_particle
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
+        use proc_pointers
 
-        ! It seems this interface block cannot go in a module when we're passing
-        ! subroutines around as arguments.  Bummer.
-        ! If only procedure pointers were more commonly implemented...
-        interface
-            subroutine update_proj_energy(idet, inst_proj_energy, inst_proj_hf_t1)
-                use const, only: p
-                implicit none
-                integer, intent(in) :: idet
-                real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
-            end subroutine update_proj_energy
-        end interface
-
-        integer :: idet, ireport, icycle, iparticle
+        integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(lint) :: nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, ndeath
         type(excit) :: connection
         type(dSFMT_t) :: rng
-
-        real(p) :: inst_proj_hf_t1
+        real(p) :: hmatel
+        type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         logical :: soft_exit
 
@@ -115,28 +69,22 @@ contains
         call alloc_det_info(cdet, .false.)
 
         ! from restart
-        nparticles_old = nparticles_old_restart
+        nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-! TODO.
-!        call initial_fciqmc_status(update_proj_energy)
+        call initial_fciqmc_status()
 
         ! Initialise timer.
         call cpu_time(t1)
-
-        do idet = 1, tot_walkers
-            walker_population(2, idet) = walker_population(1,idet)
-        end do
-        nparticles(2) = nparticles(1)
 
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
-            inst_proj_hf_t1 = 0.0_p
-            proj_hf_expectation = 0.0_p
+            proj_hf_O_hpsip = 0.0_p
+            proj_hf_H_hfpsip = 0.0_p
             D0_population = 0.0_p
             D0_hf_population = 0.0_p
             rspawn = 0.0_p
@@ -148,62 +96,106 @@ contains
                 spawning_head = spawning_block_start
 
                 ! Number of spawning attempts that will be made.
-                ! Each particle gets to attempt to spawn onto a connected
-                ! determinant and a chance to die/clone.
+                ! Each Hamiltonian particle gets a chance to spawn a Hamiltonian
+                ! particle, clone/die, spawn a Hellmann-Feynman particle and clone
+                ! itself into a Hellmann-Feynman particle.  Each H-F particle
+                ! gets a chance to spawn and a chance to clone/die.
                 ! This is used for accounting later, not for controlling the spawning.
-                nattempts = 2*nparticles(1)
+                nattempts = 4*nparticles(1) + 2*nparticles(2)
 
                 ! Reset death counter.
                 ndeath = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
-                    cdet%f => walker_dets(:,idet)
+                    cdet%f = walker_dets(:,idet)
+                    cdet%data => walker_data(:,idet)
 
                     call decoder_ptr(cdet%f, cdet)
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy(idet, proj_energy, inst_proj_hf_t1)
+                    call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p),  &
+                                                D0_population_cycle, proj_energy, connection, hmatel)
+                    call update_proj_hfs_ptr(cdet%f, walker_population(1,idet),     &
+                                             walker_population(2,idet), cdet%data,  &
+                                             connection, hmatel, D0_hf_population,  &
+                                             proj_hf_O_hpsip, proj_hf_H_hfpsip)
+
+                    ! Is this determinant an initiator?
+                    ! A determinant can be an initiator in the Hamiltonian space
+                    ! or the Hellmann-Feynman space or both.
+                    ! The initiator_flag attribute of det_info is checked and passed to the
+                    ! annihilation routine in the appropriate create_spawned_particle_*
+                    ! routine, so we must set cdet%initiator_flag
+                    ! appropriately...
+                    call set_parent_flag_ptr(walker_population(1,idet), cdet%f, h_initiator_flag)
+                    call set_parent_flag_ptr(walker_population(2,idet), cdet%f, hf_initiator_flag)
+                    cdet%initiator_flag = h_initiator_flag
 
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(rng, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
-                        ! Currently only using operators diagonal in the basis,
-                        ! so this isn't possible.
-                        call spawner_ptr(rng, cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_hfs_ptr(rng, cdet, walker_population(1,idet), gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_hf_pop)
 
                     end do
+
+                    cdet%initiator_flag = hf_initiator_flag
 
                     do iparticle = 1, abs(walker_population(2,idet))
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, cdet, walker_population(2,idet), nspawned, connection)
+                        call spawner_ptr(rng, cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle(cdet, connection, nspawned, spawned_hf_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_hf_pop)
 
                     end do
 
-                    ! Clone or die: Hamiltonian walkers.
-                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    ! Now deal with the diagonal events.
+
+                    ! *IMPORTANT*
+                    ! My mother told me that it is important to play nice, be
+                    ! fair and not beat up younger brothers.  Monte Carlo is
+                    ! a particularly fickle playmate and one must follow her
+                    ! advice in order to avoid biased (a polite way of saying
+                    ! wrong) results.
+
+                    ! In this instance, we must give all particles the same
+                    ! opportunities.  In particular:
+                    ! * Hamiltonian walkers that existed at the beginning of the
+                    !   loop *must* have an opportunity to create Hellmann--Feynman 
+                    !   versions of themselves.
+                    ! * Hamiltonian walkers that existed at the beginning of the
+                    !   loop *must* have an opportunity to die/clone themselves.
+                    ! * Hellmann--Feynman walkers that existed at the beginning
+                    !   of the loop must have an opportunity to die/clone
+                    !   themselves.
+
+                    ! As the death/clone routines act in place, we must ensure
+                    ! the above requirements are met and (e.g.) walkers that are
+                    ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
-                    ! CHECK
-                    call stochastic_hf_cloning(rng, walker_data(1,idet), walker_population(1,idet), &
-                                               walker_population(2,idet), nparticles(2))
+                    ! Not in place, must set initiator flag.
+                    cdet%initiator_flag = h_initiator_flag
+                    call stochastic_hf_cloning(rng, walker_data(2,idet), walker_population(1,idet), nspawned)
+                    if (nspawned /= 0) call create_spawned_particle_ptr(cdet, null_excit, nspawned, spawned_hf_pop)
+
+                    ! Clone or die: Hamiltonian walkers.
+                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
@@ -213,34 +205,20 @@ contains
 
                 call direct_annihilation()
 
-                ! Form HF projected expectation value and add to running
-                ! total.
-
             end do
 
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(nparticles_old)
 
-!            if (vary_shift) then
-!                do idet = 1, tot_walkers
-!                    call decoder_ptr(walker_dets(:,idet), cdet)
-!                    write (12,*) cdet%occ_list, walker_population(:,idet)
-!                end do
-!                exit
-!            end if
-
             call cpu_time(t2)
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            proj_hf_expectation = inst_proj_hf_t1 - proj_energy*D0_hf_population/D0_population
-            if (parent) call write_fciqmc_report(ireport, nparticles_old(1), t2-t1)
-            write (17,*) ireport, inst_proj_hf_t1, hf_shift, nparticles_old, walker_population(:,1), D0_population, D0_hf_population
-            flush(17)
+            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
 
             ! Write restart file if required.
             if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old(1))
+                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
@@ -257,7 +235,13 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
+        if (soft_exit) then
+            mc_cycles_done = mc_cycles_done + ncycles*ireport
+        else
+            mc_cycles_done = mc_cycles_done + ncycles*nreport
+        end if
+
+        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
 
         call dealloc_det_info(cdet, .false.)
 

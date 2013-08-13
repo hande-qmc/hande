@@ -16,7 +16,7 @@ use fciqmc_restart, only: read_restart_number, write_restart_number,&
                           binary_fmt_in, binary_fmt_out,&
                           write_restart_file_every_nreports
 use hubbard_real, only: finite_cluster
-use hfs_data, only: lmag2
+use hfs_data
 use dmqmc_procedures, only: rdms
 
 implicit none
@@ -88,7 +88,7 @@ contains
             case('CHUNG-LANDAU')
                 system_type = chung_landau
 
-            ! System information.
+                ! System information.
             case('LATTICE')
                 ! Lattice block
                 call read_line(eof)
@@ -145,6 +145,10 @@ contains
                 call readf(r_s)
             case('ECUTOFF')
                 call readf(ueg_ecutoff)
+
+            ! Additional information for systems read in (i.e. molecular)
+            case('DIPOLE_INTEGRALS')
+                call reada(dipole_int_file)
 
             ! Select symmetry of wavefunction.
             case('MS')
@@ -402,9 +406,21 @@ contains
                 call readi(initiator_population)
 
             ! Calculation options: operators sampled using Hellmann--Feynman.
-            case('L2')
-                ! Set value of |l|^2 which is used
-                call readi(lmag2)
+            case('OPERATOR')
+                call readu(w)
+                select case(w)
+                case('HAMILTONIAN')
+                    hf_operator = hamiltonian_operator
+                case('KINETIC')
+                    hf_operator = kinetic_operator
+                case('DOUBLE_OCCUPANCY')
+                    hf_operator = double_occ_operator
+                case('DIPOLE')
+                    hf_operator = dipole_operator
+                end select
+            ! Integral file for dipole moment.
+            case('ALPHA0')
+                call readi(alpha0)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
@@ -463,7 +479,15 @@ contains
                                          & currently.')
         end if
 
-        if (system_type /= read_in) then
+        if (system_type == read_in) then
+
+            if (analyse_ground_state .and. dipole_int_file == '') then
+                call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
+                             &integrals file.  Turning analyse_ground_state option off...')
+                analyse_ground_state = .false.
+            end if
+
+        else
 
             if (system_type /= ueg) then
                 if (.not.(allocated(lattice))) call stop_all(this, 'Lattice vectors not provided')
@@ -623,6 +647,7 @@ contains
         end if
         call mpi_bcast(r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(ueg_ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dipole_int_file, len(dipole_int_file), mpi_character, 0, mpi_comm_world, ierr)
         call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
@@ -755,7 +780,9 @@ contains
         call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(lmag2, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(alpha0, 1, mpi_integer, 0, mpi_comm_world, ierr)
+
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

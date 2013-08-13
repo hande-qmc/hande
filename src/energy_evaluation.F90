@@ -25,24 +25,33 @@ contains
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
                                vary_shift_from_proje, D0_population, fold_line
-        use hfs_data, only: proj_hf_expectation
+        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
 
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
-        real(dp) :: ir(sampling_size+4), ir_sum(sampling_size+4)
-        integer(lint) :: ntot_particles(sampling_size)
+        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7)
+        integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
         integer :: ierr
 
         ! Need to sum the number of particles and the projected energy over
         ! all processors.
         ir(1:sampling_size) = nparticles
         ir(sampling_size+1) = proj_energy
-        ir(sampling_size+2) = proj_hf_expectation
-        ir(sampling_size+3) = D0_population
-        ir(sampling_size+4) = rspawn
+        ir(sampling_size+2) = D0_population
+        ir(sampling_size+3) = rspawn
+
+        if (doing_calc(hfs_fciqmc_calc)) then
+            ! HFS calculations also need to know \tilde{N} = \sum_i sign(N_j^(H)) N_j^(HF),
+            ! where N_j^(H) is the population of Hamiltonian walkers on j and
+            ! N_j^(HF) the population of Hellmann-Feynman walkers on j.
+            ir(sampling_size+4) = calculate_hf_signed_pop()
+            ir(sampling_size+5) = proj_hf_O_hpsip
+            ir(sampling_size+6) = proj_hf_H_hfpsip
+            ir(sampling_size+7) = D0_hf_population
+        end if
 
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
@@ -55,18 +64,22 @@ contains
 
         ntot_particles = nint(ir_sum(1:sampling_size), lint)
         proj_energy = ir_sum(sampling_size+1)
-        proj_hf_expectation = ir_sum(sampling_size+2)
-        D0_population = ir_sum(sampling_size+3)
-        rspawn = ir_sum(sampling_size+4)
+        D0_population = ir_sum(sampling_size+2)
+        rspawn = ir_sum(sampling_size+3)
+        new_hf_signed_pop = nint(ir_sum(sampling_size+4), lint)
+        proj_hf_O_hpsip = ir_sum(sampling_size+5)
+        proj_hf_H_hfpsip = ir_sum(sampling_size+6)
+        D0_hf_population = ir_sum(sampling_size+7)
 
         if (vary_shift) then
             call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
-                call update_hf_shift(ntot_particles_old(1), ntot_particles(1), ntot_particles_old(2), &
-                                     ntot_particles(2), ncycles)
+                call update_hf_shift(ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
+                                     new_hf_signed_pop, ncycles)
             end if
         end if
         ntot_particles_old = ntot_particles
+        hf_signed_pop = new_hf_signed_pop
         if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
             vary_shift = .true.
             if (vary_shift_from_proje) then
@@ -77,6 +90,8 @@ contains
                 else
                   ! Set shift to be instantaneous projected energy.
                   shift = proj_energy/D0_population
+                  hf_shift = proj_hf_O_hpsip/D0_population + proj_hf_H_hfpsip/D0_population &
+                                                           - (proj_energy*D0_hf_population)/D0_population**2
                 endif
             else
                 shift = vary_shift_from
@@ -87,7 +102,9 @@ contains
         proj_energy = proj_energy/ncycles
         D0_population = D0_population/ncycles
         ! Similarly for the HFS estimator
-        proj_hf_expectation = proj_hf_expectation/ncycles
+        D0_hf_population = D0_hf_population/ncycles
+        proj_hf_O_hpsip = proj_hf_O_hpsip/ncycles
+        proj_hf_H_hfpsip = proj_hf_H_hfpsip/ncycles
         ! average spawning rate over report loop and processor.
         rspawn = rspawn/(ncycles*nprocs)
 
@@ -122,11 +139,32 @@ contains
 
     subroutine update_hf_shift(nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
 
+        ! Update the Hellmann-Feynman shift, \tilde{S}.
+        ! In:
+        !    nparticles_old: N_w(beta-A*tau); total Hamiltonian population at beta-Atau.
+        !    nparticles: N_w(beta); total Hamiltonian population at beta.
+        !    nhf_particles_old: N_w(beta-A*tau); total Hellmann-Feynman (signed) population at beta-Atau.
+        !    nhf_particles: N_w(beta); total Hellmann-Feynman (signed) population at beta.
+        !
+        ! WARNING:
+        ! The Hellmann-Feynman signed population is not simply the sum over
+        ! Hellmann-Feynman walkers but also involves the Hamiltonian walkers and
+        ! *must* be calculated using calculate_hf_signed_pop.
+
         use fciqmc_data, only: tau, shift_damping
         use hfs_data, only: hf_shift
 
         integer(lint), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
+
+        ! Given the definition of the shift, S, \tilde{S} \equiv \frac{dS}{d\alpha}|_{\alpha=0}.
+        ! Hence \tilde{S}(\beta) =
+        !           \tilde{S}(\beta-A\tau)
+        !           - \frac{\xi}{A\tau} [ \frac{\tilde{N}_w(\beta)}{N_w(\beta)}
+        !                                 - \frac{\tilde{N}_w(\beta-A\tau)}{N_w(\beta-A\tau)} ]
+        ! where N_w(\beta) is the total population of (Hamiltonian) walkers at
+        ! imaginary time \beta and \tilde{N}_w = \frac{dN_w}{d\alpha}|_{\alpha=0}.
+        ! The latter quantity is calculated in calculate_hf_signed fpop.
 
         hf_shift = hf_shift - &
                  (shift_damping/(tau*nupdate_steps)) &
@@ -134,7 +172,39 @@ contains
 
     end subroutine update_hf_shift
 
-    pure subroutine update_proj_energy_hub_k(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
+    function calculate_hf_signed_pop() result(hf_signed_pop)
+
+        ! Find
+        !    \sum_j sign(N_j(\beta)) \tilde{N}_j(\beta)
+        ! where N_j(\beta) is the Hamiltonian population on j at imaginary time
+        ! \beta and \tilde{N}_j(\beta) is the Hellmann-Feynman population on
+        ! j at imaginary time \beta.
+
+        use fciqmc_data, only: walker_population, tot_walkers
+        use hfs_data, only: alpha0
+
+        integer(lint) :: hf_signed_pop
+
+        integer :: i
+
+        hf_signed_pop = 0_lint
+        do i = 1, tot_walkers
+            if (walker_population(1,i) == 0) then
+                if (alpha0 < 0) then
+                    ! letting alpha->0_-
+                    hf_signed_pop = hf_signed_pop - abs(walker_population(2,i))
+                else
+                    ! letting alpha->0_+
+                    hf_signed_pop = hf_signed_pop + abs(walker_population(2,i))
+                end if
+            else
+                hf_signed_pop = hf_signed_pop + sign(1, walker_population(1,i))*walker_population(2,i)
+            end if
+        end do
+
+    end function calculate_hf_signed_pop
+
+    pure subroutine update_proj_energy_hub_k(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -144,6 +214,7 @@ contains
         ! and 0 refers to the reference determinant.
         ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the Hubbard model in momentum space only.
+
         ! In:
         !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
@@ -154,6 +225,10 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
+        ! Out:
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
 
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
@@ -166,9 +241,8 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-
-        type(excit) :: excitation
-        real(p) :: hmatel
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
         excitation = get_excitation(cdet%f, f0)
 
@@ -185,7 +259,7 @@ contains
 
     end subroutine update_proj_energy_hub_k
 
-    pure subroutine update_proj_energy_hub_real(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_hub_real(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -195,6 +269,7 @@ contains
         ! and 0 refers to the reference determinant.
         ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the Hubbard model in real space only.
+
         ! In:
         !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
@@ -205,6 +280,10 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
+        ! Out:
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
 
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
@@ -217,9 +296,8 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-
-        type(excit) :: excitation
-        real(p) :: hmatel
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
         excitation = get_excitation(cdet%f, f0)
 
@@ -235,7 +313,7 @@ contains
 
     end subroutine update_proj_energy_hub_real
 
-    pure subroutine update_proj_energy_mol(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_mol(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -246,7 +324,7 @@ contains
         ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for molecular systems (i.e. those defined by an
         ! FCIDUMP file).
-        !
+
         ! In:
         !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
@@ -257,6 +335,10 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
+        ! Out:
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
 
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
@@ -272,12 +354,13 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
-        type(excit) :: excitation
-        real(p) :: hmatel
         integer :: occ_list(nel), ij_sym, ab_sym
 
         excitation = get_excitation(cdet%f, f0)
+        hmatel = 0.0_p
 
         select case(excitation%nexcit)
         case (0)
@@ -314,7 +397,7 @@ contains
 
     end subroutine update_proj_energy_mol
 
-    pure subroutine update_proj_energy_ueg(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_ueg(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -334,6 +417,10 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
+        ! Out:
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
 
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
@@ -346,11 +433,11 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-
-        type(excit) :: excitation
-        real(p) :: hmatel
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
         excitation = get_excitation(cdet%f, f0)
+        hmatel = 0.0_p
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -366,47 +453,238 @@ contains
     end subroutine update_proj_energy_ueg
 
 
-    subroutine update_proj_hfs_hub_k(idet, inst_proj_energy, inst_proj_hf_t1)
+    subroutine update_proj_hfs_hamiltonian(f, fpop, f_hfpop, fdata, excitation, hmatel, &
+                                           D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
 
         ! Add the contribution of the current determinant to the projected
         ! energy in an identical way to update_proj_energy_hub_k.
 
         ! Also add the contribution of the current determinant to the running
-        ! total of the projected Hellmann--Feynman estimator.
+        ! total of the projected Hellmann--Feynman estimators.
+
+        ! For debugging purposes, this procedure is for when we are sampling
+        ! O=H.
 
         ! This procedure is for the Hubbard model in momentum space only.
 
         ! In:
-        !    idet: index of current determinant in the main walker list.
+        !    f(basis_length): bit string representation of the Slater determinant, D_i.
+        !    fpop: Hamiltonian population on the determinant.
+        !    f_hfpop: Hellmann-Feynman population on the determinant.
+        !    fdata(:): additional information about the determinant (unused, for
+        !       interface compatibility only).
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
         ! In/Out:
-        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !    This is updated if D_i is connected to D_0 (and isn't D_0).
+        !    D0_hf_population: running total of the Hellmann-Feynman population
+        !       on the reference.  Only updated if D_i *is* the reference determinant.
+        !    proj_hf_O_hpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|O|D_0> N_i, where N_i is the Hamiltonian population on D_i.
+        !    proj_hf_H_fhpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
+        !       Hellmann-Feynman population on D_i.
 
-        use fciqmc_data, only: walker_dets, walker_population, f0, D0_population_cycle, proj_energy
-        use excitations, only: excit, get_excitation
-        use hamiltonian_hub_k, only: slater_condon2_hub_k
-        use hfs_data, only: D0_hf_population
+        use basis, only: basis_length
+        use excitations, only: excit
 
-        integer, intent(in) :: idet
-        real(p), intent(inout) :: inst_proj_energy, inst_proj_hf_t1
-        type(excit) :: excitation
-        real(p) :: hmatel
-
-        excitation = get_excitation(walker_dets(:,idet), f0)
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop, f_hfpop
+        real(p), intent(in) :: fdata(:), hmatel
+        type(excit), intent(in) :: excitation
+        real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
-            D0_population_cycle = D0_population_cycle + walker_population(1,idet)
-            D0_hf_population = D0_hf_population + walker_population(2,idet)
-        else if (excitation%nexcit == 2) then
+            D0_hf_pop = D0_hf_pop + f_hfpop
+        else if (excitation%nexcit <= 2) then
             ! Have a determinant connected to the reference determinant: add to
-            ! projected energy.
-            hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
-                                       & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
-            inst_proj_energy = inst_proj_energy + hmatel*walker_population(1,idet)
-            inst_proj_hf_t1 = inst_proj_hf_t1 + hmatel*walker_population(2,idet)
+            ! projected estimators.
+            ! DEBUG/TESTING: For now, just using O=H
+            ! In this case, \sum_j O_0j c_j = proj_energy
+            proj_hf_O_hpsip = proj_hf_O_hpsip + hmatel*fpop
+            ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
         end if
 
-    end subroutine update_proj_hfs_hub_k
+    end subroutine update_proj_hfs_hamiltonian
+
+    subroutine update_proj_hfs_diagonal(f, fpop, f_hfpop, fdata, excitation, hmatel, &
+                                              D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
+
+        ! Add the contribution of the current determinant to the running
+        ! total of the projected Hellmann--Feynman estimator.
+
+        ! This procedure is for when we are sampling an operator, O, which is
+        ! diagonal in the Slater determinant space.
+
+        ! In:
+        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !       (unused, for interface compatibility only).
+        !    fpop: Hamiltonian population on the determinant (unused, for interface
+        !       compatibility only).
+        !    f_hfpop: Hellmann-Feynman population on the determinant.
+        !    fdata(:): additional information about the determinant (unused, for
+        !       interface compatibility only).
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+        ! In/Out:
+        !    D0_hf_population: running total of the Hellmann-Feynman population
+        !       on the reference.  Only updated if D_i *is* the reference determinant.
+        !    proj_hf_O_hpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|O|D_0> N_i, where N_i is the Hamiltonian population on D_i.
+        !    proj_hf_H_fhpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
+        !       Hellmann-Feynman population on D_i.
+
+        use basis, only: basis_length
+        use excitations, only: excit
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop, f_hfpop
+        real(p), intent(in) :: fdata(:), hmatel
+        type(excit), intent(in) :: excitation
+        real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
+
+        if (excitation%nexcit == 0) then
+            ! Have reference determinant.
+            D0_hf_pop = D0_hf_pop + f_hfpop
+        else if (excitation%nexcit <= 2) then
+            ! Have a determinant connected to the reference determinant: add to
+            ! projected energy.
+
+            ! O is diagonal in the determinant basis.  As we are actually
+            ! sampling O - <D0|O|D0>, this means that \sum_j O_j0 c_j = 0.
+
+            ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+        end if
+
+    end subroutine update_proj_hfs_diagonal
+
+    subroutine update_proj_hfs_double_occ_hub_k(f, fpop, f_hfpop, fdata, excitation, hmatel, &
+                                              D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
+
+        ! Add the contribution of the current determinant to the running
+        ! total of the projected Hellmann--Feynman estimator.
+
+        ! This procedure is for when we are sampling D, the double occupancy
+        ! operator, in the Bloch (momentum) basis set for the Hubbard model.
+
+        ! In:
+        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !       (unused, for interface compatibility only).
+        !    fpop: Hamiltonian population on the determinant.
+        !    f_hfpop: Hellmann-Feynman population on the determinant.
+        !    fdata(:): additional information about the determinant (unused, for
+        !       interface compatibility only).
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+        ! In/Out:
+        !    D0_hf_population: running total of the Hellmann-Feynman population
+        !       on the reference.  Only updated if D_i *is* the reference determinant.
+        !    proj_hf_O_hpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|O|D_0> N_i, where N_i is the Hamiltonian population on D_i.
+        !    proj_hf_H_fhpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
+        !       Hellmann-Feynman population on D_i.
+
+        use basis, only: basis_length
+        use excitations, only: excit
+        use system, only: hubu, nsites
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop, f_hfpop
+        real(p), intent(in) :: fdata(:), hmatel
+        type(excit), intent(in) :: excitation
+        real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
+
+        ! Note: two-electron operator.
+
+        select case(excitation%nexcit)
+        case(0)
+            ! Have reference determinant.
+            D0_hf_pop = D0_hf_pop + f_hfpop
+        case(2)
+            ! Have a determinant connected to the reference determinant: add to
+            ! projected energy.
+
+            !\hat{O}_0j = H_0j / (U L), where L is the number of sites.
+            ! sampling \hat{O} - <D0|O|D0>, this means that \sum_j O_j0 c_j = 0.
+            proj_hf_O_hpsip = proj_hf_O_hpsip + (hmatel/(hubu*nsites))*fpop
+
+            ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+        end select
+
+    end subroutine update_proj_hfs_double_occ_hub_k
+
+    subroutine update_proj_hfs_one_body_mol(f, fpop, f_hfpop, fdata, excitation, hmatel, &
+                                              D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
+
+        ! Add the contribution of the current determinant to the running
+        ! total of the projected Hellmann--Feynman estimator.
+
+        ! This procedure is for when we are sampling O_1, a one-body operator in
+        ! a molecular system (i.e. where the integrals have been read in).
+
+        ! In:
+        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !       (unused, for interface compatibility only).
+        !    fpop: Hamiltonian population on the determinant.
+        !    f_hfpop: Hellmann-Feynman population on the determinant.
+        !    fdata(:): additional information about the determinant (unused, for
+        !       interface compatibility only).
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+        ! In/Out:
+        !    D0_hf_population: running total of the Hellmann-Feynman population
+        !       on the reference.  Only updated if D_i *is* the reference determinant.
+        !    proj_hf_O_hpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|O_1|D_0> N_i, where N_i is the Hamiltonian population on D_i.
+        !    proj_hf_H_fhpsip: running total of the numerator, \sum_{i \neq 0}
+        !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
+        !       Hellmann-Feynman population on D_i.
+
+        use basis, only: basis_length
+        use excitations, only: excit
+        use operators, only: one_body1_mol
+
+        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: fpop, f_hfpop
+        real(p), intent(in) :: fdata(:), hmatel
+        type(excit), intent(in) :: excitation
+        real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
+
+        real(p) :: matel
+
+        ! Note: one-electron operator.
+
+        select case(excitation%nexcit)
+        case(0)
+            ! Have reference determinant.
+            D0_hf_pop = D0_hf_pop + f_hfpop
+        case(1)
+            ! Have a determinant connected to the reference determinant: add to
+            ! projected energy.
+
+            ! \sum_j O_0j c_j
+            matel = one_body1_mol(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+            proj_hf_O_hpsip = proj_hf_O_hpsip + matel*fpop
+
+            ! \sum_j H_0j \tilde{c}_j
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+        case(2)
+            ! O is a one-body operator => no contributions from double
+            ! excitations to \sum_j O_0j c_j.
+
+            ! \sum_j H_0j \tilde{c}_j
+            proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop
+        end select
+
+    end subroutine update_proj_hfs_one_body_mol
 
 end module energy_evaluation

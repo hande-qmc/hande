@@ -29,7 +29,7 @@ contains
         use hubbard_real, only: init_real_space
         use momentum_symmetry, only: init_momentum_symmetry
         use point_group_symmetry, only: print_pg_symmetry_info
-        use read_in_system, only: read_in_fcidump
+        use read_in_system, only: read_in_integrals
         use calc
         use ueg_system, only: init_ueg_proc_pointers
 
@@ -58,7 +58,7 @@ contains
 
         ! Initialise basis functions.
         if (system_type == read_in) then
-            call read_in_fcidump(cas_info=cas)
+            call read_in_integrals(cas_info=cas)
         else
             call init_model_basis_fns()
         end if

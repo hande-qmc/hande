@@ -6,16 +6,22 @@ implicit none
 
 contains
 
-    pure subroutine update_proj_energy_heisenberg_basic(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_heisenberg_basic(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
-        ! Add the contribution of the current determinant to the projected
+        ! Add the contribution of the current spin tensor product to the projected
         ! energy.
         ! The correlation energy given by the projected energy is:
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
-        ! where N_i is the population on the i-th determinant, D_i,
-        ! and 0 refers to the reference determinant.
-        ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! where N_i is the population on the i-th spin product, D_i,
+        ! and D_0 refers to the trial wavefunction (here, a single spin tensor
+        ! product).
+        ! During a MC cycle we store
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
+        ! If the current spin product is the trial wavefunction, then
+        ! N_0 is stored as D0_population.  This makes normalisation very
+        ! efficient.
         ! This procedure is for the Heisenberg model only
+
         ! In:
         !    f0: reference basis function.
         !    cdet: info on the current determinant (cdet) that we will spawn
@@ -26,6 +32,10 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
+        ! Out:
+        !    excitation: excitation connecting the spin product to the trial wavefunction.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       spin product and the trial wavefunction.
 
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
@@ -40,10 +50,12 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
-        type(excit) :: excitation
         integer :: bit_position, bit_element
 
+        hmatel = 0.0_p
         excitation = get_excitation(cdet%f, f0)
 
         if (excitation%nexcit == 0) then
@@ -56,13 +68,15 @@ contains
             bit_position = bit_lookup(1,excitation%from_orb(1))
             bit_element = bit_lookup(2,excitation%from_orb(1))
 
-            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
-                     proj_energy_sum = proj_energy_sum - 2.0_p*J_coupling*pop
+            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
+                 hmatel = -2.0_p*J_coupling
+                 proj_energy_sum = proj_energy_sum + hmatel*pop
+             end if
         end if
 
     end subroutine update_proj_energy_heisenberg_basic
 
-    pure subroutine update_proj_energy_heisenberg_positive(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_heisenberg_positive(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -73,35 +87,45 @@ contains
         ! estimator, so that all components of the true ground state
         ! are positive, and hence we get a good overlap.
         ! This procedure is for the Heisenberg model only.
+
         ! In:
         !    f0: reference basis function (unused, for interface compatibility only).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    D0_pop_sum: running total of the population on the trial function.
+        !    proj_energy_sum: running total of \sum_i <D_i|H|psi> N_i.
+        ! Out:
+        !    excitation: excitation connecting the spin product to the trial wavefunction.
+        !       As each spin product is in the trial wavefunction, this is
+        !       simply null, but included for interface compatibility.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       spin product and the trial wavefunction.
 
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
+        use excitations, only: excit
         use system, only: J_coupling, nbonds
 
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
-        proj_energy_sum = proj_energy_sum + (J_coupling*nbonds+2*cdet%data(1))*pop
+        excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
+        hmatel = J_coupling*nbonds+2*cdet%data(1)
+        proj_energy_sum = proj_energy_sum + hmatel*pop
 
         D0_pop_sum = D0_pop_sum + pop
 
     end subroutine update_proj_energy_heisenberg_positive
 
-    pure subroutine update_proj_energy_heisenberg_neel_singlet(f0, cdet, pop, D0_pop_sum, proj_energy_sum)
+    pure subroutine update_proj_energy_heisenberg_neel_singlet(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -113,6 +137,7 @@ contains
         ! makes this state a suitable trial function. For details on the state, see
         ! K. Runge, Phys. Rev. B 45, 7229 (1992).
         ! This procedure is for the Heisenberg model only.
+
         ! In:
         !    f0: reference basis function (unused, for interface compatibility only).
         !    cdet: info on the current determinant (cdet) that we will spawn
@@ -123,11 +148,18 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
+        ! Out:
+        !    excitation: excitation connecting the spin product to the trial wavefunction.
+        !       As each spin product is in the trial wavefunction, this is
+        !       simply null, but included for interface compatibility.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       spin product and the trial wavefunction.
 
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info
+        use excitations, only: excit
         use fciqmc_data, only: sampling_size, neel_singlet_amp
         use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
 
@@ -135,11 +167,16 @@ contains
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        type(excit), intent(out) :: excitation
+        real(p), intent(out) :: hmatel
 
         integer :: n, lattice_1_up, lattice_2_up
         real(p) :: importance_sampling_factor
 
+        excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
+
         importance_sampling_factor = 1.0_p
+
         n = nint(cdet%data(sampling_size+1))
         lattice_1_up = nint(cdet%data(sampling_size+2))
 
@@ -172,8 +209,7 @@ contains
 
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
-        proj_energy_sum = proj_energy_sum + (neel_singlet_amp(n) * cdet%data(1) * &
-                                          pop * importance_sampling_factor)
+        hmatel = neel_singlet_amp(n) * cdet%data(1)
 
         ! Now, to find all other basis functions connected to |D_j>, we find 0-1 bonds
         ! and then flip both of these spins. The resulting basis function, |D_i> will be
@@ -188,12 +224,13 @@ contains
         ! Finally note that the matrix element is -2*J_coupling, and we can put this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        proj_energy_sum = proj_energy_sum - (2 * J_coupling * lattice_1_up * &
-                    pop * neel_singlet_amp(n-1) * importance_sampling_factor)
+        hmatel = hmatel - (2 * J_coupling * lattice_1_up * neel_singlet_amp(n-1))
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        proj_energy_sum = proj_energy_sum - (2 * J_coupling * lattice_2_up * &
-                    pop * neel_singlet_amp(n+1) * importance_sampling_factor)
+        hmatel = hmatel - (2 * J_coupling * lattice_2_up * neel_singlet_amp(n+1))
+
+        hmatel = hmatel * importance_sampling_factor
+        proj_energy_sum = proj_energy_sum + hmatel * pop
 
         ! Now we just need to find the contribution to the denominator. The total
         ! denominator is

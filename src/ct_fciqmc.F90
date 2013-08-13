@@ -20,7 +20,8 @@ contains
         use qmc_common
         use fciqmc_restart
         use proc_pointers
-        use system, only: ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
+        use system, only: nel, ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
+        use interact
 
         use checking
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -39,6 +40,8 @@ contains
         type(excit) :: connection
         type(excit), allocatable :: connection_list(:)
         logical :: soft_exit
+        real(p):: hmatel
+        type(excit) :: D0_excit
         type(dSFMT_t) :: rng
         integer, parameter :: thread_id = 0
 
@@ -60,7 +63,7 @@ contains
 
         call alloc_det_info(cdet)
 
-        nparticles_old = nparticles_old_restart
+        nparticles_old = tot_nparticles
 
         t_barrier = tau ! or we could just not bother with the t_barrier var...
 
@@ -81,13 +84,15 @@ contains
 
                 ! Get the determinant bitstring once so we do not need to keep
                 ! doing it. Then find lists of orbitals.
-                cdet%f = walker_dets(:,idet)
+                cdet%f => walker_dets(:,idet)
+                cdet%data => walker_data(:,idet)
                 call decoder_ptr(cdet%f, cdet)
 
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, proj_energy)
+                call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), &
+                                            D0_population_cycle, proj_energy, D0_excit, hmatel)
 
                 ! Loop over each walker on the determinant.
                 do iparticle = 1, abs(walker_population(1,idet))
@@ -222,7 +227,13 @@ contains
 
         call load_balancing_report()
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, nparticles_old(1))
+        if (soft_exit) then
+            mc_cycles_done = mc_cycles_done + ncycles*ireport
+        else
+            mc_cycles_done = mc_cycles_done + ncycles*nreport
+        end if
+
+        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
 
         deallocate(current_pos, stat=ierr)
         call check_deallocate('current_pos', ierr)
