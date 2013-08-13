@@ -33,7 +33,7 @@ contains
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
         use system, only: system_type, heisenberg
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: int_fmt
         use errors, only: stop_all
 
@@ -124,7 +124,7 @@ contains
                     ! to die/clone.
                     nattempts = 4*nparticles(1)*sampling_size
 
-                    ! Reset death counter
+                    ! Reset death counter.
                     ndeath = 0
 
                     do idet = 1, tot_walkers ! loop over walkers/dets
@@ -175,13 +175,11 @@ contains
                         end do
                     end do
 
-                    ! Add the spawning rate (for the processor) to the running
-                    ! total.
+                    ! Add the spawning rate (for the processor) to the running total.
                     rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
-                    ! Perform the annihilation step where the spawned walker list is merged with
-                    ! the main walker list, and walkers of opposite sign on the same sites are
-                    ! annihilated.
+                    ! Perform the annihilation step where the spawned walker list is merged with the
+                    ! main walker list, and walkers of opposite sign on the same sites are annihilated.
                     call direct_annihilation()
 
                     ! If doing importance sampling *and* varying the weights of the trial function, call a routine

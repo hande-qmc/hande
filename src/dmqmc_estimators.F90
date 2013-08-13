@@ -8,9 +8,9 @@ contains
 
    subroutine update_dmqmc_estimators(ntot_particles_old, ireport)
 
-        ! Update the shift and average the shift and estimators
+        ! Update the shift and average the shift and estimators.
 
-        ! Should be called every report loop in an DMQMC calculation.
+        ! This is called every report loop in an DMQMC calculation.
 
         ! Inout:
         !    ntot_particles_old: total number (across all processors) of
@@ -114,8 +114,7 @@ contains
        ! factor. In these cases, we want to multiply the psip population by this factor
        ! to calculate the contribution from these excitation levels correctly.
 
-       ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet)
-       ! and so this change can be ignored.
+       ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet).
        unweighted_walker_pop = walker_population(1,idet)*dmqmc_accumulated_probs(excitation%nexcit)
 
        ! If diagonal element, add to the trace.
@@ -243,9 +242,9 @@ contains
            ! on the second bond. This flipping can only be done in exactly one order, not both -
            ! the two spins which change are opposite, so the middle spin will initially only
            ! be the same as one or the other spin. This is nice, because we don't have check
-           ! which way up the intermeddiate spin is - there will always be one order which contributes.
+           ! which way up the intermediate spin is - there will always be one order which contributes.
            ! If there are two such paths, then this could happen by either paths, but again, the two
-           ! intermeddiate spins will only allow one order of spin flipping for each path, no
+           ! intermediate spins will only allow one order of spin flipping for each path, no
            ! matter which way up they are, so we only need to check if there are two possible paths.
 
            if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0) then
@@ -393,9 +392,10 @@ contains
            bit_element1 = bit_lookup(2,excitation%from_orb(1))
            bit_position2 = bit_lookup(1,excitation%to_orb(1))
            bit_element2 = bit_lookup(2,excitation%to_orb(1))
-           if (btest(correlation_mask(bit_element1), bit_position1).and.btest(correlation_mask(bit_element2), bit_position2)) &
-                 estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + &
-                                   (walker_pop/2)
+           if (btest(correlation_mask(bit_element1), bit_position1).and.&
+               btest(correlation_mask(bit_element2), bit_position2)) &
+                 estimator_numerators(correlation_index) = &
+                     estimator_numerators(correlation_index) + (walker_pop/2)
        end if
 
    end subroutine dmqmc_correlation_function_heisenberg
@@ -520,7 +520,7 @@ contains
 
     subroutine call_rdm_procedures(beta_cycle)
 
-        ! Wrapper for calling relevant reduced density matrix procedures
+        ! Wrapper for calling relevant reduced density matrix procedures.
 
         use checking, only: check_allocate, check_deallocate
         use dmqmc_procedures, only: rdms
@@ -535,7 +535,7 @@ contains
         real(p), allocatable :: old_rdm_elements(:)
         integer :: i, j, k, ierr, new_unit
         character(10) :: rdm_filename
-        ! If in paralell then merge the reduced density matrix onto one processor
+        ! If in paralell then merge the reduced density matrix onto one processor.
 #ifdef PARALLEL
 
         real(dp), allocatable :: dm(:,:)
@@ -565,7 +565,8 @@ contains
         trace_rdm = 0.0_p
 
         if (parent) then
-            ! Force the reduced desnity matrix to be symmetric by averaging the upper and lower triangles
+            ! Force the reduced desnity matrix to be symmetric by averaging the upper and
+            ! lower triangles.
             do i = 1, ubound(reduced_density_matrix,1)
                 do j = 1, i-1
                     reduced_density_matrix(i,j) = 0.5_p*(reduced_density_matrix(i,j) +&
@@ -604,7 +605,7 @@ contains
 
         ! Calculate the Von Neumann Entropy. Use lapack to calculate the
         ! eigenvalues {\lambda_j} of the reduced density matrix.
-        ! Then VN Entropy S = -\sum_j\lambda_j\log_2{\lambda_j}
+        ! Then VN Entropy S = -\sum_j\lambda_j\log_2{\lambda_j}.
 
         ! Need to paralellise for large subsystems and introduce test to
         ! check whether diagonalisation should be performed in serial or
@@ -676,7 +677,7 @@ contains
         ! the concurrence, C =  max(0, \lamda_1 - \lambda_2 - \lambda_3 -\lambda_4) where
         ! \lambda_i are the eigenvalues of the matrix, R = \sqrt{\sqrt{\rho}\~{\rho}\sqrt{\rho}}.
         ! Where \~\rho = {\sigma_y \otimes \sigma_y} \rho^{\ast} {\sigma_y \otimes \sigma_y}. 
-        ! \lambda_1 > ... > \lambda_4
+        ! \lambda_1 > ... > \lambda_4.
 
         ! This can be simplified to finding the square root of the eigenvalues \{\lambda_i\} of \rho\~{\rho} 
         ! and in the case where \rho is a real, symmetric matrix then we can further simplify the problem
@@ -692,7 +693,7 @@ contains
         real(p) :: concurrence
         real(p) :: rdm_spin_flip(4,4), rdm_spin_flip_tmp(4,4), VL(4,4), VR(4,4)
         
-        ! Make rdm_spin_flip_tmp because sgeev and dgeev delete input matrix
+        ! Make rdm_spin_flip_tmp because sgeev and dgeev delete input matrix.
         rdm_spin_flip_tmp = matmul(reduced_density_matrix, flip_spin_matrix)
         rdm_spin_flip = rdm_spin_flip_tmp
         
@@ -717,7 +718,7 @@ contains
         call dgeev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, work, lwork, info)
 #endif
         ! Calculate the concurrence. Take abs of eigenvalues so that this is equivelant to sqauring
-        ! and then square-rooting
+        ! and then square-rooting.
         concurrence = 2._p*maxval(abs(reigv)) - sum(abs(reigv)) 
         concurrence = max(0._p, concurrence)
         write (6,'(1x,a28,1X,f22.12)') "# Unnormalised concurrence= ", concurrence

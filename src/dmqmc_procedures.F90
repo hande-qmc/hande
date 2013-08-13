@@ -140,8 +140,7 @@ contains
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
              dmqmc_accumulated_probs = 1.0_p
-             if (half_density_matrix) dmqmc_accumulated_probs(1:max_number_excitations) &
-                                      = 2.0_p*dmqmc_accumulated_probs(1:max_number_excitations)
+             if (half_density_matrix) dmqmc_accumulated_probs(1:max_number_excitations) = 2.0_p
          end if
 
          ! If doing a reduced density matrix calculation, allocate and define the bit masks that
@@ -150,10 +149,9 @@ contains
 
          ! If doing concurrence calculation then construct and store the 4x4 flip spin matrix i.e.
          ! \sigma_y \otimes \sigma_y
- 
          if (doing_concurrence) then
              allocate(flip_spin_matrix(4,4), stat=ierr)
-             call check_allocate('flip_spin_matrix', 16,ierr)
+             call check_allocate('flip_spin_matrix',16,ierr)
              flip_spin_matrix = 0.0_p
              flip_spin_matrix(1,4) = -1.0_p
              flip_spin_matrix(4,1) = -1.0_p
@@ -169,6 +167,7 @@ contains
         ! to either subsystem A or B. Also calculate the positions and elements of the sites
         ! in subsyetsm A, and finally allocate the RDM itself.
 
+        use calc, only: ms_in
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix
@@ -188,13 +187,23 @@ contains
         ! created the infrastructure to use translational symmetry and multiple RDMs. Will add the
         ! ability to use them when the sparse implementation is added...
 
-        ! For an ms = 0 subspace (as the ground state of the Heisenberg model will be), assuming less
-        ! than half the spins in the subsystem are in the subsystem, then any combination of spins can
-        ! occur in the subsystem, from all spins down to all spins up. Hence the total size of the reduced
-        ! density matrix will be 2**(number of spins in subsystem A).
+        ! For an ms = 0 subspace, assuming less than or exactly half the spins in the subsystem are in
+        ! the subsystem, then any combination of spins can occur in the subsystem, from all spins down
+        ! to all spins up. Hence the total size of the reduced density matrix will be 2**(number of spins
+        ! in subsystem A).
+        if (ms_in == 0 .and. A_size <= floor(real(nsites,p)/2.0_p)) then
         allocate(reduced_density_matrix(2**rdms(1)%A_size,2**rdms(1)%A_size), stat=ierr)
         call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_size),ierr)
         reduced_density_matrix = 0.0_p
+        else
+            if (ms_in /= 0) then
+                call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
+                               &calculations.")
+            else if (A_size > floor(real(nsites,p)/2.0_p))
+                call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
+                              &whose size is less than half the total system size.")
+            end if
+        end if
         
     end subroutine setup_rdm_arrays
 
@@ -290,7 +299,7 @@ contains
                     ! If r is outside the cell considered in this simulation, shift it by the
                     ! appropriate lattice vector so that it is in this cell.
                     call map_vec_to_cell(r)
-                    ! Now need to find which basis state this site corresponds to. Simply loop
+                    ! Now need to find which basis function this site corresponds to. Simply loop
                     ! over all basis functions and check...
                     do l = 1, nbasis
                         if (all(basis_fns(l)%l == r)) then
@@ -333,9 +342,8 @@ contains
 
         ! Currently this creates psips with Ms = ms_in only.
 
-        ! If we have number of sites = nsites,
-        ! and total spin value = ms_in,
-        ! then number of up spins is equal to up_spins = (ms_in + nsites)/2.
+        ! If we have number of sites = nsites and total spin value = ms_in,
+        ! then the number of up spins is equal to up_spins = (ms_in + nsites)/2.
 
         ! Start from state with all spins down, then choose the above number of
         ! spins to flip up with equal probability.
@@ -358,7 +366,7 @@ contains
 
         up_spins = (ms_in+nsites)/2
         npsips = int(D0_population/nprocs)
-        ! If initial number of psips does not split evenly between all processors,
+        ! If the initial number of psips does not split evenly between all processors,
         ! add the leftover psips to the first processors in order.
         if (D0_population-(nprocs*int(D0_population/nprocs)) > iproc) npsips = npsips+1
 
@@ -395,10 +403,9 @@ contains
 
     subroutine create_particle(f1,f2,nspawn)
 
-        ! Create a psip on a diagonal element of the density
-        ! matrix by adding it to the spawned walkers list. This
-        ! list can then be sorted correctly by the direct_annihilation
-        ! routine
+        ! Create a psip on a diagonal element of the density matrix by adding
+        ! it to the spawned walkers list. This list can then be sorted correctly
+        ! by the direct_annihilation routine.
 
         ! In:
         !    f_new: Bit string representation of index of the diagonal
@@ -478,7 +485,7 @@ contains
     subroutine update_sampling_weights(rng)
         
         ! This routine updates the values of the weights used in importance sampling. It also
-        ! removes or adds psips from the various levels accordingly.
+        ! removes or adds psips from the various excitation levels accordingly.
 
         ! In/Out:
         !    rng: random number generator.
@@ -502,7 +509,7 @@ contains
         ! When the weights for an excitation level are increased by a factor, the number
         ! of psips on that level has to decrease by the same factor, else the wavefunction
         ! which the psips represent will not be the correct importance sampled wavefunction
-        ! for the new weights. The code below loops over every psips and destorys (or creates)
+        ! for the new weights. The code below loops over every psips and destroys (or creates)
         ! it with the appropriate probability.
         do idet = 1, tot_walkers
             excit_level = get_excitation_level(walker_dets(1:basis_length,idet),&
@@ -523,12 +530,12 @@ contains
             nspawn = sign(nspawn,walker_population(1,idet)*sign_factor)
             ! Update the population on this determinant.
             walker_population(1,idet) = walker_population(1,idet) + nspawn
-            ! Update the total number of walkers
+            ! Update the total number of walkers.
             nparticles(1) = nparticles(1) - old_population + abs(walker_population(1,idet))
         end do
 
         ! Call the annihilation routine to update the main walker list, as some
-        ! sites will now have no psips on and so need removing from the simulation.
+        ! sites will have become unoccupied and so need removing from the simulation.
         call remove_unoccupied_dets()
 
     end subroutine update_sampling_weights
@@ -577,7 +584,7 @@ contains
         end do
 
         ! If dmqmc_vary_weights is true then the weights are to be introduced gradually at the
-        ! start of each beta loop. This required redefining weight_altering_factors to coincide
+        ! start of each beta loop. This requires redefining weight_altering_factors to coincide
         ! with the new sampling weights.
         if (dmqmc_vary_weights) then
             weight_altering_factors = dble(dmqmc_accumulated_probs)**(1/dble(finish_varying_weights))
