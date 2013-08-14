@@ -40,6 +40,7 @@ contains
 
         integer :: nspawned, ndeath
         type(excit) :: connection
+        real(p) :: hmatel
 
         logical :: soft_exit
 
@@ -55,7 +56,7 @@ contains
         if (doing_calc(folded_spectrum)) call alloc_det_info(cdet_excit)
 
         ! from restart
-        nparticles_old = nparticles_old_restart
+        nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
@@ -82,7 +83,8 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, proj_energy)
+                    call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, &
+                                                proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
                     call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)
@@ -90,7 +92,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, cdet, walker_population(1,idet), nspawned, connection)
+                        call spawner_ptr(rng, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
@@ -129,7 +131,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
+        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
 
         call dealloc_det_info(cdet, .false.)
         if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)

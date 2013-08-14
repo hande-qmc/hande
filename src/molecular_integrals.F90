@@ -57,6 +57,9 @@ end type
 ! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
 type(one_body) :: one_e_h_integrals
 
+! Store for <i|o|j>, where o is a one-electron operator.
+type(one_body) :: one_body_op_integrals
+
 ! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
 ! functions and 1/r_12 is the Coulomb operator.
 type(two_body) :: coulomb_integrals
@@ -259,6 +262,9 @@ contains
 
         call end_one_body_int_store(one_e_h_integrals)
         call end_two_body_int_store(coulomb_integrals)
+
+        ! BONUS!
+        call end_one_body_int_store(one_body_op_integrals)
 
     end subroutine end_molecular_integrals
 
@@ -704,6 +710,7 @@ contains
 
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
+        call MPI_BCast(store%op_sym, 1, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             do j = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
                 call MPI_BCast(store%integrals(i,j)%v, size(store%integrals(i,j)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
@@ -737,6 +744,7 @@ contains
         integer :: i, ierr
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
+        call MPI_BCast(store%op_sym, 1, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
         end do

@@ -95,7 +95,7 @@ contains
 
     end subroutine stochastic_death
 
-    subroutine stochastic_hf_cloning(rng, Oii, hamiltonian_pop, hf_pop, tot_hf_pop)
+    subroutine stochastic_hf_cloning(rng, Oii, hamiltonian_pop, ncloned)
 
         ! Clone Hellmann--Feynman particles from Hamiltonian particles.
         ! HF particles are created from Hamiltonian particles on the same
@@ -105,29 +105,27 @@ contains
         !   O_ii = < D_i | O | D_i >
         !   \tilde{S} is the HF shift.
 
+        ! In/Out:
+        !    rng: random number generator.
         ! In:
         !    Oii: < D_i | O | D_i > (stored in the appropriate element of
         !        walker_enegies).
         !    hamiltonian_pop: number of Hamiltonian particles on determinant
         !        D_i.
-        ! In/Out:
-        !    rng: random number generator.
-        !    hf_pop: number of Hellmann--Feynman particles on determinant D_i.
-        !    tot_hf_pop: total number of Hellmann--Feynman particles.
+        ! Out:
+        !    ncloned: number of Hellmann--Feynman particles created on determinant D_i.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         use hfs_data, only: hf_shift
 
+        type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: Oii
         integer, intent(in) :: hamiltonian_pop
-        type(dSFMT_t), intent(inout) :: rng
-        integer, intent(inout) :: hf_pop
-        integer(lint), intent(inout) :: tot_hf_pop
+        integer, intent(out) :: ncloned
 
         real(p) :: pd, matel
         real(dp) :: r
-        integer :: clone, old_pop
 
         ! Attempt to clone with a Hellmann--Feynman walker with probability
         !  p = tau*(Oii-shift)
@@ -137,23 +135,20 @@ contains
         pd = tau*abs(matel*hamiltonian_pop)
 
         ! Number that are definitely cloned...
-        clone = int(pd)
+        ncloned = int(pd)
 
         ! In addition, stochastic cloning.
-        pd = pd - clone
+        pd = pd - ncloned
         r = get_rand_close_open(rng)
-        if (pd > r) clone = clone + 1
+        if (pd > r) ncloned = ncloned + 1
 
         ! Hellmann--Feynman offsping have the same sign as the Hamiltonian
         ! parents if Oii-hf_shift is negative, otherwise they have the opposite sign.
-        old_pop = hf_pop
         if (matel > 0.0_p) then
-            hf_pop = hf_pop - sign(clone, hamiltonian_pop)
+            ncloned = -sign(ncloned, hamiltonian_pop)
         else
-            hf_pop = hf_pop + sign(clone, hamiltonian_pop)
+            ncloned = +sign(ncloned, hamiltonian_pop)
         end if
-        tot_hf_pop = tot_hf_pop - abs(old_pop) + abs(hf_pop)
-        if (abs(clone)>1) write (17,*) 'CLONING', clone, old_pop, hf_pop, hamiltonian_pop, Oii, Oii-hf_shift
 
     end subroutine stochastic_hf_cloning
 

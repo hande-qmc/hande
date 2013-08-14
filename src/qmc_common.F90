@@ -16,7 +16,12 @@ contains
         ! greatest population if it exceeds some threshold relative to the
         ! current reference determinant.
 
-        ! TODO: make compatible with HFS.
+        ! Note this currently only looks at the Hamiltonian population.  The
+        ! setting of multiple reference determinants (e.g. different references
+        ! for Hamiltonian walkers and Hellmann-Feynmann walkers) is currently not
+        ! supported.  It is not clear if there is such a need as a good
+        ! reference determinant for the Hamiltonian space should also be
+        ! important (if not crucial!) in the H-F space.
 
         use basis, only: basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -293,9 +298,10 @@ contains
 #ifdef PARALLEL
         use annihilation, only: annihilation_comms_time
         use parallel
+        use utils, only: int_fmt
 
-        integer(lint) :: load_data(nprocs)
-        integer :: ierr
+        integer(lint) :: load_data(sampling_size, nprocs)
+        integer :: i, ierr
         real(dp) :: comms(nprocs)
 
         if (nprocs > 1) then
@@ -303,17 +309,21 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, 1, mpi_integer8, load_data, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, sampling_size, mpi_integer8, load_data, sampling_size, &
+                            mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                write (6,'(1X,a34,6X,i8)') 'Min # of particles on a processor:', minval(load_data)
-                write (6,'(1X,a34,6X,i8)') 'Max # of particles on a processor:', maxval(load_data)
-                write (6,'(1X,a35,5X,f11.2)') 'Mean # of particles on a processor:', real(sum(load_data), p)/nprocs
+                do i = 1, sampling_size
+                    if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
+                    write (6,'(1X,a34,6X,i8)') 'Min # of particles on a processor:', minval(load_data(i,:))
+                    write (6,'(1X,a34,6X,i8)') 'Max # of particles on a processor:', maxval(load_data(i,:))
+                    write (6,'(1X,a35,5X,f11.2,/)') 'Mean # of particles on a processor:', real(sum(load_data(i,:)), p)/nprocs
+                end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer, load_data, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(tot_walkers, 1, mpi_integer, load_data(1,:), 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data)
-                write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data)
+                write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data(1,:))
+                write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data(1,:))
                 write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data), p)/nprocs
                 write (6,'()')
                 write (6,'(1X,a38,5X,f8.2,a1)') 'Min time take by walker communication:', minval(comms),'s'
@@ -335,12 +345,15 @@ contains
         ! and print out.
 
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
+        use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
 
         integer :: idet
-        integer(lint) :: ntot_particles
+        integer(lint) :: ntot_particles(sampling_size)
         type(det_info) :: cdet
+        real(p):: hmatel
+        type(excit) :: D0_excit
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum
@@ -356,28 +369,27 @@ contains
             cdet%data => walker_data(:,idet)
             ! WARNING!  We assume only the bit string and data field are
             ! required to update the projected estimator.
-            call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, proj_energy)
+            call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), &
+                                        D0_population_cycle, proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info(cdet)
 
 #ifdef PARALLEL
-        call mpi_allreduce(proj_energy, proj_energy_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
-        call mpi_allreduce(nparticles, ntot_particles, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+        ! TODO: HFS, DMQMC quantities
 #else
-        ntot_particles = nparticles(1)
+        ntot_particles = nparticles
         D0_population = D0_population_cycle
 #endif
-
-        proj_energy = proj_energy/D0_population
 
         if (parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            write (6,'(1X,"#",3X,i8,2X,2(es17.10,2X),es17.10,4X,i11,6X,a3,3X,a3)') &
-                    mc_cycles_done, shift, proj_energy, D0_population, ntot_particles,'n/a','n/a'
+            call write_fciqmc_report(0, ntot_particles, 0.0, .true.)
         end if
 
     end subroutine initial_fciqmc_status
@@ -479,11 +491,11 @@ contains
 
         ! report_time was the time at the previous iteration.
         ! curr_time - report_time is thus the time taken by this report loop.
-        if (parent) call write_fciqmc_report(ireport, ntot_particles(1), curr_time-report_time)
+        if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 
         ! Write restart file if required.
         if (mod(ireport,write_restart_file_every_nreports) == 0) &
-            call dump_restart(mc_cycles_done+ncycles*ireport, ntot_particles(1))
+            call dump_restart(mc_cycles_done+ncycles*ireport, ntot_particles)
 
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time

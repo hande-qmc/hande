@@ -254,7 +254,7 @@ contains
 
         use basis, only: total_basis_length
 
-        integer :: islot, k, pop_sign
+        integer :: islot, ipart, k, pop_sign, events(spawned_pop:spawned_hf_pop), initiator_pop(spawned_pop:spawned_hf_pop)
         integer, parameter :: thread_id = 0
 
         ! islot is the current element in the spawned walkers lists.
@@ -265,45 +265,85 @@ contains
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned walker.
             spawned_walkers(:,islot) = spawned_walkers(:,k)
+            do ipart = spawned_pop, spawned_hf_pop
+                if (spawned_walkers(spawned_parent,k) == 0) then
+                    ! from an initiator
+                    initiator_pop(ipart) = spawned_walkers(ipart,k)
+                    events(ipart) = 0
+                else
+                    initiator_pop(ipart) = 0
+                    events(ipart) = sign(1,spawned_walkers(ipart,k))
+                end if
+            end do
             compress: do
                 k = k + 1
-                if (k > spawning_head(thread_id,0)) exit self_annihilate
-                if (all(spawned_walkers(:total_basis_length,k) == spawned_walkers(:total_basis_length,islot))) then
-                    ! Update the parent flag.
-                    ! Note we ignore the possibility of multiple spawning events
-                    ! onto the same unoccupied determinant.  Such events become
-                    ! vanishingly unlikely with the size of the determinant
-                    ! space (according to Ali at least!).
-                    pop_sign = spawned_walkers(spawned_pop,islot)*spawned_walkers(spawned_pop,k)
-                    if (pop_sign > 0) then
-                        ! Sign coherent event.
-                        ! Set parent_flag to 2 (indicating multiple
-                        ! sign-coherent spawning events).
-                        spawned_walkers(spawned_parent,islot) = 2
-                    else
-                        ! Keep the parent_flag of the largest spawning event.
-                        if (spawned_walkers(spawned_pop,k) > spawned_walkers(spawned_pop,islot)) then
-                            spawned_walkers(spawned_parent,islot) = spawned_walkers(spawned_parent,k)
-                        end if
-                    end if
-                    ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(spawned_pop,islot) = &
-                                   spawned_walkers(spawned_pop,islot) + spawned_walkers(spawned_pop,k)
-                else
+                if (k > spawning_head(thread_id,0) &
+                 .or. any(spawned_walkers(:total_basis_length,k) /= spawned_walkers(:total_basis_length,islot))) then
                     ! Found the next unique spawned walker.
+                    ! Set the overall parent flag of the population on the
+                    ! current determinant and move on.
+                    ! Rules:
+                    !   * keep psips from initiator determinants
+                    !   * keep psips from multiple coherent events
+                    ! These are indicated by a 0 flag.
+                    !   * keep other psips only if determinant is already
+                    !     occupied.
+                    ! We also want the outcome to be independent of the order
+                    ! the spawning events occured in, hence accumulating the
+                    ! signed number of events and number of initiator particles
+                    ! separately.
+                    ! Corner cases are tricky!
+                    ! * If multiple initiator events exactly cancel out, then the
+                    !   flag is determined by the number of coherent events from
+                    !   non-initiator parent determinants.
+                    ! * If more psips from non-initiators are spawned than
+                    !   initiators and the two sets have opposite sign, the flag
+                    !   is determined by number of coherent events from
+                    !   non-initiator parents.
+                    spawned_walkers(spawned_parent,islot) = 0
+                    do ipart = spawned_pop, spawned_hf_pop
+                        if (initiator_pop(ipart) /= 0 .and.  &
+                                sign(1,spawned_walkers(ipart,islot)) == sign(1,initiator_pop(ipart)) ) then
+                            ! Keep all.  We should still annihilate psips of
+                            ! opposite sign from non-initiator events(spawned_pop).
+                        else if (abs(events(spawned_pop)) > 1) then
+                            ! Multiple coherent spawning events(spawned_pop) after removing pairs
+                            ! of spawning events(spawned_pop) of the opposite sign.
+                            ! Keep.
+                        else
+                            ! Should only keep if determinant is already occupied.
+                            spawned_walkers(spawned_parent,islot) = spawned_walkers(spawned_parent,islot) + 2**ipart
+                        end if
+                    end do
                     exit compress
+                else
+                    ! Accumulate the population on this determinant, how much of the population came
+                    ! from an initiator and the sign of the event.
+                    if (spawned_walkers(spawned_parent,k) == 0) then
+                            initiator_pop = initiator_pop + spawned_walkers(spawned_pop:spawned_hf_pop,k)
+                    else
+                        do ipart = spawned_pop, spawned_hf_pop
+                            if (spawned_walkers(ipart,k) < 0) then
+                                events(ipart) = events(ipart) - 1
+                            else
+                                events(ipart) = events(ipart) + 1
+                            end if
+                        end do
+                    end if
+                    spawned_walkers(spawned_pop:spawned_hf_pop,islot) = &
+                         spawned_walkers(spawned_pop:spawned_hf_pop,islot) + spawned_walkers(spawned_pop:spawned_hf_pop,k)
                 end if
             end do compress
             ! All done?
-            if (islot == spawning_head(thread_id,0)) exit self_annihilate
+            if (islot == spawning_head(thread_id,0) .or. k > spawning_head(thread_id,0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (spawned_walkers(spawned_pop,islot) /= 0) islot = islot + 1
+            if (any(spawned_walkers(spawned_pop:spawned_hf_pop,islot) /= 0)) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (spawned_walkers(spawned_pop, islot) == 0) islot = islot - 1
+        if (all(spawned_walkers(spawned_pop:spawned_hf_pop, islot) == 0)) islot = islot - 1
 
         ! update spawning_head(thread_id,0)
         spawning_head(thread_id,0) = islot
@@ -367,9 +407,9 @@ contains
         use basis, only: total_basis_length
         use search, only: binary_search
 
-        integer :: i, pos, k, nannihilate, istart, iend, old_pop
+        integer :: i, ipart, pos, k, nannihilate, istart, iend, old_pop(sampling_size)
         integer(i0) :: f(total_basis_length)
-        logical :: hit
+        logical :: hit, discard
         integer, parameter :: thread_id = 0
 
         nannihilate = 0
@@ -379,35 +419,62 @@ contains
             f = spawned_walkers(:total_basis_length,i)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
-                ! Annihilate!
-                old_pop = walker_population(1,pos)
-                walker_population(1,pos) = walker_population(1,pos) + spawned_walkers(spawned_pop,i)
-                nannihilate = nannihilate + 1
+                old_pop = walker_population(:,pos)
+                ! Need to take into account that the determinant might not have
+                ! a non-zero population for all particle types.
+                do ipart = 1, sampling_size
+                    if (walker_population(ipart,pos) /= 0) then
+                        ! Annihilate!
+                        walker_population(ipart,pos) = walker_population(ipart,pos) + spawned_walkers(ipart+spawned_pop-1,i)
+                    else if (.not.btest(spawned_walkers(spawned_parent,i),ipart+spawned_pop-1)) then
+                        ! Keep only if from a multiple spawning event or an
+                        ! initiator.
+                        ! If this is the case, then spawed_walkers(spawned_parent,i) 
+                        ! does not have a bit set in corresponding to 2**pop_indx, 
+                        ! where pop_indx is the index of this walker type in the
+                        ! spawned_walkers array (i.e. ipart+spawned_pop-1).
+                        walker_population(ipart,pos) = spawned_walkers(ipart+spawned_pop-1,i)
+                    end if
+                end do
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
                 !   i) annihilation enhancing the population on a determinant.
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + abs(walker_population(1,pos)) - abs(old_pop)
+                nparticles = nparticles + abs(walker_population(:,pos)) - abs(old_pop)
+                ! One more entry to be removed from the spawned_walkers array.
+                nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
             else
                 ! Compress spawned list.
                 ! Keep only progeny spawned by initiator determinants
-                ! (parent_flag=0) or multiple sign-coherent events
-                ! (parent_flag=2).
-                if (spawned_walkers(spawned_parent,i) == 1) then
-                    ! discard attempting spawnings from non-initiator walkers
-                    ! onto unoccupied determinants.
-                    ! note that the number of particles (nparticles) was not
-                    ! updated at the time of spawning, so doesn't change.
+                ! or multiple sign-coherent events.  If neither of these
+                ! conditions are met then the i-th bit of spawned_parent is set,
+                ! where i is the particle index in spawned_walkers.
+                discard = .true.
+                do ipart = spawned_pop, spawned_hf_pop
+                    if (btest(spawned_walkers(spawned_parent,i),ipart)) then
+                        ! discard attempting spawnings from non-initiator walkers
+                        ! onto unoccupied determinants.
+                        ! note that the number of particles (nparticles) was not
+                        ! updated at the time of spawning, so doesn't change.
+                        spawned_walkers(ipart,i-nannihilate) = 0
+                    else
+                        ! keep!
+                        spawned_walkers(ipart,i-nannihilate) = spawned_walkers(ipart,i)
+                        discard = .false.
+                    end if
+                end do
+                if (discard) then
+                    ! Don't need to keep any particles from the current slot so can
+                    ! just overwrite them...
                     nannihilate = nannihilate + 1
                 else
-                    ! keep!
-                    k = i - nannihilate
-                    spawned_walkers(:,k) = spawned_walkers(:,i)
+                    ! Need to copy the bit string across...
+                    spawned_walkers(:total_basis_length,i-nannihilate) = spawned_walkers(:total_basis_length,i)
                 end if
             end if
         end do
@@ -452,9 +519,8 @@ contains
         use determinants, only: decode_det
         use search, only: binary_search
         use system, only: nel, trial_function, neel_singlet
-        use hfs_data, only: lmask, O00
-        use operators, only: calc_orb_occ
-        use proc_pointers, only: sc0_ptr
+        use hfs_data, only: O00
+        use proc_pointers, only: sc0_ptr, op0_ptr
         use heisenberg_estimators, only: neel_singlet_data
 
         integer :: i, istart, iend, j, k, pos
@@ -501,8 +567,8 @@ contains
             walker_data(1,k) = sc0_ptr(walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
-                ! Set walker_data(2:,k) = <D_i|O|D_i>.
-                walker_data(2,k) = calc_orb_occ(walker_dets(:,k), lmask) - O00
+                ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
+                walker_data(2,k) = op0_ptr(walker_dets(:,k)) - O00
             else if (doing_calc(dmqmc_calc)) then
                 ! Set the energy to be the average of the two induvidual energies.
                 walker_data(1,k) = (walker_data(1,k) + sc0_ptr(walker_dets((basis_length+1):(2*basis_length),k)) - H00)/2

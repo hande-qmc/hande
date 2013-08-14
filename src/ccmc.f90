@@ -209,6 +209,7 @@ contains
         type(excit) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
         type(dSFMT_t), allocatable :: rng(:)
+        real(p) :: junk
 
         logical :: soft_exit
 
@@ -265,7 +266,7 @@ contains
         end do
 
         ! from restart
-        nparticles_old = nparticles_old_restart
+        nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
@@ -307,7 +308,7 @@ contains
                 ! test.  Please feel free to improve...
                 !$omp parallel private(it)
                 it = get_thread_id()
-                !$omp do schedule(dynamic,200) private(nspawned, connection) reduction(+:D0_population_cycle,proj_energy)
+                !$omp do schedule(dynamic,200) private(nspawned, connection, junk) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
                     call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
@@ -326,9 +327,9 @@ contains
                         ! the cluster.
                         call update_proj_energy_ptr(f0, cdet(it), &
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
-                                 D0_population_cycle, proj_energy)
+                                 D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), cdet(it), cluster(it), nspawned, connection)
+                        call spawner_ccmc(rng(it), cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
 
                         if (nspawned /= 0) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, spawned_pop)
@@ -384,7 +385,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old(1))
+        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
 
         ! TODO: deallocation...
 !        call dealloc_det_info(cdet)
@@ -582,7 +583,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine spawner_ccmc(rng, cdet, cluster, nspawn, connection)
+    subroutine spawner_ccmc(rng, cdet, cluster, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -608,6 +609,9 @@ contains
         !        particular, we use the amplitude, cluster_to_det_sign and pselect
         !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
         !        the excitation generator.
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%full *must* be set to a procedure which generates
+        !        a complete excitation.
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -622,12 +626,13 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: f0
-        use proc_pointers, only: gen_excit_ptr
+        use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
 
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer, intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
@@ -643,7 +648,7 @@ contains
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr(rng, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, cdet, pgen, connection, hmatel)
 
         ! 2, Apply additional factors.
         hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign

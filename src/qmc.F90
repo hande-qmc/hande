@@ -20,16 +20,15 @@ contains
         use fciqmc, only: do_fciqmc
         use folded_spectrum_utils, only: init_folded_spectrum
         use ifciqmc, only: init_ifciqmc
-        use hellmann_feynman_sampling, only: init_hellmann_feynman_sampling, do_hfs_fciqmc
-        use energy_evaluation, only: update_proj_hfs_hub_k
+        use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
         real(dp) :: hub_matel
 
-        ! Initialise data
-        call init_qmc()
-
         ! Initialise procedure pointers
         call init_proc_pointers()
+
+        ! Initialise data
+        call init_qmc()
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
@@ -46,8 +45,7 @@ contains
             ! timestep algorithm.
             if (doing_calc(folded_spectrum)) call init_folded_spectrum()
             if (doing_calc(hfs_fciqmc_calc)) then
-                call init_hellmann_feynman_sampling()
-                call do_hfs_fciqmc(update_proj_hfs_hub_k)
+                call do_hfs_fciqmc()
             else
                 call do_fciqmc()
             end if
@@ -67,7 +65,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
-        use parallel, only: iproc, nprocs, nthreads, parent
+        use parallel
         use utils, only: int_fmt
 
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
@@ -80,10 +78,12 @@ contains
         use calc, only: dmqmc_energy_squared, dmqmc_correlation
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: encode_det, set_spin_polarisation, write_det
-        use hamiltonian, only: get_hmatel
+        use energy_evaluation, only: calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
-        use fciqmc_restart, only: read_restart
         use reference_determinant, only: set_reference_det
+        use fciqmc_restart, only: read_restart
+        use hfs_data, only: O00, hf_signed_pop
+        use proc_pointers, only: sc0_ptr, op0_ptr
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
         use system, only: trial_function, neel_singlet, single_basis, sym_max
         use symmetry, only: symmetry_orb_list
@@ -95,6 +95,7 @@ contains
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
+        integer(lint) :: tmp_lint
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -167,6 +168,8 @@ contains
         ! Allocate main walker lists.
         allocate(nparticles(sampling_size), stat=ierr)
         call check_allocate('nparticles', sampling_size, ierr)
+        allocate(tot_nparticles(sampling_size), stat=ierr)
+        call check_allocate('tot_nparticles', sampling_size, ierr)
         allocate(walker_dets(total_basis_length,walker_length), stat=ierr)
         call check_allocate('walker_dets', basis_length*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
@@ -223,6 +226,20 @@ contains
                 call check_allocate('occ_list0',nel,ierr)
             end if
             call read_restart()
+            ! Need to re-calculate the reference determinant data
+            call encode_det(occ_list0, f0)
+            if (trial_function == neel_singlet) then
+                ! Set the Neel state data for the reference state, if it is being used.
+                H00 = 0.0_p
+            else
+                H00 = sc0_ptr(f0)
+            end if
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
+            if (nprocs > 1) then
+                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+            else
+                D0_proc = iproc
+            end if
         else
 
             ! Reference det
@@ -267,7 +284,8 @@ contains
             end if
 
             ! Energy of reference determinant.
-            H00 = get_hmatel(f0,f0)
+            H00 = sc0_ptr(f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
 
             ! Determine and set properties for the reference state which we start on.
             ! (For DMQMC, we do not start on the reference state, and so this is not
@@ -281,6 +299,7 @@ contains
                     ! Set the Neel state data for the reference state, if it is being used.
                     walker_data(1,tot_walkers) = H00
                     H00 = 0.0_p
+
                     walker_data(sampling_size+1,tot_walkers) = nsites/2
                     ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
                     ! The Neel state cannot be used for non-bipartite lattices.
@@ -344,16 +363,16 @@ contains
                     walker_population(:,tot_walkers) = 0
                     ! Set the population for this basis function.
                     walker_population(1,tot_walkers) = nint(D0_population)
-                    walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
+                    walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
                     select case(system_type)
                     case(heisenberg)
                         if (trial_function /= single_basis) then
                             walker_data(1,tot_walkers) = 0
                         else
-                            walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
+                            walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
                         end if
                     case default
-                        walker_data(1,tot_walkers) = get_hmatel(f0,f0) - H00
+                        walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
                     end select
                     walker_dets(:,tot_walkers) = f0_inv
                     ! If we are using the Neel state as a reference in the
@@ -371,6 +390,21 @@ contains
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
         forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
+        ! Should we already be in varyshift mode (e.g. restarting a calculation)?
+#ifdef PARALLEL
+        call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+#else
+        tot_nparticles = nparticles
+#endif
+        vary_shift = tot_nparticles(1) >= target_particles
+        if (doing_calc(hfs_fciqmc_calc)) then
+#ifdef PARALLEL
+            tmp_lint = calculate_hf_signed_pop()
+            call mpi_allreduce(tmp_lint, hf_signed_pop, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+#else
+            hf_signed_pop = calculate_hf_signed_pop()
+#endif
+        end if
 
         ! calculate the reference determinant symmetry
         ref_sym = symmetry_orb_list(occ_list0)
@@ -412,6 +446,7 @@ contains
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+            if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =',O00
             write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
             select case(system_type)
             case (hub_k)
@@ -432,12 +467,16 @@ contains
                 write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
                     'Population for a determinant outside CAS space to be an initiator:', initiator_population
             end if
-            write (6,'(1X,a49,/)') 'Information printed out every FCIQMC report loop:'
-            write (6,'(1X,a66)') 'Instant shift: the shift calculated at the end of the report loop.'
+            write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
+            write (6,'(1X,a69)') 'Note that all particle populations are averaged over the report loop.'
+            write (6,'(1X,a58,/)') 'Shift: the shift calculated at the end of the report loop.'
             if (.not. doing_calc(dmqmc_calc)) then
-                write (6,'(1X,a98)') 'Proj. Energy: projected energy averaged over the report loop. &
-                                     &Calculated at the end of each cycle.'
-                write (6,'(1X,a54)') '# D0: current population at the reference determinant.'
+                write (6,'(1X,a46)') 'H_0j: <D_0|H|D_j>, Hamiltonian matrix element.'
+                write (6,'(1X,a60)') 'N_j: population of Hamiltonian particles on determinant D_j.'
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    write (6,'(1X,a43)') 'O_0j: <D_0|O|D_j>, operator matrix element.'
+                    write (6,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
+                end if
             else
                 write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
                                      &density matrix.'
@@ -458,8 +497,12 @@ contains
                                          &value of the staggered magnetisation.'
                 end if
             end if
-            write (6,'(1X,a49)') '# particles: current total population of walkers.'
+            write (6,'(1X,a61)') '# H psips: current total population of Hamiltonian particles.'
+            if (doing_calc(hfs_fciqmc_calc)) then
+                write (6,'(1X,a68)') '# HF psips: current total population of Hellmann--Feynman particles.'
+            end if
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
+            write (6,'(1X,a41,/)') 'time: average time per Monte Carlo cycle.'
         end if
 
     end subroutine init_qmc
@@ -470,6 +513,7 @@ contains
 
         ! System and calculation data
         use calc
+        use hfs_data
         use system
 
         ! Procedures to be pointed to.
@@ -480,7 +524,9 @@ contains
         use dmqmc_procedures
         use energy_evaluation
         use excit_gen_mol
+        use excit_gen_op_mol
         use excit_gen_hub_k
+        use excit_gen_op_hub_k
         use excit_gen_real_lattice
         use excit_gen_ueg, only: gen_excit_ueg_no_renorm
         use folded_spectrum_utils, only: fs_spawner, fs_stochastic_death
@@ -493,6 +539,7 @@ contains
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
         use importance_sampling
+        use operators
         use spawning
 
         ! Procedure pointers
@@ -518,13 +565,13 @@ contains
 
             spawner_ptr => spawn_lattice_split_gen
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_hub_k_no_renorm
-                gen_excit_init_ptr => gen_excit_init_hub_k_no_renorm
-                gen_excit_finalise_ptr => gen_excit_finalise_hub_k_no_renorm
+                gen_excit_ptr%full => gen_excit_hub_k_no_renorm
+                gen_excit_ptr%init => gen_excit_init_hub_k_no_renorm
+                gen_excit_ptr%finalise => gen_excit_finalise_hub_k_no_renorm
             else
-                gen_excit_ptr => gen_excit_hub_k
-                gen_excit_init_ptr => gen_excit_init_hub_k
-                gen_excit_finalise_ptr => gen_excit_finalise_hub_k
+                gen_excit_ptr%full => gen_excit_hub_k
+                gen_excit_ptr%init => gen_excit_init_hub_k
+                gen_excit_ptr%finalise => gen_excit_finalise_hub_k
             end if
 
         case(hub_real, chung_landau)
@@ -544,9 +591,9 @@ contains
             end if
 
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_hub_real_no_renorm
+                gen_excit_ptr%full => gen_excit_hub_real_no_renorm
             else
-                gen_excit_ptr => gen_excit_hub_real
+                gen_excit_ptr%full => gen_excit_hub_real
             end if
 
         case(heisenberg)
@@ -570,14 +617,14 @@ contains
 
             ! Set which guiding wavefunction to use, if requested.
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_heisenberg_no_renorm
+                gen_excit_ptr%full => gen_excit_heisenberg_no_renorm
             else
-                    gen_excit_ptr => gen_excit_heisenberg
+                    gen_excit_ptr%full => gen_excit_heisenberg
             end if
             select case(guiding_function)
             case (neel_singlet_guiding)
                 spawner_ptr => spawn_importance_sampling
-                trial_fn_ptr => neel_trial_state
+                gen_excit_ptr%trial_fn => neel_trial_state
             end select
 
         case(read_in)
@@ -586,10 +633,10 @@ contains
             sc0_ptr => slater_condon0_mol
 
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_mol_no_renorm
+                gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             else
-                gen_excit_ptr => gen_excit_mol
+                gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
             end if
 
@@ -599,12 +646,12 @@ contains
             sc0_ptr => slater_condon0_ueg
 
             if (no_renorm) then
-                gen_excit_ptr => gen_excit_ueg_no_renorm
+                gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
             else
                 write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
                 write (6,'(1X,"WARNING: If this upsets you, please send patches (or bribe James with beer).",/)')
-                gen_excit_ptr => gen_excit_ueg_no_renorm
+                gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
             end if
 
@@ -657,14 +704,14 @@ contains
                 else
                     create_spawned_particle_dm_ptr => create_spawned_particle_half_density_matrix
                     spawner_ptr => spawn_importance_sampling
-                    trial_fn_ptr => dmqmc_weighting_fn
+                    gen_excit_ptr%trial_fn => dmqmc_weighting_fn
                 end if
             else
                 if (truncate_space) then
                     create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix
                 else if (dmqmc_weighted_sampling) then
                     spawner_ptr => spawn_importance_sampling
-                    trial_fn_ptr => dmqmc_weighting_fn
+                    gen_excit_ptr%trial_fn => dmqmc_weighting_fn
                     create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
                 else
                     create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
@@ -683,6 +730,54 @@ contains
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             end select
 
+        end if
+
+        ! d) Hellmann--Feynman operator sampling
+        if (doing_calc(hfs_fciqmc_calc)) then
+            select case(hf_operator)
+            case(hamiltonian_operator)
+                op0_ptr => sc0_ptr
+                update_proj_hfs_ptr => update_proj_hfs_hamiltonian
+                spawner_hfs_ptr => spawner_ptr
+            case(kinetic_operator)
+                update_proj_hfs_ptr => update_proj_hfs_diagonal
+                spawner_hfs_ptr => spawn_null
+                if (system_type == hub_k) then
+                    op0_ptr => kinetic0_hub_k
+                else
+                    call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
+                end if
+            case(double_occ_operator)
+                if (system_type == hub_k) then
+                    ! Shamelessly re-use the Hamiltonian excitation generators.
+                    gen_excit_hfs_ptr%full => gen_excit_ptr%full
+                    gen_excit_hfs_ptr%init => gen_excit_ptr%init
+                    gen_excit_hfs_ptr%finalise => gen_excit_ptr%finalise
+                    spawner_hfs_ptr => spawn_lattice_split_gen_importance_sampling
+                    ! Scale the Hamiltonian matrix element to obtain the matrix
+                    ! element of this operator.
+                    gen_excit_hfs_ptr%trial_fn => gen_excit_double_occ_matel_hub_k
+                    update_proj_hfs_ptr => update_proj_hfs_double_occ_hub_k
+                    op0_ptr => double_occ0_hub_k
+                else
+                    call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
+                end if
+            case(dipole_operator)
+                if (system_type == read_in) then
+                    op0_ptr => one_body0_mol
+                    update_proj_hfs_ptr => update_proj_hfs_one_body_mol
+                    spawner_hfs_ptr => spawner_ptr
+                    if (no_renorm) then
+                        gen_excit_hfs_ptr%full => gen_excit_one_body_mol_no_renorm
+                    else
+                        gen_excit_hfs_ptr%full => gen_excit_one_body_mol
+                    end if
+                else
+                    call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
+                end if
+            case default
+                call stop_all('init_proc_pointers','Operator given is not yet supported')
+            end select
         end if
 
     end subroutine init_proc_pointers
