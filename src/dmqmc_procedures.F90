@@ -171,7 +171,7 @@ contains
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix
-        use system, only: system_type, heisenberg
+        use system, only: system_type, heisenberg, nsites
 
         integer :: i, ierr, ipos, basis_find, bit_position, bit_element
 
@@ -191,15 +191,15 @@ contains
         ! the subsystem, then any combination of spins can occur in the subsystem, from all spins down
         ! to all spins up. Hence the total size of the reduced density matrix will be 2**(number of spins
         ! in subsystem A).
-        if (ms_in == 0 .and. A_size <= floor(real(nsites,p)/2.0_p)) then
-        allocate(reduced_density_matrix(2**rdms(1)%A_size,2**rdms(1)%A_size), stat=ierr)
-        call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_size),ierr)
-        reduced_density_matrix = 0.0_p
+        if (ms_in == 0 .and. rdms(1)%A_size <= floor(real(nsites,p)/2.0_p)) then
+            allocate(reduced_density_matrix(2**rdms(1)%A_size,2**rdms(1)%A_size), stat=ierr)
+            call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_size),ierr)
+            reduced_density_matrix = 0.0_p
         else
             if (ms_in /= 0) then
                 call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
                                &calculations.")
-            else if (A_size > floor(real(nsites,p)/2.0_p))
+            else if (rdms(1)%A_size > floor(real(nsites,p)/2.0_p)) then
                 call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
                               &whose size is less than half the total system size.")
             end if

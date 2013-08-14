@@ -583,7 +583,7 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        integer :: ierr, occ_list_size
+        integer :: i, ierr, occ_list_size
         logical :: option_set
 
         call mpi_bcast(system_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
