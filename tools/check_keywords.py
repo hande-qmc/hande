@@ -16,12 +16,12 @@ DOCS_DIR = os.path.abspath(os.path.join(TOOLS_DIR, '../documentation/users_guide
 TEST_DIR = os.path.abspath(os.path.join(TOOLS_DIR, '../test_suite'))
 
 # glob for documentation files
-DOC_FILES = os.path.join(DOCS_DIR, '*.rst')
+DOC_FILES = glob.glob(os.path.join(DOCS_DIR, '*.rst'))
 # input parser source file
 INPUT_PARSER = os.path.join(SRC_DIR, 'parse_input.F90')
 
 # glob for test input files
-TEST_FILES = os.path.join(TEST_DIR, '*/*.inp')
+TEST_FILES = [f for f in glob.glob(os.path.join(TEST_DIR, '*/*.inp')) if '.inp=' not in f]
 
 # useful, common, regexes.
 COMMENT = re.compile('^ *!')
@@ -60,8 +60,6 @@ Return a list of all keywords and a list of lists of equivalent keywords.'''
 def check_docs(doc_files, keywords):
     '''Search for keywords in doc_files and print those not found.'''
 
-    doc_files = glob.glob(doc_files)
-
     for f in doc_files:
         if not os.path.isdir(os.path.dirname(f)):
             print('Documentation directory does not exist.')
@@ -90,8 +88,6 @@ def check_docs(doc_files, keywords):
 
 def check_tests(test_files, keywords):
     '''Search for keywords in test_files and print those not found.'''
-
-    test_files = glob.glob(test_files)
 
     for f in test_files:
         if not os.path.isdir(os.path.dirname(f)):
