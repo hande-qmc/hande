@@ -338,7 +338,8 @@ contains
                     spawned_walkers(:, spawning_head(thread_id,dest)) = 0
                     scratch_data(:, spawning_head(thread_id,dest)) = 0.0_p
                     spawned_walkers(:total_basis_length, spawning_head(thread_id,dest)) = det
-                    spawned_walkers(total_basis_length+1:total_basis_length+restart_sampling_size, spawning_head(thread_id,dest)) = pop
+                    spawned_walkers(total_basis_length+1:total_basis_length+restart_sampling_size, &
+                                                                spawning_head(thread_id,dest)) = pop
                     scratch_data(:restart_sampling_size+restart_info_size,spawning_head(thread_id,dest)) = tmp_data
                     prev_det = det
                     ! Filled up spawning/scratch arrays?

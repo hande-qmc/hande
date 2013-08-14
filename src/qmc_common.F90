@@ -309,7 +309,8 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, sampling_size, mpi_integer8, load_data, sampling_size, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, sampling_size, mpi_integer8, load_data, sampling_size, &
+                            mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 do i = 1, sampling_size
                     if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i

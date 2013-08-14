@@ -65,7 +65,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
-        use parallel, only: iproc, nprocs, nthreads, parent
+        use parallel
         use utils, only: int_fmt
 
         use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
