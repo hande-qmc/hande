@@ -77,15 +77,13 @@ contains
 
         ! Allocate main and spawned lists to hold population of walkers.
         ! Don't need to hold determinants, so can just set spawned_size to be 1.
-        spawned_size = 1
         allocate(walker_population(1,ndets), stat=ierr)
         call check_allocate('walker_population',ndets,ierr)
-        allocate(spawned_walkers1(spawned_size,ndets), stat=ierr)
-        call check_allocate('spawned_walkers1',spawned_size*ndets,ierr)
-        spawned_walkers => spawned_walkers1
+        allocate(qmc_spawn%sdata(1,ndets), stat=ierr)
+        call check_allocate('qmc_spawn%sdata',ndets,ierr)
         ! Zero these.
         walker_population = 0
-        spawned_walkers = 0
+        qmc_spawn%sdata = 0
 
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
@@ -162,7 +160,7 @@ contains
             do icycle = 1, ncycles
 
                 ! Zero spawning arrays.
-                spawned_walkers = 0
+                qmc_spawn%sdata = 0
 
                 ! Number of spawning attempts that will be made.
                 ! convert to integer from integer(lint).  should only be doing
@@ -189,7 +187,7 @@ contains
 
                 ! Find the spawning rate and add to the running
                 ! total.
-                rspawn = rspawn + real(sum(abs(spawned_walkers(1,:))))/nattempts
+                rspawn = rspawn + real(sum(abs(qmc_spawn%sdata(1,:))))/nattempts
 
                 call simple_annihilation()
 
@@ -275,17 +273,17 @@ contains
                 ! Flip child sign.
                 if (walker_population(1,iwalker) < 0) then
                     ! Positive offspring.
-                    spawned_walkers(1,j) = spawned_walkers(1,j) + nspawn
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
                 else
-                    spawned_walkers(1,j) = spawned_walkers(1,j) - nspawn
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
                 end if
             else
                 ! Same sign as parent.
                 if (walker_population(1,iwalker) > 0) then
                     ! Positive offspring.
-                    spawned_walkers(1,j) = spawned_walkers(1,j) + nspawn
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
                 else
-                    spawned_walkers(1,j) = spawned_walkers(1,j) - nspawn
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
                 end if
             end if
 
@@ -357,7 +355,7 @@ contains
         ! determinants for both the main and spawned lists so it just amounts to
         ! adding the two arrays together,
 
-        walker_population = walker_population + spawned_walkers
+        walker_population = walker_population + qmc_spawn%sdata
 
     end subroutine simple_annihilation
 

@@ -4,6 +4,7 @@ module fciqmc_data
 ! fciqmc data.
 
 use const
+use spawn_data, only: spawn_t
 implicit none
 
 !--- Input data: FCIQMC ---
@@ -125,57 +126,10 @@ integer, allocatable, target :: walker_population(:,:) ! (sampling_size,walker_l
 real(p), allocatable, target :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
 
 ! Walker information: spawned list.
-! By combining the info in with the determinant, we can reduce the number of MPI
-! communication calls during annihilation.
-! a) array size.
-! The size of each element in the spawned_walkers arrays depend upon what
-! calculation is being done.  Each element has at least basis_length elements.
-! * FCIQMC requires an additional element to store the population of the spawned
-! walker.
-! * initiator-FCIQMC requires a further additional element for information
-! about the parent of the spawned walker.
-! * Hellmann--Feynman sampling requires a further additional element for the
-! population of the spawned Hellmann--Feynman walkers.
+type(spawn_t) :: qmc_spawn
 
-! spawned_walkers*(:basis_length,i) gives the determinant of the spawned walker.
-! spawned_walkers*(spawned_pop,i) gives the population of the spawned walker.
-! spawned_walkers*(spawned_hf_pop,i) gives the population of the spawned walker
-! (Hellmann--Feynman sampling only).
-! spawned_walkers*(spawned_parent,i) gives information about the parent of the
-! spawned walker (initiator-FCIQMC only).
-! spawned_hf_pop (if it exists) will always be equal to spawned_pop+1.
-
-! In simple_fciqmc we only need to store the walker populations, so spawned_size
-! is 1.
-integer :: spawned_size
-integer :: spawned_pop, spawned_parent, spawned_hf_pop
-! b) determinants and the spawn times of the progeny (only used for ct_fciqmc)
-integer(i0), allocatable, target :: spawned_walkers1(:,:) ! (spawned_size, spawned_walker_length)
-integer(i0), allocatable, target :: spawned_walkers2(:,:) ! (spawned_size, spawned_walker_length)
+! spawn times of the progeny (only used for ct_fciqmc)
 real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
-! c) pointers.
-! In serial we only use spawned_walker_*1.  In parallel it is useful to have two
-! arrays (one for receiving data and one for sending data when we need to
-! communicate).  To avoid copying, we use pointers.
-! spawned_walkers points at the current data,
-! spawned_walkers_recvd is only used in data communication (see
-! distribute_walkers in the annihilation module).
-integer(i0), pointer :: spawned_walkers(:,:), spawned_walkers_recvd(:,:)
-! d) current (filled) slot in the spawning arrays.
-! In parallel we divide the spawning lists into blocks (one for each processor).
-! spawning_head(j,i) gives the current filled slot in the spawning arrays for the
-! block associated with the j-th thread on the i-th processor.
-! After compress_spawned is called, spawning_head(0,i) gives the current filled
-! slot on the i-th processor (all other elements are not meaningful).
-! After distribute_walkers is called in the annihilation algorithm,
-! spawning_head(0,0) is the number of spawned_walkers on the *current* processor
-! and all other elements are not meaningful.
-! It is convenient if the minimum size of spawning_head and spawning_block_start
-! are both 0:1 along the processor dimension.
-integer, allocatable :: spawning_head(:,:) ! (0:nthreads, max_0:(max(1,nprocs-1))
-! spawning_block_start(i) contains the first position to be used in the spawning
-! lists for storing a walker which is to be sent to the i-th processor.
-integer, allocatable :: spawning_block_start(:,:) ! (0:nthreads,0:max(1,nprocs-1))
 
 ! Rate of spawning.  This is a running total over MC cycles on each processor
 ! until it is summed over processors and averaged over cycles in
@@ -437,7 +391,7 @@ contains
         integer(lint), intent(in) :: nattempts
         integer :: nspawn
 
-        nspawn = sum(spawning_head(0,:nprocs-1) - spawning_block_start(0,:nprocs-1))
+        nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
         ! The total spawning rate is
         !   (nspawn + ndeath) / nattempts
         ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different
@@ -445,137 +399,6 @@ contains
         rate = real(nspawn+ndeath,p)/nattempts
 
     end function spawning_rate
-
-    !--- Operations on the spawned lists. ---
-
-    subroutine sort_spawned_lists()
-
-        ! Sort spawned_walkers according to the determinant list using
-        ! quicksort.
-
-        ! Uses the sample code in Numerical Recipies as a base.
-
-        use basis, only: basis_length
-        use determinants
-
-        ! Threshold.  When a sublist gets to this length, switch to using
-        ! insertion sort to sort the sublist.
-        integer, parameter :: switch_threshold = 7
-
-        ! sort needs auxiliary storage of length 2*log_2(n).
-        integer, parameter :: stack_max = 50
-
-        integer :: pivot, lo, hi, i, j
-        integer(i0) :: tmp_spawned(spawned_size)
-
-        ! Stack.  This is the auxilliary memory required by quicksort.
-        integer, save :: stack(2,stack_max), nstack
-
-        nstack = 0
-        lo = 1
-        hi = spawning_head(0,0)
-        do
-            ! If the section/partition we are looking at is smaller than
-            ! switch_threshold then perform an insertion sort.
-            if (hi - lo < switch_threshold) then
-                do j = lo + 1, hi
-                    tmp_spawned = spawned_walkers(:,j)
-                    do i = j - 1, 1, -1
-                        if (tmp_spawned(1:basis_length) .detgt. spawned_walkers(1:basis_length,i)) exit
-                        spawned_walkers(:,i+1) = spawned_walkers(:,i)
-                    end do
-                    spawned_walkers(:,i+1) = tmp_spawned
-                end do
-
-                if (nstack == 0) exit
-                hi = stack(2,nstack)
-                lo = stack(1,nstack)
-                nstack = nstack - 1
-
-            else
-                ! Otherwise start partitioning with quicksort.
-
-                ! Pick the pivot element to be the median of spawned_walkers(:,lo), spawned_walkers(:,hi)
-                ! and spawned_walkers(:,(lo+hi)/2).
-                ! This largely overcomes a major problem with quicksort, where it
-                ! degrades if the pivot is always the smallest element.
-                pivot = (lo + hi)/2
-                call swap_spawned(spawned_walkers(:,pivot), spawned_walkers(:,lo + 1))
-                if (spawned_walkers(1:basis_length,lo) .detgt. spawned_walkers(1:basis_length,hi)) then
-                    call swap_spawned(spawned_walkers(:,lo), spawned_walkers(:,hi))
-                end if
-                if (spawned_walkers(1:basis_length,lo+1) .detgt. spawned_walkers(1:basis_length,hi)) then
-                    call swap_spawned(spawned_walkers(:,lo+1), spawned_walkers(:,hi))
-                end if
-                if (spawned_walkers(1:basis_length,lo) .detgt. spawned_walkers(1:basis_length,lo+1)) then
-                    call swap_spawned(spawned_walkers(:,lo), spawned_walkers(:,lo+1))
-                end if
-
-                i = lo + 1
-                j = hi
-                tmp_spawned = spawned_walkers(:,lo + 1) ! a is the pivot value
-                do while (.true.)
-                    ! Scan down list to find element > a.
-                    i = i + 1
-                    do while (tmp_spawned(1:basis_length) .detgt. spawned_walkers(1:basis_length,i))
-                        i = i + 1
-                    end do
-
-                    ! Scan down list to find element < a.
-                    j = j - 1
-                    do while (spawned_walkers(1:basis_length,j) .detgt.  tmp_spawned(1:basis_length))
-                        j = j - 1
-                    end do
-
-                    ! When the pointers crossed, partitioning is complete.
-                    if (j < i) exit
-
-                    ! Swap the elements, so that all elements < a end up
-                    ! in lower indexed variables.
-                    call swap_spawned(spawned_walkers(:,i), spawned_walkers(:,j))
-                end do
-
-                ! Insert partitioning element
-                spawned_walkers(:,lo + 1) = spawned_walkers(:,j)
-                spawned_walkers(:,j) = tmp_spawned
-
-                ! Push the larger of the partitioned sections onto the stack
-                ! of sections to look at later.
-                ! --> need fewest stack elements.
-                nstack = nstack + 1
-
-                ! With a stack_max of 50, we can sort arrays of length
-                ! 1125899906842624.  It is safe to say this will never be
-                ! exceeded, and so this test can be skipped.
-!                if (nstack > stack_max) call stop_all('sort_spawned_lists', "parameter stack_max too small")
-
-                if (hi - i + 1 >= j - lo) then
-                    stack(2,nstack) = hi
-                    stack(1,nstack) = i
-                    hi = j - 1
-                else
-                    stack(2,nstack) = j - 1
-                    stack(1,nstack) = lo
-                    lo = i
-                end if
-
-            end if
-        end do
-
-    contains
-
-        subroutine swap_spawned(s1,s2)
-
-            integer(i0), intent(inout) :: s1(spawned_size), s2(spawned_size)
-            integer(i0) :: tmp(spawned_size)
-
-            tmp = s1
-            s1 = s2
-            s2 = tmp
-
-        end subroutine swap_spawned
-
-    end subroutine sort_spawned_lists
 
     !--- Output procedures ---
 
@@ -716,6 +539,7 @@ contains
         ! Deallocate fciqmc data arrays.
 
         use checking, only: check_deallocate
+        use spawn_data, only: dealloc_spawn_t
 
         integer :: ierr
 
@@ -739,22 +563,6 @@ contains
             deallocate(walker_data, stat=ierr)
             call check_deallocate('walker_data',ierr)
         end if
-        if (allocated(spawned_walkers1)) then
-            deallocate(spawned_walkers1, stat=ierr)
-            call check_deallocate('spawned_walkers1',ierr)
-        end if
-        if (allocated(spawned_walkers2)) then
-            deallocate(spawned_walkers2, stat=ierr)
-            call check_deallocate('spawned_walkers2',ierr)
-        end if
-        if (allocated(spawning_head)) then
-            deallocate(spawning_head, stat=ierr)
-            call check_deallocate('spawning_head',ierr)
-        end if
-        if (allocated(spawning_block_start)) then
-            deallocate(spawning_block_start, stat=ierr)
-            call check_deallocate('spawning_block_start',ierr)
-        end if
         if (allocated(f0)) then
             deallocate(f0, stat=ierr)
             call check_deallocate('f0',ierr)
@@ -767,6 +575,7 @@ contains
             deallocate(estimator_numerators, stat=ierr)
             call check_deallocate('estimator_numerators', ierr)
         end if
+        call dealloc_spawn_t(qmc_spawn)
 
     end subroutine end_fciqmc
 

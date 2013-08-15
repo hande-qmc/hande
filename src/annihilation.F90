@@ -9,7 +9,7 @@ real(dp) :: annihilation_comms_time = 0.0_dp
 
 contains
 
-    subroutine direct_annihilation()
+    subroutine direct_annihilation(tinitiator)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -19,31 +19,43 @@ contains
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process.
 
+        use basis, only: total_basis_length
         use parallel, only: nthreads, nprocs
-        use proc_pointers, only: annihilate_main_list_ptr, annihilate_spawned_list_ptr
+        use spawn_data
+        use sort, only: qsort
+
+        logical, intent(in) :: tinitiator
 
         integer, parameter :: thread_id = 0
 
         ! -1. Compress the successful spawning events from each thread so the
         ! spawned list being sent to each processor contains no gaps.
-        if (nthreads > 1) call compress_threaded_spawned_list(spawning_block_start, spawning_head, spawned_walkers)
+        if (nthreads > 1) call compress_threaded_spawn_t(qmc_spawn)
 
         ! 0. Send spawned walkers to the processor which "owns" them and receive
         ! the walkers "owned" by this processor.
-        if (nprocs > 1) call distribute_walkers()
+        if (nprocs > 1) call comm_spawn_t(qmc_spawn)
 
-        if (spawning_head(thread_id,0) > 0) then
+        if (qmc_spawn%head(thread_id,0) > 0) then
             ! Have spawned walkers on this processor.
 
             ! 1. Sort spawned walkers list.
-            call sort_spawned_lists()
+            call qsort(qmc_spawn%sdata, qmc_spawn%head(thread_id,0), qmc_spawn%bit_str_len)
 
             ! 2. Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
-            call annihilate_spawned_list_ptr()
+            if (tinitiator) then 
+                call annihilate_spawn_t_initiator(qmc_spawn)
+            else
+                call annihilate_spawn_t(qmc_spawn)
+            end if
 
             ! 3. Annihilate main list.
-            call annihilate_main_list_ptr()
+            if (tinitiator) then 
+                call annihilate_main_list_initiator()
+            else
+                call annihilate_main_list()
+            end if
 
             ! 4. Remove determinants with zero walkers on them from the main
             ! walker list.
@@ -62,294 +74,6 @@ contains
 
     end subroutine direct_annihilation
 
-    pure subroutine compress_threaded_spawned_list(spawning_block_start, spawning_head, spawned_walkers)
-
-        ! In/Out:
-        !    spawning_block_start: array listing the initial values of
-        !        spawning_head (ie before any spawning has occurred).
-        !    spawning_head: array listing the head spawned element by each
-        !        thread to be sent to each processor in the subarrays of
-        !        spawned_walkers.  On output, spawning_head(0,i) contains the
-        !        number of elements to be sent to processor i and all other
-        !        elements are meaningless.
-        !    spawned_walkers: array containing the spawned elements.  On output,
-        !        there are no gaps in each subarray to be sent to a given
-        !        processor.
-
-        ! (See fciqmc_data for more description of both these objects.)
-
-        use parallel, only: nthreads, nprocs
-
-        integer, intent(inout) :: spawning_block_start(0:nthreads-1,0:nprocs-1)
-        integer, intent(inout) :: spawning_head(0:nthreads-1,0:nprocs-1)
-        integer(i0), intent(inout) :: spawned_walkers(:,:)
-
-        integer :: iproc, i, offset
-
-        do iproc = 0, nprocs-1
-            offset = 0
-            ! Assuming a large enough number of spawning events, each thread
-            ! should have had roughly the same number of successful spawning
-            ! events, so this loop should be fast.
-            ! Start from the first element which might have been spawned into.
-            do i = max(1,minval(spawning_head(:,iproc))), maxval(spawning_head(:,iproc))
-                ! element i was created (or should have been) by thread
-                ! index mod(i,nthreads).
-                if (spawning_head(mod(i,nthreads),iproc) < i .or. &
-                        spawning_head(mod(i,nthreads),iproc) == spawning_block_start(mod(i,nthreads),iproc)) then
-                    ! This element was *not* spawned into.  Filling in this gap...
-                    offset = offset + 1
-                else
-                    spawned_walkers(:,i-offset) = spawned_walkers(:,i)
-                end if
-            end do
-            spawning_head(0,iproc) = i - 1 - offset
-        end do
-
-    end subroutine compress_threaded_spawned_list
-
-    subroutine distribute_walkers()
-
-        ! Send spawned walkers to the pre-designated processor which hosts the
-        ! determinant upon which the walker has been spawned.
-
-#ifdef PARALLEL
-
-        use parallel
-
-        integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
-        integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
-        integer :: i, ierr
-        integer(i0), pointer :: tmp_walkers(:,:)
-
-        real(dp) :: t1
-        integer, parameter :: thread_id = 0
-
-        t1 = MPI_WTIME()
-
-        ! Send spawned walkers to the processor which "owns" them and receive
-        ! the walkers "owned" by this processor.
-
-        ! The walkers are already stored in the spawned walkers array in blocks,
-        ! where each block corresponds to determinants owned by a given
-        ! processor.
-
-        ! Tests on cx2 indicate that there is not much difference between
-        ! sending messages of the same size using MPI_AlltoAll and
-        ! MPI_AlltoAllv (though MPI_AlltoAllv is very slightly slower, by a few
-        ! percent).  Therefore it is likely that using MPI_AlltoAllv will be
-        ! more efficient as it allows us to only send spawned walkers rather
-        ! than the entire spawned lists.  It does require an additional
-        ! communication to set up however, so for calculations with large
-        ! numbers of walkers maybe MPI_AlltoAll would be more efficient?
-
-        ! Find out how many walkers we are going to send and receive.
-        forall (i=0:nprocs-1)
-            send_counts(i) = spawning_head(thread_id,i) - spawning_block_start(thread_id,i)
-        end forall
-
-        call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
-
-        ! Want spawning data to be continuous after move, hence need to find the
-        ! receive displacements.
-        receive_displacements(0) = 0
-        do i=1, nprocs-1
-            receive_displacements(i) = receive_displacements(i-1) + receive_counts(i-1)
-        end do
-
-        ! Set spawning_head(thread_id,0) to be the number of walkers now on this
-        ! processor.
-        ! This is given by the number of items sent by the last processor plus
-        ! the displacement used by the last processor (which is the number of
-        ! items sent by all other processors).
-        spawning_head(thread_id,0) = receive_displacements(nprocs-1) + receive_counts(nprocs-1)
-
-        ! Send spawned_walkers.
-        ! Each element contains spawned_size integers (of type
-        ! i0/mpi_det_integer) so we need to change the counts and
-        ! displacements accordingly:
-        send_counts = send_counts*spawned_size
-        receive_counts = receive_counts*spawned_size
-        send_displacements = spawning_block_start(thread_id,:nprocs-1)*spawned_size
-        receive_displacements = receive_displacements*spawned_size
-
-        call MPI_AlltoAllv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
-                           spawned_walkers_recvd, receive_counts, receive_displacements, mpi_det_integer, &
-                           MPI_COMM_WORLD, ierr)
-
-        annihilation_comms_time = annihilation_comms_time + MPI_WTIME() - t1
-
-        ! Swap pointers so that spawned_walkers points to the received data.
-        tmp_walkers => spawned_walkers
-        spawned_walkers => spawned_walkers_recvd
-        spawned_walkers_recvd => tmp_walkers
-
-#endif
-
-    end subroutine distribute_walkers
-
-    subroutine annihilate_spawned_list()
-
-        ! Annihilate the spawned walker list and compress the remaining
-        ! elements.
-
-        ! The spawned walker list is already sorted, so annihilation amounts to
-        ! looping through the list and adding consective walker populations
-        ! together if they're the same walker.
-
-        use basis, only: total_basis_length
-
-        integer :: islot, k
-        integer, parameter :: thread_id = 0
-
-        ! islot is the current element in the spawned walkers lists.
-        islot = 1
-        ! k is the current element which is being compressed into islot (if
-        ! k and islot refer to the same determinants).
-        k = 1
-        self_annihilate: do
-            ! Set the current free slot to be the next unique spawned walker.
-            spawned_walkers(:,islot) = spawned_walkers(:,k)
-            compress: do
-                k = k + 1
-                if (k > spawning_head(thread_id,0)) exit self_annihilate
-                if (all(spawned_walkers(:total_basis_length,k) == spawned_walkers(:total_basis_length,islot))) then
-                    ! Add the populations of the subsequent identical walkers.
-                    spawned_walkers(spawned_pop:spawned_hf_pop,islot) =    &
-                         spawned_walkers(spawned_pop:spawned_hf_pop,islot) &
-                       + spawned_walkers(spawned_pop:spawned_hf_pop,k)
-                else
-                    ! Found the next unique spawned walker.
-                    exit compress
-                end if
-            end do compress
-            ! All done?
-            if (islot == spawning_head(thread_id,0)) exit self_annihilate
-            ! go to the next slot if the current determinant wasn't completed
-            ! annihilated.
-            if (any(spawned_walkers(spawned_pop:spawned_hf_pop,islot) /= 0)) islot = islot + 1
-        end do self_annihilate
-
-        ! We didn't check if the population on the last determinant is
-        ! completely annihilated or not.
-        if (all(spawned_walkers(spawned_pop:spawned_hf_pop, islot) == 0)) islot = islot - 1
-
-        ! update spawning_head(thread_id,0)
-        spawning_head(thread_id,0) = islot
-
-    end subroutine annihilate_spawned_list
-
-    subroutine annihilate_spawned_list_initiator()
-
-        ! Annihilate the spawned walker list and compress the remaining
-        ! elements.
-
-        ! The spawned walker list is already sorted, so annihilation amounts to
-        ! looping through the list and adding consective walker populations
-        ! together if they're the same walker.
-
-        ! This version is for the initiator algorithm, whereby we also need to
-        ! take care of the parent flag (ie handle the origin of the spawned
-        ! walkers).
-
-        use basis, only: total_basis_length
-
-        integer :: islot, ipart, k, pop_sign, events(spawned_pop:spawned_hf_pop), initiator_pop(spawned_pop:spawned_hf_pop)
-        integer, parameter :: thread_id = 0
-
-        ! islot is the current element in the spawned walkers lists.
-        islot = 1
-        ! k is the current element which is being compressed into islot (if
-        ! k and islot refer to the same determinants).
-        k = 1
-        self_annihilate: do
-            ! Set the current free slot to be the next unique spawned walker.
-            spawned_walkers(:,islot) = spawned_walkers(:,k)
-            do ipart = spawned_pop, spawned_hf_pop
-                if (spawned_walkers(spawned_parent,k) == 0) then
-                    ! from an initiator
-                    initiator_pop(ipart) = spawned_walkers(ipart,k)
-                    events(ipart) = 0
-                else
-                    initiator_pop(ipart) = 0
-                    events(ipart) = sign(1,spawned_walkers(ipart,k))
-                end if
-            end do
-            compress: do
-                k = k + 1
-                if (k > spawning_head(thread_id,0) &
-                 .or. any(spawned_walkers(:total_basis_length,k) /= spawned_walkers(:total_basis_length,islot))) then
-                    ! Found the next unique spawned walker.
-                    ! Set the overall parent flag of the population on the
-                    ! current determinant and move on.
-                    ! Rules:
-                    !   * keep psips from initiator determinants
-                    !   * keep psips from multiple coherent events
-                    ! These are indicated by a 0 flag.
-                    !   * keep other psips only if determinant is already
-                    !     occupied.
-                    ! We also want the outcome to be independent of the order
-                    ! the spawning events occured in, hence accumulating the
-                    ! signed number of events and number of initiator particles
-                    ! separately.
-                    ! Corner cases are tricky!
-                    ! * If multiple initiator events exactly cancel out, then the
-                    !   flag is determined by the number of coherent events from
-                    !   non-initiator parent determinants.
-                    ! * If more psips from non-initiators are spawned than
-                    !   initiators and the two sets have opposite sign, the flag
-                    !   is determined by number of coherent events from
-                    !   non-initiator parents.
-                    spawned_walkers(spawned_parent,islot) = 0
-                    do ipart = spawned_pop, spawned_hf_pop
-                        if (initiator_pop(ipart) /= 0 .and.  &
-                                sign(1,spawned_walkers(ipart,islot)) == sign(1,initiator_pop(ipart)) ) then
-                            ! Keep all.  We should still annihilate psips of
-                            ! opposite sign from non-initiator events(spawned_pop).
-                        else if (abs(events(spawned_pop)) > 1) then
-                            ! Multiple coherent spawning events(spawned_pop) after removing pairs
-                            ! of spawning events(spawned_pop) of the opposite sign.
-                            ! Keep.
-                        else
-                            ! Should only keep if determinant is already occupied.
-                            spawned_walkers(spawned_parent,islot) = spawned_walkers(spawned_parent,islot) + 2**ipart
-                        end if
-                    end do
-                    exit compress
-                else
-                    ! Accumulate the population on this determinant, how much of the population came
-                    ! from an initiator and the sign of the event.
-                    if (spawned_walkers(spawned_parent,k) == 0) then
-                            initiator_pop = initiator_pop + spawned_walkers(spawned_pop:spawned_hf_pop,k)
-                    else
-                        do ipart = spawned_pop, spawned_hf_pop
-                            if (spawned_walkers(ipart,k) < 0) then
-                                events(ipart) = events(ipart) - 1
-                            else
-                                events(ipart) = events(ipart) + 1
-                            end if
-                        end do
-                    end if
-                    spawned_walkers(spawned_pop:spawned_hf_pop,islot) = &
-                         spawned_walkers(spawned_pop:spawned_hf_pop,islot) + spawned_walkers(spawned_pop:spawned_hf_pop,k)
-                end if
-            end do compress
-            ! All done?
-            if (islot == spawning_head(thread_id,0) .or. k > spawning_head(thread_id,0)) exit self_annihilate
-            ! go to the next slot if the current determinant wasn't completed
-            ! annihilated.
-            if (any(spawned_walkers(spawned_pop:spawned_hf_pop,islot) /= 0)) islot = islot + 1
-        end do self_annihilate
-
-        ! We didn't check if the population on the last determinant is
-        ! completely annihilated or not.
-        if (all(spawned_walkers(spawned_pop:spawned_hf_pop, islot) == 0)) islot = islot - 1
-
-        ! update spawning_head(thread_id,0)
-        spawning_head(thread_id,0) = islot
-
-    end subroutine annihilate_spawned_list_initiator
-
     subroutine annihilate_main_list()
 
         ! Annihilate particles in the main walker list with those in the spawned
@@ -366,13 +90,14 @@ contains
         nannihilate = 0
         istart = 1
         iend = tot_walkers
-        do i = 1, spawning_head(thread_id,0)
-            f = spawned_walkers(:total_basis_length,i)
+        do i = 1, qmc_spawn%head(thread_id,0)
+            f = qmc_spawn%sdata(:total_basis_length,i)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
                 old_pop = walker_population(:,pos)
-                walker_population(:,pos) = walker_population(:,pos) + spawned_walkers(spawned_pop:spawned_hf_pop,i)
+                walker_population(:,pos) = walker_population(:,pos) + &
+                    qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -387,11 +112,11 @@ contains
             else
                 ! Compress spawned list.
                 k = i - nannihilate
-                spawned_walkers(:,k) = spawned_walkers(:,i)
+                qmc_spawn%sdata(:,k) = qmc_spawn%sdata(:,i)
             end if
         end do
 
-        spawning_head(thread_id,0) = spawning_head(thread_id,0) - nannihilate
+        qmc_spawn%head(thread_id,0) = qmc_spawn%head(thread_id,0) - nannihilate
 
     end subroutine annihilate_main_list
 
@@ -415,8 +140,8 @@ contains
         nannihilate = 0
         istart = 1
         iend = tot_walkers
-        do i = 1, spawning_head(thread_id,0)
-            f = spawned_walkers(:total_basis_length,i)
+        do i = 1, qmc_spawn%head(thread_id,0)
+            f = qmc_spawn%sdata(:total_basis_length,i)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 old_pop = walker_population(:,pos)
@@ -425,15 +150,16 @@ contains
                 do ipart = 1, sampling_size
                     if (walker_population(ipart,pos) /= 0) then
                         ! Annihilate!
-                        walker_population(ipart,pos) = walker_population(ipart,pos) + spawned_walkers(ipart+spawned_pop-1,i)
-                    else if (.not.btest(spawned_walkers(spawned_parent,i),ipart+spawned_pop-1)) then
+                        walker_population(ipart,pos) = walker_population(ipart,pos) + &
+                                                        qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i)
+                    else if (.not.btest(qmc_spawn%sdata(qmc_spawn%flag_indx,i),ipart+qmc_spawn%bit_str_len)) then
                         ! Keep only if from a multiple spawning event or an
                         ! initiator.
-                        ! If this is the case, then spawed_walkers(spawned_parent,i) 
+                        ! If this is the case, then sdata(flag_indx,i) 
                         ! does not have a bit set in corresponding to 2**pop_indx, 
                         ! where pop_indx is the index of this walker type in the
-                        ! spawned_walkers array (i.e. ipart+spawned_pop-1).
-                        walker_population(ipart,pos) = spawned_walkers(ipart+spawned_pop-1,i)
+                        ! qmc_spawn%sdata array (i.e. ipart+bit_str_len).
+                        walker_population(ipart,pos) = qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i)
                     end if
                 end do
                 ! The change in the number of particles is a bit subtle.
@@ -443,7 +169,7 @@ contains
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
                 nparticles = nparticles + abs(walker_population(:,pos)) - abs(old_pop)
-                ! One more entry to be removed from the spawned_walkers array.
+                ! One more entry to be removed from the qmc_spawn%sdata array.
                 nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
@@ -452,19 +178,19 @@ contains
                 ! Compress spawned list.
                 ! Keep only progeny spawned by initiator determinants
                 ! or multiple sign-coherent events.  If neither of these
-                ! conditions are met then the i-th bit of spawned_parent is set,
-                ! where i is the particle index in spawned_walkers.
+                ! conditions are met then the j-th bit of sdata(flag_indx,i) is set,
+                ! where j is the particle index in qmc_spawn%sdata.
                 discard = .true.
-                do ipart = spawned_pop, spawned_hf_pop
-                    if (btest(spawned_walkers(spawned_parent,i),ipart)) then
+                do ipart = qmc_spawn%bit_str_len+1, qmc_spawn%bit_str_len+qmc_spawn%ntypes
+                    if (btest(qmc_spawn%sdata(qmc_spawn%flag_indx,i),ipart)) then
                         ! discard attempting spawnings from non-initiator walkers
                         ! onto unoccupied determinants.
                         ! note that the number of particles (nparticles) was not
                         ! updated at the time of spawning, so doesn't change.
-                        spawned_walkers(ipart,i-nannihilate) = 0
+                        qmc_spawn%sdata(ipart,i-nannihilate) = 0
                     else
                         ! keep!
-                        spawned_walkers(ipart,i-nannihilate) = spawned_walkers(ipart,i)
+                        qmc_spawn%sdata(ipart,i-nannihilate) = qmc_spawn%sdata(ipart,i)
                         discard = .false.
                     end if
                 end do
@@ -474,12 +200,12 @@ contains
                     nannihilate = nannihilate + 1
                 else
                     ! Need to copy the bit string across...
-                    spawned_walkers(:total_basis_length,i-nannihilate) = spawned_walkers(:total_basis_length,i)
+                    qmc_spawn%sdata(:total_basis_length,i-nannihilate) = qmc_spawn%sdata(:total_basis_length,i)
                 end if
             end if
         end do
 
-        spawning_head(thread_id,0) = spawning_head(thread_id,0) - nannihilate
+        qmc_spawn%head(thread_id,0) = qmc_spawn%head(thread_id,0) - nannihilate
 
     end subroutine annihilate_main_list_initiator
 
@@ -547,9 +273,9 @@ contains
 
         istart = 1
         iend = tot_walkers
-        do i = spawning_head(thread_id,0), 1, -1
+        do i = qmc_spawn%head(thread_id,0), 1, -1
             ! spawned det is not in the main walker list
-            call binary_search(walker_dets, spawned_walkers(:total_basis_length,i), istart, iend, hit, pos)
+            call binary_search(walker_dets, qmc_spawn%sdata(:total_basis_length,i), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
@@ -561,9 +287,9 @@ contains
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
-            walker_dets(:,k) = spawned_walkers(:total_basis_length,i)
-            walker_population(:,k) = spawned_walkers(spawned_pop:spawned_hf_pop,i)
-            nparticles = nparticles + abs(spawned_walkers(spawned_pop:spawned_hf_pop,i))
+            walker_dets(:,k) = qmc_spawn%sdata(:total_basis_length,i)
+            walker_population(:,k) = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i)
+            nparticles = nparticles + abs(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i))
             walker_data(1,k) = sc0_ptr(walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
@@ -578,7 +304,7 @@ contains
         end do
 
         ! Update tot_walkers
-        tot_walkers = tot_walkers + spawning_head(thread_id,0)
+        tot_walkers = tot_walkers + qmc_spawn%head(thread_id,0)
 
     end subroutine insert_new_walkers
 

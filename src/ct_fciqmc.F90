@@ -14,7 +14,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
-        use calc, only: seed
+        use calc, only: seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info
         use excitations, only: excit
         use qmc_common
@@ -44,9 +44,13 @@ contains
         type(excit) :: D0_excit
         type(dSFMT_t) :: rng
         integer, parameter :: thread_id = 0
+        integer :: spawned_pop
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
+
+        ! index of spawning array which contains population
+        spawned_pop = basis_length + 1
 
         if (system_type == hub_k) then
             max_nexcitations = nalpha*nbeta*min(nsites-nalpha,nsites-nbeta)
@@ -133,7 +137,7 @@ contains
                             ! spawned array - maintaining processor blocks if going in
                             ! parallel. We now also have an extra "time" array giving
                             ! the birth time of the walker.
-                            call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
+                            call create_spawned_particle_ct(cdet, connection, nspawned, 1, time)
 
                         end if
 
@@ -151,17 +155,17 @@ contains
             ! this  must be appened to the spawned array and themselves advanced
             ! to the barrier.
 
-            ! Start the first element in each block in spawned_walkers.
-            current_pos = spawning_block_start + 1
+            ! Start the first element in each block in qmc_spawn%sdata.
+            current_pos = qmc_spawn%head_start + 1
             do
                 do proc_id = 0, nprocs-1
 
-                    if (current_pos(thread_id,proc_id) <= spawning_head(0,proc_id)) then
+                    if (current_pos(thread_id,proc_id) <= qmc_spawn%head(0,proc_id)) then
                         ! Have spawned walkers in the block to be sent to
                         ! processor proc_id.  Need to advance them to the barrier.
 
                         ! decode the spawned walker bitstring
-                        cdet%f = spawned_walkers(:basis_length,current_pos(thread_id,proc_id))
+                        cdet%f = qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id))
                         K_ii = sc0_ptr(cdet%f) - H00
                         call decoder_ptr(cdet%f,cdet)
 
@@ -175,16 +179,16 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(rng, cdet, K_ii, int(spawned_walkers(spawned_pop,current_pos(thread_id,proc_id))), &
+                            call ct_spawn(rng, cdet, K_ii, int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))), &
                                           R, nspawned, connection)
 
                             if (nspawned /= 0) then
 
                                 ! Handle walker death
                                 if(connection%nexcit == 0 .and. &
-                                        spawned_walkers(spawned_pop,current_pos(thread_id,proc_id))*nspawned < 0) then
-                                    spawned_walkers(spawned_pop,current_pos(thread_id,proc_id)) = &
-                                            spawned_walkers(spawned_pop,current_pos(thread_id,proc_id)) + nspawned
+                                        qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))*nspawned < 0) then
+                                    qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) = &
+                                            qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) + nspawned
                                     ndeath = ndeath + 1
                                     exit ! The walker is dead - do not continue
                                 end if
@@ -206,13 +210,13 @@ contains
                 end do
 
                 ! Spawned all children and future generations to the barrier?
-                if (all(current_pos == spawning_head+1)) exit
+                if (all(current_pos == qmc_spawn%head+1)) exit
 
             end do
 
             call end_mc_cycle(ndeath, nattempts)
 
-            call direct_annihilation()
+            call direct_annihilation(initiator_approximation)
 
             call end_report_loop(ireport, nparticles_old, t1, soft_exit)
 
@@ -346,7 +350,7 @@ contains
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop
+        use fciqmc_data, only: qmc_spawn
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
@@ -373,14 +377,14 @@ contains
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(0,iproc_spawn) = spawning_head(0,iproc_spawn) + 1
+        qmc_spawn%head(0,iproc_spawn) = qmc_spawn%head(0,iproc_spawn) + 1
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(0,iproc_spawn)) = 0
-        spawned_walkers(:basis_length,spawning_head(0,iproc_spawn)) = f_new
-        spawned_walkers(particle_type,spawning_head(0,iproc_spawn)) = nspawn
-        spawn_times(spawning_head(0,iproc_spawn)) = spawn_time
+        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0
+        qmc_spawn%sdata(:basis_length,qmc_spawn%head(0,iproc_spawn)) = f_new
+        qmc_spawn%sdata(particle_type,qmc_spawn%head(0,iproc_spawn)) = nspawn
+        spawn_times(qmc_spawn%head(0,iproc_spawn)) = spawn_time
 
     end subroutine create_spawned_particle_ct
 

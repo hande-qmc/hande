@@ -413,7 +413,7 @@ contains
 
         use hashing
         use basis, only: basis_length, total_basis_length
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop
+        use fciqmc_data, only: qmc_spawn
         use parallel
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
@@ -437,15 +437,15 @@ contains
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(0,iproc_spawn) = spawning_head(0,iproc_spawn) + 1
+        qmc_spawn%head(0,iproc_spawn) = qmc_spawn%head(0,iproc_spawn) + 1
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(0,iproc_spawn)) = 0
+        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0
         ! indices 1 to total_basis_length store the bitstring.
-        spawned_walkers(:(2*basis_length),spawning_head(0,iproc_spawn)) = f_new
+        qmc_spawn%sdata(:(2*basis_length),qmc_spawn%head(0,iproc_spawn)) = f_new
         ! The final index stores the number of psips created.
-        spawned_walkers((2*basis_length)+1,spawning_head(0,iproc_spawn)) = nspawn
+        qmc_spawn%sdata((2*basis_length)+1,qmc_spawn%head(0,iproc_spawn)) = nspawn
 
     end subroutine create_particle
 

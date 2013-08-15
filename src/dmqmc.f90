@@ -30,7 +30,7 @@ contains
         use qmc_common
         use interact, only: fciqmc_interact
         use system, only: nel
-        use calc, only: seed, doing_dmqmc_calc, dmqmc_energy
+        use calc, only: seed, doing_dmqmc_calc, dmqmc_energy, initiator_approximation
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
         use system, only: system_type, heisenberg
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -71,7 +71,7 @@ contains
         do beta_cycle = 1, beta_loops
             ! Reset the current position in the spawning array to be the
             ! slot preceding the first slot.
-            spawning_head = spawning_block_start
+            qmc_spawn%head = qmc_spawn%head_start
             tot_walkers = 0
             shift = initial_shift
             nparticles = 0
@@ -102,7 +102,7 @@ contains
                 call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
             end select
 
-            call direct_annihilation()
+            call direct_annihilation(initiator_approximation)
 
             nparticles_old = nint(D0_population)
 
@@ -114,7 +114,7 @@ contains
                 if (calculate_excit_distribution) excit_distribution = 0
 
                 do icycle = 1, ncycles
-                    spawning_head = spawning_block_start
+                    qmc_spawn%head = qmc_spawn%head_start
                     iteration = (ireport-1)*ncycles + icycle
 
                     ! Number of spawning attempts that will be made.
@@ -153,14 +153,16 @@ contains
                                 call spawner_ptr(rng, cdet1, walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                 ! Spawn if attempt was successful.
                                 if (nspawned /= 0) then
-                                    call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end)
+                                    call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
+                                                                        ireplica, qmc_spawn)
                                 end if
 
                                 ! Now attempt to spawn from the second end.
                                 spawning_end = 2
                                 call spawner_ptr(rng, cdet2, walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                 if (nspawned /= 0) then
-                                    call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end)
+                                    call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
+                                                                        ireplica, qmc_spawn)
                                 end if
                             end do
 
@@ -179,7 +181,7 @@ contains
 
                     ! Perform the annihilation step where the spawned walker list is merged with the
                     ! main walker list, and walkers of opposite sign on the same sites are annihilated.
-                    call direct_annihilation()
+                    call direct_annihilation(initiator_approximation)
 
                     ! If doing importance sampling *and* varying the weights of the trial function, call a routine
                     ! to update these weights and alter the number of psips on each excitation level accordingly.

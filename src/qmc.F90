@@ -68,10 +68,6 @@ contains
         use parallel
         use utils, only: int_fmt
 
-        use annihilation, only: annihilate_main_list, annihilate_spawned_list, &
-                                annihilate_main_list_initiator,                &
-                                annihilate_spawned_list_initiator
-        use basis, only: nbasis, basis_length, basis_fns, write_basis_fn, bit_lookup
         use basis, only: nbasis, basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
         use calc, only: sym_in, ms_in, initiator_approximation, fciqmc_calc, hfs_fciqmc_calc, ct_fciqmc_calc
         use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
@@ -84,6 +80,7 @@ contains
         use fciqmc_restart, only: read_restart
         use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
+        use spawn_data, only: alloc_spawn_t
         use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
         use system, only: trial_function, neel_singlet, single_basis, sym_max
         use symmetry, only: symmetry_orb_list
@@ -101,20 +98,10 @@ contains
 
         ! Array sizes depending upon FCIQMC algorithm.
         sampling_size = 1
-        spawned_size = total_basis_length + 1
-        spawned_pop = spawned_size
         if (doing_calc(hfs_fciqmc_calc)) then
-            spawned_size = spawned_size + 1
-            spawned_hf_pop = spawned_size
             sampling_size = sampling_size + 1
         else if (replica_tricks) then
             sampling_size = sampling_size + 1
-        else
-            spawned_hf_pop = spawned_size
-        end if
-        if (initiator_approximation) then
-            spawned_size = spawned_size + 1
-            spawned_parent = spawned_size
         end if
 
         ! Each determinant occupies basis_length kind=i0 integers,
@@ -145,7 +132,11 @@ contains
         end if
 
         ! Each spawned_walker occupies spawned_size kind=i0 integers.
-        size_spawned_walker = spawned_size*i0_length/8
+        if (initiator_approximation) then
+            size_spawned_walker = (total_basis_length+sampling_size+1)*i0_length/8
+        else
+            size_spawned_walker = (total_basis_length+sampling_size)*i0_length/8
+        end if
         if (spawned_walker_length < 0) then
             ! Given in MB.  Convert.
             ! Note that we store 2 arrays.
@@ -184,34 +175,14 @@ contains
             if (parent) write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',a1,/)') &
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
-        allocate(spawned_walkers1(spawned_size,spawned_walker_length), stat=ierr)
-        call check_allocate('spawned_walkers1',spawned_size*spawned_walker_length,ierr)
-        spawned_walkers => spawned_walkers1
+
         if (doing_calc(ct_fciqmc_calc)) then
             allocate(spawn_times(spawned_walker_length),stat=ierr)
             call check_allocate('spawn_times',spawned_walker_length,ierr)
         end if
-        ! Allocate scratch space for doing communication.
-        allocate(spawned_walkers2(spawned_size,spawned_walker_length), stat=ierr)
-        call check_allocate('spawned_walkers2',spawned_size*spawned_walker_length,ierr)
-        spawned_walkers_recvd => spawned_walkers2
 
-        ! Find the start position within the spawned walker lists for each
-        ! processor.
-        ! spawning_block_start(nthreads-1,1) should contain the number of elements allocated
-        ! for each processor so we allow it to be accessible even if the number
-        ! of processors is 1.
-        allocate(spawning_block_start(0:nthreads-1,0:max(1,nprocs-1)), stat=ierr)
-        call check_allocate('spawning_block_start',size(spawning_block_start),ierr)
-        step = spawned_walker_length/nprocs
-        forall (i=0:nprocs-1) 
-            forall (j=0:nthreads-1) spawning_block_start(j,i) = i*step+j
-        end forall
-        spawning_block_start(nthreads-1,1) = step
-
-        ! Set spawning_head to be the same size as spawning_block_start.
-        allocate(spawning_head(0:nthreads-1,0:max(1,nprocs-1)), stat=ierr)
-        call check_allocate('spawning_head', size(spawning_head), ierr)
+        call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
+                         spawned_walker_length, qmc_spawn)
 
         ! Set spin variables for non-Heisenberg systems
         if (system_type /= heisenberg) call set_spin_polarisation(ms_in)
@@ -517,7 +488,6 @@ contains
         use system
 
         ! Procedures to be pointed to.
-        use annihilation
         use death, only: stochastic_death
         use determinants
         use dmqmc_estimators
@@ -671,8 +641,6 @@ contains
             else
                 create_spawned_particle_ptr => create_spawned_particle_initiator
             end if
-            annihilate_main_list_ptr => annihilate_main_list_initiator
-            annihilate_spawned_list_ptr => annihilate_spawned_list_initiator
         else
             set_parent_flag_ptr => set_parent_flag_dummy
             if (all(ras > 0)) then
@@ -682,8 +650,6 @@ contains
             else
                 create_spawned_particle_ptr => create_spawned_particle
             end if
-            annihilate_main_list_ptr => annihilate_main_list
-            annihilate_spawned_list_ptr => annihilate_spawned_list
         end if
 
         ! b) folded-spectrum
