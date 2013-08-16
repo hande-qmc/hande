@@ -36,7 +36,7 @@ contains
         use bit_utils, only: bit_str_gt
 
         interface operator(.listgt.)
-            procedure bit_str_gt
+            module procedure bit_str_gt
         end interface
 
         integer(i0), intent(inout) :: list(:,:)
