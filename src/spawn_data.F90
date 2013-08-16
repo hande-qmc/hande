@@ -381,7 +381,8 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer :: islot, ipart, k, pop_sign
-        integer, allocatable :: events(:), initiator_pop(:)
+        integer, allocatable :: events(:)
+        integer(i0), allocatable :: initiator_pop(:)
         integer, parameter :: thread_id = 0
 
         allocate(events(spawn%bit_str_len+1:spawn%element_len))
@@ -402,7 +403,7 @@ contains
                     events(ipart) = 0
                 else
                     initiator_pop(ipart) = 0
-                    events(ipart) = sign(1,spawn%sdata(ipart,k))
+                    events(ipart) = sign(1_i0,spawn%sdata(ipart,k))
                 end if
             end do
             compress: do
@@ -433,7 +434,7 @@ contains
                     spawn%sdata(spawn%flag_indx,islot) = 0
                     do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
                         if (initiator_pop(ipart) /= 0 .and.  &
-                                sign(1,spawn%sdata(ipart,islot)) == sign(1,initiator_pop(ipart)) ) then
+                                sign(1_i0,spawn%sdata(ipart,islot)) == sign(1_i0,initiator_pop(ipart)) ) then
                             ! Keep all.  We should still annihilate psips of
                             ! opposite sign from non-initiator events(spawn%bit_str_len+1).
                         else if (abs(events(spawn%bit_str_len+1)) > 1) then
