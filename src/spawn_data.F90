@@ -292,6 +292,8 @@ contains
         spawn%sdata => spawn%sdata_recvd
         spawn%sdata_recvd => tmp_data
 
+#else
+        type(spawn_t), intent(inout) :: spawn
 #endif
 
     end subroutine comm_spawn_t
