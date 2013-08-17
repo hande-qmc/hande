@@ -489,7 +489,7 @@ contains
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
-            write (6, '(2X, i11,3X,f6.4,2X,f4.2)') ntot_particles, rspawn, elapsed_time/ncycles
+            write (6, '(2X, i11)', advance='no') ntot_particles
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift,   &
