@@ -5,11 +5,16 @@ implicit none
 
 ! This type contains information for the RDM corresponding to a
 ! given subsystem. It takes translational symmetry into account by
-! storing information for all subsystems which are equivlanet by
+! storing information for all subsystems which are equivalent by
 ! translational symmetry.
 type rdm
     ! The total number of sites in subsystem A.
-    integer :: A_size
+    integer :: A_nsites
+    ! Similar to basis_length, rdm_basis_length is the length of the
+    ! byte array necessary to contain a bit for each subsystem-A basis
+    ! function. An array of twice this length is stored to hold both
+    ! RDM indices.
+    integer :: rdm_basis_length
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
     ! B_masks(i,:) has bits set at all bit positions corresponding to
@@ -20,7 +25,15 @@ type rdm
     ! site j in 'version' i of subsystem A.
     ! bit_pos(i,j,2) contains the element of the bit corresponding to
     ! site j in 'version' i of subsystem A.
+    ! Note that site j in a given version is the site that corresponds to
+    ! site j in all other versions of subsystem A (and so bit_pos(i,:,1)
+    ! and bit_pos(i,:,2) will not be sorted). This is very important
+    ! so that equivalent psips will contribute to the same RDM element.
     integer, allocatable :: bit_pos(:,:,:)
+    ! Two bitstrings of length rdm_basis_length. To be used as temporary
+    ! bitstrings to prevent having to regularly allocate different
+    ! length bitstrings for different RDMs.
+    integer(i0), allocatable :: end1(:), end2(:)
 end type rdm
 
 ! This stores all the information for the various RDMs that the user asks
@@ -167,13 +180,17 @@ contains
         ! to either subsystem A or B. Also calculate the positions and elements of the sites
         ! in subsyetsm A, and finally allocate the RDM itself.
 
-        use calc, only: ms_in
+        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_renyi_2
         use checking, only: check_allocate
         use errors
-        use fciqmc_data, only: reduced_density_matrix
+        use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
+        use fciqmc_data, only: replica_tricks, renyi_2, replica_trace_prods, sampling_size
+        use fciqmc_data, only: spawned_rdm_length, rdm_spawn
+        use spawn_data, only: alloc_spawn_t
         use system, only: system_type, heisenberg, nsites
 
-        integer :: i, ierr, ipos, basis_find, bit_position, bit_element
+        integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
+        integer :: bit_position, bit_element
 
         ! For the Heisenberg model only currently.
         if (system_type==heisenberg) then
@@ -183,6 +200,55 @@ contains
                            &Heisenberg model.")
         end if
 
+        total_size_spawned_rdm = 0
+
+        do i = 1, nrdms
+            rdms(i)%rdm_basis_length = ceiling(real(rdms(i)%A_nsites)/i0_length)
+
+            allocate(rdms(i)%end1(rdms(i)%rdm_basis_length), stat=ierr)
+            call check_allocate('rdms(i)%end1', rdms(i)%rdm_basis_length, ierr)
+            allocate(rdms(i)%end2(rdms(i)%rdm_basis_length), stat=ierr)
+            call check_allocate('rdms(i)%end2', rdms(i)%rdm_basis_length, ierr)
+            rdms(i)%end1 = 0_i0
+            rdms(i)%end2 = 0_i0
+
+            ! With the calc_ground_rdm option, the entire RDM is allocated. If the following condition
+            ! is met then the number of rows is greater than the maximum integer accessible. This
+            ! would clearly be too large, so abort in this case.
+            if (calc_ground_rdm .and. rdms(i)%rdm_basis_length > 1) call stop_all("setup_rdm_arrays",&
+                "A requested RDM is too large for all indices to be addressed by a single integer.")
+
+            if (replica_tricks .and. calc_inst_rdm) then
+                allocate(replica_trace_prods(nrdms), stat=ierr)
+                call check_allocate('replica_trace_prods', nrdms, ierr)
+                replica_trace_prods = 0
+            end if
+            if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+                allocate(renyi_2(nrdms), stat=ierr)
+                call check_allocate('renyi_2', nrdms, ierr)
+                renyi_2 = 0.0_p
+            end if
+            if (calc_inst_rdm) then
+                allocate(rdm_spawn(nrdms), stat=ierr)
+                call check_allocate('rdm_spawn', nrdms, ierr)
+
+                size_spawned_rdm = (rdms(i)%rdm_basis_length*2+sampling_size)*i0_length/8
+                total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
+                if (spawned_rdm_length < 0) then
+                    ! Given in MB.  Convert.
+                    ! Note that we store 2 arrays.
+                    spawned_rdm_length = int((-real(spawned_rdm_length,p)*10**6)/(2*size_spawned_rdm))
+                end if
+
+                ! Note the initiator approximation is not implemented for density matrix calculations.
+                call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
+                                 spawned_rdm_length, rdm_spawn(i))
+            end if
+        end do
+
+        write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
+            total_size_spawned_rdm*real(2*spawned_rdm_length,p)/10**6
+
         ! Note: Only one RDM is calculated at the moment. This is temporary. For now I have just
         ! created the infrastructure to use translational symmetry and multiple RDMs. Will add the
         ! ability to use them when the sparse implementation is added...
@@ -191,15 +257,15 @@ contains
         ! the subsystem, then any combination of spins can occur in the subsystem, from all spins down
         ! to all spins up. Hence the total size of the reduced density matrix will be 2**(number of spins
         ! in subsystem A).
-        if (ms_in == 0 .and. rdms(1)%A_size <= floor(real(nsites,p)/2.0_p)) then
-            allocate(reduced_density_matrix(2**rdms(1)%A_size,2**rdms(1)%A_size), stat=ierr)
-            call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_size),ierr)
+        if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(nsites,p)/2.0_p)) then
+            allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
+            call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)
             reduced_density_matrix = 0.0_p
         else
             if (ms_in /= 0) then
                 call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
                                &calculations.")
-            else if (rdms(1)%A_size > floor(real(nsites,p)/2.0_p)) then
+            else if (rdms(1)%A_nsites > floor(real(nsites,p)/2.0_p)) then
                 call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
                               &whose size is less than half the total system size.")
             end if
@@ -212,10 +278,11 @@ contains
         use basis, only: basis_length, bit_lookup, basis_lookup, basis_fns, nbasis
         use checking, only: check_allocate, check_deallocate
         use errors
+        use fciqmc_data, only: nrdms, nsym_vec
         use hubbard_real, only: map_vec_to_cell
         use system, only: ndim, nsites, lattice
 
-        integer :: i, j, k, l, ipos, ierr, nvec_tot
+        integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
         integer :: r(ndim), nvecs(3), A_mask(basis_length)
         real(p) :: v(ndim), test_vec(ndim), temp_vec(ndim)
@@ -230,7 +297,7 @@ contains
         ! The number of symmetry vectors in each direction.
         nvecs = 0
         ! The total number of symmetry vectors.
-        nvec_tot = 0
+        nsym_vec = 0
 
         do i = 1, ndim
             scale_fac = maxval(abs(lattice(:,i)))
@@ -242,8 +309,8 @@ contains
                     ! If test_vec has all integer components.
                     ! This is a symmetry vector, so store it.
                     nvecs(i) = nvecs(i) + 1
-                    nvec_tot = nvec_tot + 1
-                    trans_vecs(:,nvec_tot) = test_vec
+                    nsym_vec = nsym_vec + 1
+                    trans_vecs(:,nsym_vec) = test_vec
                 end if
             end do
         end do
@@ -253,14 +320,14 @@ contains
         ! Add all pairs of the above vectors.
         do i = 1, nvecs(1)
             do j = nvecs(1)+1, sum(nvecs)
-                nvec_tot = nvec_tot + 1
-                trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)
+                nsym_vec = nsym_vec + 1
+                trans_vecs(:,nsym_vec) = trans_vecs(:,i)+trans_vecs(:,j)
             end do
         end do
         do i = nvecs(1)+1, nvecs(1)+nvecs(2)
             do j = nvecs(1)+nvecs(2)+1, sum(nvecs)
-                nvec_tot = nvec_tot + 1
-                trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)
+                nsym_vec = nsym_vec + 1
+                trans_vecs(:,nsym_vec) = trans_vecs(:,i)+trans_vecs(:,j)
             end do
         end do
 
@@ -268,32 +335,32 @@ contains
         do i = 1, nvecs(1)
             do j = nvecs(1)+1, nvecs(1)+nvecs(2)
                 do k = nvecs(1)+nvecs(2)+1, sum(nvecs)
-                    nvec_tot = nvec_tot + 1
-                    trans_vecs(:,nvec_tot) = trans_vecs(:,i)+trans_vecs(:,j)+trans_vecs(:,k)
+                    nsym_vec = nsym_vec + 1
+                    trans_vecs(:,nsym_vec) = trans_vecs(:,i)+trans_vecs(:,j)+trans_vecs(:,k)
                 end do
             end do
         end do
 
         ! Include the identity transformation vector in the first slot.
-        trans_vecs(:,2:nvec_tot+1) = trans_vecs(:,1:nvec_tot)
+        trans_vecs(:,2:nsym_vec+1) = trans_vecs(:,1:nsym_vec)
         trans_vecs(:,1) = 0
-        nvec_tot = nvec_tot + 1
+        nsym_vec = nsym_vec + 1
 
         ! Allocate the RDM arrays.
-        do i = 1, size(rdms)
-            allocate(rdms(i)%B_masks(nvec_tot,basis_length), stat=ierr)
-            call check_allocate('rdms(i)%B_masks', nvec_tot*basis_length,ierr)
-            allocate(rdms(i)%bit_pos(nvec_tot,rdms(i)%A_size,2), stat=ierr)
-            call check_allocate('rdms(i)%bit_pos', nvec_tot*rdms(i)%A_size*2,ierr)
+        do i = 1, nrdms
+            allocate(rdms(i)%B_masks(nsym_vec,basis_length), stat=ierr)
+            call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
+            allocate(rdms(i)%bit_pos(nsym_vec,rdms(i)%A_nsites,2), stat=ierr)
+            call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
             rdms(i)%B_masks = 0
             rdms(i)%bit_pos = 0
         end do
 
         ! Run through every site on every subsystem and add every translational symmetry vector.
-        do i = 1, size(rdms) ! Over every subsystem.
-            do j = 1, nvec_tot ! Over every symmetry vector.
+        do i = 1, nrdms ! Over every subsystem.
+            do j = 1, nsym_vec ! Over every symmetry vector.
                 A_mask = 0
-                do k = 1, rdms(i)%A_size ! Over every site in the subsystem.
+                do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
                     r = basis_fns(rdms(i)%subsystem_A(k))%l
                     r = r + nint(trans_vecs(:,j))
                     ! If r is outside the cell considered in this simulation, shift it by the
@@ -334,7 +401,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine random_distribution_heisenberg(rng)
+    subroutine random_distribution_heisenberg(rng, ireplica)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -359,6 +426,7 @@ contains
         use system, only: nsites
 
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: ireplica
         integer :: i, up_spins, rand_basis, bits_set
         integer :: bit_element, bit_position, npsips
         integer(i0) :: f(basis_length)
@@ -395,13 +463,13 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_particle(f,f,1)
+            call create_particle(f,f,1,ireplica)
 
         end do
 
     end subroutine random_distribution_heisenberg
 
-    subroutine create_particle(f1,f2,nspawn)
+    subroutine create_particle(f1, f2, nspawn, particle_type)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly
@@ -417,7 +485,7 @@ contains
         use parallel
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
-        integer, intent(in) :: nspawn
+        integer, intent(in) :: nspawn, particle_type
         integer(i0) :: f_new(total_basis_length)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
@@ -443,42 +511,46 @@ contains
         ! Zero it as not all fields are set.
         qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0
         ! indices 1 to total_basis_length store the bitstring.
-        qmc_spawn%sdata(:(2*basis_length),qmc_spawn%head(0,iproc_spawn)) = f_new
+        qmc_spawn%sdata(:(total_basis_length),qmc_spawn%head(0,iproc_spawn)) = f_new
         ! The final index stores the number of psips created.
-        qmc_spawn%sdata((2*basis_length)+1,qmc_spawn%head(0,iproc_spawn)) = nspawn
+        qmc_spawn%sdata((total_basis_length)+particle_type,qmc_spawn%head(0,iproc_spawn)) = nspawn
 
     end subroutine create_particle
 
-    subroutine decode_dm_bitstring(f, index1, index2)
+    subroutine decode_dm_bitstring(f, irdm, isym)
 
-        ! This function maps an input DMQMC bitstring to two indices
-        ! giving the corresponding position of the bitstring in the reduced
-        ! density matrix.
+        ! This function maps a full DMQMC bitstring to two bitstrings encoding the subsystem-A
+        ! RDM bitstrings. These resulting bitstrings are stored in the end1 and end2 components
+        ! of rdms(irdm).
+        
+        ! Crucially, the mapping is performed so that, if there are two subsystems which are
+        ! equivalent by symmetry, then equivalent sites in those two subsystems will be mapped to
+        ! the same RDM bitstrings. This is clearly a requirement to obtain a correct representation
+        ! of the RDM when using translational symmetry.
 
-        use basis, only: basis_length
+        use basis, only: basis_length, bit_lookup
 
-        integer(i0), intent(in) :: f(basis_length*2)
-        integer(i0), intent(out) :: index1, index2
-        integer :: i
+        integer(i0), intent(in) :: f(2*basis_length)
+        integer, intent(in) :: irdm, isym
+        integer :: i, bit_pos, bit_element
 
         ! Start from all bits down, so that we can flip bits up one by one.
-        index1 = 0
-        index2 = 0
+        rdms(irdm)%end1 = 0
+        rdms(irdm)%end2 = 0
 
-        ! Loop over all the sites in the sublattice considered for the reduced density matrix.
-        do i = 1, rdms(1)%A_size
-            ! If the spin is up, flip the corresponding bit in the first index up.
-            if (btest(f(rdms(1)%bit_pos(1,i,2)),rdms(1)%bit_pos(1,i,1))) &
-                index1 = ibset(index1,i-1)
+        ! Loop over all the sites in the subsystem considered for the reduced density matrix.
+        do i = 1, rdms(irdm)%A_nsites
+            ! Find the final bit positions and elements.
+            bit_pos = bit_lookup(1,i)
+            bit_element = bit_lookup(2,i)
+
+            ! If the spin is up, set the corresponding bit in the first bitstring.
+            if (btest(f(rdms(irdm)%bit_pos(isym,i,2)),rdms(irdm)%bit_pos(isym,i,1))) &
+                rdms(irdm)%end1(bit_element) = ibset(rdms(irdm)%end1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of the bitstring.
-            if (btest(f(rdms(1)%bit_pos(1,i,2)+basis_length),rdms(1)%bit_pos(1,i,1))) &
-                index2 = ibset(index2,i-1)
+            if (btest(f(rdms(irdm)%bit_pos(isym,i,2)+basis_length),rdms(irdm)%bit_pos(isym,i,1))) &
+                rdms(irdm)%end2(bit_element) = ibset(rdms(irdm)%end2(bit_element),bit_pos)
         end do
-
-        ! The process above maps to numbers between 0 and 2^rdms(1)%A_size-1, but the smallest
-        ! and largest of the reduced density matrix are one more than these, so add one...
-        index1 = index1+1
-        index2 = index2+1
 
     end subroutine decode_dm_bitstring
  
@@ -495,11 +567,11 @@ contains
         use excitations, only: get_excitation_level
         use fciqmc_data, only: dmqmc_accumulated_probs, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
-        use fciqmc_data, only: nparticles
+        use fciqmc_data, only: nparticles, sampling_size
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer :: idet, excit_level, nspawn, sign_factor, old_population
+        integer :: idet, ireplica, excit_level, nspawn, sign_factor, old_population
         real(p) :: new_factor
         real(dp) :: rand_num, prob
 
@@ -512,26 +584,31 @@ contains
         ! for the new weights. The code below loops over every psips and destroys (or creates)
         ! it with the appropriate probability.
         do idet = 1, tot_walkers
+
             excit_level = get_excitation_level(walker_dets(1:basis_length,idet),&
                     walker_dets(basis_length+1:total_basis_length,idet))
-            old_population = abs(walker_population(1,idet))
-            rand_num = get_rand_close_open(rng)
-            ! If weight_altering_factors(excit_level) > 1, need to kill psips.
-            ! If weight_altering_factors(excit_level) < 1, need to create psips.
-            prob = abs(1.0_dp - weight_altering_factors(excit_level)**(-1))*old_population
-            nspawn = int(prob)
-            prob = prob - nspawn
-            if (rand_num < prob) nspawn = nspawn + 1
-            if (weight_altering_factors(excit_level) > 1.0_dp) then
-                sign_factor = -1
-            else
-                sign_factor = +1
-            end if
-            nspawn = sign(nspawn,walker_population(1,idet)*sign_factor)
-            ! Update the population on this determinant.
-            walker_population(1,idet) = walker_population(1,idet) + nspawn
-            ! Update the total number of walkers.
-            nparticles(1) = nparticles(1) - old_population + abs(walker_population(1,idet))
+
+            do ireplica = 1, sampling_size
+                old_population = abs(walker_population(ireplica,idet))
+                rand_num = get_rand_close_open(rng)
+                ! If weight_altering_factors(excit_level) > 1, need to kill psips.
+                ! If weight_altering_factors(excit_level) < 1, need to create psips.
+                prob = abs(1.0_dp - weight_altering_factors(excit_level)**(-1))*old_population
+                nspawn = int(prob)
+                prob = prob - nspawn
+                if (rand_num < prob) nspawn = nspawn + 1
+                if (weight_altering_factors(excit_level) > 1.0_dp) then
+                    sign_factor = -1
+                else
+                    sign_factor = +1
+                end if
+                nspawn = sign(nspawn,walker_population(ireplica,idet)*sign_factor)
+                ! Update the population on this determinant.
+                walker_population(ireplica,idet) = walker_population(ireplica,idet) + nspawn
+                ! Update the total number of walkers.
+                nparticles(ireplica) = nparticles(ireplica) - old_population + &
+                        abs(walker_population(ireplica,idet))
+            end do
         end do
 
         ! Call the annihilation routine to update the main walker list, as some

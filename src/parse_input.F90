@@ -47,7 +47,7 @@ contains
         character(100) :: w
         integer :: ios
         logical :: eof, t_exists
-        integer :: ivec, i, j, ierr, nweights, nrdms
+        integer :: ivec, i, j, ierr, nweights
 
         if (iargc() > 0) then
             ! Input file specified on the command line.
@@ -247,13 +247,17 @@ contains
                 do i = 1, nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
-                    rdms(i)%A_size = nitems
+                    rdms(i)%A_nsites = nitems
                     allocate(rdms(i)%subsystem_A(nitems))
                     call check_allocate('rdms(i)%subsystem_A',nitems,ierr)
                     do j = 1, nitems
                         call readi(rdms(i)%subsystem_A(j))
                     end do
                 end do
+            case('GROUND_STATE_RDM')
+                calc_ground_rdm = .true.
+            case('INSTANTANEOUS_RDM')
+                calc_inst_rdm = .true.
             case('OUTPUT_RDM')
                 output_rdm = .true.
             case('EXACT_RDM_EIGENVALUES')
@@ -262,6 +266,8 @@ contains
                 doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
                 doing_von_neumann_entropy = .true.
+            case('RENYI_ENTROPY_2')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_renyi_2
             case('START_AVERAGING')
                 call readi(start_averaging)
             ! calculation options: DMQMC
@@ -309,6 +315,16 @@ contains
                     call readu(w)
                     if (w == 'MB') then
                         spawned_walker_length = -spawned_walker_length
+                    else
+                        call report('Keyword '//trim(w)//' not recognized.', .true.)
+                    end if
+                end if
+            case('SPAWNED_RDM_LENGTH')
+                call readi(spawned_rdm_length)
+                if (item /= nitems) then
+                    call readu(w)
+                    if (w == 'MB') then
+                        spawned_rdm_length = -spawned_rdm_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
@@ -551,6 +567,7 @@ contains
                 if (walker_length == 0) call stop_all(this,'Walker length zero.')
                 if (spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
+            if (calc_inst_rdm .and. spawned_rdm_length == 0) call stop_all(this,'Spawned RDM length zero.')
             if (tau <= 0) call stop_all(this,'Tau not positive.')
             if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(occ_list0)) then
@@ -564,6 +581,11 @@ contains
             if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
+
+        if (doing_dmqmc_calc(dmqmc_renyi_2) .and. (.not. replica_tricks)) call stop_all(this,&
+                    'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
+        if (doing_dmqmc_calc(dmqmc_renyi_2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
+                    'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
 
         ! If the FINITE_CLUSTER keyword was detected then make sure that
         ! we are doing a calculation in real-space. If we're not then
@@ -674,6 +696,7 @@ contains
         call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(spawned_rdm_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
@@ -681,7 +704,10 @@ contains
         call mpi_bcast(average_shift_until, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_von_neumann_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
@@ -715,12 +741,12 @@ contains
                 call check_allocate('rdms',occ_list_size,ierr)
             end if
             do i = 1, occ_list_size
-                call mpi_bcast(rdms(i)%A_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                call mpi_bcast(rdms(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
                 if (.not.parent) then
-                    allocate(rdms(i)%subsystem_A(rdms(i)%A_size), stat=ierr)
-                    call check_allocate('rdms(i)%subsystem_A',rdms(i)%A_size,ierr)
+                    allocate(rdms(i)%subsystem_A(rdms(i)%A_nsites), stat=ierr)
+                    call check_allocate('rdms(i)%subsystem_A',rdms(i)%A_nsites,ierr)
                 end if
-                call mpi_bcast(rdms(i)%subsystem_A, rdms(i)%A_size, mpi_integer, 0, mpi_comm_world, ierr)
+                call mpi_bcast(rdms(i)%subsystem_A, rdms(i)%A_nsites, mpi_integer, 0, mpi_comm_world, ierr)
             end do
         end if
         option_set = .false.

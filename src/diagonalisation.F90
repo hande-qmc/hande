@@ -589,7 +589,7 @@ contains
                     f3(basis_length+1:basis_length*2) = dets_list(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
-                    call decode_dm_bitstring(f3,end1,end2)
+                    call decode_dm_bitstring(f3,1,1)
 
                     ! The ground state wave function is stored in hamil(:,1).
                     rdm_element = hamil(i,1)*hamil(j,1)

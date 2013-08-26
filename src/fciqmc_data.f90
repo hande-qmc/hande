@@ -190,6 +190,11 @@ integer :: number_dmqmc_estimators = 0
 ! the DMQMC algorithm calculates stochastically.
 integer(i0) :: trace
 
+! The components of this array hold the instantaneous products of the
+! traces of the 'main' RDM and the ancilla RDM, for each RDM which
+! the user asks to be calculated.
+integer(i0), allocatable :: replica_trace_prods(:)
+
 ! estimator_numerators stores all the numerators for the estimators in DMQMC
 ! which the user has asked to be calculated. These are, for a general
 ! operator O which we wish to find the thermal average of:
@@ -211,6 +216,16 @@ integer :: energy_index = 0
 integer :: energy_squared_index = 0
 integer :: correlation_index = 0
 integer :: staggered_mag_index = 0
+
+! When using the replica_tricks option, if the rdm in the first
+! simulation if denoted \rho^1 and the ancillary rdm is denoted
+! \rho^2 then renyi_2 holds:
+! x = \sum_{ij} \rho^1_{ij} * \rho^2_{ij}.
+! The indices of renyi_2 hold this value for the various rdms being
+! calculated. After post-processing averaging, this quantity should
+! be normalised by the associated value in replica_trace_prods,
+! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
+real(p), allocatable :: renyi_2(:)
 
 ! If this logical is true then the program runs the DMQMC algorithm with
 ! importance sampling.
@@ -255,14 +270,29 @@ logical :: replica_tricks = .false.
 logical :: calculate_excit_distribution = .false.
 real(p), allocatable :: excit_distribution(:) ! (min(nel, nsites-nel) + 1)
 
-! If true, then the reduced density matrix will be calulated
-! for the subsystem A specified by the user.
+! If true then the reduced density matricies will be calulated for the 'A'
+! subsystems specified by the user.
 logical :: doing_reduced_dm = .false.
 
-! If true then calculate the concurrence for reduced density matrix of two sites
+! If true then each subsystem A RDM specified by the user will be accumulated
+! from the iteration start_averaging until the end of the beat loop, allowing
+! ground-state estimates of the RDMs to be calculated.
+logical :: calc_ground_rdm = .false.
+
+! If true then the reduced density matricies will be calculated for each
+! subsystem specified by the user at the end of each report loop. These RDMs
+! can be used to calculate instantaeous estimates at the given beta value.
+! They are thrown away after these calculation has been performed on them.
+logical :: calc_inst_rdm = .false.
+
+! The length of the spawning array for RDMs. Each RDM calculated has the same
+! length array.
+integer :: spawned_rdm_length
+
+! If true then calculate the concurrence for reduced density matrix of two sites.
 logical :: doing_concurrence = .false.
 
-! If true then calculate the Von-Neumann entanglement entropy for specified subsystem
+! If true then calculate the von Neumann entanglement entropy for specified subsystem.
 logical :: doing_von_neumann_entropy = .false.
 
 ! If true then, if doing an exact diagonalisation, calculate and output the
@@ -273,6 +303,16 @@ logical :: doing_exact_rdm_eigv
 ! (on each processor).
 real(p), allocatable :: reduced_density_matrix(:,:)
 
+! Spawned lists for rdms.
+type(spawn_t), allocatable :: rdm_spawn(:)
+
+! The total number of rdms beings calculated.
+integer :: nrdms
+
+! The total number of translational symmetry vectors.
+! This is only set and used when performing rdm calculations.
+integer :: nsym_vec
+
 ! If true then the reduced density matrix is output to a file, 'reduced_dm'
 ! each beta loop.
 logical :: output_rdm
@@ -280,7 +320,7 @@ logical :: output_rdm
 integer :: rdm_unit
 
 ! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
-! concurrence is to be calculated
+! concurrence is to be calculated.
 real(p), allocatable :: flip_spin_matrix(:,:)
 
 ! When calculating certain DMQMC properties, we only want to start
@@ -404,8 +444,10 @@ contains
 
     subroutine write_fciqmc_report_header()
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc, dmqmc_correlation
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
+        use calc, only: dmqmc_correlation, dmqmc_renyi_2
+        use utils, only: int_fmt
 
         integer :: i
 
@@ -424,6 +466,16 @@ contains
             end if
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
+            end if
+            if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+                do i = 1, nrdms
+                    write (6, '(2X,a19,'//int_fmt(i,1)//')', advance = 'no') 'Renyi_2 numerator', i
+                end do
+            end if
+            if (calc_inst_rdm .and. replica_tricks) then
+                do i = 1, nrdms
+                    write (6, '(2X,a13,'//int_fmt(i,1)//')', advance = 'no') 'Replica trace', i
+                end do
             end if
             if (calculate_excit_distribution) then
                 do i = 0, ubound(excit_distribution,1)
@@ -457,7 +509,7 @@ contains
         !    elapsed_time: time taken for the report loop.
         !    comment: if true, then prefix the line with a #.
 
-        use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc
+        use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc, dmqmc_renyi_2
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
@@ -483,13 +535,23 @@ contains
             do i = 1, number_dmqmc_estimators
                 write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
             end do
+            if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+                do i = 1, nrdms
+                    write (6, '(6X,es17.10)', advance = 'no') renyi_2(i)
+                end do
+            end if
+            if (calc_inst_rdm .and. replica_tricks) then
+                do i = 1, nrdms
+                    write (6, '(7X,i10)', advance = 'no') replica_trace_prods(i)
+                end do
+            end if
             if (calculate_excit_distribution) then
-                excit_distribution = excit_distribution/ntot_particles
+                excit_distribution = excit_distribution/ntot_particles(1)
                 do i = 0, ubound(excit_distribution,1)
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
-            write (6, '(2X, i11)', advance='no') ntot_particles
+            write (6, '(2X, i11)', advance='no') ntot_particles(1)
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift,   &

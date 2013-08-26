@@ -207,11 +207,10 @@ contains
         ! Returns:
         !    Excitation level connecting determinants f1 and f2.
 
-        use basis, only: basis_length
         use bit_utils, only: count_set_bits
 
         integer :: level
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(:), f2(:)
 
 #ifdef PGI
         ! Work round an *insane* bug in PGI where intrinsic bit operations

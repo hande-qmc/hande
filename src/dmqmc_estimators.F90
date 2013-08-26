@@ -18,20 +18,23 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
 
+        use annihilation, only: perform_rdm_annihilation
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_energy_squared
+        use calc, only: dmqmc_energy_squared, dmqmc_renyi_2
         use checking, only: check_allocate
         use energy_evaluation, only: update_shift
         use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn
-        use fciqmc_data, only: shift, vary_shift, nreport
+        use fciqmc_data, only: shift, vary_shift, nreport, replica_tricks
         use fciqmc_data, only: estimator_numerators, number_dmqmc_estimators
         use fciqmc_data, only: nreport, ncycles, trace, calculate_excit_distribution
         use fciqmc_data, only: excit_distribution, average_shift_until, shift_profile
+        use fciqmc_data, only: calc_inst_rdm, rdm_spawn, nrdms
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
         integer, intent(in) :: ireport        
         integer(lint) :: ntot_particles(sampling_size)
+        integer :: irdm
 
 #ifdef PARALLEL
         real(dp), allocatable :: ir(:)
@@ -62,6 +65,17 @@ contains
 #else
         ntot_particles = nparticles
 #endif
+
+        ! If calculating beta-dependent rdms then perform annihilation steps on the spawned
+        ! rdm array, and calculate any desired estimators.
+        if (calc_inst_rdm) then
+            call perform_rdm_annihilation()
+            if (replica_tricks) call calculate_replica_trace_prod()
+            if (doing_dmqmc_calc(dmqmc_renyi_2)) call calculate_renyi_2()
+            do irdm = 1, nrdms
+                rdm_spawn(irdm)%head = rdm_spawn(irdm)%head_start
+            end do
+        end if
 
         ! If average_shift_until = -1 then it means that the shift should be updated to
         ! use the values of shift stored in shift_profile. Otherwise, use the standard update
@@ -98,12 +112,13 @@ contains
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
        use fciqmc_data, only: calculate_excit_distribution, excit_distribution
+       use fciqmc_data, only: sampling_size
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
 
        integer, intent(in) :: idet, iteration
        type(excit) :: excitation
-       real(p) :: unweighted_walker_pop
+       real(p) :: unweighted_walker_pop(sampling_size)
 
        ! Get excitation.
        excitation = get_excitation(walker_dets(:basis_length,idet), &
@@ -115,32 +130,37 @@ contains
        ! to calculate the contribution from these excitation levels correctly.
 
        ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet).
-       unweighted_walker_pop = walker_population(1,idet)*dmqmc_accumulated_probs(excitation%nexcit)
+       unweighted_walker_pop = walker_population(:,idet)*dmqmc_accumulated_probs(excitation%nexcit)
 
-       ! If diagonal element, add to the trace.
-       if (excitation%nexcit == 0) trace = trace + walker_population(1,idet)
-       ! See which estimators are to be calculated, and call the corresponding procedures.
-       ! Energy
-       if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr&
-               &(idet, excitation, unweighted_walker_pop)
-       ! Energy squared
-       if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
-               &(idet, excitation, unweighted_walker_pop)
-       ! Spin-spin correlation function
-       if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-               &(idet, excitation, unweighted_walker_pop)
-       ! Staggered magnetisation
-       if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
-               &(idet, excitation, unweighted_walker_pop)
+       ! The following only use the populations with ireplica = 1, so don't waste time calculating
+       ! them if there won't be a contribution.
+       if (abs(unweighted_walker_pop(1)) > 0) then
+           ! If diagonal element, add to the trace.
+           if (excitation%nexcit == 0) trace = trace + walker_population(1,idet)
+           ! See which estimators are to be calculated, and call the corresponding procedures.
+           ! Energy
+           If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr&
+                   &(idet, excitation, unweighted_walker_pop(1))
+           ! Energy squared
+           if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
+                   &(idet, excitation, unweighted_walker_pop(1))
+           ! Spin-spin correlation function
+           if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
+                   &(idet, excitation, unweighted_walker_pop(1))
+           ! Staggered magnetisation
+           if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
+                   &(idet, excitation, unweighted_walker_pop(1))
+           ! Excitation distribution
+           if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
+                   excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
+           ! Excitation_distribtuion for calculating importance sampling weights
+           if (dmqmc_find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
+                   excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
+       end if
+
        ! Reduced density matrix
-       if (doing_reduced_dm .and. iteration > start_averaging) &
-               call update_reduced_density_matrix_heisenberg(idet, unweighted_walker_pop)
-       ! Excitation distribution
-       if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
-               excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
-       ! Excitation_distribtuion for calculating importance sampling weights
-       if (dmqmc_find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
-               excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
+       if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
+               &(idet, excitation, walker_population(:,idet), iteration)
 
    end subroutine call_dmqmc_estimators
 
@@ -472,7 +492,7 @@ contains
 
    end subroutine dmqmc_stag_mag_heisenberg
 
-   subroutine update_reduced_density_matrix_heisenberg(idet, walker_pop)
+   subroutine update_reduced_density_matrix_heisenberg(idet, excitation, walker_pop, iteration)
 
        ! Add a contribution from the current walker to the reduced density
        ! matrix estimator, which is produced by 'tracing out' a given set of
@@ -488,33 +508,73 @@ contains
        ! In:
        !    idet: Current position in the main bitstring (density matrix) list.
        !    walker_pop: number of particles on the current density matrix
-       !        element.
+       !        element. Note that this walker population is still weighted
+       !        by the importance sampling factors. These factors must be
+       !        removed before any estimates can be calculated.
 
        use basis, only: basis_length, total_basis_length
        use dmqmc_procedures, only: decode_dm_bitstring, rdms
-       use fciqmc_data, only: reduced_density_matrix
-       use fciqmc_data, only: walker_dets, walker_population
+       use excitations, only: excit
+       use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
+       use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, nrdms
+       use fciqmc_data, only: nsym_vec, start_averaging, rdm_spawn, dmqmc_accumulated_probs
+       use spawning, only: create_spawned_particle_rdm
 
-       integer, intent(in) :: idet
-       real(p), intent(in) :: walker_pop
+       integer, intent(in) :: idet, iteration
+       integer, intent(in) :: walker_pop(sampling_size)
+       type(excit), intent(in) :: excitation
+       real(p) :: unweighted_walker_pop(sampling_size)
+       integer :: irdm, isym, ireplica
        integer(i0) :: f1(basis_length), f2(basis_length)
-       integer(i0) :: end1, end2
-       ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
-       f1 = iand(rdms(1)%B_masks(1,:),walker_dets(:basis_length,idet))
-       f2 = iand(rdms(1)%B_masks(1,:),walker_dets(basis_length+1:total_basis_length,idet))
 
-       ! Once this is done, check if the resulting bitstring (which can only possibly
-       ! have 1's in the B subsystem) are identical. If they are, then this psip gives
-       ! a contibution to the reduced density matrix for subsystem A. This is because we
-       ! get the reduced density matrix for A by 'tracing out' over B, which in practice
-       ! means only keeping matrix elements that are on the diagonal for subsystem B.
-       if (sum(abs(f1-f2)) == 0) then
-           ! We need to assign positions in the reduced density matrix for this walker,
-           ! so call a function which maps the possible subsystem A spin configurations
-           ! to indices.
-           call decode_dm_bitstring(walker_dets(:,idet),end1,end2)
-           reduced_density_matrix(end1,end2) = reduced_density_matrix(end1,end2) + walker_pop
-       end if
+       if (.not. (iteration > start_averaging .or. calc_inst_rdm)) return
+
+       ! Loop over all RDMs to be calculated.
+       do irdm = 1, nrdms
+           !write(6,*) "irdm:", irdm
+           ! Loop over every symmetry-equivalent subsystem for this RDM.
+           do isym = 1, nsym_vec
+               !write(6,*) "isym:", isym
+
+               ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
+               f1 = iand(rdms(irdm)%B_masks(isym,:),walker_dets(:basis_length,idet))
+               f2 = iand(rdms(irdm)%B_masks(isym,:),walker_dets(basis_length+1:total_basis_length,idet))
+
+               ! Once this is done, check if the resulting bitstring (which can only possibly
+               ! have 1's in the B subsystem) are identical. If they are, then this psip gives
+               ! a contibution to the reduced density matrix for subsystem A. This is because we
+               ! get the reduced density matrix for A by 'tracing out' over B, which in practice
+               ! means only keeping matrix elements that are on the diagonal for subsystem B.
+               if (sum(abs(f1-f2)) == 0) then
+                   !write(6,*) "contribution"
+                   ! Call a function which maps the subsystem A state to two RDM bitstrings.
+                   call decode_dm_bitstring(walker_dets(:,idet),irdm,isym)
+
+                   if (calc_ground_rdm) then
+                       ! The above routine actually maps to numbers between 0 and 2^rdms(1)%A_nsites-1,
+                       ! but the smallest and largest reduced density matrix indices are one more than
+                       ! these, so add one.
+                       rdms(irdm)%end1 = rdms(irdm)%end1 + 1
+                       rdms(irdm)%end2 = rdms(irdm)%end2 + 1
+                       unweighted_walker_pop = walker_population(:,idet)*dmqmc_accumulated_probs(excitation%nexcit)
+                       ! Note, when storing the entire RDM (as done here), the maximum value of
+                       ! rdms(i)%rdm_basis_length is 1, so we only consider this one element here.
+                       reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) = &
+                           reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) + unweighted_walker_pop(1)
+                   end if
+
+                   if (calc_inst_rdm) then
+                      do ireplica = 1, sampling_size
+                          if (abs(walker_pop(ireplica)) > 0) then
+                              call create_spawned_particle_rdm(irdm, walker_pop(ireplica), &
+                                      ireplica, rdm_spawn(irdm))
+                          end if
+                      end do
+                   end if
+
+               end if
+           end do
+       end do
 
     end subroutine update_reduced_density_matrix_heisenberg
 
@@ -542,7 +602,7 @@ contains
         real(dp), allocatable :: dm_sum(:,:)
         integer :: num_eigv
 
-        num_eigv = 2**rdms(1)%A_size
+        num_eigv = 2**rdms(1)%A_nsites
 
         allocate(dm(num_eigv,num_eigv), stat=ierr)
         call check_allocate('dm',num_eigv**2,ierr)
@@ -620,10 +680,10 @@ contains
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p), allocatable :: dm_tmp(:,:)
-        real(p) :: eigv(2**rdms(1)%A_size)
+        real(p) :: eigv(2**rdms(1)%A_nsites)
         real(p) :: vn_entropy
         
-        rdm_size = 2**rdms(1)%A_size
+        rdm_size = 2**rdms(1)%A_nsites
         vn_entropy = 0._p
 
         ! Find the optimal size of the workspace.
@@ -724,5 +784,61 @@ contains
         write (6,'(1x,a28,1X,f22.12)') "# Unnormalised concurrence= ", concurrence
 
     end subroutine calculate_concurrence
+
+    subroutine calculate_replica_trace_prod()
+
+        use fciqmc_data, only: replica_trace_prods, nrdms, rdm_spawn
+        use dmqmc_procedures, only: rdms
+
+        integer :: i, irdm
+        integer, parameter :: thread_id = 0
+
+        replica_trace_prods = 0
+
+        do irdm = 1, nrdms
+            do i = 1, rdm_spawn(irdm)%head(thread_id,0)
+                ! If the following condition is met then this is on the diagonal of the rdm.
+                if ( all( rdm_spawn(irdm)%sdata(1:rdms(irdm)%rdm_basis_length,i) == &
+                          rdm_spawn(irdm)%sdata(rdms(irdm)%rdm_basis_length+1:2*rdms(irdm)%rdm_basis_length,i)) ) then
+
+                    replica_trace_prods(irdm) = replica_trace_prods(irdm) + &
+                            rdm_spawn(irdm)%sdata(rdm_spawn(irdm)%bit_str_len+1, i)*&
+                            rdm_spawn(irdm)%sdata(rdm_spawn(irdm)%bit_str_len+2, i)
+               end if
+            end do
+        end do
+
+    end subroutine calculate_replica_trace_prod
+
+    subroutine calculate_renyi_2()
+
+        use dmqmc_procedures, only: rdms
+        use excitations, only: get_excitation_level
+        use fciqmc_data, only: renyi_2, nrdms, rdm_spawn, dmqmc_accumulated_probs
+
+        integer :: i, irdm, excit_level
+        real(p) :: unweighted_pop_1, unweighted_pop_2
+        integer, parameter :: thread_id = 0
+
+        renyi_2 = 0.0_p 
+
+        do irdm = 1, nrdms
+            do i = 1, rdm_spawn(irdm)%head(thread_id,0)
+
+                excit_level = get_excitation_level(rdm_spawn(irdm)%sdata(1:rdms(irdm)%rdm_basis_length,i),&
+                                                   rdm_spawn(irdm)%sdata(rdms(irdm)%rdm_basis_length+1:&
+                                                   2*rdms(irdm)%rdm_basis_length,i) )
+
+                unweighted_pop_1 = rdm_spawn(irdm)%sdata(rdm_spawn(irdm)%bit_str_len+1, i)*&
+                        dmqmc_accumulated_probs(excit_level)
+                unweighted_pop_2 = rdm_spawn(irdm)%sdata(rdm_spawn(irdm)%bit_str_len+2, i)*&
+                        dmqmc_accumulated_probs(excit_level)
+
+                renyi_2(irdm) = renyi_2(irdm) + unweighted_pop_1*unweighted_pop_2
+
+            end do
+        end do
+
+    end subroutine calculate_renyi_2
 
 end module dmqmc_estimators

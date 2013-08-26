@@ -19,7 +19,6 @@ contains
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process.
 
-        use basis, only: total_basis_length
         use parallel, only: nthreads, nprocs
         use spawn_data
         use sort, only: qsort
@@ -73,6 +72,39 @@ contains
         end if
 
     end subroutine direct_annihilation
+
+    subroutine perform_rdm_annihilation()
+
+        use parallel, only: nprocs
+        use spawn_data
+        use sort, only: qsort
+
+        integer :: irdm
+        integer, parameter :: thread_id = 0
+
+        ! Perform annihilation on every rdm.
+        do irdm = 1, nrdms
+
+            ! 0. Send spawned walkers to the processor which "owns" them and receive
+            ! the walkers "owned" by this processor.
+            if (nprocs > 1) call comm_spawn_t(rdm_spawn(irdm))
+
+            if (rdm_spawn(irdm)%head(thread_id,0) > 0) then
+                ! Have spawned walkers on this processor.
+
+                ! 1. Sort spawned walkers list.
+                call qsort(rdm_spawn(irdm)%sdata, rdm_spawn(irdm)%head(thread_id,0), &
+                            rdm_spawn(irdm)%bit_str_len)
+
+                ! 2. Annihilate within spawned walkers list.
+                ! Compress the remaining spawned walkers list.
+                call annihilate_spawn_t(rdm_spawn(irdm))
+
+            end if
+
+        end do
+
+    end subroutine perform_rdm_annihilation
 
     subroutine annihilate_main_list()
 
@@ -298,6 +330,9 @@ contains
             else if (doing_calc(dmqmc_calc)) then
                 ! Set the energy to be the average of the two induvidual energies.
                 walker_data(1,k) = (walker_data(1,k) + sc0_ptr(walker_dets((basis_length+1):(2*basis_length),k)) - H00)/2
+                if (replica_tricks) then
+                    walker_data(2:sampling_size,k) = walker_data(1,k)
+                end if
             end if
             ! Next walker will be inserted below this one.
             iend = pos - 1

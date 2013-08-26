@@ -95,12 +95,14 @@ contains
             ! with equal probability, so that when electrons are placed
             ! on these orbitals they will have the correct spin and symmetry.
             ! Initial particle distribution.
-            select case(system_type)
-            case(heisenberg)
-                call random_distribution_heisenberg(rng)
-            case default
-                call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
-            end select
+            do ireplica = 1, sampling_size
+                select case(system_type)
+                case(heisenberg)
+                    call random_distribution_heisenberg(rng, ireplica)
+                case default
+                    call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
+                end select
+            end do
 
             call direct_annihilation(initiator_approximation)
 

@@ -1227,4 +1227,73 @@ contains
 
     end subroutine create_spawned_particle_truncated_density_matrix
 
+    subroutine create_spawned_particle_rdm(irdm, nspawn, particle_type, spawn)
+
+        ! Create a spawned walker in the spawned walkers lists.
+        ! The current position in the spawning array is updated.
+
+        ! In:
+        !    irdm: the index of the rdm that this psip contributes to.
+        !    nspawn: the (signed) number of particles to create on the
+        !        spawned determinant.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
+
+        use dmqmc_procedures, only: rdms
+        use hashing
+        use parallel, only: iproc, nprocs, nthreads
+        use spawn_data, only: spawn_t
+
+        integer, intent(in) :: irdm
+        integer, intent(in) :: nspawn
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
+
+        integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_basis_length)
+        integer :: i
+
+#ifndef PARALLEL
+        integer, parameter :: iproc_spawn = 0
+#else
+        integer :: iproc_spawn
+#endif
+        integer, parameter :: thread_id = 0
+
+        ! To enforce that the rdm is symmetric, add this psip to both \rho_{ij} and
+        ! \rho_{ji}. These will lead to an rdm with a trace twice what it would have
+        ! been, but this is not a problem.
+        do i = 1, 2
+
+            f_new_tot = 0
+
+            if (i == 1) then
+                f_new_tot(:rdms(irdm)%rdm_basis_length) = rdms(irdm)%end1
+                f_new_tot((rdms(irdm)%rdm_basis_length+1):(2*rdms(irdm)%rdm_basis_length)) = rdms(irdm)%end2
+            else if (i == 2) then
+                f_new_tot(:rdms(irdm)%rdm_basis_length) = rdms(irdm)%end2
+                f_new_tot((rdms(irdm)%rdm_basis_length+1):(2*rdms(irdm)%rdm_basis_length)) = rdms(irdm)%end1
+            end if
+
+#ifdef PARALLEL
+            ! (Extra credit for parallel calculations)
+            ! Need to determine which processor the spawned walker should be sent
+            ! to.  This communication is done during the annihilation process, after
+            ! all spawning and death has occured..
+            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (2*rdms(irdm)%rdm_basis_length)), nprocs)
+#endif
+
+            ! Move to the next position in the spawning array.
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+
+            ! Set info in spawning array.
+            ! Zero it as not all fields are set.
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+
+        end do
+
+    end subroutine create_spawned_particle_rdm
+
 end module spawning

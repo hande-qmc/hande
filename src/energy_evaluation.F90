@@ -1,4 +1,4 @@
-module energy_evaluation
+Module energy_evaluation
 
 ! This module contains procedure for evaluating and estimating the energy of
 ! a system based upon the population dynamics of an FCIQMC calculation.
