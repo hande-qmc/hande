@@ -11,6 +11,10 @@ use const
 
 implicit none
 
+interface operator(.bitstrgt.)
+    module procedure bit_str_gt
+end interface
+
 contains
 
 !--- Counting set bits ---
