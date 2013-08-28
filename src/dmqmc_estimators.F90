@@ -18,7 +18,7 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
 
-        use annihilation, only: perform_rdm_annihilation
+        use spawn_data, only: annihilate_wrapper_spawn_t
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_renyi_2
         use checking, only: check_allocate
@@ -69,7 +69,7 @@ contains
         ! If calculating beta-dependent rdms then perform annihilation steps on the spawned
         ! rdm array, and calculate any desired estimators.
         if (calc_inst_rdm) then
-            call perform_rdm_annihilation()
+            call annihilate_wrapper_spawn_t(rdm_spawn, .false.)
             if (replica_tricks) call calculate_replica_trace_prod()
             if (doing_dmqmc_calc(dmqmc_renyi_2)) call calculate_renyi_2()
             do irdm = 1, nrdms

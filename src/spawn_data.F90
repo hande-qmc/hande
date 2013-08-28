@@ -58,6 +58,11 @@ type spawn_t
     integer(i0), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
 end type spawn_t
 
+interface annihilate_wrapper_spawn_t
+    module procedure annihilate_wrapper_spawn_t_single
+    module procedure annihilate_wrapper_spawn_t_arr
+end interface
+
 contains
 
 !--- Initialisation/finalisation ---
@@ -145,6 +150,78 @@ contains
         nullify(spawn%sdata_recvd)
 
     end subroutine dealloc_spawn_t
+
+!--- Helper procedures ---
+
+    subroutine annihilate_wrapper_spawn_t_single(spawn, tinitiator)
+
+        ! Helper procedure for performing annihilation within a spawn_t object.
+
+        ! In:
+        !    tinitiator: true if the initiator approximation is being used.
+        ! In/Out:
+        !    spawn: spawn_t object containing spawned particles.  On output, the
+        !        spawned particles are sent to the processor which 'owns' the
+        !        determinant they are located on and annihilation is performed
+        !        internally, so each determinant appears (at most) once in the
+        !        spawn%sdata array.
+
+        use parallel, only: nthreads, nprocs
+        use sort, only: qsort
+
+        type(spawn_t), intent(inout) :: spawn
+        logical, intent(in) :: tinitiator
+
+        integer, parameter :: thread_id = 0
+
+        ! Compress the successful spawning events from each thread so the
+        ! spawned list being sent to each processor contains no gaps.
+        if (nthreads > 1) call compress_threaded_spawn_t(spawn)
+
+        ! Send spawned walkers to the processor which "owns" them and receive
+        ! the walkers "owned" by this processor.
+        if (nprocs > 1) call comm_spawn_t(spawn)
+
+        if (spawn%head(thread_id,0) > 0) then
+
+            ! Have spawned walkers on this processor.
+
+            call qsort(spawn%sdata, spawn%head(thread_id,0), spawn%bit_str_len)
+
+            ! Annihilate within spawned walkers list.
+            ! Compress the remaining spawned walkers list.
+            if (tinitiator) then
+                call annihilate_spawn_t_initiator(spawn)
+            else
+                call annihilate_spawn_t(spawn)
+            end if
+
+        end if
+
+    end subroutine annihilate_wrapper_spawn_t_single
+
+    subroutine annihilate_wrapper_spawn_t_arr(spawn_arr, tinitiator)
+
+        ! Helper procedure for performing annihilation for an array of
+        ! spawn_t objects.
+
+        ! In:
+        !    tinitiator: true if the initiator approximation is being used.
+        ! In/Out:
+        !    spawn_arr: array of spawn_t objects.  See
+        !        annihilate_wrapper_spawn_t_single, which is called for each
+        !        element..
+
+        type(spawn_t), intent(inout) :: spawn_arr(:)
+        logical, intent(in) :: tinitiator
+
+        integer :: i
+
+        do i = 1, ubound(spawn_arr,dim=1)
+            call annihilate_wrapper_spawn_t_single(spawn_arr(i), tinitiator)
+        end do
+
+    end subroutine annihilate_wrapper_spawn_t_arr
 
 !--- Thread handling and communication ---
 

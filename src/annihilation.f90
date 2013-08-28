@@ -20,47 +20,29 @@ contains
         ! different parts of the annihilation process.
 
         use parallel, only: nthreads, nprocs
-        use spawn_data
+        use spawn_data, only: annihilate_wrapper_spawn_t
         use sort, only: qsort
 
         logical, intent(in) :: tinitiator
 
         integer, parameter :: thread_id = 0
 
-        ! -1. Compress the successful spawning events from each thread so the
-        ! spawned list being sent to each processor contains no gaps.
-        if (nthreads > 1) call compress_threaded_spawn_t(qmc_spawn)
-
-        ! 0. Send spawned walkers to the processor which "owns" them and receive
-        ! the walkers "owned" by this processor.
-        if (nprocs > 1) call comm_spawn_t(qmc_spawn)
+        call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
 
         if (qmc_spawn%head(thread_id,0) > 0) then
             ! Have spawned walkers on this processor.
 
-            ! 1. Sort spawned walkers list.
-            call qsort(qmc_spawn%sdata, qmc_spawn%head(thread_id,0), qmc_spawn%bit_str_len)
-
-            ! 2. Annihilate within spawned walkers list.
-            ! Compress the remaining spawned walkers list.
-            if (tinitiator) then 
-                call annihilate_spawn_t_initiator(qmc_spawn)
-            else
-                call annihilate_spawn_t(qmc_spawn)
-            end if
-
-            ! 3. Annihilate main list.
             if (tinitiator) then 
                 call annihilate_main_list_initiator()
             else
                 call annihilate_main_list()
             end if
 
-            ! 4. Remove determinants with zero walkers on them from the main
+            ! Remove determinants with zero walkers on them from the main
             ! walker list.
             call remove_unoccupied_dets()
 
-            ! 5. Insert new walkers into main walker list.
+            ! Insert new walkers into main walker list.
             call insert_new_walkers()
 
         else
@@ -72,39 +54,6 @@ contains
         end if
 
     end subroutine direct_annihilation
-
-    subroutine perform_rdm_annihilation()
-
-        use parallel, only: nprocs
-        use spawn_data
-        use sort, only: qsort
-
-        integer :: irdm
-        integer, parameter :: thread_id = 0
-
-        ! Perform annihilation on every rdm.
-        do irdm = 1, nrdms
-
-            ! 0. Send spawned walkers to the processor which "owns" them and receive
-            ! the walkers "owned" by this processor.
-            if (nprocs > 1) call comm_spawn_t(rdm_spawn(irdm))
-
-            if (rdm_spawn(irdm)%head(thread_id,0) > 0) then
-                ! Have spawned walkers on this processor.
-
-                ! 1. Sort spawned walkers list.
-                call qsort(rdm_spawn(irdm)%sdata, rdm_spawn(irdm)%head(thread_id,0), &
-                            rdm_spawn(irdm)%bit_str_len)
-
-                ! 2. Annihilate within spawned walkers list.
-                ! Compress the remaining spawned walkers list.
-                call annihilate_spawn_t(rdm_spawn(irdm))
-
-            end if
-
-        end do
-
-    end subroutine perform_rdm_annihilation
 
     subroutine annihilate_main_list()
 
