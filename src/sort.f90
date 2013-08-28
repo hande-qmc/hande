@@ -33,11 +33,7 @@ contains
         !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
         !        Default: use entire slice.
 
-        use bit_utils, only: bit_str_gt
-
-        interface operator(.listgt.)
-            module procedure bit_str_gt
-        end interface
+        use bit_utils, only: operator(.bitstrgt.)
 
         integer(i0), intent(inout) :: list(:,:)
         integer, intent(in), optional :: head, nsort
@@ -75,7 +71,7 @@ contains
                 do j = lo + 1, hi
                     tmp = list(:,j)
                     do i = j - 1, 1, -1
-                        if (tmp(1:ns) .listgt. list(1:ns,i)) exit
+                        if (tmp(1:ns) .bitstrgt. list(1:ns,i)) exit
                         list(:,i+1) = list(:,i)
                     end do
                     list(:,i+1) = tmp
@@ -95,13 +91,13 @@ contains
                 ! degrades if the pivot is always the smallest element.
                 pivot = (lo + hi)/2
                 call swap_sublist(list(:,pivot), list(:,lo + 1))
-                if (list(1:ns,lo) .listgt. list(1:ns,hi)) then
+                if (list(1:ns,lo) .bitstrgt. list(1:ns,hi)) then
                     call swap_sublist(list(:,lo), list(:,hi))
                 end if
-                if (list(1:ns,lo+1) .listgt. list(1:ns,hi)) then
+                if (list(1:ns,lo+1) .bitstrgt. list(1:ns,hi)) then
                     call swap_sublist(list(:,lo+1), list(:,hi))
                 end if
-                if (list(1:ns,lo) .listgt. list(1:ns,lo+1)) then
+                if (list(1:ns,lo) .bitstrgt. list(1:ns,lo+1)) then
                     call swap_sublist(list(:,lo), list(:,lo+1))
                 end if
 
@@ -111,13 +107,13 @@ contains
                 do while (.true.)
                     ! Scan down list to find element > a.
                     i = i + 1
-                    do while (tmp(1:ns) .listgt. list(1:ns,i))
+                    do while (tmp(1:ns) .bitstrgt. list(1:ns,i))
                         i = i + 1
                     end do
 
                     ! Scan down list to find element < a.
                     j = j - 1
-                    do while (list(1:ns,j) .listgt.  tmp(1:ns))
+                    do while (list(1:ns,j) .bitstrgt. tmp(1:ns))
                         j = j - 1
                     end do
 
