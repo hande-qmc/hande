@@ -52,14 +52,17 @@ integer :: initiator_population = 3
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless
-! vary_shift is true.
+! vary_shift is true. When the replica_tricks option is used, the elements
+! of the shift array refer to the shifts in the corresponding replica systems.
+! When replica_tricks is not being used, only the first element is used.
 ! vary_shift_from_proje: if true, then the when variable shift mode is entered
 ! the shift is set to be the current projected energy.
 ! vary_shift_from: if vary_shift_from_proje is false, then the shift is set to
 ! this value when variable shift mode is entered.
 ! warning: if both initial_shift and vary_shift_from are set, then we expect the
 ! user to have been sensible.
-real(p) :: shift = 0.0_p, vary_shift_from = 0.0_p
+real(p), allocatable :: shift(:) ! (sampling_size)
+real(p) :: vary_shift_from = 0.0_p
 logical :: vary_shift_from_proje = .false.
 
 ! Initial shift, needed in DMQMC to reset the shift at the start of each
@@ -529,7 +532,7 @@ contains
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i8,2X,es17.10,i10)',advance = 'no') &
-                                             (mc_cycles_done+mc_cycles-ncycles), shift, trace
+                                             (mc_cycles_done+mc_cycles-ncycles), shift(1), trace
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             do i = 1, number_dmqmc_estimators
@@ -554,14 +557,14 @@ contains
             write (6, '(2X, i11)', advance='no') ntot_particles(1)
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
-                                             mc_cycles_done+mc_cycles, shift,   &
+                                             mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
                                              D0_hf_population, &
                                              ntot_particles
         else
             write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,i11)', advance='no') &
-                                             mc_cycles_done+mc_cycles, shift,   &
+                                             mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              ntot_particles
         end if
@@ -589,9 +592,9 @@ contains
             report_cycles_done = nreport
         end if
 
-        write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift
+        write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift(1)
         write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy/D0_population
-        write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift+H00
+        write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift(1)+H00
         write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
 
     end subroutine write_fciqmc_final

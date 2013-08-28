@@ -332,10 +332,10 @@ contains
             case('TAU')
                 call readf(tau)
             case('INITIAL_SHIFT')
-                call readf(shift)
+                call readf(initial_shift)
                 ! We assume the user is sensible/knows what he/she is doing if
                 ! initial_shift and vary_shift_from are set.
-                vary_shift_from = shift
+                vary_shift_from = initial_shift
             case('VARY_SHIFT_FROM')
                 call readu(w)
                 if (w == 'PROJE') then
@@ -698,7 +698,7 @@ contains
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_rdm_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(average_shift_until, 1, mpi_integer, 0, mpi_comm_world, ierr)

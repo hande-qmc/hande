@@ -72,7 +72,7 @@ contains
         D0_hf_population = ir_sum(sampling_size+7)
 
         if (vary_shift) then
-            call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
+            call update_shift(shift(1), ntot_particles_old(1), ntot_particles(1), ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
                 call update_hf_shift(ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
                                      new_hf_signed_pop, ncycles)
@@ -110,7 +110,7 @@ contains
 
     end subroutine update_energy_estimators
 
-    subroutine update_shift(nparticles_old, nparticles, nupdate_steps)
+    subroutine update_shift(loc_shift, nparticles_old, nparticles, nupdate_steps)
 
         ! Update the shift according to:
         !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
@@ -128,12 +128,13 @@ contains
         use calc, only: doing_calc, folded_spectrum
         use fciqmc_data, only: shift, tau, shift_damping, dmqmc_factor
 
+        real(p), intent(inout) :: loc_shift
         integer(lint), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        shift = shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
+        loc_shift = loc_shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
 
     end subroutine update_shift
 

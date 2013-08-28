@@ -133,7 +133,7 @@ contains
             call write_out(io,'# nparticles', binary_fmt_out)
             call write_out(io,nparticles_old, binary_fmt_out)
             call write_out(io,'# shift', binary_fmt_out)
-            call write_out(io,shift, binary_fmt_out)
+            call write_out(io,shift(1), binary_fmt_out)
             call write_out(io,'# Hellmann--Feynman shift', binary_fmt_out)
             call write_out(io,hf_shift, binary_fmt_out)
             call write_out(io,'# reference determinant: orbital list', binary_fmt_out)
@@ -201,7 +201,7 @@ contains
         use bit_utils, only: bit_str_gt 
         use determinants, only: encode_det
         use errors, only: stop_all
-        use fciqmc_data, only: sampling_size, info_size, shift, occ_list0, tot_walkers,    &
+        use fciqmc_data, only: sampling_size, info_size, initial_shift, occ_list0, tot_walkers, &
                                mc_cycles_done, nparticles, walker_dets, walker_population, &
                                walker_data
 
@@ -272,7 +272,7 @@ contains
             nparticles = 0
             call read_in(io,nparticles(:restart_sampling_size),binary_fmt_in)
             call read_in(io,junk,binary_fmt_in)
-            call read_in(io,shift,binary_fmt_in)
+            call read_in(io,initial_shift,binary_fmt_in)
             call read_in(io,junk,binary_fmt_in)
             call read_in(io,hf_shift, binary_fmt_in)
             call read_in(io,junk,binary_fmt_in)

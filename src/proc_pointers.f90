@@ -63,12 +63,13 @@ abstract interface
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
     end subroutine i_gen_excit_finalise
-    subroutine i_death(rng, mat, pop, tot_pop, ndeath)
+    subroutine i_death(rng, mat, loc_shift, pop, tot_pop, ndeath)
         use dSFMT_interface, only: dSFMT_t
         import :: p, lint
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: mat
+        real(p), intent(in) :: loc_shift
         integer, intent(inout) :: pop, ndeath
         integer(lint), intent(inout) :: tot_pop
     end subroutine i_death

@@ -59,7 +59,6 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
-        initial_shift = shift
         ! When we accumulate data throughout a run, we are actually accumulating
         ! results from the psips distribution from the previous iteration.
         ! For example, in the first iteration, the trace calculated will be that
@@ -173,8 +172,8 @@ contains
                             ! current walker. We do both of these at once by using walker_data(:,idet)
                             ! which, when running a DMQMC algorithm, stores the average of the two diagonal
                             ! elements corresponding to the two indicies of the density matrix (the two ends).
-                            call stochastic_death(rng, walker_data(ireplica,idet), walker_population(ireplica,idet), &
-                                                  nparticles(ireplica), ndeath)
+                            call stochastic_death(rng, walker_data(ireplica,idet), shift(ireplica), &
+                                                  walker_population(ireplica,idet), nparticles(ireplica), ndeath)
                         end do
                     end do
 
@@ -192,10 +191,10 @@ contains
                 end do
 
                 ! If averaging the shift to use in future beta loops, add contirubtion from this report.
-                if (average_shift_until > 0) shift_profile(ireport) = shift_profile(ireport) + shift
+                if (average_shift_until > 0) shift_profile(ireport) = shift_profile(ireport) + shift(1)
 
                 ! Update the shift and desired thermal quantites.
-                call update_dmqmc_estimators(nparticles_old, ireport)
+                call update_dmqmc_estimators(nparticles_old, ireport, sampling_size)
 
                 call cpu_time(t2)
 

@@ -6,7 +6,7 @@ implicit none
 
 contains
 
-   subroutine update_dmqmc_estimators(ntot_particles_old, ireport)
+   subroutine update_dmqmc_estimators(ntot_particles_old, ireport, nreplica)
 
         ! Update the shift and average the shift and estimators.
 
@@ -17,6 +17,9 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        ! In:
+        !    ireport: The number of the report loop currently being performed.
+        !    nreplica: The total number of replica simulations being performed.
 
         use spawn_data, only: annihilate_wrapper_spawn_t
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
@@ -32,9 +35,9 @@ contains
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
-        integer, intent(in) :: ireport        
+        integer, intent(in) :: ireport, nreplica
         integer(lint) :: ntot_particles(sampling_size)
-        integer :: irdm
+        integer :: irdm, ireplica
 
 #ifdef PARALLEL
         real(dp), allocatable :: ir(:)
@@ -83,7 +86,12 @@ contains
         if (average_shift_until == -1) then
             if (ireport < nreport) shift = shift_profile(ireport+1)
         else
-            if (vary_shift) call update_shift(ntot_particles_old(1), ntot_particles(1), ncycles)
+            if (vary_shift) then
+                do ireplica = 1, nreplica
+                    call update_shift(shift(ireplica), ntot_particles_old(ireplica), &
+                        ntot_particles(ireplica), ncycles)
+                end do
+            end if
             if (ntot_particles(1) > target_particles .and. .not.vary_shift) vary_shift = .true.
         end if
 

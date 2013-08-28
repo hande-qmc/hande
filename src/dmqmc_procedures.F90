@@ -56,7 +56,6 @@ contains
          use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
-         use parallel, only: parent
          use system, only: max_number_excitations
 
          integer :: ierr, i, bit_position, bit_element
@@ -186,6 +185,7 @@ contains
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
         use fciqmc_data, only: replica_tricks, renyi_2, replica_trace_prods, sampling_size
         use fciqmc_data, only: spawned_rdm_length, rdm_spawn
+        use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
         use system, only: system_type, heisenberg, nsites
 
@@ -246,8 +246,8 @@ contains
             end if
         end do
 
-        write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
-            total_size_spawned_rdm*real(2*spawned_rdm_length,p)/10**6
+        if (parent) write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
+                total_size_spawned_rdm*real(2*spawned_rdm_length,p)/10**6
 
         ! Note: Only one RDM is calculated at the moment. This is temporary. For now I have just
         ! created the infrastructure to use translational symmetry and multiple RDMs. Will add the

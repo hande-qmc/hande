@@ -723,7 +723,7 @@ contains
         ! child excitor.
         ! TODO: optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
-        KiiAi = (sc0_ptr(cdet%f) - H00 - shift)*cluster%amplitude
+        KiiAi = (sc0_ptr(cdet%f) - H00 - shift(1))*cluster%amplitude
 
         pdeath = tau*abs(KiiAi)/cluster%pselect
 

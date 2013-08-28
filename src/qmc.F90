@@ -176,6 +176,11 @@ contains
                                         'Increasing spawned_walker_length to',spawned_walker_length,'.'
         end if
 
+        ! Allocate the shift.
+        allocate(shift(sampling_size), stat=ierr)
+        call check_allocate('shift', size(shift), ierr)
+        shift = initial_shift
+
         if (doing_calc(ct_fciqmc_calc)) then
             allocate(spawn_times(spawned_walker_length),stat=ierr)
             call check_allocate('spawn_times',spawned_walker_length,ierr)

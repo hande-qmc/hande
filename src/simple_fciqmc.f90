@@ -196,7 +196,7 @@ contains
             ! Update the shift
             nparticles = sum(abs(walker_population(1,:)))
             if (vary_shift) then
-                call update_shift(nparticles_old, nparticles, ncycles)
+                call update_shift(shift(1), nparticles_old, nparticles, ncycles)
             end if
             nparticles_old = nparticles
             if (nparticles > target_particles .and. .not.vary_shift) then
@@ -313,7 +313,7 @@ contains
         ! We store the Hamiltonian matrix rather than the K matrix.
         ! It is efficient to allow all particles on a given determinant to
         ! attempt to die in one go (like lemmings) in a stochastic process.
-        rate = abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
+        rate = abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift(1))
         ! Number to definitely kill.
         nkill = int(rate)
         rate = rate - nkill
@@ -331,7 +331,7 @@ contains
         ! Don't allow creation of anti-particles in simple_fciqmc.
         if (nkill > abs(walker_population(1,iwalker))) then
             write (6,*) iwalker, walker_population(1,iwalker), &
-            abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift)
+            abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift(1))
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 

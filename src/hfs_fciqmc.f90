@@ -40,6 +40,7 @@ contains
         use determinants, only:det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use fciqmc_data, only: shift
         use hfs_data
         use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
@@ -186,7 +187,7 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call death_ptr(rng, walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
@@ -195,7 +196,7 @@ contains
                     if (nspawned /= 0) call create_spawned_particle_ptr(cdet, null_excit, nspawned, 2, qmc_spawn)
 
                     ! Clone or die: Hamiltonian walkers.
-                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 

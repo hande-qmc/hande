@@ -108,7 +108,7 @@ contains
                         ! We pass R to the timestep generator. Luckily all R_ij,
                         ! i/=j are the same for the hubbard model (U or
                         ! t - stored in matel),  and there are nexcitations of them.
-                        R = abs(walker_data(1,idet) - shift) + sum_off_diag
+                        R = abs(walker_data(1,idet) - shift(1)) + sum_off_diag
                         time = time + timestep(rng, R)
 
                         if ( time > t_barrier ) exit
@@ -174,7 +174,7 @@ contains
                         time = spawn_times(current_pos(thread_id,proc_id))
                         do
 
-                            R = abs(K_ii - shift) + sum_off_diag
+                            R = abs(K_ii - shift(1)) + sum_off_diag
                             time = time + timestep(rng, R)
 
                             if ( time > t_barrier ) exit
@@ -285,9 +285,9 @@ contains
 
         rand = get_rand_close_open(rng)*R
 
-        if (rand < abs(K_ii - shift)) then
+        if (rand < abs(K_ii - shift(1))) then
             connection%nexcit = 0 ! spawn onto the same determinant (death/cloning)
-            K_ij = K_ii - shift
+            K_ij = K_ii - shift(1)
         else
             ! Generate a random excitation and reject if it's forbidden (i.e.
             ! the orbitals are already occupied).
