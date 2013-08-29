@@ -56,12 +56,20 @@ contains
          use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
+         use fciqmc_data, only: sampling_size, rdm_traces, nrdms
          use system, only: max_number_excitations
 
          integer :: ierr, i, bit_position, bit_element
 
          number_dmqmc_estimators = 0
+
+         allocate(trace(sampling_size), stat=ierr)
+         call check_allocate('trace',sampling_size,ierr)
          trace = 0.0_p
+
+         allocate(rdm_traces(sampling_size,nrdms), stat=ierr)
+         call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
+         rdm_traces = 0.0_p
 
          if (doing_dmqmc_calc(dmqmc_energy)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
@@ -183,7 +191,7 @@ contains
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
-        use fciqmc_data, only: replica_tricks, renyi_2, replica_trace_prods, sampling_size
+        use fciqmc_data, only: replica_tricks, renyi_2, sampling_size
         use fciqmc_data, only: spawned_rdm_length, rdm_spawn
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
@@ -218,11 +226,6 @@ contains
             if (calc_ground_rdm .and. rdms(i)%rdm_basis_length > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
-            if (replica_tricks .and. calc_inst_rdm) then
-                allocate(replica_trace_prods(nrdms), stat=ierr)
-                call check_allocate('replica_trace_prods', nrdms, ierr)
-                replica_trace_prods = 0
-            end if
             if (doing_dmqmc_calc(dmqmc_renyi_2)) then
                 allocate(renyi_2(nrdms), stat=ierr)
                 call check_allocate('renyi_2', nrdms, ierr)

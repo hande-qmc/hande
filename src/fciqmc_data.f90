@@ -191,12 +191,7 @@ integer :: number_dmqmc_estimators = 0
 ! used in calculating all thermal estimators. This quantity stores
 ! the this value, Tr(\rho), where rho is the density matrix which
 ! the DMQMC algorithm calculates stochastically.
-integer(i0) :: trace
-
-! The components of this array hold the instantaneous products of the
-! traces of the 'main' RDM and the ancilla RDM, for each RDM which
-! the user asks to be calculated.
-integer(i0), allocatable :: replica_trace_prods(:)
+integer(i0), allocatable :: trace(:) ! (sampling_size)
 
 ! estimator_numerators stores all the numerators for the estimators in DMQMC
 ! which the user has asked to be calculated. These are, for a general
@@ -226,9 +221,12 @@ integer :: staggered_mag_index = 0
 ! x = \sum_{ij} \rho^1_{ij} * \rho^2_{ij}.
 ! The indices of renyi_2 hold this value for the various rdms being
 ! calculated. After post-processing averaging, this quantity should
-! be normalised by the associated value in replica_trace_prods,
+! be normalised by the product of the corresponding RDM traces.
 ! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
 real(p), allocatable :: renyi_2(:)
+
+! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
+real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
 
 ! If this logical is true then the program runs the DMQMC algorithm with
 ! importance sampling.
@@ -452,7 +450,7 @@ contains
         use calc, only: dmqmc_correlation, dmqmc_renyi_2
         use utils, only: int_fmt
 
-        integer :: i
+        integer :: i, j
 
         if (doing_calc(dmqmc_calc)) then
            write (6,'(1X,a12,3X,a13,8X,a5)', advance = 'no') &
@@ -475,9 +473,12 @@ contains
                     write (6, '(2X,a19,'//int_fmt(i,1)//')', advance = 'no') 'Renyi_2 numerator', i
                 end do
             end if
-            if (calc_inst_rdm .and. replica_tricks) then
+            if (calc_inst_rdm) then
                 do i = 1, nrdms
-                    write (6, '(2X,a13,'//int_fmt(i,1)//')', advance = 'no') 'Replica trace', i
+                    do j = 1, sampling_size
+                        write (6, '(8X,a3,'//int_fmt(i,0)//',1x,a5,'//int_fmt(j,1)//')', advance = 'no') &
+                                'RDM', i, 'trace', j
+                    end do
                 end do
             end if
             if (calculate_excit_distribution) then
@@ -519,7 +520,7 @@ contains
         integer(lint), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical :: comment
-        integer :: mc_cycles, i
+        integer :: mc_cycles, i, j
 
         mc_cycles = ireport*ncycles
 
@@ -532,7 +533,7 @@ contains
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i8,2X,es17.10,i10)',advance = 'no') &
-                                             (mc_cycles_done+mc_cycles-ncycles), shift(1), trace
+                                             (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             do i = 1, number_dmqmc_estimators
@@ -543,9 +544,11 @@ contains
                     write (6, '(6X,es17.10)', advance = 'no') renyi_2(i)
                 end do
             end if
-            if (calc_inst_rdm .and. replica_tricks) then
+            if (calc_inst_rdm) then
                 do i = 1, nrdms
-                    write (6, '(7X,i10)', advance = 'no') replica_trace_prods(i)
+                    do j = 1, sampling_size
+                        write (6, '(3x,es17.10)', advance = 'no') rdm_traces(j,i)
+                    end do
                 end do
             end if
             if (calculate_excit_distribution) then
