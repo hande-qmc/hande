@@ -291,64 +291,42 @@ module hash_table
 
 !--- Query hashed store ---
 
-        subroutine lookup_hash_table_element(ht, label, register, pos, err_flag)
+        subroutine lookup_hash_table_element(ht, label, pos, hit)
 
             ! Find the position/location of a data item.
 
             ! In:
+            !    ht: hash table.
             !    label: data label to find in the hash table.
-            !    register: if true and the data label cannot be found in the
-            !        hash table, then return the position where label should be
-            !        stored, in the process updating the hash table to remove
-            !        the given position from being used by another data item.
-            ! In/Out:
-            !    ht: hash table.  Modified only if register is true.
             ! Out:
             !    pos: position of the label in ht%table and in the
-            !        ht%table/ht%payload arrays.  If err_flag is 1 and register
-            !        is not true, then pos%indx is *not* set.
-            !    err_flag: 0 indicates no error.  1 indicates label could not be
-            !        found.  If register is true, 2 indicates that the data
-            !        storage (ht%data_label and ht%payload) is completely full
-            !        and 3 indicates the label could not be found and ht%table
-            !        has run out of entries for the hash of label (ie we have
-            !        had ht%nentries+1 hash collisions).
+            !        ht%table/ht%payload arrays.  WARNING: if hit is false then
+            !        pos%ientry and pos%indx contain incorrect information but
+            !        pos%slot is the 'slot' in the hash table in which the
+            !        label should be placed.
+            !    hit: true if label is found in the hash table.
 
             use hashing, only: murmurhash_bit_string
 
-            type(hash_table_t), intent(inout) :: ht
+            type(hash_table_t), intent(in) :: ht
             integer(i0), intent(in) :: label(:)
-            logical, intent(in) :: register
             type(hash_table_pos_t), intent(out) :: pos
-            integer, intent(out) :: err_flag
+            logical, intent(out) :: hit
 
             integer :: i
 
+            hit = .false.
             pos%islot = modulo(murmurhash_bit_string(label, size(label)),ht%nslots)
 
             ! Need to search over elements in with this hash%nslots value.
             do i = 1, ht%table(0,pos%islot)
                 pos%indx = ht%table(i,pos%islot)
-                if (all(ht%data_label(:,pos%indx) == label)) exit
-            end do
-            pos%ientry = i
-            if (i /= ht%table(0,pos%islot)+1) then
-                err_flag = 0
-            else if (register) then
-                ! Get a free entry and say we're using it!
-                call take_hash_table_free_slot(ht, pos%indx)
-                if (pos%indx > size(ht%data_label,dim=2)) then
-                    err_flag = 2
-                else if (i > ht%nentries) then
-                    err_flag = 3
-                else
-                    err_flag = 1
-                    ht%table(0,pos%islot) = pos%ientry
-                    ht%table(pos%ientry,pos%islot) = pos%indx
+                if (all(ht%data_label(:,pos%indx) == label)) then
+                    pos%ientry = i
+                    hit = .true.
+                    exit
                 end if
-            else
-                err_flag = 1
-            end if
+            end do
 
         end subroutine lookup_hash_table_element
 
