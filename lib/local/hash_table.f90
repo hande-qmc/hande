@@ -64,25 +64,25 @@ module hash_table
 
         ! We usually want to iterate over the data items, so it is best if they
         ! are (as far as possible) contiguous.
-        ! If not, we can insert elements into the empty element.  Typically (we
+        ! If not, we can insert an entry into the empty entry.  Typically (we
         ! hope!) we have more room than the number of items we're actually
         ! storing.  If there are no slots in the occupied section of data_label
-        ! and payload, then we use the next free element at the head of the data
+        ! and payload, then we use the next free entry at the head of the data
         ! structure.
 
-        ! Highest occupied element in the data_label and payload arrays.
+        ! Highest occupied entry in the data_label and payload arrays.
         integer :: head
 
         ! Maximum number of free slots we might wish to access before iterating
         ! over data_label again (at which point we can easily update the list of
         ! free entries).
         integer :: max_free_reqd
-        ! The index of the element in free_elements which grants the next free
+        ! The index of the element in free_entries which grants the next free
         ! entry in data_label and payload arrays.
-        integer :: next_free_element
-        ! Circular array.  Non-zero elements correspond to free elements in the
+        integer :: next_free_entry
+        ! Circular array.  Non-zero elements correspond to free entries in the
         ! data_label and corresponding payload arrays.
-        integer, allocatable :: free_elements(:) ! (0:max_free_reqd-1)
+        integer, allocatable :: free_entries(:) ! (0:max_free_reqd-1)
 
     end type hash_table_t
 
@@ -135,8 +135,8 @@ module hash_table
             call check_allocate('ht%data_label', size(ht%data_label), ierr)
             allocate(ht%payload(ht%payload_len,ht%nentries*ht%nslots), stat=ierr)
             call check_allocate('ht%payload', size(ht%payload), ierr)
-            allocate(ht%free_elements(ht%max_free_reqd), stat=ierr)
-            call check_allocate('ht%free_elements', size(ht%free_elements), ierr)
+            allocate(ht%free_entries(ht%max_free_reqd), stat=ierr)
+            call check_allocate('ht%free_entries', size(ht%free_entries), ierr)
 
             call reset_hash_table(ht)
 
@@ -168,9 +168,9 @@ module hash_table
                 deallocate(ht%payload)
                 call check_deallocate('ht%payload', ierr)
             end if
-            if (allocated(ht%free_elements)) then
-                deallocate(ht%free_elements)
-                call check_deallocate('ht%free_elements', ierr)
+            if (allocated(ht%free_entries)) then
+                deallocate(ht%free_entries)
+                call check_deallocate('ht%free_entries', ierr)
             end if
 
             ht%nslots = 0
@@ -179,7 +179,7 @@ module hash_table
             ht%payload_len = 0
             ht%head = 0
             ht%max_free_reqd = 0
-            ht%next_free_element = 0
+            ht%next_free_entry = 0
 
         end subroutine free_hash_table
 
@@ -188,9 +188,9 @@ module hash_table
             ! Reset hash table.
 
             ! In/Out:
-            !    ht: hash table.  On output the table, head, next_free_element
-            !        and free_elements attributes are all set to 0.  This means
-            !        that no data is stored in the hash table and new elements
+            !    ht: hash table.  On output the table, head, next_free_entry
+            !        and free_entries attributes are all set to 0.  This means
+            !        that no data is stored in the hash table and new entries 
             !        are added by consecutively by incrementing head.
 
             type(hash_table_t), intent(inout) :: ht
@@ -198,25 +198,25 @@ module hash_table
             integer :: i
 
             ht%head = 0
-            ht%next_free_element = 0
-            ht%free_elements = 0
+            ht%next_free_entry = 0
+            ht%free_entries = 0
             ht%table = 0
 
         end subroutine reset_hash_table
 
-!--- Remove/add known free slots in occupied part of data_load/payload arrays ---
+!--- Remove/add known free entries in occupied part of data_load/payload arrays ---
 
-        elemental subroutine take_hash_table_free_slot(ht, indx)
+        elemental subroutine take_hash_table_free_entry(ht, indx)
 
-            ! Get the next index of the data arrays to be used.
+            ! Get the index of the next entry of the data arrays to be used.
 
             ! In/Out:
             !    ht: hash table.  On output, the entry given by indx is
             !        registered as being used (i.e. removed from the
-            !        ht%free_elements or ht%head is incremented).
+            !        ht%free_entries or ht%head is incremented).
             ! Out:
             !    indx: index of free entry in ht%data_label and ht%payload to be
-            !        used.  The index is taken from the free_elements_array if
+            !        used.  The index is taken from the free_entries_array if
             !        there is a index available, otherwise the index is the
             !        entry directly above the current head (top) entry of
             !        ht%data_label and ht%payload arrays.
@@ -227,9 +227,9 @@ module hash_table
             type(hash_table_t), intent(inout) :: ht
             integer, intent(out) :: indx
 
-            indx = ht%free_elements(ht%next_free_element)
-            ht%free_elements(ht%next_free_element) = 0
-            ht%next_free_element = modulo(ht%next_free_element-1,ht%max_free_reqd)
+            indx = ht%free_entries(ht%next_free_entry)
+            ht%free_entries(ht%next_free_entry) = 0
+            ht%next_free_entry = modulo(ht%next_free_entry-1,ht%max_free_reqd)
 
             if (indx == 0) then
                 ! Have run out of free slots that we know about in the
@@ -239,28 +239,28 @@ module hash_table
                 indx = ht%head
             end if
 
-        end subroutine take_hash_table_free_slot
+        end subroutine take_hash_table_free_entry
 
-        elemental subroutine register_hash_table_free_slot(ht, indx)
+        elemental subroutine register_hash_table_free_entry(ht, indx)
 
-            ! Return an index of the data arrays for reuse.
+            ! Return an entry in the data arrays to the hash table for reuse.
 
             ! In:
             !    indx: index of ht%data_label and ht%payload which can be
             !        reused.
             ! In/Out:
-            !    ht: hash table.  On output, ht%free_elements is updated with
+            !    ht: hash table.  On output, ht%free_entries is updated with
             !        the specified index.
 
             integer, intent(in) :: indx
             type(hash_table_t), intent(inout) :: ht
 
-            ht%next_free_element = modulo(ht%next_free_element+1, ht%max_free_reqd)
-            ht%free_elements(ht%next_free_element) = indx
+            ht%next_free_entry = modulo(ht%next_free_entry+1, ht%max_free_reqd)
+            ht%free_entries(ht%next_free_entry) = indx
 
-        end subroutine register_hash_table_free_slot
+        end subroutine register_hash_table_free_entry
 
-        pure subroutine delete_hash_table_entry(ht, pos)
+        elemental subroutine delete_hash_table_entry(ht, pos)
 
             ! Remove an entry from the hash table.
 
@@ -278,20 +278,16 @@ module hash_table
             type(hash_table_pos_t), intent(in) :: pos
             type(hash_table_t), intent(inout) :: ht
 
-            integer :: i, indx
-
-            do i = pos%ientry+1, ht%table(0,pos%islot)
-                ht%table(i-1,pos%islot) = ht%table(i,pos%islot)
-            end do
+            ht%table(pos%ientry:pos%islot-1,pos%islot) = ht%table(pos%ientry+1:pos%islot,pos%islot)
             ht%table(0,pos%islot) = ht%table(0,pos%islot) - 1
 
-            call register_hash_table_free_slot(ht, pos%indx)
+            call register_hash_table_free_entry(ht, pos%indx)
 
         end subroutine delete_hash_table_entry
 
 !--- Query hashed store ---
 
-        subroutine lookup_hash_table_element(ht, label, pos, hit)
+        subroutine lookup_hash_table_entry(ht, label, pos, hit)
 
             ! Find the position/location of a data item.
 
@@ -318,7 +314,8 @@ module hash_table
             hit = .false.
             pos%islot = modulo(murmurhash_bit_string(label, size(label)),ht%nslots)
 
-            ! Need to search over elements in with this hash%nslots value.
+            ! Need to search over elements in the table with this hash%nslots
+            ! value (i.e. search over hash collisions).
             do i = 1, ht%table(0,pos%islot)
                 pos%indx = ht%table(i,pos%islot)
                 if (all(ht%data_label(:,pos%indx) == label)) then
@@ -328,7 +325,7 @@ module hash_table
                 end if
             end do
 
-        end subroutine lookup_hash_table_element
+        end subroutine lookup_hash_table_entry
 
 !--- Hash table manipulation utilities ---
 
