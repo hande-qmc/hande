@@ -99,6 +99,9 @@ module hash_table
         integer :: indx
     end type hash_table_pos_t
 
+    ! Error code if hash table is full.
+    integer, parameter :: HT_ERR_FULL = 1
+
     contains
 
 !--- Allocation/deallocation ---
@@ -206,7 +209,7 @@ module hash_table
 
 !--- Remove/add known free entries in occupied part of data_load/payload arrays ---
 
-        elemental subroutine take_hash_table_free_entry(ht, indx)
+        elemental subroutine take_hash_table_free_entry(ht, indx, err_code)
 
             ! Get the index of the next entry of the data arrays to be used.
 
@@ -220,16 +223,16 @@ module hash_table
             !        there is a index available, otherwise the index is the
             !        entry directly above the current head (top) entry of
             !        ht%data_label and ht%payload arrays.
-
-            ! WARNING: this does not check that the returned index is inside the
-            ! available space (ie less than ht%head)...
+            !    err_code: error code.  Non-zero if an error is encountered.
+            !        See error codes defined at module-level.
 
             type(hash_table_t), intent(inout) :: ht
-            integer, intent(out) :: indx
+            integer, intent(out) :: indx, err_code
 
             indx = ht%free_entries(ht%next_free_entry)
             ht%free_entries(ht%next_free_entry) = 0
             ht%next_free_entry = modulo(ht%next_free_entry-1,ht%max_free_reqd)
+            err_code = 0
 
             if (indx == 0) then
                 ! Have run out of free slots that we know about in the
@@ -237,6 +240,7 @@ module hash_table
                 ! occupied space...
                 ht%head = ht%head + 1
                 indx = ht%head
+                if (ht%head > ubound(ht%data_label,dim=2)) err_code = HT_ERR_FULL
             end if
 
         end subroutine take_hash_table_free_entry
