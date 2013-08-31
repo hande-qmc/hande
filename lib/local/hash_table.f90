@@ -101,6 +101,10 @@ module hash_table
 
     ! Error code if hash table is full.
     integer, parameter :: HT_ERR_FULL = 1
+    ! Error code if there have been more collisions than the hash table can
+    ! handle (i.e. more than nentries need to share the same slot in the hash
+    ! table).
+    integer, parameter :: HT_ERR_COLLISIONS = 2
 
     contains
 
@@ -288,6 +292,42 @@ module hash_table
             call register_hash_table_free_entry(ht, pos%indx)
 
         end subroutine delete_hash_table_entry
+
+!--- Add to hash table ---
+
+        elemental subroutine assign_hash_table_entry(ht, slot, pos, err_code)
+
+            ! Assign a new entry to a given location in the hash table.
+
+            ! In:
+            !    slot: the slot in the hash table to which a new entry is
+            !        to be assigned.
+            ! In/Out:
+            !    ht: hash table.  On exit, a new entry in the specified slot in
+            !        the hash table is assigned an available element of the
+            !        data_label and payload arrays.
+            ! Out:
+            !    pos: object containing the position of the entry in both the
+            !        ht%table and ht%data_label/ht%payload arrays.
+            !    err_code: error code.  Non-zero if an error is encountered.
+            !        See error codes defined at module-level.
+
+            type(hash_table_t), intent(inout) :: ht
+            integer, intent(in) :: slot
+            type(hash_table_pos_t), intent(out) :: pos
+            integer, intent(out) :: err_code
+
+            pos%islot = slot
+            if (ht%table(0,pos%islot) == ht%nentries) then
+                err_code = HT_ERR_COLLISIONS
+            else
+                call take_hash_table_free_entry(ht, pos%indx, err_code)
+                pos%ientry = ht%table(0,pos%islot) + 1
+                ht%table(0,pos%islot) = pos%ientry
+                ht%table(pos%ientry,pos%islot) = pos%indx
+            end if
+
+        end subroutine assign_hash_table_entry
 
 !--- Query hashed store ---
 
