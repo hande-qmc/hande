@@ -331,7 +331,7 @@ contains
 !                        backspace(io)
 !                        exit
 !                    end if
-!                    dest = modulo(murmurhash_bit_string(det, total_basis_length), nprocs)
+!                    dest = modulo(murmurhash_bit_string(det, total_basis_length, 7), nprocs)
 !                    spawning_head(thread_id,dest) = spawning_head(thread_id,dest) + 1
 !                    ! zero spawned array in case some elements were not set
 !                    ! (e.g. restart file from standard FCIQMC calculation but

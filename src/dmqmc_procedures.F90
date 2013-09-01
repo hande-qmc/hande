@@ -245,7 +245,7 @@ contains
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
-                                 spawned_rdm_length, rdm_spawn(i))
+                                 spawned_rdm_length, 7, rdm_spawn(i))
             end if
         end do
 
@@ -504,7 +504,7 @@ contains
 #ifdef PARALLEL
         ! Need to determine which processor the spawned walker should be sent to.
         iproc_spawn = modulo(murmurhash_bit_string(f_new, &
-                                (total_basis_length)), nprocs)
+                                total_basis_length, qmc_spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.

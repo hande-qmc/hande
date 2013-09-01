@@ -4,6 +4,7 @@ module spawn_data
 ! psips/excips in FCIQMC/CCMC/DMQMC calculations).
 
 use const, only: p, dp, i0
+use, intrinsic :: iso_c_binding, only: c_int
 
 implicit none
 
@@ -51,6 +52,9 @@ type spawn_t
     ! head_start(j,i) gives the position in sdata of the first spawned particle
     ! created by thread j to be sent to processor i.
     integer, allocatable :: head_start(:,:) ! (0:nthreads-1,0:max(1,nprocs-1))
+    ! seed for hash routine used to determine which processor a given bit string
+    ! should be sent to.
+    integer(c_int) :: hash_seed
     ! Time spent doing MPI communication.
     real(dp) :: comm_time = 0.0_dp
     ! Private storage arrays for communication.
@@ -67,12 +71,12 @@ contains
 
 !--- Initialisation/finalisation ---
 
-    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, spawn)
+    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, hash_seed, spawn)
 
         use parallel, only: nthreads, nprocs
         use checking, only: check_allocate
 
-        integer, intent(in) :: bit_str_len, ntypes, array_len
+        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed
         logical, intent(in) :: flag
         type(spawn_t), intent(out) :: spawn
 
@@ -88,6 +92,7 @@ contains
             spawn%flag_indx = -1
         end if
         spawn%array_len = array_len
+        spawn%hash_seed = hash_seed
         spawn%comm_time = 0.0_dp
 
         allocate(spawn%store1(spawn%element_len, spawn%array_len), stat=ierr)

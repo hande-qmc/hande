@@ -187,7 +187,7 @@ contains
         end if
 
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
-                         spawned_walker_length, qmc_spawn)
+                         spawned_walker_length, 7, qmc_spawn)
 
         ! Set spin variables for non-Heisenberg systems
         if (system_type /= heisenberg) call set_spin_polarisation(ms_in)
@@ -212,7 +212,7 @@ contains
             end if
             if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
             if (nprocs > 1) then
-                D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+                D0_proc = modulo(murmurhash_bit_string(f0, basis_length, qmc_spawn%hash_seed), nprocs)
             else
                 D0_proc = iproc
             end if
@@ -286,7 +286,7 @@ contains
                 ! belongs on this processor.
                 ! If it doesn't, set the walkers array to be empty.
                 if (nprocs > 1) then
-                    D0_proc = modulo(murmurhash_bit_string(f0, basis_length), nprocs)
+                    D0_proc = modulo(murmurhash_bit_string(f0, basis_length, qmc_spawn%hash_seed), nprocs)
                     if (D0_proc /= iproc) tot_walkers = 0
                 else
                     D0_proc = iproc
@@ -327,7 +327,7 @@ contains
                 end select
 
                 if (nprocs > 1) then
-                    D0_inv_proc = modulo(murmurhash_bit_string(f0_inv, basis_length), nprocs)
+                    D0_inv_proc = modulo(murmurhash_bit_string(f0_inv, basis_length, 7), nprocs)
                 else
                     D0_inv_proc = iproc
                 end if

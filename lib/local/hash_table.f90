@@ -32,6 +32,7 @@ module hash_table
     !   as contiguously as possible.
 
     use const
+    use, intrinsic :: iso_c_binding, only: c_int
 
     implicit none
 
@@ -84,6 +85,9 @@ module hash_table
         ! data_label and corresponding payload arrays.
         integer, allocatable :: free_entries(:) ! (0:max_free_reqd-1)
 
+        ! Seed for the hash function.
+        integer(c_int) :: seed
+
     end type hash_table_t
 
     type hash_table_pos_t
@@ -110,12 +114,12 @@ module hash_table
 
 !--- Allocation/deallocation ---
 
-        subroutine alloc_hash_table(nslots, nentries, data_len, payload_len, max_free_reqd, ht)
+        subroutine alloc_hash_table(nslots, nentries, data_len, payload_len, max_free_reqd, seed, ht)
 
             ! Allocate hash table and initialise storage.
 
             ! In:
-            !    nslots, nentries, data_len, payload_len, max_free_reqd: see
+            !    nslots, nentries, data_len, payload_len, max_free_reqd, seed: see
             !        descriptions in hash_table_t.
             ! Out:
             !    ht: hash table.  On output all array attributes are allocated
@@ -125,7 +129,7 @@ module hash_table
 
             use checking, only: check_allocate
 
-            integer, intent(in) :: nslots, nentries, data_len, payload_len, max_free_reqd
+            integer, intent(in) :: nslots, nentries, data_len, payload_len, max_free_reqd, seed
             type(hash_table_t), intent(out) :: ht
 
             integer :: ierr
@@ -135,6 +139,7 @@ module hash_table
             ht%data_len = data_len
             ht%payload_len = payload_len
             ht%max_free_reqd = max_free_reqd
+            ht%seed = seed
 
             allocate(ht%table(ht%nentries,ht%nslots), stat=ierr)
             call check_allocate('ht%table', size(ht%table), ierr)
@@ -186,6 +191,7 @@ module hash_table
             ht%payload_len = 0
             ht%head = 0
             ht%max_free_reqd = 0
+            ht%seed = 0
             ht%next_free_entry = 0
 
         end subroutine free_hash_table
@@ -356,7 +362,7 @@ module hash_table
             integer :: i
 
             hit = .false.
-            pos%islot = modulo(murmurhash_bit_string(label, size(label)),ht%nslots)
+            pos%islot = modulo(murmurhash_bit_string(label, size(label), ht%seed),ht%nslots)
 
             ! Need to search over elements in the table with this hash%nslots
             ! value (i.e. search over hash collisions).
