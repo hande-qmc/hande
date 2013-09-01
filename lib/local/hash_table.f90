@@ -371,6 +371,50 @@ module hash_table
 
         end subroutine lookup_hash_table_entry
 
+!--- Bulk operations ---
+
+        subroutine accumulate_in_hash_table(ht, labels, payload, err_code)
+
+            ! Sum data belonging to the same label using a hash table.
+
+            ! In:
+            !    labels: label of each item in payload.
+            !    payload: set of data to be summed over.
+            ! In/Out:
+            !    ht: hash table.  Must be allocated on input but all existing
+            !        information contained by ht is wiped.  On output, contains
+            !        one entry per data label and the payload for each entry is
+            !        the sum of the items in payload corresponding to that data
+            !        label.
+            ! Out:
+            !    err_code: error code.  Non-zero if an error is encountered.
+            !        See error codes defined at module-level.
+
+            type(hash_table_t), intent(inout) :: ht
+            integer(i0), intent(in) :: labels(:,:)
+            integer(i0), intent(in) :: payload(:,:)
+            integer, intent(out) :: err_code
+
+            type(hash_table_pos_t) :: pos
+            logical :: hit
+            integer :: i
+
+            call reset_hash_table(ht)
+            err_code = 0
+
+            do i = 1, ubound(labels, dim=2)
+                call lookup_hash_table_entry(ht, labels(:,i), pos, hit)
+                if (hit) then
+                    ht%payload(:,pos%indx) = ht%payload(:,pos%indx) + payload(:,i)
+                else
+                    call assign_hash_table_entry(ht, pos%islot, pos, err_code)
+                    ht%payload(:,pos%indx) = payload(:,i)
+                    if (err_code /= 0) exit
+                end if
+            end do
+
+        end subroutine accumulate_in_hash_table
+
 !--- Hash table manipulation utilities ---
 
 ! TODO: expand/resize ht%table.
