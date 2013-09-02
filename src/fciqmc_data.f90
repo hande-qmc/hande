@@ -470,14 +470,14 @@ contains
             end if
             if (doing_dmqmc_calc(dmqmc_renyi_2)) then
                 do i = 1, nrdms
-                    write (6, '(2X,a19,'//int_fmt(i,1)//')', advance = 'no') 'Renyi_2 numerator', i
+                    write (6, '(4X,a18,'//int_fmt(i,0)//')', advance = 'no') 'Renyi_2_numerator_', i
                 end do
             end if
             if (calc_inst_rdm) then
                 do i = 1, nrdms
                     do j = 1, sampling_size
-                        write (6, '(8X,a3,'//int_fmt(i,0)//',1x,a5,'//int_fmt(j,1)//')', advance = 'no') &
-                                'RDM', i, 'trace', j
+                        write (6, '(8X,a3,'//int_fmt(i,0)//',a7,'//int_fmt(j,0)//')', advance = 'no') &
+                                'RDM', i, '_trace_', j
                     end do
                 end do
             end if
