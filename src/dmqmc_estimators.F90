@@ -157,7 +157,7 @@ contains
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
        use fciqmc_data, only: calculate_excit_distribution, excit_distribution
-       use fciqmc_data, only: sampling_size
+       use fciqmc_data, only: sampling_size, dmqmc_accumulated_probs_old
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
 
@@ -206,6 +206,8 @@ contains
        ! Reduced density matrix
        if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
                &(idet, excitation, walker_population(:,idet), iteration)
+
+       dmqmc_accumulated_probs_old = dmqmc_accumulated_probs
 
    end subroutine call_dmqmc_estimators
 
@@ -859,7 +861,7 @@ contains
 
         use dmqmc_procedures, only: rdm
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: dmqmc_accumulated_probs
+        use fciqmc_data, only: dmqmc_accumulated_probs_old
         use spawn_data, only: spawn_t
 
         type(rdm), intent(in) :: rdm_data(:)
@@ -877,8 +879,8 @@ contains
                 excit_level = get_excitation_level(rdm_lists(irdm)%sdata(1:rdm_data(irdm)%rdm_basis_length,i),&
                     rdm_lists(irdm)%sdata(rdm_data(irdm)%rdm_basis_length+1:2*rdm_data(irdm)%rdm_basis_length,i) )
 
-                unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*dmqmc_accumulated_probs(excit_level)
-                unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2,i)*dmqmc_accumulated_probs(excit_level)
+                unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*dmqmc_accumulated_probs_old(excit_level)
+                unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2,i)*dmqmc_accumulated_probs_old(excit_level)
 
                 r2(irdm) = r2(irdm) + unweighted_pop_1*unweighted_pop_2
 

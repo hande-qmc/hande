@@ -56,7 +56,7 @@ contains
          use fciqmc_data, only: doing_concurrence, calculate_excit_distribution, excit_distribution
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
-         use fciqmc_data, only: sampling_size, rdm_traces, nrdms
+         use fciqmc_data, only: sampling_size, rdm_traces, nrdms, dmqmc_accumulated_probs_old
          use system, only: max_number_excitations
 
          integer :: ierr, i, bit_position, bit_element
@@ -140,7 +140,10 @@ contains
              if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs_old(0:max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs_old',max_number_excitations+1,ierr)
              dmqmc_accumulated_probs(0) = 1.0_p
+             dmqmc_accumulated_probs_old = 1.0_p
              do i = 1, size(dmqmc_sampling_probs)
                  dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
              end do

@@ -240,6 +240,7 @@ real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
 logical :: dmqmc_weighted_sampling
 real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
 real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
+real(p), allocatable :: dmqmc_accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
 ! If dmqmc_vary_weights is true, then instead of using the final sampling
 ! weights for all the iterations, the weights will be gradually increased
 ! until finish_varying_weights, at which point they will be held constant.
