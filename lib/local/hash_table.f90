@@ -151,7 +151,7 @@ module hash_table
             ht%max_free_reqd = max_free_reqd
             ht%seed = seed
 
-            allocate(ht%table(ht%nentries,ht%nslots), stat=ierr)
+            allocate(ht%table(0:ht%nentries,ht%nslots), stat=ierr)
             call check_allocate('ht%table', size(ht%table), ierr)
             if (present(data_label)) then
                 ht%data_label => data_label
@@ -167,7 +167,7 @@ module hash_table
                 allocate(ht%payload(ht%payload_len,ht%nentries*ht%nslots), stat=ierr)
                 call check_allocate('ht%payload', size(ht%payload), ierr)
             end if
-            allocate(ht%free_entries(ht%max_free_reqd), stat=ierr)
+            allocate(ht%free_entries(0:ht%max_free_reqd-1), stat=ierr)
             call check_allocate('ht%free_entries', size(ht%free_entries), ierr)
 
             call reset_hash_table(ht)
@@ -269,10 +269,13 @@ module hash_table
             type(hash_table_t), intent(inout) :: ht
             integer, intent(out) :: indx, err_code
 
-            indx = ht%free_entries(ht%next_free_entry)
-            ht%free_entries(ht%next_free_entry) = 0
-            ht%next_free_entry = modulo(ht%next_free_entry-1,ht%max_free_reqd)
             err_code = 0
+            indx = 0
+            if (ht%max_free_reqd > 0) then
+                indx = ht%free_entries(ht%next_free_entry)
+                ht%free_entries(ht%next_free_entry) = 0
+                ht%next_free_entry = modulo(ht%next_free_entry-1,ht%max_free_reqd)
+            end if
 
             if (indx == 0) then
                 ! Have run out of free slots that we know about in the
@@ -398,7 +401,10 @@ module hash_table
             ! value (i.e. search over hash collisions).
             do i = 1, ht%table(0,pos%islot)
                 pos%indx = ht%table(i,pos%islot)
-                if (all(ht%data_label(:,pos%indx) == label)) then
+                ! If data_label points to an external array, then the first
+                ! dimension might exceed ht%data_len.  We do, however, assume
+                ! the user has only passed in an array of size ht%data_len...
+                if (all(ht%data_label(:ht%data_len,pos%indx) == label)) then
                     pos%ientry = i
                     hit = .true.
                     exit
