@@ -57,11 +57,17 @@ module hash_table
         integer, allocatable :: table(:,:) ! (0:entries, 0:nslots-1)
 
         ! data_label(:,i) is the i-th (unique) data item being stored.
-        integer(i0), allocatable :: data_label(:,:) ! (:,nentries*nslots)
+        integer(i0), pointer :: data_label(:,:) => null() ! (:,nentries*nslots)
+        ! Using an internal array for data label (ie allocation) or pointing to
+        ! an external array?
+        logical, private :: extern_data_label = .false.
 
         ! payload(:,i) is the 'payload' or information associated with
         ! the i-th data item in data_label.
-        integer, allocatable :: payload(:,:) ! (:,nentries*nslots)
+        integer, pointer :: payload(:,:) => null() ! (:,nentries*nslots)
+        ! Using an internal array for payload (ie allocation) or pointing to
+        ! an external array?
+        logical, private :: extern_payload = .false.
 
         ! We usually want to iterate over the data items, so it is best if they
         ! are (as far as possible) contiguous.
@@ -114,13 +120,16 @@ module hash_table
 
 !--- Allocation/deallocation ---
 
-        subroutine alloc_hash_table(nslots, nentries, data_len, payload_len, max_free_reqd, seed, ht)
+        subroutine alloc_hash_table(nslots, nentries, data_len, payload_len, max_free_reqd, seed, ht, data_label, payload)
 
             ! Allocate hash table and initialise storage.
 
             ! In:
             !    nslots, nentries, data_len, payload_len, max_free_reqd, seed: see
             !        descriptions in hash_table_t.
+            !    data_label (optional), payload (optional): external arrays to
+            !        use for the data label and payload arrays (see descriptions
+            !        in hash_table_t) rather than internal stores.
             ! Out:
             !    ht: hash table.  On output all array attributes are allocated
             !        and all scalar attributes are set to their corresponding
@@ -130,6 +139,7 @@ module hash_table
             use checking, only: check_allocate
 
             integer, intent(in) :: nslots, nentries, data_len, payload_len, max_free_reqd, seed
+            integer, intent(in), optional, target :: data_label(:,:), payload(:,:)
             type(hash_table_t), intent(out) :: ht
 
             integer :: ierr
@@ -143,10 +153,20 @@ module hash_table
 
             allocate(ht%table(ht%nentries,ht%nslots), stat=ierr)
             call check_allocate('ht%table', size(ht%table), ierr)
-            allocate(ht%data_label(ht%data_len,ht%nentries*ht%nslots))
-            call check_allocate('ht%data_label', size(ht%data_label), ierr)
-            allocate(ht%payload(ht%payload_len,ht%nentries*ht%nslots), stat=ierr)
-            call check_allocate('ht%payload', size(ht%payload), ierr)
+            if (present(data_label)) then
+                ht%data_label => data_label
+                ht%extern_data_label = .true.
+            else
+                allocate(ht%data_label(ht%data_len,ht%nentries*ht%nslots))
+                call check_allocate('ht%data_label', size(ht%data_label), ierr)
+            end if
+            if (present(payload)) then
+                ht%payload => payload
+                ht%extern_payload = .true.
+            else
+                allocate(ht%payload(ht%payload_len,ht%nentries*ht%nslots), stat=ierr)
+                call check_allocate('ht%payload', size(ht%payload), ierr)
+            end if
             allocate(ht%free_entries(ht%max_free_reqd), stat=ierr)
             call check_allocate('ht%free_entries', size(ht%free_entries), ierr)
 
@@ -159,7 +179,7 @@ module hash_table
             ! Deallocate hash table and set scalar attributes to 0.
 
             ! In/Out:
-            !    ht: hash table.  On output all array attributes are deallocated
+            !    ht: hash table.  On output all array attributes are deallocated/
             !        and all scalar attributes are set to 0.
 
             use checking, only: check_deallocate
@@ -172,13 +192,21 @@ module hash_table
                 deallocate(ht%table)
                 call check_deallocate('ht%table', ierr)
             end if
-            if (allocated(ht%data_label)) then
-                deallocate(ht%data_label)
-                call check_deallocate('ht%data_label', ierr)
+            if (associated(ht%data_label)) then
+                if (ht%extern_data_label) then
+                    ht%data_label => null()
+                else
+                    deallocate(ht%data_label)
+                    call check_deallocate('ht%data_label', ierr)
+                end if
             end if
-            if (allocated(ht%payload)) then
-                deallocate(ht%payload)
-                call check_deallocate('ht%payload', ierr)
+            if (associated(ht%payload)) then
+                if (ht%extern_payload) then
+                    ht%payload => null()
+                else
+                    deallocate(ht%payload)
+                    call check_deallocate('ht%payload', ierr)
+                end if
             end if
             if (allocated(ht%free_entries)) then
                 deallocate(ht%free_entries)
@@ -193,6 +221,8 @@ module hash_table
             ht%max_free_reqd = 0
             ht%seed = 0
             ht%next_free_entry = 0
+            ht%extern_data_label = .false.
+            ht%extern_payload = .false.
 
         end subroutine free_hash_table
 
