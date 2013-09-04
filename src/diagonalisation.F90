@@ -590,12 +590,14 @@ contains
 
                     ! Get the position in the RDM of this density matrix element.
                     call decode_dm_bitstring(f3,1,1)
+                    rdms(1)%end1 = rdms(1)%end1 + 1
+                    rdms(1)%end2 = rdms(1)%end2 + 1
 
                     ! The ground state wave function is stored in hamil(:,1).
                     rdm_element = hamil(i,1)*hamil(j,1)
                     ! Finally add in the contribution from this density matrix element.
-                    reduced_density_matrix(end1,end2) = reduced_density_matrix(end1,end2) + &
-                                                        rdm_element
+                    reduced_density_matrix(rdms(1)%end1(1),rdms(1)%end2(1)) = &
+                        reduced_density_matrix(rdms(1)%end1(1),rdms(1)%end2(1)) + rdm_element
                 end if
             end do
         end do

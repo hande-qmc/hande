@@ -44,34 +44,9 @@ contains
 #ifdef PARALLEL
         real(dp), allocatable :: ir(:)
         real(dp), allocatable :: ir_sum(:)
-        integer :: ierr, array_size
-
-        array_size = 2*sampling_size+1+number_dmqmc_estimators
-        if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
-
-        allocate(ir(1:array_size), stat=ierr)
-        call check_allocate('ir',array_size,ierr)
-        allocate(ir_sum(1:array_size), stat=ierr)
-        call check_allocate('ir_sum',array_size,ierr)
-
-        ! Need to sum the number of particles and other quantites over all processors.
-        ir(1:sampling_size) = nparticles
-        ir(sampling_size+1) = rspawn
-        ir(sampling_size+2:2*sampling_size+1) = trace
-        ir(2*sampling_size+2:2*sampling_size+1+number_dmqmc_estimators) = estimator_numerators
-        if (calculate_excit_distribution) ir(2*sampling_size+2+number_dmqmc_estimators:array_size) = excit_distribution
-        ! Merge the lists from each processor together.
-        call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-        ntot_particles = nint(ir_sum(1:sampling_size),lint)
-        rspawn = ir_sum(sampling_size+1)
-        trace = nint(ir_sum(sampling_size+2:2*sampling_size+1))
-        estimator_numerators = ir_sum(2*sampling_size+2:2*sampling_size+1+number_dmqmc_estimators)
-        if (calculate_excit_distribution) excit_distribution = ir_sum(2*sampling_size+2+number_dmqmc_estimators:array_size)
-#else
-        ntot_particles = nparticles
+        integer :: ierr, array_size, min_ind, max_ind
 #endif
 
-        ! If calculating beta-dependent rdms then perform annihilation steps on the spawned
         ! rdm array, and calculate any desired estimators.
         if (calc_inst_rdm) then
             ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
@@ -93,6 +68,67 @@ contains
                 rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
             end do
         end if
+
+
+#ifdef PARALLEL
+        array_size = 2*sampling_size+1+number_dmqmc_estimators
+        if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
+        if (calc_inst_rdm) array_size = array_size + size(rdm_traces(:,1))
+        if (doing_dmqmc_calc(dmqmc_renyi_2)) array_size = array_size + size(renyi_2)
+
+        allocate(ir(1:array_size), stat=ierr)
+        call check_allocate('ir',array_size,ierr)
+        allocate(ir_sum(1:array_size), stat=ierr)
+        call check_allocate('ir_sum',array_size,ierr)
+
+        ! Need to sum the number of particles and other quantites over all processors.
+        min_ind = 1; max_ind = sampling_size
+        ir(min_ind:max_ind) = nparticles
+        min_ind = max_ind + 1; max_ind = min_ind
+        ir(min_ind) = rspawn
+        min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1
+        ir(min_ind:max_ind) = trace
+        min_ind = max_ind + 1; max_ind = min_ind + number_dmqmc_estimators - 1
+        ir(min_ind:max_ind) = estimator_numerators
+        if (calculate_excit_distribution) then
+            min_ind = max_ind + 1; max_ind = min_ind + size(excit_distribution) - 1
+            ir(min_ind:max_ind) = excit_distribution
+        end if
+        if (calc_inst_rdm) then
+            min_ind = max_ind + 1; max_ind = min_ind + size(rdm_traces) - 1
+            ir(min_ind:max_ind) = rdm_traces(:,1)
+        end if
+        if (calc_inst_rdm) then
+            min_ind = max_ind + 1; max_ind = min_ind + size(renyi_2) - 1
+            ir(min_ind:max_ind) = renyi_2
+        end if
+
+        ! Merge the lists from each processor together.
+        call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+        min_ind = 1; max_ind = sampling_size
+        ntot_particles = nint(ir_sum(min_ind:max_ind))
+        min_ind = max_ind + 1; max_ind = min_ind
+        rspawn = ir_sum(min_ind)
+        min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1
+        trace = nint(ir_sum(min_ind:max_ind))
+        min_ind = max_ind + 1; max_ind = min_ind + number_dmqmc_estimators - 1
+        estimator_numerators = ir_sum(min_ind:max_ind)
+        if (calculate_excit_distribution) then
+            min_ind = max_ind + 1; max_ind = min_ind + size(excit_distribution) - 1
+            excit_distribution = ir_sum(min_ind:max_ind)
+        end if
+        if (calc_inst_rdm) then
+            min_ind = max_ind + 1; max_ind = min_ind + size(rdm_traces) - 1
+            rdm_traces(:,1) = real(ir_sum(min_ind:max_ind),p)
+        end if
+        if (calc_inst_rdm) then
+            min_ind = max_ind + 1; max_ind = min_ind + size(renyi_2) - 1
+            renyi_2 = real(ir_sum(min_ind:max_ind),p)
+        end if
+#else
+        ntot_particles = nparticles
+#endif
 
         ! If average_shift_until = -1 then it means that the shift should be updated to
         ! use the values of shift stored in shift_profile. Otherwise, use the standard update
@@ -134,7 +170,7 @@ contains
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
        use fciqmc_data, only: calculate_excit_distribution, excit_distribution
-       use fciqmc_data, only: sampling_size
+       use fciqmc_data, only: sampling_size, dmqmc_accumulated_probs_old
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
 
@@ -183,6 +219,8 @@ contains
        ! Reduced density matrix
        if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
                &(idet, excitation, walker_population(:,idet), iteration)
+
+       dmqmc_accumulated_probs_old = dmqmc_accumulated_probs
 
    end subroutine call_dmqmc_estimators
 
@@ -836,7 +874,7 @@ contains
 
         use dmqmc_procedures, only: rdm
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: dmqmc_accumulated_probs
+        use fciqmc_data, only: dmqmc_accumulated_probs_old
         use spawn_data, only: spawn_t
 
         type(rdm), intent(in) :: rdm_data(:)
@@ -852,11 +890,10 @@ contains
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
 
                 excit_level = get_excitation_level(rdm_lists(irdm)%sdata(1:rdm_data(irdm)%rdm_basis_length,i),&
-                                                   rdm_lists(irdm)%sdata(rdm_data(irdm)%rdm_basis_length+1:&
-                                                   2*rdm_data(irdm)%rdm_basis_length,i) )
+                    rdm_lists(irdm)%sdata(rdm_data(irdm)%rdm_basis_length+1:2*rdm_data(irdm)%rdm_basis_length,i) )
 
-                unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1, i)*dmqmc_accumulated_probs(excit_level)
-                unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2, i)*dmqmc_accumulated_probs(excit_level)
+                unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*dmqmc_accumulated_probs_old(excit_level)
+                unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2,i)*dmqmc_accumulated_probs_old(excit_level)
 
                 r2(irdm) = r2(irdm) + unweighted_pop_1*unweighted_pop_2
 
