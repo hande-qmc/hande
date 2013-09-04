@@ -33,6 +33,7 @@ contains
         use fciqmc_data, only: nreport, ncycles, trace, calculate_excit_distribution
         use fciqmc_data, only: excit_distribution, average_shift_until, shift_profile
         use fciqmc_data, only: calc_inst_rdm, rdm_spawn, nrdms, rdm_traces, renyi_2
+        use hash_table, only: reset_hash_table
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
@@ -73,11 +74,23 @@ contains
         ! If calculating beta-dependent rdms then perform annihilation steps on the spawned
         ! rdm array, and calculate any desired estimators.
         if (calc_inst_rdm) then
-            call annihilate_wrapper_spawn_t(rdm_spawn, .false.)
-            call calculate_rdm_traces(rdms, rdm_spawn, rdm_traces)
-            if (doing_dmqmc_calc(dmqmc_renyi_2)) call calculate_renyi_2(rdms, rdm_spawn, renyi_2)
+            ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
+            ! array of type spawn_t due to a bug in gfortran which results in
+            ! memory deallocations!
+            ! See https://groups.google.com/forum/#!topic/comp.lang.fortran/VuFvOsLs6hE
+            ! and http://gcc.gnu.org/bugzilla/show_bug.cgi?id=58310.
+            ! The explicit loop is also meant to be more efficient anyway, as it
+            ! prevents any chance of copy-in/copy-out...
             do irdm = 1, nrdms
-                rdm_spawn(irdm)%head = rdm_spawn(irdm)%head_start
+                call annihilate_wrapper_spawn_t(rdm_spawn(irdm)%spawn, .false.)
+                ! Now is also a good time to reset the hash table (otherwise we
+                ! attempt to lookup non-existent data in the next cycle!).
+                call reset_hash_table(rdm_spawn(irdm)%ht)
+            end do
+            call calculate_rdm_traces(rdms, rdm_spawn%spawn, rdm_traces)
+            if (doing_dmqmc_calc(dmqmc_renyi_2)) call calculate_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
+            do irdm = 1, nrdms
+                rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
             end do
         end if
 

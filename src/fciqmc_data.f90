@@ -5,6 +5,7 @@ module fciqmc_data
 
 use const
 use spawn_data, only: spawn_t
+use hash_table, only: hash_table_t
 implicit none
 
 !--- Input data: FCIQMC ---
@@ -305,7 +306,14 @@ logical :: doing_exact_rdm_eigv
 real(p), allocatable :: reduced_density_matrix(:,:)
 
 ! Spawned lists for rdms.
-type(spawn_t), allocatable :: rdm_spawn(:)
+type rdm_spawn_t
+    type(spawn_t) :: spawn
+    ! Spawn with the help of a hash table to avoid a sort (which is extremely
+    ! expensive when a large number of keys are repeated--seem to hit worst case
+    ! performance in quicksort).
+    type(hash_table_t) :: ht
+end type rdm_spawn_t
+type(rdm_spawn_t), allocatable :: rdm_spawn(:)
 
 ! The total number of rdms beings calculated.
 integer :: nrdms

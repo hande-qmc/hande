@@ -193,6 +193,7 @@ contains
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
         use fciqmc_data, only: replica_tricks, renyi_2, sampling_size
         use fciqmc_data, only: spawned_rdm_length, rdm_spawn
+        use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
         use system, only: system_type, heisenberg, nsites
@@ -245,7 +246,14 @@ contains
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
-                                 spawned_rdm_length, 7, rdm_spawn(i))
+                                 spawned_rdm_length, 7, rdm_spawn(i)%spawn)
+                ! Hard code hash table collision limit for now.  This should
+                ! give an ok performance...
+                ! We will only use the first 2*rdm_basis_length elements for the
+                ! hash, even though rdm_spawn%spawn%sdata is larger than that in
+                ! the first dimension...
+                call alloc_hash_table(nint(real(spawned_rdm_length)/3), 3, rdms(i)%rdm_basis_length*2, &
+                                      0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
 
