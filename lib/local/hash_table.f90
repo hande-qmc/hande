@@ -240,10 +240,10 @@ module hash_table
 
             integer :: i
 
+            ht%table(0,:) = 0
             ht%head = 0
             ht%next_free_entry = 0
             ht%free_entries = 0
-            ht%table = 0
 
         end subroutine reset_hash_table
 
