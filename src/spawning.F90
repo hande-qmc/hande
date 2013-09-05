@@ -1260,6 +1260,11 @@ contains
 #else
         integer :: iproc_spawn
 #endif
+        ! WARNING!  The below algorithm is *not* suitable for conversion to
+        ! thread-safety as each thread could be spawning onto the same RDM
+        ! element, yet the hash table requires a given element to exist in one
+        ! (and only one) location, which is not compatible with how the threaded
+        ! spawning arrays work.
         integer, parameter :: thread_id = 0
 
         type(hash_table_pos_t) :: pos
