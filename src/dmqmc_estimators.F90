@@ -61,6 +61,10 @@ contains
                 ! Now is also a good time to reset the hash table (otherwise we
                 ! attempt to lookup non-existent data in the next cycle!).
                 call reset_hash_table(rdm_spawn(irdm)%ht)
+                ! spawn_t comms changes the memory used by spawn%sdata.  Make
+                ! sure the hash table always uses the currently 'active'
+                ! spawning memory.
+                rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
             end do
             call calculate_rdm_traces(rdms, rdm_spawn%spawn, rdm_traces)
             if (doing_dmqmc_calc(dmqmc_renyi_2)) call calculate_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
