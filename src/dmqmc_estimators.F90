@@ -599,8 +599,8 @@ contains
            do isym = 1, nsym_vec
 
                ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
-               f1 = iand(rdms(irdm)%B_masks(isym,:),walker_dets(:basis_length,idet))
-               f2 = iand(rdms(irdm)%B_masks(isym,:),walker_dets(basis_length+1:total_basis_length,idet))
+               f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis_length,idet))
+               f2 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(basis_length+1:total_basis_length,idet))
 
                ! Once this is done, check if the resulting bitstring (which can only possibly
                ! have 1's in the B subsystem) are identical. If they are, then this psip gives

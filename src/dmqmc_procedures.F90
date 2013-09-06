@@ -17,7 +17,7 @@ type rdm
     integer :: rdm_basis_length
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
-    ! B_masks(i,:) has bits set at all bit positions corresponding to
+    ! B_masks(:,i) has bits set at all bit positions corresponding to
     ! sites in version i of subsystem B, where the different 'versions'
     ! correspond to subsystems which are equivalent by symmetry.
     integer, allocatable :: B_masks(:,:)
@@ -360,7 +360,7 @@ contains
 
         ! Allocate the RDM arrays.
         do i = 1, nrdms
-            allocate(rdms(i)%B_masks(nsym_vec,basis_length), stat=ierr)
+            allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
             call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
             allocate(rdms(i)%bit_pos(nsym_vec,rdms(i)%A_nsites,2), stat=ierr)
             call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
@@ -393,17 +393,17 @@ contains
                     end do
                 end do
 
-                rdms(i)%B_masks(j,:) = A_mask
+                rdms(i)%B_masks(:,j) = A_mask
                 ! We cannot just flip the mask for system A to get that for system B,
                 ! because the trailing bits on the end don't refer to anything and should
                 ! be set to 0. So, first set these to 1 and then flip all the bits.
                 do ipos = 0, i0_end
                     basis_find = basis_lookup(ipos, basis_length)
                     if (basis_find == 0) then
-                        rdms(i)%B_masks(j,basis_length) = ibset(rdms(i)%B_masks(j,basis_length),ipos)
+                        rdms(i)%B_masks(basis_length,j) = ibset(rdms(i)%B_masks(basis_length,j),ipos)
                     end if
                 end do
-                rdms(i)%B_masks(j,:) = not(rdms(i)%B_masks(j,:))
+                rdms(i)%B_masks(:,j) = not(rdms(i)%B_masks(:,j))
 
             end do
         end do
