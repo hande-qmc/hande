@@ -22,11 +22,11 @@ type rdm
     ! correspond to subsystems which are equivalent by symmetry.
     integer, allocatable :: B_masks(:,:)
     ! bit_pos(i,j,1) contains the position of the bit corresponding to
-    ! site j in 'version' i of subsystem A.
+    ! site i in 'version' j of subsystem A.
     ! bit_pos(i,j,2) contains the element of the bit corresponding to
-    ! site j in 'version' i of subsystem A.
-    ! Note that site j in a given version is the site that corresponds to
-    ! site j in all other versions of subsystem A (and so bit_pos(i,:,1)
+    ! site i in 'version' j of subsystem A.
+    ! Note that site i in a given version is the site that corresponds to
+    ! site i in all other versions of subsystem A (and so bit_pos(i,:,1)
     ! and bit_pos(i,:,2) will not be sorted). This is very important
     ! so that equivalent psips will contribute to the same RDM element.
     integer, allocatable :: bit_pos(:,:,:)
@@ -362,7 +362,7 @@ contains
         do i = 1, nrdms
             allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
             call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
-            allocate(rdms(i)%bit_pos(nsym_vec,rdms(i)%A_nsites,2), stat=ierr)
+            allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
             call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
             rdms(i)%B_masks = 0
             rdms(i)%bit_pos = 0
@@ -387,8 +387,8 @@ contains
 
                             A_mask(bit_element) = ibset(A_mask(bit_element), bit_position)
 
-                            rdms(i)%bit_pos(j,k,1) = bit_position
-                            rdms(i)%bit_pos(j,k,2) = bit_element
+                            rdms(i)%bit_pos(k,j,1) = bit_position
+                            rdms(i)%bit_pos(k,j,2) = bit_element
                         end if
                     end do
                 end do
@@ -557,10 +557,10 @@ contains
             bit_element = bit_lookup(2,i)
 
             ! If the spin is up, set the corresponding bit in the first bitstring.
-            if (btest(f(rdms(irdm)%bit_pos(isym,i,2)),rdms(irdm)%bit_pos(isym,i,1))) &
+            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)),rdms(irdm)%bit_pos(i,isym,1))) &
                 rdms(irdm)%end1(bit_element) = ibset(rdms(irdm)%end1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of the bitstring.
-            if (btest(f(rdms(irdm)%bit_pos(isym,i,2)+basis_length),rdms(irdm)%bit_pos(isym,i,1))) &
+            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)+basis_length),rdms(irdm)%bit_pos(i,isym,1))) &
                 rdms(irdm)%end2(bit_element) = ibset(rdms(irdm)%end2(bit_element),bit_pos)
         end do
 
