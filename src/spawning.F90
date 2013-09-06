@@ -1227,7 +1227,7 @@ contains
 
     end subroutine create_spawned_particle_truncated_density_matrix
 
-    subroutine create_spawned_particle_rdm(irdm, nspawn, particle_type, rdm_spawn)
+    subroutine create_spawned_particle_rdm(irdm, nspawn_in, particle_type, rdm_spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1240,6 +1240,7 @@ contains
         ! In/Out:
         !    rdm_spawn: rdm_spawn_t object to which the spanwed particle will be added.
 
+        use bit_utils, only: operator(.bitstrgt.)
         use dmqmc_procedures, only: rdms
         use fciqmc_data, only: rdm_spawn_t
         use hashing
@@ -1248,12 +1249,13 @@ contains
                               assign_hash_table_entry
 
         integer, intent(in) :: irdm
-        integer, intent(in) :: nspawn
+        integer, intent(in) :: nspawn_in
         integer, intent(in) :: particle_type
         type(rdm_spawn_t), intent(inout) :: rdm_spawn
+        integer :: nspawn, rdm_bl
 
         integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_basis_length)
-        integer :: i
+        integer(i0) :: f_temp1(rdms(irdm)%rdm_basis_length), f_temp2(rdms(irdm)%rdm_basis_length)
 
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
@@ -1271,57 +1273,66 @@ contains
         logical :: hit
         integer :: err_code
 
+        rdm_bl = rdms(irdm)%rdm_basis_length
+        ! nspawn will be doubles for diagonal elements.
+        nspawn = nspawn_in
+
         ! To enforce that the rdm is symmetric, add this psip to both \rho_{ij} and
         ! \rho_{ji}. These will lead to an rdm with a trace twice what it would have
         ! been, but this is not a problem.
-        do i = 1, 2
+        f_new_tot = 0
 
-            f_new_tot = 0
+        f_temp1 = rdms(irdm)%end1
+        f_temp2 = rdms(irdm)%end2
 
-            if (i == 1) then
-                f_new_tot(:rdms(irdm)%rdm_basis_length) = rdms(irdm)%end1
-                f_new_tot((rdms(irdm)%rdm_basis_length+1):(2*rdms(irdm)%rdm_basis_length)) = rdms(irdm)%end2
-            else if (i == 2) then
-                f_new_tot(:rdms(irdm)%rdm_basis_length) = rdms(irdm)%end2
-                f_new_tot((rdms(irdm)%rdm_basis_length+1):(2*rdms(irdm)%rdm_basis_length)) = rdms(irdm)%end1
+        if (f_temp1 .bitstrgt. f_temp2) then
+            ! If below the diagonal, swap the bitstrings so that the spawning occurs above it.
+            f_new_tot(:rdm_bl) = f_temp2
+            f_new_tot(rdm_bl+1:2*rdm_bl) = f_temp1
+        else
+            f_new_tot(:rdm_bl) = f_temp1
+            f_new_tot(rdm_bl+1:2*rdm_bl) = f_temp2
+            if (all(f_temp1 == f_temp2)) then
+                ! Because off-diagonal elements have been doubled (elements above the diagonal taking
+                ! contributions from both below and above it), we must double the diagonal elements too.
+                nspawn = nspawn*2
             end if
+        end if
 
-            associate(spawn=>rdm_spawn%spawn, ht=>rdm_spawn%ht, bsl=>rdm_spawn%spawn%bit_str_len)
+        associate(spawn=>rdm_spawn%spawn, ht=>rdm_spawn%ht, bsl=>rdm_spawn%spawn%bit_str_len)
 
 #ifdef PARALLEL
-                ! (Extra credit for parallel calculations)
-                ! Need to determine which processor the spawned walker should be sent
-                ! to.  This communication is done during the annihilation process, after
-                ! all spawning and death has occured..
-                iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (2*rdms(irdm)%rdm_basis_length), spawn%hash_seed), nprocs)
+            ! (Extra credit for parallel calculations)
+            ! Need to determine which processor the spawned walker should be sent
+            ! to.  This communication is done during the annihilation process, after
+            ! all spawning and death has occured..
+            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, 2*rdm_bl, spawn%hash_seed), nprocs)
 #endif
 
-                call lookup_hash_table_entry(ht, f_new_tot, pos, hit)
+            call lookup_hash_table_entry(ht, f_new_tot, pos, hit)
 
-                if (hit) then
-                    associate(indx => ht%table(pos%ientry,pos%islot))
-                        ! Direct annihilation/cancellation in spawning array.
-                        spawn%sdata(bsl+particle_type,indx) = spawn%sdata(bsl+particle_type,indx) + nspawn
-                    end associate
-                else
-                    ! Move to the next position in the spawning array.
-                    call assign_hash_table_entry(ht, pos%islot, pos, err_code)
-                    ! Fix hash table to point to the head of the spawn data
-                    ! for this thread/processor.
-                    spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
-                    ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)
-                    associate(indx => ht%table(pos%ientry,pos%islot))
-                        ! Set info in spawning array.
-                        ! Zero it as not all fields are set.
-                        spawn%sdata(:,indx) = 0
-                        spawn%sdata(:bsl,indx) = f_new_tot
-                        spawn%sdata(bsl+particle_type,indx) = nspawn
-                    end associate
-                end if
+            if (hit) then
+                associate(indx => ht%table(pos%ientry,pos%islot))
+                    ! Direct annihilation/cancellation in spawning array.
+                    spawn%sdata(bsl+particle_type,indx) = spawn%sdata(bsl+particle_type,indx) + nspawn
+                end associate
+            else
+                ! Move to the next position in the spawning array.
+                call assign_hash_table_entry(ht, pos%islot, pos, err_code)
+                ! Fix hash table to point to the head of the spawn data
+                ! for this thread/processor.
+                spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+                ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)
+                associate(indx => ht%table(pos%ientry,pos%islot))
+                    ! Set info in spawning array.
+                    ! Zero it as not all fields are set.
+                    spawn%sdata(:,indx) = 0
+                    spawn%sdata(:bsl,indx) = f_new_tot
+                    spawn%sdata(bsl+particle_type,indx) = nspawn
+                end associate
+            end if
 
-            end associate
-
-        end do
+        end associate
 
     end subroutine create_spawned_particle_rdm
 

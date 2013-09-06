@@ -639,7 +639,7 @@ contains
 
     end subroutine update_reduced_density_matrix_heisenberg
 
-    subroutine call_rdm_procedures(beta_cycle)
+    subroutine call_ground_rdm_procedures(beta_cycle)
 
         ! Wrapper for calling relevant reduced density matrix procedures.
 
@@ -719,7 +719,7 @@ contains
 
         end if
 
-    end subroutine call_rdm_procedures
+    end subroutine call_ground_rdm_procedures
 
     subroutine calculate_vn_entropy(trace_rdm)
 
@@ -855,17 +855,16 @@ contains
         type(spawn_t), intent(in) :: rdm_lists(:)
         real(p) :: traces(:,:)
 
-        integer :: irdm, i
+        integer :: irdm, i, rdm_bl
         integer, parameter :: thread_id = 0
 
         traces = 0.0_p 
 
         do irdm = 1, size(rdm_data)
+            rdm_bl = rdm_data(irdm)%rdm_basis_length
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
 
-                if ( all( rdm_lists(irdm)%sdata(1:rdm_data(irdm)%rdm_basis_length,i) == &
-                    rdm_lists(irdm)%sdata(rdm_data(irdm)%rdm_basis_length+1:2*rdm_data(irdm)%rdm_basis_length,i)) ) then
-
+                if (all( rdm_lists(irdm)%sdata(1:rdm_bl,i) == rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i))) then
                     traces(:,irdm) = traces(:,irdm) + &
                         real(rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1:rdm_lists(irdm)%element_len,i),p)
                 end if
@@ -884,22 +883,29 @@ contains
         type(rdm), intent(in) :: rdm_data(:)
         type(spawn_t), intent(in) :: rdm_lists(:)
         real(p) :: r2(:)
-        integer :: i, irdm, excit_level
+        integer :: i, irdm, excit_level, rdm_bl
         real(p) :: unweighted_pop_1, unweighted_pop_2
         integer, parameter :: thread_id = 0
 
         r2 = 0.0_p 
 
         do irdm = 1, size(rdm_data)
+            rdm_bl = rdm_data(irdm)%rdm_basis_length
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
 
-                excit_level = get_excitation_level(rdm_lists(irdm)%sdata(1:rdm_data(irdm)%rdm_basis_length,i),&
-                    rdm_lists(irdm)%sdata(rdm_data(irdm)%rdm_basis_length+1:2*rdm_data(irdm)%rdm_basis_length,i) )
+                excit_level = get_excitation_level(rdm_lists(irdm)%sdata(1:rdm_bl,i),&
+                    rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i))
 
                 unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*dmqmc_accumulated_probs_old(excit_level)
                 unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2,i)*dmqmc_accumulated_probs_old(excit_level)
 
-                r2(irdm) = r2(irdm) + unweighted_pop_1*unweighted_pop_2
+                if (excit_level == 0) then
+                    r2(irdm) = r2(irdm) + unweighted_pop_1*unweighted_pop_2
+                else
+                    ! As we only hold RDM elements above the diagonal, off-diagonal elements must
+                    ! be counted twice.
+                    r2(irdm) = r2(irdm) + 2*unweighted_pop_1*unweighted_pop_2
+                end if
 
             end do
         end do

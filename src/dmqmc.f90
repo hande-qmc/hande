@@ -24,7 +24,7 @@ contains
         use dmqmc_procedures, only: random_distribution_heisenberg
         use dmqmc_procedures, only: update_sampling_weights, output_and_alter_weights
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
-        use dmqmc_estimators, only: call_rdm_procedures
+        use dmqmc_estimators, only: call_ground_rdm_procedures
         use excitations, only: excit, get_excitation_level
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use qmc_common
@@ -224,7 +224,8 @@ contains
             end if
 
             ! Calculate and output all requested estimators based on the reduced dnesity matrix.
-            if (doing_reduced_dm) call call_rdm_procedures(beta_cycle)
+            ! This is for ground-state RDMs only.
+            if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in the previous loop.
             if (dmqmc_find_weights) call output_and_alter_weights()
 

@@ -263,25 +263,23 @@ contains
         if (parent) write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
                 total_size_spawned_rdm*real(2*spawned_rdm_length,p)/10**6
 
-        ! Note: Only one RDM is calculated at the moment. This is temporary. For now I have just
-        ! created the infrastructure to use translational symmetry and multiple RDMs. Will add the
-        ! ability to use them when the sparse implementation is added...
-
         ! For an ms = 0 subspace, assuming less than or exactly half the spins in the subsystem are in
         ! the subsystem, then any combination of spins can occur in the subsystem, from all spins down
         ! to all spins up. Hence the total size of the reduced density matrix will be 2**(number of spins
         ! in subsystem A).
-        if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(nsites,p)/2.0_p)) then
-            allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
-            call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)
-            reduced_density_matrix = 0.0_p
-        else
-            if (ms_in /= 0) then
-                call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
-                               &calculations.")
-            else if (rdms(1)%A_nsites > floor(real(nsites,p)/2.0_p)) then
-                call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
-                              &whose size is less than half the total system size.")
+        if (calc_ground_rdm) then
+            if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(nsites,p)/2.0_p)) then
+                allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
+                call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)
+                reduced_density_matrix = 0.0_p
+            else
+                if (ms_in /= 0) then
+                    call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
+                                   &calculations.")
+                else if (rdms(1)%A_nsites > floor(real(nsites,p)/2.0_p)) then
+                    call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
+                                  &whose size is less than half the total system size.")
+                end if
             end if
         end if
         

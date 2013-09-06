@@ -262,6 +262,7 @@ contains
                 output_rdm = .true.
             case('EXACT_RDM_EIGENVALUES')
                 doing_exact_rdm_eigv = .true.
+                calc_ground_rdm = .true.
             case('CONCURRENCE')
                 doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
