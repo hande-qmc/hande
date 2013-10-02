@@ -21,12 +21,12 @@ contains
         use utils, only: get_free_unit
         use parallel
 
-        use fciqmc_data, only: target_particles, tau, vary_shift, shift
+        use fciqmc_data, only: target_particles, tau, vary_shift, shift, sampling_size
 
         logical, intent(out) :: soft_exit
 
         logical :: comms_exists, comms_found, comms_read, eof
-        integer :: proc
+        integer :: proc, i
 #ifdef PARALLEL
         integer :: ierr
 #endif
@@ -101,7 +101,10 @@ contains
                                 vary_shift = .true.
                             end if
                         case('SHIFT')
-                            call readf(shift)
+                            call readf(shift(1))
+                            do i = 2, sampling_size
+                                shift(i) = shift(1)
+                            end do
                         case default
                             write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
                         end select
@@ -123,7 +126,7 @@ contains
             ! If in parallel need to broadcast data.
             call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
             call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(shift, 1, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(shift, sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(target_particles, 1, mpi_integer8, proc, mpi_comm_world, ierr)
             call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
 #endif

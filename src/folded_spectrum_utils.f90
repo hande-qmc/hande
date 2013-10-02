@@ -345,7 +345,7 @@ contains
 
     end subroutine fs_spawner
 
-    subroutine fs_stochastic_death(rng, Kii, population, tot_population, ndeath)
+    subroutine fs_stochastic_death(rng, Kii, loc_shift, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -359,6 +359,7 @@ contains
         ! In:
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
+        !    loc_shift: The value of the shift to be used in the death step.
         ! In/Out:
         !    rng: random number generator.
         !    population: number of particles on determinant D_i.
@@ -375,6 +376,7 @@ contains
 
         real(p), intent(in) :: Kii
         type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(in) :: loc_shift
         integer, intent(inout) :: population, ndeath
         integer(lint), intent(inout) :: tot_population
 
@@ -384,7 +386,7 @@ contains
         !    | / \ |
         !     \\.//
 
-        call stochastic_death(rng, (Kii-fold_line)**2, population, tot_population, ndeath)
+        call stochastic_death(rng, (Kii-fold_line)**2, loc_shift, population, tot_population, ndeath)
 
     end subroutine fs_stochastic_death
 

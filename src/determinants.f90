@@ -105,10 +105,6 @@ type det_info
     type(cluster_t), pointer :: cluster
 end type det_info
 
-interface operator(.detgt.)
-    module procedure det_gt
-end interface
-
 contains
 
 !--- Initialisation and finalisation of module-level variables ---
@@ -777,37 +773,6 @@ contains
     end function det_invert_spin
 
 !--- Comparison of determinants ---
-
-    pure function det_gt(f1, f2) result(gt)
-
-        ! In:
-        !    f1(total_basis_length): bit string representation of the Slater
-        !        determinant.
-        !    f2(total_basis_length): bit string representation of the Slater
-        !        determinant.
-        !    (For DMQMC this bitstring contains information for both determinants)
-        ! Returns:
-        !    True if the first element of f1 which is not equal to the
-        !    corresponding element of f2 is greater than the corresponding
-        !    element in f2.
-
-        logical :: gt
-        integer(i0), intent(in) :: f1(total_basis_length), f2(total_basis_length)
-
-        integer :: i
-
-        gt = .false.
-        do i = 1, total_basis_length
-            if (f1(i) > f2(i)) then
-                gt = .true.
-                exit
-            else if (f1(i) < f2(i)) then
-                gt = .false.
-                exit
-            end if
-        end do
-
-    end function det_gt
 
     pure function det_compare(f1, f2, flength) result(compare)
 

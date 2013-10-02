@@ -190,7 +190,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
-        use calc, only: seed, truncation_level, truncate_space
+        use calc, only: seed, truncation_level, truncate_space, initiator_approximation
         use ccmc_data, only: cluster_t
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, get_excitation_level
@@ -332,7 +332,7 @@ contains
                         call spawner_ccmc(rng(it), cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
 
                         if (nspawned /= 0) then
-                            call create_spawned_particle_ptr(cdet(it), connection, nspawned, spawned_pop)
+                            call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
                         end if
 
                         ! Does the cluster collapsed onto D0 produce
@@ -348,7 +348,7 @@ contains
                 !$omp end do
                 !$omp end parallel
 
-                call direct_annihilation()
+                call direct_annihilation(initiator_approximation)
 
                 ! Ok, this is fairly non-obvious.
                 ! Because we sample the projected estimator (and normalisation
@@ -703,7 +703,7 @@ contains
 
         use ccmc_data, only: cluster_t
         use determinants, only: det_info
-        use fciqmc_data, only: tau, shift, spawned_pop, H00, f0
+        use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn
         use excitations, only: excit, get_excitation_level
         use proc_pointers, only: sc0_ptr
         use spawning, only: create_spawned_particle_truncated
@@ -723,7 +723,7 @@ contains
         ! child excitor.
         ! TODO: optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
-        KiiAi = (sc0_ptr(cdet%f) - H00 - shift)*cluster%amplitude
+        KiiAi = (sc0_ptr(cdet%f) - H00 - shift(1))*cluster%amplitude
 
         pdeath = tau*abs(KiiAi)/cluster%pselect
 
@@ -745,7 +745,7 @@ contains
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
-            call create_spawned_particle_truncated(cdet, null_excit, nkill, spawned_pop)
+            call create_spawned_particle_truncated(cdet, null_excit, nkill, 1, qmc_spawn)
         end if
 
     end subroutine stochastic_ccmc_death

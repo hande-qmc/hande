@@ -63,12 +63,13 @@ abstract interface
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
     end subroutine i_gen_excit_finalise
-    subroutine i_death(rng, mat, pop, tot_pop, ndeath)
+    subroutine i_death(rng, mat, loc_shift, pop, tot_pop, ndeath)
         use dSFMT_interface, only: dSFMT_t
         import :: p, lint
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: mat
+        real(p), intent(in) :: loc_shift
         integer, intent(inout) :: pop, ndeath
         integer(lint), intent(inout) :: tot_pop
     end subroutine i_death
@@ -87,21 +88,25 @@ abstract interface
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
-    subroutine i_create_spawned_particle(d, connection, nspawned, spawned_pop)
+    subroutine i_create_spawned_particle(d, connection, nspawned, particle_indx, spawn)
+        use spawn_data, only: spawn_t
         import :: excit, det_info
         implicit none
         type(det_info), intent(in) :: d
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawned, spawned_pop
+        integer, intent(in) :: nspawned, particle_indx
+        type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
-    subroutine i_create_spawned_particle_dm(f1, f2, connection, nspawned, spawning_end)
+    subroutine i_create_spawned_particle_dm(f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
         use basis, only: basis_length
+        use spawn_data, only: spawn_t
         import :: excit, i0
         implicit none
         integer(i0), intent(in) :: f1(basis_length)
         integer(i0), intent(in) :: f2(basis_length)
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawned, spawning_end
+        integer, intent(in) :: nspawned, spawning_end, particle_indx
+        type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
     subroutine i_trial_fn(cdet, connection, hmatel)
         import :: det_info, excit, p
@@ -131,8 +136,6 @@ procedure(i_death), pointer :: death_ptr => null()
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
 
-procedure(i_sub), pointer :: annihilate_main_list_ptr => null()
-procedure(i_sub), pointer :: annihilate_spawned_list_ptr => null()
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 
 procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()

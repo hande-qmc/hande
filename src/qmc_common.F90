@@ -425,7 +425,7 @@ contains
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
-        spawning_head = spawning_block_start
+        qmc_spawn%head = qmc_spawn%head_start
 
         ! Reset death counter
         ndeath = 0

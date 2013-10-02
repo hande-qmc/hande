@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, Kii, population, tot_population, ndeath)
+    subroutine stochastic_death(rng, Kii, loc_shift, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -20,6 +20,7 @@ contains
         ! In:
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
+        !    loc_shift: The value of the shift to be used in the death step.
         ! In/Out:
         !    rng: random number generator.
         !    population: number of particles on determinant D_i.
@@ -35,6 +36,7 @@ contains
 
         real(p), intent(in) :: Kii
         type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(in) :: loc_shift
         integer, intent(inout) :: population, ndeath
         integer(lint), intent(inout) :: tot_population
 
@@ -58,7 +60,7 @@ contains
         ! has a factor of 1/2 included for convenience already, for conveniece elsewhere.
         ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
-        pd = tau*(Kii-shift)*dmqmc_factor
+        pd = tau*(Kii-loc_shift)*dmqmc_factor
 
         ! This will be the same for all particles on the determinant, so we can
         ! attempt all deaths in one shot.

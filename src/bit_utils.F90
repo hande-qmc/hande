@@ -11,7 +11,13 @@ use const
 
 implicit none
 
+interface operator(.bitstrgt.)
+    module procedure bit_str_gt
+end interface
+
 contains
+
+!--- Counting set bits ---
 
     elemental function naive_count_set_bits(b) result(nbits)
 
@@ -132,6 +138,8 @@ contains
 
     end function count_set_bits
 
+!--- I/O helpers ---
+
     elemental function bit_string(b) result(s)
 
         ! In:
@@ -153,6 +161,8 @@ contains
         write (s,bit_fmt) b
 
     end function bit_string
+
+!--- Permutations of set bits in bit string ---
 
     function first_perm(n) result(p)
 
@@ -198,6 +208,8 @@ contains
 
     end function bit_permutation
 
+!--- Converting bit strings ---
+
     pure subroutine decode_bit_string(b, d)
 
         ! In:
@@ -231,5 +243,34 @@ contains
         end do
 
     end subroutine decode_bit_string
+
+!--- Comparison of bit strings---
+
+    pure function bit_str_gt(f1, f2) result(gt)
+
+        ! In:
+        !    f1(:), f2(:) bit string.
+        ! Returns:
+        !    True if the first element of f1 which is not equal to the
+        !    corresponding element of f2 is greater than the corresponding
+        !    element in f2.
+
+        logical :: gt
+        integer(i0), intent(in) :: f1(:), f2(:)
+
+        integer :: i
+
+        gt = .false.
+        do i = 1, ubound(f1,dim=1)
+            if (f1(i) > f2(i)) then
+                gt = .true.
+                exit
+            else if (f1(i) < f2(i)) then
+                gt = .false.
+                exit
+            end if
+        end do
+
+    end function bit_str_gt
 
 end module bit_utils

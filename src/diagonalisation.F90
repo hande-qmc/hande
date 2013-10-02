@@ -579,8 +579,8 @@ contains
         ! Loop over all elements of the density matrix and add all contributing elements to the RDM.
         do i = 1, ndets
             do j = 1, ndets
-                f1 = iand(rdms(1)%B_masks(1,:),dets_list(:,i))
-                f2 = iand(rdms(1)%B_masks(1,:),dets_list(:,j))
+                f1 = iand(rdms(1)%B_masks(:,1),dets_list(:,i))
+                f2 = iand(rdms(1)%B_masks(:,1),dets_list(:,j))
                 ! If the two bitstrings are the same after bits corresponding to subsystem B have
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
@@ -589,13 +589,15 @@ contains
                     f3(basis_length+1:basis_length*2) = dets_list(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
-                    call decode_dm_bitstring(f3,end1,end2)
+                    call decode_dm_bitstring(f3,1,1)
+                    rdms(1)%end1 = rdms(1)%end1 + 1
+                    rdms(1)%end2 = rdms(1)%end2 + 1
 
                     ! The ground state wave function is stored in hamil(:,1).
                     rdm_element = hamil(i,1)*hamil(j,1)
                     ! Finally add in the contribution from this density matrix element.
-                    reduced_density_matrix(end1,end2) = reduced_density_matrix(end1,end2) + &
-                                                        rdm_element
+                    reduced_density_matrix(rdms(1)%end1(1),rdms(1)%end2(1)) = &
+                        reduced_density_matrix(rdms(1)%end1(1),rdms(1)%end2(1)) + rdm_element
                 end if
             end do
         end do

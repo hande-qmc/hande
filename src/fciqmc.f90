@@ -21,7 +21,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
-        use calc, only: folded_spectrum, doing_calc, seed
+        use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
@@ -96,17 +96,17 @@ contains
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
-                            call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
+                            call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
                         end if
 
                     end do
 
                     ! Clone or die.
-                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
-                call direct_annihilation()
+                call direct_annihilation(initiator_approximation)
 
                 call end_mc_cycle(ndeath, nattempts)
 

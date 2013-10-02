@@ -141,6 +141,7 @@ integer, parameter :: dmqmc_energy = 2**0
 integer, parameter :: dmqmc_staggered_magnetisation = 2**1
 integer, parameter :: dmqmc_energy_squared = 2**2
 integer, parameter :: dmqmc_correlation = 2**3
+integer, parameter :: dmqmc_renyi_2 = 2**4
 
 contains
 

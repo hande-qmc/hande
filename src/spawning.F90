@@ -440,7 +440,7 @@ contains
 
 !--- Assuming spawning is successful, create new particle appropriately ---
 
-    subroutine create_spawned_particle(cdet, connection, nspawn, particle_type)
+    subroutine create_spawned_particle(cdet, connection, nspawn, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -452,10 +452,9 @@ contains
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
-        !    particle_type: the type of particle created.  Must correspond to
-        !        the desired element in the spawning array (i.e. be spawned_pop
-        !        for Hamiltonian particles and spawned_hf_pop for
-        !        Hellmann--Feynman particles).
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -464,12 +463,13 @@ contains
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop
+        use spawn_data, only: spawn_t
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -493,21 +493,21 @@ contains
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length, spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
+        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-        spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
-        spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(cdet, connection, nspawn, particle_type)
+    subroutine create_spawned_particle_initiator(cdet, connection, nspawn, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -519,10 +519,9 @@ contains
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
-        !    particle_type: the type of particle created.  Must correspond to
-        !        the desired element in the spawning array (i.e. be spawned_pop
-        !        for Hamiltonian particles and spawned_hf_pop for
-        !        Hellmann--Feynman particles).
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -531,12 +530,13 @@ contains
         use basis, only: basis_length
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, spawned_parent
+        use spawn_data, only: spawn_t
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -559,25 +559,25 @@ contains
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length, spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
+        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-        spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
-        spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
         ! initiator_flag: flag indicating the staturs of the parent determinant.
         !     initiator_flag = 0 indicates the parent is an initiator.
         !     initiator_flag = 1 indicates the parent is not an initiator.
-        spawned_walkers(spawned_parent,spawning_head(thread_id,iproc_spawn)) = cdet%initiator_flag
+        spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
 
     end subroutine create_spawned_particle_initiator
 
-    subroutine create_spawned_particle_truncated(cdet, connection, nspawn, particle_type)
+    subroutine create_spawned_particle_truncated(cdet, connection, nspawn, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -591,10 +591,9 @@ contains
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
-        !    particle_type: the type of particle created.  Must correspond to
-        !        the desired element in the spawning array (i.e. be spawned_pop
-        !        for Hamiltonian particles and spawned_hf_pop for
-        !        Hellmann--Feynman particles).
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -604,12 +603,14 @@ contains
         use calc, only: truncation_level
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, hs_f0
+        use fciqmc_data, only: hs_f0
+        use spawn_data, only: spawn_t
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -635,23 +636,23 @@ contains
             ! Need to determine which processor the spawned walker should be sent
             ! to.  This communication is done during the annihilation process, after
             ! all spawning and death has occured..
-            iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
+            iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length, spawn%hash_seed), nprocs)
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-            spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
-            spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
 
         end if
 
     end subroutine create_spawned_particle_truncated
 
-    subroutine create_spawned_particle_initiator_truncated(cdet, connection, nspawn, particle_type)
+    subroutine create_spawned_particle_initiator_truncated(cdet, connection, nspawn, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -665,10 +666,9 @@ contains
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
-        !    particle_type: the type of particle created.  Must correspond to
-        !        the desired element in the spawning array (i.e. be spawned_pop
-        !        for Hamiltonian particles and spawned_hf_pop for
-        !        Hellmann--Feynman particles).
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -678,12 +678,14 @@ contains
         use calc, only: truncation_level
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, spawned_parent, hs_f0
+        use fciqmc_data, only: hs_f0
+        use spawn_data, only: spawn_t
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -709,27 +711,27 @@ contains
             ! Need to determine which processor the spawned walker should be sent
             ! to.  This communication is done during the annihilation process, after
             ! all spawning and death has occured..
-            iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
+            iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length, spawn%hash_seed), nprocs)
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-            spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
-            spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
             ! initiator_flag: flag indicating the staturs of the parent determinant.
             !     initiator_flag = 0 indicates the parent is an initiator.
             !     initiator_flag = 1 indicates the parent is not an initiator.
-            spawned_walkers(spawned_parent,spawning_head(thread_id,iproc_spawn)) = cdet%initiator_flag
+            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
 
         end if
 
     end subroutine create_spawned_particle_initiator_truncated
 
-    subroutine create_spawned_particle_ras(cdet, connection, nspawn, particle_type)
+    subroutine create_spawned_particle_ras(cdet, connection, nspawn, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -743,10 +745,9 @@ contains
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
-        !    particle_type: the type of particle created.  Must correspond to
-        !        the desired element in the spawning array (i.e. be spawned_pop
-        !        for Hamiltonian particles and spawned_hf_pop for
-        !        Hellmann--Feynman particles).
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -757,12 +758,13 @@ contains
         use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level, in_ras
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, f0
+        use spawn_data, only: spawn_t
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -788,23 +790,23 @@ contains
             ! Need to determine which processor the spawned walker should be sent
             ! to.  This communication is done during the annihilation process, after
             ! all spawning and death has occured..
-            iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
+            iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length, spawn%hash_seed), nprocs)
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-            spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
-            spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
 
         end if
 
     end subroutine create_spawned_particle_ras
 
-    subroutine create_spawned_particle_initiator_ras(cdet, connection, nspawn, particle_type)
+    subroutine create_spawned_particle_initiator_ras(cdet, connection, nspawn, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -818,10 +820,9 @@ contains
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
-        !    particle_type: the type of particle created.  Must correspond to
-        !        the desired element in the spawning array (i.e. be spawned_pop
-        !        for Hamiltonian particles and spawned_hf_pop for
-        !        Hellmann--Feynman particles).
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -832,12 +833,13 @@ contains
         use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level, in_ras
-        use fciqmc_data, only: spawned_walkers, spawning_head, spawned_pop, spawned_parent, f0
+        use spawn_data, only: spawn_t
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer, intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(basis_length)
 #ifndef PARALLEL
@@ -863,27 +865,27 @@ contains
             ! Need to determine which processor the spawned walker should be sent
             ! to.  This communication is done during the annihilation process, after
             ! all spawning and death has occured..
-            iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length), nprocs)
+            iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length, spawn%hash_seed), nprocs)
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-            spawned_walkers(:basis_length,spawning_head(thread_id,iproc_spawn)) = f_new
-            spawned_walkers(particle_type,spawning_head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
             ! initiator_flag: flag indicating the staturs of the parent determinant.
             !     initiator_flag = 0 indicates the parent is an initiator.
             !     initiator_flag = 1 indicates the parent is not an initiator.
-            spawned_walkers(spawned_parent,spawning_head(thread_id,iproc_spawn)) = cdet%initiator_flag
+            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
 
         end if
 
     end subroutine create_spawned_particle_initiator_ras
 
-    subroutine create_spawned_particle_density_matrix(f1, f2, connection, nspawn, spawning_end)
+    subroutine create_spawned_particle_density_matrix(f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -900,21 +902,21 @@ contains
         !    spawning_end: Specifies which 'end' we are spawning from
         !        currently, ie, if the elements of the density matrix are
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
-
-        ! Note that particle type, ie specifying hellman-feynman properties, is
-        ! not currently considered, as the density matrix formulation (hopefully!)
-        ! won't require it.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use basis, only: basis_length, total_basis_length
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head
-        use fciqmc_data, only: spawned_parent, spawned_pop
         use hashing
         use parallel, only: iproc, nprocs, nthreads
+        use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn
         integer, intent(in) :: spawning_end
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         type(excit), intent(in) :: connection
         integer(i0) :: f_new(basis_length)
@@ -944,21 +946,21 @@ contains
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (total_basis_length)), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, total_basis_length, spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
+        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-        spawned_walkers(:(total_basis_length),spawning_head(thread_id,iproc_spawn)) = f_new_tot
-        spawned_walkers((total_basis_length)+1,spawning_head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
 
     end subroutine create_spawned_particle_density_matrix
 
-    subroutine create_spawned_particle_half_density_matrix(f1, f2, connection, nspawn, spawning_end)
+    subroutine create_spawned_particle_half_density_matrix(f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! If walker tries to spawn in the lower triangle of density matrix
@@ -977,22 +979,23 @@ contains
         !    spawning_end: Specifies which 'end' we are spawning from
         !        currently, ie, if the elements of the density matrix are
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
-        ! Note that particle type, ie specifying hellman-feynman properties, is
-        ! not currently considered, as the density matrix formulation (hopefully!)
-        ! won't require it.
         use determinants, only: det_compare
         use basis, only: basis_length, total_basis_length
         use calc, only: truncation_level
         use excitations, only: excit, create_excited_det
-        use fciqmc_data, only: spawned_walkers, spawning_head
-        use fciqmc_data, only: spawned_parent, spawned_pop
         use hashing
         use parallel, only: iproc, nprocs
+        use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn
         integer, intent(in) :: spawning_end
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         type(excit), intent(in) :: connection
         integer(i0) :: f_new(basis_length)
@@ -1028,21 +1031,22 @@ contains
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (total_basis_length)), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, total_basis_length, spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
-        spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + 1
+        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + 1
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-        spawned_walkers(:(total_basis_length),spawning_head(thread_id,iproc_spawn)) = f_new_tot
-        spawned_walkers((total_basis_length)+1,spawning_head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
 
     end subroutine create_spawned_particle_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_half_density_matrix(f1, f2, connection, nspawn, spawning_end)
+    subroutine create_spawned_particle_truncated_half_density_matrix(f1, f2, connection, nspawn, &
+                                                                          spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1068,23 +1072,23 @@ contains
         !    spawning_end: Specifies which 'end' we are spawning from
         !        currently, ie, if the elements of the density matrix are
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
-
-        ! Note that particle type, ie specifying hellman-feynman properties, is
-        ! not currently considered, as the density matrix formulation (hopefully!)
-        ! won't require it.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use basis, only: basis_length, total_basis_length
         use determinants, only: det_compare
         use calc, only: truncation_level
         use excitations, only: excit, create_excited_det, get_excitation_level
-        use fciqmc_data, only: spawned_walkers, spawning_head
-        use fciqmc_data, only: spawned_parent, spawned_pop
         use hashing
         use parallel, only: iproc, nprocs
+        use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn
         integer, intent(in) :: spawning_end
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         type(excit), intent(in) :: connection
         integer(i0) :: f_new(basis_length)
@@ -1122,23 +1126,23 @@ contains
             ! Need to determine which processor the spawned walker should be sent
             ! to.  This communication is done during the annihilation process, after
             ! all spawning and death has occured..
-            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (total_basis_length)), nprocs)
+            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, total_basis_length, spawn%hash_seed), nprocs)
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + 1
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + 1
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-            spawned_walkers(:(total_basis_length),spawning_head(thread_id,iproc_spawn)) = f_new_tot
-            spawned_walkers((total_basis_length)+1,spawning_head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
 
         end if
 
     end subroutine create_spawned_particle_truncated_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_density_matrix(f1, f2, connection, nspawn, spawning_end)
+    subroutine create_spawned_particle_truncated_density_matrix(f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1159,22 +1163,22 @@ contains
         !    spawning_end: Specifies which 'end' we are spawning from
         !        currently, ie, if the elements of the density matrix are
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
-
-        ! Note that particle type, ie specifying hellman-feynman properties, is
-        ! not currently considered, as the density matrix formulation (hopefully!)
-        ! won't require it.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use basis, only: basis_length, total_basis_length
         use calc, only: truncation_level
         use excitations, only: excit, create_excited_det, get_excitation_level
-        use fciqmc_data, only: spawned_walkers, spawning_head
-        use fciqmc_data, only: spawned_parent, spawned_pop
         use hashing
         use parallel, only: iproc, nprocs, nthreads
+        use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn
         integer, intent(in) :: spawning_end
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
 
         type(excit), intent(in) :: connection
         integer(i0) :: f_new(basis_length)
@@ -1207,20 +1211,129 @@ contains
             ! Need to determine which processor the spawned walker should be sent
             ! to.  This communication is done during the annihilation process, after
             ! all spawning and death has occured..
-            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, (total_basis_length)), nprocs)
+            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, total_basis_length, spawn%hash_seed), nprocs)
 #endif
 
             ! Move to the next position in the spawning array.
-            spawning_head(thread_id,iproc_spawn) = spawning_head(thread_id,iproc_spawn) + nthreads
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawned_walkers(:,spawning_head(thread_id,iproc_spawn)) = 0
-            spawned_walkers(:(total_basis_length),spawning_head(thread_id,iproc_spawn)) = f_new_tot
-            spawned_walkers((total_basis_length)+1,spawning_head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
+            spawn%sdata(total_basis_length+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
 
         end if
 
     end subroutine create_spawned_particle_truncated_density_matrix
+
+    subroutine create_spawned_particle_rdm(irdm, nspawn_in, particle_type, rdm_spawn)
+
+        ! Create a spawned walker in the spawned walkers lists.
+        ! The current position in the spawning array is updated.
+
+        ! In:
+        !    irdm: the index of the rdm that this psip contributes to.
+        !    nspawn: the (signed) number of particles to create on the
+        !        spawned determinant.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    rdm_spawn: rdm_spawn_t object to which the spanwed particle will be added.
+
+        use bit_utils, only: operator(.bitstrgt.)
+        use dmqmc_procedures, only: rdms
+        use fciqmc_data, only: rdm_spawn_t
+        use hashing
+        use parallel, only: iproc, nprocs, nthreads
+        use hash_table, only: hash_table_pos_t, lookup_hash_table_entry, &
+                              assign_hash_table_entry
+
+        integer, intent(in) :: irdm
+        integer, intent(in) :: nspawn_in
+        integer, intent(in) :: particle_type
+        type(rdm_spawn_t), intent(inout) :: rdm_spawn
+        integer :: nspawn, rdm_bl
+
+        integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_basis_length)
+        integer(i0) :: f_temp1(rdms(irdm)%rdm_basis_length), f_temp2(rdms(irdm)%rdm_basis_length)
+
+#ifndef PARALLEL
+        integer, parameter :: iproc_spawn = 0
+#else
+        integer :: iproc_spawn
+#endif
+        ! WARNING!  The below algorithm is *not* suitable for conversion to
+        ! thread-safety as each thread could be spawning onto the same RDM
+        ! element, yet the hash table requires a given element to exist in one
+        ! (and only one) location, which is not compatible with how the threaded
+        ! spawning arrays work.
+        integer, parameter :: thread_id = 0
+
+        type(hash_table_pos_t) :: pos
+        logical :: hit
+        integer :: err_code
+
+        rdm_bl = rdms(irdm)%rdm_basis_length
+        ! nspawn will be doubles for diagonal elements.
+        nspawn = nspawn_in
+
+        ! To enforce that the rdm is symmetric, add this psip to both \rho_{ij} and
+        ! \rho_{ji}. These will lead to an rdm with a trace twice what it would have
+        ! been, but this is not a problem.
+        f_new_tot = 0
+
+        f_temp1 = rdms(irdm)%end1
+        f_temp2 = rdms(irdm)%end2
+
+        if (f_temp1 .bitstrgt. f_temp2) then
+            ! If below the diagonal, swap the bitstrings so that the spawning occurs above it.
+            f_new_tot(:rdm_bl) = f_temp2
+            f_new_tot(rdm_bl+1:2*rdm_bl) = f_temp1
+        else
+            f_new_tot(:rdm_bl) = f_temp1
+            f_new_tot(rdm_bl+1:2*rdm_bl) = f_temp2
+            if (all(f_temp1 == f_temp2)) then
+                ! Because off-diagonal elements have been doubled (elements above the diagonal taking
+                ! contributions from both below and above it), we must double the diagonal elements too.
+                nspawn = nspawn*2
+            end if
+        end if
+
+        associate(spawn=>rdm_spawn%spawn, ht=>rdm_spawn%ht, bsl=>rdm_spawn%spawn%bit_str_len)
+
+#ifdef PARALLEL
+            ! (Extra credit for parallel calculations)
+            ! Need to determine which processor the spawned walker should be sent
+            ! to.  This communication is done during the annihilation process, after
+            ! all spawning and death has occured..
+            iproc_spawn = modulo(murmurhash_bit_string(f_new_tot, 2*rdm_bl, spawn%hash_seed), nprocs)
+#endif
+
+            call lookup_hash_table_entry(ht, f_new_tot, pos, hit)
+
+            if (hit) then
+                associate(indx => ht%table(pos%ientry,pos%islot))
+                    ! Direct annihilation/cancellation in spawning array.
+                    spawn%sdata(bsl+particle_type,indx) = spawn%sdata(bsl+particle_type,indx) + nspawn
+                end associate
+            else
+                ! Move to the next position in the spawning array.
+                call assign_hash_table_entry(ht, pos%islot, pos, err_code)
+                ! Fix hash table to point to the head of the spawn data
+                ! for this thread/processor.
+                spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+                ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)
+                associate(indx => ht%table(pos%ientry,pos%islot))
+                    ! Set info in spawning array.
+                    ! Zero it as not all fields are set.
+                    spawn%sdata(:,indx) = 0
+                    spawn%sdata(:bsl,indx) = f_new_tot
+                    spawn%sdata(bsl+particle_type,indx) = nspawn
+                end associate
+            end if
+
+        end associate
+
+    end subroutine create_spawned_particle_rdm
 
 end module spawning

@@ -133,7 +133,7 @@ contains
             call write_out(io,'# nparticles', binary_fmt_out)
             call write_out(io,nparticles_old, binary_fmt_out)
             call write_out(io,'# shift', binary_fmt_out)
-            call write_out(io,shift, binary_fmt_out)
+            call write_out(io,shift(1), binary_fmt_out)
             call write_out(io,'# Hellmann--Feynman shift', binary_fmt_out)
             call write_out(io,hf_shift, binary_fmt_out)
             call write_out(io,'# reference determinant: orbital list', binary_fmt_out)
@@ -198,13 +198,12 @@ contains
         ! Read in the main walker list from file.
 
         use basis, only: total_basis_length
-        use determinants, only: encode_det, det_gt
+        use bit_utils, only: bit_str_gt 
+        use determinants, only: encode_det
         use errors, only: stop_all
-        use fciqmc_data, only: sampling_size, info_size, shift, occ_list0, tot_walkers,    &
+        use fciqmc_data, only: sampling_size, info_size, initial_shift, occ_list0, tot_walkers, &
                                mc_cycles_done, nparticles, walker_dets, walker_population, &
-                               walker_data, spawned_walkers, spawned_walkers_recvd,        &
-                               spawning_head, spawned_size, spawning_block_start,          &
-                               spawned_walker_length, spawned_pop, spawned_hf_pop
+                               walker_data
 
         use hashing, only: murmurhash_bit_string
         use hfs_data, only: O00, hf_shift
@@ -273,7 +272,7 @@ contains
             nparticles = 0
             call read_in(io,nparticles(:restart_sampling_size),binary_fmt_in)
             call read_in(io,junk,binary_fmt_in)
-            call read_in(io,shift,binary_fmt_in)
+            call read_in(io,initial_shift,binary_fmt_in)
             call read_in(io,junk,binary_fmt_in)
             call read_in(io,hf_shift, binary_fmt_in)
             call read_in(io,junk,binary_fmt_in)
@@ -286,150 +285,152 @@ contains
 
         ! Just need to read in the walker information now.
 #ifdef PARALLEL
-        global_tot_walkers = tot_walkers
-        tot_walkers = 0
-        ! Read in walkers to spawning arrays.
-        ! Restart file might have been produced with a different number of
-        ! processors, thus need to hash walkers again to choose which
-        ! processor to send each determinant to.
-        ! Use the spawning arrays as scratch space.
-        ! Need scratch space for the walker_data info though...
-        if (parent) then
-            allocate(scratch_data(sampling_size+info_size,spawned_walker_length), stat=ierr)
-            call check_allocate('scratch_data',size(scratch_data),ierr)
-            allocate(pop(restart_sampling_size), stat=ierr)
-            call check_allocate('pop', size(pop), ierr)
-            allocate(tmp_data(restart_sampling_size+restart_info_size), stat=ierr)
-            call check_allocate('tmp_data', size(tmp_data), ierr)
-        end if
-        allocate(scratch_data_recvd(sampling_size+info_size,spawned_walker_length), stat=ierr)
-        call check_allocate('scratch_data_recvd',size(scratch_data_recvd),ierr)
-        ! spawning_head_start gives the first slot in the spawning array for
-        ! each processor.  Also want the last slot in the spawning array for
-        ! each processor.
-        forall (i=0:nprocs-2) spawn_max(i) = spawning_block_start(thread_id,i+1) - 1
-        spawn_max(nprocs-1) = spawned_walker_length
-        iread = 0
-
-        do
-            ! read in a "block" of walkers.
-            if (parent) then
-                spawning_head = spawning_block_start
-                det = 0
-                do i = iread+1, global_tot_walkers
-                    call read_in(io,det,pop,tmp_data,binary_fmt_in)
-                    if (i > iread+1 .and. .not.det_gt(det,prev_det)) then
-                        ! Restart files contain sorted data grouped by processor on
-                        ! which the determinants resided in the original
-                        ! calculation.
-                        ! Distribute the data read in so far and then return to
-                        ! read in the next processor block.
-                        ! This is so we only distribute sets of data which are
-                        ! already sorted, making merging into the data
-                        ! previously read in much easier.
-                        backspace(io)
-                        exit
-                    end if
-                    dest = modulo(murmurhash_bit_string(det, total_basis_length), nprocs)
-                    spawning_head(thread_id,dest) = spawning_head(thread_id,dest) + 1
-                    ! zero spawned array in case some elements were not set
-                    ! (e.g. restart file from standard FCIQMC calculation but
-                    ! now doing Hellmann--Feynman sampling)
-                    spawned_walkers(:, spawning_head(thread_id,dest)) = 0
-                    scratch_data(:, spawning_head(thread_id,dest)) = 0.0_p
-                    spawned_walkers(:total_basis_length, spawning_head(thread_id,dest)) = det
-                    spawned_walkers(total_basis_length+1:total_basis_length+restart_sampling_size, &
-                                                                spawning_head(thread_id,dest)) = pop
-                    scratch_data(:restart_sampling_size+restart_info_size,spawning_head(thread_id,dest)) = tmp_data
-                    prev_det = det
-                    ! Filled up spawning/scratch arrays?
-                    if (any(spawning_head(thread_id,:nprocs-1)-spawn_max == 0)) exit
-                end do
-                if (any(det /= prev_det)) then
-                    ! exited early due to end of processor block
-                    iread = i - 1
-                else
-                    iread = i
-                end if
-                done = iread == global_tot_walkers + 1
-            end if
-
-            ! update the number of walkers on this processor from the number of
-            ! walkers just read in.
-            send_counts = spawning_head(thread_id,:nprocs-1) - spawning_block_start(thread_id,:nprocs-1)
-            send_displacements = spawning_block_start(thread_id,:nprocs-1)
-            call mpi_scatter(send_counts, 1, mpi_integer, nread, 1, mpi_integer, root, mpi_comm_world, ierr)
-            ! send walkers to their appropriate processor.
-            ! Easy to scatter into a different array.  Helpfully we already need
-            ! spawned_walkers_recvd to be allocated for parallel calculations.
-            ! Need to use a scratch array for the walker_data though.
-            ! :-)
-            call mpi_scatterv(scratch_data, (sampling_size+info_size)*send_counts,               &
-                                 (sampling_size+info_size)*send_displacements, mpi_preal,        &
-                                 scratch_data_recvd, (sampling_size+info_size)*nread,            &
-                                 mpi_preal, root, mpi_comm_world, ierr)
-            send_counts = send_counts*spawned_size
-            send_displacements = send_displacements*spawned_size
-            call mpi_scatterv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
-                              spawned_walkers_recvd, spawned_size*nread, mpi_det_integer, root, mpi_comm_world, ierr)
-
-            ! Transfer from spawned arrays to main walker arrays.
-            ! The spawned_walkers_recvd is guaranteed to be sorted as the walker
-            ! arrays from each processor are always sorted and are written out
-            ! from each processor in turn and we only read in data that was
-            ! generated on the same processor at a time.
-            ! So, we just need to find out where to insert the data which we
-            ! just read into the main walker lists.
-            ! This is similar to (but simpler than) the algorithm in insert_new_walkers.
-            istart = 1
-            iend = tot_walkers
-            do i = nread, 1, -1
-                ! spawned walker not in main walker list.  Find where it should
-                ! go such that the main list remains sorted.
-                call binary_search(walker_dets, spawned_walkers(:total_basis_length,i), istart, iend, hit, pos)
-                ! f should be in slot pos.  Move all determinants above it.
-                do j = iend, pos, -1
-                    ! i is the number of determinants that will be inserted below j.
-                    k = j + i
-                    walker_dets(:,k) = walker_dets(:,j)
-                    walker_population(:,k) = walker_population(:,j)
-                    walker_data(:,k) = walker_data(:,j)
-                end do
-                ! Insert new walker into pos and shift it to accommodate the number
-                ! of elements that are still to be inserted below it.
-                k = pos + i - 1
-                walker_dets(:,k) = spawned_walkers_recvd(:total_basis_length,i)
-                walker_population(:,k) = spawned_walkers_recvd(spawned_pop:spawned_hf_pop,i)
-                walker_data(:,k) = scratch_data_recvd(:,i)
-                ! Next walker will be inserted below this one.
-                iend = pos - 1
-            end do
-            tot_walkers = tot_walkers + nread
-
-            call mpi_bcast(done, 1, mpi_logical, root, mpi_comm_world, ierr)
-            if (done) exit
-
-        end do
-
-        if (parent) then
-            deallocate(scratch_data, stat=ierr)
-            call check_deallocate('scratch_data',ierr)
-            deallocate(pop, stat=ierr)
-            call check_deallocate('pop',ierr)
-            deallocate(tmp_data, stat=ierr)
-            call check_deallocate('tmp_data',ierr)
-        end if
-        deallocate(scratch_data_recvd, stat=ierr)
-        call check_deallocate('scratch_data_recvd',ierr)
-        ! Finally, need to broadcast the other information read in.
-        call mpi_bcast(restart_version, 1, mpi_integer, root, mpi_comm_world, ierr)
-        call mpi_bcast(mc_cycles_done, 1, mpi_integer, root, mpi_comm_world, ierr)
-        call mpi_bcast(restart_sampling_size, 1, mpi_integer, root, mpi_comm_world, ierr)
-        call mpi_bcast(restart_info_size, 1, mpi_integer, root, mpi_comm_world, ierr)
-        call mpi_bcast(nparticles, size(nparticles), mpi_integer8, root, mpi_comm_world, ierr)
-        call mpi_bcast(shift, 1, mpi_preal, root, mpi_comm_world, ierr)
-        call mpi_bcast(hf_shift, 1, mpi_preal, root, mpi_comm_world, ierr)
-        call mpi_bcast(occ_list0, nel, mpi_integer, root, mpi_comm_world, ierr)
+        call stop_all('read_restart', 'Parallel restart temporarily disabled. &
+                       &Please implement a robust HDF5-based solution.')
+!        global_tot_walkers = tot_walkers
+!        tot_walkers = 0
+!        ! Read in walkers to spawning arrays.
+!        ! Restart file might have been produced with a different number of
+!        ! processors, thus need to hash walkers again to choose which
+!        ! processor to send each determinant to.
+!        ! Use the spawning arrays as scratch space.
+!        ! Need scratch space for the walker_data info though...
+!        if (parent) then
+!            allocate(scratch_data(sampling_size+info_size,spawned_walker_length), stat=ierr)
+!            call check_allocate('scratch_data',size(scratch_data),ierr)
+!            allocate(pop(restart_sampling_size), stat=ierr)
+!            call check_allocate('pop', size(pop), ierr)
+!            allocate(tmp_data(restart_sampling_size+restart_info_size), stat=ierr)
+!            call check_allocate('tmp_data', size(tmp_data), ierr)
+!        end if
+!        allocate(scratch_data_recvd(sampling_size+info_size,spawned_walker_length), stat=ierr)
+!        call check_allocate('scratch_data_recvd',size(scratch_data_recvd),ierr)
+!        ! spawning_head_start gives the first slot in the spawning array for
+!        ! each processor.  Also want the last slot in the spawning array for
+!        ! each processor.
+!        forall (i=0:nprocs-2) spawn_max(i) = spawning_block_start(thread_id,i+1) - 1
+!        spawn_max(nprocs-1) = spawned_walker_length
+!        iread = 0
+!
+!        do
+!            ! read in a "block" of walkers.
+!            if (parent) then
+!                spawning_head = spawning_block_start
+!                det = 0
+!                do i = iread+1, global_tot_walkers
+!                    call read_in(io,det,pop,tmp_data,binary_fmt_in)
+!                    if (i > iread+1 .and. .not.bit_str_gt(det,prev_det)) then
+!                        ! Restart files contain sorted data grouped by processor on
+!                        ! which the determinants resided in the original
+!                        ! calculation.
+!                        ! Distribute the data read in so far and then return to
+!                        ! read in the next processor block.
+!                        ! This is so we only distribute sets of data which are
+!                        ! already sorted, making merging into the data
+!                        ! previously read in much easier.
+!                        backspace(io)
+!                        exit
+!                    end if
+!                    dest = modulo(murmurhash_bit_string(det, total_basis_length, 7), nprocs)
+!                    spawning_head(thread_id,dest) = spawning_head(thread_id,dest) + 1
+!                    ! zero spawned array in case some elements were not set
+!                    ! (e.g. restart file from standard FCIQMC calculation but
+!                    ! now doing Hellmann--Feynman sampling)
+!                    spawned_walkers(:, spawning_head(thread_id,dest)) = 0
+!                    scratch_data(:, spawning_head(thread_id,dest)) = 0.0_p
+!                    spawned_walkers(:total_basis_length, spawning_head(thread_id,dest)) = det
+!                    spawned_walkers(total_basis_length+1:total_basis_length+restart_sampling_size, &
+!                                                                spawning_head(thread_id,dest)) = pop
+!                    scratch_data(:restart_sampling_size+restart_info_size,spawning_head(thread_id,dest)) = tmp_data
+!                    prev_det = det
+!                    ! Filled up spawning/scratch arrays?
+!                    if (any(spawning_head(thread_id,:nprocs-1)-spawn_max == 0)) exit
+!                end do
+!                if (any(det /= prev_det)) then
+!                    ! exited early due to end of processor block
+!                    iread = i - 1
+!                else
+!                    iread = i
+!                end if
+!                done = iread == global_tot_walkers + 1
+!            end if
+!
+!            ! update the number of walkers on this processor from the number of
+!            ! walkers just read in.
+!            send_counts = spawning_head(thread_id,:nprocs-1) - spawning_block_start(thread_id,:nprocs-1)
+!            send_displacements = spawning_block_start(thread_id,:nprocs-1)
+!            call mpi_scatter(send_counts, 1, mpi_integer, nread, 1, mpi_integer, root, mpi_comm_world, ierr)
+!            ! send walkers to their appropriate processor.
+!            ! Easy to scatter into a different array.  Helpfully we already need
+!            ! spawned_walkers_recvd to be allocated for parallel calculations.
+!            ! Need to use a scratch array for the walker_data though.
+!            ! :-)
+!            call mpi_scatterv(scratch_data, (sampling_size+info_size)*send_counts,               &
+!                                 (sampling_size+info_size)*send_displacements, mpi_preal,        &
+!                                 scratch_data_recvd, (sampling_size+info_size)*nread,            &
+!                                 mpi_preal, root, mpi_comm_world, ierr)
+!            send_counts = send_counts*spawned_size
+!            send_displacements = send_displacements*spawned_size
+!            call mpi_scatterv(spawned_walkers, send_counts, send_displacements, mpi_det_integer, &
+!                              spawned_walkers_recvd, spawned_size*nread, mpi_det_integer, root, mpi_comm_world, ierr)
+!
+!            ! Transfer from spawned arrays to main walker arrays.
+!            ! The spawned_walkers_recvd is guaranteed to be sorted as the walker
+!            ! arrays from each processor are always sorted and are written out
+!            ! from each processor in turn and we only read in data that was
+!            ! generated on the same processor at a time.
+!            ! So, we just need to find out where to insert the data which we
+!            ! just read into the main walker lists.
+!            ! This is similar to (but simpler than) the algorithm in insert_new_walkers.
+!            istart = 1
+!            iend = tot_walkers
+!            do i = nread, 1, -1
+!                ! spawned walker not in main walker list.  Find where it should
+!                ! go such that the main list remains sorted.
+!                call binary_search(walker_dets, spawned_walkers(:total_basis_length,i), istart, iend, hit, pos)
+!                ! f should be in slot pos.  Move all determinants above it.
+!                do j = iend, pos, -1
+!                    ! i is the number of determinants that will be inserted below j.
+!                    k = j + i
+!                    walker_dets(:,k) = walker_dets(:,j)
+!                    walker_population(:,k) = walker_population(:,j)
+!                    walker_data(:,k) = walker_data(:,j)
+!                end do
+!                ! Insert new walker into pos and shift it to accommodate the number
+!                ! of elements that are still to be inserted below it.
+!                k = pos + i - 1
+!                walker_dets(:,k) = spawned_walkers_recvd(:total_basis_length,i)
+!                walker_population(:,k) = spawned_walkers_recvd(spawned_pop:spawned_hf_pop,i)
+!                walker_data(:,k) = scratch_data_recvd(:,i)
+!                ! Next walker will be inserted below this one.
+!                iend = pos - 1
+!            end do
+!            tot_walkers = tot_walkers + nread
+!
+!            call mpi_bcast(done, 1, mpi_logical, root, mpi_comm_world, ierr)
+!            if (done) exit
+!
+!        end do
+!
+!        if (parent) then
+!            deallocate(scratch_data, stat=ierr)
+!            call check_deallocate('scratch_data',ierr)
+!            deallocate(pop, stat=ierr)
+!            call check_deallocate('pop',ierr)
+!            deallocate(tmp_data, stat=ierr)
+!            call check_deallocate('tmp_data',ierr)
+!        end if
+!        deallocate(scratch_data_recvd, stat=ierr)
+!        call check_deallocate('scratch_data_recvd',ierr)
+!        ! Finally, need to broadcast the other information read in.
+!        call mpi_bcast(restart_version, 1, mpi_integer, root, mpi_comm_world, ierr)
+!        call mpi_bcast(mc_cycles_done, 1, mpi_integer, root, mpi_comm_world, ierr)
+!        call mpi_bcast(restart_sampling_size, 1, mpi_integer, root, mpi_comm_world, ierr)
+!        call mpi_bcast(restart_info_size, 1, mpi_integer, root, mpi_comm_world, ierr)
+!        call mpi_bcast(nparticles, size(nparticles), mpi_integer8, root, mpi_comm_world, ierr)
+!        call mpi_bcast(shift, 1, mpi_preal, root, mpi_comm_world, ierr)
+!        call mpi_bcast(hf_shift, 1, mpi_preal, root, mpi_comm_world, ierr)
+!        call mpi_bcast(occ_list0, nel, mpi_integer, root, mpi_comm_world, ierr)
 #else
         call read_walkers(io, tot_walkers, restart_sampling_size, restart_info_size, binary_fmt_in)
 #endif

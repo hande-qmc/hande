@@ -35,11 +35,12 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
-        use calc, only: seed
+        use calc, only: seed, initiator_approximation
         use death, only: stochastic_hf_cloning
         use determinants, only:det_info, alloc_det_info, dealloc_det_info
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
+        use fciqmc_data, only: shift
         use hfs_data
         use interact, only: fciqmc_interact
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
@@ -93,7 +94,7 @@ contains
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
-                spawning_head = spawning_block_start
+                qmc_spawn%head = qmc_spawn%head_start
 
                 ! Number of spawning attempts that will be made.
                 ! Each Hamiltonian particle gets a chance to spawn a Hamiltonian
@@ -139,13 +140,13 @@ contains
                         ! Attempt to spawn Hamiltonian walkers..
                         call spawner_ptr(rng, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         call spawner_hfs_ptr(rng, cdet, walker_population(1,idet), gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_hf_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
 
                     end do
 
@@ -157,7 +158,7 @@ contains
                         ! Hellmann--Feynman walkers.
                         call spawner_ptr(rng, cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, spawned_hf_pop)
+                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
 
                     end do
 
@@ -186,16 +187,16 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call death_ptr(rng, walker_data(1,idet), walker_population(2,idet), nparticles(2), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
                     cdet%initiator_flag = h_initiator_flag
                     call stochastic_hf_cloning(rng, walker_data(2,idet), walker_population(1,idet), nspawned)
-                    if (nspawned /= 0) call create_spawned_particle_ptr(cdet, null_excit, nspawned, spawned_hf_pop)
+                    if (nspawned /= 0) call create_spawned_particle_ptr(cdet, null_excit, nspawned, 2, qmc_spawn)
 
                     ! Clone or die: Hamiltonian walkers.
-                    call death_ptr(rng, walker_data(1,idet), walker_population(1,idet), nparticles(1), ndeath)
+                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
@@ -203,7 +204,7 @@ contains
                 ! total.
                 rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
-                call direct_annihilation()
+                call direct_annihilation(initiator_approximation)
 
             end do
 

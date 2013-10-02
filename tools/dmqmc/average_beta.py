@@ -13,6 +13,7 @@ from math import sqrt
 from math import ceil
 from math import floor
 from math import exp
+from math import log
 
 try:
     import matplotlib.pyplot as pyplot
@@ -29,12 +30,16 @@ H_is_present = False
 S_is_present = False
 C_is_present = False
 M2_is_present = False
+R2_is_present = False
 
 TR_SRHO_INDEX = -1
 TR_CRHO_INDEX = -1
 TR_M2RHO_INDEX = -1
 TR_HRHO_INDEX = -1
 TR_H2RHO_INDEX = -1
+R2_INDEX = -1
+RDM_TR1_INDEX = -1
+RDM_TR2_INDEX = -1
 PARTICLES_COL = 6
 
 
@@ -81,11 +86,15 @@ def get_estimator_headings(data_files):
     global S_is_present
     global C_is_present
     global M2_is_present
+    global R2_is_present
     global TR_HRHO_INDEX
     global TR_H2RHO_INDEX
     global TR_SRHO_INDEX
     global TR_CRHO_INDEX
     global TR_M2RHO_INDEX
+    global R2_INDEX
+    global RDM_TR1_INDEX
+    global RDM_TR2_INDEX
     global PARTICLES_COL
 # Get collumn headings from input file
     start_regex = '^ # iterations'
@@ -129,6 +138,22 @@ def get_estimator_headings(data_files):
                    H2_is_present = True
                    TR_H2RHO_INDEX = index
                    index = index + 1
+               elif headings[k] == 'Renyi_2_numerator_1':
+                   estimator_col_no.append(k-TR_RHO_COL)
+                   estimator_headings.append('Renyi_2')
+                   R2_is_present = True
+                   R2_INDEX = index
+                   index = index + 1
+               elif headings[k] == 'RDM1_trace_1':
+                   estimator_col_no.append(k-TR_RHO_COL)
+                   estimator_headings.append('RDM1_trace_1')
+                   RDM_TR1_INDEX = index
+                   index = index + 1
+               elif headings[k] == 'RDM1_trace_2':
+                   estimator_col_no.append(k-TR_RHO_COL)
+                   estimator_headings.append('RDM1_trace_2')
+                   RDM_TR2_INDEX = index
+                   index = index + 1
            PARTICLES_COL = TR_RHO_COL + index + 1
            break
            
@@ -145,14 +170,22 @@ def stats_array_ratio(numerator_array,denominator, covs):
     se = []
     # Loop over numerators and calculate s.e and mean for this estimator
     for i in range(0,numerator_array.mean.size):
-       mean.append(numerator_array.mean[i]/denominator.mean)
-       se.append(scipy.sqrt( (numerator_array.se[i]/numerator_array.mean[i])**2 + (denominator.se/denominator.mean)**2 - (2*covs[i]/(numerator_array.mean[i]*denominator.mean)) )*abs(mean[i]))
+       if i == R2_INDEX or i == RDM_TR1_INDEX or i == RDM_TR2_INDEX:
+          mean.append(numerator_array.mean[i])
+          se.append(numerator_array.se[i])
+       else:
+          mean.append(numerator_array.mean[i]/denominator.mean)
+          se.append(scipy.sqrt( (numerator_array.se[i]/numerator_array.mean[i])**2 + (denominator.se/denominator.mean)**2 - (2*covs[i]/(numerator_array.mean[i]*denominator.mean)) )*abs(mean[i]))
     return Stats(mean,se)
 
 def stats_stochastic_specific_heat(beta, estimator_array):
-    stochastic_specific_heats = []
     mean = (beta**2)*(estimator_array.mean[TR_H2RHO_INDEX]-(estimator_array.mean[TR_HRHO_INDEX])**2)
     se = scipy.sqrt((beta**4)*(estimator_array.se[TR_H2RHO_INDEX]**2+4*(estimator_array.mean[TR_HRHO_INDEX]**2)*estimator_array.se[TR_HRHO_INDEX]**2))
+    return Stats(mean,se)
+
+def stats_renyi_2(estimator_array):
+    mean = -log(estimator_array.mean[R2_INDEX]/(estimator_array.mean[RDM_TR1_INDEX]*estimator_array.mean[RDM_TR2_INDEX]))/log(2)
+    se = (1/log(2))*scipy.sqrt((estimator_array.se[R2_INDEX]/estimator_array.mean[R2_INDEX])**2+(estimator_array.se[RDM_TR1_INDEX]/estimator_array.mean[RDM_TR1_INDEX])**2+(estimator_array.se[RDM_TR2_INDEX]/estimator_array.mean[RDM_TR2_INDEX])**2)
     return Stats(mean,se)
 
 def extract_data(data_files, estimtor_col_no, start_averaging):
@@ -252,6 +285,9 @@ def get_data_stats(data):
         stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho, covariances)
         if H2_is_present and H_is_present:
             stats[beta].stochastic_specific_heat = stats_stochastic_specific_heat(beta,stats[beta].estimators)
+        if R2_is_present:
+            stats[beta].renyi_2 = stats_renyi_2(stats[beta].estimators)
+
     return stats
 
 def calculate_spline_fit(energies, betas, weights):
@@ -279,17 +315,6 @@ def calculate_specific_heat(energies, betas, weights):
         specific_heat[i] = -1.*betas[i]*betas[i]*specific_heat[i]
     return energy_fit, specific_heat
 
-#def calculate_specific_heat(energies, energies_squared, betas, weights, weights_squared):
-#    # Calculate energy spline fit and first derivative
-#    energy_fit, specific_heat = calculate_spline_fit(energies, betas, weights)
-#    energy_squared_fit, specific_heat = calculate_spline_fit(energies_squared, betas, weights_squared)
-#    for i in range(0,len(energy_squared_fit)):
-#        specific_heat[i] = (betas[i]**2)*(energy_squared_fit[i]-(energy_fit[i]**2))
-#    return energy_squared_fit, specific_heat
-
-
-
-
 def print_stats(stats, estimator_headings, trace=False,  shift=False, with_spline=False, with_heat_capacity=False):
     energies = []
 #    energies_squared = []
@@ -312,11 +337,14 @@ def print_stats(stats, estimator_headings, trace=False,  shift=False, with_splin
     if shift:
         print 'shift           shift s.e.    ',
     for i in range(0,len(estimator_headings)):
-        print estimator_headings[i]+'            s.e.    ',
+        if not (i == R2_INDEX or i == RDM_TR1_INDEX or i == RDM_TR2_INDEX):
+            print estimator_headings[i]+'            s.e.    ',
     if H2_is_present and H_is_present and with_heat_capacity:
        print 'Stoch. Spec. Heat  s.e.    '
+    if R2_is_present:
+       print ' Renyi 2        Renyi 2 s.e.     '
     if with_spline:    
-        print '  Energy Fit    Spline HC'
+       print '  Energy Fit    Spline HC'
     print
     counter = 0
     for beta in sorted(stats.iterkeys()):
@@ -328,9 +356,12 @@ def print_stats(stats, estimator_headings, trace=False,  shift=False, with_splin
         if shift:
             print '%16.8f%16.8f' % (data.shift.mean, data.shift.se) ,
         for i in range(0,len(data.estimators.mean)):
-            print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
+            if not (i == R2_INDEX or i == RDM_TR1_INDEX or i == RDM_TR2_INDEX):
+                print '%16.8f%16.8f' % (data.estimators.mean[i], data.estimators.se[i]) ,
         if H2_is_present and H_is_present and with_heat_capacity:
             print '%16.8f%16.8f' % (data.stochastic_specific_heat.mean, data.stochastic_specific_heat.se) ,
+        if R2_is_present:
+            print '%16.8f%16.8f' % (data.renyi_2.mean, data.renyi_2.se) ,
         if with_spline:
             print '%16.8f%16.8f' % (energy_fit[counter], specific_heats[counter]) ,
         counter = counter + 1

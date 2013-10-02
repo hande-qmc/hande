@@ -46,7 +46,7 @@ contains
         use system, only: J_coupling
         use hubbard_real, only: connected_orbs
 
-        integer, intent(in) :: f0(:)
+        integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
