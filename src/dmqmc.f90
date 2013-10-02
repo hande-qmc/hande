@@ -83,11 +83,11 @@ contains
                 write (6,'(a32,i7)') &
                        " # Resetting beta... Beta loop =", beta_cycle
                 write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
-                    " # Resetting random number generator with a seed of:", seed+iproc+beta_cycle-1, "."
+                    " # Resetting random number generator with a seed of:", seed+iproc+(beta_cycle-1)*nprocs, "."
             end if
-            ! Reset the random number generator with seed = seed + 1 (each
+            ! Reset the random number generator with seed = seed + nprocs (each
             ! iteration)
-            call dSFMT_init(seed+iproc+beta_cycle-1, 50000, rng)
+            call dSFMT_init(seed+iproc+(beta_cycle-1)*nprocs, 50000, rng)
 
             ! Need to place psips randomly along the diagonal at the
             ! start of every iteration. Pick orbitals randomly, each

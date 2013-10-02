@@ -162,7 +162,10 @@ contains
          else
              allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs_old(0:max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs_old',max_number_excitations+1,ierr)
              dmqmc_accumulated_probs = 1.0_p
+             dmqmc_accumulated_probs_old = 1.0_p
              if (half_density_matrix) dmqmc_accumulated_probs(1:max_number_excitations) = 2.0_p
          end if
 
