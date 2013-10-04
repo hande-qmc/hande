@@ -439,6 +439,7 @@ contains
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
         use search, only: binary_search
+        use sort, only: insert_sort
 
         integer(lint), intent(in) :: nattempts
         integer, intent(in) :: D0_pos
@@ -448,7 +449,7 @@ contains
         type(cluster_t), intent(inout) :: cluster
 
         real(p) :: rand, psize, cluster_population
-        integer :: i, pos, pop, excitor_sgn
+        integer :: i, pos, prev_pos, pop(max_size), excitor_sgn
         logical :: hit, allowed
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
@@ -518,10 +519,19 @@ contains
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
             ! population on that excitor.
+            ! Rather than selecting one excitor at a time and adding it to the
+            ! cluster, select all excitors and then find their locations and
+            ! apply them.  This allows us to sort by population first (as the
+            ! number of excitors is small) and hence allows for a more efficient
+            ! searching of the cumulative population list.
             do i = 1, cluster%nexcitors
                 ! Select a position in the excitors list.
-                pop = int(get_rand_close_open(rng)*tot_excip_pop) + 1 ! TODO: adjust for parallel
-                call binary_search(cumulative_excip_pop, pop, 1, tot_walkers, hit, pos)
+                pop(i) = int(get_rand_close_open(rng)*tot_excip_pop) + 1 ! TODO: adjust for parallel
+            end do
+            call insert_sort(pop(:cluster%nexcitors))
+            prev_pos = 1
+            do i = 1, cluster%nexcitors
+                call binary_search(cumulative_excip_pop, pop(i), prev_pos, tot_walkers, hit, pos)
                 ! Not allowed to select the reference as it is not an excitor.
                 ! Because we treat (for the purposes of the cumulative
                 ! population) the reference to have 0 excips, then
@@ -546,6 +556,7 @@ contains
                 ! Probability of choosing this excitor = pop/tot_pop.
                 cluster%pselect = (cluster%pselect*abs(walker_population(1,pos)))/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
+                prev_pos = pos
             end do
 
             if (allowed) cluster%excitation_level = get_excitation_level(f0, cdet%f)
