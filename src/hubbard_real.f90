@@ -153,6 +153,7 @@ contains
         end select
 
         ! Construct how the lattice is connected.
+        diag_connection = .false. ! For ndim /= 2.
         do i = 1, nbasis-(isystem-1), isystem
             do j = i, nbasis-(isystem-1), isystem
                 ! Loop only over one spin: the other spin is identical so can be
@@ -163,8 +164,10 @@ contains
                 do ivec = 1, 3**ndim
                     ! For the triangular lattice, there are extra diagonal bonds between pairs
                     ! of sites which obey this condition.
-                    diag_connection = all((r-lvecs(:,ivec)) == (/1,1/)) .or. &
-                                      all((r-lvecs(:,ivec)) == (/-1,-1/))
+                    if (ndim == 2) then
+                        diag_connection = all((r-lvecs(:,ivec)) == (/1,1/)) .or. &
+                                          all((r-lvecs(:,ivec)) == (/-1,-1/))
+                    end if
                     if (sum(abs(r-lvecs(:,ivec))) == 1 .or. &
                         (triangular_lattice .and. diag_connection)) then
                         ! i and j are on sites which are nearest neighbours
