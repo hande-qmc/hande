@@ -85,6 +85,10 @@ contains
         walker_population = 0
         qmc_spawn%sdata = 0
 
+        allocate(shift(1), stat=ierr)
+        call check_allocate('shift', size(shift), ierr)
+        shift = initial_shift
+
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then
