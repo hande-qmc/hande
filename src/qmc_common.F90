@@ -143,15 +143,15 @@ contains
         !             connected to D by a double excitation.
 
         use basis, only: basis_fns
-        use system, only: nel, system_type, hub_k, hub_real, heisenberg, read_in, sym0, sym_max
+        use system
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, nbasis_sym_spin
 
-        integer, intent(in) :: occ_list(nel)
+        integer, intent(in) :: occ_list(sys_global%nel)
         real(p), intent(out) :: psingle, pdouble
 
-        integer :: i, j, virt_syms(2, sym0:sym_max), nsingles, ndoubles, isyma, isymb, ims1, ims2
+        integer :: i, j, virt_syms(2, sys_global%sym0:sys_global%sym_max), nsingles, ndoubles, isyma, isymb, ims1, ims2
 
-        select case(system_type)
+        select case(sys_global%system)
         case(hub_k)
             ! Only double excitations
             psingle = 0.0_p
@@ -164,7 +164,7 @@ contains
 
             ! Count number of basis functions in each symmetry.
             virt_syms = nbasis_sym_spin
-            do i = 1, nel
+            do i = 1, sys_global%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 virt_syms(ims1,basis_fns(occ_list(i))%sym) = virt_syms(ims1,basis_fns(occ_list(i))%sym) - 1
@@ -174,7 +174,7 @@ contains
             ! determinant.
             ! Symmetry and spin must be conserved.
             nsingles = 0
-            do i = 1, nel
+            do i = 1, sys_global%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 ! Can't excite into already occupied orbitals.
@@ -184,13 +184,13 @@ contains
             ! Count number of possible double excitations from the supplied
             ! determinant.
             ndoubles = 0
-            do i = 1, nel
+            do i = 1, sys_global%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
-                do j = i+1, nel
+                do j = i+1, sys_global%nel
                     ! Convert -1->1 and 1->2 for spin index in arrays.
                     ims2 = (basis_fns(occ_list(j))%ms+3)/2
-                    do isyma = sym0, sym_max
+                    do isyma = sys_global%sym0, sys_global%sym_max
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
                         isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j)))

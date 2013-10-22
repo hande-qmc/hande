@@ -3,7 +3,7 @@ module kpoints
 ! Module for handling wavevectors.
 
 use const
-use system
+use system, only: sys_global, hub_k, ueg
 
 implicit none
 
@@ -19,20 +19,20 @@ contains
 
         real(p) :: kinetic
 
-        integer, intent(in) :: k(ndim)
+        integer, intent(in) :: k(sys_global%lattice%ndim)
         integer :: i
-        real(p) :: kc(ndim)
+        real(p) :: kc(sys_global%lattice%ndim)
 
-        ! Note rlattice is stored in units of 2pi.
-        forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:)) + ktwist(i)
+        ! Note sys_global%lattice%rlattice is stored in units of 2pi.
+        forall (i=1:sys_global%lattice%ndim) kc(i) = sum(k*sys_global%lattice%rlattice(i,:)) + sys_global%lattice%ktwist(i)
 
-        select case(system_type)
+        select case(sys_global%system)
         case(hub_k)
             ! For a square lattice the kinetic energy of a wavevector is given by
             !    -2t \sum_i cos(k.x_i)
             ! where x_i is the i-th reciprocal lattice vector of the primitive unit
             ! cell.
-            kinetic = -2*sum(cos(2*pi*kc))*hubt
+            kinetic = -2*sum(cos(2*pi*kc))*sys_global%hubbard%t
         case(ueg)
             ! For the UEG the kinetic energy of a wavevector is given by
             !    k^2/2
@@ -51,11 +51,11 @@ contains
         !    True if k is a reciprocal lattice vector of the *primitive* cell.
 
         logical :: t_rlv
-        integer, intent(in) :: k(ndim)
-        real(p) :: kc(ndim)
+        integer, intent(in) :: k(sys_global%lattice%ndim)
+        real(p) :: kc(sys_global%lattice%ndim)
         integer :: i
 
-        select case(system_type)
+        select case(sys_global%system)
         case(ueg)
             ! Reciprocal primitive cell is infinitesimally small.
             t_rlv = all(k == 0)
@@ -66,7 +66,7 @@ contains
             else
                 ! Test to see if delta_k is 0 up to a reciprocal lattice vector
                 ! of the primitive cell.
-                forall (i=1:ndim) kc(i) = sum(k*rlattice(i,:))
+                forall (i=1:sys_global%lattice%ndim) kc(i) = sum(k*sys_global%lattice%rlattice(i,:))
                 t_rlv = all(abs(kc - nint(kc)) < depsilon)
             end if
         end select

@@ -25,7 +25,6 @@ contains
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
-        use system, only: nel
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
         use ifciqmc, only: set_parent_flag

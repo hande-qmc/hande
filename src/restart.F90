@@ -208,7 +208,6 @@ contains
         use hashing, only: murmurhash_bit_string
         use hfs_data, only: O00, hf_shift
         use proc_pointers, only: op0_ptr
-        use system, only: nel
         use search, only: binary_search
 
         use checking, only: check_allocate, check_deallocate

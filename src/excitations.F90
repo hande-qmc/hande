@@ -97,7 +97,7 @@ contains
 
         use bit_utils
         use basis, only: basis_length, basis_lookup
-        use system, only: nel
+        use system
 
         type(excit) :: excitation
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
@@ -133,8 +133,8 @@ contains
             ! order.
             ! To obtain such ordering requires (for each orbital that is
             ! involved in the excitation) a total of
-            ! nel - iel - nexcit + iexcit
-            ! where nel is the number of electrons, iel is the position of the
+            ! sys_global%nel - iel - nexcit + iexcit
+            ! where sys_global%nel is the number of electrons, iel is the position of the
             ! orbital within the list of occupied states in the determinant,
             ! nexcit is the total number of excitations and iexcit is the number
             ! of the "current" orbital involved in excitations.
@@ -150,7 +150,7 @@ contains
             ! minimal number for the determinants to align, this is irrelevant
             ! as the Slater--Condon rules only care about whether the number of
             ! permutations is even or odd.
-            shift = nel - excitation%nexcit
+            shift = sys_global%nel - excitation%nexcit
 
             if (excitation%nexcit <= 2) then
 

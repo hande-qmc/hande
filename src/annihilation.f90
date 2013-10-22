@@ -225,7 +225,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use determinants, only: decode_det
         use search, only: binary_search
-        use system, only: nel, trial_function, neel_singlet
+        use system, only: trial_function, neel_singlet
         use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr
         use heisenberg_estimators, only: neel_singlet_data

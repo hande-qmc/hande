@@ -249,7 +249,7 @@ contains
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
        use hubbard_real, only: connected_orbs
-       use system, only: J_coupling
+       use system
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
@@ -264,12 +264,12 @@ contains
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
-       ! neighbours on the lattice, and if so, add the contirbution from this site.
+       ! neighbours on the sys_global%lattice%lattice, and if so, add the contirbution from this site.
            bit_position = bit_lookup(1,excitation%from_orb(1))
            bit_element = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
                  estimator_numerators(energy_index) = estimator_numerators(energy_index) - &
-                                   (2.0*J_coupling*walker_pop)
+                                   (2.0*sys_global%heisenberg%J*walker_pop)
        end if
 
    end subroutine dmqmc_energy_heisenberg
@@ -295,7 +295,7 @@ contains
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_squared_index
        use hubbard_real, only: connected_orbs, next_nearest_orbs
-       use system, only: J_coupling, nbonds
+       use system
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
@@ -304,17 +304,19 @@ contains
        real(p) :: sum_H1_H2, J_coupling_squared
 
        sum_H1_H2 = 0
-       J_coupling_squared = J_coupling**2
+       J_coupling_squared = sys_global%heisenberg%J**2
 
        if (excitation%nexcit == 0) then
            ! If there are 0 excitations then either nothing happens twice, or we
            ! flip the same pair of spins twice. The Hamiltonian element for doing nothing
            ! is just the diagonal element. For each possible pairs of spins which can be
-           ! flipped, there is a mtarix element of -2*J_coupling, so we just need to count
+           ! flipped, there is a mtarix element of -2*sys_global%heisenberg%J, so we just need to count
            ! the number of such pairs, which can be found simply from the diagonal element.
 
            sum_H1_H2 = (walker_data(1,idet)+H00)**2
-           sum_H1_H2 = sum_H1_H2 + 2.0*J_coupling_squared*nbonds + 2.0*J_coupling*(walker_data(1,idet)+H00)
+           associate(sh=>sys_global%heisenberg)
+               sum_H1_H2 = sum_H1_H2 + 2.0*J_coupling_squared*sh%nbonds + 2.0*sh%J*(walker_data(1,idet)+H00)
+           end associate
 
        else if (excitation%nexcit == 1) then
            ! If there is only one excitation (2 spins flipped) then the contribution to H^2
@@ -336,13 +338,13 @@ contains
                sum_H1_H2 = 4.0*J_coupling_squared*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
            end if
            ! Contributions for nearest neighbors.
-           ! Note, for certain lattices, such as the triangular lattice, two spins can be both
+           ! Note, for certain lattices, such as the triangular sys_global%lattice%lattice, two spins can be both
            ! nearest neighbors *and* next-nearest neighbors. Therefore, it is necessary in general
            ! to check for both situations.
            bit_position1 = bit_lookup(1,excitation%from_orb(1))
            bit_element1 = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
-                   sum_H1_H2 = sum_H1_H2 - 4.0*J_coupling*(walker_data(1,idet)+H00)
+                   sum_H1_H2 = sum_H1_H2 - 4.0*sys_global%heisenberg%J*(walker_data(1,idet)+H00)
 
        else if (excitation%nexcit == 2) then
            ! If there are two excitations (4 spins flipped) then, once again, the contribution
@@ -353,7 +355,7 @@ contains
            ! Heisenberg model). These two flips can happen in either order.
            ! In some cases the spins may be such that we may pair the spins in more than one way.
            ! For example, if the four spins are in a square shape, or for a 4-by-4 Heisenberg
-           ! model, the spins could be connected across the whole lattice, forming a ring due
+           ! model, the spins could be connected across the whole sys_global%lattice%lattice, forming a ring due
            ! to the periodic boundaries. In these cases it may be possible to perform the spin
            ! flips by pairing them in either of two ways. To account for this possibility we
            ! have to try and pair the spins in both ways, so we always check both if statements
@@ -412,7 +414,7 @@ contains
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
-       ! neighbours on the lattice, and if so, add the contirbution from this site.
+       ! neighbours on the sys_global%lattice%lattice, and if so, add the contirbution from this site.
            hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
                                  (hmatel*walker_pop)
@@ -442,7 +444,7 @@ contains
        use fciqmc_data, only: walker_data, H00, correlation_mask
        use fciqmc_data, only: estimator_numerators, correlation_index
        use hubbard_real, only: connected_orbs
-       use system, only: J_coupling
+       use system
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
@@ -504,7 +506,7 @@ contains
        use excitations, only: excit
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: estimator_numerators, staggered_mag_index
-       use system, only: nel, nsites
+       use system
 
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
@@ -525,15 +527,15 @@ contains
            ! N_u(+) - Number up on + sublattice (where (-1)^i above is +1)
            ! Note the number of down spins on a sublattice is easily obtained from
            ! N_u(+) since there are N/2 spins on each - and the number of spins up on
-           ! a different sublattice is easily obtained since there are nel spins
+           ! a different sublattice is easily obtained since there are sys_global%nel spins
            ! up in total. Hence the matrix element will be written only in terms
            ! of the number of up spins on sublattice 1, to save computation.
            f = iand(walker_dets(:basis_length,idet), lattice_mask)
            n_up_plus = sum(count_set_bits(f))
            ! Below, the term in brackets and middle term come from the z component (the
-           ! z operator is diagonal) and one nsites/4 factor comes from the x operator,
-           ! the other nsites/4 factor from the y operator.
-           total_sum = (2*n_up_plus-nel)**2 + (nsites/2)
+           ! z operator is diagonal) and one sys_global%lattice%nsites/4 factor comes from the x operator,
+           ! the other sys_global%lattice%nsites/4 factor from the y operator.
+           total_sum = (2*n_up_plus-sys_global%nel)**2 + (sys_global%lattice%nsites/2)
        else if (excitation%nexcit == 1) then
            ! Off-diagonal elements from the y and z operators. For the pair of spins
            ! that are flipped, if they are on the same sublattice, we get a factor of
@@ -552,7 +554,7 @@ contains
        end if
 
        estimator_numerators(staggered_mag_index) = estimator_numerators(staggered_mag_index) + &
-                                  (real(total_sum)/real(nsites**2))*walker_pop
+                                  (real(total_sum)/real(sys_global%lattice%nsites**2))*walker_pop
 
    end subroutine dmqmc_stag_mag_heisenberg
 

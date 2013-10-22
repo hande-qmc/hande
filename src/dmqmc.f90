@@ -29,10 +29,10 @@ contains
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use qmc_common
         use interact, only: fciqmc_interact
-        use system, only: nel
+        use system
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy, initiator_approximation
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
-        use system, only: system_type, heisenberg
+        use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: int_fmt
         use errors, only: stop_all
@@ -95,7 +95,7 @@ contains
             ! on these orbitals they will have the correct spin and symmetry.
             ! Initial particle distribution.
             do ireplica = 1, sampling_size
-                select case(system_type)
+                select case(sys_global%system)
                 case(heisenberg)
                     call random_distribution_heisenberg(rng, ireplica)
                 case default

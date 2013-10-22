@@ -29,7 +29,7 @@ contains
 
         ! In/Out:
         !   occ_list: allocatable integer array.  Contains a 'best guess' at
-        !       a suitable reference determinant (nel elements; list of occupied
+        !       a suitable reference determinant (sys_global%nel elements; list of occupied
         !       orbitals in determinant) on output.  Note that this is not ordered.
         !       Unchanged if already allocated unless override_input is set.
         ! In:
@@ -37,8 +37,8 @@ contains
         !       a reference determinant even if occ_list is allocated on input.
         !   ref_sym (optional): if supplied, attempt to find the reference
         !       determinant with the lowest sum of single-particle energies with
-        !       this symmetry index.  Ignored if less than sym0 or greater than
-        !       sym_max.
+        !       this symmetry index.  Ignored if less than sys_global%sym0 or greater than
+        !       sys_global%sym_max.
 
         use const, only: i0, p
         use checking, only: check_allocate
@@ -48,15 +48,14 @@ contains
         use determinants, only: encode_det
         use hubbard_real, only: connected_orbs
         use symmetry, only: symmetry_orb_list
-        use system, only: nalpha, nbeta, nel, system_type, hub_k, hub_real, read_in, ueg, nsites, &
-                          chung_landau, heisenberg, J_coupling, sym0, sym_max
+        use system
 
         integer, intent(inout), allocatable :: occ_list(:)
         logical, intent(in) :: override_input
         integer, intent(in), optional :: ref_sym
 
         integer :: i, j, ierr, spins_set, connections, iel, icore, jcore, ivirt, jvirt
-        integer :: bit_element, bit_pos, tmp_occ_list(nel), curr_occ_list(nel), sym
+        integer :: bit_element, bit_pos, tmp_occ_list(sys_global%nel), curr_occ_list(sys_global%nel), sym
         integer(i0) :: f(basis_length)
         real(p) :: eigv_sum, sp_eigv_sum
         logical :: set
@@ -66,8 +65,8 @@ contains
 
         if (allocated(occ_list)) then
             ! Already set.  Just check that it's not totally insane.
-            if (size(occ_list) /= nel) then
-                select case(system_type)
+            if (size(occ_list) /= sys_global%nel) then
+                select case(sys_global%system)
                 case(heisenberg)
                     call stop_all('set_reference_det', &
                         'Reference determinant supplied does not contain the &
@@ -81,27 +80,27 @@ contains
             set = .true.
         else
             ! Allocate memory if required.
-            allocate(occ_list(nel), stat=ierr)
-            call check_allocate('occ_list',nel,ierr)
+            allocate(occ_list(sys_global%nel), stat=ierr)
+            call check_allocate('occ_list',sys_global%nel,ierr)
             set = .false.
         end if
 
         if (.not.set .or. override_input) then
             ! Attempt to find a dumb 'best guess' for choice of a reference
             ! determinant.
-            select case(system_type)
+            select case(sys_global%system)
             case(hub_k,read_in,ueg)
                 ! Orbitals are ordered by their single-particle eigenvalues.
                 ! Occupy the Fermi sphere/HF det.
-                forall (i=1:nalpha) occ_list(i) = 2*i-1
-                forall (i=1:nbeta) occ_list(i+nalpha) = 2*i
+                forall (i=1:sys_global%nalpha) occ_list(i) = 2*i-1
+                forall (i=1:sys_global%nbeta) occ_list(i+sys_global%nalpha) = 2*i
 
                 ! Symmetry only implemented for these systems.  Do we need
                 ! to find a determinant of different symmetry?
                 ! This needs only be called for initialisation, so don't attempt
                 ! to be clever and efficient...
                 if (present(ref_sym)) then
-                    if (ref_sym >= sym0 .and. ref_sym <= sym_max) then
+                    if (ref_sym >= sys_global%sym0 .and. ref_sym <= sys_global%sym_max) then
                         call encode_det(occ_list, f)
                         ! If occ_list is already of the correct symmetry, then
                         ! have nothing to do.
@@ -111,7 +110,7 @@ contains
                             ! Consider single excitations of our current
                             ! reference determinant, conserving only spin.
                             eigv_sum = huge(0.0_p)
-                            do icore = 1, nel
+                            do icore = 1, sys_global%nel
                                 i = occ_list(icore)
                                 do ivirt = 1, nbasis
                                     ! Ensure ivirt is not already in the
@@ -122,7 +121,7 @@ contains
                                         tmp_occ_list(icore) = ivirt
                                         if (symmetry_orb_list(tmp_occ_list) == ref_sym) then
                                             sp_eigv_sum = 0.0_p
-                                            do iel = 1, nel
+                                            do iel = 1, sys_global%nel
                                                 sp_eigv_sum = sp_eigv_sum + basis_fns(tmp_occ_list(iel))%sp_eigv
                                             end do
                                             if (sp_eigv_sum < eigv_sum) then
@@ -136,9 +135,9 @@ contains
 
                             ! Consider double excitations of our current
                             ! reference determinant, conserving only spin.
-                            do icore = 1, nel
+                            do icore = 1, sys_global%nel
                                 i = occ_list(icore)
-                                do jcore = icore+1, nel
+                                do jcore = icore+1, sys_global%nel
                                     j = occ_list(jcore)
                                     do ivirt = 1, nbasis
                                         if (.not.btest(f(bit_lookup(2,ivirt)), bit_lookup(1,ivirt))) then
@@ -151,7 +150,7 @@ contains
                                                     tmp_occ_list(jcore) = jvirt
                                                     if (symmetry_orb_list(tmp_occ_list) == ref_sym) then
                                                         sp_eigv_sum = 0.0_p
-                                                        do iel = 1, nel
+                                                        do iel = 1, sys_global%nel
                                                             sp_eigv_sum = sp_eigv_sum + &
                                                                 basis_fns(tmp_occ_list(iel))%sp_eigv
                                                         end do
@@ -179,36 +178,36 @@ contains
             case(hub_real)
                 ! Attempt to keep electrons on different sites where possible.
                 ! Sites 1, 3, 5, ... (occupy every other alpha orbital first, ie
-                ! place a max of nsites/2 electrons.  (nsites+1)/2 accounts for
+                ! place a max of sys_global%lattice%nsites/2 electrons.  (sys_global%lattice%nsites+1)/2 accounts for
                 ! the possibility that we have an odd number of sites.)
-                forall (i=1:min(nalpha,(nsites+1)/2)) occ_list(i) = 4*i-3
+                forall (i=1:min(sys_global%nalpha,(sys_global%lattice%nsites+1)/2)) occ_list(i) = 4*i-3
                 ! now occupy the alternate alpha orbitals
-                forall (i=1:nalpha-min(nalpha,(nsites+1)/2)) &
-                    occ_list(i+min(nalpha,(nsites+1)/2)) = 4*i-1
+                forall (i=1:sys_global%nalpha-min(sys_global%nalpha,(sys_global%lattice%nsites+1)/2)) &
+                    occ_list(i+min(sys_global%nalpha,(sys_global%lattice%nsites+1)/2)) = 4*i-1
                 ! Similarly for beta, but now occupying orbitals sites 2, 4,
                 ! ..., preferentially.
-                forall (i=1:min(nbeta,nsites/2)) occ_list(i+nalpha) = 4*i
-                forall (i=1:nbeta-min(nbeta,nsites/2)) &
-                    occ_list(i+nalpha+min(nbeta,nsites/2)) = 4*i-2
+                forall (i=1:min(sys_global%nbeta,sys_global%lattice%nsites/2)) occ_list(i+sys_global%nalpha) = 4*i
+                forall (i=1:sys_global%nbeta-min(sys_global%nbeta,sys_global%lattice%nsites/2)) &
+                    occ_list(i+sys_global%nalpha+min(sys_global%nbeta,sys_global%lattice%nsites/2)) = 4*i-2
             case(chung_landau)
                 ! As with the hub_real, attempt to keep fermions not on
                 ! neighbouring sites.
-                forall (i=1:nel) occ_list(i) = 2*i-1
+                forall (i=1:sys_global%nel) occ_list(i) = 2*i-1
             case(heisenberg)
                 ! Ferromagnetic case is easy: group identical spins together!
-                if (J_coupling >= 0) then
-                    forall (i=1:nel) occ_list(i) = i
+                if (sys_global%heisenberg%J >= 0) then
+                    forall (i=1:sys_global%nel) occ_list(i) = i
                 ! For the antiferromagnetic case, below. This is messy but should
                 ! give a reasonable reference determinant for general cases, even
                 ! for bizarre lattices. For bipartite lattices (eg 4x4, 6x6...)
                 ! it will give the best possible reference determinant.
-                else if (J_coupling < 0) then
+                else if (sys_global%heisenberg%J < 0) then
                     ! Always set the first spin up
                     occ_list(1) = 1
                     spins_set = 1
                     ! Loop over other sites to find orbitals which are not connected to
                     ! the other sites previously chosen.
-                    do i=2,nsites
+                    do i=2,sys_global%lattice%nsites
                         bit_pos = bit_lookup(1,i)
                         bit_element = bit_lookup(2,i)
                         connections = 0
@@ -228,10 +227,10 @@ contains
                     ! If, after finding all the sites which are not connected, we still haven't
                     ! chosen enough sites, we accept that we must have some neigbouring sites
                     ! included in the reference determinant and start choosing the remaining sites.
-                    if (spins_set /= nel) then
+                    if (spins_set /= sys_global%nel) then
                         ! Loop over all sites looking for extra spins to include in the
                         ! reference detereminant.
-                        fill_sites: do i=2,nsites
+                        fill_sites: do i=2,sys_global%lattice%nsites
                             connections = 0
                             ! Check if this site is already included.
                             do j=1,spins_set
@@ -245,7 +244,7 @@ contains
                             end if
                             ! When the correct number of spins have been chosen to be up,
                             ! we are finished.
-                            if (spins_set == nel) exit fill_sites
+                            if (spins_set == sys_global%nel) exit fill_sites
                         end do fill_sites
                     end if
                 end if

@@ -62,19 +62,19 @@ integer, parameter :: gamma_sym = 0
 
 ! nbasis_sym(i) gives the number of (spin) basis functions in the i-th symmetry,
 ! where i is the bit string describing the irreducible representation.
-integer, allocatable :: nbasis_sym(:) ! (sym0:sym_max)
+integer, allocatable :: nbasis_sym(:) ! (sys_global%sym0:sys_global%sym_max)
 
 ! nbasis_sym_spin(1,i) gives the number of spin-down basis functions in the i-th
 ! symmetry where i is the bit string describing the irreducible representation.
 ! Similarly, j=2 gives the analagous quantity for spin-up basis functions.
 ! For RHF calculations nbasis_sym_spin(:,i) = nbasis_sym(i)/2.
-integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sym0:sym_max)
+integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sys_global%sym0:sys_global%sym_max)
 
 ! sym_spin_basis_fns(:,ims,isym) gives the list of spin functions (ims=1 for
 ! down, ims=2 for up) with symmetry isym.  We merrily waste some memory (not all
 ! symmetries will have the same number of basis functions), so a 0 entry
 ! indicates no more basis functions with the given spin and spatial symmetries.
-integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0:sym_max)
+integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sys_global%sym0:sys_global%sym_max)
 
 contains
 
@@ -87,28 +87,28 @@ contains
         use checking, only: check_allocate
 
         use basis, only: basis_fns, nbasis
-        use system, only: nsym, sym0, sym_max
+        use system
 
         integer :: i, ierr, ims, ind
 
         ! molecular systems use symmetry indices starting from 0.
-        sym0 = 0
+        sys_global%sym0 = 0
 
         ! Given n generators, there must be 2^n irreducible representations.
         ! in the working space.  (Note that the wavefunctions might only span
         ! a subspace of the point group considered by the generating quantum
         ! chemistry package.)
-        ! Set nsym to be 2^n so that we always work in the smallest group
+        ! Set sys_global%nsym to be 2^n so that we always work in the smallest group
         ! spanned by the wavefunctions.
         ! +1 comes from the fact that the basis_fn%sym gives the bit string
         ! representation.
-        nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
-        sym_max = nsym-1
+        sys_global%nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
+        sys_global%sym_max = sys_global%nsym-1
 
-        allocate(nbasis_sym(0:nsym-1), stat=ierr)
-        call check_allocate('nbasis_sym', nsym, ierr)
-        allocate(nbasis_sym_spin(2,0:nsym-1), stat=ierr)
-        call check_allocate('nbasis_sym_spin', 2*nsym, ierr)
+        allocate(nbasis_sym(0:sys_global%nsym-1), stat=ierr)
+        call check_allocate('nbasis_sym', sys_global%nsym, ierr)
+        allocate(nbasis_sym_spin(2,0:sys_global%nsym-1), stat=ierr)
+        call check_allocate('nbasis_sym_spin', 2*sys_global%nsym, ierr)
 
         nbasis_sym = 0
         nbasis_sym_spin = 0
@@ -125,7 +125,7 @@ contains
 
         end do
 
-        allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,0:nsym-1), stat=ierr)
+        allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,0:sys_global%nsym-1), stat=ierr)
         call check_allocate('sym_spin_basis_fns', size(sym_spin_basis_fns), ierr)
         sym_spin_basis_fns = 0
 
@@ -164,7 +164,7 @@ contains
 
         ! Write out point group symmetry information.
 
-        use system, only: nsym
+        use system
 
         use parallel, only: parent
 
@@ -175,8 +175,8 @@ contains
 
             write (6,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
             ! Note that we never actually store this.
-            do i = 0, nsym-1
-                do j = 0, nsym-1
+            do i = 0, sys_global%nsym-1
+                do j = 0, sys_global%nsym-1
                     write (6,'(1X,i2)',advance='no') cross_product_pg_sym(i,j)
                 end do
                 write (6,'()')
@@ -185,7 +185,7 @@ contains
             write (6,'(/,1X,a93,/)') 'The table below gives the number of basis functions spanning each irreducible representation.'
 
             write (6,'(1X,"irrep  nbasis  nbasis_up  nbasis_down")')
-            do i = 0, nsym-1
+            do i = 0, sys_global%nsym-1
                 write (6,'(1X,i3,4X,i5,3X,i5,6X,i5)') i, nbasis_sym(i), nbasis_sym_spin(:,i)
             end do
 

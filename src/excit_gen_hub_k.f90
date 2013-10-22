@@ -48,7 +48,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use system, only: hub_k_coulomb
+        use system
         use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
@@ -90,7 +90,7 @@ contains
         ! so
         !   |H_ij| = U/\Omega
         ! for allowed excitations.
-        abs_hmatel = abs(hub_k_coulomb)
+        abs_hmatel = abs(sys_global%hubbard%coulomb_k)
 
     end subroutine gen_excit_init_hub_k
 
@@ -176,7 +176,7 @@ contains
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
+        use system
 
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
@@ -227,13 +227,13 @@ contains
             ! implementation choices make it to generate an excitation which
             ! attempts to excite into an occupied alpha orbital.
             !
-            !   p(i,j) = 1/(nalpha*nbeta)
+            !   p(i,j) = 1/(sys_global%nalpha*sys_global%nbeta)
             !   p(b|i,j,a) = 1
             !   p(a|i,j) = n_virt_alpha
-            pgen = 1.0_p/(nalpha*nbeta*nvirt_alpha)
+            pgen = 1.0_p/(sys_global%nalpha*sys_global%nbeta*sys_global%nvirt_alpha)
 
             ! 4. |H_ij| is constant for this system.
-            abs_hmatel = abs(hub_k_coulomb)
+            abs_hmatel = abs(sys_global%hubbard%coulomb_k)
 
         else
 
@@ -304,7 +304,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb
+        use system
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
 
@@ -371,7 +371,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
+        use system
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
 
@@ -399,8 +399,8 @@ contains
             !    ***WARNING: dependent upon (arbitrary) implementation choices***
             !    See comments in gen_excit_init_hub_k_no_renorm.
             ! pgen = p(i,j) p(a|i,j) p(b|i,j,a)
-            !      = 1/(nalpha*nbeta) 1/nvirt_alpha
-            pgen = 1.0_p/(nalpha*nbeta*nvirt_alpha)
+            !      = 1/(sys_global%nalpha*sys_global%nbeta) 1/sys_global%nvirt_alpha
+            pgen = 1.0_p/(sys_global%nalpha*sys_global%nbeta*sys_global%nvirt_alpha)
 
             ! 4. find the connecting matrix element.
             connection%nexcit = 2
@@ -437,10 +437,10 @@ contains
         !    ij_sym: symmetry label of the (i,j) combination.
 
         use momentum_symmetry, only: sym_table
-        use system, only: nalpha, nbeta
+        use system
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        integer, intent(in) :: occ_list_alpha(nalpha), occ_list_beta(nbeta)
+        integer, intent(in) :: occ_list_alpha(sys_global%nalpha), occ_list_beta(sys_global%nbeta)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i,j, ij_sym
         integer :: ind
@@ -454,7 +454,7 @@ contains
         !   3  5  6          1,2  2,2  3,2
         !   7  8  9          1,3  2,3  3,3
         !  10 11 12          1,4  2,4  3,4
-        ! total number of possible combinations is nalpha*nbeta.
+        ! total number of possible combinations is sys_global%nalpha*sys_global%nbeta.
         ! The indexing scheme is:
         !  p = (i-1)*n_j + j
         ! Hence to invert this, following a similar method to Rifkin:
@@ -466,9 +466,9 @@ contains
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
 
-        ind = int(r*nalpha*nbeta) + 1
-        i = int( (ind-1.0_p)/nbeta ) + 1
-        j = ind - (i-1)*nbeta
+        ind = int(r*sys_global%nalpha*sys_global%nbeta) + 1
+        i = int( (ind-1.0_p)/sys_global%nbeta ) + 1
+        j = ind - (i-1)*sys_global%nbeta
 
         ! i,j are the electrons we're exciting.  Find the occupied corresponding
         ! spin-orbitals.
@@ -498,11 +498,11 @@ contains
         !    a,b: virtual spin orbitals involved in the excitation.
 
         use basis, only: basis_length
-        use system, only: nvirt_alpha
+        use system
         use dSFMT_interface, only:  dSFMT_t
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
+        integer, intent(in) :: unocc_list_alpha(sys_global%nvirt_alpha)
         integer, intent(in) :: ij_sym
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
@@ -545,11 +545,11 @@ contains
 
         use basis, only: basis_length, bit_lookup, nbasis
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
-        use system, only: nvirt_alpha
+        use system
         use momentum_symmetry, only: sym_table, inv_sym
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
+        integer, intent(in) :: unocc_list_alpha(sys_global%nvirt_alpha)
         integer, intent(in) :: ij_sym
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
@@ -558,7 +558,7 @@ contains
         integer :: r, b_pos, b_el, ka
 
         ! The excitation i,j -> a,b is only allowed if k_i + k_j - k_a - k_b = 0
-        ! (up to a reciprocal lattice vector).  We store k_i + k_j as ij_sym, so
+        ! (up to a reciprocal sys_global%lattice%lattice vector).  We store k_i + k_j as ij_sym, so
         ! k_a + k_b must be identical to this.
         ! If we view this in terms of the representations spanned by i,j,a,b
         ! under translational symmetry (which forms an Abelian group) then
@@ -576,7 +576,7 @@ contains
         ! random number just to find which unoccupied alpha orbital is in
         ! the excitation.
 
-        r = int(get_rand_close_open(rng)*(nvirt_alpha)) + 1
+        r = int(get_rand_close_open(rng)*(sys_global%nvirt_alpha)) + 1
 
         a = unocc_list_alpha(r)
         ! Find corresponding beta orbital which satisfies conservation
@@ -618,13 +618,13 @@ contains
         !        spawning.
 
         use basis, only: basis_length, bit_lookup, nbasis
-        use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
+        use system
         use momentum_symmetry, only: sym_table, inv_sym
 
         real(p) :: pgen
         integer, intent(in) :: ab_sym
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_alpha(nvirt_alpha)
+        integer, intent(in) :: unocc_alpha(sys_global%nvirt_alpha)
 
         integer :: forbidden_excitations, a, b, a_pos, a_el, b_pos, b_el, ka, kb
 
@@ -634,7 +634,7 @@ contains
         !
         ! The number of ways of choosing i,j is
         !
-        !  nalpha*nbeta
+        !  sys_global%nalpha*sys_global%nbeta
         !
         ! Due to the requirement that crystal momentum is conserved and that the Hubbard
         ! model is a 2-band system:
@@ -649,16 +649,16 @@ contains
         !
         ! The number of spin-orbitals from which a can be chosen is
         !
-        !  nbasis - nel - delta
+        !  nbasis - sys_global%nel - delta
         !
         ! where delta is the number of a orbitals which are forbidden due to b being occupied.
-        ! -> p(a|i,j) = 1/(nbasis - nel - delta).
+        ! -> p(a|i,j) = 1/(nbasis - sys_global%nel - delta).
         ! p(b|i,j) is clearly identical to p(a|i,j).
-        ! -> p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) = 2/(nbasis - nel - delta).
+        ! -> p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) = 2/(nbasis - sys_global%nel - delta).
         !
         ! However, we can be a bit faster.
-        !  nel = nalpha + nbeta
-        !  nvirt_alpha = nbasis/2 - nalpha
+        !  sys_global%nel = sys_global%nalpha + sys_global%nbeta
+        !  sys_global%nvirt_alpha = nbasis/2 - sys_global%nalpha
         !  delta = delta_alpha + delta_beta
         ! where delta_alpha is the number of alpha orbitals which cannot be
         ! excited into because the correspoinding beta orbital is occupied and
@@ -668,16 +668,16 @@ contains
         ! However, as the Hubbard model is one-band model, for every possible
         ! alpha virtual orbital, there is exactly one possible beta virtual
         ! orbital.  Therefore:
-        !  nvirt_alpha - delta_alpha = nvirt_beta - delta_beta
+        !  sys_global%nvirt_alpha - delta_alpha = sys_global%nvirt_beta - delta_beta
         ! even when delta_alpha /= delta_beta.
         ! This means we need only calculate delta_alpha or delta_beta.
         !
         ! Hence
-        !  p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) = 1/(nvirt_alpha - delta_alpha)
+        !  p(a|i,j) p(b|i,j,a) + p(b|i,j) p(a|i,j,b) = 1/(sys_global%nvirt_alpha - delta_alpha)
         !
         !                           1
         ! pgen =  --------------------------------------
-        !         nalpha*nbeta*(nvirt_alpha-delta_alpha)
+        !         sys_global%nalpha*sys_global%nbeta*(sys_global%nvirt_alpha-delta_alpha)
 
         ! Note that we could also use the implementation choice of always
         ! choosing alpha first in the (a,b) pair to obtain the same result (as
@@ -701,7 +701,7 @@ contains
 
         ! a is an alpha orbital
         ! b is a beta orbital.
-        do a = 1, nvirt_alpha
+        do a = 1, sys_global%nvirt_alpha
             ka = (unocc_alpha(a)+1)/2
             b = 2*sym_table(ab_sym, inv_sym(ka))
             b_pos = bit_lookup(1,b)
@@ -710,7 +710,7 @@ contains
             if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
         end do
 
-        pgen = 1.0_p/(nalpha*nbeta*(nvirt_alpha - forbidden_excitations))
+        pgen = 1.0_p/(sys_global%nalpha*sys_global%nbeta*(sys_global%nvirt_alpha - forbidden_excitations))
 
     end function calc_pgen_hub_k
 

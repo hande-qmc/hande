@@ -22,7 +22,7 @@ contains
 
         use determinants, only: basis_length
         use excitations, only: excit, get_excitation
-        use system, only: staggered_magnetic_field
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
@@ -39,7 +39,7 @@ contains
         case(0)
 
             ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-            if (abs(staggered_magnetic_field) > depsilon) then
+            if (abs(sys_global%heisenberg%staggered_magnetic_field) > depsilon) then
                 hmatel = diagonal_element_heisenberg_staggered(f1)
             else
                 hmatel = diagonal_element_heisenberg(f1)
@@ -71,7 +71,7 @@ contains
         use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: nbonds, J_coupling, magnetic_field
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -93,22 +93,22 @@ contains
         end do
 
         ! Contribution to Hamiltonian from spin interactions:
-        ! For a lattice the number of bonds is stored as nbonds.
-        ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
-        ! element.  0-1 bonds will give +J_coupling contribution.
+        ! For a sys_global%lattice%lattice the number of bonds is stored as sys_global%heisenberg%nbonds.
+        ! Bonds of type 0-0 or 1-1 will give a contribution of -sys_global%heisenberg%J to the matrix
+        ! element.  0-1 bonds will give +sys_global%heisenberg%J contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
-        ! of 0-0 or 1-1 bonds will be (nbonds-counter)
-        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and
-        ! +J_coupling*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
+        ! of 0-0 or 1-1 bonds will be (sys_global%heisenberg%nbonds-counter)
+        ! So we have a contribution of -sys_global%heisenberg%J*counter from the 0-1 bonds and
+        ! +sys_global%heisenberg%J*(sys_global%heisenberg%nbonds-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
-        hmatel = -J_coupling*(nbonds-2*counter)
+        hmatel = -sys_global%heisenberg%J*(sys_global%heisenberg%nbonds-2*counter)
 
         ! Contribution to Hamiltonian from external field:
-        ! Each spin up (bit set) up gives a contirbution of -magnetic_field. Each spin down
-        ! gives a contirbution of +magnetic_field. There are bits_set spins up, and
-        ! (nsites - bits_set) spins down, so the total contirbution is
-        ! -magnetic_field*(2*bits_set-nsites) = -h_field*ms_in
-        hmatel = hmatel - magnetic_field*ms_in
+        ! Each spin up (bit set) up gives a contirbution of -sys_global%heisenberg%magnetic_field. Each spin down
+        ! gives a contirbution of +sys_global%heisenberg%magnetic_field. There are bits_set spins up, and
+        ! (sys_global%lattice%nsites - bits_set) spins down, so the total contirbution is
+        ! -sys_global%heisenberg%magnetic_field*(2*bits_set-sys_global%lattice%nsites) = -h_field*ms_in
+        hmatel = hmatel - sys_global%heisenberg%magnetic_field*ms_in
 
     end function diagonal_element_heisenberg
 
@@ -127,7 +127,7 @@ contains
         use determinants, only: lattice_mask
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: nbonds, nel, J_coupling, magnetic_field, staggered_magnetic_field
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
@@ -156,26 +156,26 @@ contains
         end do
 
         ! Contribution to Hamiltonian from spin interactions:
-        ! For a lattice the number of bonds is stored as nbonds.
-        ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
-        ! element.  0-1 bonds will give +J_coupling contribution.
+        ! For a sys_global%lattice%lattice the number of bonds is stored as sys_global%heisenberg%nbonds.
+        ! Bonds of type 0-0 or 1-1 will give a contribution of -sys_global%heisenberg%J to the matrix
+        ! element.  0-1 bonds will give +sys_global%heisenberg%J contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
-        ! of 0-0 or 1-1 bonds will be (nbonds-counter)
-        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and
-        ! +J_coupling*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
+        ! of 0-0 or 1-1 bonds will be (sys_global%heisenberg%nbonds-counter)
+        ! So we have a contribution of -sys_global%heisenberg%J*counter from the 0-1 bonds and
+        ! +sys_global%heisenberg%J*(sys_global%heisenberg%nbonds-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
-        hmatel = -J_coupling*(nbonds-2*counter)
+        hmatel = -sys_global%heisenberg%J*(sys_global%heisenberg%nbonds-2*counter)
 
         ! Contibution to Hamiltonian from staggered field term.
-        ! Split the lattice into a (+) sublattice and a (-) sublattice.
-        ! For every up spin on a (+) site, add one to the hmatel. (add staggered_magnetic_field * 1)
+        ! Split the sys_global%lattice%lattice into a (+) sublattice and a (-) sublattice.
+        ! For every up spin on a (+) site, add one to the hmatel. (add sys_global%heisenberg%staggered_magnetic_field * 1)
         ! For every down spin on a (+) site, minus one.
         ! For every up spin on a (-) site, minus one.
         ! For every down spin on a (-) site, add one.
-        ! sublattice1_up_spins gives the number of up spins on the (+) lattice, so there are
-        ! (nel-sublattice1_up_spins) up spins on the (-) lattice, and a total of (nsites/2)
+        ! sublattice1_up_spins gives the number of up spins on the (+) sys_global%lattice%lattice, so there are
+        ! (sys_global%nel-sublattice1_up_spins) up spins on the (-) sys_global%lattice%lattice, and a total of (sys_global%lattice%nsites/2)
         ! sites on each sublattice. Putting all this together gives the following:
-        hmatel = hmatel - staggered_magnetic_field*(4*sublattice1_up_spins - 2*nel)
+        hmatel = hmatel - sys_global%heisenberg%staggered_magnetic_field*(4*sublattice1_up_spins - 2*sys_global%nel)
 
     end function diagonal_element_heisenberg_staggered
 
@@ -196,7 +196,7 @@ contains
 
         use basis, only: basis_length, bit_lookup
         use hubbard_real, only: connected_orbs
-        use system, only: J_coupling
+        use system
 
         real(p) :: hmatel
         integer, intent(in) :: i, a
@@ -210,7 +210,7 @@ contains
 !            ! If the two sites connected and of opposite spin, matrix element is -2J.
 !            ! As get_excitation finds where a 'set bit' has moved from and
 !            ! to, the latter condition is already met.
-            hmatel = -2*J_coupling
+            hmatel = -2*sys_global%heisenberg%J
         else
             hmatel = 0.0_p
         end if

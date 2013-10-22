@@ -82,7 +82,7 @@ contains
 
         use basis, only: nbasis
         use point_group_symmetry, only: nbasis_sym_spin
-        use system, only: uhf
+        use system
 
         use checking, only: check_allocate
 
@@ -95,7 +95,7 @@ contains
 
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
-        if (uhf) then
+        if (sys_global%read_in%uhf) then
             nspin = 2
         else
             nspin = 1
@@ -172,7 +172,7 @@ contains
 
         use basis, only: nbasis
         use point_group_symmetry, only: nbasis_sym_spin
-        use system, only: uhf
+        use system
 
         use checking, only: check_allocate
 
@@ -186,7 +186,7 @@ contains
 
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
-        if (uhf) then
+        if (sys_global%read_in%uhf) then
             nspin = 4
         else
             nspin = 1
@@ -334,7 +334,7 @@ contains
 
         use basis, only: basis_fns
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
-        use system, only: uhf
+        use system
 
         use const, only: depsilon
         use errors, only: stop_all
@@ -354,7 +354,7 @@ contains
         if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
 
             ! Integral is (should be!) non-zero by symmetry.
-            if (uhf) then
+            if (sys_global%read_in%uhf) then
                 if (basis_fns(i)%ms > 0) then
                     spin = 1
                 else
@@ -435,7 +435,7 @@ contains
         !    It is faster to call RHF- or UHF-specific routines.
 
         use basis, only: basis_fns
-        use system, only: uhf
+        use system
 
         use utils, only: tri_ind
 
@@ -445,7 +445,7 @@ contains
 
         integer :: ii, jj, spin
 
-        if (uhf) then
+        if (sys_global%read_in%uhf) then
             if (basis_fns(i)%ms > 0) then
                 spin = 1
             else
@@ -481,7 +481,7 @@ contains
         !     always 1.
 
         use basis, only: basis_fns
-        use system, only: uhf
+        use system
 
         use utils, only: tri_ind
 
@@ -535,7 +535,7 @@ contains
         end if
 
         ! Find spin channel.
-        if (uhf) then
+        if (sys_global%read_in%uhf) then
 
             ! Due to overall index depending on spatial indices, we must check
             ! the spin indices to determine whether there's another flip in

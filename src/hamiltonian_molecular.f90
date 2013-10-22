@@ -24,13 +24,13 @@ contains
         use basis, only: basis_length
         use determinants, only: decode_det
         use excitations, only: excit, get_excitation
-        use system, only: nel
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
 
         type(excit) :: excitation
-        integer :: occ_list(nel)
+        integer :: occ_list(sys_global%nel)
 
         hmatel = 0.0_p
 
@@ -80,22 +80,22 @@ contains
         use determinants, only: decode_det
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
                                        one_e_h_integrals, coulomb_integrals
-        use system, only: nel, Ecore
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
 
-        integer :: occ_list(nel)
+        integer :: occ_list(sys_global%nel)
         integer :: iel, jel, i, j
 
-        ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
+        ! < D | H | D > = sys_global%read_in%Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(f, occ_list)
 
-        hmatel = Ecore
-        do iel = 1, nel
+        hmatel = sys_global%read_in%Ecore
+        do iel = 1, sys_global%nel
             i = occ_list(iel)
             hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_h_integrals, i, i)
-            do jel = iel+1, nel
+            do jel = iel+1, sys_global%nel
                 j = occ_list(jel)
                 hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j)
                 if (basis_fns(i)%Ms == basis_fns(j)%Ms) &
@@ -122,10 +122,10 @@ contains
 
         use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
                                        one_e_h_integrals, coulomb_integrals
-        use system, only: nel
+        use system
 
         real(p) :: hmatel
-        integer, intent(in) :: occ_list(nel), i, a
+        integer, intent(in) :: occ_list(sys_global%nel), i, a
         logical, intent(in) :: perm
 
         integer :: iel
@@ -134,7 +134,7 @@ contains
 
         hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
 
-        do iel = 1, nel
+        do iel = 1, sys_global%nel
             if (occ_list(iel) /= i) &
                 hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
                                 - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
@@ -167,10 +167,10 @@ contains
         use basis, only: basis_fns
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
                                        one_e_h_integrals, coulomb_integrals
-        use system, only: nel
+        use system
 
         real(p) :: hmatel
-        integer, intent(in) :: occ_list(nel), i, a
+        integer, intent(in) :: occ_list(sys_global%nel), i, a
         logical, intent(in) :: perm
 
         integer :: iel
@@ -179,7 +179,7 @@ contains
 
         hmatel = get_one_body_int_mol_nonzero(one_e_h_integrals, i, a)
 
-        do iel = 1, nel
+        do iel = 1, sys_global%nel
             if (occ_list(iel) /= i) then
                 hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), a, occ_list(iel))
                 if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
@@ -212,7 +212,7 @@ contains
         ! Note that we don't actually need to directly refer to |D>.
 
         use molecular_integrals, only: get_two_body_int_mol, coulomb_integrals
-        use system, only: nel
+        use system
 
         real(p) :: hmatel
         integer, intent(in) :: i, j, a, b
@@ -253,7 +253,7 @@ contains
 
         use basis, only: basis_fns
         use molecular_integrals, only: get_two_body_int_mol_nonzero, coulomb_integrals
-        use system, only: nel
+        use system
 
         real(p) :: hmatel
         integer, intent(in) :: i, j, a, b

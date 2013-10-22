@@ -7,7 +7,7 @@ use const
 implicit none
 
 ! The kinetic term is constant in the real space formulation:
-! only the connectivity of the lattice matters.
+! only the connectivity of the sys_global%lattice%lattice matters.
 ! tmat(:,i) is a bit string.  The j-th bit corresponding to a basis function
 ! (as given by bit_lookup) is set if i and j are connected.
 ! We need to distinguish between connections within the cell and those due to
@@ -33,15 +33,15 @@ integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 ! connected_sites(0,i) contains the number of unique sites connected to i.
 ! connected_sites(1:,i) contains the list of sites connected to site i (ie is the
 ! decoded/non-bit list form of connected_orbs).
-! If connected_orbs(j,i) is 0 then it means there are fewer than 2ndim unique sites
+! If connected_orbs(j,i) is 0 then it means there are fewer than 2sys_global%lattice%ndim unique sites
 ! that are connected to i that are not a periodic image of i (or connected to
 ! i both directly and via periodic boundary conditions).
-! For the triangular lattice, there are 3ndim bonds, and ndim must equal 2,
+! For the triangular sys_global%lattice%lattice, there are 3sys_global%lattice%ndim bonds, and sys_global%lattice%ndim must equal 2,
 ! so each site is connected to 6.
-integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
+integer, allocatable :: connected_sites(:,:) ! (0:2sys_global%lattice%ndim, nbasis) or (0:3dim, nbasis)
 
 ! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
-! are next nearest neighbors. For example, on a square lattice in the
+! are next nearest neighbors. For example, on a square sys_global%lattice%lattice in the
 ! Heisenberg model, if we consider a spin, we can get to a next-nearest
 ! neighbor spin by going one right then one up, or to the same spin by going
 ! one up and then one right - there are two different paths, so the correpsonding
@@ -56,11 +56,11 @@ integer(i0), allocatable :: next_nearest_orbs(:,:) ! (nbasis, nbasis)
 ! This is the case if one dimension (or more) has only one site per crystalisystem
 ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
 ! This is the only way that the integral < i | T | i >, where i is a basis
-! function centred on a lattice site, can be non-zero.
+! function centred on a sys_global%lattice%lattice site, can be non-zero.
 logical :: t_self_images
 
 ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
-! False if we are modelling an infinite lattice
+! False if we are modelling an infinite sys_global%lattice%lattice
 ! The code is set up to model inifinite lattices by default, however in order
 ! to model only a finite "cluster" of sites, all one need do is set the
 ! connection matrix elements corresponding to connections accross cell
@@ -78,133 +78,137 @@ contains
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
         use determinants, only: decode_det
-        use system, only: lattice, ndim, box_length, system_type, nsym, sym0, sym_max, lvecs
-        use system, only: heisenberg, chung_landau, triangular_lattice
+        use system
+        use system
         use bit_utils
         use checking, only: check_allocate
         use errors, only: stop_all
         use parallel, only: parent
 
         integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
-        integer :: r(ndim)
+        integer :: r(sys_global%lattice%ndim)
         logical :: diag_connection
 
-        nsym = 1
-        sym0 = 1
-        sym_max = 1
+        sys_global%nsym = 1
+        sys_global%sym0 = 1
+        sys_global%sym_max = 1
 
-        t_self_images = any(abs(box_length-1.0_p) < depsilon)
+        associate(sl=>sys_global%lattice)
 
-        allocate(tmat(basis_length,nbasis), stat=ierr)
-        call check_allocate('tmat',basis_length*nbasis,ierr)
-        allocate(connected_orbs(basis_length,nbasis), stat=ierr)
-        call check_allocate('connected_orbs',basis_length*nbasis,ierr)
-        allocate(lvecs(ndim,3**ndim))
-        call check_allocate('lvecs',ndim*(3**ndim),ierr)
-        if (triangular_lattice) then
-            allocate(connected_sites(0:3*ndim,nbasis), stat=ierr)
-            call check_allocate('connected_sites', size(connected_sites), ierr)
-        else
-            allocate(connected_sites(0:2*ndim,nbasis), stat=ierr)
-            call check_allocate('connected_sites', size(connected_sites), ierr)
-        end if
-        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-            allocate(next_nearest_orbs(nbasis,nbasis), stat=ierr)
-            call check_allocate('next_nearest_orbs',nbasis*nbasis,ierr)
-        end if
+            t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
 
-        tmat = 0
-        connected_orbs = 0
+            allocate(tmat(basis_length,nbasis), stat=ierr)
+            call check_allocate('tmat',basis_length*nbasis,ierr)
+            allocate(connected_orbs(basis_length,nbasis), stat=ierr)
+            call check_allocate('connected_orbs',basis_length*nbasis,ierr)
+            allocate(sl%lvecs(sl%ndim,3**sl%ndim))
+            call check_allocate('sl%lvecs',sl%ndim*(3**sl%ndim),ierr)
+            if (sl%triangular_lattice) then
+                allocate(connected_sites(0:3*sl%ndim,nbasis), stat=ierr)
+                call check_allocate('connected_sites', size(connected_sites), ierr)
+            else
+                allocate(connected_sites(0:2*sl%ndim,nbasis), stat=ierr)
+                call check_allocate('connected_sites', size(connected_sites), ierr)
+            end if
+            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+                allocate(next_nearest_orbs(nbasis,nbasis), stat=ierr)
+                call check_allocate('next_nearest_orbs',nbasis*nbasis,ierr)
+            end if
 
-        ! For the Hubbard model, each orbital can have spin up or down, so
-        ! basis_fns(i) refers to alternating alpha and beta orbitals.
-        ! In the do loop we therefore loop over every *second* orbital (because
-        ! spin must be the same for orbitals to be connected in this case).
-        ! For Heisenberg and Chung--Landau models, we just want to loop over
-        ! every component of basis_fns, so we set isystem = 1
-        select case(system_type)
-        case(heisenberg, chung_landau)
-            isystem = 1
-        case default
-            isystem = 2
-        end select
+            tmat = 0
+            connected_orbs = 0
+
+            ! For the Hubbard model, each orbital can have spin up or down, so
+            ! basis_fns(i) refers to alternating alpha and beta orbitals.
+            ! In the do loop we therefore loop over every *second* orbital (because
+            ! spin must be the same for orbitals to be connected in this case).
+            ! For Heisenberg and Chung--Landau models, we just want to loop over
+            ! every component of basis_fns, so we set isystem = 1
+            select case(sys_global%system)
+            case(heisenberg, chung_landau)
+                isystem = 1
+            case default
+                isystem = 2
+            end select
 
 
-        ! Form all lattice vectors
-        select case(ndim)
-        case(1)
-            do i = -1, 1
-                lvecs(:,i+2) = i*lattice(:,1)
-            end do
-        case(2)
-            do i = -1, 1
-                do j = -1, 1
-                    lvecs(:,j+2+3*(i+1)) = i*lattice(:,1) + j*lattice(:,2)
+            ! Form all sl%lattice vectors
+            select case(sl%ndim)
+            case(1)
+                do i = -1, 1
+                    sl%lvecs(:,i+2) = i*sl%lattice(:,1)
                 end do
-            end do
-        case(3)
-            do i = -1, 1
-                do j = -1, 1
-                    do k = -1, 1
-                        lvecs(:,k+2+3*(j+1)+9*(i+1)) = i*lattice(:,1) + j*lattice(:,2) + k*lattice(:,3)
+            case(2)
+                do i = -1, 1
+                    do j = -1, 1
+                        sl%lvecs(:,j+2+3*(i+1)) = i*sl%lattice(:,1) + j*sl%lattice(:,2)
+                    end do
+                end do
+            case(3)
+                do i = -1, 1
+                    do j = -1, 1
+                        do k = -1, 1
+                            sl%lvecs(:,k+2+3*(j+1)+9*(i+1)) = i*sl%lattice(:,1) + j*sl%lattice(:,2) + k*sl%lattice(:,3)
+                        end do
+                    end do
+                end do
+            end select
+
+            ! Construct how the sl%lattice is connected.
+            diag_connection = .false. ! For sl%ndim /= 2.
+            do i = 1, nbasis-(isystem-1), isystem
+                do j = i, nbasis-(isystem-1), isystem
+                    ! Loop only over one spin: the other spin is identical so can be
+                    ! filled in automatically.
+                    ! All matrix elements between different spins are zero
+                    ! Allow j=i in case i is its own periodic image.
+                    r = basis_fns(i)%l - basis_fns(j)%l
+                    do ivec = 1, 3**sl%ndim
+                        ! For the triangular sl%lattice, there are extra diagonal bonds between pairs
+                        ! of sites which obey this condition.
+                        if (sl%ndim == 2) then
+                            diag_connection = all((r-sl%lvecs(:,ivec)) == (/1,1/)) .or. &
+                                              all((r-sl%lvecs(:,ivec)) == (/-1,-1/))
+                        end if
+                        if (sum(abs(r-sl%lvecs(:,ivec))) == 1 .or. &
+                            (sl%triangular_lattice .and. diag_connection)) then
+                            ! i and j are on sites which are nearest neighbours
+                            if (all(sl%lvecs(:,ivec) == 0)) then
+                                ! Nearest neighbours within unit cell.
+                                call set_orb(tmat(:,i),j)
+                                if (isystem == 2) call set_orb(tmat(:,i+1),j+1)
+                            else if (.not. finite_cluster) then ! if we want inf. sl%lattice
+                                ! Nearest neighbours due to periodic boundaries.
+                                call set_orb(tmat(:,j),i)
+                                if (isystem == 2) call set_orb(tmat(:,j+1),i+1)
+                                ! else we just want connections to other cells to
+                                ! stay as 0
+                            end if
+
+                            ! If we only want a discrete molecule and the sl%lattice
+                            ! vector connecting the 2 sites is the 0-vector then the
+                            ! 2 sites are connected in a unit cell and thus are
+                            ! actually connected. (If they "connect" across cell
+                            ! boundaries then they are not connected for a single
+                            ! molecule).
+                            if ( (finite_cluster .and. all(sl%lvecs(:,ivec) == 0)) .or. &
+                                 .not. finite_cluster) then
+                                if (i /= j) then
+                                    ! connected_orbs does not contain self-connections
+                                    ! due to the periodic boundary conditions.
+                                    call set_orb(connected_orbs(:,i),j)
+                                    if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)
+                                    call set_orb(connected_orbs(:,j),i)
+                                    if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
+                                end if
+                            end if
+                        end if
+
                     end do
                 end do
             end do
-        end select
 
-        ! Construct how the lattice is connected.
-        diag_connection = .false. ! For ndim /= 2.
-        do i = 1, nbasis-(isystem-1), isystem
-            do j = i, nbasis-(isystem-1), isystem
-                ! Loop only over one spin: the other spin is identical so can be
-                ! filled in automatically.
-                ! All matrix elements between different spins are zero
-                ! Allow j=i in case i is its own periodic image.
-                r = basis_fns(i)%l - basis_fns(j)%l
-                do ivec = 1, 3**ndim
-                    ! For the triangular lattice, there are extra diagonal bonds between pairs
-                    ! of sites which obey this condition.
-                    if (ndim == 2) then
-                        diag_connection = all((r-lvecs(:,ivec)) == (/1,1/)) .or. &
-                                          all((r-lvecs(:,ivec)) == (/-1,-1/))
-                    end if
-                    if (sum(abs(r-lvecs(:,ivec))) == 1 .or. &
-                        (triangular_lattice .and. diag_connection)) then
-                        ! i and j are on sites which are nearest neighbours
-                        if (all(lvecs(:,ivec) == 0)) then
-                            ! Nearest neighbours within unit cell.
-                            call set_orb(tmat(:,i),j)
-                            if (isystem == 2) call set_orb(tmat(:,i+1),j+1)
-                        else if (.not. finite_cluster) then ! if we want inf. lattice
-                            ! Nearest neighbours due to periodic boundaries.
-                            call set_orb(tmat(:,j),i)
-                            if (isystem == 2) call set_orb(tmat(:,j+1),i+1)
-                            ! else we just want connections to other cells to
-                            ! stay as 0
-                        end if
-
-                        ! If we only want a discrete molecule and the lattice
-                        ! vector connecting the 2 sites is the 0-vector then the
-                        ! 2 sites are connected in a unit cell and thus are
-                        ! actually connected. (If they "connect" across cell
-                        ! boundaries then they are not connected for a single
-                        ! molecule).
-                        if ( (finite_cluster .and. all(lvecs(:,ivec) == 0)) .or. &
-                             .not. finite_cluster) then
-                            if (i /= j) then
-                                ! connected_orbs does not contain self-connections
-                                ! due to the periodic boundary conditions.
-                                call set_orb(connected_orbs(:,i),j)
-                                if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)
-                                call set_orb(connected_orbs(:,j),i)
-                                if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
-                            end if
-                        end if
-                    end if
-
-                end do
-            end do
-        end do
+        end associate
 
         if (allocated(next_nearest_orbs)) call create_next_nearest_orbs()
 
@@ -257,7 +261,7 @@ contains
         !    <phi1 | T | phi2> where T is the kinetic energy operator.
 
         use basis, only: basis_fns, bit_lookup
-        use system, only: hubt
+        use system
 
         real(p) :: one_e_int
         Integer, intent(in) ::  i,j
@@ -270,11 +274,11 @@ contains
         pos = bit_lookup(1,j)
         ind = bit_lookup(2,j)
         ! Test if i <-> j.  If so there's a kinetic interaction.
-        if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - hubt
+        if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - sys_global%hubbard%t
         pos = bit_lookup(1,i)
         ind = bit_lookup(2,i)
         ! Test if i <-> j.  If so there's a kinetic interaction.
-        if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - hubt
+        if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - sys_global%hubbard%t
 
     end function get_one_e_int_real
 
@@ -289,7 +293,7 @@ contains
         !    formulation of the Hubbard model.
 
         use basis
-        use system, only: hubu
+        use system
         use bit_utils, only: count_set_bits
         use determinants, only: beta_mask, separate_strings
 
@@ -317,7 +321,7 @@ contains
                 umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
             end do
         end if
-        umatel = hubu*umatel
+        umatel = sys_global%hubbard%u*umatel
 
     end function get_coulomb_matel_real
 
@@ -353,18 +357,18 @@ contains
     subroutine map_vec_to_cell(r)
 
         ! This subroutine assumes that the site specified by r is outside the cell
-        ! by no more than one lattice vector, along each lattice vector.
+        ! by no more than one sys_global%lattice%lattice vector, along each sys_global%lattice%lattice vector.
 
         use basis, only: basis_fns, nbasis
-        use system, only: lvecs, ndim
+        use system
 
-        integer, intent(inout) :: r(ndim)        
-        integer :: v(ndim)
+        integer, intent(inout) :: r(sys_global%lattice%ndim)        
+        integer :: v(sys_global%lattice%ndim)
         integer :: i, j
 
-        do i = 1, 3**ndim
-            ! Add all combinations of lattices vectors in lvecs.
-            v = r + lvecs(:,i)
+        do i = 1, 3**sys_global%lattice%ndim
+            ! Add all combinations of lattices vectors in sys_global%lattice%lvecs.
+            v = r + sys_global%lattice%lvecs(:,i)
             do j = 1, nbasis
                 ! Loop over all basis functions and check if the shifted vector is
                 ! now the same as any of these vectors. If so, it is in the cell,

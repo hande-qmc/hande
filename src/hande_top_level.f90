@@ -19,8 +19,7 @@ contains
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, chung_landau, hub_real, &
-                          hub_k, heisenberg, ueg, momentum_space, read_in, cas
+        use system
         use basis, only: init_model_basis_fns
         use determinants, only: init_determinants
         use determinant_enumeration, only: init_determinant_enumeration
@@ -52,13 +51,13 @@ contains
 
         call distribute_input()
 
-        call init_system()
+        call init_system(sys_global)
 
         call check_input()
 
         ! Initialise basis functions.
-        if (system_type == read_in) then
-            call read_in_integrals(cas_info=cas)
+        if (sys_global%system == read_in) then
+            call read_in_integrals(cas_info=sys_global%cas)
         else
             call init_model_basis_fns()
         end if
@@ -69,7 +68,7 @@ contains
         call init_excitations()
 
         ! System specific.
-        select case(system_type)
+        select case(sys_global%system)
         case(ueg)
             call init_momentum_symmetry()
             call init_ueg_proc_pointers()
@@ -121,7 +120,7 @@ contains
         !     start_wall_time: system_clock at the start of the calculation.
 
         use calc
-        use system, only: end_system
+        use system
         use basis, only: end_basis_fns
         use determinants, only: end_determinants
         use excitations, only: end_excitations
@@ -142,7 +141,7 @@ contains
         ! NOTE:
         !   end_ routines should surround every deallocate statement with a test
         !   that the array is allocated.
-        call end_system()
+        call end_lattice_system(sys_global%lattice)
         call end_basis_fns()
         call end_momentum_symmetry()
         call end_determinants()

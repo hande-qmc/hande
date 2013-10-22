@@ -199,7 +199,7 @@ contains
         use fciqmc_restart, only: dump_restart
         use proc_pointers
         use search, only: binary_search
-        use system, only: nel
+        use system
 
         integer :: i, ireport, icycle, it
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
@@ -225,7 +225,7 @@ contains
             ! FCI), for reasons best known to the user---perhaps testing?
             ! Anyway, need to set truncation level as it's used in the
             ! select_cluster routine.
-            truncation_level = nel
+            truncation_level = sys_global%nel
         end if
 
         if (truncation_level+2 > 12) then
@@ -297,7 +297,7 @@ contains
                 ! truncation level + 2 but we must handle the case where we are
                 ! growing the initial population from a single/small number of
                 ! excitors.
-                max_cluster_size = min(min(nel, truncation_level+2), tot_walkers-1)
+                max_cluster_size = min(min(sys_global%nel, truncation_level+2), tot_walkers-1)
 
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
@@ -657,7 +657,7 @@ contains
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
-        ! generators of the lattice models.  It is trivial to implement and (at
+        ! generators of the sys_global%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, cdet, pgen, connection, hmatel)
 

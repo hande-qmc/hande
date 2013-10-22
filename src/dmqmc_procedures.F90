@@ -57,7 +57,7 @@ contains
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use fciqmc_data, only: sampling_size, rdm_traces, nrdms, dmqmc_accumulated_probs_old
-         use system, only: max_number_excitations
+         use system
 
          integer :: ierr, i, bit_position, bit_element
 
@@ -202,13 +202,13 @@ contains
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
-        use system, only: system_type, heisenberg, nsites
+        use system
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
         integer :: bit_position, bit_element
 
         ! For the Heisenberg model only currently.
-        if (system_type==heisenberg) then
+        if (sys_global%system==heisenberg) then
             call find_rdm_masks()
         else
             call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for the &
@@ -271,7 +271,7 @@ contains
         ! to all spins up. Hence the total size of the reduced density matrix will be 2**(number of spins
         ! in subsystem A).
         if (calc_ground_rdm) then
-            if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(nsites,p)/2.0_p)) then
+            if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(sys_global%lattice%nsites,p)/2.0_p)) then
                 allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
                 call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)
                 reduced_density_matrix = 0.0_p
@@ -279,7 +279,7 @@ contains
                 if (ms_in /= 0) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
                                    &calculations.")
-                else if (rdms(1)%A_nsites > floor(real(nsites,p)/2.0_p)) then
+                else if (rdms(1)%A_nsites > floor(real(sys_global%lattice%nsites,p)/2.0_p)) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
                                   &whose size is less than half the total system size.")
                 end if
@@ -295,28 +295,28 @@ contains
         use errors
         use fciqmc_data, only: nrdms, nsym_vec
         use hubbard_real, only: map_vec_to_cell
-        use system, only: ndim, nsites, lattice
+        use system
 
         integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer :: r(ndim), nvecs(3), A_mask(basis_length)
-        real(p) :: v(ndim), test_vec(ndim), temp_vec(ndim)
+        integer :: r(sys_global%lattice%ndim), nvecs(3), A_mask(basis_length)
+        real(p) :: v(sys_global%lattice%ndim), test_vec(sys_global%lattice%ndim), temp_vec(sys_global%lattice%ndim)
         real(p), allocatable :: trans_vecs(:,:)
         integer :: scale_fac
 
-        ! The maximum number of translational symmetry vectors is nsites (for
-        ! the case of a non-tilted lattice), so allocate this much storage.
-        allocate(trans_vecs(ndim,nsites),stat=ierr)
-        call check_allocate('trans_vecs',ndim*nsites,ierr)
+        ! The maximum number of translational symmetry vectors is sys_global%lattice%nsites (for
+        ! the case of a non-tilted sys_global%lattice%lattice), so allocate this much storage.
+        allocate(trans_vecs(sys_global%lattice%ndim,sys_global%lattice%nsites),stat=ierr)
+        call check_allocate('trans_vecs',sys_global%lattice%ndim*sys_global%lattice%nsites,ierr)
 
         ! The number of symmetry vectors in each direction.
         nvecs = 0
         ! The total number of symmetry vectors.
         nsym_vec = 0
 
-        do i = 1, ndim
-            scale_fac = maxval(abs(lattice(:,i)))
-            v = real(lattice(:,i),p)/real(scale_fac,p)
+        do i = 1, sys_global%lattice%ndim
+            scale_fac = maxval(abs(sys_global%lattice%lattice(:,i)))
+            v = real(sys_global%lattice%lattice(:,i),p)/real(scale_fac,p)
 
             do j = 1, scale_fac-1
                 test_vec = v*j
@@ -379,7 +379,7 @@ contains
                     r = basis_fns(rdms(i)%subsystem_A(k))%l
                     r = r + nint(trans_vecs(:,j))
                     ! If r is outside the cell considered in this simulation, shift it by the
-                    ! appropriate lattice vector so that it is in this cell.
+                    ! appropriate sys_global%lattice%lattice vector so that it is in this cell.
                     call map_vec_to_cell(r)
                     ! Now need to find which basis function this site corresponds to. Simply loop
                     ! over all basis functions and check...
@@ -424,8 +424,8 @@ contains
 
         ! Currently this creates psips with Ms = ms_in only.
 
-        ! If we have number of sites = nsites and total spin value = ms_in,
-        ! then the number of up spins is equal to up_spins = (ms_in + nsites)/2.
+        ! If we have number of sites = sys_global%lattice%nsites and total spin value = ms_in,
+        ! then the number of up spins is equal to up_spins = (ms_in + sys_global%lattice%nsites)/2.
 
         ! Start from state with all spins down, then choose the above number of
         ! spins to flip up with equal probability.
@@ -438,7 +438,7 @@ contains
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use fciqmc_data, only: D0_population
         use parallel
-        use system, only: nsites
+        use system
 
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: ireplica
@@ -447,7 +447,7 @@ contains
         integer(i0) :: f(basis_length)
         real(dp) :: rand_num
 
-        up_spins = (ms_in+nsites)/2
+        up_spins = (ms_in+sys_global%lattice%nsites)/2
         npsips = int(D0_population/nprocs)
         ! If the initial number of psips does not split evenly between all processors,
         ! add the leftover psips to the first processors in order.
@@ -648,7 +648,7 @@ contains
         use fciqmc_data, only: excit_distribution, finish_varying_weights
         use fciqmc_data, only: dmqmc_vary_weights, weight_altering_factors
         use parallel
-        use system, only: max_number_excitations
+        use system
 
         integer :: i, ierr
 #ifdef PARALLEL

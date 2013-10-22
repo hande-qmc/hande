@@ -75,11 +75,11 @@ contains
 
         use determinants, only: decode_det, basis_fns, basis_length
         use ueg_system, only: exchange_int_ueg
-        use system, only: nel
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
-        integer :: occ_list(nel)
+        integer :: occ_list(sys_global%nel)
 
         integer :: i, j
 
@@ -89,13 +89,13 @@ contains
         hmatel = 0.0_p
 
         ! One electron operator: kinetic term
-        do i = 1, nel
+        do i = 1, sys_global%nel
             hmatel = hmatel + basis_fns(occ_list(i))%sp_eigv
         end do
 
         ! Two electron operator: Coulomb term.
-        do i = 1, nel
-            do j = i+1, nel
+        do i = 1, sys_global%nel
+            do j = i+1, sys_global%nel
                 ! Coulomb term is infinite but cancels exactly with the
                 ! infinities in the electron-background and
                 ! background-background interactions.

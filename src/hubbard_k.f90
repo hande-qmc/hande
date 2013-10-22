@@ -50,7 +50,7 @@ contains
 
         ! The integral < k_1 k_2 | U | k_3 k_4 > = U/N \delta_{k_1+k2,k_3+k_4}
         ! where the delta function requires crystal momentum is conserved up to
-        ! a reciprocal lattice vector.
+        ! a reciprocal sys_global%sys_global%lattice%lattice%sys_global%lattice%lattice vector.
 
         s12 = spin_symmetry(phi1, phi2)
         s34 = spin_symmetry(phi3, phi4)
@@ -64,9 +64,9 @@ contains
             ! Either the Coulomb integral or the exchange integral is
             ! non-zero.
             if (spin_symmetry(phi1, phi3)) then
-                two_e_int = hub_k_coulomb
+                two_e_int = sys_global%hubbard%coulomb_k
             else
-                two_e_int = -hub_k_coulomb
+                two_e_int = -sys_global%hubbard%coulomb_k
             end if
         else
             two_e_int = 0.0_p
@@ -85,7 +85,7 @@ contains
         !    l: index of a momentum-space basis function.
         ! Returns:
         !    True if crystal momentum is conserved in the integral <k_i k_j | U | k_k k_l>
-        !    i.e. if k_i + k_j - k_k -k_l = 0 up to a reciprocal lattice vector.
+        !    i.e. if k_i + k_j - k_k -k_l = 0 up to a reciprocal sys_global%sys_global%lattice%lattice%sys_global%lattice%lattice vector.
 
         use momentum_symmetry
 

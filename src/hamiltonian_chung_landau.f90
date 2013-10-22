@@ -86,11 +86,11 @@ contains
         use basis, only: bit_lookup
         use determinants, only: decode_det, basis_length
         use hubbard_real, only: t_self_images, tmat, get_one_e_int_real
-        use system, only: nel, hubu
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
-        integer :: root_det(nel)
+        integer :: root_det(sys_global%nel)
         integer :: i, j, indi, indj, posi, posj
 
         hmatel = 0.0_p
@@ -101,7 +101,7 @@ contains
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
         if (t_self_images) then
-            do i = 1, nel
+            do i = 1, sys_global%nel
                 hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
             end do
         end if
@@ -109,25 +109,25 @@ contains
         ! Two electron operator
         ! This can be done efficiently with bit string operations (see
         ! get_coulomb_matel_real) in 1D.
-        do i = 1, nel
+        do i = 1, sys_global%nel
             ! Connected to self-image?
             posi = bit_lookup(1,root_det(i))
             indi = bit_lookup(2,root_det(i))
             ! Diagonal term is non-zero if i is connected to its own periodic
             ! image.
             if (btest(tmat(indi, root_det(i)), posi)) then
-                hmatel = hmatel + hubu
+                hmatel = hmatel + sys_global%hubbard%u
             end if
-            do j = i+1, nel
+            do j = i+1, sys_global%nel
                 ! i <-> j via periodic boundary conditions.
                 if (btest(tmat(indi, root_det(j)), posi)) then
-                    hmatel = hmatel + hubu
+                    hmatel = hmatel + sys_global%hubbard%u
                 end if
                 ! i <-> j directly.
                 posj = bit_lookup(1,root_det(j))
                 indj = bit_lookup(2,root_det(j))
                 if (btest(tmat(indj, root_det(i)), posj)) then
-                    hmatel = hmatel + hubu
+                    hmatel = hmatel + sys_global%hubbard%u
                 end if
             end do
         end do

@@ -16,7 +16,7 @@ type basis_fn
     !     l is the wavevector in terms of the reciprocal lattice vectors of the crystal cell.
     ! Real space:
     !     l is the position of the basis function within the crystal cell in
-    !     units of the lattice vectors of the primitive unit cell.
+    !     units of the sys_global%lattice%lattice vectors of the primitive unit cell.
     ! Obviously we should not convert between descriptions within one
     ! calculation! ;-)
     integer, pointer :: l(:) => NULL()
@@ -119,7 +119,7 @@ contains
         !            the crystal cell.
         !        Real space formulation:
         !            position of basis function within the crystal cell in units
-        !            of the primitive lattice vectors.
+        !            of the primitive sys_global%lattice%lattice vectors.
         !    sym (optional): symmetry label of the basis function.  Used only in
         !        systems with point group symmetry (i.e. read in from an FCIDUMP
         !        file).
@@ -135,21 +135,21 @@ contains
         ! l component can be correctly allocated.
 
         use checking, only: check_allocate
-        use system, only: system_type, hub_real
+        use system
 
         type(basis_fn), intent(out) :: b
-        integer, intent(in), optional  :: l(ndim)
+        integer, intent(in), optional  :: l(sys_global%lattice%ndim)
         integer, intent(in), optional  :: sym, ms
         integer :: ierr
 
         if (.not.associated(b%l)) then
-            allocate(b%l(ndim),stat=ierr)
-            call check_allocate('b%l',ndim,ierr)
+            allocate(b%l(sys_global%lattice%ndim),stat=ierr)
+            call check_allocate('b%l',sys_global%lattice%ndim,ierr)
         end if
 
         if (present(l)) then
             b%l = l
-            if (system_type == hub_k .or. system_type == ueg) then
+            if (sys_global%system == hub_k .or. sys_global%system == ueg) then
                 b%sp_eigv = calc_kinetic(l)
             else
                 b%sp_eigv = 0.0_p
@@ -176,7 +176,7 @@ contains
         !        If false, only information about the quantum numbers is
         !        printed.
 
-        use system, only: system_type, read_in, hub_k, hub_real, heisenberg
+        use system
 
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: print_full
@@ -202,19 +202,19 @@ contains
         write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
 
         ! Describe information.
-        if (system_type /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
+        if (sys_global%system /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
 
-        select case(system_type)
+        select case(sys_global%system)
         case(hub_real,heisenberg, chung_landau)
-            write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
+            write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive sys_global%lattice%lattice vectors.'
             write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
         case(hub_k,ueg)
             write (6,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
-            if (any(abs(ktwist) > 0.0_p)) then
+            if (any(abs(sys_global%lattice%ktwist) > 0.0_p)) then
                 write (6,'(1X,a26)', advance='no') 'Applying a twist angle of:'
-                write (6,'(1X,"(",f6.4)', advance='no') ktwist(1)
-                do i = 2, ndim
-                    write (6,'(",",f6.4)', advance='no') ktwist(i)
+                write (6,'(1X,"(",f6.4)', advance='no') sys_global%lattice%ktwist(1)
+                do i = 2, sys_global%lattice%ndim
+                    write (6,'(",",f6.4)', advance='no') sys_global%lattice%ktwist(i)
                 end do
                 write (6,'(").")')
             end if
@@ -224,17 +224,17 @@ contains
             write (6,'(/,1X,a5,2X,a7,X,a8,X,a9,2X)', advance='no') 'index','spatial','symmetry','sym_index'
         end select
 
-        if (system_type /= read_in) then
-            do i = 1, ndim
+        if (sys_global%system /= read_in) then
+            do i = 1, sys_global%lattice%ndim
                 write (6,'(4X)', advance='no')
             end do
         end if
 
         if (print_long) then
-            if (system_type /= heisenberg .and. system_type /= chung_landau) &
+            if (sys_global%system /= heisenberg .and. sys_global%system /= chung_landau) &
                 write (6,'(a2)', advance='no') 'ms'
 
-            select case(system_type)
+            select case(sys_global%system)
             case(hub_real, heisenberg, chung_landau)
                 write(6,'()')
             case default
@@ -267,7 +267,7 @@ contains
         !        associated with the basis function are printed.  If false, only
         !        the quantum numbers are printed.
 
-        use system, only: system_type, read_in, hub_k, ueg, heisenberg, chung_landau
+        use system
 
         type(basis_fn), intent(in) :: b
         integer, intent(in), optional :: ind
@@ -293,23 +293,23 @@ contains
             if (ind >= 0) write (6,'(1X,i5,2X)',advance='no') ind
         end if
 
-        if (system_type == read_in) then
+        if (sys_global%system == read_in) then
             write (io, '(i5,2(3X,i5),X)',advance='no') b%spatial_index, b%sym, b%sym_index
         else
             write (io,'(1X,"(")', advance='no')
             write (io,'(i3)',advance='no') b%l(1)
-            do i = 2,ndim
+            do i = 2,sys_global%lattice%ndim
                 write (io,'(",",i3)',advance='no') b%l(i)
             end do
             write (io,'(")")', advance='no')
         end if
         if (print_all) then
-            select case (system_type)
+            select case (sys_global%system)
             case(heisenberg, chung_landau)
             case default
                 write (io,'(5X,i2)', advance='no') b%ms
             end select
-            select case (system_type)
+            select case (sys_global%system)
             case(heisenberg, chung_landau, hub_real)
             case default
                 write (io,'(4X,f12.8)', advance='no') b%sp_eigv
@@ -361,13 +361,13 @@ contains
         ! Find basis functions.
 
         ! We use a minimal basis: the hubbard model consisting of two
-        ! spin-orbitals per lattice site.
+        ! spin-orbitals per sys_global%lattice%lattice site.
 
         ! In the momentum space formulation the basis functions consist of a
         ! set of wavevectors/k-points that lie within the first Brillouin zone.
 
         ! In the real space formulation the basis functions used are those
-        ! residing at the lattice points: we just need to find which lattice
+        ! residing at the sys_global%lattice%lattice points: we just need to find which sys_global%lattice%lattice
         ! points fall within the crystal cell.
 
         ! Momentum space:
@@ -385,7 +385,7 @@ contains
         ! Real space:
 
         ! The same procedure applies as for the momentum space: we find which
-        ! lattice sites lie within the Wigner--Seitz cell.  In fact, due to the
+        ! sys_global%lattice%lattice sites lie within the Wigner--Seitz cell.  In fact, due to the
         ! relationship between reciprocal space and real space (and due to how
         ! we store the wavevectors in terms of the reciprocal lattice vectors of
         ! the crystal cell), *exactly* the same approach is needed, so we're
@@ -394,25 +394,25 @@ contains
         ! UEG:
 
         ! This is identical again to the real space formulation, except the FBZ
-        ! is essentially infinite (as there is no underlying crystal lattice).
+        ! is essentially infinite (as there is no underlying crystal sys_global%lattice%lattice).
 
         ! For the Heisenberg model, each site has a single spin which must be either
-        ! up or down, so only need 1 bit for each site => nbasis = nsites
+        ! up or down, so only need 1 bit for each site => nbasis = sys_global%lattice%nsites
         ! For the fermionic systems, each spatial has an alpha and beta spin orbital,
         ! each of which could be occupied or unoccupied.
         ! Initially we will only consider the spatial orbitals when constructing
         ! the basis and will expand it out to spin orbitals later.
-        select case(system_type)
+        select case(sys_global%system)
         case(hub_k, hub_real, heisenberg, chung_landau)
-            nspatial = nsites
+            nspatial = sys_global%lattice%nsites
             ! Maximum limits...
             ! [Does it show that I've been writing a lot of python recently?]
             nmax = 0 ! Set nmax(i) to be 0 for unused higher dimensions.
             limits = 0
             ! forall is a poor substitute for list comprehension. ;-)
-            forall (i=1:ndim)
-                forall (j=1:ndim, lattice(i,j) /= 0)
-                    limits(i,j) = abs(nint(box_length(i)**2/(2*lattice(i,j))))
+            forall (i=1:sys_global%lattice%ndim)
+                forall (j=1:sys_global%lattice%ndim, sys_global%lattice%lattice(i,j) /= 0)
+                    limits(i,j) = abs(nint(sys_global%lattice%box_length(i)**2/(2*sys_global%lattice%lattice(i,j))))
                 end forall
                 nmax(i) = maxval(limits(:,i))
             end forall
@@ -424,8 +424,8 @@ contains
             ! line/square/cube which encloses all wavevectors within the cutoff
             ! and discard those outside the cutoff.
             nmax = 0
-            forall (i=1:ndim) nmax(i) = ceiling(sqrt(2*ueg_ecutoff))
-            nspatial = (2*nmax(1)+1)**ndim
+            forall (i=1:sys_global%lattice%ndim) nmax(i) = ceiling(sqrt(2*sys_global%ueg%ecutoff))
+            nspatial = (2*nmax(1)+1)**sys_global%lattice%ndim
         end select
 
         allocate(tmp_basis_fns(nspatial), stat=ierr)
@@ -439,19 +439,19 @@ contains
                     ! kp is the Wavevector in terms of the reciprocal lattice vectors of
                     ! the crystal cell.
                     kp = (/ i, j, k /)
-                    if (in_FBZ(kp(1:ndim))) then
+                    if (in_FBZ(sys_global%system, sys_global%lattice, kp(1:sys_global%lattice%ndim))) then
                         if (ibasis == nspatial) then
                             call stop_all('init_basis_fns','Too many basis functions found.')
                         else
                             ! Have found an allowed wavevector/site.
                             ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
-                            call init_basis_fn(tmp_basis_fns(ibasis), l=kp(1:ndim), ms=1)
-                            if (system_type==ueg .and. real(dot_product(kp,kp),p)/2 > ueg_ecutoff) then
+                            call init_basis_fn(tmp_basis_fns(ibasis), l=kp(1:sys_global%lattice%ndim), ms=1)
+                            if (sys_global%system==ueg .and. real(dot_product(kp,kp),p)/2 > sys_global%ueg%ecutoff) then
                                 ! Have found a wavevector with too large KE.
                                 ! Discard.
                                 ! Note that we don't use the calculated kinetic
-                                ! energy as it's in a.u. (ueg_ecutoff is in
+                                ! energy as it's in a.u. (sys_global%ueg%ecutoff is in
                                 ! scaled units) and includes any twist.
                                 ! Avoid the chance of having allocated
                                 ! additional %l elements (eg if rejecting the
@@ -466,14 +466,14 @@ contains
             end do
         end do
 
-        select case(system_type)
+        select case(sys_global%system)
         case(hub_k, hub_real, heisenberg, chung_landau)
             if (ibasis /= nspatial) call stop_all('init_basis_fns','Not enough basis functions found.')
         case(ueg)
         end select
 
         ! Convert nbasis to being in terms of spin-orbitals if applicable.
-        select case(system_type)
+        select case(sys_global%system)
         case(ueg)
             ! Set nbasis to be the number of basis functions found to be within
             ! the energy cutoff.
@@ -481,12 +481,12 @@ contains
             ! occupied by each wavevector, but I just cba.
             nbasis = 2*ibasis
             nspatial = ibasis
-            nvirt = nbasis - nel
+            sys_global%nvirt = nbasis - sys_global%nel
         case(hub_k, hub_real)
-            ! nvirt set in init_system
+            ! sys_global%nvirt set in init_system
             nbasis = 2*nspatial
         case(heisenberg, chung_landau)
-            ! nvirt set in init_system
+            ! sys_global%nvirt set in init_system
             nbasis = nspatial
         end select
 
@@ -494,11 +494,11 @@ contains
         call check_allocate('basis_fns_ranking',nspatial,ierr)
 
         ! Rank by kinetic energy (applies to momentum space basis sets only).
-        select case(system_type)
+        select case(sys_global%system)
         case(hub_k, ueg)
             call insertion_rank_rp(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking, tolerance=depsilon)
         case(hub_real, heisenberg, chung_landau)
-            forall (i=1:nsites) basis_fns_ranking(i) = i
+            forall (i=1:sys_global%lattice%nsites) basis_fns_ranking(i) = i
         end select
 
         allocate(basis_fns(nbasis), stat=ierr)
@@ -510,7 +510,7 @@ contains
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
-            select case(system_type)
+            select case(sys_global%system)
             case(heisenberg, chung_landau)
                 call init_basis_fn(basis_fns(i), l=basis_fn_p%l)
             case default

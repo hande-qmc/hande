@@ -92,8 +92,8 @@ contains
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then
-            allocate(occ_list0(nel), stat=ierr)
-            call check_allocate('occ_list0',nel,ierr)
+            allocate(occ_list0(sys_global%nel), stat=ierr)
+            call check_allocate('occ_list0',sys_global%nel,ierr)
             allocate(f0(basis_length), stat=ierr)
             call check_allocate('f0',basis_length,ierr)
             call read_restart()
@@ -112,8 +112,8 @@ contains
                 call check_allocate('f0',basis_length,ierr)
             end if
             if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(nel), stat=ierr)
-                call check_allocate('occ_list0',nel,ierr)
+                allocate(occ_list0(sys_global%nel), stat=ierr)
+                call check_allocate('occ_list0',sys_global%nel,ierr)
             end if
             call decode_det(f0, occ_list0)
             f0 = dets_list(:,ref_det)

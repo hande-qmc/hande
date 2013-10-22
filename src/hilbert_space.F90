@@ -35,7 +35,7 @@ contains
         integer :: a, a_el, a_pos, b, b_el, b_pos
         integer :: ref_sym, det_sym
         integer(i0) :: f(basis_length), f0(basis_length)
-        integer :: occ_list(nel)
+        integer :: occ_list(sys_global%nel)
         real(dp) :: space_size
 #ifdef PARALLEL
         integer :: ierr
@@ -51,39 +51,42 @@ contains
 
         call set_spin_polarisation(ms_in)
 
-        select case(system_type)
+        select case(sys_global%system)
 
         case(heisenberg)
 
             ! Symmetry not currently implemented for the Heisenberg code.
             ! There is one spin per site, so it's just a case of how many ways
-            ! there are to arrange the nalpha spins across the nsites (or
-            ! equivalently the nbeta spins across the nsites).
-            ! See comments in system for how nel and nvirt are used in the
+            ! there are to arrange the sys_global%nalpha spins across the sys_global%lattice%nsites (or
+            ! equivalently the sys_global%nbeta spins across the sys_global%lattice%nsites).
+            ! See comments in system for how sys_global%nel and sys_global%nvirt are used in the
             ! Heisenberg model.
             if (truncate_space) then
-                space_size = binom_r(nsites-(nel-truncation_level),truncation_level)
+                space_size = binom_r(sys_global%lattice%nsites-(sys_global%nel-truncation_level),truncation_level)
             else
-                space_size = binom_r(nsites, nel)
+                space_size = binom_r(sys_global%lattice%nsites, sys_global%nel)
             end if
             if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', space_size
 
         case default
 
-            if ((system_type == hub_real .or. system_type == chung_landau) &
+            if ((sys_global%system == hub_real .or. sys_global%system == chung_landau) &
                                                 .and. .not.truncate_space) then
-                ! Symmetry not currently implemented for the real space lattice
+                ! Symmetry not currently implemented for the real space sys_global%lattice%lattice
                 ! code.
                 ! Just a case of how we arrange the alpha and beta electrons across
                 ! the alpha orbitals and beta orbitals.  As we're dealing with the
-                ! simplest possible lattice model, the number of orbitals of each
+                ! simplest possible sys_global%lattice%lattice model, the number of orbitals of each
                 ! spin is equal to the number of sites.
-                if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', binom_r(nsites, nalpha)*binom_r(nsites, nbeta)
+                associate(sg=>sys_global, sl=>sys_global%lattice)
+                    if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', &
+                                    binom_r(sl%nsites, sg%nalpha)*binom_r(sl%nsites, sg%nbeta)
+                end associate
             else
 
                 ! Perform a Monte Carlo sampling of the space.
 
-                if (sym_in < sym_max) then
+                if (sym_in < sys_global%sym_max) then
                     call set_reference_det(occ_list0, .false., sym_in)
                 else
                     call set_reference_det(occ_list0, .false.)
@@ -95,7 +98,7 @@ contains
 
                 if (parent) then
                     write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
-                    if (momentum_space) then
+                    if (sys_global%momentum_space) then
                         call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
                     else
                         write (6,'(1X,i2)') ref_sym
@@ -119,7 +122,7 @@ contains
                             f(a_el) = ibset(f(a_el), a_pos)
                             iel = iel + 1
                             occ_list(iel) = a
-                            if (iel == nalpha) exit
+                            if (iel == sys_global%nalpha) exit
                         end if
                     end do
                     ! Beta electrons.
@@ -133,7 +136,7 @@ contains
                             f(b_el) = ibset(f(b_el), b_pos)
                             iel = iel + 1
                             occ_list(iel) = b
-                            if (iel == nel) exit
+                            if (iel == sys_global%nel) exit
                         end if
                     end do
                     ! Find the symmetry of the determinant.
@@ -152,7 +155,7 @@ contains
                 ! Size of the Hilbert space in the desired symmetry block is given
                 ! by
                 !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons)*naccept/nattempts
-                space_size = (binom_r(nbasis/2, nalpha) * binom_r(nbasis/2, nbeta) * naccept) / nhilbert_cycles
+                space_size = (binom_r(nbasis/2,sys_global%nalpha) * binom_r(nbasis/2,sys_global%nbeta) * naccept) / nhilbert_cycles
 
 #ifdef PARALLEL
                 ! If we did this on multiple processors then we can get an estimate

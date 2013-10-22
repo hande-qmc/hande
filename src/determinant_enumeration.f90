@@ -32,7 +32,7 @@ integer :: ndets
 
 ! Total (exact) size of determinant space.
 ! Number of determinants of each symmetry.
-integer, allocatable :: sym_space_size(:) ! (nsym)
+integer, allocatable :: sym_space_size(:) ! (sys_global%nsym)
 
 ! If true then the determinant list is written to determinant_file.
 logical :: write_determinants = .false.
@@ -113,13 +113,13 @@ contains
         use basis, only: basis_length
         use calc, only: truncate_space, truncation_level, ras, ras1, ras3, ras1_min, ras3_max
         use excitations, only: get_excitation_level, in_ras
-        use system, only: sym0, sym_max, nel, system_type, hub_real, heisenberg, ueg
+        use system
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
 
         logical, intent(in) :: init, spin_flip
         integer, intent(in), optional :: ref_sym
-        integer, intent(in), optional :: occ_list0(nel)
+        integer, intent(in), optional :: occ_list0(sys_global%nel)
 
         integer :: i, j, iel, idet, ierr
         integer :: nbeta_combinations
@@ -128,7 +128,7 @@ contains
         character(4) :: fmt1
         integer(i0) :: f(basis_length)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
-        integer :: k(ndim), k_beta(ndim)
+        integer :: k(sys_global%lattice%ndim), k_beta(sys_global%lattice%ndim)
         type(det_info) :: d0
         logical :: in_space, force_full
 
@@ -138,8 +138,8 @@ contains
                 deallocate(sym_space_size, stat=ierr)
                 call check_deallocate('sym_space_size',ierr)
             end if
-            allocate(sym_space_size(sym0:sym_max), stat=ierr)
-            call check_allocate('sym_space_size',nsym,ierr)
+            allocate(sym_space_size(sys_global%sym0:sys_global%sym_max), stat=ierr)
+            call check_allocate('sym_space_size',sys_global%nsym,ierr)
             sym_space_size = 0
         else
             if (.not.present(ref_sym)) then
@@ -176,16 +176,19 @@ contains
             if (.not.present(occ_list0)) then
                 call stop_all('enumerate_determinants', 'Require reference for truncated CI spaces.')
             end if
-            allocate(nalpha_combinations(0:nbeta), stat=ierr)
+            allocate(nalpha_combinations(0:sys_global%nbeta), stat=ierr)
             nalpha_combinations = 0
             nbeta_combinations = 0
-            ! Identical to the settings in the else statements if truncation_level == nel.
-            do i = 0, minval([truncation_level, nbeta, nvirt_beta])
-                nbeta_combinations = nbeta_combinations + binom_i(nbeta, i)*binom_i(nvirt_beta, i)
-                do j = 0, minval([truncation_level-i, nalpha, nvirt_alpha])
-                    nalpha_combinations(i) = nalpha_combinations(i) + binom_i(nalpha, j)*binom_i(nvirt_alpha, j)
+            ! Identical to the settings in the else statements if truncation_level == sys_global%nel.
+            associate(na=>sys_global%nalpha, nb=>sys_global%nbeta, &
+                      nva=>sys_global%nvirt_alpha , nvb=>sys_global%nvirt_beta)
+                do i = 0, minval([truncation_level, nb, nvb])
+                    nbeta_combinations = nbeta_combinations + binom_i(nb, i)*binom_i(nvb, i)
+                    do j = 0, minval([truncation_level-i, na, nva])
+                        nalpha_combinations(i) = nalpha_combinations(i) + binom_i(na, j)*binom_i(nva, j)
+                    end do
                 end do
-            end do
+            end associate
             call encode_det(occ_list0, d0%f)
             ! Check symmetries of reference matches the desired symmetries.  If
             ! not, are doing spin flip and need to do a full enumeration!
@@ -198,26 +201,26 @@ contains
             ! No matter what the excitation level of the beta string, all alpha
             ! combinations are allowed.
             allocate(nalpha_combinations(0:0), stat=ierr)
-            nbeta_combinations = binom_i(nbasis/2, nbeta)
-            nalpha_combinations = binom_i(nbasis/2, nalpha)
-            truncation_level = nel
+            nbeta_combinations = binom_i(nbasis/2, sys_global%nbeta)
+            nalpha_combinations = binom_i(nbasis/2, sys_global%nalpha)
+            truncation_level = sys_global%nel
         end if
         call check_allocate('nalpha_combinations',size(nalpha_combinations),ierr)
         allocate(comb(2*truncation_level, 2), stat=ierr)
         call check_allocate('comb', size(comb), ierr)
 
-        allocate(occ(nel), stat=ierr)
-        call check_allocate('occ', nel, ierr)
+        allocate(occ(sys_global%nel), stat=ierr)
+        call check_allocate('occ', sys_global%nel, ierr)
 
-        select case(system_type)
+        select case(sys_global%system)
 
         case(heisenberg, chung_landau)
 
-            ! See notes in system about how the Heisenberg model uses nel and
-            ! nvirt.
+            ! See notes in system about how the Heisenberg model uses sys_global%nel and
+            ! sys_global%nvirt.
 
             ! Just have spin up and spin down sites (no concept of unoccupied
-            ! sites) so just need to arrange nel spin ups.  No need to
+            ! sites) so just need to arrange sys_global%nel spin ups.  No need to
             ! interweave alpha and beta strings.
 
             if (init) then
@@ -226,19 +229,21 @@ contains
                 if (truncate_space) then
                     sym_space_size = 0
                     do i = 0, truncation_level
-                        sym_space_size = sym_space_size + binom_i(nel, truncation_level)*binom_i(nsites-nel, truncation_level)
+                        associate(nsites=>sys_global%lattice%nsites, nel=>sys_global%nel)
+                            sym_space_size = sym_space_size + binom_i(nel, truncation_level)*binom_i(nsites-nel, truncation_level)
+                        end associate
                     end do
                 else
-                    sym_space_size = binom_i(nsites, nel)
+                    sym_space_size = binom_i(sys_global%lattice%nsites, sys_global%nel)
                 end if
             else
                 if (truncate_space) then
                     ! Need list of spin-down sites (ie 'unoccupied' bits).
-                    allocate(unocc(nbasis-nel), stat=ierr)
+                    allocate(unocc(nbasis-sys_global%nel), stat=ierr)
                     call check_allocate('unocc', size(unocc), ierr)
                     call decode_bit_string(d0%f(1), unocc)
                     do i = 1, ndets
-                        call next_string(i==1, .false., nbasis, nel, d0%occ_list, &
+                        call next_string(i==1, .false., nbasis, sys_global%nel, d0%occ_list, &
                                          unocc, truncation_level, force_full, comb(:,1),  &
                                          occ, excit_level_alpha)
                         call encode_det(occ, dets_list(:,i))
@@ -253,7 +258,7 @@ contains
                     if (nbasis > i0_length) then
                         call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
                     end if
-                    dets_list(1,1) = first_perm(nel)
+                    dets_list(1,1) = first_perm(sys_global%nel)
                     do i = 2, ndets
                         dets_list(1,i) = bit_permutation(dets_list(1,i-1))
                     end do
@@ -262,7 +267,7 @@ contains
 
         case default
 
-            if (init .and. system_type == hub_real .and. .not.truncate_space) then
+            if (init .and. sys_global%system == hub_real .and. .not.truncate_space) then
                 ! Closed form for size of Hilbert space.  No symmetry implemented!
                 sym_space_size = nalpha_combinations*nbeta_combinations
             else
@@ -284,40 +289,40 @@ contains
                 do i = 1, nbeta_combinations
 
                     ! Get beta orbitals.
-                    call next_string(i==1, .false., nbasis/2, nbeta, d0%occ_list_beta, &
+                    call next_string(i==1, .false., nbasis/2, sys_global%nbeta, d0%occ_list_beta, &
                                      d0%unocc_list_beta, truncation_level, force_full, comb(:,1),  &
-                                     occ(1:nbeta), excit_level_beta)
+                                     occ(1:sys_global%nbeta), excit_level_beta)
 
                     ! Symmetry.
                     ! Have to treat the UEG as a special case as we don't consider
                     ! all possible symmetries for the UEG but rather only momenta
                     ! which exist in the basis set.
-                    if (system_type == ueg) then
+                    if (sys_global%system == ueg) then
                         k_beta = 0
-                        do iel = 1, nbeta
+                        do iel = 1, sys_global%nbeta
                             k_beta = k_beta + basis_fns(occ(iel))%l
                         end do
                     else
-                        sym_beta = symmetry_orb_list(occ(1:nbeta))
+                        sym_beta = symmetry_orb_list(occ(1:sys_global%nbeta))
                     end if
 
                     do j = 1, nalpha_combinations(excit_level_beta)
 
                         ! Get alpha orbitals.
-                        call next_string(j==1, .true., nbasis/2, nalpha, d0%occ_list_alpha, &
+                        call next_string(j==1, .true., nbasis/2, sys_global%nalpha, d0%occ_list_alpha, &
                                          d0%unocc_list_alpha, truncation_level-excit_level_beta, force_full, &
-                                         comb(:,2), occ(nbeta+1:), excit_level_alpha)
+                                         comb(:,2), occ(sys_global%nbeta+1:), excit_level_alpha)
 
                         ! Symmetry of all orbitals.
-                        if (system_type == ueg) then
+                        if (sys_global%system == ueg) then
                             k = k_beta
-                            do iel = nbeta+1, nel
+                            do iel = sys_global%nbeta+1, sys_global%nel
                                 k = k + basis_fns(occ(iel))%l
                             end do
                             ! Symmetry label (convert from basis index).
                             sym = (ueg_basis_index(k,1)+1)/2
                         else
-                            sym = cross_product(sym_beta, symmetry_orb_list(occ(nbeta+1:nel)))
+                            sym = cross_product(sym_beta, symmetry_orb_list(occ(sys_global%nbeta+1:sys_global%nel)))
                         end if
 
                         ! Inside truncated space?  TODO: fix above code so it
@@ -357,7 +362,7 @@ contains
 
         if (init .and. parent) then
             ! Output information about the size of the space.
-            Ms = nalpha - nbeta
+            Ms = sys_global%nalpha - sys_global%nbeta
             write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
             write (6,'(1X,a75,'//int_fmt(Ms,0)//',a1)') &
                      'The table below gives the number of determinants for each symmetry with Ms=', &

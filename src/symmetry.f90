@@ -24,12 +24,12 @@ contains
 
         use momentum_symmetry, only: symmetry_orb_list_hub_k, symmetry_orb_list_ueg
         use point_group_symmetry, only: symmetry_orb_list_mol
-        use system, only: system_type, hub_k, ueg, read_in, sym0
+        use system
 
         integer :: isym
         integer, intent(in) :: orb_list(:)
 
-        select case(system_type)
+        select case(sys_global%system)
         case(hub_k)
             isym = symmetry_orb_list_hub_k(orb_list)
         case(ueg)
@@ -38,7 +38,7 @@ contains
             isym = symmetry_orb_list_mol(orb_list)
         case default
             ! symmetry not implemented
-            isym = sym0
+            isym = sys_global%sym0
         end select
 
     end function symmetry_orb_list
@@ -52,12 +52,12 @@ contains
 
         use point_group_symmetry, only: cross_product_pg_sym
         use momentum_symmetry, only: cross_product_hub_k, cross_product_ueg
-        use system, only: system_type, hub_k, ueg, read_in, sym0
+        use system
 
         integer :: prod
         integer, intent(in) :: s1, s2
 
-        select case(system_type)
+        select case(sys_global%system)
         case(hub_k)
             prod = cross_product_hub_k(s1, s2)
         case(ueg)
@@ -66,7 +66,7 @@ contains
             prod = cross_product_pg_sym(s1, s2)
         case default
             ! symmetry not implemented
-            prod = sym0
+            prod = sys_global%sym0
         end select
 
     end function cross_product

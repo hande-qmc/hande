@@ -1,6 +1,6 @@
 module excit_gen_real_lattice
 
-! Module for random excitation generators and related routines for lattice model
+! Module for random excitation generators and related routines for sys_global%lattice%lattice model
 ! systems with real-space orbitals (i.e. Heisenberg model and Hubbard model in
 ! the local/real-space orbital basis).  These are grouped together due to the
 ! close relationship between the the systems means that we can re-use many of
@@ -94,7 +94,7 @@ contains
         use determinants, only: det_info
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit
-        use system, only: nel
+        use system
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use hubbard_real, only: connected_sites
         use basis, only: bit_lookup
@@ -110,7 +110,7 @@ contains
         ! 1. Generate random excitation from cdet and probability of spawning
         ! there.
         ! Random selection of i.
-        i = int(get_rand_close_open(rng)*nel) + 1
+        i = int(get_rand_close_open(rng)*sys_global%nel) + 1
         connection%from_orb(1) = cdet%occ_list(i)
         ! Select a at random from one of the connected orbitals.
         i = int(get_rand_close_open(rng)*connected_sites(0,connection%from_orb(1)) + 1)
@@ -135,8 +135,8 @@ contains
             ! 3. Probability of spawning...
             ! For single excitations
             !   pgen = p(i) p(a|i)
-            !        = 1/(nel*nconnected_sites)
-            pgen = 1.0_dp/(nel*connected_sites(0,i))
+            !        = 1/(sys_global%nel*nconnected_sites)
+            pgen = 1.0_dp/(sys_global%nel*connected_sites(0,i))
 
         end if
 
@@ -164,7 +164,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use system, only: J_coupling
+        use system
         use dSFMT_interface, only: dSFMT_t
 
         type(det_info), intent(in) :: cdet
@@ -188,7 +188,7 @@ contains
 
         ! 3. find the connecting matrix element.
         ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-        hmatel = -2.0_p*J_coupling
+        hmatel = -2.0_p*sys_global%heisenberg%J
 
     end subroutine gen_excit_heisenberg
 
@@ -224,7 +224,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use hubbard_real, only: connected_sites
-        use system, only: J_coupling, nel
+        use system
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -237,7 +237,7 @@ contains
 
         ! 1. Chose a random connected excitation.
         ! Random selection of i (an up spin).
-        i = int(get_rand_close_open(rng)*nel) + 1
+        i = int(get_rand_close_open(rng)*sys_global%nel) + 1
         connection%from_orb(1) = cdet%occ_list(i)
         ! Select a at random from one of the connected sites.
         ! nb: a might already be up.
@@ -264,12 +264,12 @@ contains
             ! 2. Generation probability
             ! For single excitations
             !   pgen = p(i) p(a|i)
-            !        = 1/(nel*nconnected_sites)
-            pgen = 1.0_dp/(nel*connected_sites(0,i))
+            !        = 1/(sys_global%nel*nconnected_sites)
+            pgen = 1.0_dp/(sys_global%nel*connected_sites(0,i))
 
             ! 3. find the connecting matrix element.
             ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-            hmatel = -2.0_p*J_coupling
+            hmatel = -2.0_p*sys_global%heisenberg%J
 
         end if
 
@@ -302,21 +302,21 @@ contains
         use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
         use hubbard_real, only: connected_orbs, connected_sites
-        use system, only: nel, ndim
+        use system
 
-        integer, intent(in) :: occ_list(nel)
+        integer, intent(in) :: occ_list(sys_global%nel)
         integer(i0), intent(in) :: f(basis_length)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a, nvirt_avail
         integer(i0) :: virt_avail(basis_length)
-        integer :: ivirt, ipos, iel, virt(3*ndim) ! 3*ndim to allow for triangular lattices; minor memory waste for other cases is irrelevant!
+        integer :: ivirt, ipos, iel, virt(3*sys_global%lattice%ndim) ! 3*sys_global%lattice%ndim to allow for triangular lattices; minor memory waste for other cases is irrelevant!
 
         do
             ! Until we find an i orbital which has at least one allowed
             ! excitation.
 
             ! Random selection of i.
-            i = int(get_rand_close_open(rng)*nel) + 1
+            i = int(get_rand_close_open(rng)*sys_global%nel) + 1
             i = occ_list(i)
 
             ! Does this have at least one allowed excitation?
@@ -384,13 +384,13 @@ contains
         !        spawning.
 
         use basis, only: basis_length
-        use system, only: nel
+        use system
         use hubbard_real, only: connected_orbs
 
         use errors
 
         real(p) :: pgen
-        integer, intent(in) :: occ_list(nel)
+        integer, intent(in) :: occ_list(sys_global%nel)
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: nvirt_avail
         integer :: i, no_excit
@@ -400,7 +400,7 @@ contains
         ! where
         !   p(i) is the probability of choosing the i-th electron to excite
         !   from.
-        !   p(i) = 1/nel
+        !   p(i) = 1/sys_global%nel
         !
         !   p(a|i) is the probability of choosing to excite into orbital a given
         !   that the i-th electron has been chosen.
@@ -411,7 +411,7 @@ contains
         !   \chi_r is a renormalisation to take into account the fact that not
         !   all electrons may be excited from (e.g. no connected orbitals are
         !   vacant).
-        !   \chi_r = nel/(nel - no_excit)
+        !   \chi_r = sys_global%nel/(sys_global%nel - no_excit)
         !   where no_excit is the number of occupied orbitals which have no
         !   connected excitations.
 
@@ -420,7 +420,7 @@ contains
         ! same determinant.
 
         no_excit = 0
-        do i = 1, nel
+        do i = 1, sys_global%nel
             ! See if there are any allowed excitations from this electron
             ! (Or excitations from this spin up for Hesienberg)
             ! (see notes in choose_ia_real for how this works)
@@ -430,7 +430,7 @@ contains
             end if
         end do
 
-        pgen = 1.0_p/(nvirt_avail * (nel - no_excit))
+        pgen = 1.0_p/(nvirt_avail * (sys_global%nel - no_excit))
 
     end function calc_pgen_real
 

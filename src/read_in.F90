@@ -29,7 +29,7 @@ contains
                          write_basis_fn_header
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry
-        use system, only: fcidump, uhf, ecore, nel, nvirt, dipole_int_file, dipole_core
+        use system
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -65,7 +65,7 @@ contains
         integer, allocatable :: seen_ijij(:), seen_iaib(:,:), sp_eigv_rank(:), sp_fcidump_rank(:)
         logical, allocatable :: seen_iha(:)
         real(p), allocatable :: sp_eigv(:)
-        logical :: not_found_sp_eigv
+        logical :: not_found_sp_eigv, uhf
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz
 
@@ -152,13 +152,14 @@ contains
         ! Only do i/o on root processor.
         if (parent) then
             ir = get_free_unit()
-            inquire(file=fcidump, exist=t_exists)
+            inquire(file=sys_global%read_in%fcidump, exist=t_exists)
             if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
-                                                               &exist:'//trim(fcidump))
-            open (ir, file=fcidump, status='old', form='formatted')
+                                                               &exist:'//trim(sys_global%read_in%fcidump))
+            open (ir, file=sys_global%read_in%fcidump, status='old', form='formatted')
 
             ! read system data
             read (ir, FCI)
+            sys_global%read_in%uhf = uhf
         end if
 
 #ifdef PARALLEL
@@ -168,7 +169,7 @@ contains
         call MPI_BCast(ms2, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(orbsym, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(isym, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-        call MPI_BCast(uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(sys_global%read_in%uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(syml, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(symlz, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
 #endif
@@ -177,7 +178,7 @@ contains
         ! This is changed to the number of spin-orbitals active the calculation
         ! later on.
 
-        if (uhf) then
+        if (sys_global%read_in%uhf) then
             nbasis = norb
             rhf_fac = 1
         else
@@ -187,12 +188,12 @@ contains
 
         if (present(cas_info)) then
             if (any(cas_info < 1)) then
-                cas = (/ nel, nbasis/2 /)
+                cas = (/ sys_global%nel, nbasis/2 /)
             else
                 cas = cas_info
             end if
         else
-            cas = (/ nel, nbasis/2 /)
+            cas = (/ sys_global%nel, nbasis/2 /)
         end if
 
         ! Read in FCIDUMP file to get single-particle eigenvalues.
@@ -205,7 +206,8 @@ contains
                 ! loop over lines.
                 read (ir,*, iostat=ios) x, i, a, j, b
                 if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_in_integrals','Problem reading integrals file: '//trim(FCIDUMP))
+                if (ios /= 0) call stop_all('read_in_integrals','&
+                                             Problem reading integrals file: '//trim(sys_global%read_in%fcidump))
                 if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
                     ! \epsilon_i --- temporarily store for all basis functions,
                     ! including inactive (frozen) orbitals.
@@ -215,7 +217,7 @@ contains
             end do
 
             if (not_found_sp_eigv) &
-                call stop_all('read_in_integrals',fcidump//' file does not contain &
+                call stop_all('read_in_integrals',sys_global%read_in%fcidump//' file does not contain &
                               &single-particle eigenvalues.  Please implement &
                               &calculating them from the integrals.')
         end if
@@ -231,7 +233,7 @@ contains
         allocate(sp_fcidump_rank(0:norb), stat=ierr)
         call check_allocate('sp_fcidump_rank', norb+1, ierr)
 
-        if (uhf) then
+        if (sys_global%read_in%uhf) then
             ! Cannot simply naively sort all basis functions by energy as that
             ! causes basis functions to be labelled with the incorrect spin.
             ! Further we assume that basis functions have alternating alpha, beta
@@ -272,21 +274,21 @@ contains
         ! Set up basis functions, including those which are subsequently frozen.
         allocate(all_basis_fns(nbasis), stat=ierr)
         call check_allocate('all_basis_fns', nbasis, ierr)
-        call init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank(1:), all_basis_fns)
+        call init_basis_fns_read_in(norb, sys_global%read_in%uhf, orbsym, sp_eigv, sp_eigv_rank(1:), all_basis_fns)
 
-        ! From CAS work out the start of the active basis functions, the number
+        ! From sys_global%CAS work out the start of the active basis functions, the number
         ! of active basis functions and the number of active electrons.
 
         ! NOTE: this sets nbasis to be the number of spin orbitals in the active
         ! basis.
 
-        active_basis_offset = nel-cas(1) ! number of core *spin* orbitals
+        active_basis_offset = sys_global%nel-cas(1) ! number of core *spin* orbitals
         ! Note that nbasis is spin-orbitals whereas cas(2)=M is in spatial orbitals
-        ! (as we use the conventional CAS definition).
+        ! (as we use the conventional sys_global%CAS definition).
         nbasis = min(nbasis, 2*cas(2))
-        nel = nel - ( nel - cas(1) )
-        nvirt = nbasis - nel
-        if (uhf) then
+        sys_global%nel = sys_global%nel - ( sys_global%nel - cas(1) )
+        sys_global%nvirt = nbasis - sys_global%nel
+        if (sys_global%read_in%uhf) then
             norb =  nbasis
         else
             norb = nbasis/2
@@ -295,7 +297,8 @@ contains
         ! Set up basis functions used in calculation.
         allocate(basis_fns(nbasis), stat=ierr)
         call check_allocate('basis_fns', nbasis, ierr)
-        call init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank(1+active_basis_offset/rhf_fac:), basis_fns)
+        call init_basis_fns_read_in(norb, sys_global%read_in%uhf, orbsym, sp_eigv, &
+                                    sp_eigv_rank(1+active_basis_offset/rhf_fac:), basis_fns)
 
         deallocate(sp_eigv, stat=ierr)
         call check_deallocate('sp_eigv', ierr)
@@ -345,7 +348,7 @@ contains
         ! FCIDUMP.  We must zero the stores to hence avoid accessing unitialised
         ! memory.
 
-        Ecore = 0.0_p
+        sys_global%read_in%Ecore = 0.0_p
         if (t_store) then
             call zero_one_body_int_store(one_e_h_integrals)
             call zero_two_body_int_store(coulomb_integrals)
@@ -353,7 +356,7 @@ contains
 
         ! Now, there is no guarantee that FCIDUMP files will include all
         ! permutation symmetry and so we must avoid double-counting when
-        ! accumulating Ecore and <a|h'|b>.
+        ! accumulating sys_global%read_in%Ecore and <a|h'|b>.
 
         ! * <i|h|i> can only occur once (and requires a factor of 2 in RHF
         !   calculations), hence there is no risk of double counting.
@@ -392,7 +395,8 @@ contains
                 ! loop over lines.
                 read (ir,*, iostat=ios) x, i, a, j, b
                 if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_in_integrals','Problem reading integrals file: '//trim(FCIDUMP))
+                if (ios /= 0) call stop_all('read_in_integrals', &
+                                            'Problem reading integrals file: '//trim(sys_global%read_in%fcidump))
 
                 ! Working in spin orbitals but FCIDUMP is in spatial orbitals in RHF
                 ! calculations and spin orbitals in UHF calculations, and te basis
@@ -421,7 +425,7 @@ contains
                     if (i == 0 .and. j == 0 .and. a == 0 .and. b == 0) then
 
                         ! Nuclear energy.
-                        Ecore = Ecore + x
+                        sys_global%read_in%Ecore = sys_global%read_in%Ecore + x
 
                     else if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
 
@@ -434,10 +438,10 @@ contains
                         if (t_store) then
                             if (ii < 1 .and. ii == aa) then
                                 ! Have <i|h|i> from a core orbital.  Add
-                                ! contribution to Ecore.
+                                ! contribution to sys_global%read_in%Ecore.
                                 ! If RHF need to include <i,up|h|i,up> and
                                 ! <i,down|h|i,down>.
-                                Ecore = Ecore + x*rhf_fac
+                                sys_global%read_in%Ecore = sys_global%read_in%Ecore + x*rhf_fac
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
                                     x = x + get_one_body_int_mol(one_e_h_integrals, ii, aa)
@@ -464,9 +468,9 @@ contains
                                 ! which permutation(s) occur in the FCIDUMP
                                 ! file.
                                 if (ii == aa .and. jj == bb .and. ii == jj) then
-                                    if (.not.uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
+                                    if (.not.sys_global%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                         ! RHF calculations: need to include <i,up i,down|i,up i,down>.
-                                        Ecore = Ecore + x
+                                        sys_global%read_in%Ecore = sys_global%read_in%Ecore + x
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
                                 else if (ii == aa .and. jj == bb .and. ii /= jj) then
@@ -477,7 +481,7 @@ contains
                                         !   <i,up j,down|i,up, j,down>
                                         !   <i,down j,up|i,down, j,up>
                                         !   <i,down j,down|i,down, j,down>
-                                        Ecore = Ecore + x*rhf_fac**2
+                                        sys_global%read_in%Ecore = sys_global%read_in%Ecore + x*rhf_fac**2
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
                                 else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
@@ -487,7 +491,7 @@ contains
                                         ! If RHF, then need to include:
                                         !   <i,up j,up|j,up, i,up>
                                         !   <i,down j,down|j,down, i,down>
-                                        Ecore = Ecore - rhf_fac*x
+                                        sys_global%read_in%Ecore = sys_global%read_in%Ecore - rhf_fac*x
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 2
                                     end if
                                 end if
@@ -580,12 +584,12 @@ contains
             do i = 1, nbasis
                 call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
             end do
-            write (6,'(/,1X,a8,f18.12)') 'E_core =', Ecore
+            write (6,'(/,1X,a8,f18.12)') 'E_core =', sys_global%read_in%Ecore
         end if
 
-        if (t_store .and. dipole_int_file /= '') then
-            call read_in_one_body(dipole_int_file, sp_fcidump_rank, active_basis_offset, &
-                                  one_body_op_integrals, dipole_core)
+        if (t_store .and. sys_global%read_in%dipole_int_file /= '') then
+            call read_in_one_body(sys_global%read_in%dipole_int_file, sp_fcidump_rank, active_basis_offset, &
+                                  one_body_op_integrals, sys_global%read_in%dipole_core)
         end if
 
         deallocate(sp_eigv_rank, stat=ierr)
@@ -607,7 +611,7 @@ contains
 
         ! In:
         !    norb: number of orbitals/functions to initialise.
-        !    uhf: true if FCIDUMP file was produced from an unrestricted (UHF)
+        !    sys_global%read_in%uhf: true if FCIDUMP file was produced from an unrestricted (UHF)
         !         calculation.  norb refers to spatial orbitals in a RHF-based
         !         FCIDUMP file and spin orbitals in a UHF-based FCIDUMP file.
         !    orbsym: list of symmetries of each orbital/function.
@@ -690,7 +694,7 @@ contains
         !         frozen core orbitals and the nucleii.
 
         use basis, only: nbasis
-        use system, only: uhf
+        use system
         use point_group_symmetry, only: cross_product_pg_basis
         use molecular_integrals, only: one_body, init_one_body_int_store,              &
                                        end_one_body_int_store, store_one_body_int_mol, &
@@ -712,7 +716,7 @@ contains
 
         real(p) :: x
 
-        if (uhf) then
+        if (sys_global%read_in%uhf) then
             rhf_fac = 1
         else
             rhf_fac = 2  ! need to double count some integrals.

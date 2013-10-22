@@ -349,7 +349,7 @@ contains
         use excitations, only: excit, get_excitation
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
-        use system, only: nel
+        use system
 
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
@@ -358,7 +358,7 @@ contains
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
-        integer :: occ_list(nel), ij_sym, ab_sym
+        integer :: occ_list(sys_global%nel), ij_sym, ab_sym
 
         excitation = get_excitation(cdet%f, f0)
         hmatel = 0.0_p
@@ -594,7 +594,7 @@ contains
 
         use basis, only: basis_length
         use excitations, only: excit
-        use system, only: hubu, nsites
+        use system
 
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: fpop, f_hfpop
@@ -614,7 +614,7 @@ contains
 
             !\hat{O}_0j = H_0j / (U L), where L is the number of sites.
             ! sampling \hat{O} - <D0|O|D0>, this means that \sum_j O_j0 c_j = 0.
-            proj_hf_O_hpsip = proj_hf_O_hpsip + (hmatel/(hubu*nsites))*fpop
+            proj_hf_O_hpsip = proj_hf_O_hpsip + (hmatel/(sys_global%hubbard%u*sys_global%lattice%nsites))*fpop
 
             ! \sum_j H_0j \tilde{c}_j is similarly easy to evaluate
             proj_hf_H_hfpsip = proj_hf_H_hfpsip + hmatel*f_hfpop

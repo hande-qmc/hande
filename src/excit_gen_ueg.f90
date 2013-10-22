@@ -42,7 +42,7 @@ contains
         use excitations, only: excit
         use excitations, only: find_excitation_permutation2
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
-        use system, only: ndim
+        use system
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -52,7 +52,7 @@ contains
         type(excit), intent(out) :: connection
         logical :: allowed_excitation
 
-        integer :: ij_k(ndim), ij_spin, max_na
+        integer :: ij_k(sys_global%lattice%ndim), ij_spin, max_na
         real(dp) :: r
 
         ! 1. Must have a double excitation.
@@ -115,7 +115,7 @@ contains
         use excitations, only: excit
         use excitations, only: find_excitation_permutation2
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
-        use system, only: ndim
+        use system
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use bit_utils
@@ -126,7 +126,7 @@ contains
         type(excit), intent(out) :: connection
 
         logical :: allowed_excitation
-        integer :: ij_k(ndim), ij_spin, max_na
+        integer :: ij_k(sys_global%lattice%ndim), ij_spin, max_na
         real(dp) :: r
 
         if (sum(count_set_bits(cdet%f)) /= 4) then
@@ -172,14 +172,14 @@ contains
         use basis, only: basis_fns, basis_length, nbasis, basis_lookup
         use const, only: i0_end
         use bit_utils, only: count_set_bits
-        use system, only: nel, ndim
+        use system
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use ueg_system, only: ueg_ternary_conserve, ueg_basis_index
         use utils, only: tri_ind
 
         type(dSFMT_t), intent(inout) :: rng
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: i, j, ij_k(ndim), ij_spin
+        integer, intent(in) :: i, j, ij_k(sys_global%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
@@ -218,12 +218,12 @@ contains
         !        alpha.
 
         use basis, only: basis_fns
-        use system, only: nel, ndim
+        use system
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        integer, intent(in) :: occ_list(nel)
+        integer, intent(in) :: occ_list(sys_global%nel)
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(out) :: i,j, ij_k(ndim), ij_spin
+        integer, intent(out) :: i,j, ij_k(sys_global%lattice%ndim), ij_spin
         integer :: ind
         real(dp) :: r
 
@@ -257,7 +257,7 @@ contains
         ! represents a substantial saving. :-)
 
         r = get_rand_close_open(rng)
-        ind = int(r*nel*(nel-1)/2) + 1
+        ind = int(r*sys_global%nel*(sys_global%nel-1)/2) + 1
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
@@ -286,18 +286,18 @@ contains
         use basis, only: basis_fns, basis_length, nbasis, basis_lookup, bit_lookup
         use const, only: i0_end
         use bit_utils, only: count_set_bits
-        use system, only: nel, ndim
+        use system
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use ueg_system, only: ueg_ternary_conserve, ueg_basis_index
         use utils, only: tri_ind
 
         type(dSFMT_t), intent(inout) :: rng
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: i, j, ij_k(ndim), ij_spin
+        integer, intent(in) :: i, j, ij_k(sys_global%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
-        integer :: fac, shift, ij_ind, ibp, ibe, n, ind, kb(ndim)
+        integer :: fac, shift, ij_ind, ibp, ibe, n, ind, kb(sys_global%lattice%ndim)
         integer(i0) :: poss_a(basis_length)
 
         ! Let's just check there are possible a,b first!
@@ -380,7 +380,7 @@ contains
 
     pure function calc_pgen_ueg_no_renorm(max_na) result(pgen)
 
-        use system, only: nel
+        use system
 
         real(p) :: pgen
         integer, intent(in) :: max_na
@@ -394,12 +394,12 @@ contains
         ! probability is asymmetric:
         ! pgen = p(i,j) p(a|i,j) p(b|i,j,a)
 
-        ! p(i,j) = 1/binom(nel,2) = 2/(nel*(nel-1))
+        ! p(i,j) = 1/binom(sys_global%nel,2) = 2/(sys_global%nel*(sys_global%nel-1))
         ! p(a|i,j) is the number of unoccupied a orbitals which i,j can excite
         ! into.
         ! UEG is a one-band system, so p(b|i,j,a) = 1.
 
-        pgen = 2.0_p / ( nel*(nel-1) * max_na )
+        pgen = 2.0_p / ( sys_global%nel*(sys_global%nel-1) * max_na )
 
     end function calc_pgen_ueg_no_renorm
 

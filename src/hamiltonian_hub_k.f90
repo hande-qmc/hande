@@ -39,7 +39,7 @@ contains
         !     We assume Ms is conserved (ie has already been checked for).
 
         !     In the momentum space description the overall crystal
-        !     momentum must be conserved up to a reciprocal lattice
+        !     momentum must be conserved up to a reciprocal sys_global%lattice%lattice
         !     vector (i.e. satisfy translational symmetry).
         !     We assume this is also already checked.
 
@@ -69,7 +69,7 @@ contains
 
                 ! Two electron operator
                 ! < ij | aj > = 0 only if crystal momentum is conserved up to
-                ! a reciprocal lattice vector.
+                ! a reciprocal sys_global%lattice%lattice vector.
                 ! As k_i /= k_j, this cannot be met.
 
             case(2)
@@ -94,11 +94,11 @@ contains
         !        the Hubbard model in momentum space.
 
         use determinants, only: decode_det, basis_fns, basis_length
-        use system, only: nalpha, nbeta, hub_k_coulomb, nel
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
-        integer :: occ_list(nel)
+        integer :: occ_list(sys_global%nel)
         integer :: i
 
         call decode_det(f, occ_list)
@@ -112,15 +112,15 @@ contains
         !      by defintion.
         !   b) If i,j are of the same spin, then < ij | ij > = < ij | ji > and
         !      so < ij || ij > = 0.
-        !   c) < ij | ij > = U/nsites for all i,j.
-        !   d) The double sum has 2*nalpha*nbeta terms corresponding to i,j of
+        !   c) < ij | ij > = U/sys_global%lattice%nsites for all i,j.
+        !   d) The double sum has 2*sys_global%nalpha*sys_global%nbeta terms corresponding to i,j of
         !      different spins.
-        !   e) Thus  1/2 \sum_i \sum_j < ij || ij > = nalpha*nbeta*U/nsites.
-        hmatel = nalpha*nbeta*hub_k_coulomb
+        !   e) Thus  1/2 \sum_i \sum_j < ij || ij > = sys_global%nalpha*sys_global%nbeta*U/sys_global%lattice%nsites.
+        hmatel = sys_global%nalpha*sys_global%nbeta*sys_global%hubbard%coulomb_k
 
         ! One electron operator
         ! Get directly rather than incur the cost of the if test in get_one_e_int_k.
-        do i = 1, nel
+        do i = 1, sys_global%nel
             hmatel = hmatel + basis_fns(occ_list(i))%sp_eigv
         end do
 
@@ -174,7 +174,7 @@ contains
 
         use excitations, only: excit, find_excitation_permutation2
         use basis, only: basis_length
-        use system, only: hub_k_coulomb
+        use system
 
         integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: connection
@@ -200,7 +200,7 @@ contains
         end if
 
         ! a) Sign from value of U as well---U can be negative!
-        hmatel = hub_k_coulomb
+        hmatel = sys_global%hubbard%coulomb_k
 
         ! b) Negative sign from permuting the determinants so that they line
         ! up?

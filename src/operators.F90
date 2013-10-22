@@ -22,19 +22,19 @@ contains
 
         use basis, only: basis_length, basis_fns
         use determinants, only: decode_det
-        use system, only: nel
+        use system
 
         use const, only: p, i0
 
         real(p) :: kin
         integer(i0), intent(in) :: f(basis_length)
 
-        integer :: i, occ(nel)
+        integer :: i, occ(sys_global%nel)
 
         ! <D|T|D> = \sum_k \epsilon_k
         kin = 0.0_p
         call decode_det(f, occ)
-        do i = 1, nel
+        do i = 1, sys_global%nel
             kin = kin + basis_fns(occ(i))%sp_eigv
         end do
 
@@ -96,7 +96,7 @@ contains
         !    model.
 
         use basis, only: basis_length
-        use system, only: nalpha, nbeta, nsites
+        use system
 
         use const, only: p, i0
 
@@ -106,7 +106,7 @@ contains
         ! As with the potential operator, the double occupancy operator is
         ! constant for all diagonal elements (see slater_condon0_hub_k).
 
-        occ = real(nalpha*nbeta,p)/(nsites**2)
+        occ = real(sys_global%nalpha*sys_global%nbeta,p)/(sys_global%lattice%nsites**2)
 
     end function double_occ0_hub_k
 
@@ -126,7 +126,7 @@ contains
         !    model.
 
         use hubbard_k, only: get_two_e_int_k
-        use system, only: hubu, nsites
+        use system
 
         use const, only: p, i0
 
@@ -137,7 +137,7 @@ contains
         ! This actual annihilation and creation operators of \hat{D} are
         ! identical to the off-diagonal operators of H.  Hence, we can use the
         ! same integrals and just scale accordingly...
-        occ = get_two_e_int_k(i, j, a, b) / (hubu * nsites)
+        occ = get_two_e_int_k(i, j, a, b) / (sys_global%hubbard%u * sys_global%lattice%nsites)
 
         if (perm) occ = -occ
 
@@ -163,7 +163,7 @@ contains
         use basis, only: basis_length
         use bit_utils, only: count_set_bits
         use hubbard_real, only: get_coulomb_matel_real
-        use system, only: hubu, nsites
+        use system
 
         use const, only: p, i0
 
@@ -173,7 +173,7 @@ contains
         ! As for momentum space, can use standard integrals of the potential and
         ! then scale.
 
-        occ = get_coulomb_matel_real(f) / (hubu * nsites)
+        occ = get_coulomb_matel_real(f) / (sys_global%hubbard%u * sys_global%lattice%nsites)
 
      end function double_occ0_hub_real
 
@@ -231,14 +231,14 @@ contains
         use determinants, only: decode_det
         use molecular_integrals, only: get_one_body_int_mol_nonzero, one_body_op_integrals
         use point_group_symmetry, only: gamma_sym
-        use system, only: nel, dipole_core
+        use system
 
         use const, only: p, i0
 
         real(p) :: intgrl
         integer(i0), intent(in) :: f(basis_length)
 
-        integer :: occ_list(nel)
+        integer :: occ_list(sys_global%nel)
         integer :: iel, iorb
 
         call decode_det(f, occ_list)
@@ -246,9 +246,9 @@ contains
         ! <D | O_1 | D > = \sum_i <i|O_1|i>
         ! The integrals can only be non-zero if the operator is totally symmetric.
 
-        intgrl = dipole_core
+        intgrl = sys_global%read_in%dipole_core
         if (one_body_op_integrals%op_sym == gamma_sym) then
-            do iel = 1, nel
+            do iel = 1, sys_global%nel
                 iorb = occ_list(iel)
                 intgrl = intgrl + get_one_body_int_mol_nonzero(one_body_op_integrals, iorb, iorb)
             end do
@@ -332,7 +332,7 @@ contains
         use calc, only: proc_blacs_info, distribute, distribute_off
         use determinant_enumeration, only: dets_list, ndets
         use parallel
-        use system, only: system_type, hub_k, hub_real, read_in
+        use system
 
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
@@ -351,7 +351,7 @@ contains
 
         if (nprocs == 1) then
             do idet = 1, ndets
-                select case(system_type)
+                select case(sys_global%system)
                 case(hub_k)
                     expectation_val(1) = expectation_val(1) + wfn(idet)**2*kinetic0_hub_k(dets_list(:,idet))
                     expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(dets_list(:,idet))
@@ -362,7 +362,7 @@ contains
                 end select
                 do jdet = idet+1, ndets
                     cicj = wfn(idet) * wfn(jdet)
-                    select case(system_type)
+                    select case(sys_global%system)
                     case(hub_k)
                         expectation_val(2) = expectation_val(2) + &
                                              2*cicj*double_occ_hub_k(dets_list(:,jdet), dets_list(:,idet))
@@ -377,7 +377,7 @@ contains
                 do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
                     ilocal = i - 1 + ii
                     idet =  (i-1)*nproc_rows + proc_blacs_info%procx* block_size + ii
-                    select case(system_type)
+                    select case(sys_global%system)
                     case(hub_k)
                         expectation_val(1) = expectation_val(1) + wfn(ilocal)**2*kinetic0_hub_k(dets_list(:,idet))
                         expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(dets_list(:,idet))
@@ -391,7 +391,7 @@ contains
                             jlocal = j - 1 + jj
                             jdet = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj
                             cicj = wfn(ilocal) * wfn(jlocal)
-                            select case(system_type)
+                            select case(sys_global%system)
                             case(hub_k)
                                 expectation_val(2) = expectation_val(2) + &
                                                     cicj*double_occ_hub_k(dets_list(:,idet), dets_list(:,jdet))
@@ -411,7 +411,7 @@ contains
 #endif
 
         if (parent) then
-            select case(system_type)
+            select case(sys_global%system)
             case(hub_k)
                 write (6,'(1X,a16,f12.8)') '<\Psi|T|\Psi> = ', expectation_val(1)
                 write (6,'(1X,a16,f12.8)') '<\Psi|D|\Psi> = ', expectation_val(2)

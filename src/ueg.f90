@@ -18,12 +18,12 @@ implicit none
 !    kmax is the maximum component of a wavevector in the smallest square/cube
 !    which contains all the wavevectors in the basis.
 !    N_kx is the number of k-points in each dimension
-integer, allocatable :: ueg_basis_lookup(:) ! (N_kx^ndim)
+integer, allocatable :: ueg_basis_lookup(:) ! (N_kx^sys_global%lattice%ndim)
 
 ! ueg_basis_dim = (1, N_kx, N_kx^2), so that
 !    ind = ueg_basis_dim.k + ueg_basis_origin
 ! for ueg_basis_lookup.
-integer, allocatable :: ueg_basis_dim(:) ! (ndim)
+integer, allocatable :: ueg_basis_dim(:) ! (sys_global%lattice%ndim)
 
 ! ueg_basis_origin accounts for the fact that ueg_basis_lookup is a 1-indexed array.
 ! ueg_basis_origin = k_max*(1 + N_x + N_x*N_y) + 1
@@ -74,11 +74,11 @@ contains
 
         ! Initialise UEG procedure pointers
 
-        use system, only: ndim
+        use system
         use errors, only: stop_all
 
         ! Set pointers to integral routines
-        select case(ndim)
+        select case(sys_global%lattice%ndim)
         case(2)
             coulomb_int_ueg => coulomb_int_ueg_2d
         case(3)
@@ -97,31 +97,31 @@ contains
         ! Create arrays and data for index mapping needed for UEG.
 
         use basis, only: basis_fns, nbasis, bit_lookup, basis_length
-        use system, only: box_length, ueg_ecutoff, ndim
+        use system
 
         use checking, only: check_allocate
         use utils, only: tri_ind
 
-        integer :: ierr, i, j, a, ind, N_kx, k_min(ndim), bit_pos, bit_el, k(ndim)
+        integer :: ierr, i, j, a, ind, N_kx, k_min(sys_global%lattice%ndim), bit_pos, bit_el, k(sys_global%lattice%ndim)
 
-        ueg_basis_max = ceiling(sqrt(2*ueg_ecutoff))
+        ueg_basis_max = ceiling(sqrt(2*sys_global%ueg%ecutoff))
 
         N_kx = 2*ueg_basis_max+1
 
-        allocate(ueg_basis_dim(ndim), stat=ierr)
-        call check_allocate('ueg_basis_dim', ndim, ierr)
-        forall (i=1:ndim) ueg_basis_dim(i) = N_kx**(i-1)
+        allocate(ueg_basis_dim(sys_global%lattice%ndim), stat=ierr)
+        call check_allocate('ueg_basis_dim', sys_global%lattice%ndim, ierr)
+        forall (i=1:sys_global%lattice%ndim) ueg_basis_dim(i) = N_kx**(i-1)
 
         ! Wish the indexing array to be 1-indexed.
         k_min = -ueg_basis_max ! Bottom corner of grid.
         ueg_basis_origin = -dot_product(ueg_basis_dim, k_min) + 1
 
-        allocate(ueg_basis_lookup(N_kx**ndim), stat=ierr)
-        call check_allocate('ueg_basis_lookup', N_kx**ndim, ierr)
+        allocate(ueg_basis_lookup(N_kx**sys_global%lattice%ndim), stat=ierr)
+        call check_allocate('ueg_basis_lookup', N_kx**sys_global%lattice%ndim, ierr)
 
         ! ueg_basis_lookup should be -1 for any wavevector that is in the
         ! square/cubic grid defined by ueg_basis_max but not in the actual basis
-        ! set described by ueg_ecutoff.
+        ! set described by sys_global%ueg%ecutoff.
         ueg_basis_lookup = -1
 
         ! Now fill in the values for the alpha orbitals which are in the basis.
@@ -138,7 +138,7 @@ contains
                 ind = tri_ind(j/2,i/2)
                 do a = 1, nbasis-1, 2 ! only alpha orbitals
                     k = basis_fns(i)%l + basis_fns(j)%l - basis_fns(a)%l
-                    if (real(dot_product(k,k),p)/2 - ueg_ecutoff < 1.e-8) then
+                    if (real(dot_product(k,k),p)/2 - sys_global%ueg%ecutoff < 1.e-8) then
                         ! There exists an allowed b in the basis!
                         ueg_ternary_conserve(0,ind) = ueg_ternary_conserve(0,ind) + 1
                         bit_pos = bit_lookup(1, a)
@@ -161,10 +161,10 @@ contains
         !    Set to < 0 if the spin-orbital described by k and spin is not in the
         !    basis set.
 
-        use system, only: ndim
+        use system
 
         integer :: indx
-        integer, intent(in) :: k(ndim), spin
+        integer, intent(in) :: k(sys_global%lattice%ndim), spin
 
         if (minval(k) < -ueg_basis_max .or. maxval(k) > ueg_basis_max) then
             indx = -1
@@ -258,7 +258,7 @@ contains
         !    a Hartree integral).
 
         use basis, only: basis_fns
-        use system, only: box_length
+        use system
 
         real(p) :: intgrl
         integer, intent(in) :: i, a
@@ -269,7 +269,7 @@ contains
         ! the integral hence becomes 1/(L|q|), where q = k_i - k_a.
 
         q = basis_fns(i)%l - basis_fns(a)%l
-        intgrl = 1.0_p/(box_length(1)*sqrt(real(dot_product(q,q),p)))
+        intgrl = 1.0_p/(sys_global%lattice%box_length(1)*sqrt(real(dot_product(q,q),p)))
 
     end function coulomb_int_ueg_2d
 
@@ -287,7 +287,7 @@ contains
         !    a Hartree integral).
 
         use basis, only: basis_fns
-        use system, only: box_length
+        use system
 
         real(p) :: intgrl
         integer, intent(in) :: i, a
@@ -298,7 +298,7 @@ contains
         ! the integral hence becomes 1/(\pi.L.q^2), where q = k_i - k_a.
 
         q = basis_fns(i)%l - basis_fns(a)%l
-        intgrl = 1.0_p/(pi*box_length(1)*dot_product(q,q))
+        intgrl = 1.0_p/(pi*sys_global%lattice%box_length(1)*dot_product(q,q))
 
     end function coulomb_int_ueg_3d
 

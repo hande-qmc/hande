@@ -84,11 +84,11 @@ contains
 
         use determinants, only: decode_det, basis_length
         use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
-        use system, only: nel
+        use system
 
         real(p) :: hmatel
         integer(i0), intent(in) :: f(basis_length)
-        integer :: root_det(nel)
+        integer :: root_det(sys_global%nel)
         integer :: i
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
@@ -101,7 +101,7 @@ contains
         ! which is a unit cell vector.
         if (t_self_images) then
             call decode_det(f, root_det)
-            do i = 1, nel
+            do i = 1, sys_global%nel
                 hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
             end do
         end if
@@ -165,7 +165,7 @@ contains
 
         use determinants, only: basis_length
         use excitations, only: excit, find_excitation_permutation1
-        use system, only: hubt
+        use system
 
         integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: connection
@@ -176,9 +176,9 @@ contains
 
         ! b) The matrix element connected |D> and |D_i^a> is <i|h|a> = -t.
         if (connection%perm) then
-            hmatel = hubt
+            hmatel = sys_global%hubbard%t
         else
-            hmatel = -hubt
+            hmatel = -sys_global%hubbard%t
         end if
 
     end subroutine slater_condon1_hub_real_excit

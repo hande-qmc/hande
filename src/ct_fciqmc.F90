@@ -20,7 +20,7 @@ contains
         use qmc_common
         use fciqmc_restart
         use proc_pointers
-        use system, only: nel, ndim, nsites, nalpha, nbeta, system_type, hub_k, hub_real
+        use system
         use interact
 
         use checking
@@ -52,10 +52,12 @@ contains
         ! index of spawning array which contains population
         spawned_pop = basis_length + 1
 
-        if (system_type == hub_k) then
-            max_nexcitations = nalpha*nbeta*min(nsites-nalpha,nsites-nbeta)
-        else if (system_type == hub_real) then
-            max_nexcitations = 2*ndim*nel
+        if (sys_global%system == hub_k) then
+            associate(sg=>sys_global, sl=>sys_global%lattice)
+                max_nexcitations = sg%nalpha*sg%nbeta*min(sl%nsites-sg%nalpha,sl%nsites-sg%nbeta)
+            end associate
+        else if (sys_global%system == hub_real) then
+            max_nexcitations = 2*sys_global%lattice%ndim*sys_global%nel
         end if
 
         allocate(connection_list(max_nexcitations), stat=ierr)
@@ -267,7 +269,7 @@ contains
         use excitations, only: excit
         use determinants, only: det_info
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use system, only: ndim, nel, system_type, hub_real, hub_k
+        use system
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use excit_gen_hub_k, only: choose_ij_hub_k, find_ab_hub_k
@@ -291,7 +293,7 @@ contains
         else
             ! Generate a random excitation and reject if it's forbidden (i.e.
             ! the orbitals are already occupied).
-            if (system_type == hub_k) then
+            if (sys_global%system == hub_k) then
                 ! Choose a random (i,j) pair to excite from.
                 call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
                 ! Choose a random (a,b) pair to attempt to excite to.
@@ -308,7 +310,7 @@ contains
                 else
                     K_ij = 0.0_p
                 end if
-            else if (system_type == hub_real) then
+            else if (sys_global%system == hub_real) then
                 connection%nexcit = 1
                 call slater_condon1_hub_real_excit(cdet%f, connection, K_ij)
             end if

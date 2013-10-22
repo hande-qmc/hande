@@ -54,13 +54,13 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use system, only: hubu, nsites
+        use system
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
 
-        hmatel = hmatel / (hubu * nsites)
+        hmatel = hmatel / (sys_global%hubbard%u * sys_global%lattice%nsites)
 
     end subroutine gen_excit_double_occ_matel_hub_k
 

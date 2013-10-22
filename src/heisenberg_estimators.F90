@@ -43,7 +43,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
-        use system, only: J_coupling
+        use system
         use hubbard_real, only: connected_orbs
 
         integer(i0), intent(in) :: f0(:)
@@ -69,7 +69,7 @@ contains
             bit_element = bit_lookup(2,excitation%from_orb(1))
 
             if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
-                 hmatel = -2.0_p*J_coupling
+                 hmatel = -2.0_p*sys_global%heisenberg%J
                  proj_energy_sum = proj_energy_sum + hmatel*pop
              end if
         end if
@@ -108,7 +108,7 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use system, only: J_coupling, nbonds
+        use system
 
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
@@ -118,7 +118,7 @@ contains
         real(p), intent(out) :: hmatel
 
         excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
-        hmatel = J_coupling*nbonds+2*cdet%data(1)
+        hmatel = sys_global%heisenberg%J*sys_global%heisenberg%nbonds+2*cdet%data(1)
         proj_energy_sum = proj_energy_sum + hmatel*pop
 
         D0_pop_sum = D0_pop_sum + pop
@@ -161,7 +161,7 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: sampling_size, neel_singlet_amp
-        use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
+        use system
 
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
@@ -194,11 +194,11 @@ contains
         ! second sublattice:
         ! The total number of 0-1 bonds, n(0-1) can be found from the diagonal
         ! element of the current basis function:
-        ! hmatel = -J_coupling*(nbonds - 2*n(0-1))
+        ! hmatel = -sys_global%heisenberg%J*(sys_global%heisenberg%nbonds - 2*n(0-1))
         ! This means we can avoid calculating n(0-1) again, which is expensive.
         ! We know the number of 0-1 bonds where the 1 (the spin up) is on sublattice 1,
         ! so can then deduce the number where the 1 is on sublattice 2.
-        lattice_2_up = ((nbonds) + nint(cdet%data(1)/J_coupling))/2 - lattice_1_up
+        lattice_2_up = ((sys_global%heisenberg%nbonds) + nint(cdet%data(1)/sys_global%heisenberg%J))/2 - lattice_1_up
 
         ! There are three contributions to add to the projected energy from
         ! the current basis function. Consider the Neel singlet state:
@@ -215,19 +215,19 @@ contains
         ! and then flip both of these spins. The resulting basis function, |D_i> will be
         ! connected. The amplitude a_i only depends on the number of spins up on
         ! sublattice 1. This will depend on whether, for the 0-1 bond flipped,
-        ! the 1 (up spin) was one sublattice 1 or 2. If the up spin was on lattice
+        ! the 1 (up spin) was one sublattice 1 or 2. If the up spin was on sys_global%lattice%lattice
         ! 1, there will be one less up spin on sublattice 1 after the flip. If it
         ! was on sublattice 2, there will be one extra spin. So we can have either of
         ! the two amplitudes, neel_singlet_amp(n-1) or neel_singlet_amp(n+1)
         ! respectively. We just need to know how many of each type of 0-1 bonds there
         ! are. But we have these already - they are stored as lattice_1_up and lattice_2_up.
-        ! Finally note that the matrix element is -2*J_coupling, and we can put this together...
+        ! Finally note that the matrix element is -2*sys_global%heisenberg%J, and we can put this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        hmatel = hmatel - (2 * J_coupling * lattice_1_up * neel_singlet_amp(n-1))
+        hmatel = hmatel - (2 * sys_global%heisenberg%J * lattice_1_up * neel_singlet_amp(n-1))
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        hmatel = hmatel - (2 * J_coupling * lattice_2_up * neel_singlet_amp(n+1))
+        hmatel = hmatel - (2 * sys_global%heisenberg%J * lattice_2_up * neel_singlet_amp(n+1))
 
         hmatel = hmatel * importance_sampling_factor
         proj_energy_sum = proj_energy_sum + hmatel * pop
@@ -261,7 +261,7 @@ contains
         use bit_utils, only: count_set_bits
         use determinants, only: lattice_mask
         use hubbard_real, only: connected_orbs
-        use system, only: nsites
+        use system
 
         integer(i0), intent(in) :: f(basis_length)
         integer(i0) :: f_mask(basis_length), f_not(basis_length), g(basis_length)

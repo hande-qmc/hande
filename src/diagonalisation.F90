@@ -18,7 +18,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use errors
-        use system, only: nel, nsym, sym_max, sym0, uhf
+        use system
         use determinant_enumeration, only: enumerate_determinants, ndets, sym_space_size
         use determinants, only: tot_ndets, set_spin_polarisation, spin_orb_list
         use fciqmc_data, only: occ_list0
@@ -68,14 +68,14 @@ contains
         ! For a given number of electrons, n, the total spin can range from -n
         ! to +n in steps of 2.
         if (ms_in == huge(1)) then
-            if (uhf) then
-                ms_min = -min(nel, nbasis-nel)
-                ms_max = min(nel, nbasis-nel)
+            if (sys_global%read_in%uhf) then
+                ms_min = -min(sys_global%nel, nbasis-sys_global%nel)
+                ms_max = min(sys_global%nel, nbasis-sys_global%nel)
             else
                 ! The -ms blocks are degenerate with the +ms blocks so only need to
                 ! solve for ms >= 0.
-                ms_min = mod(nel,2)
-                ms_max = min(nel, nbasis-nel)
+                ms_min = mod(sys_global%nel,2)
+                ms_max = min(sys_global%nel, nbasis-sys_global%nel)
             end if
         else
             ! ms was set in input
@@ -84,8 +84,8 @@ contains
         end if
 
         if (sym_in == huge(1)) then
-            isym_min = sym0
-            isym_max = sym_max
+            isym_min = sys_global%sym0
+            isym_max = sys_global%sym_max
         else
             ! sym was set in input
             isym_min = sym_in
@@ -119,15 +119,15 @@ contains
                 end if
                 ! Create reference det based upon symmetry labels.
                 call set_spin_polarisation(ms_min)
-                allocate(occ_list0(nel), stat=ierr)
-                call check_allocate('occ_list0', nel, ierr)
+                allocate(occ_list0(sys_global%nel), stat=ierr)
+                call check_allocate('occ_list0', sys_global%nel, ierr)
                 call set_reference_det(occ_list0, .true., isym_min)
             end if
         end if
 
         if (doing_calc(lanczos_diag)) then
-            allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
-            call check_allocate('lanczos_solns',nlanczos_eigv*(nel/2+1)*nbasis/2,ierr)
+            allocate(lanczos_solns(nlanczos_eigv*(sys_global%nel/2+1)*nbasis/2), stat=ierr)
+            call check_allocate('lanczos_solns',nlanczos_eigv*(sys_global%nel/2+1)*nbasis/2,ierr)
         end if
         if (doing_calc(exact_diag)) then
             allocate(exact_solns(tot_ndets), stat=ierr)
@@ -155,16 +155,18 @@ contains
 
                 if (sym_space_size(isym)==0) then
                     if (parent) then
-                        fmt1 = '(1X,a25,'//int_fmt(isym,1)//',1X,a17,'//int_fmt(nsym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
-                        write (6,fmt1) 'No determinants with spin',ms,'in symmetry block',isym,'out of',nsym
-                        write (6,'(/,1X,15("-"),/)')
+                        associate(nsym=>sys_global%nsym)
+                            fmt1 = '(1X,a25,'//int_fmt(isym,1)//',1X,a17,'//int_fmt(nsym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
+                            write (6,fmt1) 'No determinants with spin',ms,'in symmetry block',isym,'out of',nsym
+                            write (6,'(/,1X,15("-"),/)')
+                        end associate
                     end if
                     cycle
                 end if
 
                 if (parent) then
-                    fmt1 = '(1X,a28,'//int_fmt(isym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
-                    write (6,fmt1) 'Diagonalising symmetry block',isym,'out of',nsym
+                    fmt1 = '(1X,a28,'//int_fmt(isym,1)//',1X,a6,'//int_fmt(sys_global%nsym,1)//')'
+                    write (6,fmt1) 'Diagonalising symmetry block',isym,'out of',sys_global%nsym
                 end if
 
                 ! Find all determinants with this spin.
@@ -270,7 +272,7 @@ contains
                 ind = eigv_rank(i)
                 state = state + 1
                 write (6,'(1X,i6,2X,i6,1X,f18.12)') state, lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
-                if (.not.uhf .and. lanczos_solns(ind)%ms /= 0) then
+                if (.not.sys_global%read_in%uhf .and. lanczos_solns(ind)%ms /= 0) then
                     ! Also a degenerate -ms solution.
                     state = state + 1
                     write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
@@ -292,7 +294,7 @@ contains
                 ind = eigv_rank(i)
                 state = state + 1
                 write (6,'(1X,i6,2X,i6,1X,f18.12)') state, exact_solns(ind)%ms, exact_solns(ind)%energy
-                if (.not.uhf .and. exact_solns(ind)%ms /= 0) then
+                if (.not.sys_global%read_in%uhf .and. exact_solns(ind)%ms /= 0) then
                     ! Also a degenerate -ms solution.
                     state = state + 1
                     write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -exact_solns(ind)%ms, exact_solns(ind)%energy
