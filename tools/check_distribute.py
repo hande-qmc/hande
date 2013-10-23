@@ -81,8 +81,6 @@ def test_input(input_file):
     for line in f:
         bcast_match = BCAST.search(line)
         if bcast_match and not COMMENT.match(line):
-            print(line,)
-            print(bcast_match.groups())
             distributed.update([bcast_match.group(0).upper()])
 
     # special case: output filenames are not needed apart from on the head node, reading the restart file is only read on the head node.
