@@ -376,7 +376,7 @@ contains
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
             end if
         else if (abs(intgrl) > depsilon) then
-            write (error, '("<i|o|j> should be non-zero by symmetry: &
+            write (error, '("<i|o|j> should be zero by symmetry: &
                             &<",i3,"|o|",i3,"> =",f16.10)') i, j, intgrl
             call stop_all('store_one_body_int_mol', error)
         end if
@@ -614,7 +614,7 @@ contains
             indx = two_body_int_indx(i, j, a, b)
             store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
         else if (abs(intgrl) > depsilon) then
-            write (error, '("<ij|o|ab> should be non-zero by symmetry: &
+            write (error, '("<ij|o|ab> should be zero by symmetry: &
                             &<",2i3,"|",2i3,"> =",f16.10)') i, j, a, b, intgrl
             call stop_all('store_two_body_int_mol', error)
         end if
