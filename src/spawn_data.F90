@@ -469,8 +469,8 @@ contains
         integer(i0), allocatable :: initiator_pop(:)
         integer, parameter :: thread_id = 0
 
-        allocate(events(spawn%bit_str_len+1:spawn%element_len))
-        allocate(initiator_pop(spawn%bit_str_len+1:spawn%element_len))
+        allocate(events(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes))
+        allocate(initiator_pop(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes))
 
         ! islot is the current element in the spawned list.
         islot = 1
@@ -535,7 +535,7 @@ contains
                     ! Accumulate the population on this determinant, how much of the population came
                     ! from an initiator and the sign of the event.
                     if (spawn%sdata(spawn%flag_indx,k) == 0) then
-                            initiator_pop = initiator_pop + spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,k)
+                        initiator_pop = initiator_pop + spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,k)
                     else
                         do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
                             if (spawn%sdata(ipart,k) < 0) then
