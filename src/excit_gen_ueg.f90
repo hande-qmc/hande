@@ -16,7 +16,7 @@ contains
 
 !--- Excitation generators ---
 
-    subroutine gen_excit_ueg(rng, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_ueg(rng, sys, cdet, pgen, connection, hmatel)
 
         ! WARNING: this is not complete.  If you wish to use it, please
         ! implementation the calculation of the generation probabilities.
@@ -25,6 +25,7 @@ contains
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -42,25 +43,26 @@ contains
         use excitations, only: excit
         use excitations, only: find_excitation_permutation2
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
-        use system
+        use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
         logical :: allowed_excitation
 
-        integer :: ij_k(sys_global%lattice%ndim), ij_spin, max_na
+        integer :: ij_k(sys%lattice%ndim), ij_spin, max_na
         real(dp) :: r
 
         ! 1. Must have a double excitation.
         connection%nexcit = 2
 
         ! 2. Select orbitals to excite from and into.
-        call choose_ij_k(rng, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin)
-        call choose_ab_ueg(rng, cdet%f, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin, max_na, &
+        call choose_ij_k(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin)
+        call choose_ab_ueg(rng, sys, cdet%f, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin, max_na, &
                            connection%to_orb(1), connection%to_orb(2), allowed_excitation)
         
         if (allowed_excitation) then
@@ -85,7 +87,7 @@ contains
 
     end subroutine gen_excit_ueg
 
-    subroutine gen_excit_ueg_no_renorm(rng, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_ueg_no_renorm(rng, sys, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -98,6 +100,7 @@ contains
         ! O(N) cost of renormalising the generation probabilities.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -115,18 +118,19 @@ contains
         use excitations, only: excit
         use excitations, only: find_excitation_permutation2
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
-        use system
+        use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use bit_utils
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
 
         logical :: allowed_excitation
-        integer :: ij_k(sys_global%lattice%ndim), ij_spin, max_na
+        integer :: ij_k(sys%lattice%ndim), ij_spin, max_na
         real(dp) :: r
 
         if (sum(count_set_bits(cdet%f)) /= 4) then
@@ -139,15 +143,15 @@ contains
         connection%nexcit = 2
 
         ! 2. Select orbitals to excite from and into.
-        call choose_ij_k(rng, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin)
-        call find_ab_ueg(rng, cdet%f, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin, max_na, &
+        call choose_ij_k(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin)
+        call find_ab_ueg(rng, sys, cdet%f, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin, max_na, &
                            connection%to_orb(1), connection%to_orb(2), allowed_excitation)
         
         if (allowed_excitation) then
 
             ! 3. Return generation probability and conecting matrix element.
 
-            pgen = calc_pgen_ueg_no_renorm(max_na)
+            pgen = calc_pgen_ueg_no_renorm(sys, max_na)
 
             call find_excitation_permutation2(cdet%f, connection)
             hmatel = slater_condon2_ueg_excit(connection%from_orb(1), connection%from_orb(2), &
@@ -167,39 +171,40 @@ contains
 
 !--- Select random orbitals involved in a valid double excitation ---
 
-    subroutine choose_ab_ueg(rng, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
+    subroutine choose_ab_ueg(rng, sys, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
 
         use basis, only: basis_fns, basis_length, nbasis, basis_lookup
         use const, only: i0_end
         use bit_utils, only: count_set_bits
-        use system
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use ueg_system, only: ueg_ternary_conserve, ueg_basis_index
         use utils, only: tri_ind
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: i, j, ij_k(sys_global%lattice%ndim), ij_spin
+        integer, intent(in) :: i, j, ij_k(sys%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
         integer, parameter :: max_attempts = 200
         integer :: iattempt
 
-        call find_ab_ueg(rng, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
+        call find_ab_ueg(rng, sys, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
         if (max_na == 0) then
             ! No available excitations.
         else if (.not.allowed_excitation) then
             ! Attempt max_attempts times to find an excitation.
             do iattempt = 2, max_attempts
-                call find_ab_ueg(rng, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
+                call find_ab_ueg(rng, sys, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
                 if (allowed_excitation) exit
             end do
         end if
 
     end subroutine choose_ab_ueg
 
-    subroutine choose_ij_k(rng, occ_list, i, j, ij_k, ij_spin)
+    subroutine choose_ij_k(rng, sys, occ_list, i, j, ij_k, ij_spin)
 
         ! Randomly choose a pair of spin-orbitals for 1-band systems with
         ! Bloch orbitals.
@@ -209,6 +214,7 @@ contains
         !
         ! In:
         !    occ_list: integer list of occupied spin-orbitals in a determinant.
+        !        (min length: sys%nel.)
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -218,12 +224,13 @@ contains
         !        alpha.
 
         use basis, only: basis_fns
-        use system
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        integer, intent(in) :: occ_list(sys_global%nel)
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(:)
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(out) :: i,j, ij_k(sys_global%lattice%ndim), ij_spin
+        integer, intent(out) :: i,j, ij_k(sys%lattice%ndim), ij_spin
         integer :: ind
         real(dp) :: r
 
@@ -257,7 +264,7 @@ contains
         ! represents a substantial saving. :-)
 
         r = get_rand_close_open(rng)
-        ind = int(r*sys_global%nel*(sys_global%nel-1)/2) + 1
+        ind = int(r*sys%nel*(sys%nel-1)/2) + 1
 
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
@@ -281,23 +288,24 @@ contains
 
 !--- Select random orbitals in double excitations ---
 
-    subroutine find_ab_ueg(rng, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
+    subroutine find_ab_ueg(rng, sys, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
 
         use basis, only: basis_fns, basis_length, nbasis, basis_lookup, bit_lookup
         use const, only: i0_end
         use bit_utils, only: count_set_bits
-        use system
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use ueg_system, only: ueg_ternary_conserve, ueg_basis_index
         use utils, only: tri_ind
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: i, j, ij_k(sys_global%lattice%ndim), ij_spin
+        integer, intent(in) :: i, j, ij_k(sys%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
-        integer :: fac, shift, ij_ind, ibp, ibe, n, ind, kb(sys_global%lattice%ndim)
+        integer :: fac, shift, ij_ind, ibp, ibe, n, ind, kb(sys%lattice%ndim)
         integer(i0) :: poss_a(basis_length)
 
         ! Let's just check there are possible a,b first!
@@ -378,11 +386,12 @@ contains
 
 !--- Excitation generation probabilities ---
 
-    pure function calc_pgen_ueg_no_renorm(max_na) result(pgen)
+    pure function calc_pgen_ueg_no_renorm(sys, max_na) result(pgen)
 
-        use system
+        use system, only: sys_t
 
         real(p) :: pgen
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: max_na
 
         ! We explicitly reject excitations i,j->a,b where b is already
@@ -394,12 +403,12 @@ contains
         ! probability is asymmetric:
         ! pgen = p(i,j) p(a|i,j) p(b|i,j,a)
 
-        ! p(i,j) = 1/binom(sys_global%nel,2) = 2/(sys_global%nel*(sys_global%nel-1))
+        ! p(i,j) = 1/binom(nel,2) = 2/(nel*(nel-1))
         ! p(a|i,j) is the number of unoccupied a orbitals which i,j can excite
         ! into.
         ! UEG is a one-band system, so p(b|i,j,a) = 1.
 
-        pgen = 2.0_p / ( sys_global%nel*(sys_global%nel-1) * max_na )
+        pgen = 2.0_p / ( sys%nel*(sys%nel-1) * max_na )
 
     end function calc_pgen_ueg_no_renorm
 

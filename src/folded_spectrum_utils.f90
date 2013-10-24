@@ -105,7 +105,7 @@ contains
 
     end subroutine create_cdet_excit
 
-    subroutine fs_spawner(rng, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine fs_spawner(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a daughter or granddaughter determinant according to
         ! the folded spectrum algorithm for a given system
@@ -113,6 +113,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -131,11 +132,13 @@ contains
         use excitations, only: create_excited_det, get_excitation
         use basis, only: basis_length
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t, sc0_ptr
         use spawning, only: nspawn_from_prob, set_child_sign
 
         implicit none
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -174,7 +177,7 @@ contains
             ! Successful spawning on ki
 
                 ! Generate the second random excitation
-                call gen_excit_ptr%full(rng, cdet, Pgen_jk, connection_jk, hmatel_jk)
+                call gen_excit_ptr%full(rng, sys, cdet, Pgen_jk, connection_jk, hmatel_jk)
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
@@ -214,7 +217,7 @@ contains
             !    i    k,j
 
             ! Generate first random excitation and probability of spawning there from cdet
-            call gen_excit_ptr%full(rng, cdet, Pgen_ki, connection_ki, hmatel_ki)
+            call gen_excit_ptr%full(rng, sys, cdet, Pgen_ki, connection_ki, hmatel_ki)
 
             ! Calculate P_gen for the first excitation
             pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
@@ -277,7 +280,7 @@ contains
             ! The latter is taken care of automatically.
 
             ! Generate first random excitation and probability of spawning there from cdet
-            call gen_excit_ptr%full(rng, cdet, Pgen_ki, connection_ki, hmatel_ki)
+            call gen_excit_ptr%full(rng, sys, cdet, Pgen_ki, connection_ki, hmatel_ki)
 
             ! Calculate P_gen for the first excitation
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
@@ -292,7 +295,7 @@ contains
                 ! (i)  generate the first excited determinant
                 call create_cdet_excit(cdet, connection_ki, cdet_excit)
                 ! (ii) excite again
-                call gen_excit_ptr%full(rng, cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
+                call gen_excit_ptr%full(rng, sys, cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk

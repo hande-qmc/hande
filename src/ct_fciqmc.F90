@@ -295,13 +295,13 @@ contains
             ! the orbitals are already occupied).
             if (sys_global%system == hub_k) then
                 ! Choose a random (i,j) pair to excite from.
-                call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
+                call choose_ij_hub_k(rng, sys_global, cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
                 ! Choose a random (a,b) pair to attempt to excite to.
                 ! The symmetry of (a,b) is set by the symmetry of (i,j) and
                 ! hence b is uniquely determined by the choice of i,j and a.
                 ! We choose a to be an unoccupied alpha spin-orbital and then
                 ! reject the spawning attempt if b is in fact occupied.
-                call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+                call find_ab_hub_k(rng, sys_global, cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
                 if (allowed_excitation) then
                     connection%nexcit = 2
                     connection%from_orb(1:2) = (/ i,j /)

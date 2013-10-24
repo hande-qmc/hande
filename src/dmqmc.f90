@@ -151,7 +151,9 @@ contains
                                 ! Spawn from the first end.
                                 spawning_end = 1
                                 ! Attempt to spawn.
-                                call spawner_ptr(rng, cdet1, walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                call spawner_ptr(rng, sys_global, cdet1, &
+                                                 walker_population(ireplica,idet), &
+                                                 gen_excit_ptr, nspawned, connection)
                                 ! Spawn if attempt was successful.
                                 if (nspawned /= 0) then
                                     call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
@@ -160,7 +162,9 @@ contains
 
                                 ! Now attempt to spawn from the second end.
                                 spawning_end = 2
-                                call spawner_ptr(rng, cdet2, walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                call spawner_ptr(rng, sys_global, cdet2, &
+                                                 walker_population(ireplica,idet), &
+                                                 gen_excit_ptr, nspawned, connection)
                                 if (nspawned /= 0) then
                                     call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
                                                                         ireplica, qmc_spawn)

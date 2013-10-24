@@ -639,6 +639,7 @@ contains
         use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
+        use system, only: sys_global
 
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
@@ -659,7 +660,7 @@ contains
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the sys_global%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys_global, cdet, pgen, connection, hmatel)
 
         ! 2, Apply additional factors.
         hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign

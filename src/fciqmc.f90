@@ -31,6 +31,7 @@ contains
         use folded_spectrum_utils, only: cdet_excit
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
+        use system, only: sys_global
 
         integer :: idet, ireport, icycle, iparticle
         integer(lint) :: nattempts, nparticles_old(sampling_size)
@@ -91,7 +92,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys_global, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
