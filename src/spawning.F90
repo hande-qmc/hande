@@ -127,7 +127,7 @@ contains
         call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(cdet, connection, hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
@@ -265,7 +265,7 @@ contains
         call gen_excit_ptr%init(rng, sys, cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(cdet, connection, tilde_hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, tilde_hmatel)
 
         ! 3. Attempt spawning.
         nspawn = nspawn_from_prob(rng, tau*abs(tilde_hmatel)/pgen)

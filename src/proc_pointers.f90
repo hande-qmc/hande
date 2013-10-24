@@ -112,8 +112,10 @@ abstract interface
         integer, intent(in) :: nspawned, spawning_end, particle_indx
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
-    subroutine i_trial_fn(cdet, connection, hmatel)
+    subroutine i_trial_fn(sys, cdet, connection, hmatel)
+        use system, only: sys_t
         import :: det_info, excit, p
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
