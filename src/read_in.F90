@@ -556,7 +556,7 @@ contains
         end if
 
 #ifdef PARALLEL
-        call MPI_BCast(ECore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(sys_global%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
         call broadcast_one_body_int(one_e_h_integrals, root)
         call broadcast_two_body_int(coulomb_integrals, root)
