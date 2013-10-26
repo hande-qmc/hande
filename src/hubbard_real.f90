@@ -7,7 +7,7 @@ use const
 implicit none
 
 ! The kinetic term is constant in the real space formulation:
-! only the connectivity of the sys_global%lattice%lattice matters.
+! only the connectivity of the lattice matters.
 ! tmat(:,i) is a bit string.  The j-th bit corresponding to a basis function
 ! (as given by bit_lookup) is set if i and j are connected.
 ! We need to distinguish between connections within the cell and those due to
@@ -33,15 +33,15 @@ integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
 ! connected_sites(0,i) contains the number of unique sites connected to i.
 ! connected_sites(1:,i) contains the list of sites connected to site i (ie is the
 ! decoded/non-bit list form of connected_orbs).
-! If connected_orbs(j,i) is 0 then it means there are fewer than 2sys_global%lattice%ndim unique sites
+! If connected_orbs(j,i) is 0 then it means there are fewer than 2*ndim unique sites
 ! that are connected to i that are not a periodic image of i (or connected to
 ! i both directly and via periodic boundary conditions).
-! For the triangular sys_global%lattice%lattice, there are 3sys_global%lattice%ndim bonds, and sys_global%lattice%ndim must equal 2,
+! For the triangular lattice, there are 3*ndim bonds, and ndim must equal 2,
 ! so each site is connected to 6.
-integer, allocatable :: connected_sites(:,:) ! (0:2sys_global%lattice%ndim, nbasis) or (0:3dim, nbasis)
+integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
 
 ! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
-! are next nearest neighbors. For example, on a square sys_global%lattice%lattice in the
+! are next nearest neighbors. For example, on a square lattice in the
 ! Heisenberg model, if we consider a spin, we can get to a next-nearest
 ! neighbor spin by going one right then one up, or to the same spin by going
 ! one up and then one right - there are two different paths, so the correpsonding
@@ -56,11 +56,11 @@ integer(i0), allocatable :: next_nearest_orbs(:,:) ! (nbasis, nbasis)
 ! This is the case if one dimension (or more) has only one site per crystalisystem
 ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
 ! This is the only way that the integral < i | T | i >, where i is a basis
-! function centred on a sys_global%lattice%lattice site, can be non-zero.
+! function centred on a lattice site, can be non-zero.
 logical :: t_self_images
 
 ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
-! False if we are modelling an infinite sys_global%lattice%lattice
+! False if we are modelling an infinite lattice
 ! The code is set up to model inifinite lattices by default, however in order
 ! to model only a finite "cluster" of sites, all one need do is set the
 ! connection matrix elements corresponding to connections accross cell
@@ -70,30 +70,33 @@ logical :: finite_cluster = .false. ! default to infinite crystals
 
 contains
 
-    subroutine init_real_space()
+    subroutine init_real_space(sys)
 
         ! Initialise real space Hubbard model and Heisenberg model: find and store
         ! the matrix elements < i | T | j > where i and j are real space basis functions.
 
+        ! In/Out:
+        !    sys: system to be studied.  On output the symmetry components are set.
+
         use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
         use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
         use determinants, only: decode_det
-        use system
         use system
         use bit_utils
         use checking, only: check_allocate
         use errors, only: stop_all
         use parallel, only: parent
 
+        type(sys_t), intent(inout) :: sys
         integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
-        integer :: r(sys_global%lattice%ndim)
+        integer :: r(sys%lattice%ndim)
         logical :: diag_connection
 
-        sys_global%nsym = 1
-        sys_global%sym0 = 1
-        sys_global%sym_max = 1
+        sys%nsym = 1
+        sys%sym0 = 1
+        sys%sym_max = 1
 
-        associate(sl=>sys_global%lattice)
+        associate(sl=>sys%lattice)
 
             t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
 
@@ -124,7 +127,7 @@ contains
             ! spin must be the same for orbitals to be connected in this case).
             ! For Heisenberg and Chung--Landau models, we just want to loop over
             ! every component of basis_fns, so we set isystem = 1
-            select case(sys_global%system)
+            select case(sys%system)
             case(heisenberg, chung_landau)
                 isystem = 1
             case default
@@ -357,7 +360,7 @@ contains
     subroutine map_vec_to_cell(r)
 
         ! This subroutine assumes that the site specified by r is outside the cell
-        ! by no more than one sys_global%lattice%lattice vector, along each sys_global%lattice%lattice vector.
+        ! by no more than one lattice vector, along each lattice vector.
 
         use basis, only: basis_fns, nbasis
         use system

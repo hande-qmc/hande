@@ -6,9 +6,10 @@ implicit none
 
 contains
 
-    elemental function get_hmatel_dets(d1, d2) result(hmatel)
+    pure function get_hmatel_dets(sys, d1, d2) result(hmatel)
 
         ! In:
+        !    sys: system being studied.
         !    d1, d2: integer labels of two determinants, as stored in the
         !            dets array.
         ! Returns:
@@ -21,17 +22,20 @@ contains
         ! determinants stored in dets_list.
 
         use determinant_enumeration, only: dets_list
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: d1, d2
 
-        hmatel = get_hmatel(dets_list(:,d1), dets_list(:,d2))
+        hmatel = get_hmatel(sys, dets_list(:,d1), dets_list(:,d2))
 
     end function get_hmatel_dets
 
-    pure function get_hmatel(f1, f2) result(hmatel)
+    pure function get_hmatel(sys, f1, f2) result(hmatel)
 
         ! In:
+        !    sys: system being studied.
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
@@ -56,9 +60,10 @@ contains
         use system
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
 
-        select case(sys_global%system)
+        select case(sys%system)
         case(chung_landau)
             hmatel = get_hmatel_chung_landau(f1, f2)
         case(hub_k)

@@ -133,8 +133,8 @@ contains
             ! order.
             ! To obtain such ordering requires (for each orbital that is
             ! involved in the excitation) a total of
-            ! sys_global%nel - iel - nexcit + iexcit
-            ! where sys_global%nel is the number of electrons, iel is the position of the
+            ! nel - iel - nexcit + iexcit
+            ! where nel is the number of electrons, iel is the position of the
             ! orbital within the list of occupied states in the determinant,
             ! nexcit is the total number of excitations and iexcit is the number
             ! of the "current" orbital involved in excitations.

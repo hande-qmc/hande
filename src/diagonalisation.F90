@@ -190,19 +190,19 @@ contains
                     ! The trivial case seems to trip up TRLan and scalapack in
                     ! parallel.
                     if (doing_calc(lanczos_diag)) then
-                        lanczos_solns(nlanczos+1)%energy = get_hmatel_dets(1,1)
+                        lanczos_solns(nlanczos+1)%energy = get_hmatel_dets(sys,1,1)
                         lanczos_solns(nlanczos+1)%ms = ms
                         nlanczos = nlanczos + 1
                     end if
                     if (doing_calc(exact_diag)) then
-                        exact_solns(nexact+1)%energy = get_hmatel_dets(1,1)
+                        exact_solns(nexact+1)%energy = get_hmatel_dets(sys,1,1)
                         exact_solns(nexact+1)%ms = ms
                         nexact = nexact + 1
                     end if
 
                 else
 
-                    if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) call generate_hamil(distribute_off)
+                    if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) call generate_hamil(sys, distribute_off)
 
                     ! Lanczos.
                     if (doing_calc(lanczos_diag)) then
@@ -210,8 +210,8 @@ contains
                         call check_allocate('lanczos_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
-                        call lanczos_diagonalisation(nfound, lanczos_eigv)
+                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(sys, distribute_cols)
+                        call lanczos_diagonalisation(sys, nfound, lanczos_eigv)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = lanczos_eigv(:nfound)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms
                         nlanczos = nlanczos + nfound
@@ -226,7 +226,7 @@ contains
                         call check_allocate('exact_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1) call generate_hamil(distribute_blocks)
+                        if (nprocs > 1) call generate_hamil(sys, distribute_blocks)
                         call exact_diagonalisation(exact_eigv)
                         exact_solns(nexact+1:nexact+ndets)%energy = exact_eigv
                         exact_solns(nexact+1:nexact+ndets)%ms = ms
@@ -332,13 +332,14 @@ contains
 
     end subroutine diagonalise
 
-    subroutine generate_hamil(distribute_mode)
+    subroutine generate_hamil(sys, distribute_mode)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
         ! only determinants of a specified spin.
         ! Only generate the upper diagonal for use with (sca)lapack and Lanczos routines.
         ! In:
+        !    sys: system to be studied.
         !    distribute_mode (optional): flag for determining how the
         !        Hamiltonian matrix is distributed among processors.  It is
         !        irrelevant if only one processor is used: the distribution schemes
@@ -356,7 +357,9 @@ contains
         use hamiltonian, only: get_hmatel_dets
         use hubbard_real
         use determinant_enumeration, only: ndets
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer, intent(in), optional :: distribute_mode
         integer :: ierr, iunit, n1, n2, ind_offset
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
@@ -457,7 +460,7 @@ contains
                         ! from a single test.  Please feel free to improve...
                         !$omp do private(j, hmatel) schedule(dynamic, 200)
                         do j = i, ndets
-                            hmatel = get_hmatel_dets(i+ind_offset, j+ind_offset)
+                            hmatel = get_hmatel_dets(sys,i+ind_offset, j+ind_offset)
                             if (abs(hmatel) > depsilon) then
                                 !$omp critical
                                 nnz = nnz + 1
@@ -491,7 +494,7 @@ contains
                 do i = 1, ndets
                     !$omp do private(j) schedule(dynamic, 200)
                     do j = i, ndets
-                        hamil(i,j) = get_hmatel_dets(i+ind_offset,j+ind_offset)
+                        hamil(i,j) = get_hmatel_dets(sys,i+ind_offset,j+ind_offset)
                     end do
                     !$omp end do
                 end do
@@ -520,7 +523,7 @@ contains
                         do jj = 1, min(block_size, proc_blacs_info%ncols - j + 1)
                             jlocal = j - 1 + jj
                             jglobal = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj + ind_offset
-                            hamil(ilocal, jlocal) = get_hmatel_dets(iglobal, jglobal)
+                            hamil(ilocal, jlocal) = get_hmatel_dets(sys,iglobal, jglobal)
                         end do
                     end do
                 end do

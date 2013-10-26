@@ -125,7 +125,7 @@ contains
                     ! already looping over the determinants.
                     call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p),  &
                                                 D0_population_cycle, proj_energy, connection, hmatel)
-                    call update_proj_hfs_ptr(cdet%f, walker_population(1,idet),     &
+                    call update_proj_hfs_ptr(sys, cdet%f, walker_population(1,idet),&
                                              walker_population(2,idet), cdet%data,  &
                                              connection, hmatel, D0_hf_population,  &
                                              proj_hf_O_hpsip, proj_hf_H_hfpsip)

@@ -35,6 +35,8 @@ type one_body
     type(alloc_rp1d), allocatable :: integrals(:,:)
     ! bit string representations of irreducible representations
     integer :: op_sym
+    ! From a UHF calculation?
+    logical :: uhf
 end type
 
 ! Store for two-body integrals, <ij|o|ab>, where i,j,a,b are spin basis functions and
@@ -52,6 +54,8 @@ type two_body
     type(alloc_rp1d), allocatable :: integrals(:)
     ! bit string representations of irreducible representations
     integer :: op_sym
+    ! From a UHF calculation?
+    logical :: uhf
 end type
 
 ! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
@@ -68,34 +72,37 @@ contains
 
 !--- Memory allocation and deallocation ---
 
-    subroutine init_one_body_int_store(op_sym, store)
+    subroutine init_one_body_int_store(uhf, op_sym, store)
 
         ! Allocate memory required for the integrals involving a one-body
         ! operator.
 
         ! In:
+        !    uhf: whether integral store is from a UHF calculation or RHF
+        !       calculation.
         !    op_sym: bit string representations of irreducible representations
-        !    of a point group.  See point_group_symmetry.
+        !       of a point group.  See point_group_symmetry.
         ! Out:
         !    store: one-body integral store with components allocated to hold
-        !    interals.  Note that the integral store is *not* zeroed.
+        !       interals.  Note that the integral store is *not* zeroed.
 
         use basis, only: nbasis
         use point_group_symmetry, only: nbasis_sym_spin
-        use system
 
         use checking, only: check_allocate
 
+        logical, intent(in) :: uhf
         integer, intent(in) :: op_sym
         type(one_body), intent(out) :: store
 
         integer :: ierr, i, s, ispin, nspin
 
         store%op_sym = op_sym
+        store%uhf = uhf
 
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
-        if (sys_global%read_in%uhf) then
+        if (uhf) then
             nspin = 2
         else
             nspin = 1
@@ -158,12 +165,14 @@ contains
 
     end subroutine end_one_body_int_store
 
-    subroutine init_two_body_int_store(op_sym, store)
+    subroutine init_two_body_int_store(uhf, op_sym, store)
 
         ! Allocate memory required for the integrals involving a two-body
         ! operator.
 
         ! In:
+        !    uhf: whether integral store is from a UHF calculation or RHF
+        !       calculation.
         !    op_sym: bit string representations of irreducible representations
         !    of a point group.  See point_group_symmetry.
         ! Out:
@@ -176,6 +185,7 @@ contains
 
         use checking, only: check_allocate
 
+        logical, intent(in) :: uhf
         integer, intent(in) :: op_sym
         type(two_body), intent(out) :: store
 
@@ -183,10 +193,11 @@ contains
         integer :: nspin, npairs, nintgrls
 
         store%op_sym = op_sym
+        store%uhf = uhf
 
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
-        if (sys_global%read_in%uhf) then
+        if (uhf) then
             nspin = 4
         else
             nspin = 1
@@ -242,17 +253,23 @@ contains
 
 !--- Allocate standard molecular integral stores ---
 
-    subroutine init_molecular_integrals()
+    subroutine init_molecular_integrals(uhf)
 
         ! Initialise integral stores for molecular integrals (subsequently read
         ! in from an FCIDUMP file).
 
         ! *Must* be called after point group symmetry is initialised.
 
+        ! In:
+        !    uhf: whether integral store is from a UHF calculation or RHF
+        !       calculation.
+
         use point_group_symmetry, only: gamma_sym
 
-        call init_one_body_int_store(gamma_sym, one_e_h_integrals)
-        call init_two_body_int_store(gamma_sym, coulomb_integrals)
+        logical, intent(in) :: uhf
+
+        call init_one_body_int_store(uhf, gamma_sym, one_e_h_integrals)
+        call init_two_body_int_store(uhf, gamma_sym, coulomb_integrals)
 
     end subroutine init_molecular_integrals
 
@@ -354,7 +371,7 @@ contains
         if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
 
             ! Integral is (should be!) non-zero by symmetry.
-            if (sys_global%read_in%uhf) then
+            if (store%uhf) then
                 if (basis_fns(i)%ms > 0) then
                     spin = 1
                 else
@@ -445,7 +462,7 @@ contains
 
         integer :: ii, jj, spin
 
-        if (sys_global%read_in%uhf) then
+        if (store%uhf) then
             if (basis_fns(i)%ms > 0) then
                 spin = 1
             else
@@ -467,14 +484,16 @@ contains
 
 ! 2. < i j | o_2 | a b >
 
-    elemental function two_body_int_indx(i, j, a, b) result(indx)
+    elemental function two_body_int_indx(uhf, i, j, a, b) result(indx)
 
         ! In:
+        !    uhf: whether integral store is from a UHF calculation (and hence is
+        !        stored using spin orbital labels rather than spatial orbitals).
         !    i,j,a,b: (indices of) spin-orbitals.
         ! Returns:
         !    indx: spin-channel and index of a two_body integral store which contains the
-        !    <ij|o_2|ab> integral, assuming the integral is non-zero by spin and
-        !    spatial symmetry.
+        !        <ij|o_2|ab> integral, assuming the integral is non-zero by spin
+        !        and spatial symmetry.
 
         ! NOTE:
         !     This is not optimised for RHF systems, where the spin-channel is
@@ -486,6 +505,7 @@ contains
         use utils, only: tri_ind
 
         type(int_indx) :: indx
+        logical, intent(in) :: uhf
         integer, intent(in) :: i, j, a, b
 
         integer :: ia, jb, ii, jj, aa, bb
@@ -535,7 +555,7 @@ contains
         end if
 
         ! Find spin channel.
-        if (sys_global%read_in%uhf) then
+        if (uhf) then
 
             ! Due to overall index depending on spatial indices, we must check
             ! the spin indices to determine whether there's another flip in
@@ -611,7 +631,7 @@ contains
         if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
                                        .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             ! Store integral
-            indx = two_body_int_indx(i, j, a, b)
+            indx = two_body_int_indx(store%uhf, i, j, a, b)
             store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
         else if (abs(intgrl) > depsilon) then
             write (error, '("<ij|o|ab> should be non-zero by symmetry: &
@@ -684,7 +704,7 @@ contains
 
         type(int_indx) :: indx
 
-        indx = two_body_int_indx(i, j, a, b)
+        indx = two_body_int_indx(store%uhf, i, j, a, b)
         intgrl = store%integrals(indx%spin_channel)%v(indx%indx)
 
     end function get_two_body_int_mol_nonzero

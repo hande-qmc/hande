@@ -80,7 +80,7 @@ contains
         case(hub_k)
             call init_momentum_symmetry(sys)
         case(hub_real, heisenberg, chung_landau)
-            call init_real_space()
+            call init_real_space(sys)
         case(read_in)
             call print_pg_symmetry_info()
         end select

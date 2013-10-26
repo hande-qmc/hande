@@ -304,8 +304,8 @@ contains
         real(p), allocatable :: trans_vecs(:,:)
         integer :: scale_fac
 
-        ! The maximum number of translational symmetry vectors is sys_global%lattice%nsites (for
-        ! the case of a non-tilted sys_global%lattice%lattice), so allocate this much storage.
+        ! The maximum number of translational symmetry vectors is nsites (for
+        ! the case of a non-tilted lattice), so allocate this much storage.
         allocate(trans_vecs(sys_global%lattice%ndim,sys_global%lattice%nsites),stat=ierr)
         call check_allocate('trans_vecs',sys_global%lattice%ndim*sys_global%lattice%nsites,ierr)
 
@@ -379,7 +379,7 @@ contains
                     r = basis_fns(rdms(i)%subsystem_A(k))%l
                     r = r + nint(trans_vecs(:,j))
                     ! If r is outside the cell considered in this simulation, shift it by the
-                    ! appropriate sys_global%lattice%lattice vector so that it is in this cell.
+                    ! appropriate lattice vector so that it is in this cell.
                     call map_vec_to_cell(r)
                     ! Now need to find which basis function this site corresponds to. Simply loop
                     ! over all basis functions and check...
@@ -424,8 +424,8 @@ contains
 
         ! Currently this creates psips with Ms = ms_in only.
 
-        ! If we have number of sites = sys_global%lattice%nsites and total spin value = ms_in,
-        ! then the number of up spins is equal to up_spins = (ms_in + sys_global%lattice%nsites)/2.
+        ! If we have number of sites = nsites and total spin value = ms_in,
+        ! then the number of up spins is equal to up_spins = (ms_in + nsites)/2.
 
         ! Start from state with all spins down, then choose the above number of
         ! spins to flip up with equal probability.

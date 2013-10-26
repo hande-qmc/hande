@@ -27,11 +27,13 @@ abstract interface
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
     end subroutine i_update_proj_energy
-    subroutine i_update_proj_hfs(f, fpop, f_hfpop, fdata, excitation, hmatel,&
+    subroutine i_update_proj_hfs(sys, f, fpop, f_hfpop, fdata, excitation, hmatel,&
                                      D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
         use basis, only: basis_length
+        use system, only: sys_t
         import :: i0, p, excit
         implicit none
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel

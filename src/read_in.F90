@@ -319,7 +319,7 @@ contains
         if (t_store) call init_pg_symmetry()
 
         ! Initialise integral stores.
-        if (t_store) call init_molecular_integrals()
+        if (t_store) call init_molecular_integrals(sys%read_in%uhf)
 
         if (parent) then
             ! Now, read in FCIDUMP again to get the integrals.
@@ -762,7 +762,7 @@ contains
 
         ! Allocate integral store on *all* processors.
         if (allocated(store%integrals)) call end_one_body_int_store(store)
-        call init_one_body_int_store(op_sym, store)
+        call init_one_body_int_store(uhf, op_sym, store)
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
