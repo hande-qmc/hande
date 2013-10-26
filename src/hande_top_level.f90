@@ -106,7 +106,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        if (doing_calc(exact_diag+lanczos_diag)) call diagonalise()
+        if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys)
 
         if (doing_calc(mc_hilbert_space)) then
             call estimate_hilbert_space(sys)

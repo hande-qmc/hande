@@ -239,9 +239,9 @@ contains
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
             if (sym_in < sys%sym_max) then
-                call set_reference_det(occ_list0, .false., sym_in)
+                call set_reference_det(sys, occ_list0, .false., sym_in)
             else
-                call set_reference_det(occ_list0, .false.)
+                call set_reference_det(sys, occ_list0, .false.)
             end if
 
             call encode_det(occ_list0, f0)
