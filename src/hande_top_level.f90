@@ -109,12 +109,12 @@ contains
         if (doing_calc(exact_diag+lanczos_diag)) call diagonalise()
 
         if (doing_calc(mc_hilbert_space)) then
-            call estimate_hilbert_space()
+            call estimate_hilbert_space(sys)
         end if
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call init_simple_fciqmc()
+                call init_simple_fciqmc(sys)
                 call do_simple_fciqmc()
             else 
                 call do_qmc()
