@@ -6,7 +6,6 @@ use const
 use parallel, only: parent, block_size
 use errors
 use hilbert_space
-use system
 use calc
 use lanczos
 use determinants
@@ -23,15 +22,22 @@ implicit none
 
 contains
 
-    subroutine read_input()
+    subroutine read_input(sys)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
+
+        ! In/Out:
+        !   sys: system being studied.  Parameters specified in the input file
+        !        are set directly in the system object, components which are not
+        !        mentioned in the input file are not altered.
 
 ! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
         use f90_unix_env
 #endif
+
+        use system, only: sys_t
 
         use input
         use utils, only: get_free_unit
@@ -42,6 +48,8 @@ contains
 #else
         integer :: iargc ! External function.
 #endif
+
+        type (sys_t), intent(inout) :: sys
 
         character(255) :: cInp
         character(100) :: w
@@ -75,81 +83,81 @@ contains
 
             ! System type
             case('HUBBARD_REAL')
-                sys_global%system = hub_real
+                sys%system = hub_real
             case('HUBBARD_K','HUBBARD_MOMENTUM')
-                sys_global%system = hub_k
+                sys%system = hub_k
             case('HEISENBERG')
-                sys_global%system = heisenberg
+                sys%system = heisenberg
             case('READ')
-                sys_global%system = read_in
-                if (item /= nitems) call reada(sys_global%read_in%fcidump)
+                sys%system = read_in
+                if (item /= nitems) call reada(sys%read_in%fcidump)
             case('UEG')
-                sys_global%system = ueg
+                sys%system = ueg
             case('CHUNG-LANDAU')
-                sys_global%system = chung_landau
+                sys%system = chung_landau
 
                 ! System information.
             case('LATTICE')
                 ! Lattice block
                 call read_line(eof)
-                if (eof) call stop_all('read_input','Unexpected end of file reading sys_global%lattice%lattice vectors.')
+                if (eof) call stop_all('read_input','Unexpected end of file reading lattice vectors.')
                 ! nitems gives the number of items in the line, and thus the number
                 ! of dimensions...
-                sys_global%lattice%ndim = nitems
-                allocate(sys_global%lattice%lattice(sys_global%lattice%ndim,sys_global%lattice%ndim), stat=ierr)
-                call check_allocate('sys_global%lattice%lattice',sys_global%lattice%ndim*sys_global%lattice%ndim,ierr)
-                do ivec = 1, sys_global%lattice%ndim
-                    if (nitems /= sys_global%lattice%ndim) &
-                        call stop_all('read_input', 'Do not understand sys_global%lattice%lattice vector.')
-                    do i = 1, sys_global%lattice%ndim
-                        call readi(sys_global%lattice%lattice(i, ivec))
+                sys%lattice%ndim = nitems
+                allocate(sys%lattice%lattice(sys%lattice%ndim,sys%lattice%ndim), stat=ierr)
+                call check_allocate('sys%lattice%lattice',sys%lattice%ndim*sys%lattice%ndim,ierr)
+                do ivec = 1, sys%lattice%ndim
+                    if (nitems /= sys%lattice%ndim) &
+                        call stop_all('read_input', 'Do not understand lattice vector.')
+                    do i = 1, sys%lattice%ndim
+                        call readi(sys%lattice%lattice(i, ivec))
                     end do
-                    if (ivec /= sys_global%lattice%ndim) then
+                    if (ivec /= sys%lattice%ndim) then
                         call read_line(eof)
-                        if (eof) call stop_all('read_input', 'Unexpected end of file reading sys_global%lattice%lattice vectors.')
+                        if (eof) call stop_all('read_input', 'Unexpected end of file reading lattice vectors.')
                     end if
                 end do
             case('2D')
-                if (sys_global%lattice%ndim > 0) then
+                if (sys%lattice%ndim > 0) then
                     call warning('read_input','Dimension already set; ignoring keyword '//w)
                 else
-                    sys_global%lattice%ndim = 2
+                    sys%lattice%ndim = 2
                 end if
             case('3D')
-                if (sys_global%lattice%ndim > 0) then
+                if (sys%lattice%ndim > 0) then
                     call warning('read_input','Dimension already set; ignoring keyword '//w)
                 else
-                    sys_global%lattice%ndim = 3
+                    sys%lattice%ndim = 3
                 end if
             case('NEL', 'ELECTRONS')
-                if (sys_global%system == heisenberg) &
+                if (sys%system == heisenberg) &
                      call stop_all('read_input', 'Cannot set electron number for Heisenberg. &
                      &Please enter a Ms value instead.')
-                call readi(sys_global%nel)
+                call readi(sys%nel)
 
             ! Hubbard-specific system info
             case('T')
-                call readf(sys_global%hubbard%t)
+                call readf(sys%hubbard%t)
             case('U')
-                call readf(sys_global%hubbard%u)
+                call readf(sys%hubbard%u)
 
             ! Heisenberg-specific system info.
             case('J')
-                call readf(sys_global%heisenberg%J)
+                call readf(sys%heisenberg%J)
             case('MAGNETIC_FIELD')
-                call readf(sys_global%heisenberg%magnetic_field)
+                call readf(sys%heisenberg%magnetic_field)
             case('STAGGERED_MAGNETIC_FIELD')
-                call readf(sys_global%heisenberg%staggered_magnetic_field)
+                call readf(sys%heisenberg%staggered_magnetic_field)
 
             ! UEG-specific system info.
             case('RS','DENSITY')
-                call readf(sys_global%ueg%r_s)
+                call readf(sys%ueg%r_s)
             case('ECUTOFF')
-                call readf(sys_global%ueg%ecutoff)
+                call readf(sys%ueg%ecutoff)
 
             ! Additional information for systems read in (i.e. molecular)
             case('DIPOLE_INTEGRALS')
-                call reada(sys_global%read_in%dipole_int_file)
+                call reada(sys%read_in%dipole_int_file)
 
             ! Select symmetry of wavefunction.
             case('MS')
@@ -161,7 +169,7 @@ contains
                 separate_strings = .true.
             case('CAS')
                 do i = 1,2
-                    call readi(sys_global%CAS(i))
+                    call readi(sys%CAS(i))
                 end do
             case('RAS')
                 do i = 1,2
@@ -169,10 +177,10 @@ contains
                 end do
                 call readi(ras3_max)
             case('TWIST')
-                allocate(sys_global%lattice%ktwist(nitems-item), stat=ierr)
-                call check_allocate('sys_global%lattice%ktwist',nitems-item,ierr)
+                allocate(sys%lattice%ktwist(nitems-item), stat=ierr)
+                call check_allocate('sys%lattice%ktwist',nitems-item,ierr)
                 do i = 1, nitems-item
-                    call readf(sys_global%lattice%ktwist(i))
+                    call readf(sys%lattice%ktwist(i))
                 end do
 
             ! Calculation type.
@@ -457,7 +465,7 @@ contains
                 ! in real-space
                 finite_cluster = .true.
             case('TRIANGULAR_LATTICE')
-                sys_global%lattice%triangular_lattice = .true.
+                sys%lattice%triangular_lattice = .true.
 
             case('NEEL_SINGLET_ESTIMATOR')
                 trial_function = neel_singlet
@@ -477,18 +485,24 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input()
+    subroutine check_input(sys)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
 
+        ! In:
+        !    sys: system object, as set in read_input.
+
         use const
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
 
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
 
-        if (sys_global%system /= heisenberg) then
-            if (sys_global%nel <= 0) call stop_all(this,'Number of electrons must be positive.')
+        if (sys%system /= heisenberg) then
+            if (sys%nel <= 0) call stop_all(this,'Number of electrons must be positive.')
                 if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
                                                      & state for this system. Other trial functions are not avaliable.')
                 if (guiding_function /= no_guiding) &
@@ -496,9 +510,9 @@ contains
                                          & currently.')
         end if
 
-        if (sys_global%system == read_in) then
+        if (sys%system == read_in) then
 
-            if (analyse_ground_state .and. sys_global%read_in%dipole_int_file == '') then
+            if (analyse_ground_state .and. sys%read_in%dipole_int_file == '') then
                 call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
                              &integrals file.  Turning analyse_ground_state option off...')
                 analyse_ground_state = .false.
@@ -506,41 +520,41 @@ contains
 
         else
 
-            if (sys_global%system /= ueg) then
-                if (.not.(allocated(sys_global%lattice%lattice))) call stop_all(this, 'Lattice vectors not provided')
-                do ivec = 1, sys_global%lattice%ndim
-                    do jvec = ivec+1, sys_global%lattice%ndim
-                        if (dot_product(sys_global%lattice%lattice(:,ivec), sys_global%lattice%lattice(:,jvec)) /= 0) then
+            if (sys%system /= ueg) then
+                if (.not.(allocated(sys%lattice%lattice))) call stop_all(this, 'Lattice vectors not provided')
+                do ivec = 1, sys%lattice%ndim
+                    do jvec = ivec+1, sys%lattice%ndim
+                        if (dot_product(sys%lattice%lattice(:,ivec), sys%lattice%lattice(:,jvec)) /= 0) then
                             call stop_all(this, 'Lattice vectors are not orthogonal.')
                         end if
                     end do
                 end do
             end if
 
-            if (sys_global%system == heisenberg) then
-                if (ms_in > sys_global%lattice%nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
-                if ((-ms_in) > sys_global%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
-                if (mod(abs(ms_in),2) /=  mod(sys_global%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
-                                                                              & possible for this sys_global%lattice%lattice.')
-                if (sys_global%heisenberg%staggered_magnetic_field /= 0.0_p .and. (.not.sys_global%lattice%bipartite_lattice)) &
+            if (sys%system == heisenberg) then
+                if (ms_in > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+                if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
+                if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
+                                                                              & possible for this lattice.')
+                if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. (.not.sys%lattice%bipartite_lattice)) &
                     call stop_all(this, 'Cannot set a staggered field&
-                                        & for this sys_global%lattice%lattice because it is frustrated.')
-                if (sys_global%heisenberg%staggered_magnetic_field /= 0.0_p .and. sys_global%heisenberg%magnetic_field /= 0.0_p) &
+                                        & for this lattice because it is frustrated.')
+                if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. sys%heisenberg%magnetic_field /= 0.0_p) &
                     call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
                 if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
                                                          &guiding function is only avaliable when using the Neel singlet state &
                                                          &as an energy estimator.')
-                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys_global%lattice%bipartite_lattice)) then
+                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) then
                     call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
                                           & This is not a bipartite lattice. Changing options so that it will not be calculated.')
                     dmqmc_calc_type = dmqmc_calc_type - dmqmc_staggered_magnetisation
                 end if
-            else if (sys_global%system == hub_k .or. sys_global%system == hub_real) then
-                if (sys_global%nel > 2*sys_global%lattice%nsites) call stop_all(this, 'More than two electrons per site.')
+            else if (sys%system == hub_k .or. sys%system == hub_real) then
+                if (sys%nel > 2*sys%lattice%nsites) call stop_all(this, 'More than two electrons per site.')
             end if
 
-            if (sys_global%lattice%ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
-            if (sys_global%system == ueg .and. sys_global%lattice%ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
+            if (sys%lattice%ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
+            if (sys%system == ueg .and. sys%lattice%ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
 
         end if
 
@@ -573,14 +587,14 @@ contains
             if (tau <= 0) call stop_all(this,'Tau not positive.')
             if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(occ_list0)) then
-                if (size(occ_list0) /= sys_global%nel) then
-                    if (sys_global%system /= heisenberg) then
+                if (size(occ_list0) /= sys%nel) then
+                    if (sys%system /= heisenberg) then
                         call stop_all(this,'Number of electrons specified is different from &
                         &number of electrons used in the reference determinant.')
                     end if
                 end if
             end if
-            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator sys_global%CAS space must be non-negative.')
+            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator sys%CAS space must be non-negative.')
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
 
@@ -592,7 +606,7 @@ contains
         ! If the FINITE_CLUSTER keyword was detected then make sure that
         ! we are doing a calculation in real-space. If we're not then
         ! unset finite cluster,tell the user and carry on
-        if(sys_global%momentum_space) then
+        if(sys%momentum_space) then
             if (finite_cluster .and. parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
             if (separate_strings .and. parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
@@ -602,11 +616,11 @@ contains
         end if
 
         if (separate_strings) then
-            if (sys_global%system.ne.hub_real) then
+            if (sys%system.ne.hub_real) then
                 separate_strings = .false.
                 if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
-            else if (sys_global%lattice%ndim /= 1) then
+            else if (sys%lattice%ndim /= 1) then
                 separate_strings = .false.
                 if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for 1D&
                                       & calculations in real-space: ignoring keyword')
@@ -617,7 +631,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input()
+    subroutine distribute_input(sys)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -625,56 +639,70 @@ contains
         ! Completely empty (courtesy of C pre-processing) when compiled in
         ! serial.
 
-#ifdef PARALLEL
+        ! In/Out:
+        !    sys: object describing the system.  All parameters which can be set
+        !       in the input file are distributed to other processors.
+
+#ifndef PARALLEL
+
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
+
+#else
 
         use mpi
         use parallel
         use checking, only: check_allocate
 
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
+
         integer :: i, ierr, occ_list_size
         logical :: option_set
 
-        call mpi_bcast(sys_global%system, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%read_in%fcidump, len(sys_global%read_in%fcidump), mpi_character, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%system, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%read_in%fcidump, len(sys%read_in%fcidump), mpi_character, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(sys_global%lattice%ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        if (parent) option_set = allocated(sys_global%lattice%lattice)
+        call mpi_bcast(sys%lattice%ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        if (parent) option_set = allocated(sys%lattice%lattice)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             if (.not.parent) then
-                allocate(sys_global%lattice%lattice(sys_global%lattice%ndim,sys_global%lattice%ndim), stat=ierr)
-                call check_allocate('sys_global%lattice%lattice',sys_global%lattice%ndim*sys_global%lattice%ndim,ierr)
+                allocate(sys%lattice%lattice(sys%lattice%ndim,sys%lattice%ndim), stat=ierr)
+                call check_allocate('sys%lattice%lattice',sys%lattice%ndim*sys%lattice%ndim,ierr)
             end if
-            call mpi_bcast(sys_global%lattice%lattice, sys_global%lattice%ndim*sys_global%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(sys%lattice%lattice, sys%lattice%ndim*sys%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(guiding_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%hubbard%t, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%hubbard%u, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%heisenberg%J, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%heisenberg%magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%heisenberg%staggered_magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        if (parent) option_set = allocated(sys_global%lattice%ktwist)
+        call mpi_bcast(sys%nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%hubbard%t, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%hubbard%u, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%heisenberg%J, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%heisenberg%magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%heisenberg%staggered_magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        if (parent) option_set = allocated(sys%lattice%ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             if (.not.parent) then
-                allocate(sys_global%lattice%ktwist(sys_global%lattice%ndim), stat=ierr)
-                call check_allocate('sys_global%lattice%ktwist',sys_global%lattice%ndim,ierr)
+                allocate(sys%lattice%ktwist(sys%lattice%ndim), stat=ierr)
+                call check_allocate('sys%lattice%ktwist',sys%lattice%ndim,ierr)
             end if
-            call mpi_bcast(sys_global%lattice%ktwist, sys_global%lattice%ndim, mpi_preal, 0, mpi_comm_world, ierr)
+            call mpi_bcast(sys%lattice%ktwist, sys%lattice%ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
-        call mpi_bcast(sys_global%ueg%r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%ueg%ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%read_in%dipole_int_file, len(sys_global%read_in%dipole_int_file), mpi_character, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%ueg%r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%ueg%ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%read_in%dipole_int_file, len(sys%read_in%dipole_int_file), mpi_character, 0, mpi_comm_world, ierr)
         call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sys_global%cas, 2, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%cas, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras3_max, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
@@ -769,7 +797,7 @@ contains
         if (parent) option_set = allocated(occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            ! Have not yet set sys_global%nel in the Heisenberg model.
+            ! Have not yet set sys%nel in the Heisenberg model.
             occ_list_size = size(occ_list0)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
@@ -781,7 +809,7 @@ contains
         if (parent) option_set = allocated(hs_occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            ! Have not yet set sys_global%nel in the Heisenberg model.
+            ! Have not yet set sys%nel in the Heisenberg model.
             occ_list_size = size(hs_occ_list0)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
