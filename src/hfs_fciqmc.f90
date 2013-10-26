@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine do_hfs_fciqmc()
+    subroutine do_hfs_fciqmc(sys)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -30,6 +30,9 @@ contains
         ! (especially if procedures are written to be sufficiently modular that
         ! implementing a new system can reuse many existing routines) as it
         ! leads to much faster code.
+
+        ! In:
+        !    sys: system being studied.
 
         use parallel
 
@@ -48,7 +51,9 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use proc_pointers
-        use system, only: sys_global
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(lint) :: nattempts, nparticles_old(sampling_size)
@@ -139,13 +144,13 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, sys_global, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
-                        call spawner_hfs_ptr(rng, sys_global, cdet, walker_population(1,idet), &
+                        call spawner_hfs_ptr(rng, sys, cdet, walker_population(1,idet), &
                                              gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
@@ -158,7 +163,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, sys_global, cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
 

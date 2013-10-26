@@ -23,15 +23,18 @@ integer(i0), allocatable :: cas_mask(:), cas_core(:)
 
 contains
 
-    subroutine init_ifciqmc()
+    subroutine init_ifciqmc(nel)
 
         ! Allocate and initialise data required for i-FCIQMC.
+
+        ! In:
+        !    nel: number of electrons in system.
 
         use basis, only: basis_length, bit_lookup, nbasis
         use checking, only: check_allocate
         use fciqmc_data, only: initiator_CAS
-        use system
 
+        integer, intent(in) :: nel
         integer :: ierr, i, bit_pos, bit_element
 
         allocate(cas_mask(basis_length), stat=ierr)
@@ -44,14 +47,14 @@ contains
         cas_mask = 0
         cas_core = 0
         ! Set core obitals.
-        do i = 1, sys_global%nel - initiator_CAS(1)
+        do i = 1, nel - initiator_CAS(1)
             bit_pos = bit_lookup(1,i)
             bit_element = bit_lookup(2,i)
             cas_mask = ibset(cas_mask(bit_element), bit_pos)
             cas_core = ibset(cas_core(bit_element), bit_pos)
         end do
         ! Set inactive obitals.
-        do i = sys_global%nel - initiator_CAS(1) + 2*initiator_CAS(2) + 1, nbasis
+        do i = nel - initiator_CAS(1) + 2*initiator_CAS(2) + 1, nbasis
             bit_pos = bit_lookup(1,i)
             bit_element = bit_lookup(2,i)
             cas_mask = ibset(cas_mask(bit_element), bit_pos)

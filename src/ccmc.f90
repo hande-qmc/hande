@@ -173,13 +173,16 @@ integer :: D0_normalisation
 
 contains
 
-    subroutine do_ccmc()
+    subroutine do_ccmc(sys)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
 
         ! See notes about the implementation of this using function pointers
         ! in fciqmc_main.
+
+        ! In:
+        !    sys: system being studied.
 
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -199,7 +202,9 @@ contains
         use fciqmc_restart, only: dump_restart
         use proc_pointers
         use search, only: binary_search
-        use system
+        use system, only: sys_t
+        
+        type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
@@ -225,7 +230,7 @@ contains
             ! FCI), for reasons best known to the user---perhaps testing?
             ! Anyway, need to set truncation level as it's used in the
             ! select_cluster routine.
-            truncation_level = sys_global%nel
+            truncation_level = sys%nel
         end if
 
         if (truncation_level+2 > 12) then
@@ -297,7 +302,7 @@ contains
                 ! truncation level + 2 but we must handle the case where we are
                 ! growing the initial population from a single/small number of
                 ! excitors.
-                max_cluster_size = min(min(sys_global%nel, truncation_level+2), tot_walkers-1)
+                max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
 
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
@@ -329,7 +334,7 @@ contains
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
+                        call spawner_ccmc(rng(it), sys, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
 
                         if (nspawned /= 0) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
@@ -594,7 +599,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine spawner_ccmc(rng, cdet, cluster, gen_excit_ptr, nspawn, connection)
+    subroutine spawner_ccmc(rng, sys, cdet, cluster, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -614,6 +619,7 @@ contains
         ! and have additional probabilities to take into account.
 
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.  In
@@ -639,8 +645,9 @@ contains
         use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
-        use system, only: sys_global
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
@@ -658,9 +665,9 @@ contains
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
-        ! generators of the sys_global%lattice%lattice models.  It is trivial to implement and (at
+        ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, sys_global, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
         ! 2, Apply additional factors.
         hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign

@@ -10,11 +10,16 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc()
+    subroutine do_dmqmc(sys)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
         ! times, to accumulate statistics for each value for beta.
+
+        ! In/Out:
+        !    sys: system being studied.  NOTE: if modified inside a procedure,
+        !         it should be returned in its original (ie unmodified state) at the
+        !         end of the procedure.
 
         use parallel
         use annihilation, only: direct_annihilation
@@ -36,6 +41,8 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: int_fmt
         use errors, only: stop_all
+
+        type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
@@ -95,7 +102,7 @@ contains
             ! on these orbitals they will have the correct spin and symmetry.
             ! Initial particle distribution.
             do ireplica = 1, sampling_size
-                select case(sys_global%system)
+                select case(sys%system)
                 case(heisenberg)
                     call random_distribution_heisenberg(rng, ireplica)
                 case default
@@ -151,8 +158,7 @@ contains
                                 ! Spawn from the first end.
                                 spawning_end = 1
                                 ! Attempt to spawn.
-                                call spawner_ptr(rng, sys_global, cdet1, &
-                                                 walker_population(ireplica,idet), &
+                                call spawner_ptr(rng, sys, cdet1, walker_population(ireplica,idet), &
                                                  gen_excit_ptr, nspawned, connection)
                                 ! Spawn if attempt was successful.
                                 if (nspawned /= 0) then
@@ -162,8 +168,7 @@ contains
 
                                 ! Now attempt to spawn from the second end.
                                 spawning_end = 2
-                                call spawner_ptr(rng, sys_global, cdet2, &
-                                                 walker_population(ireplica,idet), &
+                                call spawner_ptr(rng, sys, cdet2, walker_population(ireplica,idet), &
                                                  gen_excit_ptr, nspawned, connection)
                                 if (nspawned /= 0) then
                                     call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &

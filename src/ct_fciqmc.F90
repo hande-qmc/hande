@@ -10,7 +10,13 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(matel)
+    subroutine do_ct_fciqmc(sys, matel)
+
+        ! In:
+        !    sys: system being studied
+        !    matel: off-diagonal Hamiltonian matrix element (ignoring sign due
+        !       to permutations).  Either U (Bloch orbitals) or
+        !       t (atomic/real-space orbitals).
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
@@ -20,7 +26,7 @@ contains
         use qmc_common
         use fciqmc_restart
         use proc_pointers
-        use system
+        use system, only: sys_t, hub_real, hub_k
         use interact
 
         use checking
@@ -28,6 +34,7 @@ contains
         use parallel
         use utils, only: rng_init_info
 
+        type(sys_t), intent(in) :: sys
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer :: nspawned, ndeath, ireport, idet
@@ -52,12 +59,12 @@ contains
         ! index of spawning array which contains population
         spawned_pop = basis_length + 1
 
-        if (sys_global%system == hub_k) then
-            associate(sg=>sys_global, sl=>sys_global%lattice)
-                max_nexcitations = sg%nalpha*sg%nbeta*min(sl%nsites-sg%nalpha,sl%nsites-sg%nbeta)
+        if (sys%system == hub_k) then
+            associate(sl=>sys%lattice)
+                max_nexcitations = sys%nalpha*sys%nbeta*min(sl%nsites-sys%nalpha,sl%nsites-sys%nbeta)
             end associate
-        else if (sys_global%system == hub_real) then
-            max_nexcitations = 2*sys_global%lattice%ndim*sys_global%nel
+        else if (sys%system == hub_real) then
+            max_nexcitations = 2*sys%lattice%ndim*sys%nel
         end if
 
         allocate(connection_list(max_nexcitations), stat=ierr)
@@ -115,7 +122,7 @@ contains
 
                         if ( time > t_barrier ) exit
 
-                        call ct_spawn(rng, cdet, walker_data(1,idet), walker_population(1,idet), &
+                        call ct_spawn(rng, sys, cdet, walker_data(1,idet), walker_population(1,idet), &
                                       R, nspawned, connection)
 
                         if (nspawned /= 0) then
@@ -181,7 +188,7 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(rng, cdet, K_ii, int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))), &
+                            call ct_spawn(rng, sys, cdet, K_ii, int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))), &
                                           R, nspawned, connection)
 
                             if (nspawned /= 0) then
@@ -249,11 +256,12 @@ contains
     end subroutine do_ct_fciqmc
 
 
-    subroutine ct_spawn(rng, cdet, K_ii, parent_sgn, R, nspawned, connection)
+    subroutine ct_spawn(rng, sys, cdet, K_ii, parent_sgn, R, nspawned, connection)
 
         ! Randomly select a (valid) excitation
 
         ! In:
+        !    sys: system being studied.
         !    cdet: info on current determinant, |D>, that we will spawn from.
         !    K_ii: the diagonal matrix element for the determinant |D>,
         !        < D | H - E_HF - S | D >.
@@ -269,11 +277,12 @@ contains
         use excitations, only: excit
         use determinants, only: det_info
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use system
+        use system, only: sys_t, hub_real, hub_k
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use excit_gen_hub_k, only: choose_ij_hub_k, find_ab_hub_k
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: K_ii, R
         integer, intent(in) :: parent_sgn
@@ -293,15 +302,15 @@ contains
         else
             ! Generate a random excitation and reject if it's forbidden (i.e.
             ! the orbitals are already occupied).
-            if (sys_global%system == hub_k) then
+            if (sys%system == hub_k) then
                 ! Choose a random (i,j) pair to excite from.
-                call choose_ij_hub_k(rng, sys_global, cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
+                call choose_ij_hub_k(rng, sys, cdet%occ_list_alpha, cdet%occ_list_beta, i ,j, ij_sym)
                 ! Choose a random (a,b) pair to attempt to excite to.
                 ! The symmetry of (a,b) is set by the symmetry of (i,j) and
                 ! hence b is uniquely determined by the choice of i,j and a.
                 ! We choose a to be an unoccupied alpha spin-orbital and then
                 ! reject the spawning attempt if b is in fact occupied.
-                call find_ab_hub_k(rng, sys_global, cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+                call find_ab_hub_k(rng, sys, cdet%f, cdet%unocc_list_alpha, ij_sym, a, b, allowed_excitation)
                 if (allowed_excitation) then
                     connection%nexcit = 2
                     connection%from_orb(1:2) = (/ i,j /)
@@ -310,7 +319,7 @@ contains
                 else
                     K_ij = 0.0_p
                 end if
-            else if (sys_global%system == hub_real) then
+            else if (sys%system == hub_real) then
                 connection%nexcit = 1
                 call slater_condon1_hub_real_excit(cdet%f, connection, K_ij)
             end if

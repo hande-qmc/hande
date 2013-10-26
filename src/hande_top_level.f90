@@ -117,7 +117,7 @@ contains
                 call init_simple_fciqmc(sys)
                 call do_simple_fciqmc()
             else 
-                call do_qmc()
+                call do_qmc(sys)
             end if
         end if
 
