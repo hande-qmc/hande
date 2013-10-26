@@ -62,7 +62,7 @@ contains
 
         ! Initialise basis functions.
         if (sys%system == read_in) then
-            call read_in_integrals(cas_info=sys%cas)
+            call read_in_integrals(sys, cas_info=sys%cas)
         else
             call init_model_basis_fns()
         end if
