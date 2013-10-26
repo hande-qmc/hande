@@ -104,7 +104,7 @@ contains
                 if (parent) then
                     write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
                     if (sys%momentum_space) then
-                        call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+                        call write_basis_fn(sys, basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
                     else
                         write (6,'(1X,i2)') ref_sym
                     end if

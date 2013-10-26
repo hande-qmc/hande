@@ -64,7 +64,7 @@ contains
         if (sys%system == read_in) then
             call read_in_integrals(sys, cas_info=sys%cas)
         else
-            call init_model_basis_fns()
+            call init_model_basis_fns(sys)
         end if
 
         call init_determinants()
@@ -75,10 +75,10 @@ contains
         ! System specific.
         select case(sys%system)
         case(ueg)
-            call init_momentum_symmetry()
+            call init_momentum_symmetry(sys)
             call init_ueg_proc_pointers()
         case(hub_k)
-            call init_momentum_symmetry()
+            call init_momentum_symmetry(sys)
         case(hub_real, heisenberg, chung_landau)
             call init_real_space()
         case(read_in)

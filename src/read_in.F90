@@ -279,7 +279,7 @@ contains
         ! Set up basis functions, including those which are subsequently frozen.
         allocate(all_basis_fns(nbasis), stat=ierr)
         call check_allocate('all_basis_fns', nbasis, ierr)
-        call init_basis_fns_read_in(norb, sys%read_in%uhf, orbsym, sp_eigv, sp_eigv_rank(1:), all_basis_fns)
+        call init_basis_fns_read_in(norb, sys, orbsym, sp_eigv, sp_eigv_rank(1:), all_basis_fns)
 
         ! From sys%CAS work out the start of the active basis functions, the number
         ! of active basis functions and the number of active electrons.
@@ -302,7 +302,7 @@ contains
         ! Set up basis functions used in calculation.
         allocate(basis_fns(nbasis), stat=ierr)
         call check_allocate('basis_fns', nbasis, ierr)
-        call init_basis_fns_read_in(norb, sys%read_in%uhf, orbsym, sp_eigv, &
+        call init_basis_fns_read_in(norb, sys, orbsym, sp_eigv, &
                                     sp_eigv_rank(1+active_basis_offset/rhf_fac:), basis_fns)
 
         deallocate(sp_eigv, stat=ierr)
@@ -569,9 +569,9 @@ contains
         if (size(basis_fns) /= size(all_basis_fns) .and. parent) then
             ! We froze some orbitals...
             ! Print out entire original basis.
-            call write_basis_fn_header()
+            call write_basis_fn_header(sys)
             do i = 1, size(all_basis_fns)
-                call write_basis_fn(all_basis_fns(i), ind=i, new_line=.true.)
+                call write_basis_fn(sys, all_basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'(/,1X,"Freezing...",/,1X,"Using complete active space: (",' &
                       //int_fmt(cas(1),0)//',",",'//int_fmt(cas(2),0)//',")",/)') cas
@@ -585,9 +585,9 @@ contains
         call check_deallocate('all_basis_fns',ierr)
 
         if (parent) then
-            call write_basis_fn_header()
+            call write_basis_fn_header(sys)
             do i = 1, nbasis
-                call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
+                call write_basis_fn(sys, basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
         end if
@@ -609,16 +609,17 @@ contains
 
     end subroutine read_in_integrals
 
-    subroutine init_basis_fns_read_in(norb, uhf, orbsym, sp_eigv, sp_eigv_rank, basis_arr)
+    subroutine init_basis_fns_read_in(norb, sys, orbsym, sp_eigv, sp_eigv_rank, basis_arr)
 
         ! Initialise list of basis functions based upon the FCI namelist`data
         ! read in from an FCIDUMP file.
 
         ! In:
-        !    norb: number of orbitals/functions to initialise.
-        !    uhf: true if FCIDUMP file was produced from an unrestricted (UHF)
-        !         calculation.  norb refers to spatial orbitals in a RHF-based
-        !         FCIDUMP file and spin orbitals in a UHF-based FCIDUMP file.
+        !    norb: number of orbitals/functions to initialise.  Refers to
+        !         spatial orbitals in a RHF-based FCIDUMP file and spin orbitals
+        !         in a UHF-based FCIDUMP file.
+        !    sys: system being studied.  sys%read_in%uhf must be true if FCIDUMP
+        !         file was produced from an unrestricted (UHF) calculation.
         !    orbsym: list of symmetries of each orbital/function.
         !    sp_eigv: single-particle eigenvalues of each orbital/function.
         !    sp_eigv_rank: rank of each orbital/function by the single-particle
@@ -636,9 +637,10 @@ contains
         !    spatial_index information assigned.
 
         use basis, only: basis_fn, init_basis_fn
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: norb
-        logical, intent(in) :: uhf
         integer, intent(in) :: orbsym(:)
         real(p), intent(in) :: sp_eigv(:)
         integer, intent(in) :: sp_eigv_rank(:)
@@ -648,19 +650,19 @@ contains
 
         do i = 1, norb
             rank = sp_eigv_rank(i)
-            if (uhf) then
+            if (sys%read_in%uhf) then
                 if (mod(i,2) == 0) then
-                    call init_basis_fn(basis_arr(i), sym=orbsym(rank)-1, ms=-1)
+                    call init_basis_fn(sys, basis_arr(i), sym=orbsym(rank)-1, ms=-1)
                 else
-                    call init_basis_fn(basis_arr(i), sym=orbsym(rank)-1, ms=1)
+                    call init_basis_fn(sys, basis_arr(i), sym=orbsym(rank)-1, ms=1)
                 end if
                 ! Assume orbitals are ordered appropriately in FCIDUMP...
                 basis_arr(i)%spatial_index = (i+1)/2
                 basis_arr(i)%sp_eigv = sp_eigv(rank)
             else
                 ! Need to initialise both up- and down-spin basis functions.
-                call init_basis_fn(basis_arr(2*i), sym=orbsym(rank)-1, ms=-1)
-                call init_basis_fn(basis_arr(2*i-1), sym=orbsym(rank)-1, ms=1)
+                call init_basis_fn(sys, basis_arr(2*i), sym=orbsym(rank)-1, ms=-1)
+                call init_basis_fn(sys, basis_arr(2*i-1), sym=orbsym(rank)-1, ms=1)
                 basis_arr(2*i-1)%spatial_index = i
                 basis_arr(2*i)%spatial_index = i
                 basis_arr(2*i-1)%sp_eigv = sp_eigv(rank)

@@ -440,7 +440,7 @@ contains
             write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
             select case(sys%system)
             case (hub_k)
-                call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+                call write_basis_fn(sys, basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
             case default
                 write(6,'(i2)') ref_sym
             end select

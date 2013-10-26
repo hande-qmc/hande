@@ -84,7 +84,7 @@ type det_info
     integer(i0), pointer :: f(:)  => NULL()  ! (basis_length)
     integer(i0), pointer :: f2(:)  => NULL()  ! (basis_length); for DMQMC
     ! List of occupied spin-orbitals.
-    integer, pointer :: occ_list(:)  => NULL()  ! (sys_global%nel)
+    integer, pointer :: occ_list(:)  => NULL()  ! (nel)
     ! List of occupied alpha/beta spin-orbitals
     integer, pointer :: occ_list_alpha(:), occ_list_beta(:)
     ! List of unoccupied alpha/beta spin-orbitals
@@ -92,7 +92,7 @@ type det_info
     ! Number of unoccupied orbitals with each spin and symmetry.
     ! The first index maps to spin using (Ms+3)/2, where Ms=-1 is spin-down and
     ! Ms=1 is spin-up.
-    integer, pointer :: symunocc(:,:) ! (2,sys_global%sym0:sys_global%sym_max)
+    integer, pointer :: symunocc(:,:) ! (2,sym0:sym_max)
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC).
     integer :: initiator_flag
@@ -201,7 +201,7 @@ contains
 
         ! For Heisenberg systems, to include staggered fields and to calculate
         ! the staggered magnetisation, we require lattice_mask. Here we find
-        ! lattice_mask for a gerenal bipartite sys_global%lattice%lattice.
+        ! lattice_mask for a gerenal bipartite lattice.
         if (sys_global%system == heisenberg .and. sys_global%lattice%bipartite_lattice) then
             allocate (lattice_mask(basis_length), stat=ierr)
             call check_allocate('lattice_mask',basis_length,ierr)
