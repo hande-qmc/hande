@@ -75,7 +75,7 @@ contains
         logical :: non_zero
         type(excit) :: excitation
 
-        excitation = get_excitation(f1,f2)
+        excitation = get_excitation(sys%nel, f1,f2)
 
         select case(excitation%nexcit)
         case(0)
@@ -146,7 +146,7 @@ contains
         ! This actual annihilation and creation operators of \hat{D} are
         ! identical to the off-diagonal operators of H.  Hence, we can use the
         ! same integrals and just scale accordingly...
-        occ = get_two_e_int_k(i, j, a, b) / (sys%hubbard%u * sys%lattice%nsites)
+        occ = get_two_e_int_k(sys, i, j, a, b) / (sys%hubbard%u * sys%lattice%nsites)
 
         if (perm) occ = -occ
 
@@ -184,7 +184,7 @@ contains
         ! As for momentum space, can use standard integrals of the potential and
         ! then scale.
 
-        occ = get_coulomb_matel_real(f) / (sys%hubbard%u * sys%lattice%nsites)
+        occ = get_coulomb_matel_real(sys, f) / (sys%hubbard%u * sys%lattice%nsites)
 
      end function double_occ0_hub_real
 
@@ -219,7 +219,7 @@ contains
         logical :: non_zero
         type(excit) :: excitation
 
-        excitation = get_excitation(f1,f2)
+        excitation = get_excitation(sys%nel, f1,f2)
 
         select case(excitation%nexcit)
         case(0)

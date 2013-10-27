@@ -38,7 +38,7 @@ contains
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! We assume Ms is conserved (ie has already been checked for).
-        excitation = get_excitation(f1, f2)
+        excitation = get_excitation(sys%nel, f1, f2)
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then
             ! Space group symmetry not currently implemented.
@@ -107,12 +107,12 @@ contains
         if (t_self_images) then
             call decode_det(f, root_det)
             do i = 1, sys%nel
-                hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
+                hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))
             end do
         end if
 
         ! Two electron operator
-        hmatel = hmatel + get_coulomb_matel_real(f)
+        hmatel = hmatel + get_coulomb_matel_real(sys, f)
 
     end function slater_condon0_hub_real
 
@@ -141,7 +141,7 @@ contains
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
         ! One electron operator
-         hmatel = get_one_e_int_real(i, a)
+         hmatel = get_one_e_int_real(sys, i, a)
 
         ! Two electron operator
         ! < D | U | D_i^a > = 0 within the real space formulation of the

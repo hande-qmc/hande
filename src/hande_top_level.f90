@@ -76,13 +76,13 @@ contains
         select case(sys%system)
         case(ueg)
             call init_momentum_symmetry(sys)
-            call init_ueg_proc_pointers()
+            call init_ueg_proc_pointers(sys%lattice%ndim)
         case(hub_k)
             call init_momentum_symmetry(sys)
         case(hub_real, heisenberg, chung_landau)
             call init_real_space(sys)
         case(read_in)
-            call print_pg_symmetry_info()
+            call print_pg_symmetry_info(sys)
         end select
 
     end subroutine init_calc

@@ -74,9 +74,10 @@ contains
 
     end subroutine end_excitations
 
-    pure function get_excitation(f1,f2) result(excitation)
+    pure function get_excitation(nel, f1,f2) result(excitation)
 
         ! In:
+        !    nel: number of electrons in system.
         !    f1(basis_length): bit string representation of the Slater
         !        determinant.
         !    f2(basis_length): bit string representation of the Slater
@@ -100,6 +101,7 @@ contains
         use system
 
         type(excit) :: excitation
+        integer, intent(in) :: nel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift
         logical :: test_f1, test_f2
@@ -150,7 +152,7 @@ contains
             ! minimal number for the determinants to align, this is irrelevant
             ! as the Slater--Condon rules only care about whether the number of
             ! permutations is even or odd.
-            shift = sys_global%nel - excitation%nexcit
+            shift = nel - excitation%nexcit
 
             if (excitation%nexcit <= 2) then
 

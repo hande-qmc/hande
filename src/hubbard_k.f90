@@ -30,9 +30,10 @@ contains
 
     end function get_one_e_int_k
 
-    elemental function get_two_e_int_k(phi1, phi2, phi3, phi4) result(two_e_int)
+    elemental function get_two_e_int_k(sys, phi1, phi2, phi3, phi4) result(two_e_int)
 
         ! In:
+        !    sys: system being studied
         !    phi1: index of a momentum-space basis function.
         !    phi2: index of a momentum-space basis function.
         !    phi3: index of a momentum-space basis function.
@@ -41,9 +42,10 @@ contains
         !    The anti-symmetrized integral <phi1 phi2 || phi3 phi4>.
 
         use basis
-        use system
+        use system, only: sys_t
 
         real(p) :: two_e_int
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: phi1, phi2, phi3, phi4
 
         logical :: s12, s34
@@ -64,9 +66,9 @@ contains
             ! Either the Coulomb integral or the exchange integral is
             ! non-zero.
             if (spin_symmetry(phi1, phi3)) then
-                two_e_int = sys_global%hubbard%coulomb_k
+                two_e_int = sys%hubbard%coulomb_k
             else
-                two_e_int = -sys_global%hubbard%coulomb_k
+                two_e_int = -sys%hubbard%coulomb_k
             end if
         else
             two_e_int = 0.0_p

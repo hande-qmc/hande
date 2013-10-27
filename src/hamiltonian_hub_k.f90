@@ -46,7 +46,7 @@ contains
         !     vector (i.e. satisfy translational symmetry).
         !     We assume this is also already checked.
 
-        excitation = get_excitation(f1,f2)
+        excitation = get_excitation(sys%nel, f1,f2)
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then
             non_zero = .true.
@@ -154,7 +154,7 @@ contains
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        hmatel = get_two_e_int_k(i, j, a, b)
+        hmatel = get_two_e_int_k(sys, i, j, a, b)
 
         if (perm) hmatel = -hmatel
 

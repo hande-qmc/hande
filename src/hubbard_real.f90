@@ -255,18 +255,20 @@ contains
 
     end subroutine end_real_space
 
-    elemental function get_one_e_int_real(i, j) result(one_e_int)
+    elemental function get_one_e_int_real(sys, i, j) result(one_e_int)
 
         ! In:
+        !    sys: system being studied.
         !    i: index of a real-space basis function.
         !    j: index of a real-space basis function.
         ! Returns:
         !    <phi1 | T | phi2> where T is the kinetic energy operator.
 
         use basis, only: basis_fns, bit_lookup
-        use system
+        use system, only: sys_t
 
         real(p) :: one_e_int
+        type(sys_t), intent(in) :: sys
         Integer, intent(in) ::  i,j
         integer :: ind, pos
 
@@ -277,17 +279,18 @@ contains
         pos = bit_lookup(1,j)
         ind = bit_lookup(2,j)
         ! Test if i <-> j.  If so there's a kinetic interaction.
-        if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - sys_global%hubbard%t
+        if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - sys%hubbard%t
         pos = bit_lookup(1,i)
         ind = bit_lookup(2,i)
         ! Test if i <-> j.  If so there's a kinetic interaction.
-        if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - sys_global%hubbard%t
+        if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - sys%hubbard%t
 
     end function get_one_e_int_real
 
-    pure function get_coulomb_matel_real(f) result(umatel)
+    pure function get_coulomb_matel_real(sys, f) result(umatel)
 
         ! In:
+        !    sys: system being studied.
         !    f(basis_length): bit string representation of the Slater
         !        determinant, D.
         ! Returns:
@@ -296,11 +299,12 @@ contains
         !    formulation of the Hubbard model.
 
         use basis
-        use system
+        use system, only: sys_t
         use bit_utils, only: count_set_bits
         use determinants, only: beta_mask, separate_strings
 
         real(p) :: umatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         integer :: i
         integer(i0) :: b
@@ -324,7 +328,7 @@ contains
                 umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
             end do
         end if
-        umatel = sys_global%hubbard%u*umatel
+        umatel = sys%hubbard%u*umatel
 
     end function get_coulomb_matel_real
 
@@ -370,7 +374,7 @@ contains
         integer :: i, j
 
         do i = 1, 3**sys_global%lattice%ndim
-            ! Add all combinations of lattices vectors in sys_global%lattice%lvecs.
+            ! Add all combinations of lattices vectors in lvecs.
             v = r + sys_global%lattice%lvecs(:,i)
             do j = 1, nbasis
                 ! Loop over all basis functions and check if the shifted vector is

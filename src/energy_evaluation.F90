@@ -248,7 +248,7 @@ contains
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(cdet%f, f0)
+        excitation = get_excitation(sys%nel, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -306,7 +306,7 @@ contains
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(cdet%f, f0)
+        excitation = get_excitation(sys%nel, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -368,7 +368,7 @@ contains
 
         integer :: ij_sym, ab_sym
 
-        excitation = get_excitation(cdet%f, f0)
+        excitation = get_excitation(sys%nel, cdet%f, f0)
         hmatel = 0.0_p
 
         select case(excitation%nexcit)
@@ -446,7 +446,7 @@ contains
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(cdet%f, f0)
+        excitation = get_excitation(sys%nel, cdet%f, f0)
         hmatel = 0.0_p
 
         if (excitation%nexcit == 0) then

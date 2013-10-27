@@ -177,13 +177,14 @@ contains
        use fciqmc_data, only: sampling_size, dmqmc_accumulated_probs_old
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
+       use system
 
        integer, intent(in) :: idet, iteration
        type(excit) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
 
        ! Get excitation.
-       excitation = get_excitation(walker_dets(:basis_length,idet), &
+       excitation = get_excitation(sys_global%nel, walker_dets(:basis_length,idet), &
                         walker_dets((1+basis_length):total_basis_length,idet))
 
        ! When performing importance sampling the result is that certain excitation

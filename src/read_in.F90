@@ -316,7 +316,7 @@ contains
         end if
 
         ! Set up symmetry information.
-        if (t_store) call init_pg_symmetry()
+        if (t_store) call init_pg_symmetry(sys)
 
         ! Initialise integral stores.
         if (t_store) call init_molecular_integrals(sys%read_in%uhf)

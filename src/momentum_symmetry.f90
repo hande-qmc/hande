@@ -139,7 +139,7 @@ contains
             end do
             if (gamma_sym == 0) call stop_all('init_symmetry', 'Gamma-point symmetry not found.')
 
-            call init_ueg_indexing()
+            call init_ueg_indexing(sys)
 
         end select
 

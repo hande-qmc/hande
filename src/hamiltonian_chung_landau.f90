@@ -46,7 +46,7 @@ contains
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! We assume Ms is conserved (ie has already been checked for).
-        excitation = get_excitation(f1, f2)
+        excitation = get_excitation(sys%nel, f1, f2)
 
         ! Matrix elements in this model are quite simple.
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
@@ -90,7 +90,6 @@ contains
         use basis, only: bit_lookup
         use determinants, only: decode_det, basis_length
         use hubbard_real, only: t_self_images, tmat, get_one_e_int_real
-        use system
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -108,7 +107,7 @@ contains
         ! which is a unit cell vector.
         if (t_self_images) then
             do i = 1, sys%nel
-                hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
+                hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))
             end do
         end if
 
