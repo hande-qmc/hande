@@ -251,7 +251,7 @@ contains
                                                         &routine. Skipping this calculation.', 3)
                         else if (doing_calc(exact_diag)) then
                             write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                            call setup_rdm_arrays()
+                            call setup_rdm_arrays(sys)
                             rdm_size = size(reduced_density_matrix, 1)
 
                             allocate(rdm_eigenvalues(rdm_size), stat=ierr)

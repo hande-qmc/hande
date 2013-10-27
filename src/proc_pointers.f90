@@ -44,9 +44,11 @@ abstract interface
         type(excit), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
     end subroutine i_update_proj_hfs
-    subroutine i_update_dmqmc_estimators(idet,excitation,walker_pop)
+    subroutine i_update_dmqmc_estimators(sys, idet,excitation,walker_pop)
+        use system, only: sys_t
         import :: excit, p
         implicit none
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet
         type(excit), intent(in) :: excitation
         real(p), intent(in) :: walker_pop

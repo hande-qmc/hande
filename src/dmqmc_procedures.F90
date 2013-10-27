@@ -42,7 +42,10 @@ type(rdm), allocatable :: rdms(:)
 
 contains
 
-    subroutine init_dmqmc()
+    subroutine init_dmqmc(sys)
+
+         ! In:
+         !    sys: system being studied.
 
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
@@ -57,7 +60,9 @@ contains
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use fciqmc_data, only: sampling_size, rdm_traces, nrdms, dmqmc_accumulated_probs_old
-         use system
+         use system, only: sys_t, max_number_excitations
+
+        type(sys_t), intent(in) :: sys
 
          integer :: ierr, i, bit_position, bit_element
 
@@ -171,7 +176,7 @@ contains
 
          ! If doing a reduced density matrix calculation, allocate and define the bit masks that
          ! have 1's at the positions referring to either subsystems A or B.
-         if (doing_reduced_dm) call setup_rdm_arrays()
+         if (doing_reduced_dm) call setup_rdm_arrays(sys)
 
          ! If doing concurrence calculation then construct and store the 4x4 flip spin matrix i.e.
          ! \sigma_y \otimes \sigma_y
@@ -187,11 +192,14 @@ contains
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays()
+    subroutine setup_rdm_arrays(sys)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for the bits referring
         ! to either subsystem A or B. Also calculate the positions and elements of the sites
         ! in subsyetsm A, and finally allocate the RDM itself.
+
+        ! In:
+        !    sys: system being studied.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_renyi_2
         use checking, only: check_allocate
@@ -202,14 +210,16 @@ contains
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
-        use system
+        use system, only: sys_t, heisenberg
+
+        type(sys_t), intent(in) :: sys
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
         integer :: bit_position, bit_element
 
         ! For the Heisenberg model only currently.
-        if (sys_global%system==heisenberg) then
-            call find_rdm_masks()
+        if (sys%system==heisenberg) then
+            call find_rdm_masks(sys)
         else
             call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for the &
                            &Heisenberg model.")
@@ -271,7 +281,7 @@ contains
         ! to all spins up. Hence the total size of the reduced density matrix will be 2**(number of spins
         ! in subsystem A).
         if (calc_ground_rdm) then
-            if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(sys_global%lattice%nsites,p)/2.0_p)) then
+            if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
                 allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
                 call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)
                 reduced_density_matrix = 0.0_p
@@ -279,7 +289,7 @@ contains
                 if (ms_in /= 0) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
                                    &calculations.")
-                else if (rdms(1)%A_nsites > floor(real(sys_global%lattice%nsites,p)/2.0_p)) then
+                else if (rdms(1)%A_nsites > floor(real(sys%lattice%nsites,p)/2.0_p)) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
                                   &whose size is less than half the total system size.")
                 end if
@@ -288,35 +298,43 @@ contains
         
     end subroutine setup_rdm_arrays
 
-    subroutine find_rdm_masks()
+    subroutine find_rdm_masks(sys)
+
+        ! Initialise bit masks for converting a density matrix basis function
+        ! into its corresponding reduced density matrix basis function.
+
+        ! In:
+        !    sys: system being studied.
 
         use basis, only: basis_length, bit_lookup, basis_lookup, basis_fns, nbasis
         use checking, only: check_allocate, check_deallocate
         use errors
         use fciqmc_data, only: nrdms, nsym_vec
         use hubbard_real, only: map_vec_to_cell
-        use system
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
 
         integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer :: r(sys_global%lattice%ndim), nvecs(3), A_mask(basis_length)
-        real(p) :: v(sys_global%lattice%ndim), test_vec(sys_global%lattice%ndim), temp_vec(sys_global%lattice%ndim)
+        integer :: r(sys%lattice%ndim), nvecs(3), A_mask(basis_length)
+        real(p) :: v(sys%lattice%ndim), test_vec(sys%lattice%ndim), temp_vec(sys%lattice%ndim)
         real(p), allocatable :: trans_vecs(:,:)
         integer :: scale_fac
 
         ! The maximum number of translational symmetry vectors is nsites (for
         ! the case of a non-tilted lattice), so allocate this much storage.
-        allocate(trans_vecs(sys_global%lattice%ndim,sys_global%lattice%nsites),stat=ierr)
-        call check_allocate('trans_vecs',sys_global%lattice%ndim*sys_global%lattice%nsites,ierr)
+        allocate(trans_vecs(sys%lattice%ndim,sys%lattice%nsites),stat=ierr)
+        call check_allocate('trans_vecs',sys%lattice%ndim*sys%lattice%nsites,ierr)
 
         ! The number of symmetry vectors in each direction.
         nvecs = 0
         ! The total number of symmetry vectors.
         nsym_vec = 0
 
-        do i = 1, sys_global%lattice%ndim
-            scale_fac = maxval(abs(sys_global%lattice%lattice(:,i)))
-            v = real(sys_global%lattice%lattice(:,i),p)/real(scale_fac,p)
+        do i = 1, sys%lattice%ndim
+            scale_fac = maxval(abs(sys%lattice%lattice(:,i)))
+            v = real(sys%lattice%lattice(:,i),p)/real(scale_fac,p)
 
             do j = 1, scale_fac-1
                 test_vec = v*j
@@ -416,7 +434,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine random_distribution_heisenberg(rng, ireplica)
+    subroutine random_distribution_heisenberg(rng, nsites, ireplica)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -432,6 +450,10 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        ! In:
+        !    nsites: number of sites in the simulation cell.
+        !    ireplica: index of replica (ie which of the possible concurrent
+        !       DMQMC populations are we initialising)
 
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
@@ -441,13 +463,14 @@ contains
         use system
 
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: nsites
         integer, intent(in) :: ireplica
         integer :: i, up_spins, rand_basis, bits_set
         integer :: bit_element, bit_position, npsips
         integer(i0) :: f(basis_length)
         real(dp) :: rand_num
 
-        up_spins = (ms_in+sys_global%lattice%nsites)/2
+        up_spins = (ms_in+nsites)/2
         npsips = int(D0_population/nprocs)
         ! If the initial number of psips does not split evenly between all processors,
         ! add the leftover psips to the first processors in order.

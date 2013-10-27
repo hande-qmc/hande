@@ -104,7 +104,7 @@ contains
             do ireplica = 1, sampling_size
                 select case(sys%system)
                 case(heisenberg)
-                    call random_distribution_heisenberg(rng, ireplica)
+                    call random_distribution_heisenberg(rng, sys%lattice%nsites, ireplica)
                 case default
                     call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
                 end select
@@ -151,7 +151,7 @@ contains
 
                         ! Call wrapper function which calls all requested estimators
                         ! to be updated, and also always updates the trace separately.
-                        if (icycle == 1) call call_dmqmc_estimators(idet, iteration)
+                        if (icycle == 1) call call_dmqmc_estimators(sys, idet, iteration)
 
                         do ireplica = 1, sampling_size
                             do iparticle = 1, abs(walker_population(ireplica,idet))
