@@ -37,7 +37,7 @@ contains
         use f90_unix_env
 #endif
 
-        use system, only: sys_t
+        use system
 
         use input
         use utils, only: get_free_unit
@@ -494,7 +494,7 @@ contains
         !    sys: system object, as set in read_input.
 
         use const
-        use system, only: sys_t
+        use system
 
         type(sys_t), intent(in) :: sys
 
@@ -655,7 +655,7 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        use system, only: sys_t
+        use system
 
         type(sys_t), intent(inout) :: sys
 

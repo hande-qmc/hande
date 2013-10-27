@@ -21,6 +21,7 @@ contains
 
         use calc
 
+        use basis, only: nbasis
         use ccmc, only: do_ccmc
         use ct_fciqmc, only: do_ct_fciqmc
         use dmqmc, only: do_dmqmc
@@ -28,14 +29,19 @@ contains
         use folded_spectrum_utils, only: init_folded_spectrum
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
-        use system, only: sys_t
+        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
 
         real(dp) :: hub_matel
+        type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers
         call init_proc_pointers(sys)
+
+        ! Set spin variables.
+        call copy_sys_spin_info(sys, sys_bak)
+        call set_spin_polarisation(nbasis, ms_in, sys)
 
         ! Initialise data
         call init_qmc(sys)
@@ -60,6 +66,9 @@ contains
                 call do_fciqmc(sys)
             end if
         end if
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine do_qmc
 
@@ -86,7 +95,7 @@ contains
         use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation
         use dmqmc_procedures, only: init_dmqmc
-        use determinants, only: encode_det, set_spin_polarisation, write_det
+        use determinants, only: encode_det, write_det
         use energy_evaluation, only: calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det
@@ -202,9 +211,6 @@ contains
 
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, 7, qmc_spawn)
-
-        ! Set spin variables for non-Heisenberg systems
-        if (sys%system /= heisenberg) call set_spin_polarisation(ms_in)
 
         ! Set initial walker population.
         ! occ_list could be set and allocated in the input.

@@ -15,15 +15,15 @@ contains
         ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
         ! exact diagonalisation.
 
-        ! In:
-        !    sys: system being studied.
+        ! In/Out:
+        !    sys: system being studied.  Unaltered on output.
 
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use errors
-        use system, only: sys_t
+        use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
         use determinant_enumeration, only: enumerate_determinants, ndets, sym_space_size
-        use determinants, only: tot_ndets, set_spin_polarisation, spin_orb_list
+        use determinants, only: tot_ndets, spin_orb_list
         use fciqmc_data, only: occ_list0
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
@@ -37,7 +37,7 @@ contains
         use utils, only: int_fmt
         use ranking, only: insertion_rank_rp
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
 
         type soln
             integer :: ms
@@ -63,8 +63,11 @@ contains
         integer :: rdm_size
 
         character(50) :: fmt1
+        type(sys_t) :: sys_bak
 
         if (parent) write (6,'(1X,a15,/,1X,15("="),/)') 'Diagonalisation'
+
+        call copy_sys_spin_info(sys, sys_bak)
 
         ! The Hamiltonian can be written in block diagonal form using the spin
         ! quantum number.  < D_1 | H | D_2 > /= 0 only if D_1 and D_2 have the
@@ -123,7 +126,7 @@ contains
                         &truncated CI calculations.')
                 end if
                 ! Create reference det based upon symmetry labels.
-                call set_spin_polarisation(ms_min)
+                call set_spin_polarisation(nbasis, ms_min, sys)
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0', sys%nel, ierr)
                 call set_reference_det(sys, occ_list0, .true., isym_min)
@@ -148,7 +151,7 @@ contains
             if (parent) write (6,'(1X,a35,'//int_fmt(ms)//',/)') 'Considering determinants with spin:', ms
 
             ! Find and set information about the space.
-            call set_spin_polarisation(ms)
+            call set_spin_polarisation(nbasis, ms, sys)
             if (allocated(occ_list0)) then
                 call enumerate_determinants(sys, .true., spin_flip, occ_list0=occ_list0)
             else
@@ -329,6 +332,9 @@ contains
             deallocate(exact_solns, stat=ierr)
             call check_deallocate('exact_solns',ierr)
         end if
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine diagonalise
 

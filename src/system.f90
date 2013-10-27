@@ -439,4 +439,74 @@ contains
 
     end function in_FBZ
 
+    subroutine set_spin_polarisation(nbasis, Ms, sys)
+
+        ! Set the spin polarisation information stored in components of sys.
+        !    nalpha, nbeta: number of alpha, beta electrons.
+        !    nvirt_alpha, nvirt_beta: number of alpha, beta virtual spin-orbitals.
+
+        ! In:
+        !    nbasis: number of single-particle basis functions.
+        !    Ms: spin of determinants that are being considered.
+        ! In/Out:
+        !    sys: initialised system object describing system. On output
+        !       components related to spin-polarisation are set.
+
+        use errors, only: stop_all
+
+        integer, intent(in) :: nbasis, Ms
+        type(sys_t), intent(inout) :: sys
+
+        select case(sys%system)
+
+        case(heisenberg)
+
+            ! Spin polarization is different (see comments in system) as the
+            ! Heisenberg model is a collection of spins rather than electrons.
+            ! See comments in init_system and at module-level.
+            sys%nel = (sys%lattice%nsites + Ms)/2
+            sys%nvirt = (sys%lattice%nsites - Ms)/2
+
+        case(chung_landau)
+
+            ! Spinless system.
+
+        case default
+
+            ! Find the number of determinants with the required spin.
+            if (abs(mod(Ms,2)) /= mod(sys%nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
+
+            sys%nbeta = (sys%nel - Ms)/2
+            sys%nalpha = (sys%nel + Ms)/2
+
+            sys%nvirt_alpha = nbasis/2 - sys%nalpha
+            sys%nvirt_beta = nbasis/2 - sys%nbeta
+
+        end select
+
+    end subroutine set_spin_polarisation
+
+    elemental subroutine copy_sys_spin_info(sys1, sys2)
+
+        ! Copy all spin information used in *any* system type (irrespective of
+        ! which system type is actually being studied...)
+
+        ! In:
+        !    sys1: reference system object.
+        ! In/Out:
+        !    sys2: target system object.  On output, its spin-related components
+        !       have the identical values as those in sys1.
+
+        type(sys_t), intent(in) :: sys1
+        type(sys_t), intent(inout) :: sys2
+
+        sys2%nel = sys1%nel
+        sys2%nvirt = sys1%nvirt
+        sys2%nalpha = sys1%nalpha
+        sys2%nbeta = sys1%nbeta
+        sys2%nvirt_alpha = sys1%nvirt_alpha
+        sys2%nvirt_beta = sys1%nvirt_beta
+
+    end subroutine copy_sys_spin_info
+
 end module system

@@ -26,8 +26,8 @@ contains
         ! the required memory for the list of walkers and set the initial
         ! walker.
 
-        ! In:
-        !    sys: system being studied.
+        ! In/Out:
+        !    sys: system being studied.  Unaltered on output.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -36,17 +36,19 @@ contains
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
         use fciqmc_restart, only: read_restart
-        use system, only: sys_t
+        use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
 
         integer :: ierr
         integer :: i, j
+        type(sys_t) :: sys_bak
 
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
 
         ! Find and set information about the space.
-        call set_spin_polarisation(ms_in)
+        call copy_sys_spin_info(sys, sys_bak)
+        call set_spin_polarisation(nbasis, ms_in, sys)
         if (allocated(occ_list0)) then
             call enumerate_determinants(sys, .true., .false., occ_list0=occ_list0)
         else
@@ -130,6 +132,9 @@ contains
         call write_det(dets_list(:,ref_det), new_line=.true.)
         write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine init_simple_fciqmc
 

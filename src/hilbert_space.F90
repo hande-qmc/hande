@@ -18,8 +18,8 @@ contains
         ! See find_sym_space_size for a dumb but exact enumeration of the size
         ! of the space (which is needed for FCI calculations).
 
-        ! In:
-        !    sys: system being studied.
+        ! In/Out:
+        !    sys: system being studied.  Unaltered on output.
 
         use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns, nbasis
         use calc, only: sym_in, ms_in, truncate_space, truncation_level, seed
@@ -34,7 +34,7 @@ contains
         use parallel
         use utils, only: binom_r, rng_init_info
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
 
         integer :: iel, icycle, naccept
         integer :: a, a_el, a_pos, b, b_el, b_pos
@@ -48,13 +48,15 @@ contains
 #endif
 
         type(dSFMT_t) :: rng
+        type(sys_t) :: sys_bak
 
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
-        call set_spin_polarisation(ms_in)
+        call copy_sys_spin_info(sys, sys_bak)
+        call set_spin_polarisation(nbasis, ms_in, sys)
 
         select case(sys%system)
 
@@ -185,6 +187,9 @@ contains
             end if
 
         end select
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine estimate_hilbert_space
 

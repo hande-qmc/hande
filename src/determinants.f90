@@ -368,41 +368,6 @@ contains
 
     end subroutine dealloc_det_info
 
-    subroutine set_spin_polarisation(Ms)
-
-        ! Set the spin polarisation information stored in module-level
-        ! variables:
-        !    sys_global%nalpha, sys_global%nbeta: number of alpha, beta electrons.
-        !    sys_global%nvirt_alpha, sys_global%nvirt_beta: number of alpha, beta virtual spin-orbitals.
-        ! In:
-        !    Ms: spin of determinants that are being considered.
-
-        use errors, only: stop_all
-
-        integer, intent(in) :: Ms
-
-        select case(sys_global%system)
-
-        case(heisenberg)
-
-            ! Spin polarization is different (see comments in system) as the
-            ! Heisenberg model is a collection of spins rather than electrons.
-
-        case default
-
-            ! Find the number of determinants with the required spin.
-            if (abs(mod(Ms,2)) /= mod(sys_global%nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
-
-            sys_global%nbeta = (sys_global%nel - Ms)/2
-            sys_global%nalpha = (sys_global%nel + Ms)/2
-
-            sys_global%nvirt_alpha = nbasis/2 - sys_global%nalpha
-            sys_global%nvirt_beta = nbasis/2 - sys_global%nbeta
-
-        end select
-
-    end subroutine set_spin_polarisation
-
 !--- Encode determinant bit strings ---
 
     pure subroutine encode_det(occ_list, bit_list)
