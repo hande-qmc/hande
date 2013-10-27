@@ -19,9 +19,11 @@ abstract interface
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
     end subroutine i_decoder
-    pure subroutine i_update_proj_energy(f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine i_update_proj_energy(sys, f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+        use system, only: sys_t
         import :: det_info, p, i0, excit
         implicit none
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: d
         real(p), intent(in) :: pop
@@ -81,11 +83,13 @@ abstract interface
         integer, intent(inout) :: pop, ndeath
         integer(lint), intent(inout) :: tot_pop
     end subroutine i_death
-    pure function i_sc0(f) result(hmatel)
+    pure function i_sc0(sys, f) result(hmatel)
         use basis, only: basis_length
+        use system, only: sys_t
         import :: p, i0
         implicit none
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
     end function i_sc0
     subroutine i_set_parent_flag(pop, f, flag)

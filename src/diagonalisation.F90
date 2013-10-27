@@ -230,7 +230,7 @@ contains
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
                         if (nprocs > 1) call generate_hamil(sys, distribute_blocks)
-                        call exact_diagonalisation(exact_eigv)
+                        call exact_diagonalisation(sys, exact_eigv)
                         exact_solns(nexact+1:nexact+ndets)%energy = exact_eigv
                         exact_solns(nexact+1:nexact+ndets)%ms = ms
                         nexact = nexact + ndets

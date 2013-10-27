@@ -9,9 +9,10 @@ implicit none
 
 contains
 
-    pure function get_hmatel_hub_real(f1, f2) result(hmatel)
+    pure function get_hmatel_hub_real(sys, f1, f2) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
@@ -23,8 +24,10 @@ contains
 
         use determinants, only: basis_length
         use excitations, only: excit, get_excitation
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         logical :: non_zero
         type(excit) :: excitation
@@ -57,11 +60,11 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel = slater_condon0_hub_real(f1)
+                hmatel = slater_condon0_hub_real(sys, f1)
 
             case(1)
 
-                hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+                hmatel = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
 
 !            case(2)
 
@@ -74,9 +77,10 @@ contains
 
     end function get_hmatel_hub_real
 
-    pure function slater_condon0_hub_real(f) result(hmatel)
+    pure function slater_condon0_hub_real(sys, f) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f: bit string representation of the Slater determinant.
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
@@ -84,11 +88,12 @@ contains
 
         use determinants, only: decode_det, basis_length
         use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
-        use system
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer :: root_det(sys_global%nel)
+        integer :: root_det(sys%nel)
         integer :: i
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
@@ -101,7 +106,7 @@ contains
         ! which is a unit cell vector.
         if (t_self_images) then
             call decode_det(f, root_det)
-            do i = 1, sys_global%nel
+            do i = 1, sys%nel
                 hmatel = hmatel + get_one_e_int_real(root_det(i), root_det(i))
             end do
         end if
@@ -111,9 +116,10 @@ contains
 
     end function slater_condon0_hub_real
 
-    pure function slater_condon1_hub_real(i, a, perm) result(hmatel)
+    pure function slater_condon1_hub_real(sys, i, a, perm) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    i: index of the spin-orbital from which an electron is excited in
         !        the reference determinant.
         !    a: index of the spin-orbital into which an electron is excited in
@@ -125,8 +131,10 @@ contains
         !        determinant and a single excitation of it.
 
         use hubbard_real, only: get_one_e_int_real
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 
@@ -143,7 +151,7 @@ contains
 
     end function slater_condon1_hub_real
 
-    pure subroutine slater_condon1_hub_real_excit(f, connection, hmatel)
+    pure subroutine slater_condon1_hub_real_excit(sys, f, connection, hmatel)
 
         ! Generate the matrix element between a determinant and a single
         ! excitation in the real space formulation of the Hubbard model.
@@ -153,6 +161,7 @@ contains
         ! however, faster.
 
         ! In:
+        !    sys: system to be studied.
         !    f: bit string representation of the Slater determinant, D.
         ! In/Out:
         !    connection: excit type describing the excitation between |D> and
@@ -165,8 +174,9 @@ contains
 
         use determinants, only: basis_length
         use excitations, only: excit, find_excitation_permutation1
-        use system
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
@@ -176,9 +186,9 @@ contains
 
         ! b) The matrix element connected |D> and |D_i^a> is <i|h|a> = -t.
         if (connection%perm) then
-            hmatel = sys_global%hubbard%t
+            hmatel = sys%hubbard%t
         else
-            hmatel = -sys_global%hubbard%t
+            hmatel = -sys%hubbard%t
         end if
 
     end subroutine slater_condon1_hub_real_excit

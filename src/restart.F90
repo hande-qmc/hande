@@ -449,10 +449,10 @@ contains
             ! HFS calculation started from a standard FCIQMC calculation.  Need
             ! to fill in <D|O|D> - <D0|O|D0>.
             call encode_det(occ_list0, det)
-            O00 = op0_ptr(det)
-            do i = 1, tot_walkers
-                walker_data(2,i) = op0_ptr(walker_dets(:,i)) - O00
-            end do
+!            O00 = op0_ptr(det)
+!            do i = 1, tot_walkers
+!                walker_data(2,i) = op0_ptr(walker_dets(:,i)) - O00
+!            end do
         case default
             ! No idea...
             call stop_all('read_restart','Sampling size in restart file not compatible with calculation.')

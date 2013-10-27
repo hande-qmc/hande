@@ -104,7 +104,7 @@ contains
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), &
+                call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
                                             D0_population_cycle, proj_energy, D0_excit, hmatel)
 
                 ! Loop over each walker on the determinant.
@@ -175,7 +175,7 @@ contains
 
                         ! decode the spawned walker bitstring
                         cdet%f = qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id))
-                        K_ii = sc0_ptr(cdet%f) - H00
+                        K_ii = sc0_ptr(sys, cdet%f) - H00
                         call decoder_ptr(sys, cdet%f,cdet)
 
                         ! Spawn from this walker & append to the spawned array until
@@ -225,7 +225,7 @@ contains
 
             call end_mc_cycle(ndeath, nattempts)
 
-            call direct_annihilation(initiator_approximation)
+            call direct_annihilation(sys, initiator_approximation)
 
             call end_report_loop(ireport, nparticles_old, t1, soft_exit)
 
@@ -315,13 +315,13 @@ contains
                     connection%nexcit = 2
                     connection%from_orb(1:2) = (/ i,j /)
                     connection%to_orb(1:2) = (/ a,b /)
-                    call slater_condon2_hub_k_excit(cdet%f, connection, K_ij)
+                    call slater_condon2_hub_k_excit(sys, cdet%f, connection, K_ij)
                 else
                     K_ij = 0.0_p
                 end if
             else if (sys%system == hub_real) then
                 connection%nexcit = 1
-                call slater_condon1_hub_real_excit(cdet%f, connection, K_ij)
+                call slater_condon1_hub_real_excit(sys, cdet%f, connection, K_ij)
             end if
 
         end if

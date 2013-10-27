@@ -65,17 +65,17 @@ contains
 
         select case(sys%system)
         case(chung_landau)
-            hmatel = get_hmatel_chung_landau(f1, f2)
+            hmatel = get_hmatel_chung_landau(sys, f1, f2)
         case(hub_k)
-            hmatel = get_hmatel_hub_k(f1, f2)
+            hmatel = get_hmatel_hub_k(sys, f1, f2)
         case(hub_real)
-            hmatel = get_hmatel_hub_real(f1, f2)
+            hmatel = get_hmatel_hub_real(sys, f1, f2)
         case(heisenberg)
-            hmatel = get_hmatel_heisenberg(f1, f2)
+            hmatel = get_hmatel_heisenberg(sys, f1, f2)
         case(read_in)
-            hmatel = get_hmatel_mol(f1, f2)
+            hmatel = get_hmatel_mol(sys, f1, f2)
         case (ueg)
-            hmatel = get_hmatel_ueg(f1, f2)
+            hmatel = get_hmatel_ueg(sys, f1, f2)
         end select
 
     end function get_hmatel

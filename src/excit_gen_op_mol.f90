@@ -79,7 +79,7 @@ contains
             call find_excitation_permutation1(cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
-            matel = one_body1_mol_excit(connection%from_orb(1), connection%to_orb(1), connection%perm)
+            matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
         else
             ! We have a highly restrained system and this det has no single
             ! excitations at all.  To avoid reweighting pattempt_single and
@@ -154,7 +154,7 @@ contains
             call find_excitation_permutation1(cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
-            matel = one_body1_mol_excit(connection%from_orb(1), connection%to_orb(1), connection%perm)
+            matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
         else
             ! We have a highly restrained system and this det has no single
             ! excitations at all.  To avoid reweighting pattempt_single and

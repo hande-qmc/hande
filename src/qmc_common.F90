@@ -376,7 +376,7 @@ contains
             cdet%data => walker_data(:,idet)
             ! WARNING!  We assume only the bit string and data field are
             ! required to update the projected estimator.
-            call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), &
+            call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
                                         D0_population_cycle, proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info(cdet)

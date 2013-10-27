@@ -123,7 +123,7 @@ contains
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p),  &
+                    call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p),  &
                                                 D0_population_cycle, proj_energy, connection, hmatel)
                     call update_proj_hfs_ptr(sys, cdet%f, walker_population(1,idet),&
                                              walker_population(2,idet), cdet%data,  &
@@ -211,7 +211,7 @@ contains
                 ! total.
                 rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
-                call direct_annihilation(initiator_approximation)
+                call direct_annihilation(sys, initiator_approximation)
 
             end do
 

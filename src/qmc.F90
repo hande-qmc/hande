@@ -228,9 +228,9 @@ contains
                 ! Set the Neel state data for the reference state, if it is being used.
                 H00 = 0.0_p
             else
-                H00 = sc0_ptr(f0)
+                H00 = sc0_ptr(sys, f0)
             end if
-            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
             if (nprocs > 1) then
                 D0_proc = modulo(murmurhash_bit_string(f0, basis_length, qmc_spawn%hash_seed), nprocs)
             else
@@ -280,8 +280,8 @@ contains
             end if
 
             ! Energy of reference determinant.
-            H00 = sc0_ptr(f0)
-            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
+            H00 = sc0_ptr(sys, f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
 
             ! Determine and set properties for the reference state which we start on.
             ! (For DMQMC, we do not start on the reference state, and so this is not
@@ -359,16 +359,16 @@ contains
                     walker_population(:,tot_walkers) = 0
                     ! Set the population for this basis function.
                     walker_population(1,tot_walkers) = nint(D0_population)
-                    walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
+                    walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                     select case(sys%system)
                     case(heisenberg)
                         if (trial_function /= single_basis) then
                             walker_data(1,tot_walkers) = 0
                         else
-                            walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
+                            walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                         end if
                     case default
-                        walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
+                        walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                     end select
                     walker_dets(:,tot_walkers) = f0_inv
                     ! If we are using the Neel state as a reference in the

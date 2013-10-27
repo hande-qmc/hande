@@ -73,7 +73,7 @@ contains
 !            pgen = calc_pgen_ueg()
 
             call find_excitation_permutation2(cdet%f, connection)
-            hmatel = slater_condon2_ueg_excit(connection%from_orb(1), connection%from_orb(2), &
+            hmatel = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%from_orb(2), &
                                               connection%to_orb(1), connection%to_orb(2), connection%perm)
 
         else
@@ -154,7 +154,7 @@ contains
             pgen = calc_pgen_ueg_no_renorm(sys, max_na)
 
             call find_excitation_permutation2(cdet%f, connection)
-            hmatel = slater_condon2_ueg_excit(connection%from_orb(1), connection%from_orb(2), &
+            hmatel = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%from_orb(2), &
                                               connection%to_orb(1), connection%to_orb(2), connection%perm)
 
 

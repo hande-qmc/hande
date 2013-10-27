@@ -146,7 +146,7 @@ contains
         ! 5. Is connecting matrix element positive (in which case we spawn with
         ! negative walkers) or negative (in which case we spawn with positive
         ! walkers)?
-        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
 
     end subroutine gen_excit_finalise_hub_k
 
@@ -287,7 +287,7 @@ contains
 
         ! For no_renorm the excitation has been completely specified, so we just
         ! need to find the exact connecting matrix element.
-        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
 
     end subroutine gen_excit_finalise_hub_k_no_renorm
 
@@ -352,7 +352,7 @@ contains
         pgen = calc_pgen_hub_k(sys, ij_sym, cdet%f, cdet%unocc_list_alpha)
 
         ! 4. find the connecting matrix element.
-        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
 
     end subroutine gen_excit_hub_k
 
@@ -420,7 +420,7 @@ contains
 
             ! 4. find the connecting matrix element.
             connection%nexcit = 2
-            call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+            call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
 
         else
 

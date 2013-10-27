@@ -9,7 +9,7 @@ real(dp) :: annihilation_comms_time = 0.0_dp
 
 contains
 
-    subroutine direct_annihilation(tinitiator)
+    subroutine direct_annihilation(sys, tinitiator)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -19,10 +19,16 @@ contains
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process.
 
+        ! In:
+        !    sys: system being studied.
+        !    tinitiator: true if the initiator approximation is being used.
+
         use parallel, only: nthreads, nprocs
         use spawn_data, only: annihilate_wrapper_spawn_t
         use sort, only: qsort
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         logical, intent(in) :: tinitiator
 
         integer, parameter :: thread_id = 0
@@ -43,7 +49,7 @@ contains
             call remove_unoccupied_dets()
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers()
+            call insert_new_walkers(sys)
 
         else
 
@@ -215,20 +221,25 @@ contains
 
     end subroutine remove_unoccupied_dets
 
-    subroutine insert_new_walkers()
+    subroutine insert_new_walkers(sys)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
 
+        ! In:
+        !    sys: system being studied.
+
         use basis, only: basis_length, total_basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use determinants, only: decode_det
         use search, only: binary_search
-        use system, only: trial_function, neel_singlet
+        use system, only: trial_function, neel_singlet, sys_t
         use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr
         use heisenberg_estimators, only: neel_singlet_data
+
+        type(sys_t), intent(in) :: sys
 
         integer :: i, istart, iend, j, k, pos
         logical :: hit
@@ -271,14 +282,14 @@ contains
             walker_dets(:,k) = qmc_spawn%sdata(:total_basis_length,i)
             walker_population(:,k) = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i)
             nparticles = nparticles + abs(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i))
-            walker_data(1,k) = sc0_ptr(walker_dets(:,k)) - H00
+            walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
-                walker_data(2,k) = op0_ptr(walker_dets(:,k)) - O00
+                walker_data(2,k) = op0_ptr(sys, walker_dets(:,k)) - O00
             else if (doing_calc(dmqmc_calc)) then
                 ! Set the energy to be the average of the two induvidual energies.
-                walker_data(1,k) = (walker_data(1,k) + sc0_ptr(walker_dets((basis_length+1):(2*basis_length),k)) - H00)/2
+                walker_data(1,k) = (walker_data(1,k) + sc0_ptr(sys, walker_dets((basis_length+1):(2*basis_length),k)) - H00)/2
                 if (replica_tricks) then
                     walker_data(2:sampling_size,k) = walker_data(1,k)
                 end if

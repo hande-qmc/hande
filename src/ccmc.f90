@@ -332,7 +332,7 @@ contains
                         ! estimator.  See comments in spawning.F90 for why we
                         ! must divide through by the probability of selecting
                         ! the cluster.
-                        call update_proj_energy_ptr(f0, cdet(it), &
+                        call update_proj_energy_ptr(sys, f0, cdet(it), &
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
@@ -346,7 +346,7 @@ contains
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
                         if (cluster(it)%excitation_level <= truncation_level) then
-                            call stochastic_ccmc_death(rng(it), cdet(it), cluster(it))
+                            call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it))
                         end if
 
                     end if
@@ -355,7 +355,7 @@ contains
                 !$omp end do
                 !$omp end parallel
 
-                call direct_annihilation(initiator_approximation)
+                call direct_annihilation(sys, initiator_approximation)
 
                 ! Ok, this is fairly non-obvious.
                 ! Because we sample the projected estimator (and normalisation
@@ -698,7 +698,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, cdet, cluster)
+    subroutine stochastic_ccmc_death(rng, sys, cdet, cluster)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -710,6 +710,7 @@ contains
         ! select_cluster about the probabilities.
 
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: 
@@ -726,7 +727,9 @@ contains
         use proc_pointers, only: sc0_ptr
         use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
@@ -741,7 +744,7 @@ contains
         ! child excitor.
         ! TODO: optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
-        KiiAi = (sc0_ptr(cdet%f) - H00 - shift(1))*cluster%amplitude
+        KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
 
         pdeath = tau*abs(KiiAi)/cluster%pselect
 

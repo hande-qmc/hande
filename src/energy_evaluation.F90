@@ -205,7 +205,7 @@ contains
 
     end function calculate_hf_signed_pop
 
-    pure subroutine update_proj_energy_hub_k(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_hub_k(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -217,6 +217,7 @@ contains
         ! This procedure is for the Hubbard model in momentum space only.
 
         ! In:
+        !    sys: system being studied.
         !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
@@ -237,7 +238,9 @@ contains
         use determinants, only: det_info
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_k, only: slater_condon2_hub_k
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
@@ -253,14 +256,14 @@ contains
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
+            hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
             proj_energy_sum = proj_energy_sum + hmatel*pop
         end if
 
     end subroutine update_proj_energy_hub_k
 
-    pure subroutine update_proj_energy_hub_real(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_hub_real(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -272,6 +275,7 @@ contains
         ! This procedure is for the Hubbard model in real space only.
 
         ! In:
+        !    sys: system being studied.
         !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
@@ -292,7 +296,9 @@ contains
         use determinants, only: det_info
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
@@ -308,13 +314,13 @@ contains
         else if (excitation%nexcit == 1) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            hmatel = slater_condon1_hub_real(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+            hmatel = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
             proj_energy_sum = proj_energy_sum + hmatel*pop
         end if
 
     end subroutine update_proj_energy_hub_real
 
-    pure subroutine update_proj_energy_mol(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_mol(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -327,6 +333,7 @@ contains
         ! FCIDUMP file).
 
         ! In:
+        !    sys: system being studied.
         !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
@@ -349,7 +356,9 @@ contains
         use excitations, only: excit, get_excitation
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
@@ -372,7 +381,7 @@ contains
             ! Is excitation symmetry allowed?
             if (basis_fns(excitation%from_orb(1))%Ms == basis_fns(excitation%to_orb(1))%Ms .and. &
                     basis_fns(excitation%from_orb(1))%sym == basis_fns(excitation%to_orb(1))%sym) then
-                hmatel = slater_condon1_mol_excit(cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
                 proj_energy_sum = proj_energy_sum + hmatel*pop
             end if
@@ -385,7 +394,7 @@ contains
                 ij_sym = cross_product_pg_basis(excitation%from_orb(1), excitation%from_orb(2))
                 ab_sym = cross_product_pg_basis(excitation%to_orb(1), excitation%to_orb(2))
                 if (ij_sym == ab_sym) then
-                    hmatel = slater_condon2_mol_excit(excitation%from_orb(1), excitation%from_orb(2), &
+                    hmatel = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
                     proj_energy_sum = proj_energy_sum + hmatel*pop
@@ -395,7 +404,7 @@ contains
 
     end subroutine update_proj_energy_mol
 
-    pure subroutine update_proj_energy_ueg(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_ueg(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -406,6 +415,7 @@ contains
         ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
         ! This procedure is for the electron gas only.
         ! In:
+        !    sys: system being studied.
         !    f0: reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
@@ -426,7 +436,9 @@ contains
         use determinants, only: det_info
         use excitations, only: excit, get_excitation
         use hamiltonian_ueg, only: slater_condon2_ueg
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
@@ -443,7 +455,7 @@ contains
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            hmatel = slater_condon2_ueg(excitation%from_orb(1), excitation%from_orb(2), &
+            hmatel = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
             proj_energy_sum = proj_energy_sum + hmatel*pop
         end if
@@ -681,7 +693,7 @@ contains
             ! projected energy.
 
             ! \sum_j O_0j c_j
-            matel = one_body1_mol(excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+            matel = one_body1_mol(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
             proj_hf_O_hpsip = proj_hf_O_hpsip + matel*fpop
 
             ! \sum_j H_0j \tilde{c}_j

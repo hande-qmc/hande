@@ -88,7 +88,7 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, &
+                    call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, &
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
@@ -111,7 +111,7 @@ contains
 
                 end do
 
-                call direct_annihilation(initiator_approximation)
+                call direct_annihilation(sys, initiator_approximation)
 
                 call end_mc_cycle(ndeath, nattempts)
 

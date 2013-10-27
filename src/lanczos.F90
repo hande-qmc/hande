@@ -131,7 +131,7 @@ contains
         eigv(1:nfound) = eval(1:nfound)
 
         if (analyse_ground_state) then
-            call analyse_wavefunction(evec(:,1))
+            call analyse_wavefunction(sys, evec(:,1))
         else if (print_ground_state) then
             call print_wavefunction('GROUND_STATE_WFN', evec(:,1))
         end if

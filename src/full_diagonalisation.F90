@@ -9,11 +9,14 @@ implicit none
 
 contains
 
-    subroutine exact_diagonalisation(eigv)
+    subroutine exact_diagonalisation(sys, eigv)
 
         ! Perform an exact diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
         ! Note that this destroys the Hamiltonian matrix stored in hamil.
+        ! In:
+        !    sys: system being studied.  Only used if the wavefunction is
+        !        analysed.
         ! Out:
         !    eigv(ndets): Lanczos eigenvalues of the current block of the
         !        Hamiltonian matrix.
@@ -22,12 +25,14 @@ contains
         use errors, only: stop_all
         use fciqmc_data, only: doing_exact_rdm_eigv
         use parallel, only: parent, nprocs
+        use system, only: sys_t
 
         use calc
         use determinant_enumeration, only: ndets
 
         use operators
 
+        type(sys_t), intent(in) :: sys
         real(p), intent(out) :: eigv(ndets)
         real(p), allocatable :: work(:), eigvec(:,:)
         integer :: info, ierr, lwork
@@ -116,9 +121,9 @@ contains
 
         if (analyse_ground_state) then
             if (nprocs == 1) then
-                call analyse_wavefunction(hamil(:,1))
+                call analyse_wavefunction(sys, hamil(:,1))
             else
-                call analyse_wavefunction(eigvec(:,1))
+                call analyse_wavefunction(sys, eigvec(:,1))
             end if
         else if (print_ground_state) then
             if (nprocs == 1) then

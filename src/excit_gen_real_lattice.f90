@@ -62,7 +62,7 @@ contains
         pgen = calc_pgen_real(sys, cdet%occ_list, cdet%f, nvirt_avail)
 
         ! 3. find the connecting matrix element.
-        call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
+        call slater_condon1_hub_real_excit(sys, cdet%f, connection, hmatel)
 
     end subroutine gen_excit_hub_real
 
@@ -135,7 +135,7 @@ contains
             connection%nexcit=1
 
             ! 2. find the connecting matrix element.
-            call slater_condon1_hub_real_excit(cdet%f, connection, hmatel)
+            call slater_condon1_hub_real_excit(sys, cdet%f, connection, hmatel)
 
             ! 3. Probability of spawning...
             ! For single excitations

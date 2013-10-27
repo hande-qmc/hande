@@ -69,7 +69,7 @@ contains
                 call find_excitation_permutation1(cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol_excit(cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
             else
                 ! We have a highly restrained system and this det has no single
                 ! excitations at all.  To avoid reweighting pattempt_single and
@@ -98,7 +98,7 @@ contains
                 call find_excitation_permutation2(cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol_excit(connection%from_orb(1), connection%from_orb(2), &
+                hmatel = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
                                                   connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
@@ -177,7 +177,7 @@ contains
                 call find_excitation_permutation1(cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol_excit(cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
             else
                 ! Forbidden---connection%to_orb(1) is already occupied.
                 hmatel = 0.0_p
@@ -200,7 +200,7 @@ contains
                 call find_excitation_permutation2(cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol_excit(connection%from_orb(1), connection%from_orb(2), &
+                hmatel = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
                                                   connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Forbidden---connection%to_orb(2) is already occupied.

@@ -168,7 +168,7 @@ contains
             ! 1.1 Generate first random excitation and probability of spawning there from cdet
             !    (in this case we stay on the same place)
             Pgen_ki = 1
-            hmatel_ki =  sc0_ptr(cdet%f) - H00 - fold_line !***optimise this with stored/calculated values
+            hmatel_ki =  sc0_ptr(sys, cdet%f) - H00 - fold_line !***optimise this with stored/calculated values
 
             ! Calculate P_gen for the first excitation
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
@@ -237,7 +237,7 @@ contains
                 call create_cdet_excit(sys, cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
                 ! (ii) calculate Pgen and hmatel on this site
                 Pgen_jk = 1
-                hmatel_jk = sc0_ptr(cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
+                hmatel_jk = sc0_ptr(sys, cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
 
                 ! Calculate P_gen for the second excitation
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
