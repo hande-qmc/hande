@@ -398,7 +398,7 @@ contains
                     r = r + nint(trans_vecs(:,j))
                     ! If r is outside the cell considered in this simulation, shift it by the
                     ! appropriate lattice vector so that it is in this cell.
-                    call map_vec_to_cell(r)
+                    call map_vec_to_cell(sys%lattice%ndim, sys%lattice%lvecs, r)
                     ! Now need to find which basis function this site corresponds to. Simply loop
                     ! over all basis functions and check...
                     do l = 1, nbasis

@@ -361,21 +361,30 @@ contains
 
     end subroutine create_next_nearest_orbs
 
-    subroutine map_vec_to_cell(r)
+    subroutine map_vec_to_cell(ndim, lvecs, r)
 
         ! This subroutine assumes that the site specified by r is outside the cell
         ! by no more than one lattice vector, along each lattice vector.
 
-        use basis, only: basis_fns, nbasis
-        use system
+        ! In:
+        !    ndim: dimensionality of the lattice.
+        !    lvecs: all 3**ndim possible lattice vectors in the nearest 'shell'
+        !       (ie all integer combinations from -1 to 1 for each lattice vector).
+        ! In/Out:
+        !    r: On output the site specified by r (in units of the lattice
+        !       sites) is mapped into the equivalent site inside the simulation
+        !       cell.
 
-        integer, intent(inout) :: r(sys_global%lattice%ndim)        
-        integer :: v(sys_global%lattice%ndim)
+        use basis, only: basis_fns, nbasis
+
+        integer, intent(in) :: ndim, lvecs(ndim, 3**ndim)
+        integer, intent(inout) :: r(ndim)        
+        integer :: v(ndim)
         integer :: i, j
 
-        do i = 1, 3**sys_global%lattice%ndim
+        do i = 1, 3**ndim
             ! Add all combinations of lattices vectors in lvecs.
-            v = r + sys_global%lattice%lvecs(:,i)
+            v = r + lvecs(:,i)
             do j = 1, nbasis
                 ! Loop over all basis functions and check if the shifted vector is
                 ! now the same as any of these vectors. If so, it is in the cell,
