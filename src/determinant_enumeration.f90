@@ -305,7 +305,7 @@ contains
                             k_beta = k_beta + basis_fns(occ(iel))%l
                         end do
                     else
-                        sym_beta = symmetry_orb_list(occ(1:sys%nbeta))
+                        sym_beta = symmetry_orb_list(sys, occ(1:sys%nbeta))
                     end if
 
                     do j = 1, nalpha_combinations(excit_level_beta)
@@ -324,7 +324,7 @@ contains
                             ! Symmetry label (convert from basis index).
                             sym = (ueg_basis_index(k,1)+1)/2
                         else
-                            sym = cross_product(sym_beta, symmetry_orb_list(occ(sys%nbeta+1:sys%nel)))
+                            sym = cross_product(sys, sym_beta, symmetry_orb_list(sys, occ(sys%nbeta+1:sys%nel)))
                         end if
 
                         ! Inside truncated space?  TODO: fix above code so it

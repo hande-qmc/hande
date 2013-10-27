@@ -105,7 +105,7 @@ contains
             ! If a reference determinant was supplied, then we need to only
             ! consider that spin and symmetry.
             if (isym_min /= isym_max) then
-                isym_min = symmetry_orb_list(occ_list0)
+                isym_min = symmetry_orb_list(sys, occ_list0)
                 isym_max = isym_min
             else
                 spin_flip = .true.

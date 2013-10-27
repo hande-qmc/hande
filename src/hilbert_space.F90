@@ -101,7 +101,7 @@ contains
                 call encode_det(occ_list0, f0)
 
                 ! Symmetry of the reference determinant.
-                ref_sym = symmetry_orb_list(occ_list0)
+                ref_sym = symmetry_orb_list(sys, occ_list0)
 
                 if (parent) then
                     write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
@@ -147,7 +147,7 @@ contains
                         end if
                     end do
                     ! Find the symmetry of the determinant.
-                    det_sym = symmetry_orb_list(occ_list)
+                    det_sym = symmetry_orb_list(sys, occ_list)
                     ! Is this the same symmetry as the reference determinant?
                     if (det_sym == ref_sym) then
                         if (truncate_space) then

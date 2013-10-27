@@ -403,7 +403,7 @@ contains
         end if
 
         ! calculate the reference determinant symmetry
-        ref_sym = symmetry_orb_list(occ_list0)
+        ref_sym = symmetry_orb_list(sys, occ_list0)
 
         ! If not set at input, set probability of selecting single or double
         ! excitations based upon the reference determinant and assume other

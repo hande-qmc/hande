@@ -176,7 +176,7 @@ contains
         use system
 
         integer :: indx
-        integer, intent(in) :: k(sys_global%lattice%ndim), spin
+        integer, intent(in) :: k(:), spin
 
         if (minval(k) < -ueg_basis_max .or. maxval(k) > ueg_basis_max) then
             indx = -1

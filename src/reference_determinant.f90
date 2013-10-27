@@ -104,7 +104,7 @@ contains
                         call encode_det(occ_list, f)
                         ! If occ_list is already of the correct symmetry, then
                         ! have nothing to do.
-                        sym = symmetry_orb_list(occ_list)
+                        sym = symmetry_orb_list(sys, occ_list)
                         if (sym /= ref_sym) then
 
                             ! Consider single excitations of our current
@@ -119,7 +119,7 @@ contains
                                             basis_fns(i)%Ms == basis_fns(ivirt)%Ms) then
                                         tmp_occ_list = occ_list
                                         tmp_occ_list(icore) = ivirt
-                                        if (symmetry_orb_list(tmp_occ_list) == ref_sym) then
+                                        if (symmetry_orb_list(sys, tmp_occ_list) == ref_sym) then
                                             sp_eigv_sum = 0.0_p
                                             do iel = 1, sys%nel
                                                 sp_eigv_sum = sp_eigv_sum + basis_fns(tmp_occ_list(iel))%sp_eigv
@@ -148,7 +148,7 @@ contains
                                                     tmp_occ_list = occ_list
                                                     tmp_occ_list(icore) = ivirt
                                                     tmp_occ_list(jcore) = jvirt
-                                                    if (symmetry_orb_list(tmp_occ_list) == ref_sym) then
+                                                    if (symmetry_orb_list(sys, tmp_occ_list) == ref_sym) then
                                                         sp_eigv_sum = 0.0_p
                                                         do iel = 1, sys%nel
                                                             sp_eigv_sum = sp_eigv_sum + &

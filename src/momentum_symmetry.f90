@@ -167,9 +167,10 @@ contains
 
     end subroutine end_momentum_symmetry
 
-    elemental function cross_product_k(s1, s2) result(prod)
+    elemental function cross_product_k(sys, s1, s2) result(prod)
 
         ! In:
+        !    sys: system being studied.
         !    s1, s2: irreducible representation labels/momentum labels.
         ! Returns:
         !    s1 \cross s2, the direct product of the two symmetries.
@@ -177,16 +178,17 @@ contains
         ! NOTE: this is just a convenience wrapper around the different
         ! implementations of momentum symmetry.  Do not use in a tight loop!
 
-        use system
+        use system, only: sys_t, hub_k, ueg
 
         integer :: prod
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: s1, s2
 
-        select case(sys_global%system)
+        select case(sys%system)
         case(hub_k)
             prod = cross_product_hub_k(s1, s2)
         case(ueg)
-            prod = cross_product_ueg(s1, s2)
+            prod = cross_product_ueg(sys, s1, s2)
         end select
 
     end function cross_product_k
@@ -208,9 +210,10 @@ contains
 
     end function cross_product_hub_k
 
-    elemental function cross_product_ueg(s1, s2) result(prod)
+    elemental function cross_product_ueg(sys, s1, s2) result(prod)
 
         ! In:
+        !    sys: system being studied.
         !    s1, s2: irreducible representation labels/momentum labels.
         ! Returns:
         !    s1 \cross s2, the direct product of the two symmetries.
@@ -222,19 +225,22 @@ contains
         ! UEG basis can be large; avoid storing O(N^2) symmetry table.
 
         use basis, only: basis_fns
-        use system
+        use system, only: sys_t
         use ueg_system, only: ueg_basis_index
 
         integer :: prod
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: s1, s2
 
-        integer :: k(sys_global%lattice%ndim)
+        ! Can't use sys%lattice%ndim as the size in a pure function so set it
+        ! to the max dimension and then use an array slice.
+        integer :: k(3)
 
         ! Find k_1+k_2.  Need to convert s1 and s2 into basis set indices.
-        k = basis_fns(2*s1)%l + basis_fns(2*s2)%l
+        k(:sys%lattice%ndim) = basis_fns(2*s1)%l + basis_fns(2*s2)%l
         ! Get symmetry index.  Need to convert from basis set index back into
         ! wavevector index.
-        prod = (ueg_basis_index(k,1)+1)/2
+        prod = (ueg_basis_index(k(:sys%lattice%ndim),1)+1)/2
 
     end function cross_product_ueg
 
@@ -260,9 +266,10 @@ contains
 
     end function symmetry_orb_list_hub_k
 
-    pure function symmetry_orb_list_ueg(orb_list) result(isym)
+    pure function symmetry_orb_list_ueg(sys, orb_list) result(isym)
 
         ! In:
+        !    sys: system to be studied.  On output the symmetry components are set.
         !    orb_list: list of orbitals (e.g. determinant).
         ! Returns:
         !    symmetry index of list (i.e. direct product of the representations
@@ -275,13 +282,14 @@ contains
         ! For momentum symmetry in the UEG.
 
         use basis, only: basis_fns
-        use system
+        use system, only: sys_t
         use ueg_system, only: ueg_basis_index
 
         integer :: isym
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: orb_list(:)
 
-        integer :: i, k(sys_global%lattice%ndim)
+        integer :: i, k(sys%lattice%ndim)
 
         k = 0
         do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
