@@ -206,13 +206,6 @@ type sys_t
 
 end type sys_t
 
-! --- Module-level (global) handle to system ---
-
-! PLEASE DO NOT USE IN NEW CODE.
-! This is only to make (gradual) refactoring possible.
-
-type(sys_t) :: sys_global
-
 ! --- OLD, TODO ---
 
 ! The maximum number of excitations which a system can have.
