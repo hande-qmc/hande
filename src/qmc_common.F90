@@ -115,7 +115,7 @@ contains
             if (parent) then
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
-                call write_det(f0, new_line=.true.)
+                call write_det(size(occ_list0), f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population_cycle
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') H00
@@ -340,17 +340,22 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status()
+    subroutine initial_fciqmc_status(sys)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
+        ! In:
+        !    sys: system being studied.
+
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer :: idet
         integer(lint) :: ntot_particles(sampling_size)
         type(det_info) :: cdet
@@ -365,7 +370,7 @@ contains
         ! distribution.  proj_energy and D0_population_cycle are both accumulated in
         ! update_proj_energy.
         proj_energy = 0.0_p
-        call alloc_det_info(cdet)
+        call alloc_det_info(sys, cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
             cdet%data => walker_data(:,idet)

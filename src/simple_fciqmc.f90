@@ -129,7 +129,7 @@ contains
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-        call write_det(dets_list(:,ref_det), new_line=.true.)
+        call write_det(sys%nel, dets_list(:,ref_det), new_line=.true.)
         write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 

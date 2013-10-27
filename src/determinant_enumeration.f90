@@ -158,7 +158,7 @@ contains
             call check_allocate('dets_list',basis_length*ndets,ierr)
         end if
 
-        call alloc_det_info(d0)
+        call alloc_det_info(sys, d0)
 
         ! For fermionic systems, we generate the alpha string and beta string
         ! separately and then combine them to form a determinant.
@@ -197,7 +197,7 @@ contains
             if (spin_flip .or. all(ras > 0)) then
                 force_full = .true.
             else
-                call decode_det_spinocc_spinunocc(d0%f, d0)
+                call decode_det_spinocc_spinunocc(sys, d0%f, d0)
             end if
         else
             ! No matter what the excitation level of the beta string, all alpha
@@ -374,7 +374,7 @@ contains
                     'Only determinants within', truncation_level, &
                     'excitations of the reference determinant are included.'
                 write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-                call write_det(d0%f, new_line=.true.)
+                call write_det(sys%nel, d0%f, new_line=.true.)
             end if
             write (6,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
             do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
@@ -386,7 +386,7 @@ contains
             fmt1 = int_fmt(ndets, padding=1)
             do i = 1, ndets
                 write (det_unit,'('//fmt1//',4X)',advance='no') i
-                call write_det(dets_list(:,i), det_unit, new_line=.true.)
+                call write_det(sys%nel, dets_list(:,i), det_unit, new_line=.true.)
             end do
         end if
 

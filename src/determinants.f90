@@ -4,7 +4,6 @@ module determinants
 
 use ccmc_data, only: cluster_t
 use const
-use system
 use basis
 use parallel, only: parent
 
@@ -109,7 +108,7 @@ contains
 
 !--- Initialisation and finalisation of module-level variables ---
 
-    subroutine init_determinants()
+    subroutine init_determinants(sys)
 
         ! Initialise determinant information: number of determinants, how
         ! they are stored as bit strings, lookup arrays for converting from
@@ -120,11 +119,14 @@ contains
         use utils, only: get_free_unit, int_fmt
         use calc, only: doing_calc, exact_diag, lanczos_diag, doing_calc, &
                         dmqmc_calc, ras, ras1, ras3, ras1_min, truncation_level
+        use system, only: sys_t, heisenberg
+
+        type(sys_t), intent(in) :: sys
 
         integer :: i, j, k, bit_pos, bit_element, ierr, site_index
         character(4) :: fmt1(5)
 
-        tot_ndets = binom_i(nbasis, sys_global%nel)
+        tot_ndets = binom_i(nbasis, sys%nel)
 
         ! See note in basis.
         if (separate_strings) then
@@ -142,11 +144,11 @@ contains
         end if
 
         if (parent) then
-            fmt1 = int_fmt((/sys_global%nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
-            if (sys_global%system == heisenberg) then
-                write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', sys_global%nel
+            fmt1 = int_fmt((/sys%nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
+            if (sys%system == heisenberg) then
+                write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', sys%nel
             else
-                write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', sys_global%nel
+                write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', sys%nel
             end if
             write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
             if (doing_calc(exact_diag+lanczos_diag)) &
@@ -202,15 +204,15 @@ contains
         ! For Heisenberg systems, to include staggered fields and to calculate
         ! the staggered magnetisation, we require lattice_mask. Here we find
         ! lattice_mask for a gerenal bipartite lattice.
-        if (sys_global%system == heisenberg .and. sys_global%lattice%bipartite_lattice) then
+        if (sys%system == heisenberg .and. sys%lattice%bipartite_lattice) then
             allocate (lattice_mask(basis_length), stat=ierr)
             call check_allocate('lattice_mask',basis_length,ierr)
             lattice_mask = 0
-            do k = 1,sys_global%lattice%lattice_size(3)
-                do j = 1,sys_global%lattice%lattice_size(2)
-                    do i = 1,sys_global%lattice%lattice_size(1),2
-                        site_index = (sys_global%lattice%lattice_size(2)*sys_global%lattice%lattice_size(1))*(k-1) + &
-                                      sys_global%lattice%lattice_size(1)*(j-1) + mod(j+k,2) + i
+            do k = 1,sys%lattice%lattice_size(3)
+                do j = 1,sys%lattice%lattice_size(2)
+                    do i = 1,sys%lattice%lattice_size(1),2
+                        site_index = (sys%lattice%lattice_size(2)*sys%lattice%lattice_size(1))*(k-1) + &
+                                      sys%lattice%lattice_size(1)*(j-1) + mod(j+k,2) + i
                         bit_pos = bit_lookup(1, site_index)
                         bit_element = bit_lookup(2, site_index)
                         lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
@@ -226,7 +228,7 @@ contains
             call check_allocate('ras3', basis_length, ierr)
             ras1 = 0
             ras3 = 0
-            ras1_min = sys_global%nel - truncation_level
+            ras1_min = sys%nel - truncation_level
             do i = 1, 2*ras(1) ! RAS is in *spatial* orbitals.
                 bit_pos = bit_lookup(1,i)
                 bit_element = bit_lookup(2,i)
@@ -272,11 +274,13 @@ contains
 
 !--- Initialisation and finalisation of det_info objects ---
 
-    subroutine alloc_det_info(det_info_t, allocate_bit_strings)
+    subroutine alloc_det_info(sys, det_info_t, allocate_bit_strings)
 
         ! Allocate the components of a det_info variable.
 
         ! In:
+        !    sys: system to be studied (which defines the length of the
+        !        det_info components).
         !    allocate_bit_strings (optional): if true (default), allocate the
         !        bit string attributes.  If false, then the bit string attributes
         !        can be used to point to already allocated bit strings.
@@ -287,12 +291,15 @@ contains
         !        appropriate sizes.
 
         use checking, only: check_allocate
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         logical, intent(in), optional :: allocate_bit_strings
         type(det_info), intent(inout) :: det_info_t
         logical :: alloc_f
         integer :: ierr
 
+        ! Bit strings...
         if (present(allocate_bit_strings)) then
             alloc_f = allocate_bit_strings
         else
@@ -304,17 +311,23 @@ contains
             allocate(det_info_t%f2(basis_length), stat=ierr)
             call check_allocate('det_info_t%f2',basis_length,ierr)
         end if
-        allocate(det_info_t%occ_list(sys_global%nel), stat=ierr)
-        call check_allocate('det_info_t%occ_list',sys_global%nel,ierr)
-        allocate(det_info_t%occ_list_alpha(sys_global%nalpha), stat=ierr)
-        call check_allocate('det_info_t%occ_list_alpha',sys_global%nalpha,ierr)
-        allocate(det_info_t%occ_list_beta(sys_global%nbeta), stat=ierr)
-        call check_allocate('det_info_t%occ_list_beta',sys_global%nbeta,ierr)
-        allocate(det_info_t%unocc_list_alpha(sys_global%nvirt_alpha), stat=ierr)
-        call check_allocate('det_info_t%unocc_list_alpha',sys_global%nvirt_alpha,ierr)
-        allocate(det_info_t%unocc_list_beta(sys_global%nvirt_beta), stat=ierr)
-        call check_allocate('det_info_t%unocc_list_beta',sys_global%nvirt_beta,ierr)
-        allocate(det_info_t%symunocc(2,sys_global%sym0:sys_global%sym_max), stat=ierr)
+
+        ! Components for occupied basis functions...
+        allocate(det_info_t%occ_list(sys%nel), stat=ierr)
+        call check_allocate('det_info_t%occ_list',sys%nel,ierr)
+        allocate(det_info_t%occ_list_alpha(sys%nalpha), stat=ierr)
+        call check_allocate('det_info_t%occ_list_alpha',sys%nalpha,ierr)
+        allocate(det_info_t%occ_list_beta(sys%nbeta), stat=ierr)
+
+        ! Components for unoccupied basis functions...
+        call check_allocate('det_info_t%occ_list_beta',sys%nbeta,ierr)
+        allocate(det_info_t%unocc_list_alpha(sys%nvirt_alpha), stat=ierr)
+        call check_allocate('det_info_t%unocc_list_alpha',sys%nvirt_alpha,ierr)
+        allocate(det_info_t%unocc_list_beta(sys%nvirt_beta), stat=ierr)
+        call check_allocate('det_info_t%unocc_list_beta',sys%nvirt_beta,ierr)
+
+        ! Components for symmetry summary of unoccupied basis functions...
+        allocate(det_info_t%symunocc(2,sys%sym0:sys%sym_max), stat=ierr)
         call check_allocate('det_info_t%symunocc',size(det_info_t%symunocc),ierr)
 
     end subroutine alloc_det_info
@@ -373,19 +386,19 @@ contains
     pure subroutine encode_det(occ_list, bit_list)
 
         ! In:
-        !    occ_list(sys_global%nel): integer list of occupied orbitals in the Slater determinant.
+        !    occ_list(nel): integer list of occupied orbitals in the Slater determinant.
         ! Out:
         !    bit_list(basis_length): a bit string representation of the occupied
         !        orbitals.   The first element contains the first i0_length basis
         !        functions, the second element the next i0_length and so on.  A basis
         !        function is occupied if the relevant bit is set.
 
-        integer, intent(in) :: occ_list(sys_global%nel)
+        integer, intent(in) :: occ_list(:)
         integer(i0), intent(out) :: bit_list(basis_length)
         integer :: i, orb, bit_pos, bit_element
 
         bit_list = 0
-        do i = 1, sys_global%nel
+        do i = 1, size(occ_list)
             orb = occ_list(i)
             bit_pos = bit_lookup(1,orb)
             bit_element = bit_lookup(2,orb)
@@ -402,10 +415,11 @@ contains
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         ! Out:
-        !    occ_list(sys_global%nel): integer list of occupied orbitals in the Slater determinant.
+        !    occ_list(:): integer list of occupied orbitals in the Slater
+        !        determinant. (min size: number of electrons.)
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(out) :: occ_list(sys_global%nel)
+        integer, intent(out) :: occ_list(:)
         integer :: i, j, iorb
 
         iorb = 1
@@ -413,7 +427,7 @@ contains
             do j = 0, i0_end
                 if (btest(f(i), j)) then
                     occ_list(iorb) = basis_lookup(j, i)
-                    if (iorb == sys_global%nel) exit outer
+                    if (iorb == size(occ_list)) exit outer
                     iorb = iorb + 1
                 end if
             end do
@@ -421,18 +435,22 @@ contains
 
     end subroutine decode_det
 
-    pure subroutine decode_det_occ(f, d)
+    pure subroutine decode_det_occ(sys, f, d)
 
         ! Decode determinant bit string into integer list containing the
         ! occupied orbitals.
         ! In:
+        !    sys: system being studied (contains required basis information).
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         ! Out:
         !    d: det_info variable.  The following components are set:
-        !        occ_list(sys_global%nel): integer list of occupied spin-orbitals in the
+        !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
 
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b
@@ -447,13 +465,13 @@ contains
                     iocc = iocc + 1
                     d%occ_list(iocc) = basis_lookup(j, i)
                 end if
-                if (iocc == sys_global%nel) exit
+                if (iocc == sys%nel) exit
             end do
         end do
 
     end subroutine decode_det_occ
 
-    pure subroutine decode_det_occ_spinunocc(f, d)
+    pure subroutine decode_det_occ_spinunocc(sys, f, d)
 
         ! Decode determinant bit string into integer lists containing the
         ! occupied and unoccupied orbitals.  The unoccupied alpha and beta
@@ -463,13 +481,16 @@ contains
         !        determinant.
         ! Out:
         !    d: det_info variable.  The following components are set:
-        !        occ_list(sys_global%nel): integer list of occupied spin-orbitals in the
+        !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
-        !        unocc_list_alpha(sys_global%nvirt_alpha): integer list of unoccupied alpha
+        !        unocc_list_alpha: integer list of unoccupied alpha
         !            spin-orbitals in the Slater determinant.
-        !        unocc_list_beta(sys_global%nvirt_beta): integer list of unoccupied beta
+        !        unocc_list_beta: integer list of unoccupied beta
         !            spin-orbitals in the Slater determinant.
 
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b
@@ -502,7 +523,7 @@ contains
 
     end subroutine decode_det_occ_spinunocc
 
-    pure subroutine decode_det_spinocc_spinunocc(f, d)
+    pure subroutine decode_det_spinocc_spinunocc(sys, f, d)
 
         ! Decode determinant bit string into integer lists containing the
         ! occupied and unoccupied orbitals.
@@ -514,17 +535,20 @@ contains
         !        determinant.
         ! Out:
         !    d: det_info variable.  The following components are set:
-        !        occ_list(sys_global%nel): integer list of occupied spin-orbitals in the
+        !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
-        !        occ_list_alpha(sys_global%nalpha): integer list of occupied alpha
+        !        occ_list_alpha: integer list of occupied alpha
         !            spin-orbitals in the Slater determinant.
-        !        occ_list_beta(sys_global%nbeta): integer list of occupied beta
+        !        occ_list_beta: integer list of occupied beta
         !            spin-orbitals in the Slater determinant.
-        !        unocc_list_alpha(sys_global%nvirt_alpha): integer list of unoccupied alpha
+        !        unocc_list_alpha: integer list of unoccupied alpha
         !            spin-orbitals in the Slater determinant.
-        !        unocc_list_beta(sys_global%nvirt_beta): integer list of unoccupied beta
+        !        unocc_list_beta: integer list of unoccupied beta
         !            spin-orbitals in the Slater determinant.
 
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb
@@ -598,7 +622,7 @@ contains
 
     end subroutine decode_det_spinocc_spinunocc
 
-    pure subroutine decode_det_occ_symunocc(f, d)
+    pure subroutine decode_det_occ_symunocc(sys, f, d)
 
         !0 Decode determinant bit string into integer list containing the
         ! occupied orbitals.
@@ -607,14 +631,16 @@ contains
         !        determinant.
         ! Out:
         !    d: det_info variable.  The following components are set:
-        !        occ_list(sys_global%nel): integer list of occupied spin-orbitals in the
+        !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
-        !        symunocc(2, sys_global%sym0:symmax): number of unoccupied orbitals of each
+        !        symunocc(2, sym0:symmax): number of unoccupied orbitals of each
         !            spin/symmetry.  The same indexing scheme is used for
         !            nbasis_sym_spin.
 
         use point_group_symmetry, only: nbasis_sym_spin
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b, orb, ims, isym
@@ -635,31 +661,13 @@ contains
                     d%occ_list(iocc) = orb
                     d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
                 end if
-                if (iocc == sys_global%nel) exit
+                if (iocc == sys%nel) exit
             end do
         end do
 
     end subroutine decode_det_occ_symunocc
 
 !--- Extract information from bit strings ---
-
-    pure function det_momentum(occ_list) result(ksum)
-
-        ! In:
-        !    occ_list(sys_global%nel): integer list of occupied orbitals in the Slater determinant.
-        ! Returns:
-        !    ksum: Sum of wavevectors of the occupied orbitals in the Slater determinant.
-
-        integer :: ksum(sys_global%lattice%ndim)
-        integer, intent(in) :: occ_list(sys_global%nel)
-        integer :: i
-
-        ksum = 0
-        do i = 1, sys_global%nel
-            ksum = ksum + basis_fns(occ_list(i))%l
-        end do
-
-    end function det_momentum
 
     pure function det_spin(f) result(Ms)
 
@@ -775,11 +783,12 @@ contains
 
 !--- Output ---
 
-    subroutine write_det(f, iunit, new_line)
+    subroutine write_det(nel, f, iunit, new_line)
 
         ! Write out a determinant as a list of occupied orbitals in the
         ! Slater determinant.
         ! In:
+        !    nel: number of electrons in system.
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         !    iunit (optional): io unit to which the output is written.
@@ -790,10 +799,11 @@ contains
 
         use utils, only: int_fmt
 
+        integer, intent(in) :: nel
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
-        integer :: occ_list(sys_global%nel), io, i
+        integer :: occ_list(nel), io, i
         character(4) :: fmt1
 
         if (present(iunit)) then
@@ -806,7 +816,7 @@ contains
         fmt1 = int_fmt(nbasis,1)
 
         write (io,'("|")', advance='no')
-        do i = 1, sys_global%nel
+        do i = 1, nel
             write (io,'('//fmt1//')', advance='no') occ_list(i)
         end do
         write (io,'(1X,">")', advance='no')

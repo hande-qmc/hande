@@ -10,10 +10,12 @@ implicit none
 ! that's imported as a array size in abstract interfaces.
 
 abstract interface
-    pure subroutine i_decoder(f,d)
+    pure subroutine i_decoder(sys,f,d)
         use basis, only: basis_length
+        use system, only: sys_t
         import :: i0, det_info
         implicit none
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
     end subroutine i_decoder

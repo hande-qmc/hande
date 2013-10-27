@@ -252,7 +252,7 @@ contains
             ! Initialise and allocate RNG store.
             call dSFMT_init(seed+(iproc*nthreads)+i, 50000, rng(i))
             ! ...and allocate det_info components...
-            call alloc_det_info(cdet(i))
+            call alloc_det_info(sys, cdet(i))
             ! ...and cluster_t components
             allocate(cluster(i)%excitors(truncation_level+2), stat=ierr)
             call check_allocate('cluster%excitors', truncation_level+2, ierr)
@@ -275,7 +275,7 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
+        call initial_fciqmc_status(sys)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -320,6 +320,8 @@ contains
                                         cdet(it), cluster(it))
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
+
+                        call decoder_ptr(sys, cdet(it)%f, cdet(it))
 
                         ! FCIQMC calculates the projected energy exactly.  To do
                         ! so in CCMC would involve enumerating over all pairs of
@@ -593,9 +595,6 @@ contains
             end if
 
         end select
-
-        ! Fill in information about the cluster if required.
-        if (cluster%excitation_level <= truncation_level+2) call decoder_ptr(cdet%f, cdet)
 
     end subroutine select_cluster
 

@@ -67,7 +67,7 @@ contains
             call init_model_basis_fns(sys)
         end if
 
-        call init_determinants()
+        call init_determinants(sys)
         call init_determinant_enumeration()
 
         call init_excitations()

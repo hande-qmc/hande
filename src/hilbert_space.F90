@@ -24,7 +24,7 @@ contains
         use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns, nbasis
         use calc, only: sym_in, ms_in, truncate_space, truncation_level, seed
         use const, only: dp
-        use determinants, only: set_spin_polarisation, encode_det
+        use determinants, only: encode_det
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, get_rand_close_open
         use fciqmc_data, only: occ_list0

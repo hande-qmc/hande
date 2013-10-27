@@ -73,7 +73,7 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Allocate det_info components.
-        call alloc_det_info(cdet, .false.)
+        call alloc_det_info(sys, cdet, .false.)
 
         ! from restart
         nparticles_old = tot_nparticles
@@ -81,7 +81,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
+        call initial_fciqmc_status(sys)
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -118,7 +118,7 @@ contains
                     cdet%f = walker_dets(:,idet)
                     cdet%data => walker_data(:,idet)
 
-                    call decoder_ptr(cdet%f, cdet)
+                    call decoder_ptr(sys, cdet%f, cdet)
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're

@@ -74,14 +74,14 @@ contains
 
         sum_off_diag = max_nexcitations*matel
 
-        call alloc_det_info(cdet)
+        call alloc_det_info(sys, cdet)
 
         nparticles_old = tot_nparticles
 
         t_barrier = tau ! or we could just not bother with the t_barrier var...
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
+        call initial_fciqmc_status(sys)
 
         ! time the report loop
         call cpu_time(t1)
@@ -99,7 +99,7 @@ contains
                 ! doing it. Then find lists of orbitals.
                 cdet%f => walker_dets(:,idet)
                 cdet%data => walker_data(:,idet)
-                call decoder_ptr(cdet%f, cdet)
+                call decoder_ptr(sys, cdet%f, cdet)
 
                 tmp_pop = walker_population(1,idet)
 
@@ -176,7 +176,7 @@ contains
                         ! decode the spawned walker bitstring
                         cdet%f = qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id))
                         K_ii = sc0_ptr(cdet%f) - H00
-                        call decoder_ptr(cdet%f,cdet)
+                        call decoder_ptr(sys, cdet%f,cdet)
 
                         ! Spawn from this walker & append to the spawned array until
                         ! we hit the barrier

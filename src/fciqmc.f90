@@ -55,17 +55,17 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Allocate det_info components.
-        call alloc_det_info(cdet, .false.)
+        call alloc_det_info(sys, cdet, .false.)
         ! Folded spectrum *needs* the bit strings to be allocated as it needs
         ! be able to manipulate the bit string to create excited states.
-        if (doing_calc(folded_spectrum)) call alloc_det_info(cdet_excit)
+        if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
 
         ! from restart
         nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
+        call initial_fciqmc_status(sys)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -83,7 +83,7 @@ contains
                     cdet%f => walker_dets(:,idet)
                     cdet%data => walker_data(:,idet)
 
-                    call decoder_ptr(cdet%f, cdet)
+                    call decoder_ptr(sys, cdet%f, cdet)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're

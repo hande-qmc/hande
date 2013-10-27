@@ -75,12 +75,13 @@ contains
 
     end subroutine init_folded_spectrum
 
-    subroutine create_cdet_excit(cdet_in, connection, cdet_out)
+    subroutine create_cdet_excit(sys, cdet_in, connection, cdet_out)
 
         ! Generate a complete excited determinant from another determinant and
         ! the excitation information connecting the two determinants.
         !
         ! In:
+        !    sys: system being studied.
         !    cdet_in: info on the current determinant that we will excite
         !        from.  The f field must be set.
         !    connection: excitation connecting cdet_in to cdet_out.  Note that
@@ -92,7 +93,9 @@ contains
         use determinants, only: det_info
         use proc_pointers, only: decoder_ptr
         use excitations, only: excit, create_excited_det
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in)  :: cdet_in
         type(excit), intent(in)     :: connection
         type(det_info), intent(inout) :: cdet_out
@@ -101,7 +104,7 @@ contains
         call create_excited_det(cdet_in%f, connection, cdet_out%f)
 
         ! Decode the excited determinant bit string representation
-        call decoder_ptr(cdet_out%f,cdet_out)
+        call decoder_ptr(sys, cdet_out%f,cdet_out)
 
     end subroutine create_cdet_excit
 
@@ -231,7 +234,7 @@ contains
                 ! Generate the second random excitation
                 !    (in this case we stay on the same place)
                 ! (i)  generate the first excited determinant
-                call create_cdet_excit(cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
+                call create_cdet_excit(sys, cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
                 ! (ii) calculate Pgen and hmatel on this site
                 Pgen_jk = 1
                 hmatel_jk = sc0_ptr(cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
@@ -293,7 +296,7 @@ contains
 
                 ! Generate the second random excitation
                 ! (i)  generate the first excited determinant
-                call create_cdet_excit(cdet, connection_ki, cdet_excit)
+                call create_cdet_excit(sys, cdet, connection_ki, cdet_excit)
                 ! (ii) excite again
                 call gen_excit_ptr%full(rng, sys, cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
 

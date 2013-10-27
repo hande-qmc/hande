@@ -58,8 +58,8 @@ contains
 
         ! Allocate det_info components. We need two cdet objects
         ! for each 'end' which may be spawned from in the DMQMC algorithm.
-        call alloc_det_info(cdet1, .false.)
-        call alloc_det_info(cdet2, .false.)
+        call alloc_det_info(sys, cdet1, .false.)
+        call alloc_det_info(sys, cdet2, .false.)
 
         ! Main DMQMC loop.
         if (parent) call write_fciqmc_report_header()
@@ -146,8 +146,8 @@ contains
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
                         ! to refer to the correct element in the density matrix.
-                        call decoder_ptr(cdet1%f, cdet1)
-                        call decoder_ptr(cdet2%f, cdet2)
+                        call decoder_ptr(sys, cdet1%f, cdet1)
+                        call decoder_ptr(sys, cdet2%f, cdet2)
 
                         ! Call wrapper function which calls all requested estimators
                         ! to be updated, and also always updates the trace separately.
