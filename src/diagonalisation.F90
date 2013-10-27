@@ -205,7 +205,8 @@ contains
 
                 else
 
-                    if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) call generate_hamil(sys, distribute_off)
+                    if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) &
+                        call generate_hamil(sys, distribute_off)
 
                     ! Lanczos.
                     if (doing_calc(lanczos_diag)) then
