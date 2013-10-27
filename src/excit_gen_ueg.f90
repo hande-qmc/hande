@@ -3,10 +3,18 @@ module excit_gen_ueg
 ! Module for random excitation generators and related routines for the uniform
 ! electron gas.
 
-! NOTE: the electron gas is wonderfully simple and only contains double
+! The electron gas is wonderfully simple and only contains double
 ! excitations (much like, in fact, the Hubbard model).
 
-! TODO: interface comments.
+! NOTE: Currently only unrenormalised excitation generators are fully
+! implemented (ie where we explicitly discard excitations (i,j)->(a,b) if b is
+! already occupied rather than only generating excitations which are allowed).
+! This is because, as there is no integral storage bottleneck in the UEG, the
+! number of basis functions tends to be much larger than the number of
+! electrons.  Consequently the fraction of such forbidden excitations is quite
+! small and so it is not worth the expense of renormalising.  We still generate
+! excitations (i,j)->(a,b) which are allowed both by symmetry (conservation of
+! crystal momentum) and spin.
 
 use const, only: i0, p, dp
 
@@ -173,6 +181,31 @@ contains
 
     subroutine choose_ab_ueg(rng, sys, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
 
+        ! Select a random a (and hence b) to create an allowed excitation,
+        ! (i,j)->(a,b), given a certain (i,j) pair.  Try harder to do this that
+        ! find_ab_ueg.
+
+        ! In:
+        !    sys: system object being studied.
+        !    f: bit string representation of the Slater determinant from which
+        !       the excitation is.
+        !    i,j: indices of the selected spin-orbitals from which to excite.
+        !    ij_k: sum of the wavevectors of the i and j spin-orbitals.
+        !    ij_spin: sum of the spins of the i and j spin-orbitals (in units of
+        !       1/2).
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    max_na: the maximum number of choices for the a spin-orbital given
+        !       the choice of the (i,j) pair of spin-orbitals (ie the number
+        !       of unoccupied spin-orbitals in the basis ignoring occupancy such
+        !       that there exists at least one other spin-orbital (either
+        !       occupied or unoccupied) which allows spin and crystal momentum
+        !       to be conserved.
+        !    a,b: Indices of the virtual orbitals selected for the excitation.
+        !        Meaningless/unset if allowed_excitation is false.
+        !    allowed_excitation: if true, then the excitation is allowed.
+
         use basis, only: basis_fns, basis_length, nbasis, basis_lookup
         use const, only: i0_end
         use bit_utils, only: count_set_bits
@@ -193,7 +226,7 @@ contains
 
         call find_ab_ueg(rng, sys, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
         if (max_na == 0) then
-            ! No available excitations.
+            ! No available excitations given the choice of i,j.
         else if (.not.allowed_excitation) then
             ! Attempt max_attempts times to find an excitation.
             do iattempt = 2, max_attempts
@@ -289,6 +322,36 @@ contains
 !--- Select random orbitals in double excitations ---
 
     subroutine find_ab_ueg(rng, sys, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
+
+        ! Select a random a (and hence b) to create an allowed excitation,
+        ! (i,j)->(a,b), given a certain (i,j) pair.  Simply choose a random
+        ! spin-orbital (a) and hence find the spin-orbital (b) which conserves
+        ! spin and crystal momentum.  Check if the excitation is actually
+        ! allowed (ie there exists an unoccupied orbital for which k_i+k_j-k_a
+        ! lies within the Fermi sphere and, if so, that the b spin-orbital is
+        ! actually unoccupied).
+
+        ! In:
+        !    sys: system object being studied.
+        !    f: bit string representation of the Slater determinant from which
+        !       the excitation is.
+        !    i,j: indices of the selected spin-orbitals from which to excite.
+        !    ij_k: sum of the wavevectors of the i and j spin-orbitals.
+        !    ij_spin: sum of the spins of the i and j spin-orbitals (in units of
+        !       1/2).
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    max_na: the maximum number of choices for the a spin-orbital given
+        !       the choice of the (i,j) pair of spin-orbitals (ie the number
+        !       of unoccupied spin-orbitals in the basis ignoring occupancy such
+        !       that there exists at least one other spin-orbital (either
+        !       occupied or unoccupied) which allows spin and crystal momentum
+        !       to be conserved.
+        !    a,b: Indices of the virtual orbitals selected for the excitation.
+        !        Meaningless/unset if allowed_excitation is false.
+        !    allowed_excitation: if true, then the excitation is allowed.
+
 
         use basis, only: basis_fns, basis_length, nbasis, basis_lookup, bit_lookup
         use const, only: i0_end
@@ -387,6 +450,21 @@ contains
 !--- Excitation generation probabilities ---
 
     pure function calc_pgen_ueg_no_renorm(sys, max_na) result(pgen)
+
+        ! NOTE: this assumes that the corresponding excitation (i,j)->(a,b) is
+        ! actually allowed.  Cases where this is not true must be explcitly
+        ! handled.
+
+        ! In:
+        !    sys: system object being studied.
+        !    max_na: the maximum number of choices for the a spin-orbital given
+        !       the choice of the (i,j) pair of spin-orbitals (ie the number
+        !       of unoccupied spin-orbitals in the basis ignoring occupancy such
+        !       that there exists at least one other spin-orbital (either
+        !       occupied or unoccupied) which allows spin and crystal momentum
+        !       to be conserved.
+        ! Returns:
+        !    pgen: the generation probability of the excitation.
 
         use system, only: sys_t
 
