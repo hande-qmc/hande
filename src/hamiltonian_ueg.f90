@@ -106,7 +106,7 @@ contains
                 ! background-background interactions.
                 if (mod(occ_list(i),2) == mod(occ_list(j),2)) then
                     ! Have an exchange term
-                    hmatel = hmatel - exchange_int_ueg(occ_list(i), occ_list(j))
+                    hmatel = hmatel - exchange_int_ueg(sys, occ_list(i), occ_list(j))
                 end if
             end do
         end do
@@ -135,7 +135,7 @@ contains
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        hmatel = get_two_e_int_ueg(i, j, a, b)
+        hmatel = get_two_e_int_ueg(sys, i, j, a, b)
 
         if (perm) hmatel = -hmatel
 
@@ -172,8 +172,8 @@ contains
 
         hmatel = 0.0_p
 
-        if (basis_fns(i)%Ms == basis_fns(a)%Ms) hmatel = coulomb_int_ueg(i, a)
-        if (basis_fns(i)%Ms == basis_fns(b)%Ms) hmatel = hmatel - coulomb_int_ueg(i, b)
+        if (basis_fns(i)%Ms == basis_fns(a)%Ms) hmatel = coulomb_int_ueg(sys, i, a)
+        if (basis_fns(i)%Ms == basis_fns(b)%Ms) hmatel = hmatel - coulomb_int_ueg(sys, i, b)
 
         if (perm) hmatel = -hmatel
 

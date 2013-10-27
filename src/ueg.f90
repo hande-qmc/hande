@@ -54,9 +54,11 @@ abstract interface
     ! UEG-specific integral procedure pointers.
     ! The integral routines are different for 2D and UEG.  Abstract them using
     ! procedure pointers.
-    pure function i_int_ueg(i, a) result(intgrl)
+    pure function i_int_ueg(sys, i, a) result(intgrl)
+        use system, only: sys_t
         import :: p
         real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
     end function i_int_ueg
 
@@ -217,9 +219,10 @@ contains
 !-------
 ! Integrals
 
-    pure function get_two_e_int_ueg(i, j, a, b) result(intgrl)
+    pure function get_two_e_int_ueg(sys, i, j, a, b) result(intgrl)
 
         ! In:
+        !    sys: system being studied.
         !    i,j:  index of the spin-orbital from which an electron is excited in
         !          the reference determinant.
         !    a,b:  index of the spin-orbital into which an electron is excited in
@@ -231,8 +234,10 @@ contains
         ! Warning: assume i,j /= a,b (ie not asking for < ij || ij > or < ij || ji >).
 
         use basis, only: basis_fns
+        use system, only: sys_t
 
         real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
 
         intgrl = 0.0_p
@@ -244,19 +249,20 @@ contains
 
             ! Coulomb
             if (basis_fns(i)%ms == basis_fns(a)%ms .and.  basis_fns(j)%ms == basis_fns(b)%ms) &
-                intgrl = intgrl + coulomb_int_ueg(i, a)
+                intgrl = intgrl + coulomb_int_ueg(sys, i, a)
 
             ! Exchange
             if (basis_fns(i)%ms == basis_fns(b)%ms .and.  basis_fns(j)%ms == basis_fns(a)%ms) &
-                intgrl = intgrl - coulomb_int_ueg(i, b)
+                intgrl = intgrl - coulomb_int_ueg(sys, i, b)
 
         end if
 
     end function get_two_e_int_ueg
 
-    pure function coulomb_int_ueg_2d(i, a) result(intgrl)
+    pure function coulomb_int_ueg_2d(sys, i, a) result(intgrl)
 
         ! In:
+        !    sys: system being studied.
         !    i: index of spin-orbital basis function.
         !    a: index of spin-orbital basis function.
         !
@@ -268,9 +274,10 @@ contains
         !    a Hartree integral).
 
         use basis, only: basis_fns
-        use system
+        use system, only: sys_t
 
         real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
         integer :: q(2)
 
@@ -279,13 +286,14 @@ contains
         ! the integral hence becomes 1/(L|q|), where q = k_i - k_a.
 
         q = basis_fns(i)%l - basis_fns(a)%l
-        intgrl = 1.0_p/(sys_global%lattice%box_length(1)*sqrt(real(dot_product(q,q),p)))
+        intgrl = 1.0_p/(sys%lattice%box_length(1)*sqrt(real(dot_product(q,q),p)))
 
     end function coulomb_int_ueg_2d
 
-    pure function coulomb_int_ueg_3d(i, a) result(intgrl)
+    pure function coulomb_int_ueg_3d(sys, i, a) result(intgrl)
 
         ! In:
+        !    sys: system being studied.
         !    i: index of spin-orbital basis function.
         !    a: index of spin-orbital basis function.
         !
@@ -297,9 +305,10 @@ contains
         !    a Hartree integral).
 
         use basis, only: basis_fns
-        use system
+        use system, only: sys_t
 
         real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
         integer :: q(3)
 
@@ -308,7 +317,7 @@ contains
         ! the integral hence becomes 1/(\pi.L.q^2), where q = k_i - k_a.
 
         q = basis_fns(i)%l - basis_fns(a)%l
-        intgrl = 1.0_p/(pi*sys_global%lattice%box_length(1)*dot_product(q,q))
+        intgrl = 1.0_p/(pi*sys%lattice%box_length(1)*dot_product(q,q))
 
     end function coulomb_int_ueg_3d
 
