@@ -319,7 +319,7 @@ contains
 
 ! 1. < i | o_1 | j >
 
-    subroutine store_one_body_int_mol(i, j, intgrl, store)
+    subroutine store_one_body_int_mol(i, j, intgrl, suppress_err_msg, store, ierr)
 
         ! Store <i|o_1|j> in the appropriate slot in the one-body integral
         ! store.  The store does not have room for non-zero integrals, so it is
@@ -328,25 +328,33 @@ contains
         ! In:
         !    i,j: (indices of) spin-orbitals.
         !    intgrl: <i|o_1|j>, where o_1 is a one-body operator.
+        !    suppress_err_msg: if true, don't print out any error messages.
         ! In/out:
         !    store: one-body integral store.  On exit the <i|o_1|j> is also
-        !    stored.
+        !       stored.
+        ! Out:
+        !    ierr: 0 if no error is encountered, 1 if integral should be non-zero
+        !       by symmetry but is larger than depsilon.
 
         use basis, only: basis_fns
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
         use system, only: uhf
 
         use const, only: depsilon
-        use errors, only: stop_all
+        use errors, only: warning
         use utils, only: tri_ind
 
         integer, intent(in) :: i, j
         real(p), intent(in) :: intgrl
+        logical, intent(in) :: suppress_err_msg
         type(one_body) :: store
+        integer, intent(out) :: ierr
 
         integer :: ii, jj, spin
         integer :: sym
         character(255) :: error
+
+        ierr = 0
 
         sym = cross_product_pg_basis(i, j)
         sym = cross_product_pg_sym(sym, store%op_sym)
@@ -376,9 +384,12 @@ contains
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
             end if
         else if (abs(intgrl) > depsilon) then
-            write (error, '("<i|o|j> should be zero by symmetry: &
-                            &<",i3,"|o|",i3,"> =",f16.10)') i, j, intgrl
-            call stop_all('store_one_body_int_mol', error)
+            if (.not.suppress_err_msg) then
+                write (error, '("<i|o|j> should be zero by symmetry: &
+                                &<",i3,"|o|",i3,"> =",f16.10)') i, j, intgrl
+                call warning('store_one_body_int_mol', trim(error), -1)
+            end if
+            ierr = 1
         end if
 
     end subroutine store_one_body_int_mol
@@ -571,7 +582,7 @@ contains
 
     end function two_body_int_indx
 
-    subroutine store_two_body_int_mol(i, j, a, b, intgrl, store)
+    subroutine store_two_body_int_mol(i, j, a, b, intgrl, suppress_err_msg, store, ierr)
 
         ! Store <ij|o_2|ab> in the appropriate slot in the two-body integral store.
         ! The store does not have room for non-zero integrals, so it is assumed
@@ -583,24 +594,32 @@ contains
         ! In:
         !    i,j,a,b: (indices of) spin-orbitals.
         !    intgrl: <ij|o_2|ab>, where o_2 is a two-electron operator.  Note
-        !    the integral is expressed in *PHYSICIST'S NOTATION*.
+        !       the integral is expressed in *PHYSICIST'S NOTATION*.
+        !    suppress_err_msg: if true, don't print out any error messages.
         ! In/out:
         !    store: two-body integral store.  On exit the <ij|o_2|ab> is also
-        !    stored.
+        !       stored.
+        ! Out:
+        !    ierr: 0 if no error is encountered, 1 if integral should be non-zero
+        !       by symmetry but is larger than depsilon.
 
         use basis, only: basis_fns
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
 
         use const, only: depsilon
-        use errors, only: stop_all
+        use errors, only: warning
 
         integer, intent(in) :: i, j, a, b
         real(p), intent(in) :: intgrl
+        logical, intent(in) :: suppress_err_msg
         type(two_body), intent(inout) :: store
+        integer, intent(out) :: ierr
 
         integer :: sym_ij, sym_ab, sym
         type(int_indx) :: indx
         character(255) :: error
+
+        ierr = 0
 
         ! Should integral be non-zero by symmetry?
         sym_ij = cross_product_pg_basis(i, j)
@@ -614,9 +633,12 @@ contains
             indx = two_body_int_indx(i, j, a, b)
             store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
         else if (abs(intgrl) > depsilon) then
-            write (error, '("<ij|o|ab> should be zero by symmetry: &
-                            &<",2i3,"|",2i3,"> =",f16.10)') i, j, a, b, intgrl
-            call stop_all('store_two_body_int_mol', error)
+            if (.not.suppress_err_msg) then
+                write (error, '("<ij|o|ab> should be zero by symmetry: &
+                                &<",2i3,"|",2i3,"> =",f16.10)') i, j, a, b, intgrl
+                call warning('store_two_body_int_mol', trim(error), -1)
+            end if
+            ierr = 1
         end if
 
     end subroutine store_two_body_int_mol

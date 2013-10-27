@@ -32,7 +32,7 @@ contains
         use system, only: fcidump, uhf, ecore, nel, nvirt, dipole_int_file, dipole_core
 
         use checking, only: check_allocate, check_deallocate
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use parallel
         use ranking, only: insertion_rank_rp
         use utils, only: get_free_unit, tri_ind_reorder, int_fmt
@@ -66,6 +66,8 @@ contains
         logical, allocatable :: seen_iha(:)
         real(p), allocatable :: sp_eigv(:)
         logical :: not_found_sp_eigv
+        integer :: int_err, max_err_msg
+        character(1024) :: err_msg
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz
 
@@ -370,6 +372,10 @@ contains
         ! We similarly need to remember if we've seen <i|h|a> or <a|h|i> as we
         ! only store one of the pair.
 
+        ! Accumulate errors so we can print out (at most) max_err_msg errors from this file.
+        int_err = 0
+        max_err_msg = 10
+
         if (parent) then
 
             allocate(seen_iha((nbasis*(nbasis+1))/2), stat=ierr)
@@ -441,7 +447,8 @@ contains
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
                                     x = x + get_one_body_int_mol(one_e_h_integrals, ii, aa)
-                                    call store_one_body_int_mol(ii, aa, x, one_e_h_integrals)
+                                    call store_one_body_int_mol(ii, aa, x, int_err > max_err_msg, one_e_h_integrals, ierr)
+                                    int_err = int_err + ierr
                                     seen_iha(tri_ind_reorder(ii,aa)) = .true.
                                 end if
                             end if
@@ -513,7 +520,9 @@ contains
                                         if (mod(seen_iaib(core(1), tri_ind_reorder(active(1),active(2))),2) == 0) then
                                             ! Update <a|h|b> with contribution <ia|ib>.
                                             x = get_one_body_int_mol(one_e_h_integrals, active(1), active(2)) + x*rhf_fac
-                                            call store_one_body_int_mol(active(1), active(2), x, one_e_h_integrals)
+                                            call store_one_body_int_mol(active(1), active(2), x, int_err > max_err_msg, &
+                                                                        one_e_h_integrals, ierr)
+                                            int_err = int_err + ierr
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 1
                                         end if
@@ -522,7 +531,9 @@ contains
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2) then
                                             ! Update <j|h|a> with contribution <ij|ai>.
                                             x = get_one_body_int_mol(one_e_h_integrals, active(1), active(2)) - x
-                                            call store_one_body_int_mol(active(1), active(2), x, one_e_h_integrals)
+                                            call store_one_body_int_mol(active(1), active(2), x, int_err > max_err_msg, &
+                                                                        one_e_h_integrals, ierr)
+                                            int_err = int_err + ierr
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
                                         end if
@@ -530,7 +541,8 @@ contains
                                 end if
                             case(4)
                                 ! Have <ij|ab> involving active orbitals.
-                                call store_two_body_int_mol(ii, jj, aa, bb, x, coulomb_integrals)
+                                call store_two_body_int_mol(ii, jj, aa, bb, x, int_err > max_err_msg, coulomb_integrals, ierr)
+                                int_err = int_err + ierr
                             end select
                         end if
 
@@ -539,6 +551,14 @@ contains
                 end if
 
             end do
+
+            if (int_err /= 0) then
+                write (err_msg, '("Found and ignored",'//int_fmt(int_err,1)//'," integrals which should be zero &
+                                  &by symmetry in file: '//trim(fcidump)//'")') int_err
+                call warning('read_in_integrals', trim(err_msg), 1)
+                if (int_err > max_err_msg) &
+                    write (6,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
+            end if
 
             deallocate(seen_iha, stat=ierr)
             call check_deallocate('seen_iha', ierr)
@@ -698,7 +718,8 @@ contains
 
         use errors, only: stop_all
         use parallel
-        use utils, only: get_free_unit
+        use utils, only: get_free_unit, int_fmt
+        use errors, only: warning
 
         use, intrinsic :: iso_fortran_env, only: iostat_end
 
@@ -709,8 +730,14 @@ contains
 
         integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac, ierr
         logical :: t_exists
+        integer :: int_err, max_err_msg
+        character(1024) :: err_msg
 
         real(p) :: x
+
+        ! Accumulate errors so we can print out (at most) max_err_msg errors from this file.
+        int_err = 0
+        max_err_msg = 10
 
         if (uhf) then
             rhf_fac = 1
@@ -796,9 +823,18 @@ contains
                 else if (ii < 1 .and. ii == aa) then
                     core_term = core_term + rhf_fac*x
                 else if (min(ii,aa) >= 1 .and. max(ii,aa) <= nbasis) then
-                    call store_one_body_int_mol(ii, aa, x, store)
+                    call store_one_body_int_mol(ii, aa, x, int_err > max_err_msg, store, ierr)
+                    int_err = int_err + ierr
                 end if
             end do
+        end if
+
+        if (int_err /= 0) then
+            write (err_msg, '("Found and ignored",'//int_fmt(int_err,1)//'," integrals which should be zero &
+                              &by symmetry in file: '//trim(integral_file)//'")') int_err
+            call warning('read_in_one_body', trim(err_msg), 1)
+            if (int_err > max_err_msg) &
+                write (6,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
         end if
 
         ! And now send info everywhere...
