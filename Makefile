@@ -27,16 +27,6 @@
 SHELL=/bin/bash # For our sanity!
 
 #-----
-# Include arch file.
-
-ifeq ($(ARCH),)
-SETTINGS_INC = make.inc
-else
-SETTINGS_INC = make.inc.$(ARCH)
-endif
-include $(SETTINGS_INC)
-
-#-----
 # Configuration
 
 # Program name (stem of binary and library).
@@ -57,27 +47,96 @@ MAIN = core.f90
 # files need to be recompiled.
 FORCE_REBUILD_FILES = environment_report.F90
 
+# Allow files to be compiled into a program (MODE = program), or into a library
+# (MODE = library) or both (MODE = all).
+MODE = all
+
+# Form of program and library names.
+# The defaults should be fine for most cases.
+# The program is called $(PROG_NAME).$(CONFIG).$(OPT)$(PROG_SUFFIX) and
+# a symlink, $(PROG_NAME)$(PROG_SUFFIX) points to it.
+PROG_SUFFIX = .x
+# The library is called $(LIB_PREFIX)$(PROG_NAME).$(CONFIG).$(OPT)$(LIB_SUFFIX)
+# and a symlink, $(LIB_PREFIX)$(PROG_NAME)$(LIB_SUFFIX) points to it.
+LIB_PREFIX = lib
+LIB_SUFFIX = .a
+
+#-----
+# Directory structure and setup.
+# The defaults below *should* be fine for almost all uses.
+
+# Directory for objects.
+# This is completely removed by cleanall so should not contain any source
+# files (i.e. is a temporary directory strictly for builds).
+DEST_ROOT = dest
+# Directory for objects for this specific configuration.
+# Do not change unless you know what you're doing!
+DEST = $(DEST_ROOT)/$(CONFIG)/$(OPT)
+
+# Directory for compiled executables.
+BIN_DIR = bin
+
+# Directory for compiled libraries.
+LIB_DIR = libhande
+
+# Directory for dependency files.
+# This is completely removed by cleanall so should not contain any source
+# files (i.e. is a temporary directory strictly for holding the dependency
+# files).
+DEPEND_DIR = $(DEST_ROOT)/depend
+
 #-----
 # Should not need to change anything below here.
 #-----
 
 #-----
+# Get filename of the makefile.
+# See http://stackoverflow.com/questions/1400057/getting-the-name-of-the-makefile-from-the-makefile
+
+# NOTE: this can be overridden if this makefile is included in another
+# makefile.
+MAKEFILE_NAME := $(CURDIR)/$(word $(words $(MAKEFILE_LIST)), $(MAKEFILE_LIST))
+
+#-----
+# Include arch file.
+
+ifeq ($(ARCH),)
+SETTINGS_INC = make.inc
+else
+SETTINGS_INC = make.inc.$(ARCH)
+endif
+include $(SETTINGS_INC)
+
+#-----
 # Error checking
 
-ifneq ($(filter-out help,$(MAKECMDGOALS)),)
-ifeq ($(PROG_NAME),)
-$(error ERROR: PROG_NAME is not defined.)
-endif
-ifeq ($(VPATH),)
-$(error ERROR: VPATH is not defined.)
-endif
+# Throw an error unless only running help.
+ERR = error
+ERR_STRING = ERROR
+STOP =  # Yes, I do like nicely (and consistently) formatted error and warning messages.
+BUILDING = yes
+ifndef MAKECMDGOALS
+else ifeq ($(filter-out help,$(MAKECMDGOALS)),)
+ERR = warning
+ERR_STRING = WARNING
+STOP = .
+BUILDING = no
 endif
 
-ifeq ($(filter help,$(MAKECMDGOALS)),help)
 ifeq ($(PROG_NAME),)
-$(warning WARNING: PROG_NAME is not defined.)
+$(call $(ERR), $(ERR_STRING): PROG_NAME is not defined$(STOP))
 PROG_NAME = PROG_NAME
 endif
+ifeq ($(MODE),)
+$(call $(ERR), $(ERR_STRING): Invalid MODE.  MODE must be one of all, program or library.)
+MODE = all
+endif
+ifneq ($(filter-out all program library,$(MODE)),)
+$(call $(ERR), $(ERR_STRING): Invalid MODE.  MODE must be one of all, program or library.)
+MODE = all
+endif
+ifeq ($(VPATH),)
+$(call $(ERR), $(ERR_STRING): VPATH is not defined$(STOP))
 endif
 
 #-----
@@ -86,12 +145,21 @@ endif
 ifeq ($(MAKECMDGOALS),)
 __COMPILE_TARGET__ := yes
 else
-ifneq ($(filter-out help check clean cleanall ctags,$(MAKECMDGOALS)),)
+ifneq ($(filter-out help clean cleanall tags print-%,$(MAKECMDGOALS)),)
 __COMPILE_TARGET__ := yes
 else
 __COMPILE_TARGET__ := no
 endif
 endif
+
+#-----
+# Utility commands
+
+# md5 sum of a file.
+md5 = $(firstword $(shell md5sum $1 2> /dev/null ))
+# Check md5sum (first argument) is the md5sum of a file (second argument).
+# Null output if true, returns __FORCE_BUILD__ if false.
+md5_check = $(if $(filter $(call md5,$1),$(call md5,$2)),,__FORCE_BUILD__)
 
 #-----
 # Program
@@ -100,41 +168,19 @@ endif
 # procedure) in order to create a binary.
 
 # Specific version of binary.
-PROG_VERSION = $(PROG_NAME).$(CONFIG).$(OPT).x
+PROG_VERSION = $(PROG_NAME).$(CONFIG).$(OPT)$(PROG_SUFFIX)
 
 # Symbolic link which points to $(PROG_VERSION).
-PROG = $(PROG_NAME).x
+PROG = $(PROG_NAME)$(PROG_SUFFIX)
 
 # MAIN *must* be defined *or* no source files contain a program entry (e.g.
 # main() or equivalent procedure) in order to create a library.
 
 # Specific version of library.
-LIB_VERSION = lib$(PROG_NAME).$(CONFIG).$(OPT).a
+LIB_VERSION = $(LIB_PREFIX)$(PROG_NAME).$(CONFIG).$(OPT)$(LIB_SUFFIX)
 
 # Symbolic link which points to $(LIB_VERSION).
-LIB = lib$(PROG_NAME).a
-
-#-----
-# Directory structure and setup.
-
-# Directory for objects.
-DEST_ROOT = dest
-DEST = $(DEST_ROOT)/$(CONFIG)/$(OPT)
-
-# Directory for compiled executables and libraries.
-EXE = bin
-
-# Directory for dependency files.
-DEPEND_DIR = $(DEST_ROOT)/depend
-
-ifeq ($(__COMPILE_TARGET__),yes)
-# We put compiled objects and modules in $(DEST).  If it doesn't exist, create it.
-make_dest := $(shell test -e $(DEST) || mkdir -p $(DEST))
-# We put the compiled executable in $(EXE).  If it doesn't exist, then create it.
-make_exe := $(shell test -e $(EXE) || mkdir -p $(EXE))
-# We put the compiled executable in $(DEPEND_DIR).  If it doesn't exist, then create it.
-make_depend := $(shell test -e $(DEPEND_DIR) || mkdir -p $(DEPEND_DIR))
-endif
+LIB = $(LIB_PREFIX)$(PROG_NAME)$(LIB_SUFFIX)
 
 #-----
 # Find source files and resultant object files.
@@ -248,53 +294,85 @@ $(DEPEND_DIR)/%.d: %.cpp
 #-----
 # Goals.
 
-.PHONY: check clean cleanall new help ctags program library
+.PHONY: clean cleanall new help program library __FORCE_BUILD__
 
 LINK_MACRO = cd $(@D) && ln -s -f $(<F) $(@F)
 
-# Compile program.
-$(EXE)/$(PROG): $(EXE)/$(PROG_VERSION)
+# Compile program (if desired).
+ifneq ($(filter-out library, $(MODE)),)
+$(BIN_DIR)/$(PROG): $(BIN_DIR)/$(PROG_VERSION) $(call md5_check, $(BIN_DIR)/$(PROG_VERSION), $(BIN_DIR)/$(PROG))
 	$(LINK_MACRO)
 
-$(EXE)/$(PROG_VERSION): $(OBJECTS)
-	$(MAKE) check
-	$(LD) -o $@ $(FFLAGS) $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
+$(BIN_DIR)/$(PROG_VERSION): $(OBJECTS) | $(BIN_DIR)
+	$(LD) -o $@ $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
 
-# Compile library.
-$(EXE)/$(LIB): $(EXE)/$(LIB_VERSION)
+# shortcut
+program: $(BIN_DIR)/$(PROG)
+endif
+
+# Compile library (if desired).
+ifneq ($(filter-out program, $(MODE)),)
+$(LIB_DIR)/$(LIB): $(LIB_DIR)/$(LIB_VERSION) $(call md5_check, $(LIB_DIR)/$(LIB_VERSION), $(LIB_DIR)/$(LIB))
 	$(LINK_MACRO)
 
-$(EXE)/$(LIB_VERSION): $(LIB_OBJECTS)
-	$(MAKE) check
+$(LIB_DIR)/$(LIB_VERSION): $(LIB_OBJECTS) | $(LIB_DIR)
 	$(AR) $(ARFLAGS) $@ $^
+
+# shortcut
+library: $(LIB_DIR)/$(LIB)
+endif
+
+# Create directories.
+$(BIN_DIR) $(LIB_DIR) $(DEST) $(DEPEND_DIR):
+	mkdir -p $@
 
 # Remove compiled objects and executable.
 clean:
-	rm -f $(DEST)/* $(EXE)/$(PROG_VERSION) $(EXE)/$(LIB_VERSION)
+	rm -f $(DEST)/*
+ifneq ($(filter-out library, $(MODE)),)
+	rm -f $(BIN_DIR)/$(PROG_VERSION) $(BIN_DIR)/$(PROG)
+endif
+ifneq ($(filter-out program, $(MODE)),)
+	rm -f $(LIB_DIR)/$(LIB_VERSION) $(LIB_DIR)/$(LIB)
+endif
 
 cleanall:
-	rm -rf $(DEST_ROOT) $(EXE)
+	rm -rf $(DEPEND_DIR) $(DEST_ROOT)
+# don't fail if {BIN,LIB}_DIR isn't empty (but also
+# don't remove other files from {BIN,LIB}_DIR which weren't created by
+# make).
+ifneq ($(filter-out library, $(MODE)),)
+	rm -f $(BIN_DIR)/$(PROG_NAME).*$(PROG_SUFFIX) $(BIN_DIR)/$(PROG)
+	rmdir $(BIN_DIR) || true
+endif
+ifneq ($(filter-out program, $(MODE)),)
+	rm -f $(LIB_DIR)/$(LIB_PREFIX)$(PROG_NAME).*$(LIB_SUFFIX) $(LIB_DIR)/$(LIB)
+	rmdir $(LIB_DIR) || true
+endif
 
 # Build from scratch.
-new: clean $(EXE)/$(PROG)
+new:
+	$(MAKE) -f $(MAKEFILE_NAME) clean
+	$(MAKE) -f $(MAKEFILE_NAME) $(.DEFAULT_GOAL)
 
 # Generate dependency file.
 $(F_DEPEND): $(F_FILES)
-	tools/sfmakedepend --file - --silent $^ --objdir \$$\(DEST\) --moddir \$$\(DEST\) > $@
-
-# Some quick sanity checks.
-check:
-	tools/check_distribute.py
-	tools/check_keywords.py
+	tools/sfmakedepend --file - --silent --objdir \$$\(DEST\) --moddir \$$\(DEST\) --depend=mod $^ > $@
 
 # tag files
 # ctags >> etags supplied by emacs
-ctags:
+tags: $(SRCFILES)
 	ctags $(SRCFILES)
 
-# shortcuts
-program: $(EXE)/$(PROG)
-library: $(EXE)/$(LIB)
+# null target to force a build
+__FORCE_BUILD__: ;
+
+# http://blog.melski.net/2010/11/30/makefile-hacks-print-the-value-of-any-variable/
+print-%: __FORCE_BUILD__
+	@echo '$*=$($*)'
+	@echo '  origin = $(origin $*)'
+	@echo '  flavor = $(flavor $*)'
+	@echo '  value  = $(value  $*)'
 
 help:
 	@echo Usage: make target [ARCH=XXX]
@@ -303,34 +381,45 @@ help:
 	@echo
 	@echo Available targets:
 	@echo
-	@echo $(EXE)/$(PROG) [default]
-	@echo -e "\tCompile $(EXE)/$(PROG_VERSION) and create $(EXE)/$(PROG) as a symbolic link to it."
-	@echo $(EXE)/$(PROG_VERSION)
-	@echo -e "\tCompile the $(EXE)/$(PROG_VERSION) executable using the settings in $(SETTINGS_INC)."
-	@echo $(EXE)/$(LIB)
-	@echo -e "\tCompile $(EXE)/$(LIB_VERSION) and create $(EXE)/$(LIB) as a symbolic link to it."
-	@echo $(EXE)/$(LIB_VERSION)
-	@echo -e "\tCompile the $(EXE)/$(LIB_VERSION) library using the settings in $(SETTINGS_INC)."
+ifneq ($(filter-out library, $(MODE)),)
+	@echo $(BIN_DIR)/$(PROG) [default]
+	@echo -e "\tCompile $(BIN_DIR)/$(PROG_VERSION) and create $(BIN_DIR)/$(PROG) as a symbolic link to it."
+	@echo $(BIN_DIR)/$(PROG_VERSION)
+	@echo -e "\tCompile the $(BIN_DIR)/$(PROG_VERSION) executable using the settings in $(SETTINGS_INC)."
 	@echo program
-	@echo -e "\tShortcut for the $(EXE)/$(PROG) target."
+	@echo -e "\tShortcut for the $(BIN_DIR)/$(PROG) target."
+endif
+ifneq ($(filter-out program, $(MODE)),)
+ifeq ($(filter-out library, $(MODE)),library)
+	@echo $(LIB_DIR)/$(LIB) [default]
+else
+	@echo $(LIB_DIR)/$(LIB)
+endif
+	@echo -e "\tCompile $(LIB_DIR)/$(LIB_VERSION) and create $(LIB_DIR)/$(LIB) as a symbolic link to it."
+	@echo $(LIB_DIR)/$(LIB_VERSION)
+	@echo -e "\tCompile the $(LIB_DIR)/$(LIB_VERSION) library using the settings in $(SETTINGS_INC)."
 	@echo library
-	@echo -e "\tShortcut for the $(EXE)/$(LIB) target."
-	@echo ctags
+	@echo -e "\tShortcut for the $(LIB_DIR)/$(LIB) target."
+endif
+	@echo tags
 	@echo -e "\tRun ctags on all source files."
 	@echo clean
 	@echo -e "\tDelete all object files, binaries and libraries created using $(SETTINGS_INC)."
 	@echo cleanall
 	@echo -e "\tDelete all object files, dependency files, binaries and libraries created by all configurations."
 	@echo new
-	@echo -e "\tRun the clean and then $(EXE)/$(PROG) targets."
-	@echo check
-	@echo -e "\tRun the (non-exhaustive) checker scripts to sanity check the input parser."
+	@echo -e "\tRun the clean and then default targets."
+	@echo print-VARIABLE
+	@echo -e "\tPrint information about the named variable (e.g. DEST or SRCDIRS)."
 
 #-----
-# Include dependency file.
+# Dependencies.
 
+# Include dependency file.
 # $(*_DEPEND) will be generated if it doesn't exist.
 ifeq ($(__COMPILE_TARGET__),yes)
+# Create dependency directory if required.
+$(F_DEPEND) $(C_DEPEND): | $(DEPEND_DIR)
 ifneq ($(F_DEPEND),)
 include $(F_DEPEND)
 endif
@@ -340,7 +429,10 @@ endif
 endif
 
 # Other dependencies.
+# Rebuild objects from files given in FORCE_REBUILD_FILES if any other source file has changed.
 ifneq ($(FORCE_REBUILD_FILES),)
 FORCE_REBUILD_OBJECTS := $(call objects_path, $(FORCE_REBUILD_FILES))
 $(FORCE_REBUILD_OBJECTS): $(SRCFILES)
 endif
+# Create object directory if required before compiling anything.
+$(OBJECTS): | $(DEST)
