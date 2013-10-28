@@ -46,7 +46,6 @@ contains
         use fciqmc_data, only: shift
         use hfs_data
         use interact, only: fciqmc_interact
-        use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
@@ -225,8 +224,8 @@ contains
             if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
 
             ! Write restart file if required.
-            if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
+!            if (mod(ireport,write_restart_file_every_nreports) == 0) &
+!                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
@@ -249,7 +248,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
+!        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
 
         call dealloc_det_info(cdet, .false.)
 

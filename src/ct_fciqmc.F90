@@ -24,7 +24,6 @@ contains
         use determinants, only: det_info, alloc_det_info
         use excitations, only: excit
         use qmc_common
-        use fciqmc_restart
         use proc_pointers
         use system, only: sys_t, hub_real, hub_k
         use interact
@@ -246,7 +245,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
+!        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
 
         deallocate(current_pos, stat=ierr)
         call check_deallocate('current_pos', ierr)

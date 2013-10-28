@@ -31,7 +31,6 @@ contains
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
         use dmqmc_estimators, only: call_ground_rdm_procedures
         use excitations, only: excit, get_excitation_level
-        use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use qmc_common
         use interact, only: fciqmc_interact
         use system
@@ -211,8 +210,8 @@ contains
                 ! t2-t1 is thus the time taken by this report loop.
                 if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
                 ! Write restart file if required.
-                if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                    call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
+!                if (mod(ireport,write_restart_file_every_nreports) == 0) &
+!                    call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
 
                 ! cpu_time outputs an elapsed time, so update the reference timer.
                 t1 = t2
@@ -253,7 +252,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
+!        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
 
         call dealloc_det_info(cdet1, .false.)
         call dealloc_det_info(cdet2, .false.)

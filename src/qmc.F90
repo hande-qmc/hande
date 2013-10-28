@@ -97,7 +97,6 @@ contains
         use energy_evaluation, only: calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det
-        use fciqmc_restart, only: read_restart
         use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
         use spawn_data, only: alloc_spawn_t
@@ -219,7 +218,7 @@ contains
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
-            call read_restart()
+!            call read_restart()
             ! Need to re-calculate the reference determinant data
             call encode_det(occ_list0, f0)
             if (trial_function == neel_singlet) then

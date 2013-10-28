@@ -199,7 +199,6 @@ contains
         use excitations, only: excit, get_excitation_level
         use fciqmc_data
         use qmc_common
-        use fciqmc_restart, only: dump_restart
         use proc_pointers
         use search, only: binary_search
         use system, only: sys_t
@@ -392,7 +391,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
+!        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
 
         ! TODO: deallocation...
 !        call dealloc_det_info(cdet)

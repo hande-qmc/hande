@@ -27,7 +27,6 @@ contains
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
-        use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
         use ifciqmc, only: set_parent_flag
@@ -136,7 +135,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
+!        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
 
         call dealloc_det_info(cdet, .false.)
         if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)
