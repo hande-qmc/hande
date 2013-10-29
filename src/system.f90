@@ -45,7 +45,7 @@ type sys_lattice_t
     integer :: ndim = -1 ! set to a nonsensical value for error checking in input parser.
 
     ! Is a triangular lattice is being used? (not UEG)
-    logical :: triangular_lattice
+    logical :: triangular_lattice = .false.
     ! Is the lattice is bipartite or is it geometrically frustrated? (not UEG)
     logical :: bipartite_lattice = .false.
 
@@ -297,15 +297,6 @@ contains
 
                     forall (ivec=1:sl%ndim) sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
 
-                    ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
-                    ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
-                    ! to be calculated.
-                    counter = 0
-                    do i = 1,sl%ndim
-                        if ( sum(sl%lattice(:,i)) == sl%box_length(i) .and. mod(sl%lattice_size(i), 2) == 0) counter = counter + 1
-                    end do
-                    if (counter == sl%ndim) sl%bipartite_lattice = .true.
-
                 end select
 
                 if (.not.allocated(sl%ktwist)) then
@@ -340,6 +331,16 @@ contains
                 if (sl%ndim > 1) sl%lattice_size(2) = ceiling(sl%box_length(2), 2)
                 if (sl%ndim > 2) sl%lattice_size(3) = ceiling(sl%box_length(3), 2)
 
+                if (sys%system /= ueg) then
+                    ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
+                    ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
+                    ! to be calculated.
+                    counter = 0
+                    do i = 1,sl%ndim
+                        if ( sum(sl%lattice(:,i)) == sl%box_length(i) .and. mod(sl%lattice_size(i), 2) == 0) counter = counter + 1
+                    end do
+                    if (counter == sl%ndim) sl%bipartite_lattice = .true.
+                end if
 
                 ! This logical variable is set true if the system being used has basis functions
                 ! in momentum space - the Heisenberg and real Hubbard models are in real space.
