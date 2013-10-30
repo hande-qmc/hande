@@ -73,6 +73,18 @@ contains
 
     subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, hash_seed, spawn)
 
+        ! Allocate and initialise a spawn_t object.
+
+        ! In:
+        !    bit_str_len, ntypes, array_len, hash_seed: see description of
+        !       matching components in the spawn_t definition. 
+        !    flag: whether or not to append an element for storing flags (ie
+        !       additional information in bit string format) for the data stored
+        !       for each entry.
+        ! Out:
+        !    spawn: initialised object for storing, communicating and
+        !       annihilation spawned particles.
+
         use parallel, only: nthreads, nprocs
         use checking, only: check_allocate
 
@@ -128,6 +140,10 @@ contains
     end subroutine alloc_spawn_t
 
     subroutine dealloc_spawn_t(spawn)
+
+        ! In/Out:
+        !    spawn: On output the spawn_t object is completely deallocated and
+        !       pointers nullified.
         
         use checking, only: check_deallocate
 
