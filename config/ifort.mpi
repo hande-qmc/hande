@@ -4,7 +4,7 @@ cc = mpicc
 cxx = mpiCC
 ld = impif90
 cppflags = -DHAVE_SSE2 -DPARALLEL
-libs = -ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas -cxxlib
+libs = -ltrlan_mpi -lscalapack -lblacsc -lblacsf77 -lblacsmpi -llapack -lblas -cxxlib -lhdf5_fortran -luuid
 f90_module_flag = -module
 
 [opt]
