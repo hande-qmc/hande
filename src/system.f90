@@ -195,6 +195,12 @@ type sys_t
     ! not in the real-space formulation of the Hubbard model or Heisenberg model).
     integer :: CAS(2) = (/ -1, -1 /)
 
+    ! The maximum number of excitations which a system can have.
+    ! Fermion systems: number of active elections.
+    ! Heisenberg model: number of antiparallel pairs of spins which can be
+    ! flipped.  Used only in DMQMC.
+    integer :: max_number_excitations
+
     ! System-specific structure handles
     ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -205,11 +211,6 @@ type sys_t
     type(sys_read_in_t) :: read_in
 
 end type sys_t
-
-! --- OLD, TODO ---
-
-! The maximum number of excitations which a system can have.
-integer :: max_number_excitations
 
 ! --- QMC reference state and trial (importance-sampling) functions ---
 
@@ -363,7 +364,12 @@ contains
 
                 sys%hubbard%coulomb_k = sys%hubbard%u/sl%nsites
 
-                max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
+                select case(sys%system)
+                case(heisenberg,chung_landau)
+                    sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
+                case default
+                    sys%max_number_excitations = sys%nel
+                end select
 
             end if
 

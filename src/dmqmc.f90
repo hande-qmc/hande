@@ -236,7 +236,7 @@ contains
             ! This is for ground-state RDMs only.
             if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in the previous loop.
-            if (dmqmc_find_weights) call output_and_alter_weights()
+            if (dmqmc_find_weights) call output_and_alter_weights(sys%max_number_excitations)
 
         end do
 

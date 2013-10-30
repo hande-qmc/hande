@@ -60,7 +60,7 @@ contains
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use fciqmc_data, only: sampling_size, rdm_traces, nrdms, dmqmc_accumulated_probs_old
-         use system, only: sys_t, max_number_excitations
+         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
 
@@ -106,8 +106,8 @@ contains
          estimator_numerators = 0
 
          if (calculate_excit_distribution .or. dmqmc_find_weights) then
-             allocate(excit_distribution(0:max_number_excitations), stat=ierr)
-             call check_allocate('excit_distribution',max_number_excitations+1,ierr)             
+             allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('excit_distribution',sys%max_number_excitations+1,ierr)
              excit_distribution = 0.0_p
          end if
 
@@ -138,40 +138,40 @@ contains
              ! be deallocated. Also, the user may have only input factors for the first few
              ! excitation levels, but we need to store factors for all levels, as done below.
              if (.not.allocated(dmqmc_sampling_probs)) then
-                 allocate(dmqmc_sampling_probs(1:max_number_excitations), stat=ierr)
-                 call check_allocate('dmqmc_sampling_probs',max_number_excitations,ierr)
+                 allocate(dmqmc_sampling_probs(1:sys%max_number_excitations), stat=ierr)
+                 call check_allocate('dmqmc_sampling_probs',sys%max_number_excitations,ierr)
                  dmqmc_sampling_probs = 1.0_p
              end if
              if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
-             allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
-             allocate(dmqmc_accumulated_probs_old(0:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs_old',max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
              dmqmc_accumulated_probs(0) = 1.0_p
              dmqmc_accumulated_probs_old = 1.0_p
              do i = 1, size(dmqmc_sampling_probs)
                  dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
              end do
-             dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:max_number_excitations) = &
+             dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:sys%max_number_excitations) = &
                                     dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
              if (dmqmc_vary_weights) then
                  ! Allocate an array to store the factors by which the weights will change each
                  ! iteration.
-                 allocate(weight_altering_factors(0:max_number_excitations), stat=ierr)
-                 call check_allocate('weight_altering_factors',max_number_excitations+1,ierr) 
+                 allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
+                 call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
                  weight_altering_factors = dble(dmqmc_accumulated_probs)**(1/dble(finish_varying_weights))
                  ! If varying the weights, start the accumulated probabilties as all 1.0
                  ! initially, and then alter them gradually later.
                  dmqmc_accumulated_probs = 1.0_p
              end if
          else
-             allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
-             allocate(dmqmc_accumulated_probs_old(0:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs_old',max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
              dmqmc_accumulated_probs = 1.0_p
              dmqmc_accumulated_probs_old = 1.0_p
-             if (half_density_matrix) dmqmc_accumulated_probs(1:max_number_excitations) = 2.0_p
+             if (half_density_matrix) dmqmc_accumulated_probs(1:sys%max_number_excitations) = 2.0_p
          end if
 
          ! If doing a reduced density matrix calculation, allocate and define the bit masks that
@@ -655,7 +655,7 @@ contains
 
     end subroutine update_sampling_weights
 
-    subroutine output_and_alter_weights()
+    subroutine output_and_alter_weights(max_number_excitations)
 
         ! This routine will alter and output the sampling weights used in importance 
         ! sampling. It uses the excitation distribution, calculated on the beta loop
@@ -667,11 +667,16 @@ contains
         ! when the weights are being introduced gradually each beta loop, too. The weights
         ! are output and can then be used in future DMQMC runs.
 
+        ! In:
+        !    max_number_excitations: maximum number of excitations possible (see
+        !       sys_t type in system for details).
+
         use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs
         use fciqmc_data, only: excit_distribution, finish_varying_weights
         use fciqmc_data, only: dmqmc_vary_weights, weight_altering_factors
         use parallel
-        use system
+
+        integer, intent(in) :: max_number_excitations
 
         integer :: i, ierr
 #ifdef PARALLEL
