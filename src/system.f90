@@ -37,8 +37,6 @@ type sys_lattice_t
     ! Model (lattice/UEG) Hamiltonians
     ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    ! TODO: logical ordering, commenting.
-
     ! See also specific structures.
 
     ! 1, 2 or 3 dimensions.
@@ -67,7 +65,6 @@ type sys_lattice_t
 
     ! Lengths of lattice vectors.
     ! This defines the cubic simulation cell used in the UEG.
-    ! TODO: move to sys_ueg_t.
     real(p), allocatable :: box_length(:) ! ndim.
 
     ! lvecs contains all combinations of the above lattice vectors, where the
@@ -79,7 +76,6 @@ type sys_lattice_t
     ! Contains integer lattice lengths. If less than 3 dimensions are used
     ! then the corresponding unused components are set to 1.
     ! This is useful for making loops over all dimension general.
-    ! TODO: move to determinants (ie the sole place where it is actually used).
     integer :: lattice_size(3)
 
 end type sys_lattice_t
