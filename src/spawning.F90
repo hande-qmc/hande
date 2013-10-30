@@ -31,7 +31,7 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn(rng, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -41,6 +41,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -56,10 +57,12 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
+        use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -69,14 +72,14 @@ contains
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
 
     end subroutine spawn
 
-    subroutine spawn_importance_sampling(rng, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_importance_sampling(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -90,6 +93,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -104,11 +108,13 @@ contains
         !        and the child determinant, on which progeny are spawned.
 
         use determinants, only: det_info
+        use system, only: sys_t
         use excitations, only: excit
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -118,17 +124,17 @@ contains
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(cdet, connection, hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(rng, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -149,12 +155,13 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
-        !        gen_excit_ptr%init and gen_excit_ptr%finalise *must* be set to 
+        !        gen_excit_ptr%init and gen_excit_ptr%finalise *must* be set to
         !        a pair of procedures which generate a complete excitation.
         !        gen_excit_ptr%init must return (at least) the connecting matrix
         !        element and gen_excit_ptr%finalise must fill in the rest of the
@@ -166,12 +173,14 @@ contains
         !        and the child determinant, on which progeny are spawned.
 
         use determinants, only: det_info
+        use system, only: sys_t
         use excitations, only: excit
         use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -182,7 +191,7 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, cdet, pgen, connection, abs_hmatel)
+        call gen_excit_ptr%init(rng, sys, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
         nspawn = nspawn_from_prob(rng, tau*abs_hmatel/pgen)
@@ -190,7 +199,7 @@ contains
         if (nspawn /= 0) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_ptr%finalise(rng, cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
 
             ! 4. Find sign of offspring.
             call set_child_sign(hmatel, parent_sign, nspawn)
@@ -199,7 +208,7 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(rng, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -217,12 +226,13 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
-        !        gen_excit_ptr%init and gen_excit_ptr%finalise *must* be set to 
+        !        gen_excit_ptr%init and gen_excit_ptr%finalise *must* be set to
         !        a pair of procedures which generate a complete excitation.
         !        gen_excit_ptr%init must return (at least) the connecting matrix
         !        element and gen_excit_ptr%finalise must fill in the rest of the
@@ -234,12 +244,14 @@ contains
         !        and the child determinant, on which progeny are spawned.
 
         use determinants, only: det_info
+        use system, only: sys_t
         use excitations, only: excit
         use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -250,10 +262,10 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, cdet, pgen, connection, tilde_hmatel)
+        call gen_excit_ptr%init(rng, sys, cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(cdet, connection, tilde_hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, tilde_hmatel)
 
         ! 3. Attempt spawning.
         nspawn = nspawn_from_prob(rng, tau*abs(tilde_hmatel)/pgen)
@@ -263,7 +275,7 @@ contains
             ! 4. Complete excitation and find sign of connecting matrix element.
             ! *NOTE*: this returns the original matrix element and *not* the
             ! matrix element after the trial function transformation.
-            call gen_excit_ptr%finalise(rng, cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
 
             ! 5. Find sign of offspring.
             ! Note that we don't care about the value of H_ij at this step, only
@@ -274,7 +286,7 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(rng, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_null(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -283,8 +295,9 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.
+        !        from (or not, in this case!).
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
@@ -295,11 +308,13 @@ contains
         !        and the child determinant, on which progeny are spawned.
 
         use determinants, only: det_info
+        use system, only: sys_t
         use excitations, only: excit
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -483,7 +498,7 @@ contains
         integer :: thread_id
         thread_id = omp_get_thread_num()
 #endif
-        
+
 
         ! Create bit string of new determinant.
         call create_excited_det(cdet%f, connection, f_new)
@@ -1015,7 +1030,7 @@ contains
 
         ! Test to see whether the new determinant resides in the upper
         ! triangle of the density matrix. If so keep bit string ends
-        ! as they are. If not then swap bitstring ends so that the 
+        ! as they are. If not then swap bitstring ends so that the
         ! new psips are reflected into the upper triangle of the density
         ! matrix as they try to spawn.
         if (det_compare(f_new, f2, basis_length) == -1) then
@@ -1053,10 +1068,10 @@ contains
 
         ! A spawned walker is only created on (f1', f2) if f1' and f2 do not differ by
         ! more than truncation_level basis functions, where f1' is obtained by
-        ! applying the connection to f1. 
+        ! applying the connection to f1.
 
         ! Note: This is the half density matrix version of create_spawned_particle_truncated_density_matrix
-        ! It works in an ientical way apart from attempts to spawn on the lower triangle of the 
+        ! It works in an ientical way apart from attempts to spawn on the lower triangle of the
         ! density matrix are reflected so that they are spawned on the upper triangle of the
         ! density matrix.
 
@@ -1110,7 +1125,7 @@ contains
             f_new_tot = 0
             ! Test to see whether the new determinant resides in the upper
             ! triangle of the density matrix. If so keep bit string ends
-            ! as they are. If not then swap bitstring ends so that the 
+            ! as they are. If not then swap bitstring ends so that the
             ! new psips are reflected into the upper triangle of the density
             ! matrix as they try to spawn.
             if (det_compare(f_new, f2, basis_length) == -1) then
@@ -1119,7 +1134,7 @@ contains
             else
                 f_new_tot(:basis_length) = f2
                 f_new_tot((basis_length+1):(total_basis_length)) = f_new
-            end if 
+            end if
 
 #ifdef PARALLEL
             ! (Extra credit for parallel calculations)

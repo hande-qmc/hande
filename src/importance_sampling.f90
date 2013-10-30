@@ -41,12 +41,13 @@ implicit none
 
 contains
 
-    subroutine neel_trial_state(cdet, connection, hmatel)
+    subroutine neel_trial_state(sys, cdet, connection, hmatel)
 
         ! Apply the transformation to the Hamiltonian matrix element due to
         ! using the Neel singlet state as the trial function.
 
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connection between the current determinant
@@ -60,7 +61,9 @@ contains
         use determinants, only: det_info, lattice_mask
         use excitations, only: excit
         use fciqmc_data, only: neel_singlet_amp, sampling_size
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
@@ -89,7 +92,7 @@ contains
 
     end subroutine neel_trial_state
 
-    subroutine dmqmc_weighting_fn(cdet, connection, hmatel)
+    subroutine dmqmc_weighting_fn(sys, cdet, connection, hmatel)
 
         ! Apply a transformation to the Hamiltonian matrix element by
         ! reducing the probability of spawning to higher excitation levels
@@ -98,6 +101,7 @@ contains
         ! dmqmc_accumulated_probs.
 
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connection between the current determinant
@@ -116,7 +120,9 @@ contains
         use determinants, only: det_info
         use excitations, only: excit, get_excitation_level, create_excited_det
         use fciqmc_data, only: dmqmc_accumulated_probs
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel

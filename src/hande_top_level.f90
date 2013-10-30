@@ -6,21 +6,24 @@ implicit none
 
 contains
 
-    subroutine init_calc(start_cpu_time, start_wall_time)
+    subroutine init_calc(sys, start_cpu_time, start_wall_time)
 
         ! Initialise the calculation.
         ! Print out information about the compiled executable,
         ! read input options and initialse the system and basis functions
         ! to be used.
 
+        ! In/Out:
+        !     sys: system to be studied.  On input sys has default values.  On
+        !          output, its values have been updated according to the input file
+        !          and allocatable components have been appropriately allocated.
         ! Out:
         !     start_cpu_time: cpu_time at the start of the calculation.
         !     start_wall_time: system_clock at the start of the calculation.
 
         use report, only: environment_report
         use parse_input, only: read_input, check_input, distribute_input
-        use system, only: init_system, system_type, chung_landau, hub_real, &
-                          hub_k, heisenberg, ueg, momentum_space, read_in, cas
+        use system
         use basis, only: init_model_basis_fns
         use determinants, only: init_determinants
         use determinant_enumeration, only: init_determinant_enumeration
@@ -33,6 +36,7 @@ contains
         use calc
         use ueg_system, only: init_ueg_proc_pointers
 
+        type(sys_t), intent(inout) :: sys
         real, intent(out) :: start_cpu_time
         integer, intent(out) :: start_wall_time
 
@@ -48,44 +52,49 @@ contains
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
-        if (parent) call read_input()
+        if (parent) call read_input(sys)
 
-        call distribute_input()
+        call distribute_input(sys)
 
-        call init_system()
+        call init_system(sys)
 
-        call check_input()
+        call check_input(sys)
 
         ! Initialise basis functions.
-        if (system_type == read_in) then
-            call read_in_integrals(cas_info=cas)
+        if (sys%system == read_in) then
+            call read_in_integrals(sys, cas_info=sys%cas)
         else
-            call init_model_basis_fns()
+            call init_model_basis_fns(sys)
         end if
 
-        call init_determinants()
+        call init_determinants(sys)
         call init_determinant_enumeration()
 
         call init_excitations()
 
         ! System specific.
-        select case(system_type)
+        select case(sys%system)
         case(ueg)
-            call init_momentum_symmetry()
-            call init_ueg_proc_pointers()
+            call init_momentum_symmetry(sys)
+            call init_ueg_proc_pointers(sys%lattice%ndim)
         case(hub_k)
-            call init_momentum_symmetry()
+            call init_momentum_symmetry(sys)
         case(hub_real, heisenberg, chung_landau)
-            call init_real_space()
+            call init_real_space(sys)
         case(read_in)
-            call print_pg_symmetry_info()
+            call print_pg_symmetry_info(sys)
         end select
 
     end subroutine init_calc
 
-    subroutine run_calc()
+    subroutine run_calc(sys)
 
         ! Run the calculation based upon the input options.
+
+        ! In/Out:
+        !    sys: system to be studied.  Note: sys may be altered during the
+        !    calculation procedure but should be unaltered on exit of each
+        !    calculation procedure.
 
         use calc
         use diagonalisation, only: diagonalise
@@ -93,35 +102,40 @@ contains
         use hilbert_space, only: estimate_hilbert_space
         use parallel, only: iproc, parent
         use simple_fciqmc, only: do_simple_fciqmc, init_simple_fciqmc
-        use utils, only: int_fmt
+        use system, only: sys_t
 
-        if (doing_calc(exact_diag+lanczos_diag)) call diagonalise()
+        type(sys_t), intent(inout) :: sys
+
+        if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys)
 
         if (doing_calc(mc_hilbert_space)) then
-            call estimate_hilbert_space()
+            call estimate_hilbert_space(sys)
         end if
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call init_simple_fciqmc()
+                call init_simple_fciqmc(sys)
                 call do_simple_fciqmc()
             else 
-                call do_qmc()
+                call do_qmc(sys)
             end if
         end if
 
     end subroutine run_calc
 
-    subroutine end_calc(start_cpu_time, start_wall_time)
+    subroutine end_calc(sys, start_cpu_time, start_wall_time)
 
         ! Clean up time!
 
         ! In:
         !     start_cpu_time: cpu_time at the start of the calculation.
         !     start_wall_time: system_clock at the start of the calculation.
+        ! In/Out:
+        !     sys: main system object.  All allocatable components are
+        !          deallocated on exit.
 
         use calc
-        use system, only: end_system
+        use system, only: sys_t, end_lattice_system
         use basis, only: end_basis_fns
         use determinants, only: end_determinants
         use excitations, only: end_excitations
@@ -133,6 +147,7 @@ contains
         use momentum_symmetry, only: end_momentum_symmetry
         use report, only: end_report
 
+        type(sys_t), intent(inout) :: sys
         real, intent(in) :: start_cpu_time
         integer, intent(in) :: start_wall_time
         real :: end_cpu_time, wall_time
@@ -142,7 +157,7 @@ contains
         ! NOTE:
         !   end_ routines should surround every deallocate statement with a test
         !   that the array is allocated.
-        call end_system()
+        call end_lattice_system(sys%lattice)
         call end_basis_fns()
         call end_momentum_symmetry()
         call end_determinants()

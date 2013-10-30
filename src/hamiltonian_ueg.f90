@@ -9,9 +9,10 @@ implicit none
 
 contains
 
-    pure function get_hmatel_ueg(f1, f2) result(hmatel)
+    pure function get_hmatel_ueg(sys, f1, f2) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
@@ -23,8 +24,10 @@ contains
 
         use determinants, only: basis_length
         use excitations, only: excit, get_excitation
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         type(excit) :: excitation
 
@@ -37,7 +40,7 @@ contains
         !     The overall crystal momentum must be conserved (i.e. satisfy
         !     translational symmetry).  We assume this is also already checked.
 
-        excitation = get_excitation(f1,f2)
+        excitation = get_excitation(sys%nel, f1,f2)
 
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         ! UEG (at least in the RHF basis of plane waves) has only double
@@ -48,14 +51,14 @@ contains
         case(0)
 
             ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-            hmatel = slater_condon0_ueg(f1)
+            hmatel = slater_condon0_ueg(sys, f1)
 
         case(2)
 
             ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
             ! Two electron operator
-            hmatel = slater_condon2_ueg(excitation%from_orb(1), excitation%from_orb(2), &
+            hmatel = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                       & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
         case default
 
@@ -65,9 +68,10 @@ contains
 
     end function get_hmatel_ueg
 
-    pure function slater_condon0_ueg(f) result(hmatel)
+    pure function slater_condon0_ueg(sys, f) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f: bit string representation of the Slater determinant.
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
@@ -75,11 +79,12 @@ contains
 
         use determinants, only: decode_det, basis_fns, basis_length
         use ueg_system, only: exchange_int_ueg
-        use system, only: nel
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer :: occ_list(nel)
+        integer :: occ_list(sys%nel)
 
         integer :: i, j
 
@@ -89,28 +94,29 @@ contains
         hmatel = 0.0_p
 
         ! One electron operator: kinetic term
-        do i = 1, nel
+        do i = 1, sys%nel
             hmatel = hmatel + basis_fns(occ_list(i))%sp_eigv
         end do
 
         ! Two electron operator: Coulomb term.
-        do i = 1, nel
-            do j = i+1, nel
+        do i = 1, sys%nel
+            do j = i+1, sys%nel
                 ! Coulomb term is infinite but cancels exactly with the
                 ! infinities in the electron-background and
                 ! background-background interactions.
                 if (mod(occ_list(i),2) == mod(occ_list(j),2)) then
                     ! Have an exchange term
-                    hmatel = hmatel - exchange_int_ueg(occ_list(i), occ_list(j))
+                    hmatel = hmatel - exchange_int_ueg(sys, occ_list(i), occ_list(j))
                 end if
             end do
         end do
 
     end function slater_condon0_ueg
 
-    pure function slater_condon2_ueg(i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_ueg(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    i,j:  index of the spin-orbital from which an electron is excited in
         !          the reference determinant.
         !    a,b:  index of the spin-orbital into which an electron is excited in
@@ -122,20 +128,23 @@ contains
         !    determinant and a double excitation of it in the UEG.
 
         use ueg_system, only: get_two_e_int_ueg
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        hmatel = get_two_e_int_ueg(i, j, a, b)
+        hmatel = get_two_e_int_ueg(sys, i, j, a, b)
 
         if (perm) hmatel = -hmatel
 
     end function slater_condon2_ueg
 
-    pure function slater_condon2_ueg_excit(i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_ueg_excit(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    i,j:  index of the spin-orbital from which an electron is excited in
         !          the reference determinant.
         !    a,b:  index of the spin-orbital into which an electron is excited in
@@ -154,15 +163,17 @@ contains
 
         use basis, only: basis_fns
         use ueg_system, only: coulomb_int_ueg
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
         hmatel = 0.0_p
 
-        if (basis_fns(i)%Ms == basis_fns(a)%Ms) hmatel = coulomb_int_ueg(i, a)
-        if (basis_fns(i)%Ms == basis_fns(b)%Ms) hmatel = hmatel - coulomb_int_ueg(i, b)
+        if (basis_fns(i)%Ms == basis_fns(a)%Ms) hmatel = coulomb_int_ueg(sys, i, a)
+        if (basis_fns(i)%Ms == basis_fns(b)%Ms) hmatel = hmatel - coulomb_int_ueg(sys, i, b)
 
         if (perm) hmatel = -hmatel
 

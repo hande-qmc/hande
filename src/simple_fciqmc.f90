@@ -18,13 +18,16 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc()
+    subroutine init_simple_fciqmc(sys)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
         ! symmetry block of the Hamiltonian matrix, initialise the RNG, allocate
         ! the required memory for the list of walkers and set the initial
         ! walker.
+
+        ! In/Out:
+        !    sys: system being studied.  Unaltered on output.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -33,30 +36,35 @@ contains
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
         use fciqmc_restart, only: read_restart
+        use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
+
+        type(sys_t), intent(inout) :: sys
 
         integer :: ierr
         integer :: i, j
+        type(sys_t) :: sys_bak
 
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
 
         ! Find and set information about the space.
-        call set_spin_polarisation(ms_in)
+        call copy_sys_spin_info(sys, sys_bak)
+        call set_spin_polarisation(nbasis, ms_in, sys)
         if (allocated(occ_list0)) then
-            call enumerate_determinants(.true., .false., occ_list0=occ_list0)
+            call enumerate_determinants(sys, .true., .false., occ_list0=occ_list0)
         else
-            call enumerate_determinants(.true., .false.)
+            call enumerate_determinants(sys, .true., .false.)
         end if
 
         ! Find all determinants with desired spin and symmetry.
         if (allocated(occ_list0)) then
-            call enumerate_determinants(.false., .false., sym_in, occ_list0)
+            call enumerate_determinants(sys, .false., .false., sym_in, occ_list0)
         else
-            call enumerate_determinants(.false., .false., sym_in)
+            call enumerate_determinants(sys, .false., .false., sym_in)
         end if
 
 
         ! Set up hamiltonian matrix.
-        call generate_hamil(distribute_off)
+        call generate_hamil(sys, distribute_off)
         ! generate_hamil fills in only the lower triangle.
         ! fill in upper triangle for easy access.
         do i = 1,ndets
@@ -92,8 +100,8 @@ contains
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then
-            allocate(occ_list0(nel), stat=ierr)
-            call check_allocate('occ_list0',nel,ierr)
+            allocate(occ_list0(sys%nel), stat=ierr)
+            call check_allocate('occ_list0',sys%nel,ierr)
             allocate(f0(basis_length), stat=ierr)
             call check_allocate('f0',basis_length,ierr)
             call read_restart()
@@ -112,8 +120,8 @@ contains
                 call check_allocate('f0',basis_length,ierr)
             end if
             if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(nel), stat=ierr)
-                call check_allocate('occ_list0',nel,ierr)
+                allocate(occ_list0(sys%nel), stat=ierr)
+                call check_allocate('occ_list0',sys%nel,ierr)
             end if
             call decode_det(f0, occ_list0)
             f0 = dets_list(:,ref_det)
@@ -121,9 +129,12 @@ contains
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-        call write_det(dets_list(:,ref_det), new_line=.true.)
+        call write_det(sys%nel, dets_list(:,ref_det), new_line=.true.)
         write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine init_simple_fciqmc
 

@@ -26,13 +26,14 @@ contains
 ! gen_excit_finalise_hub_k*: provides rest of excitation required to determine
 !                            the sign of the child walkers.
 
-    subroutine gen_excit_init_hub_k(rng, cdet, pgen, connection, abs_hmatel)
+    subroutine gen_excit_init_hub_k(rng, sys, cdet, pgen, connection, abs_hmatel)
 
         ! Select orbitals from which to excite electrons and hence the
         ! generation probability (which is independent of the virtual orbitals
         ! into which the electrons are excited).
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -48,9 +49,10 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use system, only: hub_k_coulomb
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(out) :: connection
@@ -62,12 +64,12 @@ contains
         ! momentum space formulation of the Hubbard model.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, &
+        call choose_ij_hub_k(rng, sys, cdet%occ_list_alpha, cdet%occ_list_beta, &
                                  connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Calculate the generation probability of the excitation.
         ! For one-band systems this depends only upon the orbitals excited from.
-        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha)
+        pgen = calc_pgen_hub_k(sys, ij_sym, cdet%f, cdet%unocc_list_alpha)
 
         ! The hubbard model in momentum space is a special case. Connected
         ! non-identical determinants have the following properties:
@@ -90,17 +92,18 @@ contains
         ! so
         !   |H_ij| = U/\Omega
         ! for allowed excitations.
-        abs_hmatel = abs(hub_k_coulomb)
+        abs_hmatel = abs(sys%hubbard%coulomb_k)
 
     end subroutine gen_excit_init_hub_k
 
-    subroutine gen_excit_finalise_hub_k(rng, cdet, connection, hmatel)
+    subroutine gen_excit_finalise_hub_k(rng, sys, cdet, connection, hmatel)
 
         ! Complete the excitation started in gen_excit_hub_k:
         !    * select the virtual orbitals electrons are excited into.
         !    * find the connecting Hamiltonian matrix element.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -118,8 +121,10 @@ contains
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use momentum_symmetry, only: sym_table
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(inout) :: connection
@@ -135,17 +140,17 @@ contains
         ! 4. Well, I suppose we should find out which determinant we're spawning
         ! on...
         connection%nexcit = 2
-        call choose_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, &
+        call choose_ab_hub_k(rng, sys, cdet%f, cdet%unocc_list_alpha, ij_sym, &
                                  connection%to_orb(1), connection%to_orb(2))
 
         ! 5. Is connecting matrix element positive (in which case we spawn with
         ! negative walkers) or negative (in which case we spawn with positive
         ! walkers)?
-        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
 
     end subroutine gen_excit_finalise_hub_k
 
-    subroutine gen_excit_init_hub_k_no_renorm(rng, cdet, pgen, connection, abs_hmatel)
+    subroutine gen_excit_init_hub_k_no_renorm(rng, sys, cdet, pgen, connection, abs_hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -159,6 +164,7 @@ contains
         ! generation probabilities.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -176,8 +182,9 @@ contains
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(out) :: connection
@@ -190,14 +197,14 @@ contains
         ! momentum space formulation of the Hubbard model.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), &
+        call choose_ij_hub_k(rng, sys, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), &
                              connection%from_orb(2), ij_sym)
 
         ! 2. Chose a random pair of spin orbitals to excite to.
         ! WARNING: if the implementation of generating the excitation is
         ! changed, the generation probability will also (probably) need to
         ! be altered.
-        call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), &
+        call find_ab_hub_k(rng, sys, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), &
                            connection%to_orb(2), allowed_excitation)
         connection%nexcit = 2
 
@@ -230,10 +237,10 @@ contains
             !   p(i,j) = 1/(nalpha*nbeta)
             !   p(b|i,j,a) = 1
             !   p(a|i,j) = n_virt_alpha
-            pgen = 1.0_p/(nalpha*nbeta*nvirt_alpha)
+            pgen = 1.0_p/(sys%nalpha*sys%nbeta*sys%nvirt_alpha)
 
             ! 4. |H_ij| is constant for this system.
-            abs_hmatel = abs(hub_k_coulomb)
+            abs_hmatel = abs(sys%hubbard%coulomb_k)
 
         else
 
@@ -245,12 +252,13 @@ contains
 
     end subroutine gen_excit_init_hub_k_no_renorm
 
-    subroutine gen_excit_finalise_hub_k_no_renorm(rng, cdet, connection, hmatel)
+    subroutine gen_excit_finalise_hub_k_no_renorm(rng, sys, cdet, connection, hmatel)
 
         ! Complete the excitation started in gen_excit_hub_k_no_renorm:
         !    * find the connecting Hamiltonian matrix element.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connection between the current determinant
@@ -265,8 +273,10 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(inout) :: connection ! inout for interface compatibility
@@ -277,18 +287,19 @@ contains
 
         ! For no_renorm the excitation has been completely specified, so we just
         ! need to find the exact connecting matrix element.
-        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
 
     end subroutine gen_excit_finalise_hub_k_no_renorm
 
 !--- Excitation generation (see also split excitation generators) ---
 
-    subroutine gen_excit_hub_k(rng, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_k(rng, sys, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! Out:
@@ -304,10 +315,11 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb
+        use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -328,21 +340,23 @@ contains
         connection%nexcit = 2
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), connection%from_orb(2), ij_sym)
+        call choose_ij_hub_k(rng, sys, cdet%occ_list_alpha, cdet%occ_list_beta, &
+                             connection%from_orb(1), connection%from_orb(2), ij_sym)
 
         ! 2. Select a random pair of spin orbitals to excite to.
-        call choose_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), connection%to_orb(2))
+        call choose_ab_hub_k(rng, sys, cdet%f, cdet%unocc_list_alpha, ij_sym, &
+                             connection%to_orb(1), connection%to_orb(2))
 
         ! 3. Calculate the generation probability of the excitation.
         ! For one-band systems this depends only upon the orbitals excited from.
-        pgen = calc_pgen_hub_k(ij_sym, cdet%f, cdet%unocc_list_alpha)
+        pgen = calc_pgen_hub_k(sys, ij_sym, cdet%f, cdet%unocc_list_alpha)
 
         ! 4. find the connecting matrix element.
-        call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
 
     end subroutine gen_excit_hub_k
 
-    subroutine gen_excit_hub_k_no_renorm(rng, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_k_no_renorm(rng, sys, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -356,6 +370,7 @@ contains
         ! generation probabilities.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -371,10 +386,11 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: tau
-        use system, only: hub_k_coulomb, nalpha, nbeta, nvirt_alpha
+        use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -386,11 +402,11 @@ contains
         ! See notes in gen_excit_init_hub_k and gen_excit_hub_k for more details regarding this algorithm.
 
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_hub_k(rng, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), &
+        call choose_ij_hub_k(rng, sys, cdet%occ_list_alpha, cdet%occ_list_beta, connection%from_orb(1), &
                              connection%from_orb(2), ij_sym)
 
         ! 2. Chose a random pair of spin orbitals to excite to.
-        call find_ab_hub_k(rng, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), &
+        call find_ab_hub_k(rng, sys, cdet%f, cdet%unocc_list_alpha, ij_sym, connection%to_orb(1), &
                            connection%to_orb(2), allowed_excitation)
 
         if (allowed_excitation) then
@@ -400,11 +416,11 @@ contains
             !    See comments in gen_excit_init_hub_k_no_renorm.
             ! pgen = p(i,j) p(a|i,j) p(b|i,j,a)
             !      = 1/(nalpha*nbeta) 1/nvirt_alpha
-            pgen = 1.0_p/(nalpha*nbeta*nvirt_alpha)
+            pgen = 1.0_p/(sys%nalpha*sys%nbeta*sys%nvirt_alpha)
 
             ! 4. find the connecting matrix element.
             connection%nexcit = 2
-            call slater_condon2_hub_k_excit(cdet%f, connection, hmatel)
+            call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
 
         else
 
@@ -418,7 +434,7 @@ contains
 
 !--- Select random orbitals involved in a valid double excitation ---
 
-    subroutine choose_ij_hub_k(rng, occ_list_alpha, occ_list_beta, i ,j, ij_sym)
+    subroutine choose_ij_hub_k(rng, sys, occ_list_alpha, occ_list_beta, i ,j, ij_sym)
 
         ! Randomly choose a pair of spin-orbitals.
         !
@@ -428,8 +444,11 @@ contains
         ! criterion.
         !
         ! In:
-        !    occ_list_alpha: Integer list of occupied alpha spin-orbitals.
+        !    sys: system object being studied.
+        !    occ_list_alpha: Integer list of occupied alpha spin-orbitals
+        !        (min length: sys%nalpha.)
         !    occ_list_beta: Integer list of occupied beta spin-orbitals.
+        !        (min length: sys%nbeta.)
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -437,10 +456,11 @@ contains
         !    ij_sym: symmetry label of the (i,j) combination.
 
         use momentum_symmetry, only: sym_table
-        use system, only: nalpha, nbeta
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        integer, intent(in) :: occ_list_alpha(nalpha), occ_list_beta(nbeta)
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list_alpha(:), occ_list_beta(:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i,j, ij_sym
         integer :: ind
@@ -466,9 +486,9 @@ contains
         ! i,j initially refer to the indices in the lists of occupied spin-orbitals
         ! rather than the spin-orbitals.
 
-        ind = int(r*nalpha*nbeta) + 1
-        i = int( (ind-1.0_p)/nbeta ) + 1
-        j = ind - (i-1)*nbeta
+        ind = int(r*sys%nalpha*sys%nbeta) + 1
+        i = int( (ind-1.0_p)/sys%nbeta ) + 1
+        j = ind - (i-1)*sys%nbeta
 
         ! i,j are the electrons we're exciting.  Find the occupied corresponding
         ! spin-orbitals.
@@ -480,16 +500,18 @@ contains
 
     end subroutine choose_ij_hub_k
 
-    subroutine choose_ab_hub_k(rng, f, unocc_list_alpha, ij_sym, a, b)
+    subroutine choose_ab_hub_k(rng, sys, f, unocc_list_alpha, ij_sym, a, b)
 
         ! Choose a random pair of (a,b) unoccupied virtual spin-orbitals into
         ! which electrons are excited.
         ! (a,b) are chosen such that the (i,j)->(a,b) excitation is symmetry-
         ! allowed.
         ! In:
+        !    sys: system object being studied.
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
+        !        (min length: sys%nvirt_alpha.)
         !    ij_sym: symmetry spanned by the (i,j) combination of unoccupied
         !        spin-orbitals into which electrons are excited.
         ! In/Out:
@@ -498,11 +520,12 @@ contains
         !    a,b: virtual spin orbitals involved in the excitation.
 
         use basis, only: basis_length
-        use system, only: nvirt_alpha
+        use system, only: sys_t
         use dSFMT_interface, only:  dSFMT_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
+        integer, intent(in) :: unocc_list_alpha(:)
         integer, intent(in) :: ij_sym
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
@@ -515,7 +538,7 @@ contains
 
             ! Until we find an allowed excitation.
 
-            call find_ab_hub_k(rng, f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+            call find_ab_hub_k(rng, sys, f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
 
         end do
 
@@ -523,7 +546,7 @@ contains
 
 !--- Select random orbitals in double excitations ---
 
-    subroutine find_ab_hub_k(rng, f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
+    subroutine find_ab_hub_k(rng, sys, f, unocc_list_alpha, ij_sym, a, b, allowed_excitation)
 
         ! Choose a random pair of (a,b) spin-orbitals.
         ! (a,b) are chosen such that the (i,j)->(a,b) excitation is symmetry-
@@ -531,9 +554,11 @@ contains
         ! orbital and one beta orbital, we can choose a to be an alpha orbital
         ! without loss of generality.
         ! In:
+        !    sys: system object being studied.
         !    f(basis_length): bit string representation of the Slater
         !        determinant.
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
+        !        (min length: sys%nvirt_alpha.)
         !    ij_sym: symmetry spanned by the (i,j) combination of unoccupied
         !        spin-orbitals into which electrons are excited.
         ! In/Out:
@@ -545,11 +570,12 @@ contains
 
         use basis, only: basis_length, bit_lookup, nbasis
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
-        use system, only: nvirt_alpha
+        use system, only: sys_t
         use momentum_symmetry, only: sym_table, inv_sym
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_list_alpha(nvirt_alpha)
+        integer, intent(in) :: unocc_list_alpha(:)
         integer, intent(in) :: ij_sym
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
@@ -576,7 +602,7 @@ contains
         ! random number just to find which unoccupied alpha orbital is in
         ! the excitation.
 
-        r = int(get_rand_close_open(rng)*(nvirt_alpha)) + 1
+        r = int(get_rand_close_open(rng)*(sys%nvirt_alpha)) + 1
 
         a = unocc_list_alpha(r)
         ! Find corresponding beta orbital which satisfies conservation
@@ -594,7 +620,7 @@ contains
 
 !--- Excitation generation probabilities ---
 
-    pure function calc_pgen_hub_k(ab_sym, f, unocc_alpha) result(pgen)
+    pure function calc_pgen_hub_k(sys, ab_sym, f, unocc_alpha) result(pgen)
 
         ! Calculate the generation probability of a given excitation for the
         ! Hubbard model in momentum space.  The Hubbard model is a special case
@@ -608,23 +634,26 @@ contains
         ! Further, we assume only allowed excitations are generated.
         !
         ! In:
+        !    sys: system object being studied.
         !    ab_sym: symmetry spanned by the (a,b) combination of unoccupied
         !        spin-orbitals into which electrons are excited.
         !    f: bit string representation of the determinant we're exciting
         !        from.
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
+        !        (min length: sys%nvirt_alpha.)
         ! Returns:
         !    pgen: the generation probability of the excitation.  See notes in
         !        spawning.
 
         use basis, only: basis_length, bit_lookup, nbasis
-        use system, only: nvirt_alpha, nvirt_beta, nalpha, nbeta, nel
+        use system, only: sys_t
         use momentum_symmetry, only: sym_table, inv_sym
 
         real(p) :: pgen
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: ab_sym
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: unocc_alpha(nvirt_alpha)
+        integer, intent(in) :: unocc_alpha(:)
 
         integer :: forbidden_excitations, a, b, a_pos, a_el, b_pos, b_el, ka, kb
 
@@ -701,7 +730,7 @@ contains
 
         ! a is an alpha orbital
         ! b is a beta orbital.
-        do a = 1, nvirt_alpha
+        do a = 1, sys%nvirt_alpha
             ka = (unocc_alpha(a)+1)/2
             b = 2*sym_table(ab_sym, inv_sym(ka))
             b_pos = bit_lookup(1,b)
@@ -710,7 +739,7 @@ contains
             if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
         end do
 
-        pgen = 1.0_p/(nalpha*nbeta*(nvirt_alpha - forbidden_excitations))
+        pgen = 1.0_p/(sys%nalpha*sys%nbeta*(sys%nvirt_alpha - forbidden_excitations))
 
     end function calc_pgen_hub_k
 

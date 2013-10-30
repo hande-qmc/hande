@@ -9,13 +9,16 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc()
+    subroutine do_fciqmc(sys)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
 
         ! See notes about the implementation of this using function pointers
         ! in fciqmc_main.
+
+        ! In:
+        !    sys: system being studied.
 
         use parallel
 
@@ -25,13 +28,15 @@ contains
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
-        use system, only: nel
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle
         integer(lint) :: nattempts, nparticles_old(sampling_size)
@@ -50,17 +55,17 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Allocate det_info components.
-        call alloc_det_info(cdet, .false.)
+        call alloc_det_info(sys, cdet, .false.)
         ! Folded spectrum *needs* the bit strings to be allocated as it needs
         ! be able to manipulate the bit string to create excited states.
-        if (doing_calc(folded_spectrum)) call alloc_det_info(cdet_excit)
+        if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
 
         ! from restart
         nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
+        call initial_fciqmc_status(sys)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -78,12 +83,12 @@ contains
                     cdet%f => walker_dets(:,idet)
                     cdet%data => walker_data(:,idet)
 
-                    call decoder_ptr(cdet%f, cdet)
+                    call decoder_ptr(sys, cdet%f, cdet)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, &
+                    call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, &
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
@@ -92,7 +97,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
@@ -106,7 +111,7 @@ contains
 
                 end do
 
-                call direct_annihilation(initiator_approximation)
+                call direct_annihilation(sys, initiator_approximation)
 
                 call end_mc_cycle(ndeath, nattempts)
 

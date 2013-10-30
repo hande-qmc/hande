@@ -8,9 +8,10 @@ implicit none
 
 contains
 
-    pure function get_hmatel_heisenberg(f1, f2) result(hmatel)
+    pure function get_hmatel_heisenberg(sys, f1, f2) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f1, f2: bit string representation of the basis functions
         !        D1 and D2 respectively.
         ! Returns:
@@ -22,16 +23,17 @@ contains
 
         use determinants, only: basis_length
         use excitations, only: excit, get_excitation
-        use system, only: staggered_magnetic_field
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         type(excit) :: excitation
 
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! We assume Ms is conserved (ie has already been checked for).
-        excitation = get_excitation(f1, f2)
+        excitation = get_excitation(sys%nel, f1, f2)
         ! Connected determinants can differ by (at most) 1 spin orbitals.
         ! Space group symmetry not currently implemented.
 
@@ -39,15 +41,15 @@ contains
         case(0)
 
             ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-            if (abs(staggered_magnetic_field) > depsilon) then
-                hmatel = diagonal_element_heisenberg_staggered(f1)
+            if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon) then
+                hmatel = diagonal_element_heisenberg_staggered(sys, f1)
             else
-                hmatel = diagonal_element_heisenberg(f1)
+                hmatel = diagonal_element_heisenberg(sys, f1)
             end if
 
         case(1)
 
-            hmatel = offdiagonal_element_heisenberg(excitation%from_orb(1), excitation%to_orb(1))
+            hmatel = offdiagonal_element_heisenberg(sys, excitation%from_orb(1), excitation%to_orb(1))
 
         case default
 
@@ -57,9 +59,10 @@ contains
 
     end function get_hmatel_heisenberg
 
-    pure function diagonal_element_heisenberg(f) result(hmatel)
+    pure function diagonal_element_heisenberg(sys, f) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f: bit string representation of the basis function.
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
@@ -71,9 +74,10 @@ contains
         use calc, only: ms_in
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: nbonds, J_coupling, magnetic_field
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         integer(i0) :: f_not(basis_length), g(basis_length)
         integer :: ipos, i, basis_find, counter
@@ -94,27 +98,28 @@ contains
 
         ! Contribution to Hamiltonian from spin interactions:
         ! For a lattice the number of bonds is stored as nbonds.
-        ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
-        ! element.  0-1 bonds will give +J_coupling contribution.
+        ! Bonds of type 0-0 or 1-1 will give a contribution of -J to the matrix
+        ! element.  0-1 bonds will give +J contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
         ! of 0-0 or 1-1 bonds will be (nbonds-counter)
-        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and
-        ! +J_coupling*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
+        ! So we have a contribution of -J*counter from the 0-1 bonds and
+        ! +J*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
-        hmatel = -J_coupling*(nbonds-2*counter)
+        hmatel = -sys%heisenberg%J*(sys%heisenberg%nbonds-2*counter)
 
         ! Contribution to Hamiltonian from external field:
         ! Each spin up (bit set) up gives a contirbution of -magnetic_field. Each spin down
         ! gives a contirbution of +magnetic_field. There are bits_set spins up, and
         ! (nsites - bits_set) spins down, so the total contirbution is
         ! -magnetic_field*(2*bits_set-nsites) = -h_field*ms_in
-        hmatel = hmatel - magnetic_field*ms_in
+        hmatel = hmatel - sys%heisenberg%magnetic_field*ms_in
 
     end function diagonal_element_heisenberg
 
-    pure function diagonal_element_heisenberg_staggered(f) result(hmatel)
+    pure function diagonal_element_heisenberg_staggered(sys, f) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f: bit string representation of the basis function.
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
@@ -127,9 +132,10 @@ contains
         use determinants, only: lattice_mask
         use hubbard_real, only: connected_orbs
         use bit_utils, only: count_set_bits
-        use system, only: nbonds, nel, J_coupling, magnetic_field, staggered_magnetic_field
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         integer(i0) :: f_not(basis_length), f_mask(basis_length), &
                        g(basis_length)
@@ -157,14 +163,14 @@ contains
 
         ! Contribution to Hamiltonian from spin interactions:
         ! For a lattice the number of bonds is stored as nbonds.
-        ! Bonds of type 0-0 or 1-1 will give a contribution of -J_coupling to the matrix
-        ! element.  0-1 bonds will give +J_coupling contribution.
+        ! Bonds of type 0-0 or 1-1 will give a contribution of -J to the matrix
+        ! element.  0-1 bonds will give +J contribution.
         ! The above loop counts the number of 0-1 bonds, so the remaining number
         ! of 0-0 or 1-1 bonds will be (nbonds-counter)
-        ! So we have a contribution of -J_coupling*counter from the 0-1 bonds and
-        ! +J_coupling*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
+        ! So we have a contribution of -J*counter from the 0-1 bonds and
+        ! +J*(nbonds-counter) from the 1-1 and 0-0 bonds, so in total
         ! the matrix element is...
-        hmatel = -J_coupling*(nbonds-2*counter)
+        hmatel = -sys%heisenberg%J*(sys%heisenberg%nbonds-2*counter)
 
         ! Contibution to Hamiltonian from staggered field term.
         ! Split the lattice into a (+) sublattice and a (-) sublattice.
@@ -175,13 +181,14 @@ contains
         ! sublattice1_up_spins gives the number of up spins on the (+) lattice, so there are
         ! (nel-sublattice1_up_spins) up spins on the (-) lattice, and a total of (nsites/2)
         ! sites on each sublattice. Putting all this together gives the following:
-        hmatel = hmatel - staggered_magnetic_field*(4*sublattice1_up_spins - 2*nel)
+        hmatel = hmatel - sys%heisenberg%staggered_magnetic_field*(4*sublattice1_up_spins - 2*sys%nel)
 
     end function diagonal_element_heisenberg_staggered
 
-    pure function offdiagonal_element_heisenberg(i, a) result(hmatel)
+    pure function offdiagonal_element_heisenberg(sys, i, a) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    i: index of the spin-orbital from which is changed from spin-up to
         !        spin-down in the reference basis function.
         !    a: index of the spin-orbital from which is changed from spin-down to
@@ -196,9 +203,10 @@ contains
 
         use basis, only: basis_length, bit_lookup
         use hubbard_real, only: connected_orbs
-        use system, only: J_coupling
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
 
         integer :: ipos, iel
@@ -210,7 +218,7 @@ contains
 !            ! If the two sites connected and of opposite spin, matrix element is -2J.
 !            ! As get_excitation finds where a 'set bit' has moved from and
 !            ! to, the latter condition is already met.
-            hmatel = -2*J_coupling
+            hmatel = -2*sys%heisenberg%J
         else
             hmatel = 0.0_p
         end if

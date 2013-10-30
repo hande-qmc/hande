@@ -6,7 +6,7 @@ implicit none
 
 contains
 
-    pure subroutine update_proj_energy_heisenberg_basic(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_heisenberg_basic(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current spin tensor product to the projected
         ! energy.
@@ -23,6 +23,7 @@ contains
         ! This procedure is for the Heisenberg model only
 
         ! In:
+        !    sys: system being studied.
         !    f0: reference basis function.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
@@ -43,9 +44,10 @@ contains
         use determinants, only: det_info
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
-        use system, only: J_coupling
+        use system, only: sys_t
         use hubbard_real, only: connected_orbs
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
@@ -56,7 +58,7 @@ contains
         integer :: bit_position, bit_element
 
         hmatel = 0.0_p
-        excitation = get_excitation(cdet%f, f0)
+        excitation = get_excitation(sys%nel, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -69,14 +71,14 @@ contains
             bit_element = bit_lookup(2,excitation%from_orb(1))
 
             if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
-                 hmatel = -2.0_p*J_coupling
+                 hmatel = -2.0_p*sys%heisenberg%J
                  proj_energy_sum = proj_energy_sum + hmatel*pop
              end if
         end if
 
     end subroutine update_proj_energy_heisenberg_basic
 
-    pure subroutine update_proj_energy_heisenberg_positive(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_heisenberg_positive(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -89,6 +91,7 @@ contains
         ! This procedure is for the Heisenberg model only.
 
         ! In:
+        !    sys: system being studied.
         !    f0: reference basis function (unused, for interface compatibility only).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
@@ -108,8 +111,9 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use system, only: J_coupling, nbonds
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
@@ -118,14 +122,14 @@ contains
         real(p), intent(out) :: hmatel
 
         excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
-        hmatel = J_coupling*nbonds+2*cdet%data(1)
+        hmatel = sys%heisenberg%J*sys%heisenberg%nbonds+2*cdet%data(1)
         proj_energy_sum = proj_energy_sum + hmatel*pop
 
         D0_pop_sum = D0_pop_sum + pop
 
     end subroutine update_proj_energy_heisenberg_positive
 
-    pure subroutine update_proj_energy_heisenberg_neel_singlet(f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_heisenberg_neel_singlet(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current basis fucntion to the
         ! projected energy.
@@ -139,6 +143,7 @@ contains
         ! This procedure is for the Heisenberg model only.
 
         ! In:
+        !    sys: system being studied.
         !    f0: reference basis function (unused, for interface compatibility only).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
@@ -161,8 +166,10 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: sampling_size, neel_singlet_amp
-        use system, only: nbonds, ndim, J_coupling, guiding_function, neel_singlet_guiding
+        use system, only: sys_t
+        use calc, only: guiding_function, neel_singlet_guiding
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: pop
@@ -194,11 +201,11 @@ contains
         ! second sublattice:
         ! The total number of 0-1 bonds, n(0-1) can be found from the diagonal
         ! element of the current basis function:
-        ! hmatel = -J_coupling*(nbonds - 2*n(0-1))
+        ! hmatel = -J*(nbonds - 2*n(0-1))
         ! This means we can avoid calculating n(0-1) again, which is expensive.
         ! We know the number of 0-1 bonds where the 1 (the spin up) is on sublattice 1,
         ! so can then deduce the number where the 1 is on sublattice 2.
-        lattice_2_up = ((nbonds) + nint(cdet%data(1)/J_coupling))/2 - lattice_1_up
+        lattice_2_up = ((sys%heisenberg%nbonds) + nint(cdet%data(1)/sys%heisenberg%J))/2 - lattice_1_up
 
         ! There are three contributions to add to the projected energy from
         ! the current basis function. Consider the Neel singlet state:
@@ -221,13 +228,13 @@ contains
         ! the two amplitudes, neel_singlet_amp(n-1) or neel_singlet_amp(n+1)
         ! respectively. We just need to know how many of each type of 0-1 bonds there
         ! are. But we have these already - they are stored as lattice_1_up and lattice_2_up.
-        ! Finally note that the matrix element is -2*J_coupling, and we can put this together...
+        ! Finally note that the matrix element is -2*J, and we can put this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        hmatel = hmatel - (2 * J_coupling * lattice_1_up * neel_singlet_amp(n-1))
+        hmatel = hmatel - (2 * sys%heisenberg%J * lattice_1_up * neel_singlet_amp(n-1))
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        hmatel = hmatel - (2 * J_coupling * lattice_2_up * neel_singlet_amp(n+1))
+        hmatel = hmatel - (2 * sys%heisenberg%J * lattice_2_up * neel_singlet_amp(n+1))
 
         hmatel = hmatel * importance_sampling_factor
         proj_energy_sum = proj_energy_sum + hmatel * pop
@@ -261,7 +268,7 @@ contains
         use bit_utils, only: count_set_bits
         use determinants, only: lattice_mask
         use hubbard_real, only: connected_orbs
-        use system, only: nsites
+        use system
 
         integer(i0), intent(in) :: f(basis_length)
         integer(i0) :: f_mask(basis_length), f_not(basis_length), g(basis_length)

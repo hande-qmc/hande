@@ -74,9 +74,10 @@ contains
 
     end subroutine end_excitations
 
-    pure function get_excitation(f1,f2) result(excitation)
+    pure function get_excitation(nel, f1,f2) result(excitation)
 
         ! In:
+        !    nel: number of electrons in system.
         !    f1(basis_length): bit string representation of the Slater
         !        determinant.
         !    f2(basis_length): bit string representation of the Slater
@@ -97,9 +98,10 @@ contains
 
         use bit_utils
         use basis, only: basis_length, basis_lookup
-        use system, only: nel
+        use system
 
         type(excit) :: excitation
+        integer, intent(in) :: nel
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift
         logical :: test_f1, test_f2

@@ -10,7 +10,7 @@ module momentum_symmetry
 ! Stored symmetry information *only* for the Hubbard model.  UEG symmetry is
 ! done on the fly due to the size of the basis---see ueg module.
 
-use system, only: nsym
+use system
 
 implicit none
 
@@ -25,12 +25,15 @@ integer, allocatable :: inv_sym(:) ! nsym
 
 contains
 
-    subroutine init_momentum_symmetry()
+    subroutine init_momentum_symmetry(sys)
 
         ! Construct the symmetry tables.
 
+        ! In/Out:
+        !    sys: system to be studied.  On output the symmetry components are set.
+
         use basis, only: nbasis, basis_fns, write_basis_fn
-        use system, only: ndim, system_type, hub_k, ueg, sym0, nsym, sym_max
+        use system
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
         use utils, only: int_fmt
@@ -38,16 +41,18 @@ contains
         use errors, only: stop_all
         use ueg_system, only: init_ueg_indexing
 
+        type(sys_t), intent(inout) :: sys
+
         integer :: i, j, k, ierr
-        integer :: ksum(ndim)
+        integer :: ksum(sys%lattice%ndim)
         character(4) :: fmt1
 
         ! model systems use symmetry indices starting from 1.
-        sym0 = 1
-        nsym = nbasis/2 ! two spin orbitals per wavevector
-        sym_max = nsym
+        sys%sym0 = 1
+        sys%nsym = nbasis/2 ! two spin orbitals per wavevector
+        sys%sym_max = sys%nsym
 
-        select case(system_type)
+        select case(sys%system)
         case(hub_k)
 
             ! Each wavevector corresponds to its own irreducible representation.
@@ -55,24 +60,24 @@ contains
             ! and the sum of any two wavevectors is another wavevector in the
             ! basis (up to a primitive reciprocal lattice vector).
             ! It is thus feasible to store the nsym^2 product table.
-            allocate(sym_table(nsym, nsym), stat=ierr)
-            call check_allocate('sym_table',nsym*nsym,ierr)
-            allocate(inv_sym(nsym), stat=ierr)
-            call check_allocate('inv_sym',nsym,ierr)
+            allocate(sym_table(sys%nsym, sys%nsym), stat=ierr)
+            call check_allocate('sym_table',sys%nsym*sys%nsym,ierr)
+            allocate(inv_sym(sys%nsym), stat=ierr)
+            call check_allocate('inv_sym',sys%nsym,ierr)
 
-            fmt1 = int_fmt(nsym)
+            fmt1 = int_fmt(sys%nsym)
 
             gamma_sym = 0
-            do i = 1, nsym
+            do i = 1, sys%nsym
                 if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
             end do
             if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
-            do i = 1, nsym
-                do j = i, nsym
+            do i = 1, sys%nsym
+                do j = i, sys%nsym
                     ksum = basis_fns(i*2)%l + basis_fns(j*2)%l
-                    do k = 1, nsym
-                        if (is_reciprocal_lattice_vector(ksum - basis_fns(k*2)%l)) then
+                    do k = 1, sys%nsym
+                        if (is_reciprocal_lattice_vector(sys, ksum - basis_fns(k*2)%l)) then
                             sym_table(i,j) = k
                             sym_table(j,i) = k
                             if (k == gamma_sym) then
@@ -89,20 +94,20 @@ contains
                 write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
                 write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
                 write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
-                do i = 1, ndim
+                do i = 1, sys%lattice%ndim
                     write (6,'(3X)', advance='no')
                 end do
                 write (6,'(a7)') 'Inverse'
-                do i = 1, nsym
+                do i = 1, sys%nsym
                     write (6,'(i4,5X)', advance='no') i
-                    call write_basis_fn(basis_fns(2*i), new_line=.false., print_full=.false.)
+                    call write_basis_fn(sys, basis_fns(2*i), new_line=.false., print_full=.false.)
                     write (6,'(5X,i4)') inv_sym(i)
                 end do
                 write (6,'()')
                 write (6,'(1X,a83,/)') &
                     "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
-                do i = 1, nsym
-                    do j = 1, nsym
+                do i = 1, sys%nsym
+                    do j = 1, sys%nsym
                         write (6,'('//fmt1//')', advance='no') sym_table(j,i)
                     end do
                     write (6,'()')
@@ -126,15 +131,15 @@ contains
 
             ! We'll only consider determinants with symmetry corresponding to
             ! a basis function though.
-            nsym = nbasis/2
+            sys%nsym = nbasis/2
 
             gamma_sym = 0
-            do i = 1, nsym
+            do i = 1, sys%nsym
                 if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
             end do
             if (gamma_sym == 0) call stop_all('init_symmetry', 'Gamma-point symmetry not found.')
 
-            call init_ueg_indexing()
+            call init_ueg_indexing(sys)
 
         end select
 
@@ -162,9 +167,10 @@ contains
 
     end subroutine end_momentum_symmetry
 
-    elemental function cross_product_k(s1, s2) result(prod)
+    elemental function cross_product_k(sys, s1, s2) result(prod)
 
         ! In:
+        !    sys: system being studied.
         !    s1, s2: irreducible representation labels/momentum labels.
         ! Returns:
         !    s1 \cross s2, the direct product of the two symmetries.
@@ -172,16 +178,17 @@ contains
         ! NOTE: this is just a convenience wrapper around the different
         ! implementations of momentum symmetry.  Do not use in a tight loop!
 
-        use system, only: system_type, hub_k, ueg
+        use system, only: sys_t, hub_k, ueg
 
         integer :: prod
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: s1, s2
 
-        select case(system_type)
+        select case(sys%system)
         case(hub_k)
             prod = cross_product_hub_k(s1, s2)
         case(ueg)
-            prod = cross_product_ueg(s1, s2)
+            prod = cross_product_ueg(sys, s1, s2)
         end select
 
     end function cross_product_k
@@ -203,9 +210,10 @@ contains
 
     end function cross_product_hub_k
 
-    elemental function cross_product_ueg(s1, s2) result(prod)
+    elemental function cross_product_ueg(sys, s1, s2) result(prod)
 
         ! In:
+        !    sys: system being studied.
         !    s1, s2: irreducible representation labels/momentum labels.
         ! Returns:
         !    s1 \cross s2, the direct product of the two symmetries.
@@ -217,19 +225,22 @@ contains
         ! UEG basis can be large; avoid storing O(N^2) symmetry table.
 
         use basis, only: basis_fns
-        use system, only: ndim
+        use system, only: sys_t
         use ueg_system, only: ueg_basis_index
 
         integer :: prod
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: s1, s2
 
-        integer :: k(ndim)
+        ! Can't use sys%lattice%ndim as the size in a pure function so set it
+        ! to the max dimension and then use an array slice.
+        integer :: k(3)
 
         ! Find k_1+k_2.  Need to convert s1 and s2 into basis set indices.
-        k = basis_fns(2*s1)%l + basis_fns(2*s2)%l
+        k(:sys%lattice%ndim) = basis_fns(2*s1)%l + basis_fns(2*s2)%l
         ! Get symmetry index.  Need to convert from basis set index back into
         ! wavevector index.
-        prod = (ueg_basis_index(k,1)+1)/2
+        prod = (ueg_basis_index(k(:sys%lattice%ndim),1)+1)/2
 
     end function cross_product_ueg
 
@@ -255,9 +266,10 @@ contains
 
     end function symmetry_orb_list_hub_k
 
-    pure function symmetry_orb_list_ueg(orb_list) result(isym)
+    pure function symmetry_orb_list_ueg(sys, orb_list) result(isym)
 
         ! In:
+        !    sys: system to be studied.  On output the symmetry components are set.
         !    orb_list: list of orbitals (e.g. determinant).
         ! Returns:
         !    symmetry index of list (i.e. direct product of the representations
@@ -270,13 +282,14 @@ contains
         ! For momentum symmetry in the UEG.
 
         use basis, only: basis_fns
-        use system, only: ndim
+        use system, only: sys_t
         use ueg_system, only: ueg_basis_index
 
         integer :: isym
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: orb_list(:)
 
-        integer :: i, k(ndim)
+        integer :: i, k(sys%lattice%ndim)
 
         k = 0
         do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)

@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine do_hfs_fciqmc()
+    subroutine do_hfs_fciqmc(sys)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -30,6 +30,9 @@ contains
         ! (especially if procedures are written to be sufficiently modular that
         ! implementing a new system can reuse many existing routines) as it
         ! leads to much faster code.
+
+        ! In:
+        !    sys: system being studied.
 
         use parallel
 
@@ -48,6 +51,9 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use proc_pointers
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(lint) :: nattempts, nparticles_old(sampling_size)
@@ -67,7 +73,7 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! Allocate det_info components.
-        call alloc_det_info(cdet, .false.)
+        call alloc_det_info(sys, cdet, .false.)
 
         ! from restart
         nparticles_old = tot_nparticles
@@ -75,7 +81,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
+        call initial_fciqmc_status(sys)
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -112,14 +118,14 @@ contains
                     cdet%f = walker_dets(:,idet)
                     cdet%data => walker_data(:,idet)
 
-                    call decoder_ptr(cdet%f, cdet)
+                    call decoder_ptr(sys, cdet%f, cdet)
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p),  &
+                    call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p),  &
                                                 D0_population_cycle, proj_energy, connection, hmatel)
-                    call update_proj_hfs_ptr(cdet%f, walker_population(1,idet),     &
+                    call update_proj_hfs_ptr(sys, cdet%f, walker_population(1,idet),&
                                              walker_population(2,idet), cdet%data,  &
                                              connection, hmatel, D0_hf_population,  &
                                              proj_hf_O_hpsip, proj_hf_H_hfpsip)
@@ -138,13 +144,14 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
-                        call spawner_hfs_ptr(rng, cdet, walker_population(1,idet), gen_excit_hfs_ptr, nspawned, connection)
+                        call spawner_hfs_ptr(rng, sys, cdet, walker_population(1,idet), &
+                                             gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
 
@@ -156,7 +163,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
 
@@ -204,7 +211,7 @@ contains
                 ! total.
                 rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
-                call direct_annihilation(initiator_approximation)
+                call direct_annihilation(sys, initiator_approximation)
 
             end do
 

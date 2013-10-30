@@ -78,37 +78,42 @@ integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0
 
 contains
 
-    subroutine init_pg_symmetry()
+    subroutine init_pg_symmetry(sys)
 
         ! Initialise point group symmetry information.
         ! *Must* be called after basis functions are initialised and have their
         ! symmetries set from the FCIDUMP file.
 
+        ! In/Out:
+        !    sys: system being studied.  On output the symmetry fields are set.
+
         use checking, only: check_allocate
 
         use basis, only: basis_fns, nbasis
-        use system, only: nsym, sym0, sym_max
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
 
         integer :: i, ierr, ims, ind
 
         ! molecular systems use symmetry indices starting from 0.
-        sym0 = 0
+        sys%sym0 = 0
 
         ! Given n generators, there must be 2^n irreducible representations.
         ! in the working space.  (Note that the wavefunctions might only span
         ! a subspace of the point group considered by the generating quantum
         ! chemistry package.)
-        ! Set nsym to be 2^n so that we always work in the smallest group
+        ! Set sys%nsym to be 2^n so that we always work in the smallest group
         ! spanned by the wavefunctions.
         ! +1 comes from the fact that the basis_fn%sym gives the bit string
         ! representation.
-        nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
-        sym_max = nsym-1
+        sys%nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
+        sys%sym_max = sys%nsym-1
 
-        allocate(nbasis_sym(0:nsym-1), stat=ierr)
-        call check_allocate('nbasis_sym', nsym, ierr)
-        allocate(nbasis_sym_spin(2,0:nsym-1), stat=ierr)
-        call check_allocate('nbasis_sym_spin', 2*nsym, ierr)
+        allocate(nbasis_sym(0:sys%nsym-1), stat=ierr)
+        call check_allocate('nbasis_sym', sys%nsym, ierr)
+        allocate(nbasis_sym_spin(2,0:sys%nsym-1), stat=ierr)
+        call check_allocate('nbasis_sym_spin', 2*sys%nsym, ierr)
 
         nbasis_sym = 0
         nbasis_sym_spin = 0
@@ -125,7 +130,7 @@ contains
 
         end do
 
-        allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,0:nsym-1), stat=ierr)
+        allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,0:sys%nsym-1), stat=ierr)
         call check_allocate('sym_spin_basis_fns', size(sym_spin_basis_fns), ierr)
         sym_spin_basis_fns = 0
 
@@ -160,13 +165,17 @@ contains
 
     end subroutine end_pg_symmetry
 
-    subroutine print_pg_symmetry_info()
+    subroutine print_pg_symmetry_info(sys)
 
         ! Write out point group symmetry information.
 
-        use system, only: nsym
+        ! In:
+        !    sys: system being studied.
 
+        use system, only: sys_t
         use parallel, only: parent
+
+        type(sys_t), intent(in) :: sys
 
         integer :: i, j
 
@@ -175,8 +184,8 @@ contains
 
             write (6,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
             ! Note that we never actually store this.
-            do i = 0, nsym-1
-                do j = 0, nsym-1
+            do i = 0, sys%nsym-1
+                do j = 0, sys%nsym-1
                     write (6,'(1X,i2)',advance='no') cross_product_pg_sym(i,j)
                 end do
                 write (6,'()')
@@ -185,7 +194,7 @@ contains
             write (6,'(/,1X,a93,/)') 'The table below gives the number of basis functions spanning each irreducible representation.'
 
             write (6,'(1X,"irrep  nbasis  nbasis_up  nbasis_down")')
-            do i = 0, nsym-1
+            do i = 0, sys%nsym-1
                 write (6,'(1X,i3,4X,i5,3X,i5,6X,i5)') i, nbasis_sym(i), nbasis_sym_spin(:,i)
             end do
 

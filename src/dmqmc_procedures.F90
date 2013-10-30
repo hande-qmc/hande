@@ -42,7 +42,10 @@ type(rdm), allocatable :: rdms(:)
 
 contains
 
-    subroutine init_dmqmc()
+    subroutine init_dmqmc(sys)
+
+         ! In:
+         !    sys: system being studied.
 
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
@@ -57,7 +60,9 @@ contains
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use fciqmc_data, only: sampling_size, rdm_traces, nrdms, dmqmc_accumulated_probs_old
-         use system, only: max_number_excitations
+         use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
 
          integer :: ierr, i, bit_position, bit_element
 
@@ -101,8 +106,8 @@ contains
          estimator_numerators = 0
 
          if (calculate_excit_distribution .or. dmqmc_find_weights) then
-             allocate(excit_distribution(0:max_number_excitations), stat=ierr)
-             call check_allocate('excit_distribution',max_number_excitations+1,ierr)             
+             allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('excit_distribution',sys%max_number_excitations+1,ierr)
              excit_distribution = 0.0_p
          end if
 
@@ -133,45 +138,45 @@ contains
              ! be deallocated. Also, the user may have only input factors for the first few
              ! excitation levels, but we need to store factors for all levels, as done below.
              if (.not.allocated(dmqmc_sampling_probs)) then
-                 allocate(dmqmc_sampling_probs(1:max_number_excitations), stat=ierr)
-                 call check_allocate('dmqmc_sampling_probs',max_number_excitations,ierr)
+                 allocate(dmqmc_sampling_probs(1:sys%max_number_excitations), stat=ierr)
+                 call check_allocate('dmqmc_sampling_probs',sys%max_number_excitations,ierr)
                  dmqmc_sampling_probs = 1.0_p
              end if
              if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
-             allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
-             allocate(dmqmc_accumulated_probs_old(0:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs_old',max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
              dmqmc_accumulated_probs(0) = 1.0_p
              dmqmc_accumulated_probs_old = 1.0_p
              do i = 1, size(dmqmc_sampling_probs)
                  dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
              end do
-             dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:max_number_excitations) = &
+             dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:sys%max_number_excitations) = &
                                     dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
              if (dmqmc_vary_weights) then
                  ! Allocate an array to store the factors by which the weights will change each
                  ! iteration.
-                 allocate(weight_altering_factors(0:max_number_excitations), stat=ierr)
-                 call check_allocate('weight_altering_factors',max_number_excitations+1,ierr) 
+                 allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
+                 call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
                  weight_altering_factors = dble(dmqmc_accumulated_probs)**(1/dble(finish_varying_weights))
                  ! If varying the weights, start the accumulated probabilties as all 1.0
                  ! initially, and then alter them gradually later.
                  dmqmc_accumulated_probs = 1.0_p
              end if
          else
-             allocate(dmqmc_accumulated_probs(0:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs',max_number_excitations+1,ierr)
-             allocate(dmqmc_accumulated_probs_old(0:max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs_old',max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
+             allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
+             call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
              dmqmc_accumulated_probs = 1.0_p
              dmqmc_accumulated_probs_old = 1.0_p
-             if (half_density_matrix) dmqmc_accumulated_probs(1:max_number_excitations) = 2.0_p
+             if (half_density_matrix) dmqmc_accumulated_probs(1:sys%max_number_excitations) = 2.0_p
          end if
 
          ! If doing a reduced density matrix calculation, allocate and define the bit masks that
          ! have 1's at the positions referring to either subsystems A or B.
-         if (doing_reduced_dm) call setup_rdm_arrays()
+         if (doing_reduced_dm) call setup_rdm_arrays(sys)
 
          ! If doing concurrence calculation then construct and store the 4x4 flip spin matrix i.e.
          ! \sigma_y \otimes \sigma_y
@@ -187,11 +192,14 @@ contains
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays()
+    subroutine setup_rdm_arrays(sys)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for the bits referring
         ! to either subsystem A or B. Also calculate the positions and elements of the sites
         ! in subsyetsm A, and finally allocate the RDM itself.
+
+        ! In:
+        !    sys: system being studied.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_renyi_2
         use checking, only: check_allocate
@@ -202,14 +210,16 @@ contains
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
-        use system, only: system_type, heisenberg, nsites
+        use system, only: sys_t, heisenberg
+
+        type(sys_t), intent(in) :: sys
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
         integer :: bit_position, bit_element
 
         ! For the Heisenberg model only currently.
-        if (system_type==heisenberg) then
-            call find_rdm_masks()
+        if (sys%system==heisenberg) then
+            call find_rdm_masks(sys)
         else
             call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for the &
                            &Heisenberg model.")
@@ -271,7 +281,7 @@ contains
         ! to all spins up. Hence the total size of the reduced density matrix will be 2**(number of spins
         ! in subsystem A).
         if (calc_ground_rdm) then
-            if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(nsites,p)/2.0_p)) then
+            if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
                 allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
                 call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)
                 reduced_density_matrix = 0.0_p
@@ -279,7 +289,7 @@ contains
                 if (ms_in /= 0) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
                                    &calculations.")
-                else if (rdms(1)%A_nsites > floor(real(nsites,p)/2.0_p)) then
+                else if (rdms(1)%A_nsites > floor(real(sys%lattice%nsites,p)/2.0_p)) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
                                   &whose size is less than half the total system size.")
                 end if
@@ -288,35 +298,43 @@ contains
         
     end subroutine setup_rdm_arrays
 
-    subroutine find_rdm_masks()
+    subroutine find_rdm_masks(sys)
+
+        ! Initialise bit masks for converting a density matrix basis function
+        ! into its corresponding reduced density matrix basis function.
+
+        ! In:
+        !    sys: system being studied.
 
         use basis, only: basis_length, bit_lookup, basis_lookup, basis_fns, nbasis
         use checking, only: check_allocate, check_deallocate
         use errors
         use fciqmc_data, only: nrdms, nsym_vec
         use hubbard_real, only: map_vec_to_cell
-        use system, only: ndim, nsites, lattice
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
 
         integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer :: r(ndim), nvecs(3), A_mask(basis_length)
-        real(p) :: v(ndim), test_vec(ndim), temp_vec(ndim)
+        integer :: r(sys%lattice%ndim), nvecs(3), A_mask(basis_length)
+        real(p) :: v(sys%lattice%ndim), test_vec(sys%lattice%ndim), temp_vec(sys%lattice%ndim)
         real(p), allocatable :: trans_vecs(:,:)
         integer :: scale_fac
 
         ! The maximum number of translational symmetry vectors is nsites (for
         ! the case of a non-tilted lattice), so allocate this much storage.
-        allocate(trans_vecs(ndim,nsites),stat=ierr)
-        call check_allocate('trans_vecs',ndim*nsites,ierr)
+        allocate(trans_vecs(sys%lattice%ndim,sys%lattice%nsites),stat=ierr)
+        call check_allocate('trans_vecs',sys%lattice%ndim*sys%lattice%nsites,ierr)
 
         ! The number of symmetry vectors in each direction.
         nvecs = 0
         ! The total number of symmetry vectors.
         nsym_vec = 0
 
-        do i = 1, ndim
-            scale_fac = maxval(abs(lattice(:,i)))
-            v = real(lattice(:,i),p)/real(scale_fac,p)
+        do i = 1, sys%lattice%ndim
+            scale_fac = maxval(abs(sys%lattice%lattice(:,i)))
+            v = real(sys%lattice%lattice(:,i),p)/real(scale_fac,p)
 
             do j = 1, scale_fac-1
                 test_vec = v*j
@@ -380,7 +398,7 @@ contains
                     r = r + nint(trans_vecs(:,j))
                     ! If r is outside the cell considered in this simulation, shift it by the
                     ! appropriate lattice vector so that it is in this cell.
-                    call map_vec_to_cell(r)
+                    call map_vec_to_cell(sys%lattice%ndim, sys%lattice%lvecs, r)
                     ! Now need to find which basis function this site corresponds to. Simply loop
                     ! over all basis functions and check...
                     do l = 1, nbasis
@@ -416,7 +434,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine random_distribution_heisenberg(rng, ireplica)
+    subroutine random_distribution_heisenberg(rng, nsites, ireplica)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -432,15 +450,20 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        ! In:
+        !    nsites: number of sites in the simulation cell.
+        !    ireplica: index of replica (ie which of the possible concurrent
+        !       DMQMC populations are we initialising)
 
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use fciqmc_data, only: D0_population
         use parallel
-        use system, only: nsites
+        use system
 
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: nsites
         integer, intent(in) :: ireplica
         integer :: i, up_spins, rand_basis, bits_set
         integer :: bit_element, bit_position, npsips
@@ -632,7 +655,7 @@ contains
 
     end subroutine update_sampling_weights
 
-    subroutine output_and_alter_weights()
+    subroutine output_and_alter_weights(max_number_excitations)
 
         ! This routine will alter and output the sampling weights used in importance 
         ! sampling. It uses the excitation distribution, calculated on the beta loop
@@ -644,11 +667,16 @@ contains
         ! when the weights are being introduced gradually each beta loop, too. The weights
         ! are output and can then be used in future DMQMC runs.
 
+        ! In:
+        !    max_number_excitations: maximum number of excitations possible (see
+        !       sys_t type in system for details).
+
         use fciqmc_data, only: dmqmc_sampling_probs, dmqmc_accumulated_probs
         use fciqmc_data, only: excit_distribution, finish_varying_weights
         use fciqmc_data, only: dmqmc_vary_weights, weight_altering_factors
         use parallel
-        use system, only: max_number_excitations
+
+        integer, intent(in) :: max_number_excitations
 
         integer :: i, ierr
 #ifdef PARALLEL

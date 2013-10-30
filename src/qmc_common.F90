@@ -115,7 +115,7 @@ contains
             if (parent) then
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
-                call write_det(f0, new_line=.true.)
+                call write_det(size(occ_list0), f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population_cycle
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') H00
@@ -126,7 +126,7 @@ contains
 
     end subroutine select_ref_det
 
-    subroutine find_single_double_prob(occ_list, psingle, pdouble)
+    subroutine find_single_double_prob(sys, occ_list, psingle, pdouble)
 
         ! Calculate the probabilities of selecting a single or double excitation
         ! from a given determinant.  We assume all possible excitations (i.e.
@@ -135,6 +135,7 @@ contains
         ! (symmetry-allowed) single and double excitations.
         !
         ! In:
+        !    sys: system being studied.
         !    occ_list: integer list of occupied spin-orbitals in a determinant, D.
         ! Out:
         !    psingle: probability of attempting to spawn on a determinant
@@ -143,15 +144,16 @@ contains
         !             connected to D by a double excitation.
 
         use basis, only: basis_fns
-        use system, only: nel, system_type, hub_k, hub_real, heisenberg, read_in, sym0, sym_max
+        use system
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, nbasis_sym_spin
 
-        integer, intent(in) :: occ_list(nel)
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(sys%nel)
         real(p), intent(out) :: psingle, pdouble
 
-        integer :: i, j, virt_syms(2, sym0:sym_max), nsingles, ndoubles, isyma, isymb, ims1, ims2
+        integer :: i, j, virt_syms(2, sys%sym0:sys%sym_max), nsingles, ndoubles, isyma, isymb, ims1, ims2
 
-        select case(system_type)
+        select case(sys%system)
         case(hub_k)
             ! Only double excitations
             psingle = 0.0_p
@@ -164,7 +166,7 @@ contains
 
             ! Count number of basis functions in each symmetry.
             virt_syms = nbasis_sym_spin
-            do i = 1, nel
+            do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 virt_syms(ims1,basis_fns(occ_list(i))%sym) = virt_syms(ims1,basis_fns(occ_list(i))%sym) - 1
@@ -174,7 +176,7 @@ contains
             ! determinant.
             ! Symmetry and spin must be conserved.
             nsingles = 0
-            do i = 1, nel
+            do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
                 ! Can't excite into already occupied orbitals.
@@ -184,13 +186,13 @@ contains
             ! Count number of possible double excitations from the supplied
             ! determinant.
             ndoubles = 0
-            do i = 1, nel
+            do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (basis_fns(occ_list(i))%ms+3)/2
-                do j = i+1, nel
+                do j = i+1, sys%nel
                     ! Convert -1->1 and 1->2 for spin index in arrays.
                     ims2 = (basis_fns(occ_list(j))%ms+3)/2
-                    do isyma = sym0, sym_max
+                    do isyma = sys%sym0, sys%sym_max
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
                         isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j)))
@@ -338,17 +340,22 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status()
+    subroutine initial_fciqmc_status(sys)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
         ! and print out.
 
+        ! In:
+        !    sys: system being studied.
+
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer :: idet
         integer(lint) :: ntot_particles(sampling_size)
         type(det_info) :: cdet
@@ -363,13 +370,13 @@ contains
         ! distribution.  proj_energy and D0_population_cycle are both accumulated in
         ! update_proj_energy.
         proj_energy = 0.0_p
-        call alloc_det_info(cdet)
+        call alloc_det_info(sys, cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
             cdet%data => walker_data(:,idet)
             ! WARNING!  We assume only the bit string and data field are
             ! required to update the projected estimator.
-            call update_proj_energy_ptr(f0, cdet, real(walker_population(1,idet),p), &
+            call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
                                         D0_population_cycle, proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info(cdet)

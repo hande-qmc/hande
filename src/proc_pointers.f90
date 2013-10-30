@@ -10,16 +10,20 @@ implicit none
 ! that's imported as a array size in abstract interfaces.
 
 abstract interface
-    pure subroutine i_decoder(f,d)
+    pure subroutine i_decoder(sys,f,d)
         use basis, only: basis_length
+        use system, only: sys_t
         import :: i0, det_info
         implicit none
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
     end subroutine i_decoder
-    pure subroutine i_update_proj_energy(f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine i_update_proj_energy(sys, f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+        use system, only: sys_t
         import :: det_info, p, i0, excit
         implicit none
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info), intent(in) :: d
         real(p), intent(in) :: pop
@@ -27,38 +31,46 @@ abstract interface
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
     end subroutine i_update_proj_energy
-    subroutine i_update_proj_hfs(f, fpop, f_hfpop, fdata, excitation, hmatel,&
+    subroutine i_update_proj_hfs(sys, f, fpop, f_hfpop, fdata, excitation, hmatel,&
                                      D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
         use basis, only: basis_length
+        use system, only: sys_t
         import :: i0, p, excit
         implicit none
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
     end subroutine i_update_proj_hfs
-    subroutine i_update_dmqmc_estimators(idet,excitation,walker_pop)
+    subroutine i_update_dmqmc_estimators(sys, idet,excitation,walker_pop)
+        use system, only: sys_t
         import :: excit, p
         implicit none
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet
         type(excit), intent(in) :: excitation
         real(p), intent(in) :: walker_pop
     end subroutine i_update_dmqmc_estimators
-    subroutine i_gen_excit(rng, d, pgen, connection, hmatel)
+    subroutine i_gen_excit(rng, sys, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
         import :: det_info, excit, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
     end subroutine i_gen_excit
-    subroutine i_gen_excit_finalise(rng, d, connection, hmatel)
+    subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
         import :: det_info, excit, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: d
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
@@ -73,11 +85,13 @@ abstract interface
         integer, intent(inout) :: pop, ndeath
         integer(lint), intent(inout) :: tot_pop
     end subroutine i_death
-    pure function i_sc0(f) result(hmatel)
+    pure function i_sc0(sys, f) result(hmatel)
         use basis, only: basis_length
+        use system, only: sys_t
         import :: p, i0
         implicit none
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
     end function i_sc0
     subroutine i_set_parent_flag(pop, f, flag)
@@ -108,8 +122,10 @@ abstract interface
         integer, intent(in) :: nspawned, spawning_end, particle_indx
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
-    subroutine i_trial_fn(cdet, connection, hmatel)
+    subroutine i_trial_fn(sys, cdet, connection, hmatel)
+        use system, only: sys_t
         import :: det_info, excit, p
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
@@ -156,11 +172,13 @@ end type gen_excit_ptr_t
 type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
-    subroutine i_spawner(rng, d, parent_sign, gen_excit_ptr, nspawned, connection)
+    subroutine i_spawner(rng, sys, d, parent_sign, gen_excit_ptr, nspawned, connection)
         use dSFMT_interface, only: dSFMT_t
+        use system, only: sys_t
         import :: det_info, excit, gen_excit_ptr_t
         implicit none
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: d
         integer, intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr

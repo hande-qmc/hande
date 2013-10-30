@@ -105,10 +105,11 @@ integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, basis_length)
 
 contains
 
-    subroutine init_basis_fn(b, l, sym, ms)
+    subroutine init_basis_fn(sys, b, l, sym, ms)
 
         ! Initialise a variable of type basis_fn.
         ! In:
+        !    sys: system being studied.
         !    l (optional): quantum numbers of the basis function.  Used only in
         !        model Hamiltonians.
         !        Momentum space formulation:
@@ -132,22 +133,23 @@ contains
         ! l component can be correctly allocated.
 
         use checking, only: check_allocate
-        use system, only: system_type, hub_real
+        use system
 
+        type(sys_t), intent(in) :: sys
         type(basis_fn), intent(out) :: b
-        integer, intent(in), optional  :: l(ndim)
+        integer, intent(in), optional  :: l(sys%lattice%ndim)
         integer, intent(in), optional  :: sym, ms
         integer :: ierr
 
         if (.not.associated(b%l)) then
-            allocate(b%l(ndim),stat=ierr)
-            call check_allocate('b%l',ndim,ierr)
+            allocate(b%l(sys%lattice%ndim),stat=ierr)
+            call check_allocate('b%l',sys%lattice%ndim,ierr)
         end if
 
         if (present(l)) then
             b%l = l
-            if (system_type == hub_k .or. system_type == ueg) then
-                b%sp_eigv = calc_kinetic(l)
+            if (sys%system == hub_k .or. sys%system == ueg) then
+                b%sp_eigv = calc_kinetic(sys, l)
             else
                 b%sp_eigv = 0.0_p
             end if
@@ -159,12 +161,13 @@ contains
 
     end subroutine init_basis_fn
 
-    subroutine write_basis_fn_header(iunit, print_full)
+    subroutine write_basis_fn_header(sys, iunit, print_full)
 
         ! Print out header for a table of basis functions.
         ! Format in line with write_basis_fn.
         !
         ! In:
+        !    sys: system being studied.
         !    iunit (optional): io unit to which the output is written.
         !        Default: 6 (stdout).
         !    print_full (optional): if true (default) then print out header info
@@ -173,8 +176,9 @@ contains
         !        If false, only information about the quantum numbers is
         !        printed.
 
-        use system, only: system_type, read_in, hub_k, hub_real, heisenberg
+        use system
 
+        type(sys_t), intent(in) :: sys
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: print_full
 
@@ -199,19 +203,19 @@ contains
         write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
 
         ! Describe information.
-        if (system_type /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
+        if (sys%system /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
 
-        select case(system_type)
+        select case(sys%system)
         case(hub_real,heisenberg, chung_landau)
             write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
             write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
         case(hub_k,ueg)
             write (6,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
-            if (any(abs(ktwist) > 0.0_p)) then
+            if (any(abs(sys%lattice%ktwist) > 0.0_p)) then
                 write (6,'(1X,a26)', advance='no') 'Applying a twist angle of:'
-                write (6,'(1X,"(",f6.4)', advance='no') ktwist(1)
-                do i = 2, ndim
-                    write (6,'(",",f6.4)', advance='no') ktwist(i)
+                write (6,'(1X,"(",f6.4)', advance='no') sys%lattice%ktwist(1)
+                do i = 2, sys%lattice%ndim
+                    write (6,'(",",f6.4)', advance='no') sys%lattice%ktwist(i)
                 end do
                 write (6,'(").")')
             end if
@@ -221,17 +225,17 @@ contains
             write (6,'(/,1X,a5,2X,a7,X,a8,X,a9,2X)', advance='no') 'index','spatial','symmetry','sym_index'
         end select
 
-        if (system_type /= read_in) then
-            do i = 1, ndim
+        if (sys%system /= read_in) then
+            do i = 1, sys%lattice%ndim
                 write (6,'(4X)', advance='no')
             end do
         end if
 
         if (print_long) then
-            if (system_type /= heisenberg .and. system_type /= chung_landau) &
+            if (sys%system /= heisenberg .and. sys%system /= chung_landau) &
                 write (6,'(a2)', advance='no') 'ms'
 
-            select case(system_type)
+            select case(sys%system)
             case(hub_real, heisenberg, chung_landau)
                 write(6,'()')
             case default
@@ -243,7 +247,7 @@ contains
 
     end subroutine write_basis_fn_header
 
-    subroutine write_basis_fn(b, ind, iunit, new_line, print_full)
+    subroutine write_basis_fn(sys, b, ind, iunit, new_line, print_full)
 
         ! Print out information stored in b.
         ! Format in line with write_basis_fn_header.
@@ -251,6 +255,7 @@ contains
         ! write_basis_fn_header.
         !
         ! In:
+        !    sys: system being studied.
         !    b: basis_fn variable.
         !    ind: index of basis function.  Only printed out if present and
         !        positive.
@@ -264,8 +269,9 @@ contains
         !        associated with the basis function are printed.  If false, only
         !        the quantum numbers are printed.
 
-        use system, only: system_type, read_in, hub_k, ueg, heisenberg, chung_landau
+        use system
 
+        type(sys_t), intent(in) :: sys
         type(basis_fn), intent(in) :: b
         integer, intent(in), optional :: ind
         integer, intent(in), optional :: iunit
@@ -290,23 +296,23 @@ contains
             if (ind >= 0) write (6,'(1X,i5,2X)',advance='no') ind
         end if
 
-        if (system_type == read_in) then
+        if (sys%system == read_in) then
             write (io, '(i5,2(3X,i5),X)',advance='no') b%spatial_index, b%sym, b%sym_index
         else
             write (io,'(1X,"(")', advance='no')
             write (io,'(i3)',advance='no') b%l(1)
-            do i = 2,ndim
+            do i = 2,sys%lattice%ndim
                 write (io,'(",",i3)',advance='no') b%l(i)
             end do
             write (io,'(")")', advance='no')
         end if
         if (print_all) then
-            select case (system_type)
+            select case (sys%system)
             case(heisenberg, chung_landau)
             case default
                 write (io,'(5X,i2)', advance='no') b%ms
             end select
-            select case (system_type)
+            select case (sys%system)
             case(heisenberg, chung_landau, hub_real)
             case default
                 write (io,'(4X,f12.8)', advance='no') b%sp_eigv
@@ -318,13 +324,16 @@ contains
 
     end subroutine write_basis_fn
 
-    subroutine init_model_basis_fns(store_info)
+    subroutine init_model_basis_fns(sys, store_info)
 
         ! Produce the basis functions for model Hamiltonian systems.
         !
+        ! In/Out:
+        !    sys: system being studied.  On output the nvirt component is set
+        !         (UEG *only*; unmodified for all other systems).
         ! In:
         !    store_info (optional): if true (default) then store the data read
-        !    in.  Otherwise the basis set is simply printed out.
+        !         in.  Otherwise the basis set is simply printed out.
         !
         ! The number of wavevectors is equal to the number of sites in the
         ! crystal cell (ie the number of k-points used to sample the FBZ of the
@@ -339,6 +348,7 @@ contains
         use errors, only: stop_all
         use parallel, only: parent
 
+        type(sys_t), intent(inout) :: sys
         logical, intent(in), optional :: store_info
 
         logical :: t_store
@@ -399,17 +409,17 @@ contains
         ! each of which could be occupied or unoccupied.
         ! Initially we will only consider the spatial orbitals when constructing
         ! the basis and will expand it out to spin orbitals later.
-        select case(system_type)
+        select case(sys%system)
         case(hub_k, hub_real, heisenberg, chung_landau)
-            nspatial = nsites
+            nspatial = sys%lattice%nsites
             ! Maximum limits...
             ! [Does it show that I've been writing a lot of python recently?]
             nmax = 0 ! Set nmax(i) to be 0 for unused higher dimensions.
             limits = 0
             ! forall is a poor substitute for list comprehension. ;-)
-            forall (i=1:ndim)
-                forall (j=1:ndim, lattice(i,j) /= 0)
-                    limits(i,j) = abs(nint(box_length(i)**2/(2*lattice(i,j))))
+            forall (i=1:sys%lattice%ndim)
+                forall (j=1:sys%lattice%ndim, sys%lattice%lattice(i,j) /= 0)
+                    limits(i,j) = abs(nint(sys%lattice%box_length(i)**2/(2*sys%lattice%lattice(i,j))))
                 end forall
                 nmax(i) = maxval(limits(:,i))
             end forall
@@ -421,8 +431,8 @@ contains
             ! line/square/cube which encloses all wavevectors within the cutoff
             ! and discard those outside the cutoff.
             nmax = 0
-            forall (i=1:ndim) nmax(i) = ceiling(sqrt(2*ueg_ecutoff))
-            nspatial = (2*nmax(1)+1)**ndim
+            forall (i=1:sys%lattice%ndim) nmax(i) = ceiling(sqrt(2*sys%ueg%ecutoff))
+            nspatial = (2*nmax(1)+1)**sys%lattice%ndim
         end select
 
         allocate(tmp_basis_fns(nspatial), stat=ierr)
@@ -436,19 +446,19 @@ contains
                     ! kp is the Wavevector in terms of the reciprocal lattice vectors of
                     ! the crystal cell.
                     kp = (/ i, j, k /)
-                    if (in_FBZ(kp(1:ndim))) then
+                    if (in_FBZ(sys%system, sys%lattice, kp(1:sys%lattice%ndim))) then
                         if (ibasis == nspatial) then
                             call stop_all('init_basis_fns','Too many basis functions found.')
                         else
                             ! Have found an allowed wavevector/site.
                             ! Add 2 spin orbitals to the set of the basis functions.
                             ibasis = ibasis + 1
-                            call init_basis_fn(tmp_basis_fns(ibasis), l=kp(1:ndim), ms=1)
-                            if (system_type==ueg .and. real(dot_product(kp,kp),p)/2 > ueg_ecutoff) then
+                            call init_basis_fn(sys, tmp_basis_fns(ibasis), l=kp(1:sys%lattice%ndim), ms=1)
+                            if (sys%system==ueg .and. real(dot_product(kp,kp),p)/2 > sys%ueg%ecutoff) then
                                 ! Have found a wavevector with too large KE.
                                 ! Discard.
                                 ! Note that we don't use the calculated kinetic
-                                ! energy as it's in a.u. (ueg_ecutoff is in
+                                ! energy as it's in a.u. (sys%ueg%ecutoff is in
                                 ! scaled units) and includes any twist.
                                 ! Avoid the chance of having allocated
                                 ! additional %l elements (eg if rejecting the
@@ -463,14 +473,14 @@ contains
             end do
         end do
 
-        select case(system_type)
+        select case(sys%system)
         case(hub_k, hub_real, heisenberg, chung_landau)
             if (ibasis /= nspatial) call stop_all('init_basis_fns','Not enough basis functions found.')
         case(ueg)
         end select
 
         ! Convert nbasis to being in terms of spin-orbitals if applicable.
-        select case(system_type)
+        select case(sys%system)
         case(ueg)
             ! Set nbasis to be the number of basis functions found to be within
             ! the energy cutoff.
@@ -478,12 +488,12 @@ contains
             ! occupied by each wavevector, but I just cba.
             nbasis = 2*ibasis
             nspatial = ibasis
-            nvirt = nbasis - nel
+            sys%nvirt = nbasis - sys%nel
         case(hub_k, hub_real)
-            ! nvirt set in init_system
+            ! sys%nvirt set in init_system
             nbasis = 2*nspatial
         case(heisenberg, chung_landau)
-            ! nvirt set in init_system
+            ! sys%nvirt set in init_system
             nbasis = nspatial
         end select
 
@@ -491,11 +501,11 @@ contains
         call check_allocate('basis_fns_ranking',nspatial,ierr)
 
         ! Rank by kinetic energy (applies to momentum space basis sets only).
-        select case(system_type)
+        select case(sys%system)
         case(hub_k, ueg)
             call insertion_rank_rp(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking, tolerance=depsilon)
         case(hub_real, heisenberg, chung_landau)
-            forall (i=1:nsites) basis_fns_ranking(i) = i
+            forall (i=1:sys%lattice%nsites) basis_fns_ranking(i) = i
         end select
 
         allocate(basis_fns(nbasis), stat=ierr)
@@ -507,12 +517,12 @@ contains
             ! Can't set a kpoint equal to another kpoint as then the k pointers
             ! can be assigned whereas we want to *copy* the values.
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
-            select case(system_type)
+            select case(sys%system)
             case(heisenberg, chung_landau)
-                call init_basis_fn(basis_fns(i), l=basis_fn_p%l)
+                call init_basis_fn(sys, basis_fns(i), l=basis_fn_p%l)
             case default
-                call init_basis_fn(basis_fns(2*i-1), l=basis_fn_p%l, ms=basis_fn_p%ms)
-                call init_basis_fn(basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
+                call init_basis_fn(sys, basis_fns(2*i-1), l=basis_fn_p%l, ms=basis_fn_p%ms)
+                call init_basis_fn(sys, basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
             end select
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
             call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
@@ -523,9 +533,9 @@ contains
         call check_deallocate('basis_fns_ranking',ierr)
 
         if (parent) then
-            call write_basis_fn_header()
+            call write_basis_fn_header(sys)
             do i = 1, nbasis
-                call write_basis_fn(basis_fns(i), ind=i, new_line=.true.)
+                call write_basis_fn(sys, basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'()')
         end if

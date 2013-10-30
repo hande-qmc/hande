@@ -9,9 +9,10 @@ implicit none
 
 contains
 
-    pure function get_hmatel_hub_k(f1, f2) result(hmatel)
+    pure function get_hmatel_hub_k(sys, f1, f2) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
@@ -23,8 +24,10 @@ contains
 
         use determinants, only: basis_length
         use excitations, only: excit, get_excitation
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         logical :: non_zero
         type(excit) :: excitation
@@ -43,7 +46,7 @@ contains
         !     vector (i.e. satisfy translational symmetry).
         !     We assume this is also already checked.
 
-        excitation = get_excitation(f1,f2)
+        excitation = get_excitation(sys%nel, f1,f2)
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then
             non_zero = .true.
@@ -55,7 +58,7 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel = slater_condon0_hub_k(f1)
+                hmatel = slater_condon0_hub_k(sys, f1)
 
 !            case(1)
 
@@ -77,7 +80,7 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
-                hmatel = slater_condon2_hub_k(excitation%from_orb(1), excitation%from_orb(2), &
+                hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
 
             end select
@@ -85,20 +88,22 @@ contains
 
     end function get_hmatel_hub_k
 
-    pure function slater_condon0_hub_k(f) result(hmatel)
+    pure function slater_condon0_hub_k(sys, f) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f: bit string representation of the Slater determinant.
         ! Returns:
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
         use determinants, only: decode_det, basis_fns, basis_length
-        use system, only: nalpha, nbeta, hub_k_coulomb, nel
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer :: occ_list(nel)
+        integer :: occ_list(sys%nel)
         integer :: i
 
         call decode_det(f, occ_list)
@@ -116,19 +121,20 @@ contains
         !   d) The double sum has 2*nalpha*nbeta terms corresponding to i,j of
         !      different spins.
         !   e) Thus  1/2 \sum_i \sum_j < ij || ij > = nalpha*nbeta*U/nsites.
-        hmatel = nalpha*nbeta*hub_k_coulomb
+        hmatel = sys%nalpha*sys%nbeta*sys%hubbard%coulomb_k
 
         ! One electron operator
         ! Get directly rather than incur the cost of the if test in get_one_e_int_k.
-        do i = 1, nel
+        do i = 1, sys%nel
             hmatel = hmatel + basis_fns(occ_list(i))%sp_eigv
         end do
 
     end function slater_condon0_hub_k
 
-    pure function slater_condon2_hub_k(i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_hub_k(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    i,j:  index of the spin-orbital from which an electron is excited in
         !          the reference determinant.
         !    a,b:  index of the spin-orbital into which an electron is excited in
@@ -141,18 +147,20 @@ contains
         !    formulation of the Hubbard model.
 
         use hubbard_k, only: get_two_e_int_k
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        hmatel = get_two_e_int_k(i, j, a, b)
+        hmatel = get_two_e_int_k(sys, i, j, a, b)
 
         if (perm) hmatel = -hmatel
 
     end function slater_condon2_hub_k
 
-    pure subroutine slater_condon2_hub_k_excit(f, connection, hmatel)
+    pure subroutine slater_condon2_hub_k_excit(sys, f, connection, hmatel)
 
         ! Generate the matrix element between a determinant and a double
         ! excitation in the momentum space formulation of the Hubbard model.
@@ -161,6 +169,7 @@ contains
         ! checking is skipped.
 
         ! In:
+        !    sys: system to be studied.
         !    f: bit string representation of the Slater determinant, D.
         ! In/Out:
         !    connection: excit type describing the excitation between |D> and
@@ -174,8 +183,9 @@ contains
 
         use excitations, only: excit, find_excitation_permutation2
         use basis, only: basis_length
-        use system, only: hub_k_coulomb
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
@@ -200,7 +210,7 @@ contains
         end if
 
         ! a) Sign from value of U as well---U can be negative!
-        hmatel = hub_k_coulomb
+        hmatel = sys%hubbard%coulomb_k
 
         ! b) Negative sign from permuting the determinants so that they line
         ! up?

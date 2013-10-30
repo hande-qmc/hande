@@ -10,17 +10,20 @@ implicit none
 
 contains
 
-    subroutine diagonalise()
+    subroutine diagonalise(sys)
 
         ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
         ! exact diagonalisation.
 
+        ! In/Out:
+        !    sys: system being studied.  Unaltered on output.
+
         use checking, only: check_allocate, check_deallocate
         use basis, only: nbasis
         use errors
-        use system, only: nel, nsym, sym_max, sym0, uhf
+        use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
         use determinant_enumeration, only: enumerate_determinants, ndets, sym_space_size
-        use determinants, only: tot_ndets, set_spin_polarisation, spin_orb_list
+        use determinants, only: tot_ndets, spin_orb_list
         use fciqmc_data, only: occ_list0
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
@@ -33,6 +36,8 @@ contains
         use errors, only: stop_all
         use utils, only: int_fmt
         use ranking, only: insertion_rank_rp
+
+        type(sys_t), intent(inout) :: sys
 
         type soln
             integer :: ms
@@ -58,8 +63,11 @@ contains
         integer :: rdm_size
 
         character(50) :: fmt1
+        type(sys_t) :: sys_bak
 
         if (parent) write (6,'(1X,a15,/,1X,15("="),/)') 'Diagonalisation'
+
+        call copy_sys_spin_info(sys, sys_bak)
 
         ! The Hamiltonian can be written in block diagonal form using the spin
         ! quantum number.  < D_1 | H | D_2 > /= 0 only if D_1 and D_2 have the
@@ -68,14 +76,14 @@ contains
         ! For a given number of electrons, n, the total spin can range from -n
         ! to +n in steps of 2.
         if (ms_in == huge(1)) then
-            if (uhf) then
-                ms_min = -min(nel, nbasis-nel)
-                ms_max = min(nel, nbasis-nel)
+            if (sys%read_in%uhf) then
+                ms_min = -min(sys%nel, nbasis-sys%nel)
+                ms_max = min(sys%nel, nbasis-sys%nel)
             else
                 ! The -ms blocks are degenerate with the +ms blocks so only need to
                 ! solve for ms >= 0.
-                ms_min = mod(nel,2)
-                ms_max = min(nel, nbasis-nel)
+                ms_min = mod(sys%nel,2)
+                ms_max = min(sys%nel, nbasis-sys%nel)
             end if
         else
             ! ms was set in input
@@ -84,8 +92,8 @@ contains
         end if
 
         if (sym_in == huge(1)) then
-            isym_min = sym0
-            isym_max = sym_max
+            isym_min = sys%sym0
+            isym_max = sys%sym_max
         else
             ! sym was set in input
             isym_min = sym_in
@@ -97,7 +105,7 @@ contains
             ! If a reference determinant was supplied, then we need to only
             ! consider that spin and symmetry.
             if (isym_min /= isym_max) then
-                isym_min = symmetry_orb_list(occ_list0)
+                isym_min = symmetry_orb_list(sys, occ_list0)
                 isym_max = isym_min
             else
                 spin_flip = .true.
@@ -118,16 +126,16 @@ contains
                         &truncated CI calculations.')
                 end if
                 ! Create reference det based upon symmetry labels.
-                call set_spin_polarisation(ms_min)
-                allocate(occ_list0(nel), stat=ierr)
-                call check_allocate('occ_list0', nel, ierr)
-                call set_reference_det(occ_list0, .true., isym_min)
+                call set_spin_polarisation(nbasis, ms_min, sys)
+                allocate(occ_list0(sys%nel), stat=ierr)
+                call check_allocate('occ_list0', sys%nel, ierr)
+                call set_reference_det(sys, occ_list0, .true., isym_min)
             end if
         end if
 
         if (doing_calc(lanczos_diag)) then
-            allocate(lanczos_solns(nlanczos_eigv*(nel/2+1)*nbasis/2), stat=ierr)
-            call check_allocate('lanczos_solns',nlanczos_eigv*(nel/2+1)*nbasis/2,ierr)
+            allocate(lanczos_solns(nlanczos_eigv*(sys%nel/2+1)*nbasis/2), stat=ierr)
+            call check_allocate('lanczos_solns',nlanczos_eigv*(sys%nel/2+1)*nbasis/2,ierr)
         end if
         if (doing_calc(exact_diag)) then
             allocate(exact_solns(tot_ndets), stat=ierr)
@@ -143,11 +151,11 @@ contains
             if (parent) write (6,'(1X,a35,'//int_fmt(ms)//',/)') 'Considering determinants with spin:', ms
 
             ! Find and set information about the space.
-            call set_spin_polarisation(ms)
+            call set_spin_polarisation(nbasis, ms, sys)
             if (allocated(occ_list0)) then
-                call enumerate_determinants(.true., spin_flip, occ_list0=occ_list0)
+                call enumerate_determinants(sys, .true., spin_flip, occ_list0=occ_list0)
             else
-                call enumerate_determinants(.true., spin_flip)
+                call enumerate_determinants(sys, .true., spin_flip)
             end if
 
             ! Diagonalise each symmetry block in turn.
@@ -155,23 +163,25 @@ contains
 
                 if (sym_space_size(isym)==0) then
                     if (parent) then
-                        fmt1 = '(1X,a25,'//int_fmt(isym,1)//',1X,a17,'//int_fmt(nsym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
-                        write (6,fmt1) 'No determinants with spin',ms,'in symmetry block',isym,'out of',nsym
-                        write (6,'(/,1X,15("-"),/)')
+                        associate(nsym=>sys%nsym)
+                            fmt1 = '(1X,a25,'//int_fmt(isym,1)//',1X,a17,'//int_fmt(nsym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
+                            write (6,fmt1) 'No determinants with spin',ms,'in symmetry block',isym,'out of',nsym
+                            write (6,'(/,1X,15("-"),/)')
+                        end associate
                     end if
                     cycle
                 end if
 
                 if (parent) then
-                    fmt1 = '(1X,a28,'//int_fmt(isym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
-                    write (6,fmt1) 'Diagonalising symmetry block',isym,'out of',nsym
+                    fmt1 = '(1X,a28,'//int_fmt(isym,1)//',1X,a6,'//int_fmt(sys%nsym,1)//')'
+                    write (6,fmt1) 'Diagonalising symmetry block',isym,'out of',sys%nsym
                 end if
 
                 ! Find all determinants with this spin.
                 if (allocated(occ_list0)) then
-                    call enumerate_determinants(.false., spin_flip, isym, occ_list0)
+                    call enumerate_determinants(sys, .false., spin_flip, isym, occ_list0)
                 else
-                    call enumerate_determinants(.false., spin_flip, isym)
+                    call enumerate_determinants(sys, .false., spin_flip, isym)
                 end if
 
                 if (ndets == 1) then
@@ -183,19 +193,20 @@ contains
                     ! The trivial case seems to trip up TRLan and scalapack in
                     ! parallel.
                     if (doing_calc(lanczos_diag)) then
-                        lanczos_solns(nlanczos+1)%energy = get_hmatel_dets(1,1)
+                        lanczos_solns(nlanczos+1)%energy = get_hmatel_dets(sys,1,1)
                         lanczos_solns(nlanczos+1)%ms = ms
                         nlanczos = nlanczos + 1
                     end if
                     if (doing_calc(exact_diag)) then
-                        exact_solns(nexact+1)%energy = get_hmatel_dets(1,1)
+                        exact_solns(nexact+1)%energy = get_hmatel_dets(sys,1,1)
                         exact_solns(nexact+1)%ms = ms
                         nexact = nexact + 1
                     end if
 
                 else
 
-                    if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) call generate_hamil(distribute_off)
+                    if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) &
+                        call generate_hamil(sys, distribute_off)
 
                     ! Lanczos.
                     if (doing_calc(lanczos_diag)) then
@@ -203,8 +214,8 @@ contains
                         call check_allocate('lanczos_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(distribute_cols)
-                        call lanczos_diagonalisation(nfound, lanczos_eigv)
+                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(sys, distribute_cols)
+                        call lanczos_diagonalisation(sys, nfound, lanczos_eigv)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = lanczos_eigv(:nfound)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms
                         nlanczos = nlanczos + nfound
@@ -219,8 +230,8 @@ contains
                         call check_allocate('exact_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1) call generate_hamil(distribute_blocks)
-                        call exact_diagonalisation(exact_eigv)
+                        if (nprocs > 1) call generate_hamil(sys, distribute_blocks)
+                        call exact_diagonalisation(sys, exact_eigv)
                         exact_solns(nexact+1:nexact+ndets)%energy = exact_eigv
                         exact_solns(nexact+1:nexact+ndets)%ms = ms
                         nexact = nexact + ndets
@@ -241,7 +252,7 @@ contains
                                                         &routine. Skipping this calculation.', 3)
                         else if (doing_calc(exact_diag)) then
                             write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                            call setup_rdm_arrays()
+                            call setup_rdm_arrays(sys)
                             rdm_size = size(reduced_density_matrix, 1)
 
                             allocate(rdm_eigenvalues(rdm_size), stat=ierr)
@@ -270,7 +281,7 @@ contains
                 ind = eigv_rank(i)
                 state = state + 1
                 write (6,'(1X,i6,2X,i6,1X,f18.12)') state, lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
-                if (.not.uhf .and. lanczos_solns(ind)%ms /= 0) then
+                if (.not.sys%read_in%uhf .and. lanczos_solns(ind)%ms /= 0) then
                     ! Also a degenerate -ms solution.
                     state = state + 1
                     write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -lanczos_solns(ind)%ms, lanczos_solns(ind)%energy
@@ -292,7 +303,7 @@ contains
                 ind = eigv_rank(i)
                 state = state + 1
                 write (6,'(1X,i6,2X,i6,1X,f18.12)') state, exact_solns(ind)%ms, exact_solns(ind)%energy
-                if (.not.uhf .and. exact_solns(ind)%ms /= 0) then
+                if (.not.sys%read_in%uhf .and. exact_solns(ind)%ms /= 0) then
                     ! Also a degenerate -ms solution.
                     state = state + 1
                     write (6,'(1X,i6,2X,i6,1X,f18.12)') state, -exact_solns(ind)%ms, exact_solns(ind)%energy
@@ -323,15 +334,19 @@ contains
             call check_deallocate('exact_solns',ierr)
         end if
 
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
+
     end subroutine diagonalise
 
-    subroutine generate_hamil(distribute_mode)
+    subroutine generate_hamil(sys, distribute_mode)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
         ! only determinants of a specified spin.
         ! Only generate the upper diagonal for use with (sca)lapack and Lanczos routines.
         ! In:
+        !    sys: system to be studied.
         !    distribute_mode (optional): flag for determining how the
         !        Hamiltonian matrix is distributed among processors.  It is
         !        irrelevant if only one processor is used: the distribution schemes
@@ -349,7 +364,9 @@ contains
         use hamiltonian, only: get_hmatel_dets
         use hubbard_real
         use determinant_enumeration, only: ndets
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer, intent(in), optional :: distribute_mode
         integer :: ierr, iunit, n1, n2, ind_offset
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
@@ -450,7 +467,7 @@ contains
                         ! from a single test.  Please feel free to improve...
                         !$omp do private(j, hmatel) schedule(dynamic, 200)
                         do j = i, ndets
-                            hmatel = get_hmatel_dets(i+ind_offset, j+ind_offset)
+                            hmatel = get_hmatel_dets(sys,i+ind_offset, j+ind_offset)
                             if (abs(hmatel) > depsilon) then
                                 !$omp critical
                                 nnz = nnz + 1
@@ -484,7 +501,7 @@ contains
                 do i = 1, ndets
                     !$omp do private(j) schedule(dynamic, 200)
                     do j = i, ndets
-                        hamil(i,j) = get_hmatel_dets(i+ind_offset,j+ind_offset)
+                        hamil(i,j) = get_hmatel_dets(sys,i+ind_offset,j+ind_offset)
                     end do
                     !$omp end do
                 end do
@@ -513,7 +530,7 @@ contains
                         do jj = 1, min(block_size, proc_blacs_info%ncols - j + 1)
                             jlocal = j - 1 + jj
                             jglobal = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj + ind_offset
-                            hamil(ilocal, jlocal) = get_hmatel_dets(iglobal, jglobal)
+                            hamil(ilocal, jlocal) = get_hmatel_dets(sys,iglobal, jglobal)
                         end do
                     end do
                 end do

@@ -10,11 +10,16 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc()
+    subroutine do_dmqmc(sys)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
         ! times, to accumulate statistics for each value for beta.
+
+        ! In/Out:
+        !    sys: system being studied.  NOTE: if modified inside a procedure,
+        !         it should be returned in its original (ie unmodified state) at the
+        !         end of the procedure.
 
         use parallel
         use annihilation, only: direct_annihilation
@@ -29,13 +34,15 @@ contains
         use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use qmc_common
         use interact, only: fciqmc_interact
-        use system, only: nel
+        use system
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy, initiator_approximation
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
-        use system, only: system_type, heisenberg
+        use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: int_fmt
         use errors, only: stop_all
+
+        type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
@@ -51,8 +58,8 @@ contains
 
         ! Allocate det_info components. We need two cdet objects
         ! for each 'end' which may be spawned from in the DMQMC algorithm.
-        call alloc_det_info(cdet1, .false.)
-        call alloc_det_info(cdet2, .false.)
+        call alloc_det_info(sys, cdet1, .false.)
+        call alloc_det_info(sys, cdet2, .false.)
 
         ! Main DMQMC loop.
         if (parent) call write_fciqmc_report_header()
@@ -95,15 +102,15 @@ contains
             ! on these orbitals they will have the correct spin and symmetry.
             ! Initial particle distribution.
             do ireplica = 1, sampling_size
-                select case(system_type)
+                select case(sys%system)
                 case(heisenberg)
-                    call random_distribution_heisenberg(rng, ireplica)
+                    call random_distribution_heisenberg(rng, sys%lattice%nsites, ireplica)
                 case default
                     call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
                 end select
             end do
 
-            call direct_annihilation(initiator_approximation)
+            call direct_annihilation(sys, initiator_approximation)
 
             nparticles_old = nint(D0_population)
 
@@ -139,19 +146,20 @@ contains
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
                         ! to refer to the correct element in the density matrix.
-                        call decoder_ptr(cdet1%f, cdet1)
-                        call decoder_ptr(cdet2%f, cdet2)
+                        call decoder_ptr(sys, cdet1%f, cdet1)
+                        call decoder_ptr(sys, cdet2%f, cdet2)
 
                         ! Call wrapper function which calls all requested estimators
                         ! to be updated, and also always updates the trace separately.
-                        if (icycle == 1) call call_dmqmc_estimators(idet, iteration)
+                        if (icycle == 1) call call_dmqmc_estimators(sys, idet, iteration)
 
                         do ireplica = 1, sampling_size
                             do iparticle = 1, abs(walker_population(ireplica,idet))
                                 ! Spawn from the first end.
                                 spawning_end = 1
                                 ! Attempt to spawn.
-                                call spawner_ptr(rng, cdet1, walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                call spawner_ptr(rng, sys, cdet1, walker_population(ireplica,idet), &
+                                                 gen_excit_ptr, nspawned, connection)
                                 ! Spawn if attempt was successful.
                                 if (nspawned /= 0) then
                                     call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
@@ -160,7 +168,8 @@ contains
 
                                 ! Now attempt to spawn from the second end.
                                 spawning_end = 2
-                                call spawner_ptr(rng, cdet2, walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                call spawner_ptr(rng, sys, cdet2, walker_population(ireplica,idet), &
+                                                 gen_excit_ptr, nspawned, connection)
                                 if (nspawned /= 0) then
                                     call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
                                                                         ireplica, qmc_spawn)
@@ -182,7 +191,7 @@ contains
 
                     ! Perform the annihilation step where the spawned walker list is merged with the
                     ! main walker list, and walkers of opposite sign on the same sites are annihilated.
-                    call direct_annihilation(initiator_approximation)
+                    call direct_annihilation(sys, initiator_approximation)
 
                     ! If doing importance sampling *and* varying the weights of the trial function, call a routine
                     ! to update these weights and alter the number of psips on each excitation level accordingly.
@@ -227,7 +236,7 @@ contains
             ! This is for ground-state RDMs only.
             if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in the previous loop.
-            if (dmqmc_find_weights) call output_and_alter_weights()
+            if (dmqmc_find_weights) call output_and_alter_weights(sys%max_number_excitations)
 
         end do
 

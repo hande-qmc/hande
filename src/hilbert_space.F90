@@ -8,7 +8,7 @@ integer :: nhilbert_cycles
 
 contains
 
-    subroutine estimate_hilbert_space()
+    subroutine estimate_hilbert_space(sys)
 
         ! Based on Appendix A in George Booth's thesis.
 
@@ -18,10 +18,13 @@ contains
         ! See find_sym_space_size for a dumb but exact enumeration of the size
         ! of the space (which is needed for FCI calculations).
 
+        ! In/Out:
+        !    sys: system being studied.  Unaltered on output.
+
         use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns, nbasis
         use calc, only: sym_in, ms_in, truncate_space, truncation_level, seed
         use const, only: dp
-        use determinants, only: set_spin_polarisation, encode_det
+        use determinants, only: encode_det
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, get_rand_close_open
         use fciqmc_data, only: occ_list0
@@ -31,11 +34,13 @@ contains
         use parallel
         use utils, only: binom_r, rng_init_info
 
+        type(sys_t), intent(inout) :: sys
+
         integer :: iel, icycle, naccept
         integer :: a, a_el, a_pos, b, b_el, b_pos
         integer :: ref_sym, det_sym
         integer(i0) :: f(basis_length), f0(basis_length)
-        integer :: occ_list(nel)
+        integer :: occ_list(sys%nel)
         real(dp) :: space_size
 #ifdef PARALLEL
         integer :: ierr
@@ -43,34 +48,36 @@ contains
 #endif
 
         type(dSFMT_t) :: rng
+        type(sys_t) :: sys_bak
 
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
-        call set_spin_polarisation(ms_in)
+        call copy_sys_spin_info(sys, sys_bak)
+        call set_spin_polarisation(nbasis, ms_in, sys)
 
-        select case(system_type)
+        select case(sys%system)
 
         case(heisenberg)
 
             ! Symmetry not currently implemented for the Heisenberg code.
             ! There is one spin per site, so it's just a case of how many ways
-            ! there are to arrange the nalpha spins across the nsites (or
-            ! equivalently the nbeta spins across the nsites).
+            ! there are to arrange the nalpha spins across the lattice%nsites (or
+            ! equivalently the nbeta spins across the lattice%nsites).
             ! See comments in system for how nel and nvirt are used in the
             ! Heisenberg model.
             if (truncate_space) then
-                space_size = binom_r(nsites-(nel-truncation_level),truncation_level)
+                space_size = binom_r(sys%lattice%nsites-(sys%nel-truncation_level),truncation_level)
             else
-                space_size = binom_r(nsites, nel)
+                space_size = binom_r(sys%lattice%nsites, sys%nel)
             end if
             if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', space_size
 
         case default
 
-            if ((system_type == hub_real .or. system_type == chung_landau) &
+            if ((sys%system == hub_real .or. sys%system == chung_landau) &
                                                 .and. .not.truncate_space) then
                 ! Symmetry not currently implemented for the real space lattice
                 ! code.
@@ -78,25 +85,28 @@ contains
                 ! the alpha orbitals and beta orbitals.  As we're dealing with the
                 ! simplest possible lattice model, the number of orbitals of each
                 ! spin is equal to the number of sites.
-                if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', binom_r(nsites, nalpha)*binom_r(nsites, nbeta)
+                associate(sg=>sys, sl=>sys%lattice)
+                    if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', &
+                                    binom_r(sl%nsites, sg%nalpha)*binom_r(sl%nsites, sg%nbeta)
+                end associate
             else
 
                 ! Perform a Monte Carlo sampling of the space.
 
-                if (sym_in < sym_max) then
-                    call set_reference_det(occ_list0, .false., sym_in)
+                if (sym_in < sys%sym_max) then
+                    call set_reference_det(sys, occ_list0, .false., sym_in)
                 else
-                    call set_reference_det(occ_list0, .false.)
+                    call set_reference_det(sys, occ_list0, .false.)
                 end if
                 call encode_det(occ_list0, f0)
 
                 ! Symmetry of the reference determinant.
-                ref_sym = symmetry_orb_list(occ_list0)
+                ref_sym = symmetry_orb_list(sys, occ_list0)
 
                 if (parent) then
                     write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
-                    if (momentum_space) then
-                        call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+                    if (sys%momentum_space) then
+                        call write_basis_fn(sys, basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
                     else
                         write (6,'(1X,i2)') ref_sym
                     end if
@@ -119,7 +129,7 @@ contains
                             f(a_el) = ibset(f(a_el), a_pos)
                             iel = iel + 1
                             occ_list(iel) = a
-                            if (iel == nalpha) exit
+                            if (iel == sys%nalpha) exit
                         end if
                     end do
                     ! Beta electrons.
@@ -129,15 +139,15 @@ contains
                         b_pos = bit_lookup(1,b)
                         b_el = bit_lookup(2,b)
                         if (.not.btest(f(b_el), b_pos)) then
-                            ! found unoccupied beta orbital.
+                            ! FOUND Unoccupied beta orbital.
                             f(b_el) = ibset(f(b_el), b_pos)
                             iel = iel + 1
                             occ_list(iel) = b
-                            if (iel == nel) exit
+                            if (iel == sys%nel) exit
                         end if
                     end do
                     ! Find the symmetry of the determinant.
-                    det_sym = symmetry_orb_list(occ_list)
+                    det_sym = symmetry_orb_list(sys, occ_list)
                     ! Is this the same symmetry as the reference determinant?
                     if (det_sym == ref_sym) then
                         if (truncate_space) then
@@ -152,7 +162,7 @@ contains
                 ! Size of the Hilbert space in the desired symmetry block is given
                 ! by
                 !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons)*naccept/nattempts
-                space_size = (binom_r(nbasis/2, nalpha) * binom_r(nbasis/2, nbeta) * naccept) / nhilbert_cycles
+                space_size = (binom_r(nbasis/2,sys%nalpha) * binom_r(nbasis/2,sys%nbeta) * naccept) / nhilbert_cycles
 
 #ifdef PARALLEL
                 ! If we did this on multiple processors then we can get an estimate
@@ -177,6 +187,9 @@ contains
             end if
 
         end select
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine estimate_hilbert_space
 

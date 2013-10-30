@@ -128,6 +128,30 @@ integer(i0), allocatable :: ras1(:), ras3(:) ! (basis_length)
 ! Seed used to initialise the dSFMT random number generator.
 integer :: seed = 7
 
+! --- QMC reference state and trial (importance-sampling) functions ---
+
+! For the Heisenberg model, several different trial functions can be used in the
+! energy estimator. Only a single determinant can be used for the Hubbard model.
+integer, parameter :: single_basis = 0
+integer, parameter :: neel_singlet = 1
+
+! Which trial function are we using? Only relevant to the Heisneberg model.
+! trial_function will always be 0 for other models to represent a single determinant.
+integer :: trial_function = 0
+
+! For the Heisenberd model, a guiding function may be used,
+! |psi_G> = \sum_{i} a_i |psi_i>, so that the new Hamiltonian matrix elements are
+! H_ij^new = (a_i*H_ij)/a_j. This is just importance sampling. These functions
+! represent the different types of functions whihc may be used.
+integer, parameter :: no_guiding = 0
+! Note that when we use the Neel singlet state as a guiding function, it must also
+! be used as the trial function in calculating the projected energy.
+integer, parameter :: neel_singlet_guiding = 1
+
+! If we are not using importance sampling, this is set to 0. Else it is set to one
+! of the above values to specify the corresponding guiding function being used.
+integer :: guiding_function = 0
+
 !--- Info for DMQMC calculations ---
 
 ! For DMQMC, the user may want to calculate many different combinations

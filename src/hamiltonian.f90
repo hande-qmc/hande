@@ -6,9 +6,10 @@ implicit none
 
 contains
 
-    elemental function get_hmatel_dets(d1, d2) result(hmatel)
+    pure function get_hmatel_dets(sys, d1, d2) result(hmatel)
 
         ! In:
+        !    sys: system being studied.
         !    d1, d2: integer labels of two determinants, as stored in the
         !            dets array.
         ! Returns:
@@ -21,17 +22,20 @@ contains
         ! determinants stored in dets_list.
 
         use determinant_enumeration, only: dets_list
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: d1, d2
 
-        hmatel = get_hmatel(dets_list(:,d1), dets_list(:,d2))
+        hmatel = get_hmatel(sys, dets_list(:,d1), dets_list(:,d2))
 
     end function get_hmatel_dets
 
-    pure function get_hmatel(f1, f2) result(hmatel)
+    pure function get_hmatel(sys, f1, f2) result(hmatel)
 
         ! In:
+        !    sys: system being studied.
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
@@ -53,24 +57,25 @@ contains
         use hamiltonian_hub_real, only: get_hmatel_hub_real
         use hamiltonian_molecular, only: get_hmatel_mol
         use hamiltonian_ueg, only: get_hmatel_ueg
-        use system, only: system_type, chung_landau, hub_k, hub_real, heisenberg, read_in, ueg
+        use system
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
 
-        select case(system_type)
+        select case(sys%system)
         case(chung_landau)
-            hmatel = get_hmatel_chung_landau(f1, f2)
+            hmatel = get_hmatel_chung_landau(sys, f1, f2)
         case(hub_k)
-            hmatel = get_hmatel_hub_k(f1, f2)
+            hmatel = get_hmatel_hub_k(sys, f1, f2)
         case(hub_real)
-            hmatel = get_hmatel_hub_real(f1, f2)
+            hmatel = get_hmatel_hub_real(sys, f1, f2)
         case(heisenberg)
-            hmatel = get_hmatel_heisenberg(f1, f2)
+            hmatel = get_hmatel_heisenberg(sys, f1, f2)
         case(read_in)
-            hmatel = get_hmatel_mol(f1, f2)
+            hmatel = get_hmatel_mol(sys, f1, f2)
         case (ueg)
-            hmatel = get_hmatel_ueg(f1, f2)
+            hmatel = get_hmatel_ueg(sys, f1, f2)
         end select
 
     end function get_hmatel

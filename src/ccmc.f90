@@ -173,13 +173,16 @@ integer :: D0_normalisation
 
 contains
 
-    subroutine do_ccmc()
+    subroutine do_ccmc(sys)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
 
         ! See notes about the implementation of this using function pointers
         ! in fciqmc_main.
+
+        ! In:
+        !    sys: system being studied.
 
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -199,7 +202,9 @@ contains
         use fciqmc_restart, only: dump_restart
         use proc_pointers
         use search, only: binary_search
-        use system, only: nel
+        use system, only: sys_t
+        
+        type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
         integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
@@ -225,7 +230,7 @@ contains
             ! FCI), for reasons best known to the user---perhaps testing?
             ! Anyway, need to set truncation level as it's used in the
             ! select_cluster routine.
-            truncation_level = nel
+            truncation_level = sys%nel
         end if
 
         if (truncation_level+2 > 12) then
@@ -247,7 +252,7 @@ contains
             ! Initialise and allocate RNG store.
             call dSFMT_init(seed+(iproc*nthreads)+i, 50000, rng(i))
             ! ...and allocate det_info components...
-            call alloc_det_info(cdet(i))
+            call alloc_det_info(sys, cdet(i))
             ! ...and cluster_t components
             allocate(cluster(i)%excitors(truncation_level+2), stat=ierr)
             call check_allocate('cluster%excitors', truncation_level+2, ierr)
@@ -270,7 +275,7 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status()
+        call initial_fciqmc_status(sys)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -297,7 +302,7 @@ contains
                 ! truncation level + 2 but we must handle the case where we are
                 ! growing the initial population from a single/small number of
                 ! excitors.
-                max_cluster_size = min(min(nel, truncation_level+2), tot_walkers-1)
+                max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
 
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
@@ -316,6 +321,8 @@ contains
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
 
+                        call decoder_ptr(sys, cdet(it)%f, cdet(it))
+
                         ! FCIQMC calculates the projected energy exactly.  To do
                         ! so in CCMC would involve enumerating over all pairs of
                         ! single excitors, which is rather painful and slow.
@@ -325,11 +332,11 @@ contains
                         ! estimator.  See comments in spawning.F90 for why we
                         ! must divide through by the probability of selecting
                         ! the cluster.
-                        call update_proj_energy_ptr(f0, cdet(it), &
+                        call update_proj_energy_ptr(sys, f0, cdet(it), &
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
+                        call spawner_ccmc(rng(it), sys, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
 
                         if (nspawned /= 0) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
@@ -339,7 +346,7 @@ contains
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
                         if (cluster(it)%excitation_level <= truncation_level) then
-                            call stochastic_ccmc_death(rng(it), cdet(it), cluster(it))
+                            call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it))
                         end if
 
                     end if
@@ -348,7 +355,7 @@ contains
                 !$omp end do
                 !$omp end parallel
 
-                call direct_annihilation(initiator_approximation)
+                call direct_annihilation(sys, initiator_approximation)
 
                 ! Ok, this is fairly non-obvious.
                 ! Because we sample the projected estimator (and normalisation
@@ -589,12 +596,9 @@ contains
 
         end select
 
-        ! Fill in information about the cluster if required.
-        if (cluster%excitation_level <= truncation_level+2) call decoder_ptr(cdet%f, cdet)
-
     end subroutine select_cluster
 
-    subroutine spawner_ccmc(rng, cdet, cluster, gen_excit_ptr, nspawn, connection)
+    subroutine spawner_ccmc(rng, sys, cdet, cluster, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -614,6 +618,7 @@ contains
         ! and have additional probabilities to take into account.
 
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.  In
@@ -639,7 +644,9 @@ contains
         use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
@@ -657,9 +664,9 @@ contains
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
-        ! generators of the lattice models.  It is trivial to implement and (at
+        ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
         ! 2, Apply additional factors.
         hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign
@@ -691,7 +698,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, cdet, cluster)
+    subroutine stochastic_ccmc_death(rng, sys, cdet, cluster)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -703,6 +710,7 @@ contains
         ! select_cluster about the probabilities.
 
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: 
@@ -719,7 +727,9 @@ contains
         use proc_pointers, only: sc0_ptr
         use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
@@ -734,7 +744,7 @@ contains
         ! child excitor.
         ! TODO: optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
-        KiiAi = (sc0_ptr(cdet%f) - H00 - shift(1))*cluster%amplitude
+        KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
 
         pdeath = tau*abs(KiiAi)/cluster%pselect
 

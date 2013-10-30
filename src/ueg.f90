@@ -54,9 +54,11 @@ abstract interface
     ! UEG-specific integral procedure pointers.
     ! The integral routines are different for 2D and UEG.  Abstract them using
     ! procedure pointers.
-    pure function i_int_ueg(i, a) result(intgrl)
+    pure function i_int_ueg(sys, i, a) result(intgrl)
+        use system, only: sys_t
         import :: p
         real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
     end function i_int_ueg
 
@@ -70,12 +72,17 @@ contains
 !-------
 ! Initialisation, utilities and finalisation
 
-    subroutine init_ueg_proc_pointers()
+    subroutine init_ueg_proc_pointers(ndim)
 
         ! Initialise UEG procedure pointers
 
-        use system, only: ndim
+        ! In:
+        !    ndim: dimensionality of the UEG.
+
+        use system
         use errors, only: stop_all
+
+        integer, intent(in) :: ndim
 
         ! Set pointers to integral routines
         select case(ndim)
@@ -92,36 +99,41 @@ contains
 
     end subroutine init_ueg_proc_pointers
 
-    subroutine init_ueg_indexing()
+    subroutine init_ueg_indexing(sys)
 
         ! Create arrays and data for index mapping needed for UEG.
 
+        ! In:
+        !    sys: UEG system to be studied.
+
         use basis, only: basis_fns, nbasis, bit_lookup, basis_length
-        use system, only: box_length, ueg_ecutoff, ndim
+        use system, only: sys_t
 
         use checking, only: check_allocate
         use utils, only: tri_ind
 
-        integer :: ierr, i, j, a, ind, N_kx, k_min(ndim), bit_pos, bit_el, k(ndim)
+        type(sys_t), intent(in) :: sys
 
-        ueg_basis_max = ceiling(sqrt(2*ueg_ecutoff))
+        integer :: ierr, i, j, a, ind, N_kx, k_min(sys%lattice%ndim), bit_pos, bit_el, k(sys%lattice%ndim)
+
+        ueg_basis_max = ceiling(sqrt(2*sys%ueg%ecutoff))
 
         N_kx = 2*ueg_basis_max+1
 
-        allocate(ueg_basis_dim(ndim), stat=ierr)
-        call check_allocate('ueg_basis_dim', ndim, ierr)
-        forall (i=1:ndim) ueg_basis_dim(i) = N_kx**(i-1)
+        allocate(ueg_basis_dim(sys%lattice%ndim), stat=ierr)
+        call check_allocate('ueg_basis_dim', sys%lattice%ndim, ierr)
+        forall (i=1:sys%lattice%ndim) ueg_basis_dim(i) = N_kx**(i-1)
 
         ! Wish the indexing array to be 1-indexed.
         k_min = -ueg_basis_max ! Bottom corner of grid.
         ueg_basis_origin = -dot_product(ueg_basis_dim, k_min) + 1
 
-        allocate(ueg_basis_lookup(N_kx**ndim), stat=ierr)
-        call check_allocate('ueg_basis_lookup', N_kx**ndim, ierr)
+        allocate(ueg_basis_lookup(N_kx**sys%lattice%ndim), stat=ierr)
+        call check_allocate('ueg_basis_lookup', N_kx**sys%lattice%ndim, ierr)
 
         ! ueg_basis_lookup should be -1 for any wavevector that is in the
         ! square/cubic grid defined by ueg_basis_max but not in the actual basis
-        ! set described by ueg_ecutoff.
+        ! set described by ecutoff.
         ueg_basis_lookup = -1
 
         ! Now fill in the values for the alpha orbitals which are in the basis.
@@ -138,7 +150,7 @@ contains
                 ind = tri_ind(j/2,i/2)
                 do a = 1, nbasis-1, 2 ! only alpha orbitals
                     k = basis_fns(i)%l + basis_fns(j)%l - basis_fns(a)%l
-                    if (real(dot_product(k,k),p)/2 - ueg_ecutoff < 1.e-8) then
+                    if (real(dot_product(k,k),p)/2 - sys%ueg%ecutoff < 1.e-8) then
                         ! There exists an allowed b in the basis!
                         ueg_ternary_conserve(0,ind) = ueg_ternary_conserve(0,ind) + 1
                         bit_pos = bit_lookup(1, a)
@@ -161,10 +173,10 @@ contains
         !    Set to < 0 if the spin-orbital described by k and spin is not in the
         !    basis set.
 
-        use system, only: ndim
+        use system
 
         integer :: indx
-        integer, intent(in) :: k(ndim), spin
+        integer, intent(in) :: k(:), spin
 
         if (minval(k) < -ueg_basis_max .or. maxval(k) > ueg_basis_max) then
             indx = -1
@@ -207,9 +219,10 @@ contains
 !-------
 ! Integrals
 
-    pure function get_two_e_int_ueg(i, j, a, b) result(intgrl)
+    pure function get_two_e_int_ueg(sys, i, j, a, b) result(intgrl)
 
         ! In:
+        !    sys: system being studied.
         !    i,j:  index of the spin-orbital from which an electron is excited in
         !          the reference determinant.
         !    a,b:  index of the spin-orbital into which an electron is excited in
@@ -221,8 +234,10 @@ contains
         ! Warning: assume i,j /= a,b (ie not asking for < ij || ij > or < ij || ji >).
 
         use basis, only: basis_fns
+        use system, only: sys_t
 
         real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
 
         intgrl = 0.0_p
@@ -234,19 +249,20 @@ contains
 
             ! Coulomb
             if (basis_fns(i)%ms == basis_fns(a)%ms .and.  basis_fns(j)%ms == basis_fns(b)%ms) &
-                intgrl = intgrl + coulomb_int_ueg(i, a)
+                intgrl = intgrl + coulomb_int_ueg(sys, i, a)
 
             ! Exchange
             if (basis_fns(i)%ms == basis_fns(b)%ms .and.  basis_fns(j)%ms == basis_fns(a)%ms) &
-                intgrl = intgrl - coulomb_int_ueg(i, b)
+                intgrl = intgrl - coulomb_int_ueg(sys, i, b)
 
         end if
 
     end function get_two_e_int_ueg
 
-    pure function coulomb_int_ueg_2d(i, a) result(intgrl)
+    pure function coulomb_int_ueg_2d(sys, i, a) result(intgrl)
 
         ! In:
+        !    sys: system being studied.
         !    i: index of spin-orbital basis function.
         !    a: index of spin-orbital basis function.
         !
@@ -258,9 +274,10 @@ contains
         !    a Hartree integral).
 
         use basis, only: basis_fns
-        use system, only: box_length
+        use system, only: sys_t
 
         real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
         integer :: q(2)
 
@@ -269,13 +286,14 @@ contains
         ! the integral hence becomes 1/(L|q|), where q = k_i - k_a.
 
         q = basis_fns(i)%l - basis_fns(a)%l
-        intgrl = 1.0_p/(box_length(1)*sqrt(real(dot_product(q,q),p)))
+        intgrl = 1.0_p/(sys%lattice%box_length(1)*sqrt(real(dot_product(q,q),p)))
 
     end function coulomb_int_ueg_2d
 
-    pure function coulomb_int_ueg_3d(i, a) result(intgrl)
+    pure function coulomb_int_ueg_3d(sys, i, a) result(intgrl)
 
         ! In:
+        !    sys: system being studied.
         !    i: index of spin-orbital basis function.
         !    a: index of spin-orbital basis function.
         !
@@ -287,9 +305,10 @@ contains
         !    a Hartree integral).
 
         use basis, only: basis_fns
-        use system, only: box_length
+        use system, only: sys_t
 
         real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, a
         integer :: q(3)
 
@@ -298,7 +317,7 @@ contains
         ! the integral hence becomes 1/(\pi.L.q^2), where q = k_i - k_a.
 
         q = basis_fns(i)%l - basis_fns(a)%l
-        intgrl = 1.0_p/(pi*box_length(1)*dot_product(q,q))
+        intgrl = 1.0_p/(pi*sys%lattice%box_length(1)*dot_product(q,q))
 
     end function coulomb_int_ueg_3d
 

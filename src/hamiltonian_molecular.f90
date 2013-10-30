@@ -9,9 +9,10 @@ implicit none
 
 contains
 
-    pure function get_hmatel_mol(f1, f2) result(hmatel)
+    pure function get_hmatel_mol(sys, f1, f2) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f1, f2: bit string representation of the Slater
         !        determinants D1 and D2 respectively.
         ! Returns:
@@ -24,18 +25,19 @@ contains
         use basis, only: basis_length
         use determinants, only: decode_det
         use excitations, only: excit, get_excitation
-        use system, only: nel
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
 
         type(excit) :: excitation
-        integer :: occ_list(nel)
+        integer :: occ_list(sys%nel)
 
         hmatel = 0.0_p
 
         ! Test to see if matrix element is non-zero.
-        excitation = get_excitation(f1, f2)
+        excitation = get_excitation(sys%nel, f1, f2)
 
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then
@@ -46,13 +48,13 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel = slater_condon0_mol(f1)
+                hmatel = slater_condon0_mol(sys, f1)
 
             case(1)
 
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
                 call decode_det(f1, occ_list)
-                hmatel = slater_condon1_mol(occ_list, excitation%from_orb(1), &
+                hmatel = slater_condon1_mol(sys, occ_list, excitation%from_orb(1), &
                                             excitation%to_orb(1), excitation%perm)
 
             case(2)
@@ -60,7 +62,7 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
-                hmatel = slater_condon2_mol(excitation%from_orb(1), excitation%from_orb(2), &
+                hmatel = slater_condon2_mol(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             end select
 
@@ -68,9 +70,10 @@ contains
 
     end function get_hmatel_mol
 
-    pure function slater_condon0_mol(f) result(hmatel)
+    pure function slater_condon0_mol(sys, f) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    f: bit string representation of a Slater determinant, |D>.
         ! Returns:
         !    <D|H|D>, the diagonal Hamiltonian matrix element involving D for
@@ -80,22 +83,23 @@ contains
         use determinants, only: decode_det
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
                                        one_e_h_integrals, coulomb_integrals
-        use system, only: nel, Ecore
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
 
-        integer :: occ_list(nel)
+        integer :: occ_list(sys%nel)
         integer :: iel, jel, i, j
 
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(f, occ_list)
 
-        hmatel = Ecore
-        do iel = 1, nel
+        hmatel = sys%read_in%Ecore
+        do iel = 1, sys%nel
             i = occ_list(iel)
             hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_h_integrals, i, i)
-            do jel = iel+1, nel
+            do jel = iel+1, sys%nel
                 j = occ_list(jel)
                 hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j)
                 if (basis_fns(i)%Ms == basis_fns(j)%Ms) &
@@ -105,9 +109,10 @@ contains
 
     end function slater_condon0_mol
 
-    pure function slater_condon1_mol(occ_list, i, a, perm) result(hmatel)
+    pure function slater_condon1_mol(sys, occ_list, i, a, perm) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    occ_list: list of orbitals occupied in a Slater Determinant, D.
         !    i: the spin-orbital from which an electron is excited in
         !       the reference determinant.
@@ -122,10 +127,11 @@ contains
 
         use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
                                        one_e_h_integrals, coulomb_integrals
-        use system, only: nel
+        use system, only: sys_t
 
         real(p) :: hmatel
-        integer, intent(in) :: occ_list(nel), i, a
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(sys%nel), i, a
         logical, intent(in) :: perm
 
         integer :: iel
@@ -134,7 +140,7 @@ contains
 
         hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
 
-        do iel = 1, nel
+        do iel = 1, sys%nel
             if (occ_list(iel) /= i) &
                 hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
                                 - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
@@ -144,9 +150,10 @@ contains
 
     end function slater_condon1_mol
 
-    pure function slater_condon1_mol_excit(occ_list, i, a, perm) result(hmatel)
+    pure function slater_condon1_mol_excit(sys, occ_list, i, a, perm) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    occ_list: list of orbitals occupied in a Slater Determinant, D.
         !    i: the spin-orbital from which an electron is excited in
         !       the reference determinant.
@@ -167,10 +174,11 @@ contains
         use basis, only: basis_fns
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
                                        one_e_h_integrals, coulomb_integrals
-        use system, only: nel
+        use system, only: sys_t
 
         real(p) :: hmatel
-        integer, intent(in) :: occ_list(nel), i, a
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(sys%nel), i, a
         logical, intent(in) :: perm
 
         integer :: iel
@@ -179,7 +187,7 @@ contains
 
         hmatel = get_one_body_int_mol_nonzero(one_e_h_integrals, i, a)
 
-        do iel = 1, nel
+        do iel = 1, sys%nel
             if (occ_list(iel) /= i) then
                 hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), a, occ_list(iel))
                 if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
@@ -191,9 +199,10 @@ contains
 
     end function slater_condon1_mol_excit
 
-    elemental function slater_condon2_mol(i, j, a, b, perm) result(hmatel)
+    elemental function slater_condon2_mol(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    i: the spin-orbital from which an electron is excited in
         !       the reference determinant.
         !    j: the spin-orbital from which an electron is excited in
@@ -212,9 +221,10 @@ contains
         ! Note that we don't actually need to directly refer to |D>.
 
         use molecular_integrals, only: get_two_body_int_mol, coulomb_integrals
-        use system, only: nel
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
@@ -226,9 +236,10 @@ contains
 
     end function slater_condon2_mol
 
-    elemental function slater_condon2_mol_excit(i, j, a, b, perm) result(hmatel)
+    elemental function slater_condon2_mol_excit(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
+        !    sys: system to be studied.
         !    i: the spin-orbital from which an electron is excited in
         !       the reference determinant.
         !    j: the spin-orbital from which an electron is excited in
@@ -253,9 +264,10 @@ contains
 
         use basis, only: basis_fns
         use molecular_integrals, only: get_two_body_int_mol_nonzero, coulomb_integrals
-        use system, only: nel
+        use system, only: sys_t
 
         real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 

@@ -10,10 +10,18 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc()
+    subroutine do_qmc(sys)
+
+        ! Initialise and run stochastic quantum chemistry procedures.
+
+        ! In/Out:
+        !    sys: system being studied.  This should(!) be returned unaltered on
+        !         output from each procedure, but might be varied during the
+        !         run if needed.
 
         use calc
 
+        use basis, only: nbasis
         use ccmc, only: do_ccmc
         use ct_fciqmc, only: do_ct_fciqmc
         use dmqmc, only: do_dmqmc
@@ -21,46 +29,60 @@ contains
         use folded_spectrum_utils, only: init_folded_spectrum
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
+        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+
+        type(sys_t), intent(inout) :: sys
 
         real(dp) :: hub_matel
+        type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers
-        call init_proc_pointers()
+        call init_proc_pointers(sys)
+
+        ! Set spin variables.
+        call copy_sys_spin_info(sys, sys_bak)
+        call set_spin_polarisation(nbasis, ms_in, sys)
 
         ! Initialise data
-        call init_qmc()
+        call init_qmc(sys)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
-        if (initiator_approximation) call init_ifciqmc()
+        if (initiator_approximation) call init_ifciqmc(sys%nel)
 
         if (doing_calc(dmqmc_calc)) then
-            call do_dmqmc()
+            call do_dmqmc(sys)
         else if (doing_calc(ct_fciqmc_calc)) then
-            call do_ct_fciqmc(hub_matel)
+            call do_ct_fciqmc(sys, hub_matel)
         else if (doing_calc(ccmc_calc)) then
-            call do_ccmc()
+            call do_ccmc(sys)
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
             if (doing_calc(folded_spectrum)) call init_folded_spectrum()
             if (doing_calc(hfs_fciqmc_calc)) then
-                call do_hfs_fciqmc()
+                call do_hfs_fciqmc(sys)
             else
-                call do_fciqmc()
+                call do_fciqmc(sys)
             end if
         end if
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine do_qmc
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc()
+    subroutine init_qmc(sys)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
         ! allocate the required memory for the list of walkers and set the
         ! initial walker.
+
+        ! In:
+        !    sys: system being studied.
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -69,11 +91,9 @@ contains
         use utils, only: int_fmt
 
         use basis, only: nbasis, basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
-        use calc, only: sym_in, ms_in, initiator_approximation, fciqmc_calc, hfs_fciqmc_calc, ct_fciqmc_calc
-        use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_energy_squared, dmqmc_correlation
+        use calc
         use dmqmc_procedures, only: init_dmqmc
-        use determinants, only: encode_det, set_spin_polarisation, write_det
+        use determinants, only: encode_det, write_det
         use energy_evaluation, only: calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det
@@ -81,14 +101,15 @@ contains
         use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
         use spawn_data, only: alloc_spawn_t
-        use system, only: nel, nsites, ndim, system_type, hub_real, hub_k, heisenberg, staggered_magnetic_field
-        use system, only: trial_function, neel_singlet, single_basis, sym_max
+        use system
         use symmetry, only: symmetry_orb_list
         use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
 
+        type(sys_t), intent(in) :: sys
+
         integer :: ierr
-        integer :: i, j, D0_inv_proc, ipos, occ_list0_inv(nel)
+        integer :: i, j, D0_inv_proc, ipos, occ_list0_inv(sys%nel)
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
@@ -189,17 +210,14 @@ contains
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, 7, qmc_spawn)
 
-        ! Set spin variables for non-Heisenberg systems
-        if (system_type /= heisenberg) call set_spin_polarisation(ms_in)
-
         ! Set initial walker population.
         ! occ_list could be set and allocated in the input.
         allocate(f0(basis_length), stat=ierr)
         call check_allocate('f0',basis_length,ierr)
         if (restart) then
             if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(nel), stat=ierr)
-                call check_allocate('occ_list0',nel,ierr)
+                allocate(occ_list0(sys%nel), stat=ierr)
+                call check_allocate('occ_list0',sys%nel,ierr)
             end if
             call read_restart()
             ! Need to re-calculate the reference determinant data
@@ -208,9 +226,9 @@ contains
                 ! Set the Neel state data for the reference state, if it is being used.
                 H00 = 0.0_p
             else
-                H00 = sc0_ptr(f0)
+                H00 = sc0_ptr(sys, f0)
             end if
-            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
             if (nprocs > 1) then
                 D0_proc = modulo(murmurhash_bit_string(f0, basis_length, qmc_spawn%hash_seed), nprocs)
             else
@@ -224,10 +242,10 @@ contains
             ! single-particle eigenvalues which satisfy the spin polarisation.
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
-            if (sym_in < sym_max) then
-                call set_reference_det(occ_list0, .false., sym_in)
+            if (sym_in < sys%sym_max) then
+                call set_reference_det(sys, occ_list0, .false., sym_in)
             else
-                call set_reference_det(occ_list0, .false.)
+                call set_reference_det(sys, occ_list0, .false.)
             end if
 
             call encode_det(occ_list0, f0)
@@ -237,7 +255,7 @@ contains
             if (allocated(hs_occ_list0)) then
                 call encode_det(hs_occ_list0, hs_f0)
             else
-                allocate(hs_occ_list0(nel), stat=ierr)
+                allocate(hs_occ_list0(sys%nel), stat=ierr)
                 call check_allocate('hs_occ_list0', size(hs_occ_list0), ierr)
                 hs_occ_list0 = occ_list0
                 hs_f0 = f0
@@ -260,8 +278,8 @@ contains
             end if
 
             ! Energy of reference determinant.
-            H00 = sc0_ptr(f0)
-            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(f0)
+            H00 = sc0_ptr(sys, f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
 
             ! Determine and set properties for the reference state which we start on.
             ! (For DMQMC, we do not start on the reference state, and so this is not
@@ -276,10 +294,10 @@ contains
                     walker_data(1,tot_walkers) = H00
                     H00 = 0.0_p
 
-                    walker_data(sampling_size+1,tot_walkers) = nsites/2
+                    walker_data(sampling_size+1,tot_walkers) = sys%lattice%nsites/2
                     ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
                     ! The Neel state cannot be used for non-bipartite lattices.
-                    walker_data(sampling_size+2,tot_walkers) = ndim*nsites
+                    walker_data(sampling_size+2,tot_walkers) = sys%lattice%ndim*sys%lattice%nsites
                 end if
 
                 ! Finally, we need to check if the reference determinant actually
@@ -301,7 +319,7 @@ contains
                 ! lattice sites) and electron systems differently, as the
                 ! Heisenberg model has no concept of unoccupied basis
                 ! functions/holes.
-                select case (system_type)
+                select case (sys%system)
                 case (heisenberg)
                     ! Flip all spins in f0 to get f0_inv
                     f0_inv = not(f0)
@@ -316,7 +334,7 @@ contains
                     ! Swap each basis function for its spin-inverse
                     ! This looks somewhat odd, but relies upon basis
                     ! functions alternating down (Ms=-1) and up (Ms=1).
-                    do i = 1, nel
+                    do i = 1, sys%nel
                         if (mod(occ_list0(i),2) == 1) then
                             occ_list0_inv(i) = occ_list0(i) + 1
                         else
@@ -339,16 +357,16 @@ contains
                     walker_population(:,tot_walkers) = 0
                     ! Set the population for this basis function.
                     walker_population(1,tot_walkers) = nint(D0_population)
-                    walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
-                    select case(system_type)
+                    walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
+                    select case(sys%system)
                     case(heisenberg)
                         if (trial_function /= single_basis) then
                             walker_data(1,tot_walkers) = 0
                         else
-                            walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
+                            walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                         end if
                     case default
-                        walker_data(1,tot_walkers) = sc0_ptr(f0) - H00
+                        walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                     end select
                     walker_dets(:,tot_walkers) = f0_inv
                     ! If we are using the Neel state as a reference in the
@@ -383,14 +401,14 @@ contains
         end if
 
         ! calculate the reference determinant symmetry
-        ref_sym = symmetry_orb_list(occ_list0)
+        ref_sym = symmetry_orb_list(sys, occ_list0)
 
         ! If not set at input, set probability of selecting single or double
         ! excitations based upon the reference determinant and assume other
         ! determinants have a roughly similar ratio of single:double
         ! excitations.
         if (pattempt_single < 0 .or. pattempt_double < 0) then
-            call find_single_double_prob(occ_list0, pattempt_single, pattempt_double)
+            call find_single_double_prob(sys, occ_list0, pattempt_single, pattempt_double)
         else
             ! renormalise just in case input wasn't
             pattempt_single = pattempt_single/(pattempt_single+pattempt_double)
@@ -400,13 +418,13 @@ contains
         ! Calculate all the possible different amplitudes for the Neel singlet state
         ! and store them in an array
         if (trial_function == neel_singlet) then
-            allocate(neel_singlet_amp(-1:(nsites/2)+1), stat=ierr)
-            call check_allocate('neel_singlet_amp',(nsites/2)+1,ierr)
+            allocate(neel_singlet_amp(-1:(sys%lattice%nsites/2)+1), stat=ierr)
+            call check_allocate('neel_singlet_amp',(sys%lattice%nsites/2)+1,ierr)
 
             neel_singlet_amp(-1) = 0
-            neel_singlet_amp((nsites/2)+1) = 0
-            do i=0,(nsites/2)
-                neel_singlet_amp(i) = factorial_combination_1( (nsites/2)-i , i )
+            neel_singlet_amp((sys%lattice%nsites/2)+1) = 0
+            do i=0,(sys%lattice%nsites/2)
+                neel_singlet_amp(i) = factorial_combination_1( (sys%lattice%nsites/2)-i , i )
                 neel_singlet_amp(i) = -(2*mod(i,2)-1) * neel_singlet_amp(i)
             end do
         end if
@@ -415,18 +433,18 @@ contains
         ! arrays, ie to store thermal quantities, and to initalise reduced density matrix
         ! quantities if necessary.
         if (doing_calc(dmqmc_calc)) then
-            call init_dmqmc()
+            call init_dmqmc(sys)
         end if
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-            call write_det(f0, new_line=.true.)
+            call write_det(sys%nel, f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
             if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =',O00
             write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
-            select case(system_type)
+            select case(sys%system)
             case (hub_k)
-                call write_basis_fn(basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+                call write_basis_fn(sys, basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
             case default
                 write(6,'(i2)') ref_sym
             end select
@@ -483,9 +501,12 @@ contains
 
     end subroutine init_qmc
 
-    subroutine init_proc_pointers()
+    subroutine init_proc_pointers(sys)
 
         ! Set function pointers for QMC calculations.
+
+        ! In:
+        !    sys: system being studied.
 
         ! System and calculation data
         use calc
@@ -523,6 +544,8 @@ contains
         ! Utilities
         use errors, only: stop_all
 
+        type(sys_t), intent(in) :: sys
+
         ! 0. In general, use the default spawning routine.
         spawner_ptr => spawn
 
@@ -531,7 +554,7 @@ contains
         !     * diagonal hamiltonian matrix element evaluation
         !     * spawning
         !     * excitation generators
-        select case(system_type)
+        select case(sys%system)
         case(hub_k)
 
             decoder_ptr => decode_det_spinocc_spinunocc
@@ -559,7 +582,7 @@ contains
             ! 115115) is contains spinless fermions.
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_hub_real
-            if (system_type == hub_real) then
+            if (sys%system == hub_real) then
                 sc0_ptr => slater_condon0_hub_real
             else
                 sc0_ptr => slater_condon0_chung_landau
@@ -584,7 +607,7 @@ contains
             end select
 
             ! Set whether the applied staggered magnetisation is non-zero.
-            if (abs(staggered_magnetic_field) > 0.0_p) then
+            if (abs(sys%heisenberg%staggered_magnetic_field) > 0.0_p) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
             else
                 sc0_ptr => diagonal_element_heisenberg
@@ -690,7 +713,7 @@ contains
             end if
 
             ! Expectation values.
-            select case(system_type)
+            select case(sys%system)
             case(heisenberg)
                 if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_heisenberg
                 if (doing_dmqmc_calc(dmqmc_energy_squared)) &
@@ -713,13 +736,13 @@ contains
             case(kinetic_operator)
                 update_proj_hfs_ptr => update_proj_hfs_diagonal
                 spawner_hfs_ptr => spawn_null
-                if (system_type == hub_k) then
+                if (sys%system == hub_k) then
                     op0_ptr => kinetic0_hub_k
                 else
                     call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
                 end if
             case(double_occ_operator)
-                if (system_type == hub_k) then
+                if (sys%system == hub_k) then
                     ! Shamelessly re-use the Hamiltonian excitation generators.
                     gen_excit_hfs_ptr%full => gen_excit_ptr%full
                     gen_excit_hfs_ptr%init => gen_excit_ptr%init
@@ -734,7 +757,7 @@ contains
                     call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
                 end if
             case(dipole_operator)
-                if (system_type == read_in) then
+                if (sys%system == read_in) then
                     op0_ptr => one_body0_mol
                     update_proj_hfs_ptr => update_proj_hfs_one_body_mol
                     spawner_hfs_ptr => spawner_ptr

@@ -22,13 +22,14 @@ contains
 ! This is a hack until the excitation generators support generating excitations
 ! for operators of arbitrary symmetries.
 
-    subroutine gen_excit_one_body_mol(rng, cdet, pgen, connection, matel)
+    subroutine gen_excit_one_body_mol(rng, sys, cdet, pgen, connection, matel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the corresponding matrix element of
         ! a one body operator.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -49,9 +50,12 @@ contains
         use fciqmc_data, only: pattempt_single
         use molecular_integrals, only: one_body_op_integrals
         use operators, only: one_body1_mol_excit
+        use system, only: sys_t
+
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         real(p), intent(out) :: pgen
         type(excit), intent(out) :: connection
@@ -63,19 +67,19 @@ contains
         op_sym = one_body_op_integrals%op_sym
 
         ! 1. Select orbital to excite from and orbital to excit into.
-        call choose_ia_mol(rng, op_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
+        call choose_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
                            connection%to_orb(1), allowed_excitation)
         connection%nexcit = 1
 
         if (allowed_excitation) then
             ! 2. Probability of generating this excitation.
-            pgen = calc_pgen_single_mol(op_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
+            pgen = calc_pgen_single_mol(sys, op_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
             ! 3. Parity of permutation required to line up determinants.
             call find_excitation_permutation1(cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
-            matel = one_body1_mol_excit(connection%from_orb(1), connection%to_orb(1), connection%perm)
+            matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
         else
             ! We have a highly restrained system and this det has no single
             ! excitations at all.  To avoid reweighting pattempt_single and
@@ -87,7 +91,7 @@ contains
 
     end subroutine gen_excit_one_body_mol
 
-    subroutine gen_excit_one_body_mol_no_renorm(rng, cdet, pgen, connection, matel)
+    subroutine gen_excit_one_body_mol_no_renorm(rng, sys, cdet, pgen, connection, matel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the corresponding matrix element of
@@ -101,6 +105,7 @@ contains
         ! O(N) cost of renormalising the generation probabilities.
 
         ! In:
+        !    sys: system object being studied.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -121,9 +126,11 @@ contains
         use fciqmc_data, only: pattempt_single
         use molecular_integrals, only: one_body_op_integrals
         use operators, only: one_body1_mol_excit
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         real(p), intent(out) :: pgen
         type(excit), intent(out) :: connection
@@ -135,19 +142,19 @@ contains
         op_sym = one_body_op_integrals%op_sym
 
         ! 1. Select orbital to excite from and orbital to excit into.
-        call find_ia_mol(rng, op_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
+        call find_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
                          connection%to_orb(1), allowed_excitation)
         connection%nexcit = 1
 
         if (allowed_excitation) then
             ! 2. Probability of generating this excitation.
-            pgen = calc_pgen_single_mol_no_renorm(connection%to_orb(1))
+            pgen = calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
             ! 3. Parity of permutation required to line up determinants.
             call find_excitation_permutation1(cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
-            matel = one_body1_mol_excit(connection%from_orb(1), connection%to_orb(1), connection%perm)
+            matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
         else
             ! We have a highly restrained system and this det has no single
             ! excitations at all.  To avoid reweighting pattempt_single and

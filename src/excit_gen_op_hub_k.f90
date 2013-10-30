@@ -37,12 +37,13 @@ contains
 ! sampling infrastructure to generate a random excitation and then produce the
 ! correct matrix element without writing new excitation generators.
 
-    subroutine gen_excit_double_occ_matel_hub_k(cdet, connection, hmatel)
+    subroutine gen_excit_double_occ_matel_hub_k(sys, cdet, connection, hmatel)
 
         ! Produce the correct matrix element < D | \hat{D} | D' > for a given
         ! random excitation.
 
         ! In:
+        !    sys: system being studied.
         !    cdet: info on the current determinant, |D>, that we will spawn
         !        from.  Unused; just for interface compatibility.
         !    connection: excitation connection between the current determinant
@@ -54,13 +55,14 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit
-        use system, only: hubu, nsites
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
 
-        hmatel = hmatel / (hubu * nsites)
+        hmatel = hmatel / (sys%hubbard%u * sys%lattice%nsites)
 
     end subroutine gen_excit_double_occ_matel_hub_k
 

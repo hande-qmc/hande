@@ -23,15 +23,18 @@ integer(i0), allocatable :: cas_mask(:), cas_core(:)
 
 contains
 
-    subroutine init_ifciqmc()
+    subroutine init_ifciqmc(nel)
 
         ! Allocate and initialise data required for i-FCIQMC.
+
+        ! In:
+        !    nel: number of electrons in system.
 
         use basis, only: basis_length, bit_lookup, nbasis
         use checking, only: check_allocate
         use fciqmc_data, only: initiator_CAS
-        use system, only: nel
 
+        integer, intent(in) :: nel
         integer :: ierr, i, bit_pos, bit_element
 
         allocate(cas_mask(basis_length), stat=ierr)
