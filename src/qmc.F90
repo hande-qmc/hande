@@ -91,9 +91,7 @@ contains
         use utils, only: int_fmt
 
         use basis, only: nbasis, basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
-        use calc, only: sym_in, ms_in, initiator_approximation, fciqmc_calc, hfs_fciqmc_calc, ct_fciqmc_calc
-        use calc, only: dmqmc_calc, doing_calc, doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_energy_squared, dmqmc_correlation
+        use calc
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: encode_det, write_det
         use energy_evaluation, only: calculate_hf_signed_pop

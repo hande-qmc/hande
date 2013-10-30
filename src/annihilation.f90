@@ -202,7 +202,6 @@ contains
         ! This can be done in a more efficient manner by doing it only when necessary...
 
         use basis, only: total_basis_length
-        use system, only: trial_function, neel_singlet
 
         integer :: nzero, i, k
 
@@ -234,7 +233,8 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use determinants, only: decode_det
         use search, only: binary_search
-        use system, only: trial_function, neel_singlet, sys_t
+        use system, only: sys_t
+        use calc, only: trial_function, neel_singlet
         use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr
         use heisenberg_estimators, only: neel_singlet_data

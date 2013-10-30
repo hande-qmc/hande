@@ -166,7 +166,8 @@ contains
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: sampling_size, neel_singlet_amp
-        use system
+        use system, only: sys_t
+        use calc, only: guiding_function, neel_singlet_guiding
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
