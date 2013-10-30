@@ -27,6 +27,12 @@ module report
 
 implicit none
 
+#ifndef _VCS_VERSION
+#define _VCS_VERSION 'unknown'
+#define _VCS_LOCAL_CHANGES
+#endif
+character(*), parameter :: VCS_VERSION = _VCS_VERSION
+
 ! Global uuid
 character(36) :: GLOBAL_UUID
 
@@ -131,10 +137,6 @@ contains
 #ifndef _CONFIG
 #define _CONFIG 'unknown'
 #endif
-#ifndef _VCS_VERSION
-#define _VCS_VERSION 'unknown'
-#define _VCS_LOCAL_CHANGES
-#endif
 
         if (present(io)) then
             io_unit = io
@@ -147,7 +149,7 @@ contains
         write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
         write (io_unit,'(a16,a)') 'Compiled using ', _CONFIG
 
-        write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',_VCS_VERSION
+        write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',VCS_VERSION
 #ifdef _VCS_LOCAL_CHANGES
         write (io_unit,'(a46)') 'Source code directory contains local changes.'
 #endif
@@ -170,14 +172,12 @@ contains
 
         call date_and_time(VALUES=date_values)
 
-        write (6,'(1X,a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+        write (io_unit,'(1X,a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Started running on", date_values(3:1:-1), "at", date_values(5:7)
         call get_uuid(GLOBAL_UUID)
         write (io_unit,'(1X,"Calculation UUID:",1X,a36,".")') GLOBAL_UUID
 
         write (io_unit,'(1X,64("="),/)')
-
-        return
 
     end subroutine environment_report
 

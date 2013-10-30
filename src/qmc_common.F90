@@ -482,6 +482,7 @@ contains
         use energy_evaluation, only: update_energy_estimators
         use interact, only: fciqmc_interact
         use parallel, only: parent
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         integer, intent(in) :: ireport
         integer(lint), intent(inout) :: ntot_particles(sampling_size)
@@ -500,8 +501,8 @@ contains
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 
         ! Write restart file if required.
-!        if (mod(ireport,write_restart_file_every_nreports) == 0) &
-!            call dump_restart(mc_cycles_done+ncycles*ireport, ntot_particles)
+        if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
+            call dump_restart_hdf5(mc_cycles_done+ncycles*ireport, ntot_particles)
 
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time

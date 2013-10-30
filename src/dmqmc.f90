@@ -33,10 +33,10 @@ contains
         use excitations, only: excit, get_excitation_level
         use qmc_common
         use interact, only: fciqmc_interact
+        use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy, initiator_approximation
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
-        use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: int_fmt
         use errors, only: stop_all
@@ -209,9 +209,10 @@ contains
                 ! t1 was the time at the previous iteration, t2 the current time.
                 ! t2-t1 is thus the time taken by this report loop.
                 if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
+
                 ! Write restart file if required.
-!                if (mod(ireport,write_restart_file_every_nreports) == 0) &
-!                    call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
+                if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
+                    call dump_restart_hdf5(mc_cycles_done+ncycles*ireport, nparticles_old)
 
                 ! cpu_time outputs an elapsed time, so update the reference timer.
                 t1 = t2
@@ -252,7 +253,10 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-!        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old, vspace=.true.)
+        if (dump_restart_file) then
+            call dump_restart_hdf5(mc_cycles_done, nparticles_old)
+            write (6,'()')
+        end if
 
         call dealloc_det_info(cdet1, .false.)
         call dealloc_det_info(cdet2, .false.)

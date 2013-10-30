@@ -34,6 +34,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use system, only: sys_t
+        use restart_hdf5, only: dump_restart_hdf5
 
         type(sys_t), intent(in) :: sys
 
@@ -135,7 +136,10 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-!        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
+        if (dump_restart_file) then
+            call dump_restart_hdf5(mc_cycles_done, nparticles_old)
+            write (6,'()')
+        end if
 
         call dealloc_det_info(cdet, .false.)
         if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)

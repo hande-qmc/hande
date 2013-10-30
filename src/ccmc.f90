@@ -190,6 +190,7 @@ contains
         use utils, only: rng_init_info
         ! TODO: parallelisation.
         use parallel
+        use restart_hdf5, only: dump_restart_hdf5
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
@@ -269,7 +270,6 @@ contains
             cdet(i)%cluster => cluster(i)
         end do
 
-        ! from restart
         nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
@@ -391,7 +391,7 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-!        if (dump_restart_file) call dump_restart(mc_cycles_done, nparticles_old)
+        if (dump_restart_file) call dump_restart_hdf5(mc_cycles_done, nparticles_old)
 
         ! TODO: deallocation...
 !        call dealloc_det_info(cdet)

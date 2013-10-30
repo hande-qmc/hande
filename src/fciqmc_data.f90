@@ -62,7 +62,7 @@ integer :: initiator_population = 3
 ! this value when variable shift mode is entered.
 ! warning: if both initial_shift and vary_shift_from are set, then we expect the
 ! user to have been sensible.
-real(p), allocatable :: shift(:) ! (sampling_size)
+real(p), allocatable, target :: shift(:) ! (sampling_size)
 real(p) :: vary_shift_from = 0.0_p
 logical :: vary_shift_from_proje = .false.
 
@@ -101,7 +101,7 @@ integer :: tot_walkers
 ! Subsequent elements are the number of Hellmann--Feynamnn particles.
 integer(lint), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
-integer(lint), allocatable :: tot_nparticles(:) ! (sampling_size)
+integer(lint), allocatable, target :: tot_nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -143,7 +143,7 @@ real(p) :: rspawn
 !--- Reference determinant ---
 
 ! Bit string of reference determinant.
-integer(i0), allocatable :: f0(:)
+integer(i0), allocatable, target :: f0(:)
 
 ! List of occupied orbitals in reference determinant.
 integer, allocatable :: occ_list0(:)
@@ -151,7 +151,7 @@ integer, allocatable :: occ_list0(:)
 ! Bit string of reference determinant used to generate the Hilbert space.
 ! This is usually identical to f0, but not necessarily (e.g. if we're doing
 ! a spin-flip calculation).
-integer(i0), allocatable :: hs_f0(:)
+integer(i0), allocatable, target :: hs_f0(:)
 
 ! hs_f0:hs_occ_list0 as f0:occ_list0.
 integer, allocatable :: hs_occ_list0(:)

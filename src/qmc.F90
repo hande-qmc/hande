@@ -93,7 +93,7 @@ contains
         use basis, only: nbasis, basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
         use calc
         use dmqmc_procedures, only: init_dmqmc
-        use determinants, only: encode_det, write_det
+        use determinants, only: decode_det, encode_det, write_det
         use energy_evaluation, only: calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det
@@ -104,6 +104,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
+        use restart_hdf5, only: read_restart_hdf5
 
         type(sys_t), intent(in) :: sys
 
@@ -116,7 +117,8 @@ contains
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
-        ! Array sizes depending upon FCIQMC algorithm.
+        ! --- Array sizes depending upon QMC algorithms ---
+
         sampling_size = 1
         if (doing_calc(hfs_fciqmc_calc)) then
             sampling_size = sampling_size + 1
@@ -176,6 +178,8 @@ contains
                 'Number of elements per core in spawned walker list:', spawned_walker_length
         end if
 
+        ! --- Memory allocation ---
+
         ! Allocate main walker lists.
         allocate(nparticles(sampling_size), stat=ierr)
         call check_allocate('nparticles', sampling_size, ierr)
@@ -209,18 +213,22 @@ contains
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, 7, qmc_spawn)
 
-        ! Set initial walker population.
-        ! occ_list could be set and allocated in the input.
         allocate(f0(basis_length), stat=ierr)
         call check_allocate('f0',basis_length,ierr)
+        allocate(hs_f0(basis_length), stat=ierr)
+        call check_allocate('hs_f0', size(hs_f0), ierr)
+
+        ! --- Initial walker distributions ---
+        ! Note occ_list could be set and allocated in the input.
+
         if (restart) then
             if (.not.allocated(occ_list0)) then
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
-!            call read_restart()
+            call read_restart_hdf5()
             ! Need to re-calculate the reference determinant data
-            call encode_det(occ_list0, f0)
+            call decode_det(f0, occ_list0)
             if (trial_function == neel_singlet) then
                 ! Set the Neel state data for the reference state, if it is being used.
                 H00 = 0.0_p
@@ -249,8 +257,6 @@ contains
 
             call encode_det(occ_list0, f0)
 
-            allocate(hs_f0(basis_length), stat=ierr)
-            call check_allocate('hs_f0', size(hs_f0), ierr)
             if (allocated(hs_occ_list0)) then
                 call encode_det(hs_occ_list0, hs_f0)
             else
@@ -259,6 +265,10 @@ contains
                 hs_occ_list0 = occ_list0
                 hs_f0 = f0
             end if
+
+            ! Energy of reference determinant.
+            H00 = sc0_ptr(sys, f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
 
             ! In general FCIQMC, we start with psips only on the
             ! reference determinant, so set tot_walkers = 1 and
@@ -274,17 +284,8 @@ contains
                 ! Set the bitstring of this psip to be that of the
                 ! reference state.
                 walker_dets(:,tot_walkers) = f0
-            end if
 
-            ! Energy of reference determinant.
-            H00 = sc0_ptr(sys, f0)
-            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
-
-            ! Determine and set properties for the reference state which we start on.
-            ! (For DMQMC, we do not start on the reference state, and so this is not
-            ! required. Psips are initialised along the diagonal in DMQMC. See
-            ! dmqmc_procedures).
-            if (.not.doing_calc(dmqmc_calc)) then
+                ! Determine and set properties for the reference state which we start on.
                 ! By definition, when using a single determinant as a reference state:
                 walker_data(1,tot_walkers) = 0.0_p
                 ! Or if not using a single determinant:
