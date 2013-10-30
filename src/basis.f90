@@ -56,14 +56,11 @@ end type basis_fn
 type(basis_fn), allocatable :: basis_fns(:) ! (nbasis)
 
 ! number of basis functions.
-! For model Hamiltonians (e.g. Hubbard or Heisenberg) this is equal to 2*number
-! of sites as there are 2 spin orbitals per site and for UEG equal to twice the
-! number of k-points within the energy cutoff.
+! For the Hubbard model is equal to twice the number of sites as there are
+! 2 spin orbitals per site, for the Heisenberg model to the number of sites,
+! for UEG equal to twice the number of k-points within the energy cutoff and for
+! read in (e.g. molecular) systems the number of single-particle states read in.
 integer :: nbasis
-
-! Number of basis functions initially generated.
-! Only for the UEG does this not equal nbasis.
-integer :: nbasis_tot
 
 ! The determinants are stored as a bit string.  Each element of an array is
 ! an integer of kind i0 (containing i0_length bits).
