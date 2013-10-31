@@ -15,6 +15,7 @@ fort.*
 .*.swp
 tags
 restart.*
+HANDE.RS.*
 fort.*
 /config/.default
 joe_calc/

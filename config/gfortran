@@ -4,7 +4,7 @@ cc = gcc
 cxx = g++
 cppflags = -DDISABLE_LANCZOS
 ld = gfortran
-libs = -llapack -lblas -lstdc++
+libs = -llapack -lblas -lstdc++ -lhdf5_fortran -luuid
 f90_module_flag = -J
 
 [opt]

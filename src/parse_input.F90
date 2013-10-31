@@ -11,9 +11,7 @@ use lanczos
 use determinants
 use determinant_enumeration, only: write_determinants, determinant_file
 use fciqmc_data
-use fciqmc_restart, only: read_restart_number, write_restart_number,&
-                          binary_fmt_in, binary_fmt_out,&
-                          write_restart_file_every_nreports
+use restart_hdf5, only: restart_info_global
 use hubbard_real, only: finite_cluster
 use hfs_data
 use dmqmc_procedures, only: rdms
@@ -397,25 +395,17 @@ contains
             case('RESTART')
                 restart = .true.
                 if (item /= nitems) then
-                    call readi(read_restart_number)
-                    read_restart_number = -read_restart_number-1
+                    call readi(restart_info_global%read_id)
+                    restart_info_global%read_id = -restart_info_global%read_id -1
                 end if
             case('DUMP_RESTART')
                 dump_restart_file = .true.
                 if (item /= nitems) then
-                    call readi(write_restart_number)
-                    write_restart_number = -write_restart_number-1
+                    call readi(restart_info_global%write_id )
+                    restart_info_global%write_id = -restart_info_global%write_id-1
                 end if
-            case('DUMP_RESTART_EVERY')
-                dump_restart_file = .true.
-                call readi(write_restart_file_every_nreports)
-            case('ASCII_FORMAT_IN')
-                binary_fmt_in = .false.
-            case('ASCII_FORMAT_OUT')
-                binary_fmt_out = .false.
-            case('ASCII_FORMAT')
-                binary_fmt_in = .false.
-                binary_fmt_out = .false.
+            case('DUMP_RESTART_FREQUENCY')
+                call readi(restart_info_global%write_restart_freq)
             case('SEED')
                 call readi(seed)
             case('SHIFT_DAMPING')
@@ -820,9 +810,9 @@ contains
         end if
         call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(read_restart_number, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(write_restart_number, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(write_restart_file_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_info_global%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_info_global%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_info_global%write_restart_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)

@@ -35,7 +35,6 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use fciqmc_restart, only: read_restart
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
 
         type(sys_t), intent(inout) :: sys
@@ -104,7 +103,6 @@ contains
             call check_allocate('occ_list0',sys%nel,ierr)
             allocate(f0(basis_length), stat=ierr)
             call check_allocate('f0',basis_length,ierr)
-            call read_restart()
         else
             ref_det = 1
             do i = 2, ndets
@@ -144,10 +142,10 @@ contains
 
         use calc, only: seed
         use determinant_enumeration, only: ndets
-        use fciqmc_restart, only: dump_restart, write_restart_file_every_nreports
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
         use utils, only: rng_init_info
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         integer :: ireport, icycle, iwalker, ipart
         integer(lint) :: nparticles, nparticles_old
@@ -229,8 +227,8 @@ contains
             call write_fciqmc_report(ireport, (/nparticles/), t2-t1, .false.)
 
             ! Write restart file if required.
-            if (mod(ireport,write_restart_file_every_nreports) == 0) &
-                call dump_restart(mc_cycles_done+ncycles*ireport, (/nparticles_old/))
+            if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
+                call dump_restart_hdf5(mc_cycles_done+ncycles*ireport, (/nparticles_old/))
 
             t1 = t2
 
@@ -239,7 +237,10 @@ contains
         call write_fciqmc_final(ireport)
         write (6,'()')
 
-        if (dump_restart_file) call dump_restart(mc_cycles_done+ncycles*nreport, (/nparticles_old/), vspace=.true.)
+        if (dump_restart_file) then
+            call dump_restart_hdf5(mc_cycles_done+ncycles*nreport, (/nparticles_old/)) 
+            write (6,'()')
+        end if
 
     end subroutine do_simple_fciqmc
 

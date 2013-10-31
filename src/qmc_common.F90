@@ -349,7 +349,7 @@ contains
         ! In:
         !    sys: system being studied.
 
-        use determinants, only: det_info, alloc_det_info, dealloc_det_info
+        use determinants, only: det_info, alloc_det_info, dealloc_det_info, decode_det
         use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
@@ -373,9 +373,10 @@ contains
         call alloc_det_info(sys, cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
+            call decode_det(cdet%f, cdet%occ_list)
             cdet%data => walker_data(:,idet)
-            ! WARNING!  We assume only the bit string and data field are
-            ! required to update the projected estimator.
+            ! WARNING!  We assume only the bit string, occ list and data field
+            ! are required to update the projected estimator.
             call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
                                         D0_population_cycle, proj_energy, D0_excit, hmatel)
         end do
@@ -482,7 +483,7 @@ contains
         use energy_evaluation, only: update_energy_estimators
         use interact, only: fciqmc_interact
         use parallel, only: parent
-        use fciqmc_restart, only: write_restart_file_every_nreports, dump_restart
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         integer, intent(in) :: ireport
         integer(lint), intent(inout) :: ntot_particles(sampling_size)
@@ -501,8 +502,8 @@ contains
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 
         ! Write restart file if required.
-        if (mod(ireport,write_restart_file_every_nreports) == 0) &
-            call dump_restart(mc_cycles_done+ncycles*ireport, ntot_particles)
+        if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
+            call dump_restart_hdf5(mc_cycles_done+ncycles*ireport, ntot_particles)
 
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time

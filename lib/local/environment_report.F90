@@ -27,6 +27,15 @@ module report
 
 implicit none
 
+#ifndef _VCS_VERSION
+#define _VCS_VERSION 'unknown'
+#define _VCS_LOCAL_CHANGES
+#endif
+character(*), parameter :: VCS_VERSION = _VCS_VERSION
+
+! Global uuid
+character(36) :: GLOBAL_UUID
+
 contains
 
     subroutine environment_report(io)
@@ -128,10 +137,6 @@ contains
 #ifndef _CONFIG
 #define _CONFIG 'unknown'
 #endif
-#ifndef _VCS_VERSION
-#define _VCS_VERSION 'unknown'
-#define _VCS_LOCAL_CHANGES
-#endif
 
         if (present(io)) then
             io_unit = io
@@ -144,7 +149,7 @@ contains
         write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
         write (io_unit,'(a16,a)') 'Compiled using ', _CONFIG
 
-        write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',_VCS_VERSION
+        write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',VCS_VERSION
 #ifdef _VCS_LOCAL_CHANGES
         write (io_unit,'(a46)') 'Source code directory contains local changes.'
 #endif
@@ -167,14 +172,67 @@ contains
 
         call date_and_time(VALUES=date_values)
 
-        write (6,'(1X,a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+        write (io_unit,'(1X,a18,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Started running on", date_values(3:1:-1), "at", date_values(5:7)
+        call get_uuid(GLOBAL_UUID)
+        write (io_unit,'(1X,"Calculation UUID:",1X,a36,".")') GLOBAL_UUID
 
         write (io_unit,'(1X,64("="),/)')
 
-        return
-
     end subroutine environment_report
+
+    subroutine comm_global_uuid()
+
+        ! Send UUID from root to all other processors.
+
+#ifdef PARALLEL
+        use parallel
+        integer :: ierr
+        call mpi_bcast(GLOBAL_UUID, len(GLOBAL_UUID), mpi_character, 0, mpi_comm_world, ierr)
+#endif
+
+    end subroutine comm_global_uuid
+
+    subroutine get_uuid(uuid)
+
+        ! Out:
+        !     UUID: a (reasonably!) unique identification string.
+
+        use, intrinsic :: iso_c_binding
+        use utils, only: carray_to_fstring
+
+        implicit none
+
+        character(36), intent(out) :: uuid
+
+#ifdef DISABLE_UUID
+        uuid = 'UNKNOWN: UUID GENERATION DISABLED.  '
+#else
+        character(c_char) :: uuid_bin(16)
+        character(c_char), target :: uuid_str(37)
+        type(c_ptr) :: ptr
+
+        interface
+            subroutine uuid_generate(uu) bind(c)
+                use, intrinsic :: iso_c_binding
+                implicit none
+                character(c_char), intent(out) :: uu(16)
+            end subroutine
+            subroutine uuid_unparse(uu, uu_str) bind(c)
+                use, intrinsic :: iso_c_binding
+                implicit none
+                character(c_char), intent(in) :: uu(16)
+                character(c_char), intent(out) :: uu_str(37)
+            end subroutine uuid_unparse
+        end interface
+
+        call uuid_generate(uuid_bin)
+        ptr = c_loc(uuid_str)
+        call uuid_unparse(uuid_bin, uuid_str)
+        uuid = carray_to_fstring(uuid_str)
+#endif
+
+    end subroutine get_uuid
 
     subroutine end_report(wall_time, cpu_time_used, io)
 
