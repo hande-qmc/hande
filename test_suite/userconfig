@@ -1,10 +1,11 @@
 [hubbard]
 exe = ../bin/hubbard.x
 timing_output = cpu elapsed
-inputs_args = ('hubbard*.inp', '')
+inputs_args = ('*.in', '')
 vcs = git
 extract_program = ../tools/extract.py
 
 [user]
 diff = vimdiff
-benchmark = 78826ea
+benchmark = 288ad50
+
