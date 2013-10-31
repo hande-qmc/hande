@@ -169,8 +169,6 @@ use const, only: i0, lint, p
 
 implicit none
 
-integer :: D0_normalisation
-
 contains
 
     subroutine do_ccmc(sys)
@@ -222,6 +220,7 @@ contains
 
         integer, allocatable :: cumulative_abs_pops(:)
         integer :: D0_pos, max_cluster_size,tot_abs_pop
+        integer :: D0_normalisation
         logical :: hit
         type(bloom_stats_t) :: bloom_stats
 
@@ -295,7 +294,10 @@ contains
                 ! As we might select the reference determinant multiple times in
                 ! a cycle, the running total of D0_population is incorrect (by
                 ! a factor of the number of times it was selected).
+                ! TODO: use previous position as starting guess and go higher or
+                ! lower...
                 call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
+
                 D0_normalisation = walker_population(1,D0_pos)
 
                 ! Note that 'death' in CCMC creates particles in the spawned
@@ -322,8 +324,8 @@ contains
                 !$omp do schedule(dynamic,200) private(nspawned, connection, junk) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
-                    call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
-                                        cdet(it), cluster(it))
+                    call select_cluster(rng(it), nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
+                                        tot_abs_pop, max_cluster_size, cdet(it), cluster(it))
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
 
@@ -416,7 +418,7 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(rng, nattempts, D0_pos, cumulative_excip_pop, tot_excip_pop, max_size, cdet, cluster)
+    subroutine select_cluster(rng, nattempts, normalisation, D0_pos, cumulative_excip_pop, tot_excip_pop, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -427,6 +429,8 @@ contains
         ! In:
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
+        !    normalisation: intermediate normalisation factor, N_0, where we use the
+        !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
         !    D0_pos: position in the excip list of the reference.
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_population(1:i)).
@@ -463,7 +467,7 @@ contains
         use sort, only: insert_sort
 
         integer(lint), intent(in) :: nattempts
-        integer, intent(in) :: D0_pos
+        integer, intent(in) :: D0_pos, normalisation
         integer, intent(in) :: cumulative_excip_pop(:), tot_excip_pop, max_size
         type(dSFMT_t), intent(inout) :: rng
         type(det_info), intent(inout) :: cdet
@@ -527,7 +531,7 @@ contains
             ! Must be the reference.
             cdet%f = f0
             cluster%excitation_level = 0
-            cluster%amplitude = D0_normalisation
+            cluster%amplitude = normalisation
             cluster%cluster_to_det_sign = 1
             if (cluster%amplitude <= initiator_population) then
                 ! Something has gone seriously wrong and the CC
@@ -601,7 +605,7 @@ contains
                 call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = cluster_population/(real(D0_normalisation,p)**(cluster%nexcitors-1))
+                cluster%amplitude = cluster_population/(real(normalisation,p)**(cluster%nexcitors-1))
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
