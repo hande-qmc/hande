@@ -349,7 +349,7 @@ contains
         ! In:
         !    sys: system being studied.
 
-        use determinants, only: det_info, alloc_det_info, dealloc_det_info
+        use determinants, only: det_info, alloc_det_info, dealloc_det_info, decode_det
         use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
@@ -373,9 +373,10 @@ contains
         call alloc_det_info(sys, cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
+            call decode_det(cdet%f, cdet%occ_list)
             cdet%data => walker_data(:,idet)
-            ! WARNING!  We assume only the bit string and data field are
-            ! required to update the projected estimator.
+            ! WARNING!  We assume only the bit string, occ list and data field
+            ! are required to update the projected estimator.
             call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
                                         D0_population_cycle, proj_energy, D0_excit, hmatel)
         end do
