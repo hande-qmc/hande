@@ -277,7 +277,7 @@ module restart_hdf5
             use fciqmc_data, only: walker_dets, walker_population, walker_data,  &
                                    shift, tot_nparticles, f0, hs_f0,             &
                                    D0_population, mc_cycles_done, tot_walkers
-            use calc, only: calc_type
+            use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
 
             ! HDF5 kinds
             integer(hid_t) :: h5_i0, h5_p, h5_lint
@@ -335,7 +335,13 @@ module restart_hdf5
                 ! Different calc types are either not compatible or require
                 ! hyperslabs (fewer particle types) or require copying (more
                 ! particle types).
-                if (calc_type /= calc_type_restart) &
+                ! Clear the flags for non-QMC calculations (which aren't
+                ! restarted anyway and don't affect the QMC calculation).
+                calc_type_restart = ieor(calc_type, calc_type_restart)
+                calc_type_restart = iand(calc_type_restart, not(exact_diag))
+                calc_type_restart = iand(calc_type_restart, not(lanczos_diag))
+                calc_type_restart = iand(calc_type_restart, not(mc_hilbert_space))
+                if (calc_type_restart /= 0) &
                     call stop_all('read_restart_hdf5', &
                                   'Restarting with different calculation types not supported.  Please implement.')
                 ! Different restart versions require graceful handling of the
