@@ -271,7 +271,7 @@ We assume only config files are in config_dir.'''
 
 def parse_config(config_file):
     '''Parse the configuration file config_file.'''
-    parser = configparser.RawConfigParser()
+    parser = configparser.SafeConfigParser()
 
     valid_sections = ['main', 'opt', 'dbg']
 
@@ -327,10 +327,6 @@ def parse_config(config_file):
             config[section].update(parser.items(section))
         elif section.upper() in parser.sections():
             config[section].update(parser.items(section.upper()))
-        for opt in list(config[section].keys()):
-            if opt not in valid_options:
-                err = 'Invalid option in configuration file: %s.' % (opt)
-                raise IOError(err)
         # Update the module flag if a space needs to be appended.
         pad = config[section].pop('f90_module_flag_pad')
         # pad is a string rather than bool; use the same comparison that

@@ -1,3 +1,6 @@
+[DEFAULT]
+include_f = -I /usr/include -I ${HDF5_ROOT}/include
+
 [main]
 fc = gfortran
 cc = gcc
@@ -8,11 +11,11 @@ libs = -llapack -lblas -lstdc++ -lhdf5_fortran -luuid
 f90_module_flag = -J
 
 [opt]
-fflags = -O3
+fflags = %(include_f)s -O3
 cflags = -O3
 cxxflags = -O3
 
 [dbg]
-fflags = -g -fbounds-check -Wall -Wextra -fbacktrace
+fflags = %(include_f)s -g -fbounds-check -Wall -Wextra -fbacktrace
 cflags = -g -Wall -Wextra -fbacktrace
 cxxflags = -g -Wall -Wextra -fbacktrace
