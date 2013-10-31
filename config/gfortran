@@ -5,9 +5,10 @@ include_f = -I /usr/include -I ${HDF5_ROOT}/include
 fc = gfortran
 cc = gcc
 cxx = g++
-cppflags = -DDISABLE_LANCZOS
+cppflags =
 ld = gfortran
-libs = -llapack -lblas -lstdc++ -lhdf5_fortran -luuid
+ldflags = -L ${HOME}/lib
+libs = -ltrlan -llapack -lblas -lstdc++ -lhdf5_fortran -luuid
 f90_module_flag = -J
 
 [opt]
