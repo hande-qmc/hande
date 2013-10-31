@@ -206,22 +206,22 @@ module restart_hdf5
                 dshape2(1) = size(walker_dets, dim=1, kind=HSIZE_T)
                 dshape2(2) = tot_walkers
                 ptr = c_loc(walker_dets)
-                call write_ptr(subgroup_id, ddets, h5_i0, rank(walker_dets), dshape2, ptr)
+                call write_ptr(subgroup_id, ddets, h5_i0, size(shape(walker_dets)), dshape2, ptr)
 
                 dshape2(1) = size(walker_population, dim=1, kind=HSIZE_T)
                 ptr = c_loc(walker_population)
-                call write_ptr(subgroup_id, dpops, H5T_NATIVE_INTEGER, rank(walker_population), dshape2, ptr)
+                call write_ptr(subgroup_id, dpops, H5T_NATIVE_INTEGER, size(shape(walker_population)), dshape2, ptr)
 
                 dshape2(1) = size(walker_data, dim=1, kind=HSIZE_T)
                 ptr = c_loc(walker_data)
-                call write_ptr(subgroup_id, ddata, h5_p, rank(walker_data), shape(walker_data, HSIZE_T), ptr)
+                call write_ptr(subgroup_id, ddata, h5_p, size(shape(walker_data)), shape(walker_data, HSIZE_T), ptr)
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
                 allocate(tmp_pop(size(total_population)))
                 tmp_pop = total_population
                 ptr = c_loc(tmp_pop)
-                call write_ptr(subgroup_id, dtot_pop, h5_lint, rank(tmp_pop), shape(tmp_pop, HSIZE_T), ptr)
+                call write_ptr(subgroup_id, dtot_pop, h5_lint, size(shape(tmp_pop)), shape(tmp_pop, HSIZE_T), ptr)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -232,7 +232,7 @@ module restart_hdf5
                     call write_integer(subgroup_id, dncycles, ncycles)
 
                     ptr = c_loc(shift)
-                    call write_ptr(subgroup_id, dshift, h5_p, rank(shift), shape(shift,HSIZE_T), ptr)
+                    call write_ptr(subgroup_id, dshift, h5_p, size(shape(shift)), shape(shift,HSIZE_T), ptr)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -241,10 +241,10 @@ module restart_hdf5
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                     ptr = c_loc(f0)
-                    call write_ptr(subgroup_id, dref, h5_i0, rank(f0), shape(f0,HSIZE_T), ptr)
+                    call write_ptr(subgroup_id, dref, h5_i0, size(shape(f0)), shape(f0,HSIZE_T), ptr)
 
                     ptr = c_loc(hs_f0)
-                    call write_ptr(subgroup_id, dhsref, h5_i0, rank(hs_f0), shape(hs_f0,HSIZE_T), ptr)
+                    call write_ptr(subgroup_id, dhsref, h5_i0, size(shape(hs_f0)), shape(hs_f0,HSIZE_T), ptr)
                     tmp = D0_population_cycle
                     ptr = c_loc(tmp)
                     call write_ptr(subgroup_id, dref_pop, h5_p, 1, [1_HSIZE_T], ptr)
@@ -292,7 +292,7 @@ module restart_hdf5
             character(10) :: proc_suf
             real(p), target :: tmp(1)
 
-            integer(HSIZE_T) :: dims(rank(walker_dets)), maxdims(rank(walker_dets))
+            integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
 
             ! Figure out filename.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
