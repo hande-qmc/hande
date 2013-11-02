@@ -134,7 +134,7 @@ module ccmc
 ! all particles (psips) on the determinants and allow them to spawn and die.  As
 ! the CC wavefunction ansatz involves an exponentiation, we must consider
 ! combinations of excitors and hence combinations of excips.  The stochastic
-! sampling of the wavefunction is achieved by selecting random clusters;
+
 ! hopefully the comments in select_cluster provide suitable illumination.
 !
 ! The other main difference (and certainly the hardest to get right) is that the
@@ -198,8 +198,13 @@ contains
         use ccmc_data, only: cluster_t
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, get_excitation_level
-        use fciqmc_data
-        use qmc_common
+        use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
+                               walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
+                               dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
+                               tot_walkers, walker_length, write_fciqmc_report_header,               &
+                               write_fciqmc_final
+        use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
+                              init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle
         use proc_pointers
         use search, only: binary_search
         use system, only: sys_t
@@ -296,8 +301,10 @@ contains
                 ! a factor of the number of times it was selected).
                 ! TODO: use previous position as starting guess and go higher or
                 ! lower...
+                ! MPI TODO: set to be -1 if not on D0_proc.
                 call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
 
+                ! MPI TODO: broadcast from D0_proc.
                 D0_normalisation = walker_population(1,D0_pos)
 
                 ! Note that 'death' in CCMC creates particles in the spawned
@@ -364,6 +371,8 @@ contains
                 end do
                 !$omp end do
                 !$omp end parallel
+
+                ! MPI TODO: redistribute excips to new processors.
 
                 call direct_annihilation(sys, initiator_approximation)
 
@@ -551,7 +560,7 @@ contains
             ! searching of the cumulative population list.
             do i = 1, cluster%nexcitors
                 ! Select a position in the excitors list.
-                pop(i) = int(get_rand_close_open(rng)*tot_excip_pop) + 1 ! TODO: adjust for parallel
+                pop(i) = int(get_rand_close_open(rng)*tot_excip_pop) + 1
             end do
             call insert_sort(pop(:cluster%nexcitors))
             prev_pos = 1
