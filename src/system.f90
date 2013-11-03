@@ -215,6 +215,7 @@ contains
         ! Initialise system based upon input parameters.
 
         use calc, only: ms_in
+        use fciqmc_data, only: all_sym_sectors
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -267,6 +268,10 @@ contains
                     sl%nsites = nint(product(sl%box_length))
 
                     forall (ivec=1:sl%ndim) sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
+
+                    ! If performing a calculation in all symmetry sectors, set ms_in to be its maximum value
+                    ! so that the necessary arrays will be allocated to their maximum size.
+                    if (all_sym_sectors) ms_in = sl%nsites
 
                 end select
 

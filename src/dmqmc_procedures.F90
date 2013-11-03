@@ -434,16 +434,70 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine random_distribution_heisenberg(rng, nsites, ireplica)
+    subroutine create_initial_density_matrix(rng, sys)
+
+        use annihilation, only: direct_annihilation
+        use calc, only: initiator_approximation
+        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
+        use errors
+        use fciqmc_data, only: sampling_size, D0_population, all_sym_sectors
+        use parallel, only: nprocs, iproc
+        use system, only: sys_t, heisenberg
+        use utils, only: binom_i
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        integer :: nel, npsips, ireplica
+        integer :: total_size, sector_size, npsips_temp
+        real(dp) :: r, prob
+
+        do ireplica = 1, sampling_size
+            select case(sys%system)
+            case(heisenberg)
+                if (all_sym_sectors) then
+                    ! The size (number of configurations) of all symmetry sectors combined.
+                    total_size = 2**(sys%lattice%nsites)
+                    do nel = 0, sys%lattice%nsites
+                        ! The size of this symmetry sector alone.
+                        sector_size = binom_i(sys%lattice%nsites, sys%nel)
+                        prob = real(D0_population*sector_size,dp)/real(total_size,dp)
+                        npsips = floor(prob)
+                        ! If there are a non-integer number of psips to be spawned in this sector
+                        ! then add an extra psip with the required probability.
+                        prob = prob - npsips
+                        r = get_rand_close_open(rng)
+                        if (r < prob) npsips = npsips + 1
+                        ! How many psips should be spawned on this processor?
+                        npsips_temp = npsips
+                        npsips = npsips/nprocs
+                        ! If the initial number of psips does not split evenly between all processors,
+                        ! add the leftover psips to the first processors in order.
+                        if (npsips_temp-(nprocs*int(npsips_temp/nprocs)) > iproc) npsips = npsips + 1
+
+                        call random_distribution_heisenberg(rng, nel, npsips, ireplica)
+                    end do
+                else
+                    npsips = D0_population/nprocs
+                    ! If the initial number of psips does not split evenly between all processors,
+                    ! add the leftover psips to the first processors in order.
+                    if (D0_population-(nprocs*int(D0_population/nprocs)) > iproc) npsips = npsips + 1
+
+                    call random_distribution_heisenberg(rng, sys%nel, npsips, ireplica)
+                end if
+            case default
+                call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
+            end select
+        end do
+
+        call direct_annihilation(sys, initiator_approximation)
+
+    end subroutine create_initial_density_matrix
+
+    subroutine random_distribution_heisenberg(rng, spins_up, npsips, ireplica)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
         ! with the same probability.
-
-        ! Currently this creates psips with Ms = ms_in only.
-
-        ! If we have number of sites = nsites and total spin value = ms_in,
-        ! then the number of up spins is equal to up_spins = (ms_in + nsites)/2.
 
         ! Start from state with all spins down, then choose the above number of
         ! spins to flip up with equal probability.
@@ -451,30 +505,24 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
-        !    nsites: number of sites in the simulation cell.
+        !    spins_up: for the spin configurations generated, this number
+        !       specifies how many of the spins shall be up.
+        !    npsips: The total number of psips to be created.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
 
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
-        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: D0_population
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use parallel
         use system
 
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(in) :: nsites
-        integer, intent(in) :: ireplica
-        integer :: i, up_spins, rand_basis, bits_set
-        integer :: bit_element, bit_position, npsips
+        integer, intent(in) :: spins_up, npsips, ireplica
+        integer :: i, rand_basis, bits_set
+        integer :: bit_element, bit_position
         integer(i0) :: f(basis_length)
         real(dp) :: rand_num
-
-        up_spins = (ms_in+nsites)/2
-        npsips = int(D0_population/nprocs)
-        ! If the initial number of psips does not split evenly between all processors,
-        ! add the leftover psips to the first processors in order.
-        if (D0_population-(nprocs*int(D0_population/nprocs)) > iproc) npsips = npsips+1
 
         do i = 1, npsips
 
@@ -485,7 +533,7 @@ contains
             do
                 ! If half the spins are now flipped up, we have our basis
                 ! function fully created, so exit the loop.
-                if (bits_set==up_spins) exit
+                if (bits_set==spins_up) exit
                 ! Choose a random spin to flip.
                 rand_num = get_rand_close_open(rng)
                 rand_basis = ceiling(rand_num*nbasis)

@@ -273,6 +273,11 @@ logical :: replica_tricks = .false.
 logical :: calculate_excit_distribution = .false.
 real(p), allocatable :: excit_distribution(:) ! (min(nel, nsites-nel) + 1)
 
+! If true then the simulation will start with walkers uniformly distributed
+! along the diagonal of the entire density matrix, including all symmetry
+! sectors.
+logical :: all_sym_sectors = .false.
+
 ! If true then the reduced density matricies will be calulated for the 'A'
 ! subsystems specified by the user.
 logical :: doing_reduced_dm = .false.

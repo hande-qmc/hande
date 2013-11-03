@@ -246,6 +246,8 @@ contains
                 dmqmc_weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 calculate_excit_distribution = .true.
+            case('USE_ALL_SYM_SECTORS')
+                all_sym_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
                 call readi(nrdms)
                 allocate(rdms(nrdms), stat=ierr)
@@ -493,11 +495,13 @@ contains
 
         if (sys%system /= heisenberg) then
             if (sys%nel <= 0) call stop_all(this,'Number of electrons must be positive.')
-                if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
+            if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
                                                      & state for this system. Other trial functions are not avaliable.')
-                if (guiding_function /= no_guiding) &
-                    call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
+            if (guiding_function /= no_guiding) &
+                call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
                                          & currently.')
+            if (all_sym_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
+                                         & available for the Heisenberg model.')
         end if
 
         if (sys%system == read_in) then
@@ -522,7 +526,8 @@ contains
             end if
 
             if (sys%system == heisenberg) then
-                if (ms_in > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+                if (ms_in > sys%lattice%nsites .and. (.not. all_sym_sectors)) call stop_all(this,'Value of Ms given is&
+                                                                             & too large for this lattice.')
                 if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
                 if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
                                                                               & possible for this lattice.')
@@ -735,6 +740,7 @@ contains
         call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)
