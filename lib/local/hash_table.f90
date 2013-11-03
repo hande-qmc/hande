@@ -395,7 +395,7 @@ module hash_table
             integer :: i
 
             hit = .false.
-            pos%islot = modulo(murmurhash_bit_string(label, size(label), ht%seed),ht%nslots)
+            pos%islot = modulo(murmurhash_bit_string(label, size(label), ht%seed),ht%nslots) + 1
 
             ! Need to search over elements in the table with this hash%nslots
             ! value (i.e. search over hash collisions).
