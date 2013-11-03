@@ -86,7 +86,6 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
-        use hashing, only: murmurhash_bit_string
         use parallel
         use utils, only: int_fmt
 
@@ -100,6 +99,7 @@ contains
         use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
         use spawn_data, only: alloc_spawn_t
+        use spawning, only: assign_particle_processor
         use system
         use symmetry, only: symmetry_orb_list
         use momentum_symmetry, only: gamma_sym, sym_table
@@ -109,7 +109,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: ierr
-        integer :: i, j, D0_inv_proc, ipos, occ_list0_inv(sys%nel)
+        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel)
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
@@ -236,11 +236,7 @@ contains
                 H00 = sc0_ptr(sys, f0)
             end if
             if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
-            if (nprocs > 1) then
-                D0_proc = modulo(murmurhash_bit_string(f0, basis_length, qmc_spawn%hash_seed), nprocs)
-            else
-                D0_proc = iproc
-            end if
+            D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
         else
 
             ! Reference det
@@ -303,12 +299,8 @@ contains
                 ! Finally, we need to check if the reference determinant actually
                 ! belongs on this processor.
                 ! If it doesn't, set the walkers array to be empty.
-                if (nprocs > 1) then
-                    D0_proc = modulo(murmurhash_bit_string(f0, basis_length, qmc_spawn%hash_seed), nprocs)
-                    if (D0_proc /= iproc) tot_walkers = 0
-                else
-                    D0_proc = iproc
-                end if
+                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
+                if (D0_proc /= iproc) tot_walkers = 0
             end if
 
             ! For the Heisenberg model and open shell systems, it is often useful to
@@ -344,11 +336,7 @@ contains
                     call encode_det(occ_list0_inv, f0_inv)
                 end select
 
-                if (nprocs > 1) then
-                    D0_inv_proc = modulo(murmurhash_bit_string(f0_inv, basis_length, 7), nprocs)
-                else
-                    D0_inv_proc = iproc
-                end if
+                D0_inv_proc = assign_particle_processor(f0_inv, basis_length, qmc_spawn%hash_seed, nprocs)
 
                 ! Store if not identical to reference det.
                 if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then

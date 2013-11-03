@@ -26,12 +26,13 @@ contains
         use basis, only: basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det, write_det
+        use spawning, only: assign_particle_processor
 
         use parallel
         use errors, only: stop_all
 
         integer, parameter :: particle_type = 1
-        integer :: i, fmax(basis_length), max_pop
+        integer :: i, fmax(basis_length), max_pop, D0_proc
 #ifdef PARALLEL
         integer :: in_data(2), out_data(2), ierr
 #endif
@@ -60,6 +61,8 @@ contains
         ! routine should only be called at the end of the report loop).
 
 #ifdef PARALLEL
+
+        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
 
         if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle)) then
             in_data = (/ max_pop, iproc /)
@@ -225,7 +228,7 @@ contains
 
     end subroutine find_single_double_prob
 
-    subroutine cumulative_population(pops, nactive, d0_pos, cumulative_pops, tot_pop)
+    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, cumulative_pops, tot_pop)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -259,10 +262,9 @@ contains
 
         ! WARNING: almost certainly not suitable for a parallel implementation.
 
-        use fciqmc_data, only: D0_proc
         use parallel, only: iproc
 
-        integer, intent(in) :: pops(:,:), nactive, d0_pos
+        integer, intent(in) :: pops(:,:), nactive, D0_proc, D0_pos
         integer, intent(out) :: cumulative_pops(:), tot_pop
 
         integer :: i

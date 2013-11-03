@@ -207,6 +207,7 @@ contains
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle
         use proc_pointers
         use search, only: binary_search
+        use spawning, only: assign_particle_processor
         use system, only: sys_t
         
         type(sys_t), intent(in) :: sys
@@ -224,7 +225,7 @@ contains
         logical :: soft_exit
 
         integer, allocatable :: cumulative_abs_pops(:)
-        integer :: D0_pos, max_cluster_size,tot_abs_pop
+        integer :: D0_proc, D0_pos, max_cluster_size,tot_abs_pop
         integer :: D0_normalisation
         logical :: hit
         type(bloom_stats_t) :: bloom_stats
@@ -283,6 +284,9 @@ contains
 
         nparticles_old = tot_nparticles
 
+        ! MPI TODO: incorporate determinants moving processor...
+        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
+
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(sys)
@@ -320,7 +324,7 @@ contains
                 max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
 
                 ! Find cumulative population...
-                call cumulative_population(walker_population, tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
+                call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.

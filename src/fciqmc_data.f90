@@ -380,9 +380,6 @@ real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 ! Energy of reference determinant.
 real(p) :: H00
 
-! Processor on which the reference determinant is kept.
-integer :: D0_proc
-
 ! How often do we change the reference determinant to the determinant with
 ! greatest population?
 ! Default: we don't.
