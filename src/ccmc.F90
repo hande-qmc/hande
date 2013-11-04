@@ -345,7 +345,9 @@ contains
 
                 end if
 
-                ! MPI TODO: broadcast D0_normalisation from D0_proc.
+#ifdef PARALLEL
+                call mpi_bcast(D0_normalisation, 1, mpi_integer, D0_proc, MPI_COMM_WORLD, ierr)
+#endif
 
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
