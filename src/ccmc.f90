@@ -186,7 +186,6 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
         use utils, only: rng_init_info
-        ! TODO: parallelisation.
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
@@ -196,7 +195,7 @@ contains
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
         use ccmc_data, only: cluster_t
-        use determinants, only: det_info, alloc_det_info, dealloc_det_info
+        use determinants, only: det_info, alloc_det_info, dealloc_det_info, det_compare
         use excitations, only: excit, get_excitation_level
         use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
@@ -287,6 +286,9 @@ contains
         ! MPI TODO: incorporate determinants moving processor...
         D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
 
+        ! Initialise D0_pos to be somewhere (anywhere) in the list.
+        D0_pos = 1
+
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(sys)
@@ -299,29 +301,51 @@ contains
 
             do icycle = 1, ncycles
 
-                ! Population on reference determinant.
-                ! As we might select the reference determinant multiple times in
-                ! a cycle, the running total of D0_population is incorrect (by
-                ! a factor of the number of times it was selected).
-                ! TODO: use previous position as starting guess and go higher or
-                ! lower...
-                ! MPI TODO: set to be -1 if not on D0_proc.
-                call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
+                if (iproc == D0_proc) then
 
-                ! MPI TODO: broadcast from D0_proc.
-                D0_normalisation = walker_population(1,D0_pos)
+                    ! Population on reference determinant.
+                    ! As we might select the reference determinant multiple times in
+                    ! a cycle, the running total of D0_population is incorrect (by
+                    ! a factor of the number of times it was selected).
+                    select case(det_compare(f0, walker_dets(:,D0_pos), size(f0)))
+                    case(0)
+                        ! D0 hasn't moved.
+                    case(1)
+                        ! D0 < walker_dets(:,D0_pos) -- it has moved to earlier in
+                        ! the list and the old D0_pos is an upper bound.
+                        call binary_search(walker_dets, f0, 1, D0_pos, hit, D0_pos)
+                    case(-1)
+                        ! D0 > walker_dets(:,D0_pos) -- it has moved to later in
+                        ! the list and the old D0_pos is a lower bound.
+                        call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
+                    end select
+                    D0_normalisation = walker_population(1,D0_pos)
 
-                ! Note that 'death' in CCMC creates particles in the spawned
-                ! list, so the number of deaths not in the spawned list is
-                ! always 0.
-                call init_mc_cycle(nattempts, ndeath)
+                    ! Note that 'death' in CCMC creates particles in the spawned
+                    ! list, so the number of deaths not in the spawned list is
+                    ! always 0.
+                    call init_mc_cycle(nattempts, ndeath)
 
-                ! Maximum possible cluster size that we can generate.
-                ! Usually this is either the number of electrons or the
-                ! truncation level + 2 but we must handle the case where we are
-                ! growing the initial population from a single/small number of
-                ! excitors.
-                max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
+                    ! Maximum possible cluster size that we can generate.
+                    ! Usually this is either the number of electrons or the
+                    ! truncation level + 2 but we must handle the case where we are
+                    ! growing the initial population from a single/small number of
+                    ! excitors.
+                    ! Can't include the reference in the cluster, so -1 from the
+                    ! total number of excitors.
+                    max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
+
+                else
+
+                    max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers)
+
+                    ! Can't find D0 on this processor.  (See how D0_pos is used
+                    ! in select_cluster.
+                    D0_pos = -1
+
+                end if
+
+                ! MPI TODO: broadcast D0_normalisation from D0_proc.
 
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
