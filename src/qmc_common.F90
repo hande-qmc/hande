@@ -62,7 +62,8 @@ contains
 
 #ifdef PARALLEL
 
-        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
+        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                            qmc_spawn%move_freq, nprocs)
 
         if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle)) then
             in_data = (/ max_pop, iproc /)

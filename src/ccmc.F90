@@ -284,7 +284,8 @@ contains
         nparticles_old = tot_nparticles
 
         ! MPI TODO: incorporate determinants moving processor...
-        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
+        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                            qmc_spawn%move_freq, nprocs)
 
         ! Initialise D0_pos to be somewhere (anywhere) in the list.
         D0_pos = 1

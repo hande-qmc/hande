@@ -55,6 +55,14 @@ type spawn_t
     ! seed for hash routine used to determine which processor a given bit string
     ! should be sent to.
     integer(c_int) :: hash_seed
+    ! if non-zero, then hash_shift is mixed with a hash of the bit string and
+    ! then rehashed to obtain the process to which a bit string is assigned.
+    ! See assign_particle_processor.
+    integer :: hash_shift = 0
+    ! if hash_shift is non-zero, then the processor a bit string is assigned to
+    ! will change once in every 2^move_freq blocks of values for hash_shift.
+    ! See assign_particle_processor.
+    integer :: move_freq = 0
     ! Time spent doing MPI communication.
     real(dp) :: comm_time = 0.0_dp
     ! Private storage arrays for communication.

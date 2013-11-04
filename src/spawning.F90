@@ -455,13 +455,18 @@ contains
 
 !--- Assuming spawning is successful, create new particle appropriately ---
 
-    function assign_particle_processor(particle_label, length, seed, np) result(particle_proc)
+    function assign_particle_processor(particle_label, length, seed, shift, freq, np) result(particle_proc)
 
         ! In:
         !    particle_label: bit string which describes the location/basis
         !       function/etc of the particle (ie psip or excip).
         !    length: size of particle_label.
         !    seed: seed to pass to the hashing function.
+        !    shift: value to add to the hash of the label before determining
+        !       the processor to which the label is assigned.
+        !    freq: frequency over which the result changes exactly once.
+        !       See comments below.  Ignored if the shift is 0.  Must be smaller
+        !       than 32.
         !    np: number of processors over which the particles are to be
         !       distributed.
         ! Returns:
@@ -472,13 +477,37 @@ contains
 
         integer :: particle_proc
         integer(i0), intent(in) :: particle_label(length)
-        integer, intent(in) :: length, seed, np
+        integer, intent(in) :: length, seed, shift, freq, np
+
+        integer :: hash, offset
+        integer(i0) :: mod_label(length)
 
         ! (Extra credit for parallel calculations)
         ! Hash the label to get a (hopefully uniform) distribution across all
         ! possible particle labels and then modulo it to assign each label in
         ! a (hopefully uniform) fashion.
-        particle_proc = modulo(murmurhash_bit_string(particle_label, length, seed), np)
+        hash = murmurhash_bit_string(particle_label, length, seed)
+        if (shift == 0) then
+            ! p = hash(label) % np
+            particle_proc = modulo(hash, np)
+        else
+            ! o = [ hash(label) + shift ] >> freq
+            ! p = [ hash(label) + o ] % np
+            ! Explanation:
+            ! We wish to slowly vary the processor a label is assigned to.
+            ! The shift is a fast(ish) varying value (e.g. the iteration
+            ! number).
+            ! [ hash(label) + shift ] >> freq changes exactly once in 2^freq
+            ! consecutive values of the shift, i.e. when the freq lower bits of
+            ! [ hash(label) + shift ] is greater than 2^freq.  We add this
+            ! offset onto the label and rehash.  label+offset varies once every
+            ! 2^freq values of the shift and hence the assigned processor
+            ! changes at most once in this window.
+            offset = ishft(hash+shift, -freq)
+            mod_label = particle_label + offset
+            hash = murmurhash_bit_string(mod_label, length, seed)
+            particle_proc = modulo(hash, np)
+        end if
 
     end function assign_particle_processor
 
@@ -522,11 +551,10 @@ contains
         thread_id = omp_get_thread_num()
 #endif
 
-
         ! Create bit string of new determinant.
         call create_excited_det(cdet%f, connection, f_new)
 
-        iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, nprocs)
+        iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs)
 
         ! Move to the next position in the spawning array.
         spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
@@ -582,7 +610,7 @@ contains
         ! Create bit string of new determinant.
         call create_excited_det(cdet%f, connection, f_new)
 
-        iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, nprocs)
+        iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs)
 
         ! Move to the next position in the spawning array.
         spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
@@ -649,7 +677,7 @@ contains
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, nprocs)
+            iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs)
 
             ! Move to the next position in the spawning array.
             spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
@@ -714,7 +742,7 @@ contains
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, nprocs)
+            iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs)
 
             ! Move to the next position in the spawning array.
             spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
@@ -783,7 +811,7 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, nprocs)
+            iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs)
 
             ! Move to the next position in the spawning array.
             spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
@@ -848,7 +876,7 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, nprocs)
+            iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs)
 
             ! Move to the next position in the spawning array.
             spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
@@ -920,7 +948,8 @@ contains
             f_new_tot((basis_length+1):(total_basis_length)) = f_new
         end if
 
-        iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, nprocs)
+        iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, &
+                                                spawn%hash_shift, spawn%move_freq, nprocs)
 
         ! Move to the next position in the spawning array.
         spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
@@ -1001,7 +1030,8 @@ contains
             f_new_tot((basis_length+1):(total_basis_length)) = f_new
         end if
 
-        iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, nprocs)
+        iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, &
+                                                spawn%hash_shift, spawn%move_freq, nprocs)
 
         ! Move to the next position in the spawning array.
         spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + 1
@@ -1092,7 +1122,8 @@ contains
                 f_new_tot((basis_length+1):(total_basis_length)) = f_new
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, nprocs)
+            iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, &
+                                                    spawn%hash_shift, spawn%move_freq, nprocs)
 
             ! Move to the next position in the spawning array.
             spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + 1
@@ -1173,7 +1204,8 @@ contains
                 f_new_tot((basis_length+1):(total_basis_length)) = f_new
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, nprocs)
+            iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, &
+                                                    spawn%hash_shift, spawn%move_freq, nprocs)
 
             ! Move to the next position in the spawning array.
             spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
@@ -1266,7 +1298,8 @@ contains
 
         associate(spawn=>rdm_spawn%spawn, ht=>rdm_spawn%ht, bsl=>rdm_spawn%spawn%bit_str_len)
 
-            iproc_spawn = assign_particle_processor(f_new_tot, 2*rdm_bl, spawn%hash_seed, nprocs)
+            iproc_spawn = assign_particle_processor(f_new_tot, 2*rdm_bl, spawn%hash_seed, &
+                                                    spawn%hash_shift, spawn%move_freq, nprocs)
 
             call lookup_hash_table_entry(ht, f_new_tot, pos, hit)
 

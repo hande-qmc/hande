@@ -236,7 +236,6 @@ contains
                 H00 = sc0_ptr(sys, f0)
             end if
             if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
-            D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
         else
 
             ! Reference det
@@ -299,7 +298,8 @@ contains
                 ! Finally, we need to check if the reference determinant actually
                 ! belongs on this processor.
                 ! If it doesn't, set the walkers array to be empty.
-                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, nprocs)
+                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                                    qmc_spawn%move_freq, nprocs)
                 if (D0_proc /= iproc) tot_walkers = 0
             end if
 
@@ -336,7 +336,8 @@ contains
                     call encode_det(occ_list0_inv, f0_inv)
                 end select
 
-                D0_inv_proc = assign_particle_processor(f0_inv, basis_length, qmc_spawn%hash_seed, nprocs)
+                D0_inv_proc = assign_particle_processor(f0_inv, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                                        qmc_spawn%move_freq, nprocs)
 
                 ! Store if not identical to reference det.
                 if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
