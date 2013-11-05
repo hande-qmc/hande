@@ -340,7 +340,13 @@ contains
                 sys%hubbard%coulomb_k = sys%hubbard%u/sl%nsites
 
                 select case(sys%system)
-                case(heisenberg,chung_landau)
+                case(heisenberg)
+                    if (all_sym_sectors) then
+                        sys%max_number_excitations = sl%nsites/2
+                    else
+                        sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
+                    end if
+                case(chung_landau)
                     sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
                 case default
                     sys%max_number_excitations = sys%nel
