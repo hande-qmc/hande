@@ -459,7 +459,7 @@ contains
                     total_size = 2**(sys%lattice%nsites)
                     do nel = 0, sys%lattice%nsites
                         ! The size of this symmetry sector alone.
-                        sector_size = binom_i(sys%lattice%nsites, sys%nel)
+                        sector_size = binom_i(sys%lattice%nsites, nel)
                         prob = real(D0_population*sector_size,dp)/real(total_size,dp)
                         npsips = floor(prob)
                         ! If there are a non-integer number of psips to be spawned in this sector
