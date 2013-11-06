@@ -137,6 +137,8 @@ contains
                         if (all_sym_sectors) then
                             sys%nel = sum(count_set_bits(cdet1%f))
                             sys%nvirt = sys%lattice%nsites - sys%nel
+                            !write(6,*) "nel:", sys%nel
+                            !if (sys%nel == 8) write(6,*) "population:", walker_population(ireplica,idet)
                         end if
 
                         ! Decode and store the the relevant information for
@@ -149,32 +151,33 @@ contains
                         ! to be updated, and also always updates the trace separately.
                         if (icycle == 1) call call_dmqmc_estimators(sys, idet, iteration)
 
-                        ! If this condition is met then there will only be one det in this
-                        ! symmetry sector, so don't attempt to spawn.
-                        if (sys%nel == 0 .or. sys%nel == sys%lattice%nsites) cycle
-
                         do ireplica = 1, sampling_size
-                            do iparticle = 1, abs(walker_population(ireplica,idet))
-                                ! Spawn from the first end.
-                                spawning_end = 1
-                                ! Attempt to spawn.
-                                call spawner_ptr(rng, sys, cdet1, walker_population(ireplica,idet), &
-                                                 gen_excit_ptr, nspawned, connection)
-                                ! Spawn if attempt was successful.
-                                if (nspawned /= 0) then
-                                    call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
-                                                                        ireplica, qmc_spawn)
-                                end if
 
-                                ! Now attempt to spawn from the second end.
-                                spawning_end = 2
-                                call spawner_ptr(rng, sys, cdet2, walker_population(ireplica,idet), &
-                                                 gen_excit_ptr, nspawned, connection)
-                                if (nspawned /= 0) then
-                                    call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
-                                                                        ireplica, qmc_spawn)
-                                end if
-                            end do
+                            ! If this condition is met then there will only be one det in this
+                            ! symmetry sector, so don't attempt to spawn.
+                            if (.not. (sys%nel == 0 .or. sys%nel == sys%lattice%nsites)) then
+                                do iparticle = 1, abs(walker_population(ireplica,idet))
+                                    ! Spawn from the first end.
+                                    spawning_end = 1
+                                    ! Attempt to spawn.
+                                    call spawner_ptr(rng, sys, cdet1, walker_population(ireplica,idet), &
+                                                     gen_excit_ptr, nspawned, connection)
+                                    ! Spawn if attempt was successful.
+                                    if (nspawned /= 0) then
+                                        call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
+                                                                            ireplica, qmc_spawn)
+                                    end if
+
+                                    ! Now attempt to spawn from the second end.
+                                    spawning_end = 2
+                                    call spawner_ptr(rng, sys, cdet2, walker_population(ireplica,idet), &
+                                                     gen_excit_ptr, nspawned, connection)
+                                    if (nspawned /= 0) then
+                                        call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
+                                                                            ireplica, qmc_spawn)
+                                    end if
+                                end do
+                            end if
 
                             ! Clone or die.
                             ! We have contributions to the clone/death step from both ends of the
