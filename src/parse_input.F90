@@ -622,6 +622,14 @@ contains
             end if
         end if
 
+        if (all_sym_sectors) then
+            if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_sym_sectors option can only be used in&
+                                                                DMQMC calculations.')
+            if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
+                abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
+                    call stop_all(this, 'The use_all_sym_sectors option cannot be used with magnetic fields.')
+        end if
+
         if (parent) write (6,'(/,1X,13("-"),/)')
 
     end subroutine check_input
