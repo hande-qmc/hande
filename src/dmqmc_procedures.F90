@@ -443,12 +443,13 @@ contains
         use fciqmc_data, only: sampling_size, D0_population, all_sym_sectors
         use parallel, only: nprocs, iproc
         use system, only: sys_t, heisenberg
-        use utils, only: binom_i
+        use utils, only: binom_r
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer :: nel, npsips, ireplica
-        integer :: total_size, sector_size, npsips_temp
+        integer :: nel, ireplica
+        integer :: npsips, npsips_temp
+        real(dp) :: total_size, sector_size
         real(dp) :: r, prob
 
         do ireplica = 1, sampling_size
@@ -456,11 +457,11 @@ contains
             case(heisenberg)
                 if (all_sym_sectors) then
                     ! The size (number of configurations) of all symmetry sectors combined.
-                    total_size = 2**(sys%lattice%nsites)
+                    total_size = 2.0_dp**(real(sys%lattice%nsites,dp))
                     do nel = 0, sys%lattice%nsites
                         ! The size of this symmetry sector alone.
-                        sector_size = binom_i(sys%lattice%nsites, nel)
-                        prob = real(D0_population*sector_size,dp)/real(total_size,dp)
+                        sector_size = binom_r(sys%lattice%nsites, nel)
+                        prob = real(D0_population,dp)*sector_size/total_size
                         npsips = floor(prob)
                         ! If there are a non-integer number of psips to be spawned in this sector
                         ! then add an extra psip with the required probability.
