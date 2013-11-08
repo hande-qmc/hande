@@ -592,6 +592,45 @@ contains
 
     end subroutine add_flagged_spawned_particle
 
+    subroutine add_spawned_particles(f_new, nspawn, iproc_spawn, spawn)
+
+        ! Add a set of particles to a store of spawned particles.
+
+        ! In:
+        !    f_new:  determinant on which to spawn.
+        !    nspawn: the (signed) number of particles of each particle type to
+        !       create on the spawned determinant.
+        !    iproc_spawn: processor to which f_new belongs (see assign_particle_processor).
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
+
+        use parallel, only: nthreads
+        use spawn_data, only: spawn_t
+        use omp_lib
+
+        integer(i0), intent(in) :: f_new(:)
+        integer, intent(in) :: nspawn(:) ! (spawn%ntypes)
+        integer, intent(in) :: iproc_spawn
+        type(spawn_t), intent(inout) :: spawn
+#ifndef _OPENMP
+        integer, parameter :: thread_id = 0
+#else
+        integer :: thread_id
+        thread_id = omp_get_thread_num()
+#endif
+
+        ! Move to the next position in the spawning array.
+        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+
+        ! Zero it as not all fields are set.
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+
+        ! Set info in spawning array.
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
+        spawn%sdata(spawn%bit_str_len:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = nspawn
+
+    end subroutine add_spawned_particles
+
     subroutine create_spawned_particle(cdet, connection, nspawn, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.

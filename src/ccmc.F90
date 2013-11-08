@@ -283,10 +283,6 @@ contains
 
         nparticles_old = tot_nparticles
 
-        ! MPI TODO: incorporate determinants moving processor...
-        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                            qmc_spawn%move_freq, nprocs)
-
         ! Initialise D0_pos to be somewhere (anywhere) in the list.
         D0_pos = 1
 
@@ -296,11 +292,20 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
+        qmc_spawn%hash_shift = mc_cycles_done
+
         do ireport = 1, nreport
 
             call init_report_loop(bloom_stats)
 
             do icycle = 1, ncycles
+
+                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                                   qmc_spawn%move_freq, nprocs)
+
+                ! Update the shift of the excitor locations to be the end of this
+                ! current iteration.
+                qmc_spawn%hash_shift = qmc_spawn%hash_shift + 1
 
                 if (iproc == D0_proc) then
 
@@ -403,7 +408,11 @@ contains
                 !$omp end do
                 !$omp end parallel
 
-                ! MPI TODO: redistribute excips to new processors.
+                ! Redistribute excips to new processors.
+                ! The spawned excips were sent to the correct processors with
+                ! the current hash shift, so it's just those in the main list
+                ! that we need to deal with.
+                if (nprocs > 1) call redistribute_excips(walker_dets, walker_population, tot_walkers, qmc_spawn)
 
                 call direct_annihilation(sys, initiator_approximation)
 
@@ -1051,5 +1060,66 @@ contains
         end do
 
     end subroutine convert_excitor_to_determinant
+
+    subroutine redistribute_excips(walker_dets, walker_populations, tot_walkers, spawn)
+
+        ! Due to the cooperative spawning (ie from multiple excitors at once) in
+        ! CCMC, we need to give each excitor the chance to be on the same
+        ! processor with all combinations of excitors, unlike in FCIQMC where
+        ! the spawning events are independent.  We satisfy this by periodically
+        ! moving an excitor to a different processor (MPI rank). 
+
+        ! WARNING: if the number of processors is large or the system small,
+        ! this introduces a bias as load balancing prevents all possible
+        ! clusters from being on the same processor at the same time.
+ 
+        ! In:
+        !    walker_dets: list of occupied excitors on the current processor.
+        !    total_walkers: number of occupied excitors on the current processor.
+        ! In/Out:
+        !    walker_populations: Population on occupied excitors.  On output the
+        !        populations of excitors which are sent to other processors are
+        !        set to zero.
+        !    spawn: spawn_t object.  On output particles which need to be sent
+        !        to another processor have been added to the correct position in
+        !        the spawned store.
+
+        use basis, only: basis_length
+        use const, only: i0
+        use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor, add_spawned_particles
+        use parallel, only: iproc, nprocs
+
+        integer(i0), intent(in) :: walker_dets(:,:)
+        integer, intent(inout) :: walker_populations(:,:)
+        integer, intent(inout) :: tot_walkers
+        type(spawn_t), intent(inout) :: spawn
+
+        integer :: iexcitor, pproc
+
+        !$omp parallel do default(none) &
+        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs) &
+        !$omp private(pproc)
+        do iexcitor = 1, tot_walkers
+            !  - set hash_shift and move_freq
+            pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
+                                              spawn%hash_shift, spawn%move_freq, nprocs)
+            if (pproc /= iproc) then
+                ! Need to move.
+                ! Add to spawned array so it will be sent to the correct
+                ! processor during annihilation.
+                ! NOTE: for initiator calculations we need to keep this
+                ! population no matter what.  This relies upon the
+                ! (undocumented) 'feature' that a flag of 0 indicates the parent
+                ! was an initiator...
+                call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
+                ! Zero population here.  Will be pruned on this determinant
+                ! automatically during annihilation.
+                walker_populations(:,iexcitor) = 0
+            end if
+        end do
+        !$omp end parallel do
+
+    end subroutine redistribute_excips
 
 end module ccmc
