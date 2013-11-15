@@ -427,11 +427,13 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(nattempts, ndeath)
+    subroutine init_mc_cycle(nattempts, ndeath, min_attempts)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
 
+        ! In:
+        !    min_attempts (optional): if present, set nattempts to be at least this value.
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
         !        processor) this cycle.
@@ -440,6 +442,7 @@ contains
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc
 
+        integer(lint), intent(in), optional :: min_attempts
         integer(lint), intent(out) :: nattempts
         integer, intent(out) :: ndeath
 
@@ -471,6 +474,8 @@ contains
             ! determinant and a chance to die/clone.
             nattempts = 2*nparticles(1)
         end if
+
+        if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
     end subroutine init_mc_cycle
 

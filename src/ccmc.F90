@@ -310,11 +310,6 @@ contains
                 ! current iteration.
                 qmc_spawn%hash_shift = qmc_spawn%hash_shift + 1
 
-                ! Note that 'death' in CCMC creates particles in the spawned
-                ! list, so the number of deaths not in the spawned list is
-                ! always 0.
-                call init_mc_cycle(nattempts, ndeath)
-
                 if (iproc == D0_proc) then
 
                     ! Population on reference determinant.
@@ -364,6 +359,11 @@ contains
 #ifdef PARALLEL
                 call mpi_bcast(D0_normalisation, 1, mpi_integer, D0_proc, MPI_COMM_WORLD, ierr)
 #endif
+
+                ! Note that 'death' in CCMC creates particles in the spawned
+                ! list, so the number of deaths not in the spawned list is
+                ! always 0.
+                call init_mc_cycle(nattempts, ndeath, int(D0_normalisation,lint))
 
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
@@ -433,10 +433,12 @@ contains
                 ! Not doing so means that the quality of the sampling of the sum
                 ! (the space of which is constant) varies with population.  The
                 ! bias is small but noticeable in some systems.
-! JSS: Need to discuss with AJWT, but it looks like we should *not* normalise D0
-! as well as proj_energy_cycle.
-!                D0_population_cycle = D0_population_cycle/nattempts
-                proj_energy_cycle = proj_energy_cycle/nattempts
+                if (nattempts > 0) then
+! JSS TODO: Need to discuss with AJWT, but it looks like we should *not* normalise D0
+! as well as proj_energy_cycle.  Inconsistency between proj_energy and D0 accumulation?!
+!                    D0_population_cycle = D0_population_cycle/nattempts
+                    proj_energy_cycle = proj_energy_cycle/nattempts
+                end if
 
                 call end_mc_cycle(ndeath, nattempts)
 
@@ -490,7 +492,8 @@ contains
         !        of excitors is generated in the current timestep.
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
-        !    D0_pos: position in the excip list of the reference.
+        !    D0_pos: position in the excip list of the reference.  Must be negative
+        !       if the reference is not on the processor.
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_population(1:i)).
         !    tot_excip_pop: total excip population.
