@@ -627,7 +627,7 @@ contains
 
         ! Set info in spawning array.
         spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-        spawn%sdata(spawn%bit_str_len:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = nspawn
 
     end subroutine add_spawned_particles
 
