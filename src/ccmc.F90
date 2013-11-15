@@ -292,7 +292,10 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
+        ! Initialise hash shift if restarting...
         qmc_spawn%hash_shift = mc_cycles_done
+        ! Hard code how frequently (ie 2^10) a determinant can move.
+        qmc_spawn%move_freq = 10
 
         do ireport = 1, nreport
 
@@ -307,30 +310,37 @@ contains
                 ! current iteration.
                 qmc_spawn%hash_shift = qmc_spawn%hash_shift + 1
 
+                ! Note that 'death' in CCMC creates particles in the spawned
+                ! list, so the number of deaths not in the spawned list is
+                ! always 0.
+                call init_mc_cycle(nattempts, ndeath)
+
                 if (iproc == D0_proc) then
 
                     ! Population on reference determinant.
                     ! As we might select the reference determinant multiple times in
                     ! a cycle, the running total of D0_population is incorrect (by
                     ! a factor of the number of times it was selected).
-                    select case(det_compare(f0, walker_dets(:,D0_pos), size(f0)))
-                    case(0)
-                        ! D0 hasn't moved.
-                    case(1)
-                        ! D0 < walker_dets(:,D0_pos) -- it has moved to earlier in
-                        ! the list and the old D0_pos is an upper bound.
-                        call binary_search(walker_dets, f0, 1, D0_pos, hit, D0_pos)
-                    case(-1)
-                        ! D0 > walker_dets(:,D0_pos) -- it has moved to later in
-                        ! the list and the old D0_pos is a lower bound.
-                        call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
-                    end select
+                    if (D0_pos == -1) then
+                        ! D0 was just moved to this processor.  No idea where it might be...
+                        call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
+                    else
+                        select case(det_compare(f0, walker_dets(:,D0_pos), size(f0)))
+                        case(0)
+                            ! D0 hasn't moved.
+                            hit = .true.
+                        case(1)
+                            ! D0 < walker_dets(:,D0_pos) -- it has moved to earlier in
+                            ! the list and the old D0_pos is an upper bound.
+                            call binary_search(walker_dets, f0, 1, D0_pos, hit, D0_pos)
+                        case(-1)
+                            ! D0 > walker_dets(:,D0_pos) -- it has moved to later in
+                            ! the list and the old D0_pos is a lower bound.
+                            call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
+                        end select
+                    end if
+                    if (.not.hit) call stop_all('do_ccmc', 'Cannot find reference!')
                     D0_normalisation = walker_population(1,D0_pos)
-
-                    ! Note that 'death' in CCMC creates particles in the spawned
-                    ! list, so the number of deaths not in the spawned list is
-                    ! always 0.
-                    call init_mc_cycle(nattempts, ndeath)
 
                     ! Maximum possible cluster size that we can generate.
                     ! Usually this is either the number of electrons or the
@@ -346,7 +356,7 @@ contains
                     max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers)
 
                     ! Can't find D0 on this processor.  (See how D0_pos is used
-                    ! in select_cluster.
+                    ! in select_cluster.)
                     D0_pos = -1
 
                 end if
@@ -712,6 +722,7 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
+        use parallel, only: iproc
 
         type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
