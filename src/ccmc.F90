@@ -201,7 +201,7 @@ contains
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
                                dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
                                tot_walkers, walker_length, write_fciqmc_report_header,               &
-                               write_fciqmc_final
+                               write_fciqmc_final, nparticles
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle
         use proc_pointers
@@ -422,7 +422,7 @@ contains
                 ! The spawned excips were sent to the correct processors with
                 ! the current hash shift, so it's just those in the main list
                 ! that we need to deal with.
-                if (nprocs > 1) call redistribute_excips(walker_dets, walker_population, tot_walkers, qmc_spawn)
+                if (nprocs > 1) call redistribute_excips(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
 
                 call direct_annihilation(sys, initiator_approximation)
 
@@ -1072,7 +1072,7 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    subroutine redistribute_excips(walker_dets, walker_populations, tot_walkers, spawn)
+    subroutine redistribute_excips(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
 
         ! Due to the cooperative spawning (ie from multiple excitors at once) in
         ! CCMC, we need to give each excitor the chance to be on the same
@@ -1088,6 +1088,7 @@ contains
         !    walker_dets: list of occupied excitors on the current processor.
         !    total_walkers: number of occupied excitors on the current processor.
         ! In/Out:
+        !    nparticles: number of excips on the current processor.
         !    walker_populations: Population on occupied excitors.  On output the
         !        populations of excitors which are sent to other processors are
         !        set to zero.
@@ -1096,7 +1097,7 @@ contains
         !        the spawned store.
 
         use basis, only: basis_length
-        use const, only: i0
+        use const, only: i0, lint
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor, add_spawned_particles
         use parallel, only: iproc, nprocs
@@ -1104,6 +1105,7 @@ contains
         integer(i0), intent(in) :: walker_dets(:,:)
         integer, intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
+        integer(lint), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
 
         integer :: iexcitor, pproc
@@ -1124,8 +1126,10 @@ contains
                 ! (undocumented) 'feature' that a flag of 0 indicates the parent
                 ! was an initiator...
                 call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
+                ! Update population on the sending processor.
+                nparticles = nparticles - abs(walker_populations(:,iexcitor))
                 ! Zero population here.  Will be pruned on this determinant
-                ! automatically during annihilation.
+                ! automatically during annihilation (which will also update tot_walkers).
                 walker_populations(:,iexcitor) = 0
             end if
         end do
