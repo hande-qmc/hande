@@ -99,9 +99,7 @@ contains
             ! iteration)
             call dSFMT_init(seed+iproc+(beta_cycle-1)*nprocs, 50000, rng)
 
-            call create_initial_density_matrix(rng, sys)
-
-            nparticles_old = nint(D0_population)
+            call create_initial_density_matrix(rng, sys, nparticles_old)
 
             do ireport = 1, nreport
                 ! Zero report cycle quantities.

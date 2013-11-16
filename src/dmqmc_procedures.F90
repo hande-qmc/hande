@@ -434,7 +434,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys)
+    subroutine create_initial_density_matrix(rng, sys, nparticles_tot)
 
         use annihilation, only: direct_annihilation
         use calc, only: initiator_approximation
@@ -444,13 +444,24 @@ contains
         use parallel, only: nprocs, iproc
         use system, only: sys_t, heisenberg
         use utils, only: binom_r
+        use parallel
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer :: nel, ireplica
-        integer :: npsips, npsips_temp
+        integer(lint), intent(out) :: nparticles_tot(sampling_size)
+        integer(lint) :: nparticles_temp(sampling_size)
+        integer :: nel, ireplica, ierr
+        integer :: npsips, npsips_this_proc
         real(dp) :: total_size, sector_size
         real(dp) :: r, prob
+
+        npsips_this_proc = nint(D0_population)/nprocs
+        ! If the initial number of psips does not split evenly between all processors,
+        ! add the leftover psips to the first processors in order.
+        if (nint(D0_population)-(nprocs*int(D0_population/nprocs)) > iproc) &
+              npsips_this_proc = npsips_this_proc + 1
+
+        nparticles_temp = 0
 
         do ireplica = 1, sampling_size
             select case(sys%system)
@@ -458,37 +469,41 @@ contains
                 if (all_sym_sectors) then
                     ! The size (number of configurations) of all symmetry sectors combined.
                     total_size = 2.0_dp**(real(sys%lattice%nsites,dp))
+
                     do nel = 0, sys%lattice%nsites
                         ! The size of this symmetry sector alone.
                         sector_size = binom_r(sys%lattice%nsites, nel)
-                        prob = real(D0_population,dp)*sector_size/total_size
+                        prob = real(npsips_this_proc,dp)*sector_size/total_size
                         npsips = floor(prob)
                         ! If there are a non-integer number of psips to be spawned in this sector
                         ! then add an extra psip with the required probability.
                         prob = prob - npsips
                         r = get_rand_close_open(rng)
                         if (r < prob) npsips = npsips + 1
-                        ! How many psips should be spawned on this processor?
-                        npsips_temp = npsips
-                        npsips = npsips/nprocs
-                        ! If the initial number of psips does not split evenly between all processors,
-                        ! add the leftover psips to the first processors in order.
-                        if (npsips_temp-(nprocs*int(npsips_temp/nprocs)) > iproc) npsips = npsips + 1
 
+                        nparticles_temp(ireplica) = nparticles_temp(ireplica) + int(npsips, lint)
                         call random_distribution_heisenberg(rng, nel, npsips, ireplica)
                     end do
                 else
-                    npsips = D0_population/nprocs
-                    ! If the initial number of psips does not split evenly between all processors,
-                    ! add the leftover psips to the first processors in order.
-                    if (D0_population-(nprocs*int(D0_population/nprocs)) > iproc) npsips = npsips + 1
+                    ! This process will always create excatly D0_population psips.
+                    nparticles_tot = nint(D0_population, lint)
 
-                    call random_distribution_heisenberg(rng, sys%nel, npsips, ireplica)
+                    call random_distribution_heisenberg(rng, sys%nel, npsips_this_proc, ireplica)
                 end if
             case default
                 call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
             end select
         end do
+
+        if (all_sym_sectors) then
+            ! Finally, count the total number of particles across all processes.
+#ifdef PARALLEL
+            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_INTEGER8, MPI_SUM, &
+                                MPI_COMM_WORLD, ierr)
+#else
+            nparticles_tot = nparticles_temp
+#endif
+        end if
 
         call direct_annihilation(sys, initiator_approximation)
 
