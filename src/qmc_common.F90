@@ -252,7 +252,7 @@ contains
         !       1<=D0_pos<=nactive and the processor holds the reference.
         ! Out:
         !    cumulative_pops: running total of excitor population, i.e.
-        !        cumulative_pops(i) = sum(pops(1:i)), excluding the
+        !        cumulative_pops(i) = sum(abs(pops(1:i))), excluding the
         !        population on the reference if appropriate.
         !    tot_pop: total population (possibly excluding the population on the
         !       reference).
