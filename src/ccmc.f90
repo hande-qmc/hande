@@ -391,7 +391,10 @@ contains
             mc_cycles_done = mc_cycles_done + ncycles*nreport
         end if
 
-        if (dump_restart_file) call dump_restart_hdf5(mc_cycles_done, nparticles_old)
+        if (dump_restart_file) then
+            call dump_restart_hdf5(mc_cycles_done, nparticles_old)
+            if (parent) write (6,'()')
+        end if
 
         ! TODO: deallocation...
 !        call dealloc_det_info(cdet)

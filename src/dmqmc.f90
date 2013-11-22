@@ -255,7 +255,7 @@ contains
 
         if (dump_restart_file) then
             call dump_restart_hdf5(mc_cycles_done, nparticles_old)
-            write (6,'()')
+            if (parent) write (6,'()')
         end if
 
         call dealloc_det_info(cdet1, .false.)

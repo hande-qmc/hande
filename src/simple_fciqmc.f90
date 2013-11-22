@@ -239,7 +239,7 @@ contains
 
         if (dump_restart_file) then
             call dump_restart_hdf5(mc_cycles_done+ncycles*nreport, (/nparticles_old/)) 
-            write (6,'()')
+            if (parent) write (6,'()')
         end if
 
     end subroutine do_simple_fciqmc
