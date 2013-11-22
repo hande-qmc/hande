@@ -214,7 +214,7 @@ module restart_hdf5
 
                 dshape2(1) = size(walker_data, dim=1, kind=HSIZE_T)
                 ptr = c_loc(walker_data)
-                call write_ptr(subgroup_id, ddata, h5_p, size(shape(walker_data)), shape(walker_data, HSIZE_T), ptr)
+                call write_ptr(subgroup_id, ddata, h5_p, size(shape(walker_data)), dshape2, ptr)
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
