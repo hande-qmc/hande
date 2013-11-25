@@ -25,6 +25,7 @@ module spawning
 ! the matrix element if offspring are produced.
 
 use const
+
 implicit none
 
 contains
@@ -474,22 +475,23 @@ contains
         !       particle should reside.
 
         use hashing, only: murmurhash_bit_string
+        use loadbal_data, only: proc_map, num_slots
 
         integer :: particle_proc
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np
-
         integer :: hash, offset
         integer(i0) :: mod_label(length)
-
+        integer :: tmp
         ! (Extra credit for parallel calculations)
         ! Hash the label to get a (hopefully uniform) distribution across all
         ! possible particle labels and then modulo it to assign each label in
         ! a (hopefully uniform) fashion.
+        
         hash = murmurhash_bit_string(particle_label, length, seed)
         if (shift == 0) then
-            ! p = hash(label) % np
-            particle_proc = modulo(hash, np)
+             ! p = hash(label) % np
+            particle_proc = proc_map(modulo(hash, np*num_slots)+1)
         else
             ! o = [ hash(label) + shift ] >> freq
             ! p = [ hash(label) + o ] % np
@@ -506,7 +508,7 @@ contains
             offset = ishft(hash+shift, -freq)
             mod_label = particle_label + offset
             hash = murmurhash_bit_string(mod_label, length, seed)
-            particle_proc = modulo(hash, np)
+            particle_proc = proc_map(modulo(hash, np*num_slots)+1)
         end if
 
     end function assign_particle_processor
@@ -547,7 +549,7 @@ contains
         ! Set info in spawning array.
         spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
         spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
-
+        
     end subroutine add_spawned_particle
 
     subroutine add_flagged_spawned_particle(f_new, nspawn, particle_type, flag, iproc_spawn, spawn)
@@ -630,6 +632,42 @@ contains
         spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = nspawn
 
     end subroutine add_spawned_particles
+    subroutine add_spawned_particles_load(f_new, nspawn, iproc_spawn, spawn)
+
+        ! Add a set of particles to a store of spawned particles.
+
+        ! In:
+        !    f_new:  determinant on which to spawn.
+        !    nspawn: the (signed) number of particles of each particle type to
+        !       create on the spawned determinant.
+        !    iproc_spawn: processor to which f_new belongs (see assign_particle_processor).
+        ! In/Out:
+        !    spawn: spawn_t object to which the spanwed particle will be added.
+
+        use parallel, only: nthreads
+        use spawn_data, only: spawn_t
+        use omp_lib
+
+        integer(i0), intent(in) :: f_new(:)
+        integer, intent(in) :: nspawn(:) ! (spawn%ntypes)
+        integer, intent(in) :: iproc_spawn
+        type(spawn_t), intent(inout) :: spawn
+#ifndef _OPENMP
+        integer, parameter :: thread_id = 0
+#else
+        integer :: thread_id
+        thread_id = omp_get_thread_num()
+#endif
+                ! Move to the next position in the spawning array.
+        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+              ! Zero it as not all fields are set.
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
+               ! Set info in spawning array.
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
+        spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = nspawn
+
+    end subroutine add_spawned_particles_load
+
 
     subroutine create_spawned_particle(cdet, connection, nspawn, particle_type, spawn)
 
