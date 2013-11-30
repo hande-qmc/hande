@@ -59,6 +59,14 @@ integer :: initiator_population = 3
 ! See comments in spawn_t and assign_particle_processor.
 integer :: ccmc_move_freq = 5
 
+!--- Input data: Load Balancing ---
+
+! Are we doing load balancing? Default false
+logical :: doing_load_balancing = .false.  
+! Number of slots walker lists are initially subdivided into for proc_map
+! Default = 1
+integer :: num_slots = 1
+
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless
