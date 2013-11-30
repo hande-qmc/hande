@@ -21,8 +21,7 @@ contains
         !    sys: system being studied.
 
         use parallel
-        use loadbal_data
-        use load_balancing
+
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
@@ -49,7 +48,7 @@ contains
         integer :: nspawned, ndeath
         type(excit) :: connection
         real(p) :: hmatel
-        integer :: dummy=0
+
         logical :: soft_exit
 
         real :: t1
@@ -73,16 +72,16 @@ contains
         call initial_fciqmc_status(sys)
         ! Initialise timer.
         call cpu_time(t1)
+
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
             call init_report_loop(bloom_stats)
 
             do icycle = 1, ncycles
+
                 call init_mc_cycle(nattempts, ndeath)
-                if( ireport > 1 .and. icycle==50 ) then
-                    call redistribute_processors(proc_map)
-                end if 
+
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
                     cdet%f => walker_dets(:,idet)
@@ -131,6 +130,7 @@ contains
             if (soft_exit) exit
 
         end do
+
         if (parent) then
             call write_fciqmc_final(ireport)
             write (6,'()')
