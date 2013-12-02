@@ -139,7 +139,8 @@ module hash_table
             use checking, only: check_allocate
 
             integer, intent(in) :: nslots, nentries, data_len, payload_len, max_free_reqd, seed
-            integer, intent(in), optional, target :: data_label(:,:), payload(:,:)
+            integer(i0), intent(in), optional, target :: data_label(:,:)
+            integer, intent(in), optional, target :: payload(:,:)
             type(hash_table_t), intent(out) :: ht
 
             integer :: ierr
