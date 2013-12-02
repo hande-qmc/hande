@@ -77,7 +77,7 @@ contains
 #ifdef PARALLEL
         array_size = 2*sampling_size+1+number_dmqmc_estimators
         if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
-        if (calc_inst_rdm) array_size = array_size + size(rdm_traces(:,1))
+        if (calc_inst_rdm) array_size = array_size + size(rdm_traces)
         if (doing_dmqmc_calc(dmqmc_renyi_2)) array_size = array_size + size(renyi_2)
 
         allocate(ir(1:array_size), stat=ierr)
@@ -99,10 +99,12 @@ contains
             ir(min_ind:max_ind) = excit_distribution
         end if
         if (calc_inst_rdm) then
-            min_ind = max_ind + 1; max_ind = min_ind + size(rdm_traces) - 1
-            ir(min_ind:max_ind) = rdm_traces(:,1)
+            do irdm = 1, nrdms
+                min_ind = max_ind + 1; max_ind = min_ind + size(rdm_traces(:,irdm)) - 1
+                ir(min_ind:max_ind) = rdm_traces(:,irdm)
+            end do
         end if
-        if (calc_inst_rdm) then
+        if (doing_dmqmc_calc(dmqmc_renyi_2)) then
             min_ind = max_ind + 1; max_ind = min_ind + size(renyi_2) - 1
             ir(min_ind:max_ind) = renyi_2
         end if
@@ -123,10 +125,12 @@ contains
             excit_distribution = ir_sum(min_ind:max_ind)
         end if
         if (calc_inst_rdm) then
-            min_ind = max_ind + 1; max_ind = min_ind + size(rdm_traces) - 1
-            rdm_traces(:,1) = real(ir_sum(min_ind:max_ind),p)
+            do irdm = 1, nrdms
+                min_ind = max_ind + 1; max_ind = min_ind + size(rdm_traces(:,irdm)) - 1
+                rdm_traces(:,irdm) = real(ir_sum(min_ind:max_ind),p)
+            end do
         end if
-        if (calc_inst_rdm) then
+        if (doing_dmqmc_calc(dmqmc_renyi_2)) then
             min_ind = max_ind + 1; max_ind = min_ind + size(renyi_2) - 1
             renyi_2 = real(ir_sum(min_ind:max_ind),p)
         end if

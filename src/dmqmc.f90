@@ -135,8 +135,6 @@ contains
                         if (all_sym_sectors) then
                             sys%nel = sum(count_set_bits(cdet1%f))
                             sys%nvirt = sys%lattice%nsites - sys%nel
-                            !write(6,*) "nel:", sys%nel
-                            !if (sys%nel == 8) write(6,*) "population:", walker_population(ireplica,idet)
                         end if
 
                         ! Decode and store the the relevant information for

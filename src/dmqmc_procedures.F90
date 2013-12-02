@@ -227,6 +227,16 @@ contains
 
         total_size_spawned_rdm = 0
 
+        if (calc_inst_rdm) then
+            allocate(rdm_spawn(nrdms), stat=ierr)
+            call check_allocate('rdm_spawn', nrdms, ierr)
+        end if
+        if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+            allocate(renyi_2(nrdms), stat=ierr)
+            call check_allocate('renyi_2', nrdms, ierr)
+            renyi_2 = 0.0_p
+        end if
+
         do i = 1, nrdms
             rdms(i)%rdm_basis_length = ceiling(real(rdms(i)%A_nsites)/i0_length)
 
@@ -243,15 +253,7 @@ contains
             if (calc_ground_rdm .and. rdms(i)%rdm_basis_length > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
-            if (doing_dmqmc_calc(dmqmc_renyi_2)) then
-                allocate(renyi_2(nrdms), stat=ierr)
-                call check_allocate('renyi_2', nrdms, ierr)
-                renyi_2 = 0.0_p
-            end if
             if (calc_inst_rdm) then
-                allocate(rdm_spawn(nrdms), stat=ierr)
-                call check_allocate('rdm_spawn', nrdms, ierr)
-
                 size_spawned_rdm = (rdms(i)%rdm_basis_length*2+sampling_size)*i0_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_rdm_length < 0) then
@@ -441,10 +443,9 @@ contains
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
         use fciqmc_data, only: sampling_size, D0_population, all_sym_sectors
-        use parallel, only: nprocs, iproc
+        use parallel
         use system, only: sys_t, heisenberg
         use utils, only: binom_r
-        use parallel
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
