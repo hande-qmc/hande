@@ -270,7 +270,7 @@ contains
                 ! We will only use the first 2*rdm_basis_length elements for the
                 ! hash, even though rdm_spawn%spawn%sdata is larger than that in
                 ! the first dimension...
-                call alloc_hash_table(nint(real(spawned_rdm_length)/3), 3, rdms(i)%rdm_basis_length*2, &
+                call alloc_hash_table(nint(real(spawned_rdm_length)/6), 6, rdms(i)%rdm_basis_length*2, &
                                       0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
