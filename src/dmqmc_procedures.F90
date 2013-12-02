@@ -496,6 +496,7 @@ contains
             end select
         end do
 
+#ifdef PARALLEL
         if (all_sym_sectors) then
             ! Finally, count the total number of particles across all processes.
 #ifdef PARALLEL
@@ -505,6 +506,9 @@ contains
             nparticles_tot = nparticles_temp
 #endif
         end if
+#else
+        nparticles_tot = nparticles_temp
+#endif
 
         call direct_annihilation(sys, initiator_approximation)
 
