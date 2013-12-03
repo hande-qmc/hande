@@ -15,6 +15,11 @@ type rdm
     ! function. An array of twice this length is stored to hold both
     ! RDM indices.
     integer :: rdm_basis_length
+    ! The total number of symmetry equivalent subsystems to consider.
+    ! If the subsystem is equal to the whole system then this will be
+    ! equal to 1. Otherwise, it will be equal to the number of
+    ! symmetry vectors for the lattice.
+    integer :: nsym
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
     ! B_masks(:,i) has bits set at all bit positions corresponding to
@@ -383,17 +388,29 @@ contains
 
         ! Allocate the RDM arrays.
         do i = 1, nrdms
-            allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
-            call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
-            allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
-            call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
+            ! If the whole lattice is being used as the 'sublattice' then symmetry cannot be
+            ! taken advantage of, so just use the identity transformation vector.
+            if (rdms(i)%A_nsites == sys%lattice%nsites) then
+                rdms(i)%nsym = 1
+                allocate(rdms(i)%B_masks(basis_length,1), stat=ierr)
+                call check_allocate('rdms(i)%B_masks', basis_length,ierr)
+                allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,1,2), stat=ierr)
+                call check_allocate('rdms(i)%bit_pos', rdms(i)%A_nsites*2,ierr)
+            else
+                rdms(i)%nsym = nsym_vec
+                allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
+                call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
+                allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
+                call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
+            end if
             rdms(i)%B_masks = 0
             rdms(i)%bit_pos = 0
         end do
 
         ! Run through every site on every subsystem and add every translational symmetry vector.
         do i = 1, nrdms ! Over every subsystem.
-            do j = 1, nsym_vec ! Over every symmetry vector.
+
+            do j = 1, rdms(i)%nsym ! Over every symmetry vector.
                 A_mask = 0
                 do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
                     r = basis_fns(rdms(i)%subsystem_A(k))%l

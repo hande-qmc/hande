@@ -603,7 +603,7 @@ contains
        use excitations, only: excit
        use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
        use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, nrdms
-       use fciqmc_data, only: nsym_vec, start_averaging, rdm_spawn, dmqmc_accumulated_probs
+       use fciqmc_data, only: start_averaging, rdm_spawn, dmqmc_accumulated_probs
        use spawning, only: create_spawned_particle_rdm
 
        integer, intent(in) :: idet, iteration
@@ -618,7 +618,7 @@ contains
        ! Loop over all RDMs to be calculated.
        do irdm = 1, nrdms
            ! Loop over every symmetry-equivalent subsystem for this RDM.
-           do isym = 1, nsym_vec
+           do isym = 1, rdms(irdm)%nsym
 
                ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
                f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis_length,idet))
