@@ -28,14 +28,14 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use loadbal_data
-        use load_balancing, only: do_load_balancing
+        use load_balancing, only: do_load_balancing, check_imbalance
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: tinitiator
 
         integer, parameter :: thread_id = 0
-        
-        if(doing_load_balancing) then
+
+        if(doing_load_balancing .and. load_tag==1 .and. max_tries<4 ) then
             call do_load_balancing(proc_map)
         end if 
 
