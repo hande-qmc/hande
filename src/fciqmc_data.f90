@@ -66,6 +66,14 @@ logical :: doing_load_balancing = .false.
 ! Number of slots walker lists are initially subdivided into for proc_map
 ! Default = 1
 integer :: num_slots = 1
+! Load imbalance tag: 
+! 0: Initial value on report loop.
+! 1: Load balancing should go ahead.
+! 2: Load balancing has been completed, and shouldn't be attempted again this
+!    report loop.
+integer :: load_tag=0
+! Max number of calls to load_balancing
+integer :: max_tries=0
 
 !--- Energy data ---
 
@@ -119,6 +127,10 @@ integer :: tot_walkers
 integer(lint), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
 integer(lint), allocatable, target :: tot_nparticles(:) ! (sampling_size)
+! Total number of particles on all determinants for each processor
+integer(lint), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
+! Average population across all processors
+integer(lint) :: pop_av
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard

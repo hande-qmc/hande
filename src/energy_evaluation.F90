@@ -24,17 +24,19 @@ contains
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
-                               vary_shift_from_proje, D0_population, fold_line
+                               vary_shift_from_proje, D0_population, fold_line,                &
+                               nparticles_proc, pop_av, load_tag, doing_load_balancing
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
+        use load_balancing, only: check_imbalance
 
         use parallel
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
-        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7)
+        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7), ir_pop(sampling_size,nprocs)
         integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
-        integer :: ierr
+        integer :: ierr, i
 
         ! Need to sum the number of particles and the projected energy over
         ! all processors.
@@ -71,6 +73,20 @@ contains
             proj_hf_O_hpsip = ir_sum(sampling_size+5)
             proj_hf_H_hfpsip = ir_sum(sampling_size+6)
             D0_hf_population = ir_sum(sampling_size+7)
+        end if
+
+        if(doing_load_balancing) then
+#ifdef PARALLEL
+            do i=1, sampling_size
+                call mpi_allgather(ir(i), 1, MPI_REAL8, ir_pop(i,:), 1, MPI_REAL8, MPI_COMM_WORLD, ierr)
+                nparticles_proc(i,:)=ir_pop(i,:)
+            end do
+#else
+            nparticles_proc(:sampling_size,1)=nparticles(:sampling_size)
+#endif
+            pop_av=sum(nparticles_proc(1,:nprocs))/nprocs
+            ! check if there is at least one processor with load imbalance
+            load_tag=check_imbalance()
         end if
 
         if (vary_shift) then

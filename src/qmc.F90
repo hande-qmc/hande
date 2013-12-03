@@ -44,6 +44,7 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(nbasis, ms_in, sys)
         call initialise_proc_map(proc_map, p_map_size, num_slots)
+
         ! Initialise data
         call init_qmc(sys)
 
@@ -110,7 +111,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: ierr
-        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel)
+        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot=0
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
@@ -192,6 +193,13 @@ contains
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
         allocate(walker_data(sampling_size+info_size,walker_length), stat=ierr)
         call check_allocate('walker_data', size(walker_data), ierr)
+#ifdef PARALLEL
+        allocate(nparticles_proc(sampling_size, nprocs), stat=ierr)
+        call check_allocate('nparticles_proc', nprocs*sampling_size, ierr)
+#else 
+        allocate(nparticles_proc(sampling_size, 1), stat=ierr)
+        call check_allocate('nparticles_proc', sampling_size*1, ierr)
+#endif
 
         ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
         if (mod(spawned_walker_length, nprocs) /= 0) then
@@ -298,9 +306,9 @@ contains
 
                 ! Finally, we need to check if the reference determinant actually
                 ! belongs on this processor.
-                ! If it doesn't, set the walkers array to be empty.
-                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                                    qmc_spawn%move_freq, nprocs)
+                ! If it doesn't, set the walkers array to be empty. 
+                call assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                                    qmc_spawn%move_freq, nprocs, D0_proc, slot)
                 if (D0_proc /= iproc) tot_walkers = 0
             end if
 
@@ -337,8 +345,8 @@ contains
                     call encode_det(occ_list0_inv, f0_inv)
                 end select
 
-                D0_inv_proc = assign_particle_processor(f0_inv, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                                        qmc_spawn%move_freq, nprocs)
+                call assign_particle_processor(f0_inv, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                                        qmc_spawn%move_freq, nprocs, D0_inv_proc, slot)
 
                 ! Store if not identical to reference det.
                 if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
@@ -376,9 +384,13 @@ contains
         forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
         ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
-        call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        do i=1, sampling_size
+            call mpi_allgather(nparticles(i), 1, MPI_INTEGER8, nparticles_proc(i,:), 1, MPI_INTEGER8, MPI_COMM_WORLD, ierr)
+        end do
+        forall(i=1:sampling_size) tot_nparticles(i) = sum(nparticles_proc(i,:))
 #else
         tot_nparticles = nparticles
+        nparticles_proc(:sampling_size,1) = nparticles(:sampling_size)
 #endif
         vary_shift = tot_nparticles(1) >= target_particles
         if (doing_calc(hfs_fciqmc_calc)) then
