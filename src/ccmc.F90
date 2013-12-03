@@ -224,7 +224,7 @@ contains
         logical :: soft_exit
 
         integer, allocatable :: cumulative_abs_pops(:)
-        integer :: D0_proc, D0_pos, max_cluster_size,tot_abs_pop
+        integer :: D0_proc, D0_pos, max_cluster_size,tot_abs_pop, slot=0
         integer :: D0_normalisation
         logical :: hit
         type(bloom_stats_t) :: bloom_stats
@@ -303,8 +303,8 @@ contains
 
             do icycle = 1, ncycles
 
-                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                                   qmc_spawn%move_freq, nprocs)
+                call assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                                   qmc_spawn%move_freq, nprocs, D0_proc, slot)
 
                 ! Update the shift of the excitor locations to be the end of this
                 ! current iteration.
@@ -1111,15 +1111,15 @@ contains
         integer(lint), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer :: iexcitor, pproc
+        integer :: iexcitor, pproc, slot=0
 
         !$omp parallel do default(none) &
         !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs, nparticles) &
         !$omp private(pproc)
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
-            pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
-                                              spawn%hash_shift, spawn%move_freq, nprocs)
+            call assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
+                                              spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot)
             if (pproc /= iproc) then
                 ! Need to move.
                 ! Add to spawned array so it will be sent to the correct

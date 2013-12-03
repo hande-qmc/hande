@@ -32,7 +32,7 @@ contains
         use errors, only: stop_all
 
         integer, parameter :: particle_type = 1
-        integer :: i, fmax(basis_length), max_pop, D0_proc
+        integer :: i, fmax(basis_length), max_pop, D0_proc, slot=0
 #ifdef PARALLEL
         integer :: in_data(2), out_data(2), ierr
 #endif
@@ -62,8 +62,8 @@ contains
 
 #ifdef PARALLEL
 
-        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                            qmc_spawn%move_freq, nprocs)
+        call assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                            qmc_spawn%move_freq, nprocs, D0_proc, slot)
 
         if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle)) then
             in_data = (/ max_pop, iproc /)
