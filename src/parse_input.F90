@@ -401,7 +401,7 @@ contains
             case('DUMP_RESTART')
                 dump_restart_file = .true.
                 if (item /= nitems) then
-                    call readi(restart_info_global%write_id )
+                    call readi(restart_info_global%write_id)
                     restart_info_global%write_id = -restart_info_global%write_id-1
                 end if
             case('DUMP_RESTART_FREQUENCY')
