@@ -47,7 +47,6 @@ contains
         integer :: ierr, array_size, min_ind, max_ind
 #endif
 
-        ! rdm array, and calculate any desired estimators.
         if (calc_inst_rdm) then
             ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
             ! array of type spawn_t due to a bug in gfortran which results in
@@ -72,7 +71,6 @@ contains
                 rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
             end do
         end if
-
 
 #ifdef PARALLEL
         array_size = 2*sampling_size+1+number_dmqmc_estimators
@@ -657,6 +655,7 @@ contains
 
                end if
            end do
+
        end do
 
     end subroutine update_reduced_density_matrix_heisenberg

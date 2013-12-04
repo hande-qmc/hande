@@ -274,7 +274,7 @@ contains
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
-                                 spawned_rdm_length, 7, rdm_spawn(i)%spawn)
+                                 spawned_rdm_length, 27, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  This should
                 ! give an ok performance...
                 ! We will only use the first 2*rdm_basis_length elements for the
