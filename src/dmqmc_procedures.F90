@@ -15,11 +15,6 @@ type rdm
     ! function. An array of twice this length is stored to hold both
     ! RDM indices.
     integer :: rdm_basis_length
-    ! The total number of symmetry equivalent subsystems to consider.
-    ! If the subsystem is equal to the whole system then this will be
-    ! equal to 1. Otherwise, it will be equal to the number of
-    ! symmetry vectors for the lattice.
-    integer :: nsym
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
     ! B_masks(:,i) has bits set at all bit positions corresponding to
@@ -54,7 +49,7 @@ contains
 
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
-         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation
+         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
          use checking, only: check_allocate
          use fciqmc_data, only: trace, energy_index, energy_squared_index, correlation_index
          use fciqmc_data, only: staggered_mag_index, estimator_numerators, doing_reduced_dm
@@ -65,6 +60,7 @@ contains
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use fciqmc_data, only: sampling_size, rdm_traces, nrdms, dmqmc_accumulated_probs_old
+         use fciqmc_data, only: full_r2_index
          use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -81,6 +77,10 @@ contains
          call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
          rdm_traces = 0.0_p
 
+         if (doing_dmqmc_calc(dmqmc_full_r2)) then
+             number_dmqmc_estimators = number_dmqmc_estimators + 1
+             full_r2_index = number_dmqmc_estimators
+         end if
          if (doing_dmqmc_calc(dmqmc_energy)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
              energy_index = number_dmqmc_estimators
@@ -206,7 +206,7 @@ contains
         ! In:
         !    sys: system being studied.
 
-        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_renyi_2
+        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
@@ -238,7 +238,7 @@ contains
             allocate(rdm_spawn(nrdms), stat=ierr)
             call check_allocate('rdm_spawn', nrdms, ierr)
         end if
-        if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             allocate(renyi_2(nrdms), stat=ierr)
             call check_allocate('renyi_2', nrdms, ierr)
             renyi_2 = 0.0_p
@@ -397,16 +397,12 @@ contains
 
         ! Allocate the RDM arrays.
         do i = 1, nrdms
-            ! If the whole lattice is being used as the 'sublattice' then symmetry cannot be
-            ! taken advantage of, so just use the identity transformation vector.
             if (rdms(i)%A_nsites == sys%lattice%nsites) then
-                rdms(i)%nsym = 1
-                allocate(rdms(i)%B_masks(basis_length,1), stat=ierr)
-                call check_allocate('rdms(i)%B_masks', basis_length,ierr)
-                allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,1,2), stat=ierr)
-                call check_allocate('rdms(i)%bit_pos', rdms(i)%A_nsites*2,ierr)
+                call stop_all('find_rdm_masks','You are attempting to use the full density matrix &
+                              &as an RDM. This is not supported. You should use the &
+                              &dmqmc_full_renyi_2 option to calculate the Renyi 2 entropy of the &
+                              &whole lattice.')
             else
-                rdms(i)%nsym = nsym_vec
                 allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
                 call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
                 allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
@@ -419,7 +415,7 @@ contains
         ! Run through every site on every subsystem and add every translational symmetry vector.
         do i = 1, nrdms ! Over every subsystem.
 
-            do j = 1, rdms(i)%nsym ! Over every symmetry vector.
+            do j = 1, nsym_vec ! Over every symmetry vector.
                 A_mask = 0
                 do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
                     r = basis_fns(rdms(i)%subsystem_A(k))%l

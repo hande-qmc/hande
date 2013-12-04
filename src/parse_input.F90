@@ -217,6 +217,8 @@ contains
                 replica_tricks = .true.
 
             ! DMQMC expectation values to be calculated
+            case('DMQMC_FULL_RENYI_2')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_full_r2
             case('DMQMC_ENERGY')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
             case('DMQMC_ENERGY_SQUARED')
@@ -277,7 +279,7 @@ contains
             case('VON_NEUMANN_ENTROPY')
                 doing_von_neumann_entropy = .true.
             case('RENYI_ENTROPY_2')
-                dmqmc_calc_type = dmqmc_calc_type + dmqmc_renyi_2
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
             case('START_AVERAGING')
                 call readi(start_averaging)
             ! calculation options: DMQMC
@@ -593,9 +595,9 @@ contains
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
 
-        if (doing_dmqmc_calc(dmqmc_renyi_2) .and. (.not. replica_tricks)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. replica_tricks)) call stop_all(this,&
                     'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
-        if (doing_dmqmc_calc(dmqmc_renyi_2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
                     'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
 
         ! If the FINITE_CLUSTER keyword was detected then make sure that

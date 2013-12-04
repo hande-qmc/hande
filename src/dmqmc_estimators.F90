@@ -23,7 +23,7 @@ contains
 
         use spawn_data, only: annihilate_wrapper_spawn_t
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_energy_squared, dmqmc_renyi_2
+        use calc, only: dmqmc_energy_squared, dmqmc_rdm_r2
         use checking, only: check_allocate
         use dmqmc_procedures, only: rdms
         use energy_evaluation, only: update_shift
@@ -66,7 +66,7 @@ contains
                 rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
             end do
             call calculate_rdm_traces(rdms, rdm_spawn%spawn, rdm_traces)
-            if (doing_dmqmc_calc(dmqmc_renyi_2)) call calculate_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
+            if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
             do irdm = 1, nrdms
                 rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
             end do
@@ -76,7 +76,7 @@ contains
         array_size = 2*sampling_size+1+number_dmqmc_estimators
         if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
         if (calc_inst_rdm) array_size = array_size + size(rdm_traces)
-        if (doing_dmqmc_calc(dmqmc_renyi_2)) array_size = array_size + size(renyi_2)
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) array_size = array_size + size(renyi_2)
 
         allocate(ir(1:array_size), stat=ierr)
         call check_allocate('ir',array_size,ierr)
@@ -102,7 +102,7 @@ contains
                 ir(min_ind:max_ind) = rdm_traces(:,irdm)
             end do
         end if
-        if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             min_ind = max_ind + 1; max_ind = min_ind + size(renyi_2) - 1
             ir(min_ind:max_ind) = renyi_2
         end if
@@ -128,7 +128,7 @@ contains
                 rdm_traces(:,irdm) = real(ir_sum(min_ind:max_ind),p)
             end do
         end if
-        if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             min_ind = max_ind + 1; max_ind = min_ind + size(renyi_2) - 1
             renyi_2 = real(ir_sum(min_ind:max_ind),p)
         end if
@@ -172,7 +172,7 @@ contains
 
        use basis, only: basis_length, total_basis_length
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-       use calc, only: dmqmc_energy_squared, dmqmc_correlation
+       use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
        use excitations, only: get_excitation, excit
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
@@ -199,11 +199,12 @@ contains
        ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet).
        unweighted_walker_pop = walker_population(:,idet)*dmqmc_accumulated_probs(excitation%nexcit)
 
+       ! If diagonal element, add to the trace.
+       if (excitation%nexcit == 0) trace = trace + walker_population(:,idet)
+
        ! The following only use the populations with ireplica = 1, so don't waste time calculating
        ! them if there won't be a contribution.
        if (abs(unweighted_walker_pop(1)) > 0) then
-           ! If diagonal element, add to the trace.
-           if (excitation%nexcit == 0) trace = trace + walker_population(:,idet)
            ! See which estimators are to be calculated, and call the corresponding procedures.
            ! Energy
            If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr&
@@ -224,6 +225,9 @@ contains
            if (dmqmc_find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
                    excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
        end if
+
+       ! Full Renyi 2
+       if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop)
 
        ! Reduced density matrix
        if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
@@ -260,7 +264,7 @@ contains
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
-       real(p) , intent(in) :: walker_pop
+       real(p), intent(in) :: walker_pop
        integer :: bit_element, bit_position
 
        ! If no excitation, we have a diagonal element, so add elements
@@ -308,7 +312,7 @@ contains
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
-       real(p) , intent(in) :: walker_pop
+       real(p), intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        real(p) :: sum_H1_H2, J_coupling_squared
 
@@ -415,7 +419,7 @@ contains
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
-       real(p) , intent(in) :: walker_pop
+       real(p), intent(in) :: walker_pop
        real(p) :: hmatel
 
        ! If no excitation, we have a diagonal element, so add elements
@@ -462,7 +466,7 @@ contains
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
-       real(p) , intent(in) :: walker_pop
+       real(p), intent(in) :: walker_pop
        integer(i0) :: f(basis_length)
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer :: sign_factor
@@ -526,7 +530,7 @@ contains
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
-       real(p) , intent(in) :: walker_pop
+       real(p), intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer(i0) :: f(basis_length)
        integer :: n_up_plus
@@ -574,6 +578,24 @@ contains
 
    end subroutine dmqmc_stag_mag_heisenberg
 
+   subroutine update_full_renyi_2(walker_pop)
+
+       ! Add the contribution from the current density matrix element
+       ! to the Renyi 2 entropy of the full density matrix.
+
+       ! In:
+       !    walker_pop: number of particles on the current density matrix
+       !        element, for both replicas.
+
+       use fciqmc_data, only: estimator_numerators, full_r2_index
+
+       real(p), intent(in) :: walker_pop(:)
+
+       estimator_numerators(full_r2_index) = estimator_numerators(full_r2_index) + &
+                                  walker_pop(1)*walker_pop(2)
+
+   end subroutine update_full_renyi_2
+
    subroutine update_reduced_density_matrix_heisenberg(idet, excitation, walker_pop, iteration)
 
        ! Add a contribution from the current walker to the reduced density
@@ -602,6 +624,7 @@ contains
        use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
        use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, nrdms
        use fciqmc_data, only: start_averaging, rdm_spawn, dmqmc_accumulated_probs
+       use fciqmc_data, only: nsym_vec
        use spawning, only: create_spawned_particle_rdm
 
        integer, intent(in) :: idet, iteration
@@ -616,7 +639,7 @@ contains
        ! Loop over all RDMs to be calculated.
        do irdm = 1, nrdms
            ! Loop over every symmetry-equivalent subsystem for this RDM.
-           do isym = 1, rdms(irdm)%nsym
+           do isym = 1, nsym_vec
 
                ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
                f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis_length,idet))
@@ -874,8 +897,7 @@ contains
 
         type(rdm), intent(in) :: rdm_data(:)
         type(spawn_t), intent(in) :: rdm_lists(:)
-        real(p) :: traces(:,:)
-
+        real(p), intent(out) :: traces(:,:)
         integer :: irdm, i, rdm_bl
         integer, parameter :: thread_id = 0
 
@@ -894,7 +916,7 @@ contains
 
     end subroutine calculate_rdm_traces
 
-    subroutine calculate_renyi_2(rdm_data, rdm_lists, r2)
+    subroutine calculate_rdm_renyi_2(rdm_data, rdm_lists, r2)
 
         use dmqmc_procedures, only: rdm
         use excitations, only: get_excitation_level
@@ -903,7 +925,7 @@ contains
 
         type(rdm), intent(in) :: rdm_data(:)
         type(spawn_t), intent(in) :: rdm_lists(:)
-        real(p) :: r2(:)
+        real(p), intent(out) :: r2(:)
         integer :: i, irdm, excit_level, rdm_bl
         real(p) :: unweighted_pop_1, unweighted_pop_2
         integer, parameter :: thread_id = 0
@@ -931,6 +953,6 @@ contains
             end do
         end do
 
-    end subroutine calculate_renyi_2
+    end subroutine calculate_rdm_renyi_2
 
 end module dmqmc_estimators
