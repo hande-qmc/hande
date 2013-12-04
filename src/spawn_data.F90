@@ -133,7 +133,7 @@ contains
         ! spawn%head_start(nthreads-1,1) should contain the number of elements
         ! allocated for each processor so we allow it to be accessible even if
         ! the number of processors is 1.
-        spawn%head_start(nthreads-1,1) = block_size
+        spawn%head_start(0,1) = block_size
 
         spawn%head = spawn%head_start
 
