@@ -352,6 +352,8 @@ module hash_table
             !    err_code: error code.  Non-zero if an error is encountered.
             !        See error codes defined at module-level.
 
+            use utils, only: int_fmt
+
             type(hash_table_t), intent(inout) :: ht
             integer, intent(in) :: slot
             type(hash_table_pos_t), intent(out) :: pos
@@ -362,9 +364,11 @@ module hash_table
                 err_code = HT_ERR_COLLISIONS
             else
                 call take_hash_table_free_entry(ht, pos%indx, err_code)
-                pos%ientry = ht%table(0,pos%islot) + 1
-                ht%table(0,pos%islot) = pos%ientry
-                ht%table(pos%ientry,pos%islot) = pos%indx
+                if (err_code == 0) then
+                    pos%ientry = ht%table(0,pos%islot) + 1
+                    ht%table(0,pos%islot) = pos%ientry
+                    ht%table(pos%ientry,pos%islot) = pos%indx
+                end if
             end if
 
         end subroutine assign_hash_table_entry
