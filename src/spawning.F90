@@ -1257,11 +1257,14 @@ contains
 
         use bit_utils, only: operator(.bitstrgt.)
         use dmqmc_procedures, only: rdms
+        use errors, only: stop_all
         use fciqmc_data, only: rdm_spawn_t
         use hashing
         use parallel, only: iproc, nprocs, nthreads
-        use hash_table, only: hash_table_pos_t, lookup_hash_table_entry, &
-                              assign_hash_table_entry
+        use hash_table, only: hash_table_pos_t, lookup_hash_table_entry
+        use hash_table, only: assign_hash_table_entry
+        use utils, only: int_fmt
+                              
 
         integer, intent(in) :: irdm
         integer, intent(in) :: nspawn_in
@@ -1334,6 +1337,11 @@ contains
             else
                 ! Move to the next position in the spawning array.
                 call assign_hash_table_entry(ht, pos%islot, pos, err_code)
+                if (err_code /= 0) then
+                    write(6,'(1X,a9,'//int_fmt(err_code,1)//')') 'err_code:', err_code
+                    call stop_all('create_spawned_particle_rdm','Error in assigning hash &
+                                  &table entry.')
+                end if
                 ! Fix hash table to point to the head of the spawn data
                 ! for this thread/processor.
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
