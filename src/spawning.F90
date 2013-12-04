@@ -922,6 +922,7 @@ contains
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
         use basis, only: basis_length, total_basis_length
+        use errors, only: stop_all
         use excitations, only: excit, create_excited_det
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -967,6 +968,11 @@ contains
         ! Move to the next position in the spawning array.
         spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
+        ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
+        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+            call stop_all('create_spawned_particle_density_matrix',&
+                           'There is no space left in the spawning array.')
+
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
         spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
@@ -1001,6 +1007,7 @@ contains
         use determinants, only: det_compare
         use basis, only: basis_length, total_basis_length
         use calc, only: truncation_level
+        use errors, only: stop_all
         use excitations, only: excit, create_excited_det
         use hashing
         use parallel, only: iproc, nprocs
@@ -1052,6 +1059,11 @@ contains
         ! Move to the next position in the spawning array.
         spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + 1
 
+        ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
+        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+            call stop_all('create_spawned_particle_half_density_matrix',&
+                           'There is no space left in the spawning array.')
+
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
         spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
@@ -1094,6 +1106,7 @@ contains
         use basis, only: basis_length, total_basis_length
         use determinants, only: det_compare
         use calc, only: truncation_level
+        use errors, only: stop_all
         use excitations, only: excit, create_excited_det, get_excitation_level
         use hashing
         use parallel, only: iproc, nprocs
@@ -1147,6 +1160,11 @@ contains
             ! Move to the next position in the spawning array.
             spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + 1
 
+            ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
+            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+                call stop_all('create_spawned_particle_truncated_half_density_matrix',&
+                               'There is no space left in the spawning array.')
+
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
             spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
@@ -1184,6 +1202,7 @@ contains
 
         use basis, only: basis_length, total_basis_length
         use calc, only: truncation_level
+        use errors, only: stop_all
         use excitations, only: excit, create_excited_det, get_excitation_level
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -1231,6 +1250,11 @@ contains
 
             ! Move to the next position in the spawning array.
             spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+
+            ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
+            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+                call stop_all('create_spawned_particle_truncated_density_matrix', &
+                               'There is no space left in the spawning array.')
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
@@ -1345,6 +1369,11 @@ contains
                 ! Fix hash table to point to the head of the spawn data
                 ! for this thread/processor.
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+
+                ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
+                if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+                    call stop_all('create_spawned_particle_rdm','There is no space left in the RDM array.')
+
                 ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)
                 associate(indx => ht%table(pos%ientry,pos%islot))
                     ! Set info in spawning array.

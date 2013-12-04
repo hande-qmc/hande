@@ -616,6 +616,7 @@ contains
         use basis, only: basis_length, total_basis_length
         use fciqmc_data, only: qmc_spawn
         use parallel
+        use errors, only: stop_all
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn, particle_type
@@ -639,6 +640,10 @@ contains
 
         ! Move to the next position in the spawning array.
         qmc_spawn%head(0,iproc_spawn) = qmc_spawn%head(0,iproc_spawn) + 1
+
+        ! qmc_spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
+        if (qmc_spawn%head(0,iproc_spawn) - qmc_spawn%head_start(0,iproc_spawn) >= qmc_spawn%head_start(0,1)) &
+            call stop_all('create_particle', 'There is no space left in the spawning array.')
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
