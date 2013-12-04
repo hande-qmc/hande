@@ -216,11 +216,12 @@ contains
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
         use system, only: sys_t, heisenberg
+        use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
-        integer :: bit_position, bit_element
+        integer :: bit_position, bit_element, nbytes_int
 
         ! For the Heisenberg model only currently.
         if (sys%system==heisenberg) then
@@ -231,6 +232,7 @@ contains
         end if
 
         total_size_spawned_rdm = 0
+        nbytes_int = bit_size(i)/8
 
         if (calc_inst_rdm) then
             allocate(rdm_spawn(nrdms), stat=ierr)
@@ -263,8 +265,11 @@ contains
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_rdm_length < 0) then
                     ! Given in MB.  Convert.
-                    ! Note that we store 2 arrays.
-                    spawned_rdm_length = int((-real(spawned_rdm_length,p)*10**6)/(2*size_spawned_rdm))
+                    ! Note that the factor of 2 is because two spawning arrays are stored, and
+                    ! nbytes_int is added because there is one integer in the hash table for each
+                    ! spawned rdm slot.
+                    spawned_rdm_length = int((-real(spawned_rdm_length,p)*10**6)/&
+                                          (2*size_spawned_rdm + nbytes_int))
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
@@ -280,8 +285,12 @@ contains
             end if
         end do
 
-        if (parent) write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
+        if (parent) then
+            write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
                 total_size_spawned_rdm*real(2*spawned_rdm_length,p)/10**6
+            write (6,'(1X,a49,'//int_fmt(spawned_rdm_length,1)//',/)') &
+                'Number of elements per core in spawned RDM lists:', spawned_rdm_length
+        end if
 
         ! For an ms = 0 subspace, assuming less than or exactly half the spins in the subsystem are in
         ! the subsystem, then any combination of spins can occur in the subsystem, from all spins down
