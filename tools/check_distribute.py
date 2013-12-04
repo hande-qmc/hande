@@ -63,7 +63,7 @@ def test_input(input_file):
                     # 1. obtain 'readi(a)'
                     fn_call = line.split('call')[-1].strip()
                     # 2. obtain 'a'.
-                    var = parentheses.search(fn_call).group(0)
+                    var = parentheses.search(fn_call).group(0).strip()
                     variables.update([var.upper()])
                 elif setvar.match(line):
                     # e.g. a = b 
