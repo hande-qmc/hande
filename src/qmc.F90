@@ -30,7 +30,7 @@ contains
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
-        use loadbal_data
+        use loadbal_data, only: proc_map, p_map_size
 
         type(sys_t), intent(inout) :: sys
 
@@ -43,7 +43,7 @@ contains
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(nbasis, ms_in, sys)
-        call initialise_proc_map(proc_map, p_map_size, num_slots)
+        call initialise_proc_map(proc_map, p_map_size, load_balancing_slots)
 
         ! Initialise data
         call init_qmc(sys)

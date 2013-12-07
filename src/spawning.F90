@@ -475,7 +475,7 @@ contains
 
         use hashing, only: murmurhash_bit_string
         use loadbal_data, only: proc_map
-        use fciqmc_data, only: num_slots
+        use fciqmc_data, only: load_balancing_slots
 
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np
@@ -491,7 +491,7 @@ contains
         hash = murmurhash_bit_string(particle_label, length, seed)
         if (shift == 0) then
             ! p = hash(label) % np
-            slot_pos=modulo(hash, np*num_slots)
+            slot_pos=modulo(hash, np*load_balancing_slots)
             particle_proc = proc_map(slot_pos)
         else
             ! o = [ hash(label) + shift ] >> freq
@@ -509,7 +509,7 @@ contains
             offset = ishft(hash+shift, -freq)
             mod_label = particle_label + offset
             hash = murmurhash_bit_string(mod_label, length, seed)
-            slot_pos=modulo(hash, np*num_slots)
+            slot_pos=modulo(hash, np*load_balancing_slots)
             particle_proc = proc_map(slot_pos)
         end if
 

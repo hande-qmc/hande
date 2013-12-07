@@ -65,7 +65,7 @@ integer :: ccmc_move_freq = 5
 logical :: doing_load_balancing = .false.  
 ! Number of slots walker lists are initially subdivided into for proc_map
 ! Default = 1
-integer :: num_slots = 1
+integer :: load_balancing_slots = 1
 ! Load imbalance tag: 
 ! 0: Initial value on report loop.
 ! 1: Load balancing should go ahead.
