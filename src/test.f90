@@ -36,4 +36,33 @@ contains
 
     end subroutine assert_statement
 
+    function test_lua_api(L) result(nreturn) bind(c)
+
+        ! Example function callable from a Lua script.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        use flu_binding, only: flu_State, flu_copyptr
+        use iso_c_binding, only: c_ptr, c_int
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+
+        ! Number of variables returned on Lua stack.
+        nreturn = 0
+
+        ! Create flu_state from lua state so we can use the nice bindings
+        ! provided by AOTUS.
+        lua_state = flu_copyptr(L)
+
+        ! Get arguments passed to us by lua (if appropriate).
+
+        ! Now do our work...
+        write (6,'(1X,"Hello from fortran!",/)')
+
+    end function test_lua_api
+
 end module tests
