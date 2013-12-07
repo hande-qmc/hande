@@ -39,11 +39,6 @@ contains
         !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_rdm_info: information about RDMs to be calculated from DMQMC.
 
-! nag doesn't automatically bring in command-line option handling.
-#ifdef NAGF95
-        use f90_unix_env
-#endif
-
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
         use qmc_data, only: read_determ_space, high_pop_determ_space
@@ -53,12 +48,6 @@ contains
         use input
         use utils, only: get_free_unit
         use checking, only: check_allocate
-
-#ifdef NAGF95
-        use f90_unix_env, ONLY: getarg,iargc
-#else
-        integer :: iargc ! External function.
-#endif
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -71,21 +60,21 @@ contains
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(rdm_t), allocatable, intent(inout) :: dmqmc_rdm_info(:)
 
-        character(255) :: cInp
+        character(255) :: inp_file
         character(100) :: w
         integer :: ios
         logical :: eof, t_exists
         integer :: ivec, i, j, ierr, nweights
 
-        if (iargc() > 0) then
+        if (command_argument_count() > 0) then
             ! Input file specified on the command line.
             ir = get_free_unit()
-            call GetArg(1, cInp)
-            inquire(file=cInp, exist=t_exists)
+            call get_command_argument(1, inp_file)
+            inquire(file=inp_file, exist=t_exists)
             if (.not.t_exists) then
-                call stop_all('read_input','File does not exist:'//trim(cInp))
+                call stop_all('read_input','File does not exist:'//trim(inp_file))
             end if
-            open(ir, file=cInp, status='old', form='formatted', iostat=ios)
+            open(ir, file=inp_file, status='old', form='formatted', iostat=ios)
         else
             if (parent) write (6,'(a19)') 'Reading from STDIN'
             ir = 5
