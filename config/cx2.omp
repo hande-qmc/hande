@@ -1,7 +1,8 @@
-# Use intel/2012 mpi/mpt-2.06. Assumes hdf5 is compilied into ~/local/lib/hdf5-1.8.11.cx2/
+# Use intel/2013sp1 mpi/mpt-2.06 hdf5/1.8.11 git
 
 [DEFAULT]
-include_f = -I ${HOME}/local/lib/hdf5-1.8.11.cx2/include -openmp 
+include_f = -I $(NETCDF_HOME)/include/ -openmp
+
 
 [main]
 fc = mpif90
@@ -9,7 +10,8 @@ cc = mpicc
 cxx = mpicxx
 ld = mpif90
 cppflags = -DHAVE_SSE2 -DPARALLEL
-libs = -L ${HOME}/local/lib/hdf5-1.8.11.cx2/lib/ -L $(HOME)/local/lib -ltrlan_mpi -L $(MKL_HOME)/lib/64 -lmkl_scalapack_lp64 -lmkl_solver_lp64_sequential -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_sgimpt_lp64 -Wl,--end-group -lpthread -lm -cxxlib -lhdf5_fortran -lhdf5 -lz -luuid -openmp
+ldflags = -L $(HOME)/local/lib -L $(NETCDF_HOME)/lib -L ${MKL_HOME}/lib/64
+libs = -ltrlan_mpi  -mkl:cluster -lpthread -lm -cxxlib -lhdf5_fortran -lhdf5 -lz -luuid 
 f90_module_flag = -module
 
 [opt]
