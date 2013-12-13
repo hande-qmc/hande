@@ -1,4 +1,4 @@
-# Use intel/2013sp1 mpi/mpt-2.06 hdf5/1.8.12
+# Use intel/2013sp1 mpi/mpt-2.06 hdf5/1.8.11 git
 [DEFAULT]
 include_f = -I $(NETCDF_HOME)/include/
 
