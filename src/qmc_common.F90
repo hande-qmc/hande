@@ -360,8 +360,8 @@ contains
         integer :: i
         
         ! Send slots of determinants to their new processor.
-        if(load_slots_sent > 0) then
-                call redistribute_particles(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
+        if(load_slots_sent) then
+            call redistribute_particles(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
         end if
 
         load_balancing_tag = load_tag_done
@@ -570,7 +570,7 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
         
-        if(doing_load_balancing .and. load_balancing_tag == load_tag_doing) then
+        if(doing_load_balancing .and. load_balancing_tag == load_tag_doing) then 
             call do_load_balancing(proc_map)
         end if
 

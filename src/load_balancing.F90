@@ -49,7 +49,7 @@ contains
         integer :: up_thresh, low_thresh
         real(dp) :: perc_diff
         
-        perc_diff = 0
+        perc_diff = 0.05
         slot_list = 0
         ! Average population across processors.
         
@@ -61,10 +61,10 @@ contains
 #endif
         ! Find population per processor, store in procs_pop.
         procs_pop(:nprocs-1) = nparticles_proc(1,:nprocs)
-        pop_av = sum(procs_pop(:nprocs))/nprocs
+        pop_av = sum(procs_pop(:nprocs-1))/nprocs
 
         ! Upper threshold.
-        up_thresh = pop_av + int(real(pop_av*perc_diff))
+        up_thresh = pop_av + int(real(pop_av*perc_diff)) 
         ! Lower threshold.
         low_thresh = pop_av - int(real(pop_av*perc_diff))
 
@@ -139,9 +139,9 @@ contains
         !   donors/receivers: array containing donor/receiver processors
         !       (ones with above/below average population).
         !   up_thresh: Upper population threshold for load imbalance.
-        !   low_ thresh: lower population threshold for load imbalance.
+        !   low_thresh: lower population threshold for load imbalance.
 
-        use parallel, only: nprocs, parent
+        use parallel, only: nprocs
         use fciqmc_data, only: load_balancing_slots, load_slots_sent
 
         integer(lint), intent(in) :: d_map(:)
@@ -167,9 +167,9 @@ contains
                 ! Modify donor population. 
                 donor_pop = procs_pop(proc_map(d_index(pos)))-d_map(pos)
                 ! If adding subtracting slot doesn't move processor pop past a bound.
-                if (new_pop .le. up_thresh .and. donor_pop .ge. low_thresh ) then
-                    ! Changing processor population
+                if (donor_pop .ge. low_thresh)  then
                     load_slots_sent = .true.
+                    ! Changing processor population.
                     procs_pop(proc_map(d_index(pos))) = donor_pop
                     procs_pop(receivers(j)) = new_pop
                     ! Updating proc_map.
@@ -194,8 +194,6 @@ contains
         !   d_map: array containing populations of donor slots which we try and redistribute
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor.
-
-        use parallel, only: iproc
 
         integer, intent (in) :: donors(:)
         integer(lint), intent(in) :: slot_list(0:p_map_size-1) 
