@@ -25,7 +25,7 @@ contains
 
         use parallel, only : nprocs
 
-        integer, intent(inout) :: p_map_size
+        integer, intent(out) :: p_map_size
         integer, intent(in) :: load_balancing_slots
         integer , allocatable, intent(out) :: proc_map_d(:)
         integer :: i

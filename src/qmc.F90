@@ -30,7 +30,7 @@ contains
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
-        use loadbal_data, only: proc_map, p_map_size
+        use loadbal_data, only: proc_map, p_map_size, initialise_proc_map
 
         type(sys_t), intent(inout) :: sys
 
@@ -111,11 +111,13 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: ierr
-        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot=0
+        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
         integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
         integer(lint) :: tmp_lint
+
+        slot = 0
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 

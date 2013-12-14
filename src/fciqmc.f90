@@ -117,6 +117,8 @@ contains
 
                 end do
 
+                call send_particles
+
                 call direct_annihilation(sys, initiator_approximation)
 
                 call end_mc_cycle(ndeath, nattempts)

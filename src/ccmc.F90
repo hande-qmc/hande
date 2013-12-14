@@ -208,7 +208,7 @@ contains
         use search, only: binary_search
         use spawning, only: assign_particle_processor
         use system, only: sys_t
-        use load_balancing, only: redistribute_particles
+        use qmc_common, only: redistribute_particles
         
         type(sys_t), intent(in) :: sys
 
@@ -225,7 +225,7 @@ contains
         logical :: soft_exit
 
         integer, allocatable :: cumulative_abs_pops(:)
-        integer :: D0_proc, D0_pos, max_cluster_size,tot_abs_pop, slot=0
+        integer :: D0_proc, D0_pos, max_cluster_size,tot_abs_pop, slot
         integer :: D0_normalisation
         logical :: hit
         type(bloom_stats_t) :: bloom_stats
@@ -235,6 +235,8 @@ contains
         logical :: update_tau
 
         bloom_stats%mode = bloom_mode_fractionn
+
+        slot = 0
 
         if (.not.truncate_space) then
             ! User did not specify a truncation level.
