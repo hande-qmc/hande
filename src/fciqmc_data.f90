@@ -66,14 +66,23 @@ logical :: doing_load_balancing = .false.
 ! Number of slots walker lists are initially subdivided into for proc_map
 ! Default = 1
 integer :: load_balancing_slots = 1
-! Load imbalance tag: 
-! 0: Initial value on report loop.
-! 1: Load balancing should go ahead.
-! 2: Load balancing has been completed, and shouldn't be attempted again this
-!    report loop.
-integer :: load_tag=0
-! Max number of calls to load_balancing
-integer :: max_tries=0
+! Total population above which load balancing can be attempted.
+! Default = 1000.
+integer(lint) :: load_balancing_pop = 1000
+
+!--- Load Balancing Data ---
+
+! Load Balncing enumerators.
+enum, bind(c)
+    enumerator :: load_tag_initial
+    enumerator :: load_tag_doing
+    enumerator :: load_tag_done
+end enum
+! Tag for doing load balancing. 
+integer :: load_balancing_tag = load_tag_initial
+! If load balancing is called then we want to check if any slots
+! are actually sent. Prevents repeated calls to redistribute particles.
+logical :: load_slots_sent = .false.
 
 !--- Energy data ---
 
@@ -129,8 +138,6 @@ integer(lint), allocatable :: nparticles(:) ! (sampling_size)
 integer(lint), allocatable, target :: tot_nparticles(:) ! (sampling_size)
 ! Total number of particles on all determinants for each processor
 integer(lint), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
-! Average population across all processors
-integer(lint) :: pop_av
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard

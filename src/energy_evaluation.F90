@@ -25,7 +25,8 @@ contains
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
                                vary_shift_from_proje, D0_population, fold_line,                &
-                               nparticles_proc, pop_av, load_tag, doing_load_balancing
+                               nparticles_proc, load_balancing_tag,  doing_load_balancing,     &
+                               load_balancing_pop
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
         use load_balancing, only: check_imbalance
@@ -34,25 +35,28 @@ contains
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
-        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7), ir_pop(sampling_size,nprocs)
-        integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
-        integer :: ierr, i
+        real(dp) :: ir(sampling_size*nprocs+7), ir_sum(sampling_size*nprocs+7)
+        integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
+        integer :: ierr, i, sample_shift
+        logical :: mask
 
+        sample_shift = nprocs*sampling_size
+        ir(1:sample_shift) = 0
         ! Need to sum the number of particles and the projected energy over
         ! all processors.
-        ir(1:sampling_size) = nparticles
-        ir(sampling_size+1) = proj_energy
-        ir(sampling_size+2) = D0_population
-        ir(sampling_size+3) = rspawn
+        ir(iproc+1:iproc+sampling_size) = nparticles
+        ir(sample_shift+1) = proj_energy
+        ir(sample_shift+2) = D0_population
+        ir(sample_shift+3) = rspawn
 
         if (doing_calc(hfs_fciqmc_calc)) then
             ! HFS calculations also need to know \tilde{N} = \sum_i sign(N_j^(H)) N_j^(HF),
             ! where N_j^(H) is the population of Hamiltonian walkers on j and
             ! N_j^(HF) the population of Hellmann-Feynman walkers on j.
-            ir(sampling_size+4) = calculate_hf_signed_pop()
-            ir(sampling_size+5) = proj_hf_O_hpsip
-            ir(sampling_size+6) = proj_hf_H_hfpsip
-            ir(sampling_size+7) = D0_hf_population
+            ir(sample_shift+4) = calculate_hf_signed_pop()
+            ir(sample_shift+5) = proj_hf_O_hpsip
+            ir(sample_shift+6) = proj_hf_H_hfpsip
+            ir(sample_shift+7) = D0_hf_population
         end if
 
         ! Don't bother to optimise for running in serial.  This is a fast
@@ -64,7 +68,9 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        ntot_particles = nint(ir_sum(1:sampling_size), lint)
+        forall(i=1:sampling_size) nparticles_proc(i,:nprocs) = & 
+                                  nint(ir_sum(i:sample_shift:sampling_size), lint)
+        forall(i=1:sampling_size) ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
         proj_energy = ir_sum(sampling_size+1)
         D0_population = ir_sum(sampling_size+2)
         rspawn = ir_sum(sampling_size+3)
@@ -75,18 +81,10 @@ contains
             D0_hf_population = ir_sum(sampling_size+7)
         end if
 
-        if(doing_load_balancing) then
-#ifdef PARALLEL
-            do i=1, sampling_size
-                call mpi_allgather(ir(i), 1, MPI_REAL8, ir_pop(i,:), 1, MPI_REAL8, MPI_COMM_WORLD, ierr)
-                nparticles_proc(i,:)=ir_pop(i,:)
-            end do
-#else
-            nparticles_proc(:sampling_size,1)=nparticles(:sampling_size)
-#endif
-            pop_av=sum(nparticles_proc(1,:nprocs))/nprocs
-            ! check if there is at least one processor with load imbalance
-            load_tag=check_imbalance()
+        if(doing_load_balancing .and. ntot_particles(1) > load_balancing_pop) then
+            pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
+            ! Check if there is at least one processor with load imbalance.
+            call check_imbalance(load_balancing_tag, pop_av)
         end if
 
         if (vary_shift) then

@@ -30,8 +30,7 @@ contains
         use spawn_data, only: spawn_t
         use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
                                nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
-                               load_tag, pop_av, max_tries
-        use ccmc, only: redistribute_excips
+                               load_balancing_tag, load_tag_done
         use ranking, only: insertion_rank_int
 
         integer, intent(inout) :: proc_map(:)
@@ -45,28 +44,29 @@ contains
         integer(lint), allocatable :: d_map(:)
         
         integer :: ierr, i
-        integer(lint) :: p_av
+        integer(lint) :: pop_av
         integer ::  d_siz, r_siz, d_map_size
         integer :: up_thresh, low_thresh
-        real(dp) :: perc_diff=0.01
-        integer ::  imbal=0
-
-        slot_list=0
+        real(dp) :: perc_diff
+        
+        perc_diff = 0
+        slot_list = 0
         ! Average population across processors.
         
         ! Find slot populations.
         call initialise_slot_pop(proc_map, load_balancing_slots, qmc_spawn, slot_pop)
 #ifdef PARALLEL
-        ! Gather these from every process into slot_list.
+        ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, p_map_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
         ! Find population per processor, store in procs_pop.
-        procs_pop(:nprocs-1)=nparticles_proc(1,:nprocs)
+        procs_pop(:nprocs-1) = nparticles_proc(1,:nprocs)
+        pop_av = sum(procs_pop(:nprocs))/nprocs
 
         ! Upper threshold.
-        up_thresh=pop_av+int(real(pop_av*perc_diff))
+        up_thresh = pop_av + int(real(pop_av*perc_diff))
         ! Lower threshold.
-        low_thresh=pop_av-int(real(pop_av*perc_diff))
+        low_thresh = pop_av - int(real(pop_av*perc_diff))
 
         ! Find donor/receiver processors.
         call find_processors(procs_pop, up_thresh, low_thresh, receivers, donors, d_map_size, proc_map)
@@ -89,104 +89,37 @@ contains
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(proc_map, d_map, d_index, d_rank, procs_pop, donors, receivers, up_thresh, low_thresh)
 
-        ! Send slots of determinants to their new processor.
-        do i=1, d_siz
-            if(iproc==donors(i)) then
-                call redistribute_excips(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
-            end if 
-        end do
-        max_tries=max_tries+1
-        load_tag=load_tag+1
-
     end subroutine do_load_balancing
-    
-    subroutine redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
-
-        ! Due to the cooperative spawning (ie from multiple excitors at once) in
-        ! CCMC, we need to give each excitor the chance to be on the same
-        ! processor with all combinations of excitors, unlike in FCIQMC where
-        ! the spawning events are independent.  We satisfy this by periodically
-        ! moving an excitor to a different processor (MPI rank). 
-
-        ! WARNING: if the number of processors is large or the system small,
-        ! this introduces a bias as load balancing prevents all possible
-        ! clusters from being on the same processor at the same time.
- 
-        ! In:
-        !    walker_dets: list of occupied excitors on the current processor.
-        !    total_walkers: number of occupied excitors on the current processor.
-        ! In/Out:
-        !    nparticles: number of excips on the current processor.
-        !    walker_populations: Population on occupied excitors.  On output the
-        !        populations of excitors which are sent to other processors are
-        !        set to zero.
-        !    spawn: spawn_t object.  On output particles which need to be sent
-        !        to another processor have been added to the correct position in
-        !        the spawned store.
-
-        use basis, only: basis_length
-        use const, only: i0, lint
-        use spawn_data, only: spawn_t
-        use spawning, only: assign_particle_processor, add_spawned_particles
-        use parallel, only: iproc, nprocs
-
-        integer(i0), intent(in) :: walker_dets(:,:)
-        integer, intent(inout) :: walker_populations(:,:)
-        integer, intent(inout) :: tot_walkers
-        integer(lint), intent(inout) :: nparticles(:)
-        type(spawn_t), intent(inout) :: spawn
-
-        integer :: iexcitor, pproc, slot=0
-
-        !$omp parallel do default(none) &
-        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs) &
-        !$omp private(pproc)
-        do iexcitor = 1, tot_walkers
-            !  - set hash_shift and move_freq
-            call assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
-                                              spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot)
-            if (pproc /= iproc) then
-                ! Need to move.
-                ! Add to spawned array so it will be sent to the correct
-                ! processor during annihilation.
-                ! NOTE: for initiator calculations we need to keep this
-                ! population no matter what.  This relies upon the
-                ! (undocumented) 'feature' that a flag of 0 indicates the parent
-                ! was an initiator...
-                call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
-                ! Update population on the sending processor.
-                nparticles = nparticles - abs(walker_populations(:,iexcitor))
-                ! Zero population here.  Will be pruned on this determinant
-                ! automatically during annihilation (which will also update tot_walkers).
-                walker_populations(:,iexcitor) = 0
-            end if
-        end do
-        !$omp end parallel do
-
-    end subroutine redistribute_particles
-    
-    pure function check_imbalance() result(imbal) 
+        
+    subroutine check_imbalance(dummy_tag, average_pop) 
 
         use parallel
-        use fciqmc_data, only: nparticles_proc, pop_av
+        use fciqmc_data, only: nparticles_proc, load_tag_initial, &
+                               load_tag_doing
+
+        integer, intent(inout) :: dummy_tag
 
         integer :: i, imbal
-        integer(lint) :: max_i
-        integer (lint) ::  procs_pop(nprocs)
+        integer(lint) :: procs_pop(nprocs), average_pop
 
-        procs_pop(:nprocs)=nparticles_proc(1,:nprocs)
+        procs_pop(:nprocs) = nparticles_proc(1,:nprocs)
 
-        max_i=pop_av+5000
-        imbal=0 
-        
-        do i=1, nprocs
-            if(procs_pop(i)>max_i) then
-                imbal=1
+        imbal = 0 
+
+        do i = 1, nprocs
+            if(procs_pop(i) > average_pop) then
+                imbal = 1
                 exit
             end if 
         end do
 
-    end function check_imbalance
+        if(imbal == 1) then
+            dummy_tag = load_tag_doing
+        else 
+            dummy_tag = load_tag_initial
+        end if
+
+    end subroutine check_imbalance
 
     subroutine redistribute_slots(proc_map, d_map, d_index, d_rank, procs_pop, donors, receivers, up_thresh, low_thresh)
 
@@ -208,8 +141,8 @@ contains
         !   up_thresh: Upper population threshold for load imbalance.
         !   low_ thresh: lower population threshold for load imbalance.
 
-        use parallel, only: nprocs
-        use fciqmc_data, only: load_balancing_slots
+        use parallel, only: nprocs, parent
+        use fciqmc_data, only: load_balancing_slots, load_slots_sent
 
         integer(lint), intent(in) :: d_map(:)
         integer, intent(in) ::  d_index(:), d_rank(:)
@@ -221,24 +154,26 @@ contains
         integer :: pos
         integer :: i, j, total, donor_pop, new_pop 
 
-        donor_pop=0
-        new_pop=0
+        donor_pop = 0
+        new_pop = 0
+        load_slots_sent = .false.
 
-        do i=1, size(d_map)
+        do i = 1, size(d_map)
             ! Loop over receivers.
             pos=d_rank(i)
-            do j=1, size(receivers)
+            do j = 1, size(receivers)
                 ! Try to add this to below average population.
-                new_pop=d_map(pos) + procs_pop(receivers(j))             
+                new_pop = d_map(pos) + procs_pop(receivers(j))             
                 ! Modify donor population. 
-                donor_pop=procs_pop(proc_map(d_index(pos)))-d_map(pos)
+                donor_pop = procs_pop(proc_map(d_index(pos)))-d_map(pos)
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (new_pop .le. up_thresh .and. donor_pop .ge. low_thresh ) then
                     ! Changing processor population
-                    procs_pop(proc_map(d_index(pos)))=donor_pop
-                    procs_pop(receivers(j))=new_pop
+                    load_slots_sent = .true.
+                    procs_pop(proc_map(d_index(pos))) = donor_pop
+                    procs_pop(receivers(j)) = new_pop
                     ! Updating proc_map.
-                    proc_map(d_index(pos))=receivers(j)
+                    proc_map(d_index(pos)) = receivers(j)
                     ! Leave the j loop, could be more than one receiver.
                     exit
 	            end if
@@ -270,16 +205,16 @@ contains
 
         integer :: i, j, k
 
-        k=1
+        k = 1
         
-        do i=1, size(donors)
-            do j=0, size(slot_list)-1
+        do i = 1, size(donors)
+            do j = 0, size(slot_list) - 1
                 ! Putting appropriate blocks of slots in d_map.
-                if(proc_map(j)==donors(i)) then
-                    d_map(k)=slot_list(j)
+                if(proc_map(j) == donors(i)) then
+                    d_map(k) = slot_list(j)
                     ! Index is important as well.
-                    d_index(k)=j
-                    k=k+1
+                    d_index(k) = j
+                    k = k + 1
                 end if 
             end do
         end do
@@ -317,18 +252,19 @@ contains
 
         allocate(tmp_rec(nprocs))
         allocate(tmp_don(nprocs))
-        k=1
-        j=1
+
+        k = 1
+        j = 1
 
         ! Find donor/receiver processors.
         
-        do i=0, size(procs_pop)-1
+        do i = 0, size(procs_pop) - 1
             if(procs_pop(i) .lt. low_thresh) then
-                tmp_rec(j)=i
-                j=j+1
+                tmp_rec(j) = i
+                j = j+1
             else if (procs_pop(i) .gt. up_thresh) then
-                tmp_don(k)=i
-                k=k+1
+                tmp_don(k) = i
+                k = k+1
             end if 
         end do
 
@@ -344,18 +280,18 @@ contains
         ! Sort receiver processers.
 
         call insertion_rank_int(procs_pop, rank_nparticles, 0) 
-        do i=1, size(rec_dummy)
-            rec_sort(i)=rank_nparticles(i)-1
+        do i = 1, size(rec_dummy)
+            rec_sort(i) = rank_nparticles(i) - 1
         end do
-        rec_dummy=rec_sort
+        rec_dummy = rec_sort
 
         ! Calculate number of donor slots which we can move.
 
-        donor_slots=0
-        do i=0, size(proc_map)-1
+        donor_slots = 0
+        do i = 0, size(proc_map) - 1
             do j=1, size(don_dummy)
-                if(proc_map(i)==don_dummy(j)) then
-                    donor_slots=donor_slots+1
+                if(proc_map(i) == don_dummy(j)) then
+                    donor_slots = donor_slots + 1
                 end if 
             end do 
         end do 
@@ -382,10 +318,10 @@ contains
 
         integer :: i
 
-        procs_pop=0  
+        procs_pop = 0  
 
-        do i=0, size(proc_map)-1
-            procs_pop(proc_map(i))=procs_pop(proc_map(i))+slot_list(i)
+        do i = 0, size(proc_map) - 1
+            procs_pop(proc_map(i)) = procs_pop(proc_map(i)) + slot_list(i)
         end do
 
     end subroutine particles_per_proc
@@ -414,11 +350,11 @@ contains
 
         integer :: i, det_pos, iproc_slot
 
-        slot_pop=0
-        do i=1, tot_walkers
+        slot_pop = 0
+        do i = 1, tot_walkers
             call assign_particle_processor(walker_dets(:,i), basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                            nprocs, iproc_slot, det_pos)
-            slot_pop(det_pos)=slot_pop(det_pos)+abs(walker_population(1,i))
+            slot_pop(det_pos) = slot_pop(det_pos) + abs(walker_population(1,i))
         end do
 
    end subroutine initialise_slot_pop
