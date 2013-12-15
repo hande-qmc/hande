@@ -215,6 +215,7 @@ integer :: energy_index = 0
 integer :: energy_squared_index = 0
 integer :: correlation_index = 0
 integer :: staggered_mag_index = 0
+integer :: full_r2_index = 0
 
 ! When using the replica_tricks option, if the rdm in the first
 ! simulation if denoted \rho^1 and the ancillary rdm is denoted
@@ -272,6 +273,11 @@ logical :: replica_tricks = .false.
 ! will be stored in the array below.
 logical :: calculate_excit_distribution = .false.
 real(p), allocatable :: excit_distribution(:) ! (min(nel, nsites-nel) + 1)
+
+! If true then the simulation will start with walkers uniformly distributed
+! along the diagonal of the entire density matrix, including all symmetry
+! sectors.
+logical :: all_sym_sectors = .false.
 
 ! If true then the reduced density matricies will be calulated for the 'A'
 ! subsystems specified by the user.
@@ -456,7 +462,7 @@ contains
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_correlation, dmqmc_renyi_2
+        use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2
         use utils, only: int_fmt
 
         integer :: i, j
@@ -465,6 +471,9 @@ contains
            write (6,'(1X,a12,3X,a13,8X,a5)', advance = 'no') &
            '# iterations','Instant shift','Trace'
 
+            if (doing_dmqmc_calc(dmqmc_full_r2)) then
+                write (6, '(6X,a7,5X,a17)', advance = 'no') 'Trace_2','Full_R2_numerator'
+            end if
             if (doing_dmqmc_calc(dmqmc_energy)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
             end if
@@ -477,7 +486,7 @@ contains
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
             end if
-            if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+            if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
                 do i = 1, nrdms
                     write (6, '(4X,a18,'//int_fmt(i,0)//')', advance = 'no') 'Renyi_2_numerator_', i
                 end do
@@ -522,7 +531,8 @@ contains
         !    elapsed_time: time taken for the report loop.
         !    comment: if true, then prefix the line with a #.
 
-        use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc, dmqmc_renyi_2
+        use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
+        use calc, only: dmqmc_full_r2, dmqmc_rdm_r2
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
@@ -545,10 +555,13 @@ contains
                                              (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
+            if (doing_dmqmc_calc(dmqmc_full_r2)) then
+                write(6, '(3X,i10)',advance = 'no') trace(2)
+            end if
             do i = 1, number_dmqmc_estimators
                 write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
             end do
-            if (doing_dmqmc_calc(dmqmc_renyi_2)) then
+            if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
                 do i = 1, nrdms
                     write (6, '(6X,es17.10)', advance = 'no') renyi_2(i)
                 end do

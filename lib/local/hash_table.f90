@@ -139,7 +139,8 @@ module hash_table
             use checking, only: check_allocate
 
             integer, intent(in) :: nslots, nentries, data_len, payload_len, max_free_reqd, seed
-            integer, intent(in), optional, target :: data_label(:,:), payload(:,:)
+            integer(i0), intent(in), optional, target :: data_label(:,:)
+            integer, intent(in), optional, target :: payload(:,:)
             type(hash_table_t), intent(out) :: ht
 
             integer :: ierr
@@ -351,6 +352,8 @@ module hash_table
             !    err_code: error code.  Non-zero if an error is encountered.
             !        See error codes defined at module-level.
 
+            use utils, only: int_fmt
+
             type(hash_table_t), intent(inout) :: ht
             integer, intent(in) :: slot
             type(hash_table_pos_t), intent(out) :: pos
@@ -361,9 +364,11 @@ module hash_table
                 err_code = HT_ERR_COLLISIONS
             else
                 call take_hash_table_free_entry(ht, pos%indx, err_code)
-                pos%ientry = ht%table(0,pos%islot) + 1
-                ht%table(0,pos%islot) = pos%ientry
-                ht%table(pos%ientry,pos%islot) = pos%indx
+                if (err_code == 0) then
+                    pos%ientry = ht%table(0,pos%islot) + 1
+                    ht%table(0,pos%islot) = pos%ientry
+                    ht%table(pos%ientry,pos%islot) = pos%indx
+                end if
             end if
 
         end subroutine assign_hash_table_entry
@@ -395,7 +400,7 @@ module hash_table
             integer :: i
 
             hit = .false.
-            pos%islot = modulo(murmurhash_bit_string(label, size(label), ht%seed),ht%nslots)
+            pos%islot = modulo(murmurhash_bit_string(label, size(label), ht%seed),ht%nslots) + 1
 
             ! Need to search over elements in the table with this hash%nslots
             ! value (i.e. search over hash collisions).

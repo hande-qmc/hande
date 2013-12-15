@@ -24,10 +24,11 @@ contains
         use parallel
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, bit_lookup, nbasis
+        use bit_utils, only: count_set_bits
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use dmqmc_procedures, only: random_distribution_heisenberg
         use dmqmc_procedures, only: update_sampling_weights, output_and_alter_weights
+        use dmqmc_procedures, only: create_initial_density_matrix
         use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
         use dmqmc_estimators, only: call_ground_rdm_procedures
         use excitations, only: excit, get_excitation_level
@@ -41,12 +42,13 @@ contains
         use utils, only: int_fmt
         use errors, only: stop_all
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
         integer(lint) :: nparticles_old(sampling_size)
         integer(lint) :: nattempts
+        integer :: nel_temp
         type(det_info) :: cdet1, cdet2
         integer :: nspawned, ndeath
         type(excit) :: connection
@@ -72,6 +74,8 @@ contains
         ! output we subtract one from the iteration number, and run for one more
         ! report loop, asimplemented in the line of code below.
         nreport = nreport+1
+                            
+        if (all_sym_sectors) nel_temp = sys%nel
 
         do beta_cycle = 1, beta_loops
             ! Reset the current position in the spawning array to be the
@@ -95,23 +99,7 @@ contains
             ! iteration)
             call dSFMT_init(seed+iproc+(beta_cycle-1)*nprocs, 50000, rng)
 
-            ! Need to place psips randomly along the diagonal at the
-            ! start of every iteration. Pick orbitals randomly, each
-            ! with equal probability, so that when electrons are placed
-            ! on these orbitals they will have the correct spin and symmetry.
-            ! Initial particle distribution.
-            do ireplica = 1, sampling_size
-                select case(sys%system)
-                case(heisenberg)
-                    call random_distribution_heisenberg(rng, sys%lattice%nsites, ireplica)
-                case default
-                    call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
-                end select
-            end do
-
-            call direct_annihilation(sys, initiator_approximation)
-
-            nparticles_old = nint(D0_population)
+            call create_initial_density_matrix(rng, sys, nparticles_old)
 
             do ireport = 1, nreport
                 ! Zero report cycle quantities.
@@ -142,6 +130,13 @@ contains
                         cdet2%f => walker_dets((basis_length+1):(2*basis_length),idet)
                         cdet2%f2 => walker_dets(:basis_length,idet)
 
+                        ! If using multiple symmetry sectors then find the symmetry
+                        ! labels of this particular det.
+                        if (all_sym_sectors) then
+                            sys%nel = sum(count_set_bits(cdet1%f))
+                            sys%nvirt = sys%lattice%nsites - sys%nel
+                        end if
+
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
                         ! to refer to the correct element in the density matrix.
@@ -153,27 +148,32 @@ contains
                         if (icycle == 1) call call_dmqmc_estimators(sys, idet, iteration)
 
                         do ireplica = 1, sampling_size
-                            do iparticle = 1, abs(walker_population(ireplica,idet))
-                                ! Spawn from the first end.
-                                spawning_end = 1
-                                ! Attempt to spawn.
-                                call spawner_ptr(rng, sys, cdet1, walker_population(ireplica,idet), &
-                                                 gen_excit_ptr, nspawned, connection)
-                                ! Spawn if attempt was successful.
-                                if (nspawned /= 0) then
-                                    call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
-                                                                        ireplica, qmc_spawn)
-                                end if
 
-                                ! Now attempt to spawn from the second end.
-                                spawning_end = 2
-                                call spawner_ptr(rng, sys, cdet2, walker_population(ireplica,idet), &
-                                                 gen_excit_ptr, nspawned, connection)
-                                if (nspawned /= 0) then
-                                    call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
-                                                                        ireplica, qmc_spawn)
-                                end if
-                            end do
+                            ! If this condition is met then there will only be one det in this
+                            ! symmetry sector, so don't attempt to spawn.
+                            if (.not. (sys%nel == 0 .or. sys%nel == sys%lattice%nsites)) then
+                                do iparticle = 1, abs(walker_population(ireplica,idet))
+                                    ! Spawn from the first end.
+                                    spawning_end = 1
+                                    ! Attempt to spawn.
+                                    call spawner_ptr(rng, sys, cdet1, walker_population(ireplica,idet), &
+                                                     gen_excit_ptr, nspawned, connection)
+                                    ! Spawn if attempt was successful.
+                                    if (nspawned /= 0) then
+                                        call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
+                                                                            ireplica, qmc_spawn)
+                                    end if
+
+                                    ! Now attempt to spawn from the second end.
+                                    spawning_end = 2
+                                    call spawner_ptr(rng, sys, cdet2, walker_population(ireplica,idet), &
+                                                     gen_excit_ptr, nspawned, connection)
+                                    if (nspawned /= 0) then
+                                        call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
+                                                                            ireplica, qmc_spawn)
+                                    end if
+                                end do
+                            end if
 
                             ! Clone or die.
                             ! We have contributions to the clone/death step from both ends of the
@@ -184,6 +184,13 @@ contains
                                                   walker_population(ireplica,idet), nparticles(ireplica), ndeath)
                         end do
                     end do
+
+                    ! Now we have finished looping over all dets, set the symmetry labels back to
+                    ! their default value, if necessary.
+                    if (all_sym_sectors) then
+                        sys%nel = nel_temp
+                        sys%nvirt = sys%lattice%nsites - sys%nel
+                    end if
 
                     ! Add the spawning rate (for the processor) to the running total.
                     rspawn = rspawn + spawning_rate(ndeath, nattempts)

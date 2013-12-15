@@ -217,6 +217,8 @@ contains
                 replica_tricks = .true.
 
             ! DMQMC expectation values to be calculated
+            case('DMQMC_FULL_RENYI_2')
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_full_r2
             case('DMQMC_ENERGY')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
             case('DMQMC_ENERGY_SQUARED')
@@ -246,6 +248,8 @@ contains
                 dmqmc_weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 calculate_excit_distribution = .true.
+            case('USE_ALL_SYM_SECTORS')
+                all_sym_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
                 call readi(nrdms)
                 allocate(rdms(nrdms), stat=ierr)
@@ -275,7 +279,7 @@ contains
             case('VON_NEUMANN_ENTROPY')
                 doing_von_neumann_entropy = .true.
             case('RENYI_ENTROPY_2')
-                dmqmc_calc_type = dmqmc_calc_type + dmqmc_renyi_2
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
             case('START_AVERAGING')
                 call readi(start_averaging)
             ! calculation options: DMQMC
@@ -493,11 +497,13 @@ contains
 
         if (sys%system /= heisenberg) then
             if (sys%nel <= 0) call stop_all(this,'Number of electrons must be positive.')
-                if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
+            if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
                                                      & state for this system. Other trial functions are not avaliable.')
-                if (guiding_function /= no_guiding) &
-                    call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
+            if (guiding_function /= no_guiding) &
+                call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
                                          & currently.')
+            if (all_sym_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
+                                         & available for the Heisenberg model.')
         end if
 
         if (sys%system == read_in) then
@@ -522,7 +528,8 @@ contains
             end if
 
             if (sys%system == heisenberg) then
-                if (ms_in > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+                if (ms_in > sys%lattice%nsites .and. (.not. all_sym_sectors)) call stop_all(this,'Value of Ms given is&
+                                                                             & too large for this lattice.')
                 if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
                 if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
                                                                               & possible for this lattice.')
@@ -588,9 +595,9 @@ contains
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
 
-        if (doing_dmqmc_calc(dmqmc_renyi_2) .and. (.not. replica_tricks)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. replica_tricks)) call stop_all(this,&
                     'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
-        if (doing_dmqmc_calc(dmqmc_renyi_2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
                     'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
 
         ! If the FINITE_CLUSTER keyword was detected then make sure that
@@ -615,6 +622,14 @@ contains
                 if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for 1D&
                                       & calculations in real-space: ignoring keyword')
             end if
+        end if
+
+        if (all_sym_sectors) then
+            if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_sym_sectors option can only be used in&
+                                                                DMQMC calculations.')
+            if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
+                abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
+                    call stop_all(this, 'The use_all_sym_sectors option cannot be used with magnetic fields.')
         end if
 
         if (parent) write (6,'(/,1X,13("-"),/)')
@@ -735,6 +750,7 @@ contains
         call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)

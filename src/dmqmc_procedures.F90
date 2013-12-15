@@ -49,7 +49,7 @@ contains
 
          use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
-         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation
+         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
          use checking, only: check_allocate
          use fciqmc_data, only: trace, energy_index, energy_squared_index, correlation_index
          use fciqmc_data, only: staggered_mag_index, estimator_numerators, doing_reduced_dm
@@ -60,6 +60,7 @@ contains
          use fciqmc_data, only: nreport, average_shift_until, shift_profile, dmqmc_vary_weights
          use fciqmc_data, only: finish_varying_weights, weight_altering_factors, dmqmc_find_weights
          use fciqmc_data, only: sampling_size, rdm_traces, nrdms, dmqmc_accumulated_probs_old
+         use fciqmc_data, only: full_r2_index
          use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -76,6 +77,10 @@ contains
          call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
          rdm_traces = 0.0_p
 
+         if (doing_dmqmc_calc(dmqmc_full_r2)) then
+             number_dmqmc_estimators = number_dmqmc_estimators + 1
+             full_r2_index = number_dmqmc_estimators
+         end if
          if (doing_dmqmc_calc(dmqmc_energy)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
              energy_index = number_dmqmc_estimators
@@ -201,7 +206,7 @@ contains
         ! In:
         !    sys: system being studied.
 
-        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_renyi_2
+        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
@@ -211,11 +216,12 @@ contains
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
         use system, only: sys_t, heisenberg
+        use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
-        integer :: bit_position, bit_element
+        integer :: bit_position, bit_element, nbytes_int
 
         ! For the Heisenberg model only currently.
         if (sys%system==heisenberg) then
@@ -226,6 +232,17 @@ contains
         end if
 
         total_size_spawned_rdm = 0
+        nbytes_int = bit_size(i)/8
+
+        if (calc_inst_rdm) then
+            allocate(rdm_spawn(nrdms), stat=ierr)
+            call check_allocate('rdm_spawn', nrdms, ierr)
+        end if
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
+            allocate(renyi_2(nrdms), stat=ierr)
+            call check_allocate('renyi_2', nrdms, ierr)
+            renyi_2 = 0.0_p
+        end if
 
         do i = 1, nrdms
             rdms(i)%rdm_basis_length = ceiling(real(rdms(i)%A_nsites)/i0_length)
@@ -243,38 +260,37 @@ contains
             if (calc_ground_rdm .and. rdms(i)%rdm_basis_length > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
-            if (doing_dmqmc_calc(dmqmc_renyi_2)) then
-                allocate(renyi_2(nrdms), stat=ierr)
-                call check_allocate('renyi_2', nrdms, ierr)
-                renyi_2 = 0.0_p
-            end if
             if (calc_inst_rdm) then
-                allocate(rdm_spawn(nrdms), stat=ierr)
-                call check_allocate('rdm_spawn', nrdms, ierr)
-
                 size_spawned_rdm = (rdms(i)%rdm_basis_length*2+sampling_size)*i0_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_rdm_length < 0) then
                     ! Given in MB.  Convert.
-                    ! Note that we store 2 arrays.
-                    spawned_rdm_length = int((-real(spawned_rdm_length,p)*10**6)/(2*size_spawned_rdm))
+                    ! Note that the factor of 2 is because two spawning arrays are stored, and
+                    ! nbytes_int is added because there is one integer in the hash table for each
+                    ! spawned rdm slot.
+                    spawned_rdm_length = int((-real(spawned_rdm_length,p)*10**6)/&
+                                          (2*size_spawned_rdm + nbytes_int))
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
-                                 spawned_rdm_length, 7, rdm_spawn(i)%spawn)
+                                 spawned_rdm_length, 27, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  This should
                 ! give an ok performance...
                 ! We will only use the first 2*rdm_basis_length elements for the
                 ! hash, even though rdm_spawn%spawn%sdata is larger than that in
                 ! the first dimension...
-                call alloc_hash_table(nint(real(spawned_rdm_length)/3), 3, rdms(i)%rdm_basis_length*2, &
+                call alloc_hash_table(nint(real(spawned_rdm_length)/6), 6, rdms(i)%rdm_basis_length*2, &
                                       0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
 
-        if (parent) write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
+        if (parent) then
+            write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
                 total_size_spawned_rdm*real(2*spawned_rdm_length,p)/10**6
+            write (6,'(1X,a49,'//int_fmt(spawned_rdm_length,1)//',/)') &
+                'Number of elements per core in spawned RDM lists:', spawned_rdm_length
+        end if
 
         ! For an ms = 0 subspace, assuming less than or exactly half the spins in the subsystem are in
         ! the subsystem, then any combination of spins can occur in the subsystem, from all spins down
@@ -381,16 +397,24 @@ contains
 
         ! Allocate the RDM arrays.
         do i = 1, nrdms
-            allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
-            call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
-            allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
-            call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
+            if (rdms(i)%A_nsites == sys%lattice%nsites) then
+                call stop_all('find_rdm_masks','You are attempting to use the full density matrix &
+                              &as an RDM. This is not supported. You should use the &
+                              &dmqmc_full_renyi_2 option to calculate the Renyi 2 entropy of the &
+                              &whole lattice.')
+            else
+                allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
+                call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
+                allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
+                call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
+            end if
             rdms(i)%B_masks = 0
             rdms(i)%bit_pos = 0
         end do
 
         ! Run through every site on every subsystem and add every translational symmetry vector.
         do i = 1, nrdms ! Over every subsystem.
+
             do j = 1, nsym_vec ! Over every symmetry vector.
                 A_mask = 0
                 do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
@@ -434,16 +458,89 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine random_distribution_heisenberg(rng, nsites, ireplica)
+    subroutine create_initial_density_matrix(rng, sys, nparticles_tot)
+
+        use annihilation, only: direct_annihilation
+        use calc, only: initiator_approximation
+        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
+        use errors
+        use fciqmc_data, only: sampling_size, D0_population, all_sym_sectors
+        use parallel
+        use system, only: sys_t, heisenberg
+        use utils, only: binom_r
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        integer(lint), intent(out) :: nparticles_tot(sampling_size)
+        integer(lint) :: nparticles_temp(sampling_size)
+        integer :: nel, ireplica, ierr
+        integer :: npsips, npsips_this_proc
+        real(dp) :: total_size, sector_size
+        real(dp) :: r, prob
+
+        npsips_this_proc = nint(D0_population)/nprocs
+        ! If the initial number of psips does not split evenly between all processors,
+        ! add the leftover psips to the first processors in order.
+        if (nint(D0_population)-(nprocs*int(D0_population/nprocs)) > iproc) &
+              npsips_this_proc = npsips_this_proc + 1
+
+        nparticles_temp = 0
+
+        do ireplica = 1, sampling_size
+            select case(sys%system)
+            case(heisenberg)
+                if (all_sym_sectors) then
+                    ! The size (number of configurations) of all symmetry sectors combined.
+                    total_size = 2.0_dp**(real(sys%lattice%nsites,dp))
+
+                    do nel = 0, sys%lattice%nsites
+                        ! The size of this symmetry sector alone.
+                        sector_size = binom_r(sys%lattice%nsites, nel)
+                        prob = real(npsips_this_proc,dp)*sector_size/total_size
+                        npsips = floor(prob)
+                        ! If there are a non-integer number of psips to be spawned in this sector
+                        ! then add an extra psip with the required probability.
+                        prob = prob - npsips
+                        r = get_rand_close_open(rng)
+                        if (r < prob) npsips = npsips + 1
+
+                        nparticles_temp(ireplica) = nparticles_temp(ireplica) + int(npsips, lint)
+                        call random_distribution_heisenberg(rng, nel, npsips, ireplica)
+                    end do
+                else
+                    ! This process will always create excatly D0_population psips.
+                    nparticles_tot = nint(D0_population, lint)
+
+                    call random_distribution_heisenberg(rng, sys%nel, npsips_this_proc, ireplica)
+                end if
+            case default
+                call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
+            end select
+        end do
+
+#ifdef PARALLEL
+        if (all_sym_sectors) then
+            ! Finally, count the total number of particles across all processes.
+#ifdef PARALLEL
+            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_INTEGER8, MPI_SUM, &
+                                MPI_COMM_WORLD, ierr)
+#else
+            nparticles_tot = nparticles_temp
+#endif
+        end if
+#else
+        nparticles_tot = nparticles_temp
+#endif
+
+        call direct_annihilation(sys, initiator_approximation)
+
+    end subroutine create_initial_density_matrix
+
+    subroutine random_distribution_heisenberg(rng, spins_up, npsips, ireplica)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
         ! with the same probability.
-
-        ! Currently this creates psips with Ms = ms_in only.
-
-        ! If we have number of sites = nsites and total spin value = ms_in,
-        ! then the number of up spins is equal to up_spins = (ms_in + nsites)/2.
 
         ! Start from state with all spins down, then choose the above number of
         ! spins to flip up with equal probability.
@@ -451,30 +548,24 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
-        !    nsites: number of sites in the simulation cell.
+        !    spins_up: for the spin configurations generated, this number
+        !       specifies how many of the spins shall be up.
+        !    npsips: The total number of psips to be created.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
 
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
-        use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: D0_population
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use parallel
         use system
 
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(in) :: nsites
-        integer, intent(in) :: ireplica
-        integer :: i, up_spins, rand_basis, bits_set
-        integer :: bit_element, bit_position, npsips
+        integer, intent(in) :: spins_up, npsips, ireplica
+        integer :: i, rand_basis, bits_set
+        integer :: bit_element, bit_position
         integer(i0) :: f(basis_length)
         real(dp) :: rand_num
-
-        up_spins = (ms_in+nsites)/2
-        npsips = int(D0_population/nprocs)
-        ! If the initial number of psips does not split evenly between all processors,
-        ! add the leftover psips to the first processors in order.
-        if (D0_population-(nprocs*int(D0_population/nprocs)) > iproc) npsips = npsips+1
 
         do i = 1, npsips
 
@@ -485,7 +576,7 @@ contains
             do
                 ! If half the spins are now flipped up, we have our basis
                 ! function fully created, so exit the loop.
-                if (bits_set==up_spins) exit
+                if (bits_set==spins_up) exit
                 ! Choose a random spin to flip.
                 rand_num = get_rand_close_open(rng)
                 rand_basis = ceiling(rand_num*nbasis)
@@ -521,6 +612,7 @@ contains
         use basis, only: basis_length, total_basis_length
         use fciqmc_data, only: qmc_spawn
         use parallel
+        use errors, only: stop_all
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
         integer, intent(in) :: nspawn, particle_type
@@ -544,6 +636,10 @@ contains
 
         ! Move to the next position in the spawning array.
         qmc_spawn%head(0,iproc_spawn) = qmc_spawn%head(0,iproc_spawn) + 1
+
+        ! qmc_spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
+        if (qmc_spawn%head(0,iproc_spawn) - qmc_spawn%head_start(0,iproc_spawn) >= qmc_spawn%head_start(0,1)) &
+            call stop_all('create_particle', 'There is no space left in the spawning array.')
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.

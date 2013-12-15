@@ -215,6 +215,7 @@ contains
         ! Initialise system based upon input parameters.
 
         use calc, only: ms_in
+        use fciqmc_data, only: all_sym_sectors
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -267,6 +268,10 @@ contains
                     sl%nsites = nint(product(sl%box_length))
 
                     forall (ivec=1:sl%ndim) sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
+
+                    ! If performing a calculation in all symmetry sectors, set ms_in to be its maximum value
+                    ! so that the necessary arrays will be allocated to their maximum size.
+                    if (all_sym_sectors) ms_in = sl%nsites
 
                 end select
 
@@ -335,7 +340,13 @@ contains
                 sys%hubbard%coulomb_k = sys%hubbard%u/sl%nsites
 
                 select case(sys%system)
-                case(heisenberg,chung_landau)
+                case(heisenberg)
+                    if (all_sym_sectors) then
+                        sys%max_number_excitations = sl%nsites/2
+                    else
+                        sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
+                    end if
+                case(chung_landau)
                     sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
                 case default
                     sys%max_number_excitations = sys%nel
