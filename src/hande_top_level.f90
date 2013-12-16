@@ -51,6 +51,8 @@ contains
         end if
         call comm_global_uuid()
 
+        call init_calc_defaults()
+
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
         if (parent) call read_input(sys)

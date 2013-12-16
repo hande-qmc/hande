@@ -19,3 +19,4 @@ varyshift_target 10000
 vary_shift_from -44.0
 
 neel_singlet_guiding
+seed 7
