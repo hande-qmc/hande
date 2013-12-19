@@ -84,7 +84,7 @@ contains
         if(doing_load_balancing .and. ntot_particles(1) > load_balancing_pop) then
             pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
             ! Check if there is at least one processor with load imbalance.
-            call check_imbalance(load_balancing_tag, pop_av)
+            call check_imbalance(pop_av, load_balancing_tag)
         end if
 
         if (vary_shift) then

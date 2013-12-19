@@ -2,7 +2,9 @@ module load_balancing
 
 ! Module for performing load balancing
 
-use loadbal_data
+use const , only: lint
+use loadbal_data, only: p_map_size
+
 implicit none
 
 contains
@@ -10,7 +12,7 @@ contains
     subroutine do_load_balancing(proc_map)
 
         ! Main subroutine in module, carries out load balancing as follows:
-        ! 1. Work out if we want to perform load balancing. 
+        ! 1. Work out if we want to perform load balancing.
         ! 2. If we do then:
         !   * Find processors which have above/below average population
         !   * For processors with above average populations enter slots from slot_list
@@ -24,7 +26,7 @@ contains
         ! In/Out:
         ! proc_map: array which maps determinants to processors
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor
-        
+
         use parallel
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use spawn_data, only: spawn_t
@@ -36,40 +38,37 @@ contains
         integer, intent(inout) :: proc_map(:)
 
         integer(lint) :: slot_pop(0:size(proc_map)-1)
-        integer(lint) :: slot_list(0:size(proc_map)-1) 
+        integer(lint) :: slot_list(0:size(proc_map)-1)
         integer(lint) :: procs_pop(0:nprocs-1)
 
         integer, allocatable :: donors(:), receivers(:)
         integer, allocatable :: d_rank(:), d_index(:)
         integer(lint), allocatable :: d_map(:)
-        
-        integer :: ierr, i
+
+        integer :: ierr
         integer(lint) :: pop_av
         integer ::  d_siz, r_siz, d_map_size
         integer :: up_thresh, low_thresh
         real(dp) :: perc_diff
-        
+
         perc_diff = 0.05
         slot_list = 0
-        ! Average population across processors.
-        
+
         ! Find slot populations.
         call initialise_slot_pop(proc_map, load_balancing_slots, qmc_spawn, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
-        call MPI_AllReduce(slot_pop, slot_list, p_map_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call MPI_AllReduce(slot_pop, slot_list, size(proc_map), MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
         ! Find population per processor, store in procs_pop.
         procs_pop(:nprocs-1) = nparticles_proc(1,:nprocs)
         pop_av = sum(procs_pop(:nprocs-1))/nprocs
 
-        ! Upper threshold.
-        up_thresh = pop_av + int(real(pop_av*perc_diff)) 
-        ! Lower threshold.
+        up_thresh = pop_av + int(real(pop_av*perc_diff))
         low_thresh = pop_av - int(real(pop_av*perc_diff))
 
         ! Find donor/receiver processors.
-        call find_processors(procs_pop, up_thresh, low_thresh, receivers, donors, d_map_size, proc_map)
+        call find_processors(procs_pop, up_thresh, low_thresh, proc_map, receivers, donors, d_map_size)
         ! Number of processors we can donate from.
         d_siz=size(donors)
         ! Number of processors we can donate to.
@@ -81,65 +80,66 @@ contains
         ! Contains index in proc_map of donor slots.
         allocate(d_index(d_map_size))
 
-        ! Put donor slots into array so we can sort them. 
-        call reduce_slots(donors, slot_list, d_index, d_map, proc_map)
-        ! Rank d_map.
+        ! Put donor slots into array so we can sort them.
+        call reduce_slots(donors, slot_list, proc_map, d_index, d_map)
         call insertion_rank_int(d_map, d_rank, 0)
 
         ! Attempt to modify proc map to get more even population distribution.
-        call redistribute_slots(proc_map, d_map, d_index, d_rank, procs_pop, donors, receivers, up_thresh, low_thresh)
+        call redistribute_slots( d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
 
     end subroutine do_load_balancing
-        
-    subroutine check_imbalance(dummy_tag, average_pop) 
 
-        use parallel
+    subroutine check_imbalance(average_pop, dummy_tag)
+
+        ! Check if there is at least one imbalanced processor.
+
+        ! In:
+        !    averag_pop: average population across all processors
+        ! Out:
+        !    dummy_tag: set to load_tag_doing if one processor has population above the average
+        !         else set to load_tag_initial i.e. we don't need to do load_balancing.
+
+        use parallel, only: nprocs
         use fciqmc_data, only: nparticles_proc, load_tag_initial, &
                                load_tag_doing
 
-        integer, intent(inout) :: dummy_tag
+        integer(lint), intent(in) :: average_pop
+        integer, intent(out) :: dummy_tag
 
         integer :: i, imbal
-        integer(lint) :: procs_pop(nprocs), average_pop
+        integer(lint) :: procs_pop(nprocs)
 
         procs_pop(:nprocs) = nparticles_proc(1,:nprocs)
 
-        imbal = 0 
+        imbal = 0
 
-        do i = 1, nprocs
-            if(procs_pop(i) > average_pop) then
-                imbal = 1
-                exit
-            end if 
-        end do
-
-        if(imbal == 1) then
+        if (any(procs_pop > average_pop)) then
             dummy_tag = load_tag_doing
-        else 
+        else
             dummy_tag = load_tag_initial
         end if
 
     end subroutine check_imbalance
 
-    subroutine redistribute_slots(proc_map, d_map, d_index, d_rank, procs_pop, donors, receivers, up_thresh, low_thresh)
+    subroutine redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
 
         ! Attempt to modify entries in proc_map to get a more even population distribution across processors.
         ! Slots from d_map are currently donated in increasing slot population.
         ! This is carried out while the donor processor's population is above a specified threshold
         ! or the receiver processor's population is below a certain threshold.
 
-        ! In/Out:
-        !   proc_map: array which maps determinants to processors.
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor.
-        ! In: 
+        ! In:
         !   d_map: array containing populations of donor slots which we try and redistribute/.
         !   d_index: array containing index of entries in d_map in proc_map.
         !   d_rank: array containing indices of d_map ranked in increasing population.
-        !   procs_pop: array containing populations on each processor.
         !   donors/receivers: array containing donor/receiver processors
         !       (ones with above/below average population).
         !   up_thresh: Upper population threshold for load imbalance.
         !   low_thresh: lower population threshold for load imbalance.
+        ! In/Out:
+        !   proc_map: array which maps determinants to processors.
+        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs) = processor.
+        !   procs_pop: array containing populations on each processor.
 
         use parallel, only: nprocs
         use fciqmc_data, only: load_balancing_slots, load_slots_sent
@@ -148,11 +148,11 @@ contains
         integer, intent(in) ::  d_index(:), d_rank(:)
         integer, intent(in) :: donors(:), receivers(:)
         integer, intent(in) :: up_thresh, low_thresh
-        integer, intent(inout) :: proc_map(0:p_map_size-1)
         integer(lint), intent(inout) :: procs_pop(0:nprocs-1)
+        integer, intent(inout) :: proc_map(0:p_map_size-1)
 
         integer :: pos
-        integer :: i, j, total, donor_pop, new_pop 
+        integer :: i, j, total, donor_pop, new_pop
 
         donor_pop = 0
         new_pop = 0
@@ -163,8 +163,8 @@ contains
             pos=d_rank(i)
             do j = 1, size(receivers)
                 ! Try to add this to below average population.
-                new_pop = d_map(pos) + procs_pop(receivers(j))             
-                ! Modify donor population. 
+                new_pop = d_map(pos) + procs_pop(receivers(j))
+                ! Modify donor population.
                 donor_pop = procs_pop(proc_map(d_index(pos)))-d_map(pos)
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (donor_pop .ge. low_thresh)  then
@@ -182,45 +182,45 @@ contains
 
     end subroutine redistribute_slots
 
-    subroutine reduce_slots(donors, slot_list, d_index, d_map, proc_map)
+    subroutine reduce_slots(donors, slot_list, proc_map, d_index, d_map)
 
         ! Reduce the size of array we have to search when finding large/small slots to redistribute.
 
-        ! In: 
+        ! In:
         !   donors: array containing donor processors.
         !   slot_list: array containing populations of slots across all processors.
-        ! In/Out:
-        !   d_index: array containing index of entries in d_map in proc_map.
-        !   d_map: array containing populations of donor slots which we try and redistribute
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor.
+        ! Out:
+        !   d_index: array containing index of entries in d_map in proc_map.
+        !   d_map: array containing populations of donor slots which we try and redistribute
 
         integer, intent (in) :: donors(:)
-        integer(lint), intent(in) :: slot_list(0:p_map_size-1) 
+        integer(lint), intent(in) :: slot_list(0:p_map_size-1)
         integer, intent (in) :: proc_map(0:p_map_size-1)
-        integer(lint), intent(inout) :: d_map(:)
-        integer, intent(inout) :: d_index(:)
+        integer(lint), intent(out) :: d_map(:)
+        integer, intent(out) :: d_index(:)
 
         integer :: i, j, k
 
         k = 1
-        
+
         do i = 1, size(donors)
             do j = 0, size(slot_list) - 1
                 ! Putting appropriate blocks of slots in d_map.
-                if(proc_map(j) == donors(i)) then
+                if (proc_map(j) == donors(i)) then
                     d_map(k) = slot_list(j)
                     ! Index is important as well.
                     d_index(k) = j
                     k = k + 1
-                end if 
+                end if
             end do
         end do
 
     end subroutine reduce_slots
-      
-    subroutine find_processors(procs_pop, up_thresh, low_thresh, rec_dummy, don_dummy, donor_slots, proc_map)
-        
+
+    subroutine find_processors(procs_pop, up_thresh, low_thresh, proc_map, rec_dummy, don_dummy, donor_slots)
+
         ! Find donor/receiver processors.
         ! Put these into varying size array receivers/donors.
 
@@ -228,12 +228,12 @@ contains
         !   procs_pop: number particles on each processor.
         !   upper/lower_thresh: upper/lower thresholds for load imblance i.e. how close to the average population
         !       we aspire to.
-        ! In/Out:
-        !   rec_dummy/don_dummy: arrays which contain donor/receivers processors.
-        !   donor_slots: number of slots which we can donate, this varies as more entries in proc_map are 
-        !       modified.
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor.
+        ! Out:
+        !   rec_dummy/don_dummy: arrays which contain donor/receivers processors.
+        !   donor_slots: number of slots which we can donate, this varies as more entries in proc_map are
+        !       modified.
 
         use parallel, only: nprocs
         use ranking, only: insertion_rank_int
@@ -241,11 +241,11 @@ contains
         integer(lint), intent(in) :: procs_pop(0:nprocs-1)
         integer, intent(in) :: proc_map(0:p_map_size-1)
         integer, intent(in) :: up_thresh, low_thresh
-        integer, intent(inout) :: donor_slots
+        integer, intent(out) :: donor_slots
+        integer, allocatable, intent(out) :: rec_dummy(:), don_dummy(:)
 
         integer ::  i, j, k, upper, lower
         integer, allocatable, dimension(:) ::  tmp_rec, tmp_don, rec_sort
-        integer, allocatable :: rec_dummy(:), don_dummy(:)
         integer :: rank_nparticles(nprocs)
 
         allocate(tmp_rec(nprocs))
@@ -255,44 +255,41 @@ contains
         j = 1
 
         ! Find donor/receiver processors.
-        
+
         do i = 0, size(procs_pop) - 1
-            if(procs_pop(i) .lt. low_thresh) then
+            if (procs_pop(i) .lt. low_thresh) then
                 tmp_rec(j) = i
                 j = j+1
             else if (procs_pop(i) .gt. up_thresh) then
                 tmp_don(k) = i
                 k = k+1
-            end if 
+            end if
         end do
 
         ! Put processor ID into smaller array.
-
         allocate(rec_dummy(j-1))
         allocate(rec_sort(j-1))
         allocate(don_dummy(k-1))
 
-        don_dummy=tmp_don(:k-1)
-        rec_dummy=tmp_rec(:j-1)
+        don_dummy = tmp_don(:k-1)
+        rec_dummy = tmp_rec(:j-1)
 
         ! Sort receiver processers.
-
-        call insertion_rank_int(procs_pop, rank_nparticles, 0) 
+        call insertion_rank_int(procs_pop, rank_nparticles, 0)
         do i = 1, size(rec_dummy)
             rec_sort(i) = rank_nparticles(i) - 1
         end do
         rec_dummy = rec_sort
 
         ! Calculate number of donor slots which we can move.
-
         donor_slots = 0
         do i = 0, size(proc_map) - 1
-            do j=1, size(don_dummy)
-                if(proc_map(i) == don_dummy(j)) then
+            do j = 1, size(don_dummy)
+                if (proc_map(i) == don_dummy(j)) then
                     donor_slots = donor_slots + 1
-                end if 
-            end do 
-        end do 
+                end if
+            end do
+        end do
 
     end subroutine find_processors
 
@@ -311,12 +308,12 @@ contains
         use parallel, only : nprocs
 
         integer, intent(in) :: proc_map(0:p_map_size-1)
-        integer(lint), intent(in) :: slot_list(0:p_map_size-1) 
+        integer(lint), intent(in) :: slot_list(0:p_map_size-1)
         integer(lint), intent(out) :: procs_pop(0:nprocs-1)
 
         integer :: i
 
-        procs_pop = 0  
+        procs_pop = 0
 
         do i = 0, size(proc_map) - 1
             procs_pop(proc_map(i)) = procs_pop(proc_map(i)) + slot_list(i)
@@ -326,11 +323,11 @@ contains
 
     subroutine initialise_slot_pop(proc_map, load_balancing_slots, spawn, slot_pop)
 
-        ! In: 
+        ! In:
         !   proc_map(p_map_size): array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor
         !   load_balancing_slots: number of slots which we divide slot_pop (and similar arrays) into.
-        !   spawn: spawn_t object.     
+        !   spawn: spawn_t object.
         ! In/Out:
         !   slot_pop(p_map_size): array containing population of slots in proc_map
         !       processor dependendent.
@@ -344,7 +341,7 @@ contains
         integer, intent(in):: load_balancing_slots
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: proc_map(0:p_map_size-1)
-        integer(lint), intent(out) :: slot_pop(0:size(proc_map)-1) 
+        integer(lint), intent(out) :: slot_pop(0:p_map_size-1)
 
         integer :: i, det_pos, iproc_slot
 
