@@ -209,7 +209,7 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t
         use qmc_common, only: redistribute_particles
-        
+
         type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
@@ -235,8 +235,6 @@ contains
         logical :: update_tau
 
         bloom_stats%mode = bloom_mode_fractionn
-
-        slot = 0
 
         if (.not.truncate_space) then
             ! User did not specify a truncation level.

@@ -40,7 +40,6 @@ contains
         logical :: updated
 
         H00_old = H00
-        slot = 0
 
         updated = .false.
         ! Find determinant with largest population.
@@ -398,8 +397,6 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer :: iexcitor, pproc, slot
-
-        slot = 0
 
         !$omp parallel do default(none) &
         !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs) &

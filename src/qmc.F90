@@ -117,8 +117,6 @@ contains
         integer(i0) :: f0_inv(basis_length)
         integer(lint) :: tmp_lint
 
-        slot = 0
-
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
         ! --- Array sizes depending upon QMC algorithms ---
