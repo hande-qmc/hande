@@ -3,7 +3,6 @@ module load_balancing
 ! Module for performing load balancing
 
 use const , only: lint
-use loadbal_data, only: p_map_size
 
 implicit none
 
@@ -148,8 +147,8 @@ contains
         integer, intent(in) ::  d_index(:), d_rank(:)
         integer, intent(in) :: donors(:), receivers(:)
         integer, intent(in) :: up_thresh, low_thresh
-        integer(lint), intent(inout) :: procs_pop(0:nprocs-1)
-        integer, intent(inout) :: proc_map(0:p_map_size-1)
+        integer(lint), intent(inout) :: procs_pop(0:)
+        integer, intent(inout) :: proc_map(0:)
 
         integer :: pos
         integer :: i, j, total, donor_pop, new_pop
@@ -194,8 +193,8 @@ contains
         !   d_map: array containing populations of donor slots which we try and redistribute
 
         integer, intent (in) :: donors(:)
-        integer(lint), intent(in) :: slot_list(0:p_map_size-1)
-        integer, intent (in) :: proc_map(0:p_map_size-1)
+        integer(lint), intent(in) :: slot_list(0:)
+        integer, intent (in) :: proc_map(0:)
         integer(lint), intent(out) :: d_map(:)
         integer, intent(out) :: d_index(:)
 
@@ -236,8 +235,8 @@ contains
         use parallel, only: nprocs
         use ranking, only: insertion_rank_int
 
-        integer(lint), intent(in) :: procs_pop(0:nprocs-1)
-        integer, intent(in) :: proc_map(0:p_map_size-1)
+        integer(lint), intent(in) :: procs_pop(0:)
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: up_thresh, low_thresh
         integer, intent(out) :: donor_slots
         integer, allocatable, intent(out) :: rec_dummy(:), don_dummy(:)
@@ -310,8 +309,8 @@ contains
 
         integer, intent(in):: load_balancing_slots
         type(spawn_t), intent(in) :: spawn
-        integer, intent(in) :: proc_map(0:p_map_size-1)
-        integer(lint), intent(out) :: slot_pop(0:p_map_size-1)
+        integer, intent(in) :: proc_map(0:)
+        integer(lint), intent(out) :: slot_pop(0:)
 
         integer :: i, det_pos, iproc_slot
 
