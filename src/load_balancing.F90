@@ -142,7 +142,7 @@ contains
         !   procs_pop: array containing populations on each processor.
 
         use parallel, only: nprocs
-        use fciqmc_data, only: load_balancing_slots, load_slots_sent
+        use fciqmc_data, only: load_balancing_slots
 
         integer(lint), intent(in) :: d_map(:)
         integer, intent(in) ::  d_index(:), d_rank(:)
@@ -156,7 +156,6 @@ contains
 
         donor_pop = 0
         new_pop = 0
-        load_slots_sent = .false.
 
         do i = 1, size(d_map)
             ! Loop over receivers.
@@ -168,7 +167,6 @@ contains
                 donor_pop = procs_pop(proc_map(d_index(pos)))-d_map(pos)
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (donor_pop .ge. low_thresh)  then
-                    load_slots_sent = .true.
                     ! Changing processor population.
                     procs_pop(proc_map(d_index(pos))) = donor_pop
                     procs_pop(receivers(j)) = new_pop

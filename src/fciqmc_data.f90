@@ -62,7 +62,7 @@ integer :: ccmc_move_freq = 5
 !--- Input data: Load Balancing ---
 
 ! Are we doing load balancing? Default false
-logical :: doing_load_balancing = .false.  
+logical :: doing_load_balancing = .false.
 ! Number of slots walker lists are initially subdivided into for proc_map
 ! Default = 1
 integer :: load_balancing_slots = 1
@@ -78,11 +78,8 @@ enum, bind(c)
     enumerator :: load_tag_doing
     enumerator :: load_tag_done
 end enum
-! Tag for doing load balancing. 
+! Tag for doing load balancing.
 integer :: load_balancing_tag = load_tag_initial
-! If load balancing is called then we want to check if any slots
-! are actually sent. Prevents repeated calls to redistribute particles.
-logical :: load_slots_sent = .false.
 
 !--- Energy data ---
 

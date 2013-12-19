@@ -117,7 +117,7 @@ contains
 
                 end do
 
-                call send_particles
+                call redistribute_load_balancing_dets
 
                 call direct_annihilation(sys, initiator_approximation)
 

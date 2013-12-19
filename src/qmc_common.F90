@@ -348,38 +348,31 @@ contains
 #endif
 
     end subroutine load_balancing_report
-    
-    subroutine send_particles
 
-        ! If doing load balancing we need to "send" slots of determinants to their new processors 
-        ! before annihilation takes place. Occasionally no slots can be donated even if there is
-        ! an imbalanced processor.
-        
-        use parallel
-        
-        integer :: i
-        
-        ! Send slots of determinants to their new processor.
-        if(load_slots_sent) then
+    subroutine redistribute_load_balancing_dets
+
+        ! If doing load balancing we need to send slots of determinants to their new processors
+        ! before annihilation takes place. Currently doesn't check if any slots will actually be sent.
+
+        if (load_balancing_tag == load_tag_doing) then
             call redistribute_particles(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
+            load_balancing_tag = load_tag_done
         end if
 
-        load_balancing_tag = load_tag_done
+    end subroutine redistribute_load_balancing_dets
 
-    end subroutine send_particles
-    
     subroutine redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
 
         ! Due to the cooperative spawning (ie from multiple excitors at once) in
         ! CCMC, we need to give each excitor the chance to be on the same
         ! processor with all combinations of excitors, unlike in FCIQMC where
         ! the spawning events are independent.  We satisfy this by periodically
-        ! moving an excitor to a different processor (MPI rank). 
+        ! moving an excitor to a different processor (MPI rank).
 
         ! WARNING: if the number of processors is large or the system small,
         ! this introduces a bias as load balancing prevents all possible
         ! clusters from being on the same processor at the same time.
- 
+
         ! In:
         !    walker_dets: list of occupied excitors on the current processor.
         !    total_walkers: number of occupied excitors on the current processor.
