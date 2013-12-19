@@ -291,34 +291,6 @@ contains
 
     end subroutine find_processors
 
-    subroutine particles_per_proc(proc_map, slot_list, procs_pop)
-
-        ! Find number of particles per processor and store in array procs_pop.
-
-        ! In:
-        !   proc_map: array which maps determinants to processors.
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor.
-        !   slot_list: array containing populations of slots in proc_map across all
-        !       processors.
-        ! Out:
-        !   procs_pop(nprocs): array containing population on each processor.
-
-        use parallel, only : nprocs
-
-        integer, intent(in) :: proc_map(0:p_map_size-1)
-        integer(lint), intent(in) :: slot_list(0:p_map_size-1)
-        integer(lint), intent(out) :: procs_pop(0:nprocs-1)
-
-        integer :: i
-
-        procs_pop = 0
-
-        do i = 0, size(proc_map) - 1
-            procs_pop(proc_map(i)) = procs_pop(proc_map(i)) + slot_list(i)
-        end do
-
-    end subroutine particles_per_proc
-
     subroutine initialise_slot_pop(proc_map, load_balancing_slots, spawn, slot_pop)
 
         ! In:
