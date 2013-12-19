@@ -43,7 +43,7 @@ contains
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(nbasis, ms_in, sys)
-        call initialise_proc_map(proc_map, p_map_size, load_balancing_slots)
+        call initialise_proc_map(load_balancing_slots, proc_map, p_map_size)
 
         ! Initialise data
         call init_qmc(sys)
