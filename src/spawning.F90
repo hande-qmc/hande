@@ -469,7 +469,7 @@ contains
         !       than 32.
         !    np: number of processors over which the particles are to be
         !       distributed.
-        ! In/Out:
+        ! Out:
         !    particle_proc: processor where determinant resides
         !    slot_pos: position in proc_map for this determinant
 
@@ -479,7 +479,7 @@ contains
 
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np
-        integer, intent(inout) :: particle_proc, slot_pos
+        integer, intent(out) :: particle_proc, slot_pos
 
         integer :: hash, offset
         integer(i0) :: mod_label(length)
