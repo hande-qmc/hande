@@ -66,19 +66,21 @@ logical :: doing_load_balancing = .false.
 ! Number of slots walker lists are initially subdivided into for proc_map
 ! Default = 1
 integer :: load_balancing_slots = 1
-! Total population above which load balancing can be attempted.
+! Population which must be reached before load balancing is attempted.
 ! Default = 1000.
 integer(lint) :: load_balancing_pop = 1000
 
 !--- Load Balancing Data ---
 
-! Load Balncing enumerators.
+! load_tag_initial: default status, no load balancing is required.
+! load_tag_doing: an imbalanced processor was detected, load balancing should procede.
+! load_tag_done: completed load balancing for this report loop.
 enum, bind(c)
     enumerator :: load_tag_initial
     enumerator :: load_tag_doing
     enumerator :: load_tag_done
 end enum
-! Tag for doing load balancing.
+! Tag to check which stage of load balancing we are at.
 integer :: load_balancing_tag = load_tag_initial
 
 !--- Energy data ---
