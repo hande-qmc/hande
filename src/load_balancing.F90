@@ -173,9 +173,9 @@ contains
                     proc_map(d_index(pos)) = receivers(j)
                     ! Leave the j loop, could be more than one receiver.
                     exit
-	            end if
-	        end do
-	    end do
+                 end if
+             end do
+         end do
 
     end subroutine redistribute_slots
 
