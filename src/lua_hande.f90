@@ -2,6 +2,61 @@ module lua_hande
 
 ! A lua interface to HANDE using the AOTUS library.
 
+! A very quick tutorial/summary/notes on interacting with lua:
+
+! 1. Please read the Lua manual on the C API: http://www.lua.org/pil/24.html.
+! 2. aotus has many useful wrappers around the Lua C API for interacting with Lua,
+!    including transferring information from Fortran to Lua and vice versa.  See
+!    lib/aotus/source for the wrapper functions.
+! 3. Everything goes via the Lua stack, which is a C pointer (Fortran)/Lua_State* (C).
+!    aotus wraps this into a flu_State object, which we should use wherever possible (ie
+!    always).
+! 4. Note that each function called by lua gets its own private stack.
+! 5. The Lua stack is LIFO (last in, first out), so the first argument passed is at the
+!    bottom of the stack and the last argument at the top.  Similarly the first argument
+!    returned is at the bottom of the stack and the last argument at the top.
+! 6. A function can be called from lua if it is 'registered' with the Lua stack and has
+!    a very specific interface, e.g.:
+!
+!        function test_lua_api(L) result(nreturn) bind(c)
+!
+!            ! Example function callable from a Lua script.
+!            ! Must be bind(C) so it can be called from C/Lua.
+!            ! Must take a C pointer (which is a Lua stack) as the sole argument.
+!            ! Must return an integer which is the number of variables the
+!            ! function returns to Lua by pushing to the stack.
+!
+!            ! In/Out:
+!            !    L: lua state (bare C pointer).
+!
+!            use flu_binding, only: flu_State, flu_copyptr
+!            use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+!
+!            integer(c_int) :: nreturn
+!            type(c_ptr), value :: L
+!
+!            type(flu_State) :: lua_state
+!
+!            ! Create flu_state from lua state so we can use the nice bindings
+!            ! provided by AOTUS.
+!            lua_state = flu_copyptr(L)
+!
+!            ! Number of variables returned on lua stack.
+!            nreturn = 0
+!
+!            ! Get arguments passed to us by lua (if appropriate).
+!
+!            ! Now do our work...
+!            write (6,'(1X,"Hello from fortran!",/)')
+!
+!        end function test_lua_api
+!
+! 7. The function can the be called in lua using function_name(arg1, arg2, ...).  In the
+!    example above, there are no arguments so it's simply test_lua_api(), assuming
+!    test_lua_api is the name provided to lua in the flu_register call.
+! 8. Please read the lua documentation and see the examples in the lua_hande* files for
+!    more details!
+
 implicit none
 
 contains
