@@ -86,12 +86,6 @@ integer :: basis_length
 ! in DMQMC, and hence the entire bitstring.
 integer :: total_basis_length
 
-! All bits in the determinant bit array correspond to a basis function apart
-! from the last element in the bit array (which can contain some excess).
-! last_basis_ind is the index of the last basis function in the last element of
-! the bit array.
-integer :: last_basis_ind
-
 ! A determinant is stored in the array f(nbasis).  A basis function is occupied
 ! in the determinant if the relevant bit is set.  The relevant bit is given by
 ! bit_element, the element of the array which contains the bit corresponding to

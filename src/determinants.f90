@@ -122,10 +122,8 @@ contains
         ! See note in basis.
         if (separate_strings) then
             basis_length = 2*ceiling(real(nbasis)/(2*i0_length))
-            last_basis_ind = nbasis/2 - i0_length*(basis_length/2-1) - 1
         else
             basis_length = ceiling(real(nbasis)/i0_length)
-            last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
         end if
 
         if(doing_calc(dmqmc_calc)) then
@@ -401,6 +399,9 @@ contains
 
 !--- Decode determinant bit strings ---
 
+! WARNING: decode_* procedures which involve occupied and/or unoccupied lists are not safe
+! when separate_strings is true...
+
     pure subroutine decode_det(f, occ_list)
 
         ! In:
@@ -543,7 +544,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
         type(det_info), intent(inout) :: d
-        integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb
+        integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
 
         iocc = 0
         iocc_a = 0
@@ -587,6 +588,7 @@ contains
         ! Treating the last element as a special case rather than having an if
         ! statement in the above loop results a speedup of the Hubbard k-space
         ! FCIQMC calculations of 1.5%.
+        last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
         do j = 0, last_basis_ind, 2
             ! Test alpha orbital.
             orb = orb + 1
