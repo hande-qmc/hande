@@ -2,7 +2,7 @@ module basis
 
 ! Basis function information.
 
-use kpoints
+use const, only: p, i0
 
 implicit none
 
@@ -139,6 +139,8 @@ contains
         ! l component can be correctly allocated.
 
         use checking, only: check_allocate
+
+        use kpoints, only: calc_kinetic
         use system
 
         type(sys_t), intent(in) :: sys
