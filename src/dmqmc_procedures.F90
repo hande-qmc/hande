@@ -266,10 +266,10 @@ contains
                 if (spawned_rdm_length < 0) then
                     ! Given in MB.  Convert.
                     ! Note that the factor of 2 is because two spawning arrays are stored, and
-                    ! nbytes_int is added because there is one integer in the hash table for each
+                    ! 21*nbytes_int is added because there are 21 integers in the hash table for each
                     ! spawned rdm slot.
                     spawned_rdm_length = int((-real(spawned_rdm_length,p)*10**6)/&
-                                          (2*size_spawned_rdm + nbytes_int))
+                                          (2*size_spawned_rdm + 21*nbytes_int))
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
@@ -280,8 +280,8 @@ contains
                 ! We will only use the first 2*rdm_basis_length elements for the
                 ! hash, even though rdm_spawn%spawn%sdata is larger than that in
                 ! the first dimension...
-                call alloc_hash_table(nint(real(spawned_rdm_length)/6), 6, rdms(i)%rdm_basis_length*2, &
-                                      0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
+                call alloc_hash_table(3*spawned_rdm_length, 7, rdms(i)%rdm_basis_length*2, &
+                                     0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
 
