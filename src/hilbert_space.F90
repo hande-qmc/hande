@@ -177,7 +177,15 @@ contains
                                 end if
                                 b_pos = bit_lookup(1,b)
                                 b_el = bit_lookup(2,b)
-                                if (.not.btest(f(b_el), b_pos) .and. a /= b) then
+                                ! Excite into an orbital which is unoccupied in
+                                ! the reference and which we have not already
+                                ! filled.  The former is crucial to ensure that
+                                ! we actually generate a determinant of
+                                ! excitation level determined by plevel rather
+                                ! than (potentially) generate a determinant of
+                                ! lower level by exciting into an orbital which
+                                ! was already excited from.
+                                if (.not.btest(ior(f(b_el),f0(b_el)), b_pos)) then
                                     f(b_el) = ibset(f(b_el), b_pos)
                                     exit
                                 end if
