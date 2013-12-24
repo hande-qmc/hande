@@ -122,7 +122,7 @@ contains
                     do i = 1, truncation_level
                         ! Number of possible determinants at excitation level i is (whilst
                         ! conserving the spin of the reference):
-                        !   \sum_b C(N_b,b) C(M-Nb,b) C(N_a, i-b) C(M-Na,i-b)
+                        !   \sum_b C(N_b,b) C(M-N_b,b) C(N_a, i-b) C(M-N_a,i-b)
                         ! ie the number of ways of choosing the electrons and the number of ways
                         ! of choosing the holes.  N_a (N_b) is the number of alpha (beta)
                         ! electrons and M is the number of alpha/beta spin orbitals.
