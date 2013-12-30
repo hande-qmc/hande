@@ -43,7 +43,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: iel, icycle, naccept
+        integer :: iel, icycle, naccept,nsuccess,nalpha,iweight,ilevel
         integer :: a, a_el, a_pos, b, b_el, b_pos, i, ierr
         integer :: ref_sym, det_sym
         integer(i0) :: f(basis_length), f0(basis_length)
@@ -56,6 +56,7 @@ contains
 
         type(dSFMT_t) :: rng
         type(sys_t) :: sys_bak
+        logical :: tFail
 
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
 
@@ -146,53 +147,59 @@ contains
                 end if
 
                 naccept = 0
-
+                nsuccess = 0
                 do icycle = 1, nhilbert_cycles
                     ! Generate a random determinant.
+                    tFail=.false.
                     if (truncate_space) then
                         ! More efficient sampling (especially if Hilbert space is large and truncation level is low) if we just
                         ! excite randomly from the reference determinant.
                         f = f0
                         plevel = get_rand_close_open(rng)
+                        nalpha = 0
                         do i = 1, truncation_level
                             ! Excite from...
-                            do
-                                a = occ_list0(int(get_rand_close_open(rng)*sys%nel)+1)
-                                a_pos = bit_lookup(1,a)
-                                a_el = bit_lookup(2,a)
-                                if (btest(f(a_el), a_pos)) then
-                                    f(a_el) = ibclr(f(a_el), a_pos)
-                                    exit
-                                end if
-                            end do
+                            a = occ_list0(int(get_rand_close_open(rng)*sys%nel)+1)
+                            a_pos = bit_lookup(1,a)
+                            a_el = bit_lookup(2,a)
+                            !if it's occupied that's great.
+                            if (btest(f(a_el), a_pos)) then
+                                f(a_el) = ibclr(f(a_el), a_pos)
+                            else
+                                tFail=.true.
+                                exit
+                            end if
                             ! Excite to...
-                            do
-                                ! Conserve spin.
-                                if (mod(a,2) == 1) then
-                                    ! alpha orbital; index 1,3,5,...
-                                    b = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
-                                else
-                                    ! beta orbital; index 2,4,6,...
-                                    b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
-                                end if
-                                b_pos = bit_lookup(1,b)
-                                b_el = bit_lookup(2,b)
-                                ! Excite into an orbital which is unoccupied in
-                                ! the reference and which we have not already
-                                ! filled.  The former is crucial to ensure that
-                                ! we actually generate a determinant of
-                                ! excitation level determined by plevel rather
-                                ! than (potentially) generate a determinant of
-                                ! lower level by exciting into an orbital which
-                                ! was already excited from.
-                                if (.not.btest(ior(f(b_el),f0(b_el)), b_pos)) then
-                                    f(b_el) = ibset(f(b_el), b_pos)
-                                    exit
-                                end if
-                            end do
+                            ! Conserve spin.
+                            if (mod(a,2) == 1) then
+                                 ! alpha orbital; index 1,3,5,...
+                                 b = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
+                                 nalpha = nalpha + 1
+                            else
+                                 ! beta orbital; index 2,4,6,...
+                                 b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
+                            end if
+                            b_pos = bit_lookup(1,b)
+                            b_el = bit_lookup(2,b)
+                            ! Excite into an orbital which is unoccupied in
+                            ! the reference and which we have not already
+                            ! filled.  The former is crucial to ensure that
+                            ! we actually generate a determinant of
+                            ! excitation level determined by plevel rather
+                            ! than (potentially) generate a determinant of
+                            ! lower level by exciting into an orbital which
+                            ! was already excited from.
+                            ! if it's empty that's great
+                            if (.not.btest(ior(f(b_el),f0(b_el)), b_pos)) then
+                                 f(b_el) = ibset(f(b_el), b_pos)
+                            else
+                                 tFail=.true.
+                                 exit
+                            end if
+                            ilevel=i
                             if (plevel < ptrunc_level(i)) exit
                         end do
-                        call decode_det(f, occ_list)
+                        if (.not.tFail) call decode_det(f, occ_list)
                     else
                         ! Alpha electrons.
                         f = 0
@@ -226,15 +233,28 @@ contains
                         end do
                     end if
                     ! Find the symmetry of the determinant.
-                    det_sym = symmetry_orb_list(sys, occ_list)
-                    ! Is this the same symmetry as the reference determinant?
-                    if (det_sym == ref_sym) naccept = naccept + 1
+                    if (.not.tFail) then
+                       ! We need to take into account the number of ways we could have generated the det
+                       ! e.g. If we excite 1,3 from 1,2,3,4  to 5,7, we could've done 1->5,3->7 or 1->7,3->5
+                       ! i.e. 2,4,5,7 is twice as likely to come up as e.g. 1,2,5,6 (only 3->5,4->6 as we conserve spin)
+                       ! Imagine having (only) n alpha excitations - there would be n! possible ways of doing this
+                       !  so we'd have to divide each det's contribution by n! to take this into account.
+                       ! If there were an excitation level of n, and only n_a alphas, we'd have n_a!(n-n_a)! possibilities
+                       ! Therefore if we weight all dets by n!/(n_a! (n-n_a)!) we unbias for the selection.
+                       ! ilevel = n and nalpha = n_a.
+                       iweight=binom_r(ilevel,nalpha)
+                       !write(6,*) occ_list,iweight
+                       nsuccess = nsuccess + iweight
+                       det_sym = symmetry_orb_list(sys, occ_list)
+                       ! Is this the same symmetry as the reference determinant?
+                       if (det_sym == ref_sym) naccept = naccept + iweight
+                    endif
                 end do
 
                 if (truncate_space) then
                     ! space_size is the max number of excitations from the reference.  Account for the fraction of excited
                     ! determinants with the correct symmetry.  +1 for the reference.
-                    space_size = (space_size * naccept) / nhilbert_cycles + 1
+                    space_size = (space_size * naccept) / nsuccess + 1
                 else
                     ! Size of the Hilbert space in the desired symmetry block is given
                     ! by
