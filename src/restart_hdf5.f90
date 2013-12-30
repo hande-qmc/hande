@@ -1,5 +1,6 @@
 module restart_hdf5
-
+!REVIEW-AJWT:  We should consider future usage at this point before the format is entrenched!
+!               I'll add this to the dev list email.
     ! Restart functionality based on the HDF5 library.  Note: this is only
     ! for QMC (ie FCIQMC, DMQMC or CCMC) calculations).
 
@@ -19,11 +20,14 @@ module restart_hdf5
 
     ! The HDF5 structure we use is:
 
+!REVIEW-AJWT: Does order matter?
+!REVIEW-AJWT: How do we keep this specification consistent with what is actually done?
     ! /                                # ROOT/
     !
     !  metadata/
     !           restart version        # Version of restart module used to produce the restart file.
     !           hande version          # git sha1 hash.  For info only (not used).
+!REVIEW-AJWT: Probably best to say 'not currently used on read-in'
     !           date                   # For info only (not used).
     !           calc_type              # Calculation type (as given by a parameter in calc).
     !           nprocs                 # Number of processors used in calculation.
@@ -62,6 +66,7 @@ module restart_hdf5
     public :: dump_restart_hdf5, read_restart_hdf5, restart_info_global
 
     type restart_info_t
+!REVIEW-AJWT:  The comments in parse_input are not helpful in this regard!  More please.
         ! See comments in parse_input regarding the read_id and write_id.
         integer :: write_id ! ID number to write to.
         integer :: read_id  ! ID number to write to.
@@ -75,6 +80,8 @@ module restart_hdf5
 
     ! Version id of the restart file *produced*.  Please increment if you add
     ! anything to dump_restart_hdf5!
+!REVIEW-AJWT: Although the git history will protect the meaning of the version number, is it advisable to document this elsewhere too?
+!REVIEW-AJWT: I presume we will deal with conflicts in this organically
     integer, parameter :: restart_version = 1
 
     ! Group names...
@@ -127,6 +134,7 @@ module restart_hdf5
 
             integer, intent(in) :: ncycles
             integer(lint), intent(in) :: total_population(:)
+!REVIEW-AJWT: This 255 character limit seems a trifle out-dated!
             character(255) :: restart_file
 
             ! HDF5 kinds
@@ -142,9 +150,13 @@ module restart_hdf5
             integer(lint), allocatable, target :: tmp_pop(:)
             character(10) :: proc_suf
             real(p), target :: tmp(1)
+!REVIEW-AJWT: By now I'm getting the sinking feeling from the variable list that this procedure is quite monolithic!
 
+!REVIEW-AJWT: A comment as to the format of the filename would be helpful.  I'd've written one, but I couldn't immediately figure it out
+!REVIEW-AJWT: Having looked back I saw:   the format is restart_stem.Y.pX, where X is the processor rank and Y is a common integer given by write_id or read_id.
             ! Figure out filename.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
+!REVIEW-AJWT: Might ri be an input parameter whose value defaults to restart_info_global?
             associate(ri => restart_info_global)
                 if (ri%write_id < 0) then
                     call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .true., ri%write_id, restart_file)
@@ -163,23 +175,29 @@ module restart_hdf5
 
             ! Initialise HDF5 and open file.
             ! NOTE: if file exists, then it is overwritten.
+!REVIEW-AJWT: But the get_unique_filename above ensures this doesn't happen?
             call h5open_f(ierr)
             call h5fcreate_f(restart_file, H5F_ACC_TRUNC_F, file_id, ierr)
 
+!REVIEW-AJWT: I don't immediately see what these are used for.
+!REVIEW-AJWT:  These kinds are used in the write_* functions.
             ! i0 kind?  What a nice interface!
             h5_i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
             h5_p = h5kind_to_type(p, H5_REAL_KIND)
             h5_lint = h5kind_to_type(lint, H5_INTEGER_KIND)
 
+!REVIEW-AJWT:  This is getting a bit cryptic (but ok if you bear with it)
             ! --- metadata group ---
             call h5gcreate_f(file_id, gmetadata, group_id, ierr)
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
                 call write_string(group_id, dhande, VCS_VERSION)
 
+!REVIEW-AJWT: This doesn't appear to agree with the comments at the top
                 call write_string(group_id, duuid, GLOBAL_UUID)
 
                 call date_and_time(values=date_time)
+!REVIEW-AJWT:  What does this actually look like?
                 write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
                 call write_string(group_id, ddate, date_str)
 
@@ -294,6 +312,7 @@ module restart_hdf5
 
             integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
 
+!REVIEW-AJWT: This seems like needless duplication of what happens in dump_restart_hdf5 which could be put in a procedure
             ! Figure out filename.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
             associate(ri => restart_info_global)
@@ -321,6 +340,7 @@ module restart_hdf5
             h5_p = h5kind_to_type(p, H5_REAL_KIND)
             h5_lint = h5kind_to_type(lint, H5_INTEGER_KIND)
 
+!REVIEW-AJWT: Here endeth the duplication
             ! --- metadata group ---
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
@@ -332,6 +352,11 @@ module restart_hdf5
 
                 call read_integer(group_id, dcalc, calc_type_restart)
 
+
+!REVIEW-AJWT: While bit strings are nice, I think the code below lacks modularity.
+!              I foresee a time when the calc_type format will change, and the code
+!              below will be a pain.  Perhaps some sort of interface for this.
+!             In particular, I don't think the restart_read should be dealing with this sort of thing.
                 ! Different calc types are either not compatible or require
                 ! hyperslabs (fewer particle types) or require copying (more
                 ! particle types).
@@ -429,6 +454,7 @@ module restart_hdf5
 
         ! === Helper procedures: writing ===
 
+!REVIEW-AJWT:  The write_* lends it self to being overloaded to a single function write_hdf5.  Similarly read_*
         subroutine write_string(id, dset, string)
 
             ! Write a string to an open HDF5 file/group.
@@ -447,6 +473,8 @@ module restart_hdf5
             integer :: ierr
             character(len(string)) :: sarr(1)
 
+!REVIEW-AJWT:  This indicates perhaps a misunderstanding of the format which might not be good news
+!               for compatability.  Any chance this can be looked at again?
             ! Can't figure out how to write one string.  Just copy into an array
             ! (which I can get to work, bizarrely!).  Only have a few strings to
             ! write out, so performance overhead is essentially 0.
@@ -497,6 +525,8 @@ module restart_hdf5
 
         end subroutine write_integer
 
+!REVIEW-AJWT: This looks potentially dangerous - if dtype differs from the actual type of arr_ptr
+!              Might an overloaded interface not be better?
         subroutine write_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
 
             ! Write an array to an open HDF5 file/group.
@@ -562,6 +592,8 @@ module restart_hdf5
 
         end subroutine read_integer
 
+!REVIEW-AJWT:  I feel the frisson of data overflow and horrible bugs for the future in this code.
+!               Perhaps at least a length check?
         subroutine read_ptr(id, dset, dtype, arr_ptr)
 
             ! Read an array from an open HDF5 file/group.
