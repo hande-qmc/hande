@@ -7,8 +7,8 @@ cc = gcc
 cxx = g++
 cppflags =
 ld = gfortran
-ldflags = -L ${HOME}/lib
-libs = -ltrlan -llapack -lblas -lstdc++ -lhdf5_fortran -luuid
+ldflags = -L ${HOME}/lib -L ${HDF5_ROOT}/lib
+libs = -ltrlan -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -lz -luuid
 f90_module_flag = -J
 
 [opt]
