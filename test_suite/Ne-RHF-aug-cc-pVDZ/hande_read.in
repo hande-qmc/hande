@@ -39,3 +39,4 @@ restart 0
 #    use_abelian_subgroup true
 #    scf_restrict_sym 3
 #    $end
+seed 7

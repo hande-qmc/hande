@@ -41,3 +41,4 @@ varyshift_target 10000000
 #    unrestricted false
 #    use_abelian_subgroup true
 #    $end
+seed 7

@@ -20,3 +20,4 @@ mc_cycles 20
 tau 0.001
 varyshift_target 10000
 vary_shift_from -10.5
+seed 7

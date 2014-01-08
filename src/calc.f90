@@ -126,7 +126,8 @@ integer(i0), allocatable :: ras1(:), ras3(:) ! (basis_length)
 !--- Info for stocastic calculations ---
 
 ! Seed used to initialise the dSFMT random number generator.
-integer :: seed = 7
+! Default: hash of global UUID and time.
+integer :: seed
 
 ! --- QMC reference state and trial (importance-sampling) functions ---
 
@@ -169,6 +170,32 @@ integer, parameter :: dmqmc_rdm_r2 = 2**4
 integer, parameter :: dmqmc_full_r2 = 2**5
 
 contains
+
+    subroutine init_calc_defaults()
+
+        ! Initialise calculation defaults which cannot be set at compile-time.
+
+        use iso_c_binding, only: c_loc, c_ptr, c_char, c_int
+        use report, only: GLOBAL_UUID
+        use hashing, only: MurmurHash2
+        use utils, only: fstring_to_carray
+
+        character(len=len(GLOBAL_UUID)+10) :: seed_data
+        character(kind=c_char), target :: cseed_data(len(seed_data)+1)
+        type(c_ptr) :: cseed_ptr
+        integer(c_int) :: n
+
+        call date_and_time(time=seed_data(:10))
+        seed_data(11:) = GLOBAL_UUID
+
+        cseed_data = fstring_to_carray(seed_data)
+        cseed_ptr = c_loc(cseed_data)
+        n = size(cseed_data)-1
+
+        seed = int(MurmurHash2(cseed_ptr, n, 12345_c_int))
+        write (6,*) 'seed data ', seed_data, seed
+
+    end subroutine init_calc_defaults
 
     function doing_calc(calc_param) result(doing)
 

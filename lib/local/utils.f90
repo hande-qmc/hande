@@ -231,6 +231,7 @@ contains
             r = log10(real(abs(i)+1))
         end if
         p = ceiling(r+p)
+        if (i<0) p = p + 1
 
         if (p < 10) then
             write (fmt1,'("i",i1)') p

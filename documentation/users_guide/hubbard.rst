@@ -692,7 +692,8 @@ The following options are valid for FCIQMC calculations.
 **seed** *seed*
     Integer.
 
-    Default: 7.
+    Default: random value based upon a hash of the time and (if available) the
+    universally unique identifier (UUID) of the calculation.
 
     Set the seed used to initialise the dSFMT random number generator.
     In parallel the seed on each processor is *seed* + iproc, where iproc is
