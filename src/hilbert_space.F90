@@ -6,6 +6,9 @@ implicit none
 
 integer :: nhilbert_cycles
 
+private
+public :: nhilbert_cycles, estimate_hilbert_space
+
 contains
 
     subroutine estimate_hilbert_space(sys)
@@ -27,13 +30,12 @@ contains
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
 
-        use basis, only: basis_length, bit_lookup, write_basis_fn, basis_fns, nbasis
+        use basis, only: basis_length, write_basis_fn, basis_fns, nbasis
         use calc, only: sym_in, ms_in, truncate_space, truncation_level, seed
         use const, only: dp
         use checking, only: check_allocate, check_deallocate
-        use determinants, only: encode_det, decode_det
-        use excitations, only: get_excitation_level
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init, get_rand_close_open
+        use determinants, only: encode_det
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use fciqmc_data, only: occ_list0
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
@@ -43,12 +45,11 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: iel, icycle, naccept,nsuccess,nalpha,iweight,ilevel
-        integer :: a, a_el, a_pos, b, b_el, b_pos, i, ierr
+        integer :: icycle, i, ierr, b
         integer :: ref_sym, det_sym
         integer(i0) :: f(basis_length), f0(basis_length)
         integer :: occ_list(sys%nel)
-        real(dp) :: space_size, plevel
+        real(dp) :: space_size, naccept, nsuccess, weight
         real(dp), allocatable :: ptrunc_level(:)
 #ifdef PARALLEL
         real(dp) :: proc_space_size(nprocs), sd_space_size
@@ -56,7 +57,7 @@ contains
 
         type(dSFMT_t) :: rng
         type(sys_t) :: sys_bak
-        logical :: tFail
+        logical :: tsuccess
 
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
 
@@ -114,9 +115,9 @@ contains
                 if (truncate_space) then
                     ! Generate a determinant with a given truncation level up to
                     ! some maximum level (ie truncation_level) using a probability
-                    ! proportional to the number of determinants at that truncation
-                    ! level in the entire space relative to the size of the entire
-                    ! space.
+                    ! proportional to the number of determinants at that truncation level
+                    ! in the entire space relative to the size of the truncated Hilbert
+                    ! space (excluding the reference).
                     allocate(ptrunc_level(truncation_level), stat=ierr)
                     call check_allocate('ptrunc_level', size(ptrunc_level), ierr)
                     space_size = 0
@@ -135,6 +136,11 @@ contains
                         ptrunc_level(i) = space_size
                     end do
                     ptrunc_level = ptrunc_level / space_size
+                else
+                    ! Size of the complete Hilbert space in the desired symmetry block is given
+                    ! by
+                    !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons).
+                    space_size = binom_r(nbasis/2,sys%nalpha) * binom_r(nbasis/2,sys%nbeta)
                 end if
 
                 if (parent) then
@@ -150,116 +156,39 @@ contains
                 nsuccess = 0
                 do icycle = 1, nhilbert_cycles
                     ! Generate a random determinant.
-                    tFail=.false.
                     if (truncate_space) then
-                        ! More efficient sampling (especially if Hilbert space is large and truncation level is low) if we just
-                        ! excite randomly from the reference determinant.
-                        f = f0
-                        plevel = get_rand_close_open(rng)
-                        nalpha = 0
-                        do i = 1, truncation_level
-                            ! Excite from...
-                            a = occ_list0(int(get_rand_close_open(rng)*sys%nel)+1)
-                            a_pos = bit_lookup(1,a)
-                            a_el = bit_lookup(2,a)
-                            !if it's occupied that's great.
-                            if (btest(f(a_el), a_pos)) then
-                                f(a_el) = ibclr(f(a_el), a_pos)
-                            else
-                                tFail=.true.
-                                exit
-                            end if
-                            ! Excite to...
-                            ! Conserve spin.
-                            if (mod(a,2) == 1) then
-                                 ! alpha orbital; index 1,3,5,...
-                                 b = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
-                                 nalpha = nalpha + 1
-                            else
-                                 ! beta orbital; index 2,4,6,...
-                                 b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
-                            end if
-                            b_pos = bit_lookup(1,b)
-                            b_el = bit_lookup(2,b)
-                            ! Excite into an orbital which is unoccupied in
-                            ! the reference and which we have not already
-                            ! filled.  The former is crucial to ensure that
-                            ! we actually generate a determinant of
-                            ! excitation level determined by plevel rather
-                            ! than (potentially) generate a determinant of
-                            ! lower level by exciting into an orbital which
-                            ! was already excited from.
-                            ! if it's empty that's great
-                            if (.not.btest(ior(f(b_el),f0(b_el)), b_pos)) then
-                                 f(b_el) = ibset(f(b_el), b_pos)
-                            else
-                                 tFail=.true.
-                                 exit
-                            end if
-                            ilevel=i
-                            if (plevel < ptrunc_level(i)) exit
-                        end do
-                        if (.not.tFail) call decode_det(f, occ_list)
+                        ! More efficient sampling (especially if Hilbert space is large
+                        ! and truncation level is low) if we just excite randomly from the
+                        ! reference determinant.
+                        call gen_random_det_truncate_space(rng, sys, truncation_level, occ_list0, f0, ptrunc_level, &
+                                                           tsuccess, f, occ_list, weight)
                     else
-                        ! Alpha electrons.
-                        f = 0
-                        iel = 0
-                        do
-                            ! generate random number 1,3,5,...
-                            a = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
-                            a_pos = bit_lookup(1,a)
-                            a_el = bit_lookup(2,a)
-                            if (.not.btest(f(a_el), a_pos)) then
-                                ! found unoccupied alpha orbital.
-                                f(a_el) = ibset(f(a_el), a_pos)
-                                iel = iel + 1
-                                occ_list(iel) = a
-                                if (iel == sys%nalpha) exit
-                            end if
-                        end do
-                        ! Beta electrons.
-                        do
-                            ! generate random number 2,4,6,...
-                            b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
-                            b_pos = bit_lookup(1,b)
-                            b_el = bit_lookup(2,b)
-                            if (.not.btest(f(b_el), b_pos)) then
-                                ! FOUND Unoccupied beta orbital.
-                                f(b_el) = ibset(f(b_el), b_pos)
-                                iel = iel + 1
-                                occ_list(iel) = b
-                                if (iel == sys%nel) exit
-                            end if
-                        end do
+                        call gen_random_det_full_space(rng, sys, f, occ_list)
+                        ! gen_random_det_full_space always succeeds and randomly generates
+                        ! all determinants with uniform probability.
+                        tsuccess = .true.
+                        weight = 1
                     end if
-                    ! Find the symmetry of the determinant.
-                    if (.not.tFail) then
-                       ! We need to take into account the number of ways we could have generated the det
-                       ! e.g. If we excite 1,3 from 1,2,3,4  to 5,7, we could've done 1->5,3->7 or 1->7,3->5
-                       ! i.e. 2,4,5,7 is twice as likely to come up as e.g. 1,2,5,6 (only 3->5,4->6 as we conserve spin)
-                       ! Imagine having (only) n alpha excitations - there would be n! possible ways of doing this
-                       !  so we'd have to divide each det's contribution by n! to take this into account.
-                       ! If there were an excitation level of n, and only n_a alphas, we'd have n_a!(n-n_a)! possibilities
-                       ! Therefore if we weight all dets by n!/(n_a! (n-n_a)!) we unbias for the selection.
-                       ! ilevel = n and nalpha = n_a.
-                       iweight=binom_r(ilevel,nalpha)
-                       !write(6,*) occ_list,iweight
-                       nsuccess = nsuccess + iweight
-                       det_sym = symmetry_orb_list(sys, occ_list)
-                       ! Is this the same symmetry as the reference determinant?
-                       if (det_sym == ref_sym) naccept = naccept + iweight
-                    endif
+                    if (tsuccess) then
+                        ! The weight of the generated determinant is essentially how many
+                        ! times it needs to be included such that it occurs with the same
+                        ! probability as all other determinants.
+                        nsuccess = nsuccess + weight
+                        det_sym = symmetry_orb_list(sys, occ_list)
+                        ! Is this the same symmetry as the reference determinant?
+                        if (det_sym == ref_sym) naccept = naccept + weight
+                    end if
                 end do
 
+                ! space_size is the max number of excitations from the reference.  Account
+                ! for the fraction of determinants with the correct symmetry.
+                ! Note nsuccess == nhilbert_cycles if truncate_space is false.
+                space_size = (space_size * naccept) / nsuccess
                 if (truncate_space) then
-                    ! space_size is the max number of excitations from the reference.  Account for the fraction of excited
-                    ! determinants with the correct symmetry.  +1 for the reference.
-                    space_size = (space_size * naccept) / nsuccess + 1
-                else
-                    ! Size of the Hilbert space in the desired symmetry block is given
-                    ! by
-                    !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons)*naccept/nattempts
-                    space_size = (binom_r(nbasis/2,sys%nalpha) * binom_r(nbasis/2,sys%nbeta) * naccept) / nhilbert_cycles
+                    ! We never allowed for the generation of the reference determinant
+                    ! but, by definition, it is in the truncated Hilbert space so
+                    ! explicitly include it.
+                    space_size = space_size + 1
                 end if
 
 #ifdef PARALLEL
@@ -295,5 +224,190 @@ contains
         call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine estimate_hilbert_space
+
+    subroutine gen_random_det_full_space(rng, sys, f, occ_list)
+
+        ! Generate a random determinant with uniform probability in a (full) Hilbert space.
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    sys: system being studied.  Unaltered on output.
+        ! Out:
+        !     f: bit string representation of random determinant.  Must have dimensions of
+        !        (at least) basis_length.
+        !     occ_list: list of occupied orbital of random determinant.  Must have
+        !         dimensions of (at least) sys%nel.
+
+        use basis, only: bit_lookup, nbasis
+        use const, only: i0
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use system, only: sys_t
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(out) :: f(:)
+        integer, intent(out) :: occ_list(:)
+
+        integer :: iel, a, a_pos, a_el, b, b_pos, b_el
+
+        ! Alpha electrons.
+        f = 0
+        iel = 0
+        do
+            ! generate random number 1,3,5,...
+            a = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
+            a_pos = bit_lookup(1,a)
+            a_el = bit_lookup(2,a)
+            if (.not.btest(f(a_el), a_pos)) then
+                ! found unoccupied alpha orbital.
+                f(a_el) = ibset(f(a_el), a_pos)
+                iel = iel + 1
+                occ_list(iel) = a
+                if (iel == sys%nalpha) exit
+            end if
+        end do
+        ! Beta electrons.
+        do
+            ! generate random number 2,4,6,...
+            b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
+            b_pos = bit_lookup(1,b)
+            b_el = bit_lookup(2,b)
+            if (.not.btest(f(b_el), b_pos)) then
+                ! FOUND Unoccupied beta orbital.
+                f(b_el) = ibset(f(b_el), b_pos)
+                iel = iel + 1
+                occ_list(iel) = b
+                if (iel == sys%nel) exit
+            end if
+        end do
+
+    end subroutine gen_random_det_full_space
+
+    subroutine gen_random_det_truncate_space(rng, sys, truncation_level, occ_list0, f0, ptrunc_level, tsuccess, f, occ_list, weight)
+
+        ! Generate a random excited determinant with in a truncated Hilbert space defined
+        ! by a maximum number of excitations permitted from a single reference determinant.
+        ! This is not a particularly smart approach: in particular, we don't explicitly
+        ! exclude the possibility of attempting to excite from the same orbital multiple
+        ! times nor restrict the selection of orbitals to excite into to virtual orbitals;
+        ! such attempts must be hence be discarded (see tsuccess).
+
+        ! Note:
+        ! * we never generate the reference determinant.
+        ! * determinants are not generated uniformly within the same excitation level (see
+        !   weight).
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    sys: system being studied.  Unaltered on output.
+        !    truncation_level: max number of excitations permitted from the reference
+        !        determinant.
+        !    occ_list0: list of occupied orbitals in the reference determinant.
+        !    f0: bit string representation of the reference determinant.
+        !    ptrunc_level: cumulative probability of generating a determinant at a given
+        !        excitation level, i.e. ptrunc_level(i) is the probability of generating a
+        !        determinant at or below excitation level i.  The probability of
+        !        selecting a given excitation level must be proportional to the fraction
+        !        of determinants in the space with that excitation level.
+        ! Out:
+        !    tsuccess: true if a determinant was successfully generated.  If false, the
+        !        other utputs are not set and statistics from this attempt should not be
+        !        included.
+        !    f: bit string representation of random determinant.  Must have dimensions of
+        !        (at least) basis_length.
+        !    occ_list: list of occupied orbital of random determinant.  Must have
+        !        dimensions of (at least) sys%nel.
+        !    weight: the weight of the generated determinant relative to other
+        !        determinants at the same excitation level.
+
+        use basis, only: bit_lookup, nbasis
+        use const, only: i0, dp
+        use determinants, only: decode_det
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use system, only: sys_t
+        use utils, only: binom_r
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: truncation_level
+        integer, intent(in) :: occ_list0(:)
+        integer(i0), intent(in) :: f0(:)
+        real(dp), intent(in) :: ptrunc_level(:)
+        logical, intent(out) :: tsuccess
+        integer(i0), intent(out) :: f(:)
+        integer, intent(out) :: occ_list(:)
+        real(dp), intent(out) :: weight
+
+        integer :: a, a_pos, a_el, b, b_pos, b_el, ilevel, nalpha_selected
+        real(dp) :: plevel
+
+        f = f0
+        plevel = get_rand_close_open(rng)
+        tsuccess = .true.
+        nalpha_selected = 0
+        do ilevel = 1, truncation_level
+            ! Excite from...
+            a = occ_list0(int(get_rand_close_open(rng)*sys%nel)+1)
+            a_pos = bit_lookup(1,a)
+            a_el = bit_lookup(2,a)
+            if (btest(f(a_el), a_pos)) then
+                f(a_el) = ibclr(f(a_el), a_pos)
+            else
+                tsuccess =.false.
+                exit
+            end if
+            ! Excite to...
+            ! Conserve spin.
+            if (mod(a,2) == 1) then
+                ! alpha orbital; index 1,3,5,...
+                b = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
+                nalpha_selected = nalpha_selected + 1
+            else
+                ! beta orbital; index 2,4,6,...
+                b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
+            end if
+            b_pos = bit_lookup(1,b)
+            b_el = bit_lookup(2,b)
+            ! Excite into an orbital which is unoccupied in the reference and which we
+            ! have not already filled.  The former is crucial to ensure that we actually
+            ! generate a determinant of excitation level determined by plevel rather
+            ! than (potentially) generate a determinant of lower level by exciting into an
+            ! orbital which was already excited from.
+            if (.not.btest(ior(f(b_el),f0(b_el)), b_pos)) then
+                f(b_el) = ibset(f(b_el), b_pos)
+            else
+                tsuccess =.false.
+                exit
+            end if
+            if (plevel < ptrunc_level(ilevel)) exit
+        end do
+
+        ! We need to give equal value to each determinant.  We already take into account
+        ! the different numbers of determinants at each excitation level by choosing to
+        ! generate a determinant of a given level with probability proportional to the
+        ! fraction of determinants at that excitation level in the Hilbert space.
+        ! However, we need to take into account the ways a determinant could be generated
+        ! within a given excitation level, e.g. if we excite 1,3 from the reference
+        ! |1,2,3,4> to 5,7, we could have selected 1->5,3->7 or 1->7,3->5.  Hence
+        ! |2,4,5,7> is twice as likely to come up as e.g. |1,2,5,6>, where the only the
+        ! excitation 3->5,4->6 is possible as we conserve spin.
+        ! For an arbitrary determinant at excitation level n, there are n_a! n_b! = n_a! (n-n_a)
+        ! ways it could have been generated, where n_a (n_b) is the number of alpha (beta)
+        ! electrons involved in the excitation.
+        ! We need to divide the contribution through by this weight, such that all
+        ! determinants within a given excitation level contribute equally.
+        ! Weights within a given excitation level are relative and it is convenient if the
+        ! weights are integer.  We thus choose an excitation involving all alpha (or all
+        ! beta) electrons to have a weight of 1 (i.e. when n_a = n or n_b = n).  Hence by
+        ! weighting all determinants by n!/(n_a! (n-n_a)!) we unbias for the
+        ! non-uniformity in selection.
+        if (tsuccess) then
+            call decode_det(f, occ_list)
+            weight = binom_r(ilevel, nalpha_selected)
+        end if
+
+    end subroutine gen_random_det_truncate_space
 
 end module hilbert_space
