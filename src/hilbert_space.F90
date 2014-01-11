@@ -313,7 +313,7 @@ contains
         !        of determinants in the space with that excitation level.
         ! Out:
         !    tsuccess: true if a determinant was successfully generated.  If false, the
-        !        other utputs are not set and statistics from this attempt should not be
+        !        other outputs are not set and statistics from this attempt should not be
         !        included.
         !    f: bit string representation of random determinant.  Must have dimensions of
         !        (at least) basis_length.
