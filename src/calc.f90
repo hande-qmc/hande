@@ -193,7 +193,6 @@ contains
         n = size(cseed_data)-1
 
         seed = int(MurmurHash2(cseed_ptr, n, 12345_c_int))
-        write (6,*) 'seed data ', seed_data, seed
 
     end subroutine init_calc_defaults
 
