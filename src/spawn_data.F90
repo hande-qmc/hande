@@ -484,6 +484,7 @@ contains
         integer, allocatable :: events(:)
         integer(i0), allocatable :: initiator_pop(:)
         integer, parameter :: thread_id = 0
+        logical :: new_slot
 
         allocate(events(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes))
         allocate(initiator_pop(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes))
@@ -508,8 +509,9 @@ contains
             end do
             compress: do
                 k = k + 1
-                if (k > spawn%head(thread_id,0) &
-                 .or. any(spawn%sdata(:spawn%bit_str_len,k) /= spawn%sdata(:spawn%bit_str_len,islot))) then
+                new_slot = k > spawn%head(thread_id,0)
+                if (.not. new_slot) new_slot = any(spawn%sdata(:spawn%bit_str_len,k) /= spawn%sdata(:spawn%bit_str_len,islot))
+                if (new_slot) then
                     ! Found the next unique spawned location.
                     ! Set the overall parent flag of the population on the
                     ! current determinant and move on.
