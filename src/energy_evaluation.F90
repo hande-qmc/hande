@@ -66,10 +66,12 @@ contains
         proj_energy = ir_sum(sampling_size+1)
         D0_population = ir_sum(sampling_size+2)
         rspawn = ir_sum(sampling_size+3)
-        new_hf_signed_pop = nint(ir_sum(sampling_size+4), lint)
-        proj_hf_O_hpsip = ir_sum(sampling_size+5)
-        proj_hf_H_hfpsip = ir_sum(sampling_size+6)
-        D0_hf_population = ir_sum(sampling_size+7)
+        if (doing_calc(hfs_fciqmc_calc)) then
+            new_hf_signed_pop = nint(ir_sum(sampling_size+4), lint)
+            proj_hf_O_hpsip = ir_sum(sampling_size+5)
+            proj_hf_H_hfpsip = ir_sum(sampling_size+6)
+            D0_hf_population = ir_sum(sampling_size+7)
+        end if
 
         if (vary_shift) then
             call update_shift(shift(1), ntot_particles_old(1), ntot_particles(1), ncycles)
