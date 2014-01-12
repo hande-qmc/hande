@@ -39,7 +39,7 @@ contains
         use calc, only: seed, doing_dmqmc_calc, dmqmc_energy, initiator_approximation
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
-        use utils, only: int_fmt
+        use utils, only: int_fmt, rng_init_info
         use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
@@ -63,7 +63,10 @@ contains
         call alloc_det_info(sys, cdet2, .false.)
 
         ! Main DMQMC loop.
-        if (parent) call write_fciqmc_report_header()
+        if (parent) then
+            call rng_init_info(seed+iproc)
+            call write_fciqmc_report_header()
+        end if
         ! Initialise timer.
         call cpu_time(t1)
 
