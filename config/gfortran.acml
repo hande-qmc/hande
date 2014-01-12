@@ -1,5 +1,5 @@
 [DEFAULT]
-include_f = -I /usr/include -I ${HDF5_ROOT}/include
+include_f = -I $${HDF5_ROOT-/usr}/include
 
 [main]
 fc = gfortran
