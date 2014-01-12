@@ -1,5 +1,5 @@
 [DEFAULT]
-include_f = -I /usr/include -I ${HDF5_ROOT}/include
+include_f = -I $${HDF5_ROOT-/usr}/include
 
 [main]
 fc = gfortran
@@ -7,7 +7,7 @@ cc = gcc
 cxx = g++
 cppflags =
 ld = gfortran
-ldflags = -L ${HOME}/lib -L ${HDF5_ROOT}/lib
+ldflags = -L ${HOME}/lib -L $${HDF5_ROOT-/usr}/lib
 libs = -ltrlan -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -lz -luuid
 f90_module_flag = -J
 
