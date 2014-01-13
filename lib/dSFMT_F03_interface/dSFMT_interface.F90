@@ -113,6 +113,7 @@ integer, parameter :: gaussian = 2**4
 
 type dSFMT_t
     private
+    ! [NOTE] - see comments in dSFMT_init for a workaround for a bug in gfortran.
     ! Type of distribution in the random store
     integer, public :: distribution
     ! Pointer to the dsfmt_t internal state (as defined in dSFMT.h).
@@ -167,6 +168,14 @@ contains
             end if
         else
             allocate(rng%random_store(rng%random_store_size))
+            ! [NOTE] - assume no-one creates an alternative way to allocate the components of dSFMT_t.
+            ! As random_store and dSFMT_state are private components, they can
+            ! only be changed in this module.  If we get here then we must be on
+            ! the first init call with this dSFMT_t object.  Hence 'reset' the
+            ! initialisation of dSFMT_state to workaround a bug in gfortran.
+            ! See https://groups.google.com/forum/#!topic/comp.lang.fortran/WogpvhUny4c
+            ! and http://gcc.gnu.org/bugzilla/show_bug.cgi?id=59781.
+            rng%dSFMT_state = c_null_ptr
         end if
 
         ! Set current element to be larger than the store, so it is
