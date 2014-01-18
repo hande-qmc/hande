@@ -555,24 +555,23 @@ module restart_hdf5
 
             integer(hid_t) :: type_id, dspace_id, dset_id
             integer :: ierr
-            character(len(string)) :: sarr(1)
 
 ! [review] -  AJWT: This indicates perhaps a misunderstanding of the format which might not be good news
-!               for compatability.  Any chance this can be looked at again?
-            ! Can't figure out how to write one string.  Just copy into an array
-            ! (which I can get to work, bizarrely!).  Only have a few strings to
-            ! write out, so performance overhead is essentially 0.
-            sarr = string
+! [review] -  AJWT:  for compatability.  Any chance this can be looked at again?
+! [reply] - JSS: Misled by documentation and examples indicating h5dwrite_vl_f was the way to write out a string.  Despite the
+! [reply] - JSS: documentation for h5dwrite_vl_f claiming otherwise, an inspection of the HDF5 source reveals that h5dwrite_vl_f
+! [reply] - JSS: is only declared for arrays.  However, a careful look at the documentation reveals strings can be written out as
+! [reply] - JSS: scalars, if one declares their length using h5tset_size_f.  The term 'variable length' is hence a red herring, as
+! [reply] - JSS: one can write strings out which have lengths not known at compile-time using the standard scalar approach...
 
-            ! Set up fortran string type...
-            call h5tcopy_f(H5T_STRING, type_id, ierr)
-            call h5tset_strpad_f(type_id, H5T_STR_NULLPAD_F, ierr)
+            ! Set up fortran string type of *this* length...
+            call h5tcopy_f(H5T_FORTRAN_S1, type_id, ierr)
+            call h5tset_size_f(type_id, len(string, HSIZE_T), ierr)
 
             ! Create space and write string.
-            call h5screate_simple_f(1, [1_HSIZE_T], dspace_id, ierr)
+            call h5screate_f(H5S_SCALAR_F, dspace_id, ierr)
             call h5dcreate_f(id, dset, type_id, dspace_id, dset_id, ierr)
-            call h5dwrite_vl_f(dset_id, type_id, sarr, [len(sarr(1),HSIZE_T),1_HSIZE_T], &
-                               [len(sarr(1),SIZE_T)], ierr, dspace_id)
+            call h5dwrite_f(dset_id, type_id, string, [0_HSIZE_T], ierr)
             call h5sclose_f(dspace_id, ierr)
             call h5dclose_f(dset_id, ierr)
 
