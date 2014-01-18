@@ -104,7 +104,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
-        use restart_hdf5, only: read_restart_hdf5
+        use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
         type(sys_t), intent(in) :: sys
 
@@ -226,7 +226,7 @@ contains
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
-            call read_restart_hdf5()
+            call read_restart_hdf5(restart_info_global)
             ! Need to re-calculate the reference determinant data
             call decode_det(f0, occ_list0)
             if (trial_function == neel_singlet) then

@@ -136,11 +136,12 @@ module restart_hdf5
 
     contains
 
-        subroutine dump_restart_hdf5(ncycles, total_population)
+        subroutine dump_restart_hdf5(ri, ncycles, total_population)
 
             ! Write out a restart file.
 
             ! In:
+            !    ri: restart information.  ri%restart_stem and ri%write_id are used.
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
 
@@ -156,6 +157,7 @@ module restart_hdf5
                                    D0_population_cycle
             use calc, only: calc_type
 
+            type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: ncycles
             integer(lint), intent(in) :: total_population(:)
 ! [review] -  AJWT: This 255 character limit seems a trifle out-dated!
@@ -190,13 +192,12 @@ module restart_hdf5
             ! Figure out filename.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
 ! [review] -  AJWT: Might ri be an input parameter whose value defaults to restart_info_global?
-            associate(ri => restart_info_global)
-                if (ri%write_id < 0) then
-                    call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .true., ri%write_id, restart_file)
-                else
-                    call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .true., 0, restart_file)
-                end if
-            end associate
+! [reply] - JSS: done.
+            if (ri%write_id < 0) then
+                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .true., ri%write_id, restart_file)
+            else
+                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .true., 0, restart_file)
+            end if
 
             if (parent) then
                 if (nprocs > 1) then
@@ -323,9 +324,12 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5()
+        subroutine read_restart_hdf5(ri)
 
             ! Read QMC data from restart file.
+
+            ! In:
+            !    ri: restart information.  ri%restart_stem and ri%read_id are used.
 
             use hdf5
             use errors, only: stop_all
@@ -337,6 +341,8 @@ module restart_hdf5
                                    shift, tot_nparticles, f0, hs_f0,             &
                                    D0_population, mc_cycles_done, tot_walkers
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
+
+            type(restart_info_t), intent(in) :: ri
 
             ! HDF5 kinds
             integer(hid_t) :: h5_i0, h5_p, h5_lint
@@ -356,13 +362,11 @@ module restart_hdf5
 ! [review] -  AJWT: This seems like needless duplication of what happens in dump_restart_hdf5 which could be put in a procedure
             ! Figure out filename.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
-            associate(ri => restart_info_global)
-                if (ri%read_id < 0) then
-                    call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .false., ri%read_id, restart_file)
-                else
-                    call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .false., 0, restart_file)
-                end if
-            end associate
+            if (ri%read_id < 0) then
+                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .false., ri%read_id, restart_file)
+            else
+                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .false., 0, restart_file)
+            end if
 
             if (parent) then
                 if (nprocs > 1) then

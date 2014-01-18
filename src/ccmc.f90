@@ -190,7 +190,7 @@ contains
         use utils, only: rng_init_info
         ! TODO: parallelisation.
         use parallel
-        use restart_hdf5, only: dump_restart_hdf5
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
@@ -392,7 +392,7 @@ contains
         end if
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(mc_cycles_done, nparticles_old)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
             if (parent) write (6,'()')
         end if
 

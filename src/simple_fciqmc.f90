@@ -228,7 +228,7 @@ contains
 
             ! Write restart file if required.
             if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(mc_cycles_done+ncycles*ireport, (/nparticles_old/))
+                call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, (/nparticles_old/))
 
             t1 = t2
 
@@ -238,7 +238,7 @@ contains
         write (6,'()')
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(mc_cycles_done+ncycles*nreport, (/nparticles_old/)) 
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*nreport, (/nparticles_old/))
             if (parent) write (6,'()')
         end if
 
