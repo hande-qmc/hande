@@ -1,8 +1,11 @@
 module restart_hdf5
-! [review] -  AJWT: We should consider future usage at this point before the format is entrenched!
-!               I'll add this to the dev list email.
     ! Restart functionality based on the HDF5 library.  Note: this is only
     ! for QMC (ie FCIQMC, DMQMC or CCMC) calculations).
+! [review] -  AJWT: We should consider future usage at this point before the format is entrenched!
+! [reply] - JSS:
+    ! Due to the use of HDF5, the format is pretty flexible (i.e. we can easily add or
+    ! remove data items, though changing the data structure of the existing output is more
+    ! problematic from a backward-compatibility viewpoint.
 
     ! We save things we absolutely need to restart the calculation, some useful
     ! metadata (to make it possible to figure out where the restart file came
@@ -13,22 +16,31 @@ module restart_hdf5
     ! compiled with them enabled (i.e. --enable-fortran --enable-fortran2003 in
     ! the configure line).
 
-    ! See HDF5 documentation and tutorials (http://www.hdfgroup.org/HDF5/).
-    ! It's a bit hard to get going (not all examples are
-    ! correct/helpful/self-explanatory!) but fortunately we restrict ourselves
-    ! to just a simple usage...
+    ! See HDF5 documentation and tutorials (http://www.hdfgroup.org/HDF5/ and
+    ! http://www.hdfgroup.org/HDF5/Tutor/).
+    ! It's a bit hard to get going (not all examples are correct/helpful/self-explanatory!)
+    ! but fortunately we restrict ourselves to just a simple usage and there is not enough
+    ! space to regurgitate/add thorough explanation to the full HDF5 documentation.
 
     ! The HDF5 structure we use is:
-
 ! [review] -  AJWT: Does order matter?
+! [reply] - JSS:
+    ! (Note: order does not matter as HDF5 requires explicitly statement of the group and
+    ! dataspace names for each read and write operation.)
 ! [review] -  AJWT: How do we keep this specification consistent with what is actually done?
+! [reply] - JSS: I don't think we can ensure this.  It's like any commenting---the
+! [reply] - JSS: programmers must update the comments along with code.  A social rather
+! [reply] - JSS: than technical issue.
+
     ! /                                # ROOT/
     !
     !  metadata/
     !           restart version        # Version of restart module used to produce the restart file.
-    !           hande version          # git sha1 hash.  For info only (not used).
 ! [review] -  AJWT: Probably best to say 'not currently used on read-in'
-    !           date                   # For info only (not used).
+! [reply] - JSS done.
+    !           hande version          # git sha1 hash.  For info only (not currently used on read-in).
+    !           date                   # For info only (not currently used on read-in).
+    !           uuid                   # UUID of calculation.  For info only (not currently used on read-in).
     !           calc_type              # Calculation type (as given by a parameter in calc).
     !           nprocs                 # Number of processors used in calculation.
     !           i0_length              # Number of bits in an i0 integer.
@@ -67,11 +79,20 @@ module restart_hdf5
 
     type restart_info_t
 ! [review] -  AJWT: The comments in parse_input are not helpful in this regard!  More please.
-        ! See comments in parse_input regarding the read_id and write_id.
+! [reply] - JSS:
+        ! If write_id is negative, then it was set by the user in the input file.  Set
+        ! Y=-ID-1 to undo the transformation in parse_input, where Y is in the restart
+        ! filename below.  If non-negative, generate Y such that the restart filename is unique.
         integer :: write_id ! ID number to write to.
+        ! As for write_id but if positive find the highest possible value of Y  out of the
+        ! existing restart files (assuming they have sequential values of Y).
         integer :: read_id  ! ID number to write to.
+        ! Number of QMC iterations between writing out a restart file.
         integer :: write_restart_freq
-        character(255) :: restart_stem = 'HANDE.RS' ! Stem to use for creating restart filenames (of the format restart_stem.Y.pX, where X is the processor rank and Y is a common integer given by write_id or read_id.
+        ! Stem to use for creating restart filenames (of the format restart_stem.Y.pX,
+        ! where X is the processor rank and Y is a common positive integer related to
+        ! write_id/read_id.
+        character(8), private :: restart_stem = 'HANDE.RS'
     end type restart_info_t
 
     ! Global restart info store until we have a calc type which is passed
@@ -82,6 +103,9 @@ module restart_hdf5
     ! anything to dump_restart_hdf5!
 ! [review] -  AJWT: Although the git history will protect the meaning of the version number, is it advisable to document this elsewhere too?
 ! [review] -  AJWT: I presume we will deal with conflicts in this organically
+! [reply] - JSS:
+    ! Note that the restart version is not currently used anywhere but might be helpful
+    ! when writing post-processing utilities which act upon restart files.
     integer, parameter :: restart_version = 1
 
     ! Group names...
@@ -135,6 +159,8 @@ module restart_hdf5
             integer, intent(in) :: ncycles
             integer(lint), intent(in) :: total_population(:)
 ! [review] -  AJWT: This 255 character limit seems a trifle out-dated!
+! [reply] - JSS: out-dated but rather convenient.  The user should not be able to change the filename stem (as it's marked private),
+! [reply] - JSS: and so it leaves plenty of room for the processor rank and file id.
             character(255) :: restart_file
 
             ! HDF5 kinds
@@ -142,18 +168,25 @@ module restart_hdf5
             ! HDF5 handles
             integer(hid_t) :: file_id, group_id, subgroup_id
 
+! [review] -  AJWT: By now I'm getting the sinking feeling from the variable list that this procedure is quite monolithic!
+! [reply] - JSS: not really but comments added for important variables.
             integer :: date_time(8)
             character(19) :: date_str
             integer :: ierr
             type(c_ptr) :: ptr
+            ! Shape of data (sub-)array to be written out.
             integer(HSIZE_T) :: dshape2(2)
+            ! Temporary variables so for copying data to which we can also call c_ptr on.
+            ! This allows us to use the same array functions for writing out (the small
+            ! amount of) scalar data we have to write out.
             integer(lint), allocatable, target :: tmp_pop(:)
-            character(10) :: proc_suf
             real(p), target :: tmp(1)
-! [review] -  AJWT: By now I'm getting the sinking feeling from the variable list that this procedure is quite monolithic!
+
+            character(10) :: proc_suf
 
 ! [review] -  AJWT: A comment as to the format of the filename would be helpful.  I'd've written one, but I couldn't immediately figure it out
 ! [review] -  AJWT: Having looked back I saw:   the format is restart_stem.Y.pX, where X is the processor rank and Y is a common integer given by write_id or read_id.
+! [reply] - JSS: see above.
             ! Figure out filename.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
 ! [review] -  AJWT: Might ri be an input parameter whose value defaults to restart_info_global?
@@ -174,19 +207,24 @@ module restart_hdf5
             end if
 
             ! Initialise HDF5 and open file.
-            ! NOTE: if file exists, then it is overwritten.
 ! [review] -  AJWT: But the get_unique_filename above ensures this doesn't happen?
+! [reply] - JSS:
+            ! NOTE: if file exists (ie user requested we re-use an existing file), then it is overwritten.
             call h5open_f(ierr)
             call h5fcreate_f(restart_file, H5F_ACC_TRUNC_F, file_id, ierr)
 
 ! [review] -  AJWT: I don't immediately see what these are used for.
 ! [review] -  AJWT: These kinds are used in the write_* functions.
-            ! i0 kind?  What a nice interface!
+! [reply] - JSS:
+            ! Convert our non-standard kinds to something HDF5 understands.
             h5_i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
             h5_p = h5kind_to_type(p, H5_REAL_KIND)
             h5_lint = h5kind_to_type(lint, H5_INTEGER_KIND)
 
 ! [review] -  AJWT: This is getting a bit cryptic (but ok if you bear with it)
+! [reply] - JSS: added links to HDF5 documentation at top of restart file.  Not sure what
+! [reply] - JSS: else can be done without direct brain transfer or one going through the
+! [reply] - JSS: HDF tutorial.
             ! --- metadata group ---
             call h5gcreate_f(file_id, gmetadata, group_id, ierr)
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
@@ -194,10 +232,13 @@ module restart_hdf5
                 call write_string(group_id, dhande, VCS_VERSION)
 
 ! [review] -  AJWT: This doesn't appear to agree with the comments at the top
+! [reply] - JSS: fixed.
                 call write_string(group_id, duuid, GLOBAL_UUID)
 
                 call date_and_time(values=date_time)
 ! [review] -  AJWT: What does this actually look like?
+! [reply] - JSS:
+                ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
                 write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
                 call write_string(group_id, ddate, date_str)
 
@@ -357,6 +398,9 @@ module restart_hdf5
 !              I foresee a time when the calc_type format will change, and the code
 !              below will be a pain.  Perhaps some sort of interface for this.
 !             In particular, I don't think the restart_read should be dealing with this sort of thing.
+! [reply] - JSS: leave as todo for now.
+                ! [todo] - Allow restart files for one calculation types to be used to
+                ! [todo] - restart a (suitably compatible) different calculation.
                 ! Different calc types are either not compatible or require
                 ! hyperslabs (fewer particle types) or require copying (more
                 ! particle types).
