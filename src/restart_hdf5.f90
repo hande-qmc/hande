@@ -72,6 +72,7 @@ module restart_hdf5
     ! doesn't then handle the situation gracefully (e.g. by falling back to
     ! default values).
 
+    use hdf5, only: hid_t
     implicit none
 
     private
@@ -134,7 +135,89 @@ module restart_hdf5
                                dref_pop = 'reference population @ t-1', &
                                dhsref = 'Hilbert space reference determinant'
 
+    ! HDF5 kinds equivalent to the kinds defined in const.  Set in init_restart_hdf5.
+    type h5_kinds_t
+        integer(hid_t) :: i0
+        integer(hid_t) :: lint
+        integer(hid_t) :: p
+    end type h5_kinds_t
+
     contains
+
+        subroutine init_restart_hdf5(ri, write_mode, filename, kinds)
+
+            ! Initialise restart functionality:
+
+            ! * print information line;
+            ! * create restart filename;
+            ! * create HDF5 types.
+
+            ! NOTE: HDF5 library must be opened (h5open_f) before init_restart_hdf5 is
+            ! called and not closed between calling init_restart_hdf5 and operating on
+            ! the restart file to ensure the HDF5 types match those calculated here.
+
+            ! In:
+            !    ri: restart information. ri%restart_stem and ri%write_id/ri%read_id (as
+            !        appropriate) are used.
+            !    write_mode: true for writing out a restart file, false for reading one in.
+            ! Out:
+            !    filename: name of the restart file.
+            !    kinds: derived type containing HDF5 types which correspond to the
+            !        non-standard integer and real kinds used in HANDE.
+
+            use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
+
+            use const, only: i0, lint, p
+            use parallel, only: nprocs, iproc, parent
+            use utils, only: int_fmt, get_unique_filename
+
+            type(restart_info_t), intent(in) :: ri
+            logical, intent(in) :: write_mode
+            character(*), intent(out) :: filename
+            type(h5_kinds_t), intent(out) :: kinds
+
+            character(10) :: proc_suf
+            integer :: id, ierr
+
+            if (write_mode) then
+                id = ri%write_id
+            else
+                id = ri%read_id
+            end if
+
+! [review] -  AJWT: A comment as to the format of the filename would be helpful.  I'd've written one, but I couldn't immediately figure it out
+! [review] -  AJWT: Having looked back I saw:   the format is restart_stem.Y.pX, where X is the processor rank and Y is a common integer given by write_id or read_id.
+! [reply] - JSS: see above also.
+            ! Figure out filename: restart_stem.Y.pX, where Y is related to id and X is the processor rank.
+            write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
+            if (id < 0) then
+                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, id, filename)
+            else
+                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, 0, filename)
+            end if
+
+            if (parent) then
+                if (write_mode) then
+                    write (6,'(1X,"#",1X,"Writing restart file to",1X,a)', advance='no') trim(filename)
+                else
+                    write (6,'(1X,"Reading restart file from",1X,a)', advance='no') trim(filename)
+                end if
+                if (nprocs > 1) then
+                    write (6,'(1X, "family.")')
+                else
+                    write (6,'(1X, ".")')
+                end if
+            end if
+
+! [review] -  AJWT: I don't immediately see what these are used for.
+! [review] -  AJWT: These kinds are used in the write_* functions.
+! [reply] - JSS:
+            ! Convert our non-standard kinds to something HDF5 understands.
+            kinds%i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
+            kinds%p = h5kind_to_type(p, H5_REAL_KIND)
+            kinds%lint = h5kind_to_type(lint, H5_INTEGER_KIND)
+
+        end subroutine init_restart_hdf5
 
         subroutine dump_restart_hdf5(ri, ncycles, total_population)
 
@@ -166,7 +249,7 @@ module restart_hdf5
             character(255) :: restart_file
 
             ! HDF5 kinds
-            integer(hid_t) :: h5_i0, h5_p, h5_lint
+            type(h5_kinds_t) :: kinds
             ! HDF5 handles
             integer(hid_t) :: file_id, group_id, subgroup_id
 
@@ -184,43 +267,16 @@ module restart_hdf5
             integer(lint), allocatable, target :: tmp_pop(:)
             real(p), target :: tmp(1)
 
-            character(10) :: proc_suf
-
-! [review] -  AJWT: A comment as to the format of the filename would be helpful.  I'd've written one, but I couldn't immediately figure it out
-! [review] -  AJWT: Having looked back I saw:   the format is restart_stem.Y.pX, where X is the processor rank and Y is a common integer given by write_id or read_id.
-! [reply] - JSS: see above.
-            ! Figure out filename.
-            write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
 ! [review] -  AJWT: Might ri be an input parameter whose value defaults to restart_info_global?
 ! [reply] - JSS: done.
-            if (ri%write_id < 0) then
-                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .true., ri%write_id, restart_file)
-            else
-                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .true., 0, restart_file)
-            end if
-
-            if (parent) then
-                if (nprocs > 1) then
-                    write (6,'(1X,"#",1X,"Writing restart file to",1X,a,1X,"family.")') trim(restart_file)
-                else
-                    write (6,'(1X,"#",1X,"Writing restart file to",1X,a)') trim(restart_file)//'.'
-                end if
-            end if
 
             ! Initialise HDF5 and open file.
+            call h5open_f(ierr)
+            call init_restart_hdf5(ri, .true., restart_file, kinds)
 ! [review] -  AJWT: But the get_unique_filename above ensures this doesn't happen?
 ! [reply] - JSS:
             ! NOTE: if file exists (ie user requested we re-use an existing file), then it is overwritten.
-            call h5open_f(ierr)
             call h5fcreate_f(restart_file, H5F_ACC_TRUNC_F, file_id, ierr)
-
-! [review] -  AJWT: I don't immediately see what these are used for.
-! [review] -  AJWT: These kinds are used in the write_* functions.
-! [reply] - JSS:
-            ! Convert our non-standard kinds to something HDF5 understands.
-            h5_i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
-            h5_p = h5kind_to_type(p, H5_REAL_KIND)
-            h5_lint = h5kind_to_type(lint, H5_INTEGER_KIND)
 
 ! [review] -  AJWT: This is getting a bit cryptic (but ok if you bear with it)
 ! [reply] - JSS: added links to HDF5 documentation at top of restart file.  Not sure what
@@ -266,7 +322,7 @@ module restart_hdf5
                 dshape2(1) = size(walker_dets, dim=1, kind=HSIZE_T)
                 dshape2(2) = tot_walkers
                 ptr = c_loc(walker_dets)
-                call write_ptr(subgroup_id, ddets, h5_i0, size(shape(walker_dets)), dshape2, ptr)
+                call write_ptr(subgroup_id, ddets, kinds%i0, size(shape(walker_dets)), dshape2, ptr)
 
                 dshape2(1) = size(walker_population, dim=1, kind=HSIZE_T)
                 ptr = c_loc(walker_population)
@@ -274,14 +330,14 @@ module restart_hdf5
 
                 dshape2(1) = size(walker_data, dim=1, kind=HSIZE_T)
                 ptr = c_loc(walker_data)
-                call write_ptr(subgroup_id, ddata, h5_p, size(shape(walker_data)), dshape2, ptr)
+                call write_ptr(subgroup_id, ddata, kinds%p, size(shape(walker_data)), dshape2, ptr)
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
                 allocate(tmp_pop(size(total_population)))
                 tmp_pop = total_population
                 ptr = c_loc(tmp_pop)
-                call write_ptr(subgroup_id, dtot_pop, h5_lint, size(shape(tmp_pop)), shape(tmp_pop, HSIZE_T), ptr)
+                call write_ptr(subgroup_id, dtot_pop, kinds%lint, size(shape(tmp_pop)), shape(tmp_pop, HSIZE_T), ptr)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -292,7 +348,7 @@ module restart_hdf5
                     call write_integer(subgroup_id, dncycles, ncycles)
 
                     ptr = c_loc(shift)
-                    call write_ptr(subgroup_id, dshift, h5_p, size(shape(shift)), shape(shift,HSIZE_T), ptr)
+                    call write_ptr(subgroup_id, dshift, kinds%p, size(shape(shift)), shape(shift,HSIZE_T), ptr)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -301,13 +357,13 @@ module restart_hdf5
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                     ptr = c_loc(f0)
-                    call write_ptr(subgroup_id, dref, h5_i0, size(shape(f0)), shape(f0,HSIZE_T), ptr)
+                    call write_ptr(subgroup_id, dref, kinds%i0, size(shape(f0)), shape(f0,HSIZE_T), ptr)
 
                     ptr = c_loc(hs_f0)
-                    call write_ptr(subgroup_id, dhsref, h5_i0, size(shape(hs_f0)), shape(hs_f0,HSIZE_T), ptr)
+                    call write_ptr(subgroup_id, dhsref, kinds%i0, size(shape(hs_f0)), shape(hs_f0,HSIZE_T), ptr)
                     tmp = D0_population_cycle
                     ptr = c_loc(tmp)
-                    call write_ptr(subgroup_id, dref_pop, h5_p, 1, [1_HSIZE_T], ptr)
+                    call write_ptr(subgroup_id, dref_pop, kinds%p, 1, [1_HSIZE_T], ptr)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -334,18 +390,17 @@ module restart_hdf5
             use hdf5
             use errors, only: stop_all
             use const
-            use parallel, only: nprocs, iproc, parent
-            use utils, only: int_fmt, get_unique_filename
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data,  &
                                    shift, tot_nparticles, f0, hs_f0,             &
                                    D0_population, mc_cycles_done, tot_walkers
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
+            use parallel, only: nprocs
 
             type(restart_info_t), intent(in) :: ri
 
             ! HDF5 kinds
-            integer(hid_t) :: h5_i0, h5_p, h5_lint
+            type(h5_kinds_t) :: kinds
             ! HDF5 handles
             integer(hid_t) :: file_id, group_id, subgroup_id, dset_id, dspace_id
 
@@ -354,36 +409,17 @@ module restart_hdf5
             integer :: i0_length_restart
             type(c_ptr) :: ptr
             integer :: ierr
-            character(10) :: proc_suf
             real(p), target :: tmp(1)
 
             integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
 
 ! [review] -  AJWT: This seems like needless duplication of what happens in dump_restart_hdf5 which could be put in a procedure
-            ! Figure out filename.
-            write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
-            if (ri%read_id < 0) then
-                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .false., ri%read_id, restart_file)
-            else
-                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), .false., 0, restart_file)
-            end if
-
-            if (parent) then
-                if (nprocs > 1) then
-                    write (6,'(1X,"Reading restart file from the",1X,a,1X,"family."/)') trim(restart_file)
-                else
-                    write (6,'(1X,"Reading restart file from",1X,a,/)') trim(restart_file)//'.'
-                end if
-            end if
+! [reply] - JSS: abstracted into a common init procedure.
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
+            call init_restart_hdf5(ri, .false., restart_file, kinds)
             call h5fopen_f(restart_file, H5F_ACC_RDONLY_F, file_id, ierr)
-
-            ! i0 kind?  What a nice interface!
-            h5_i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
-            h5_p = h5kind_to_type(p, H5_REAL_KIND)
-            h5_lint = h5kind_to_type(lint, H5_INTEGER_KIND)
 
 ! [review] -  AJWT: Here endeth the duplication
             ! --- metadata group ---
@@ -450,16 +486,16 @@ module restart_hdf5
                 tot_walkers = dims(size(dims))
 
                 ptr = c_loc(walker_dets)
-                call read_ptr(subgroup_id, ddets, h5_i0, ptr)
+                call read_ptr(subgroup_id, ddets, kinds%i0, ptr)
 
                 ptr = c_loc(walker_population)
                 call read_ptr(subgroup_id, dpops, H5T_NATIVE_INTEGER, ptr)
 
                 ptr = c_loc(walker_data)
-                call read_ptr(subgroup_id, ddata, h5_p, ptr)
+                call read_ptr(subgroup_id, ddata, kinds%p, ptr)
 
                 ptr = c_loc(tot_nparticles)
-                call read_ptr(subgroup_id, dtot_pop, h5_lint, ptr)
+                call read_ptr(subgroup_id, dtot_pop, kinds%lint, ptr)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -469,7 +505,7 @@ module restart_hdf5
                     call read_integer(subgroup_id, dncycles, mc_cycles_done)
 
                     ptr = c_loc(shift)
-                    call read_ptr(subgroup_id, dshift, h5_p, ptr)
+                    call read_ptr(subgroup_id, dshift, kinds%p, ptr)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -477,13 +513,13 @@ module restart_hdf5
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                     ptr = c_loc(f0)
-                    call read_ptr(subgroup_id, dref, h5_i0, ptr)
+                    call read_ptr(subgroup_id, dref, kinds%i0, ptr)
 
                     ptr = c_loc(hs_f0)
-                    call read_ptr(subgroup_id, dhsref, h5_i0, ptr)
+                    call read_ptr(subgroup_id, dhsref, kinds%i0, ptr)
 
                     ptr = c_loc(tmp)
-                    call read_ptr(subgroup_id, dref_pop, h5_p, ptr)
+                    call read_ptr(subgroup_id, dref_pop, kinds%p, ptr)
                     D0_population = tmp(1)
 
                 call h5gclose_f(subgroup_id, ierr)
