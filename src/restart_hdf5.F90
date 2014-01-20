@@ -157,6 +157,19 @@ module restart_hdf5
         module procedure write_array_2d_real_p
     end interface write_array
 
+    interface read_array
+        module procedure read_array_1d_int_lint
+        module procedure read_array_2d_int
+#if DET_SIZE != 64
+        module procedure read_array_1d_int_i0
+#endif
+#if DET_SIZE != 32
+        module procedure read_array_2d_int_i0
+#endif
+        module procedure read_array_1d_real_p
+        module procedure read_array_2d_real_p
+    end interface read_array
+
     contains
 
         subroutine init_restart_hdf5(ri, write_mode, filename, kinds)
@@ -492,17 +505,13 @@ module restart_hdf5
                 ! Number of determinants is the last index...
                 tot_walkers = dims(size(dims))
 
-                ptr = c_loc(walker_dets)
-                call read_ptr(subgroup_id, ddets, kinds%i0, ptr)
+                call read_array(subgroup_id, ddets, kinds, shape(walker_dets), walker_dets)
 
-                ptr = c_loc(walker_population)
-                call read_ptr(subgroup_id, dpops, H5T_NATIVE_INTEGER, ptr)
+                call read_array(subgroup_id, dpops, kinds, shape(walker_population), walker_population)
 
-                ptr = c_loc(walker_data)
-                call read_ptr(subgroup_id, ddata, kinds%p, ptr)
+                call read_array(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
 
-                ptr = c_loc(tot_nparticles)
-                call read_ptr(subgroup_id, dtot_pop, kinds%lint, ptr)
+                call read_array(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -511,22 +520,18 @@ module restart_hdf5
 
                     call read_integer(subgroup_id, dncycles, mc_cycles_done)
 
-                    ptr = c_loc(shift)
-                    call read_ptr(subgroup_id, dshift, kinds%p, ptr)
+                    call read_array(subgroup_id, dshift, kinds, shape(shift), shift)
 
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/reference group ---
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    ptr = c_loc(f0)
-                    call read_ptr(subgroup_id, dref, kinds%i0, ptr)
+                    call read_array(subgroup_id, dref, kinds, shape(f0), f0)
 
-                    ptr = c_loc(hs_f0)
-                    call read_ptr(subgroup_id, dhsref, kinds%i0, ptr)
+                    call read_array(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
 
-                    ptr = c_loc(tmp)
-                    call read_ptr(subgroup_id, dref_pop, kinds%p, ptr)
+                    call read_array(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
                     D0_population = tmp(1)
 
                 call h5gclose_f(subgroup_id, ierr)
@@ -877,9 +882,200 @@ module restart_hdf5
 
         end subroutine read_integer
 
+        ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
+        ! types and array dimensions as needed!
+
+        subroutine read_array_1d_int_lint(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 1D integer(lint) array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: lint
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            integer(lint), intent(out), target :: arr(arr_shape(1))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call read_ptr(id, dset, kinds%lint, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+
+        end subroutine read_array_1d_int_lint
+
+        subroutine read_array_2d_int(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 2D integer array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T, H5T_NATIVE_INTEGER
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            integer, intent(out), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call read_ptr(id, dset, H5T_NATIVE_INTEGER, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+
+        end subroutine read_array_2d_int
+
+! 1D array version for i0 needed if i0 is not the same as lint...
+#if DET_SIZE != 64
+        subroutine read_array_1d_int_i0(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 1D integer(i0) array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: i0
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            integer(i0), intent(in), target :: arr(arr_shape(1))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call read_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine read_array_1d_int_i0
+#endif
+
+! 1D array version for i0 needed if i0 is not the same as standard integer (which we assume to be 32 bits)...
+#if DET_SIZE != 32
+        subroutine read_array_2d_int_i0(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 2D integer(i0) array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: i0
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            integer(i0), intent(out), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call read_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine read_array_2d_int_i0
+#endif
+
+        subroutine read_array_1d_real_p(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 1D real(p) array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: p
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            real(p), intent(out), target :: arr(arr_shape(1))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine read_array_1d_real_p
+
+        subroutine read_array_2d_real_p(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 2D real(p) array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: p
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            real(p), intent(out), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine read_array_2d_real_p
+
 ! [review] -  AJWT: I feel the frisson of data overflow and horrible bugs for the future in this code.
-!               Perhaps at least a length check?
-        subroutine read_ptr(id, dset, dtype, arr_ptr)
+! [review] -  AJWT: Perhaps at least a length check?
+! [reply] - JSS: See above and below.  Check rank, bounds and data type.
+        subroutine read_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
 
             ! Read an array from an open HDF5 file/group.
 
@@ -887,6 +1083,8 @@ module restart_hdf5
             !    id: file or group HD5 identifier.
             !    dset: dataset name.
             !    dtype: HDF5 data type of array.
+            !    arr_rank: rank of array.
+            !    arr_dim: size of array along each dimension.
             ! In/Out:
             !    arr_ptr: C pointer to first element in array to read.  On
             !        output, the dataset is store in the array pointed to by
@@ -895,18 +1093,42 @@ module restart_hdf5
             ! NOTE: get dtype from h5kind_to_type if not using a native HDF5
             ! Fortran type.
 
-            use hdf5
             use, intrinsic :: iso_c_binding
+            use hdf5
+
+            use errors, only: stop_all
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             integer(hid_t), intent(in) :: dtype
+            integer, intent(in) :: arr_rank
+            integer(hsize_t), intent(in) :: arr_dim(:)
             type(c_ptr), intent(inout) :: arr_ptr
 
-            integer :: ierr
-            integer(hid_t) :: dset_id
+            integer :: ierr, arr_rank_stored
+            integer(hsize_t) :: arr_dim_stored(size(arr_dim)), arr_max_dim_stored(size(arr_dim))
+            integer(hid_t) :: dspace_id, dset_id, dtype_stored
+            logical :: dtype_equal
 
             call h5dopen_f(id, dset, dset_id, ierr)
+
+            call h5dget_type_f(dset_id, dtype_stored, ierr)
+            call h5tequal_f(dtype, dtype_stored, dtype_equal, ierr)
+            if (.not.dtype_equal) call stop_all('read_ptr', 'Reading mismatched data type.')
+
+            call h5dget_space_f(dset_id, dspace_id, ierr)
+
+            call h5sget_simple_extent_ndims_f(dspace_id, arr_rank_stored, ierr)
+            if (arr_rank /= arr_rank_stored) call stop_all('read_ptr', 'Reading mismatched data rank.')
+
+            call h5sget_simple_extent_dims_f(dspace_id, arr_dim_stored, arr_max_dim_stored, ierr)
+            if (any(arr_dim(:arr_rank-1) - arr_dim_stored(:arr_rank-1) /= 0)) &
+                call stop_all('read_ptr', 'Reading mismatched array bounds')
+            if (arr_dim(arr_rank) - arr_dim_stored(arr_rank) < 0) &
+                call stop_all('read_ptr', 'Reading mismatched array bounds')
+
+            call h5sclose_f(dspace_id, ierr)
+
             call h5dread_f(dset_id, dtype, arr_ptr, ierr)
             call h5dclose_f(dset_id, ierr)
 
