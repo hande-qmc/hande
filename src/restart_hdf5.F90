@@ -72,6 +72,8 @@ module restart_hdf5
     ! doesn't then handle the situation gracefully (e.g. by falling back to
     ! default values).
 
+#include "cdefs.h"
+
     use hdf5, only: hid_t
     implicit none
 
@@ -141,6 +143,19 @@ module restart_hdf5
         integer(hid_t) :: lint
         integer(hid_t) :: p
     end type h5_kinds_t
+
+    interface write_array
+        module procedure write_array_1d_int_lint
+        module procedure write_array_2d_int
+#if DET_SIZE != 64
+        module procedure write_array_1d_int_i0
+#endif
+#if DET_SIZE != 32
+        module procedure write_array_2d_int_i0
+#endif
+        module procedure write_array_1d_real_p
+        module procedure write_array_2d_real_p
+    end interface write_array
 
     contains
 
@@ -319,25 +334,20 @@ module restart_hdf5
 
                 ! Don't write out the entire array for storing particles but
                 ! rather only the slots in use...
-                dshape2(1) = size(walker_dets, dim=1, kind=HSIZE_T)
-                dshape2(2) = tot_walkers
-                ptr = c_loc(walker_dets)
-                call write_ptr(subgroup_id, ddets, kinds%i0, size(shape(walker_dets)), dshape2, ptr)
+                call write_array(subgroup_id, ddets, kinds, shape(walker_dets(:,:tot_walkers)), &
+                                 walker_dets(:,:tot_walkers))
 
-                dshape2(1) = size(walker_population, dim=1, kind=HSIZE_T)
-                ptr = c_loc(walker_population)
-                call write_ptr(subgroup_id, dpops, H5T_NATIVE_INTEGER, size(shape(walker_population)), dshape2, ptr)
+                call write_array(subgroup_id, dpops, kinds, shape(walker_population(:,:tot_walkers)), &
+                                 walker_population(:,:tot_walkers))
 
-                dshape2(1) = size(walker_data, dim=1, kind=HSIZE_T)
-                ptr = c_loc(walker_data)
-                call write_ptr(subgroup_id, ddata, kinds%p, size(shape(walker_data)), dshape2, ptr)
+                call write_array(subgroup_id, ddata, kinds, shape(walker_data(:,:tot_walkers)), &
+                                 walker_data(:,:tot_walkers))
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
                 allocate(tmp_pop(size(total_population)))
                 tmp_pop = total_population
-                ptr = c_loc(tmp_pop)
-                call write_ptr(subgroup_id, dtot_pop, kinds%lint, size(shape(tmp_pop)), shape(tmp_pop, HSIZE_T), ptr)
+                call write_array(subgroup_id, dtot_pop, kinds, shape(tmp_pop), tmp_pop)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -347,8 +357,7 @@ module restart_hdf5
 
                     call write_integer(subgroup_id, dncycles, ncycles)
 
-                    ptr = c_loc(shift)
-                    call write_ptr(subgroup_id, dshift, kinds%p, size(shape(shift)), shape(shift,HSIZE_T), ptr)
+                    call write_array(subgroup_id, dshift, kinds, shape(shift), shift)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -356,14 +365,12 @@ module restart_hdf5
                 call h5gcreate_f(group_id, gref, subgroup_id, ierr)
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    ptr = c_loc(f0)
-                    call write_ptr(subgroup_id, dref, kinds%i0, size(shape(f0)), shape(f0,HSIZE_T), ptr)
+                    call write_array(subgroup_id, dref, kinds, shape(f0), f0)
 
-                    ptr = c_loc(hs_f0)
-                    call write_ptr(subgroup_id, dhsref, kinds%i0, size(shape(hs_f0)), shape(hs_f0,HSIZE_T), ptr)
+                    call write_array(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
+
                     tmp = D0_population_cycle
-                    ptr = c_loc(tmp)
-                    call write_ptr(subgroup_id, dref_pop, kinds%p, 1, [1_HSIZE_T], ptr)
+                    call write_array(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -608,8 +615,203 @@ module restart_hdf5
 
         end subroutine write_integer
 
+        ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
+        ! types and array dimensions as needed!
+
+        subroutine write_array_1d_int_lint(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 1D integer(lint) array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: lint
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            integer(lint), intent(in), target :: arr(arr_shape(1))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%lint, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+
+        end subroutine write_array_1d_int_lint
+
+        subroutine write_array_2d_int(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 2D integer array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T, H5T_NATIVE_INTEGER
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            integer, intent(in), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, H5T_NATIVE_INTEGER, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+
+        end subroutine write_array_2d_int
+
+! 1D array version for i0 needed if i0 is not the same as lint...
+#if DET_SIZE != 64
+        subroutine write_array_1d_int_i0(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 1D integer(i0) array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: i0
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            integer(i0), intent(in), target :: arr(arr_shape(1))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine write_array_1d_int_i0
+#endif
+
+! 1D array version for i0 needed if i0 is not the same as standard integer (which we assume to be 32 bits)...
+#if DET_SIZE != 32
+        subroutine write_array_2d_int_i0(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 2D integer(i0) array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: i0
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            integer(i0), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine write_array_2d_int_i0
+#endif
+
+        subroutine write_array_1d_real_p(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 1D real(p) array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: p
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            real(p), intent(in), target :: arr(arr_shape(1))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine write_array_1d_real_p
+
+        subroutine write_array_2d_real_p(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 2D real(p) array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: h5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: p
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(h5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            real(p), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine write_array_2d_real_p
+
 ! [review] -  AJWT: This looks potentially dangerous - if dtype differs from the actual type of arr_ptr
-!              Might an overloaded interface not be better?
+! [review] -  AJWT: Might an overloaded interface not be better?
+! [reply] - JSS: done (as wrappers around write_ptr).  See above!
         subroutine write_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
 
             ! Write an array to an open HDF5 file/group.
