@@ -689,15 +689,6 @@ contains
             if (excitor_sign < 0) nspawn = -nspawn
         end if
 
-        if (abs(nspawn) > 5000) then
-            write (6,*) '# WARNING: bloom', nspawn
-            write (6,*) '# occ', cdet%occ_list
-            write (6,*) '# cluster', cluster%nexcitors, cluster%excitation_level, cluster%amplitude, cluster%pselect
-            write (6,*) '# connection', connection%from_orb(1:2), connection%to_orb(1:2)
-            write (6,*) '# hmatel', hmatel/(cluster%amplitude*cluster%cluster_to_det_sign)
-            write (6,*) '# pgen', pgen/cluster%pselect
-        end if
-
     end subroutine spawner_ccmc
 
     subroutine stochastic_ccmc_death(rng, sys, cdet, cluster)
