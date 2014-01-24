@@ -195,7 +195,7 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
-        use ccmc_data, only: cluster_t
+        use ccmc_data, only: cluster_t, bloom_stats_t
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, get_excitation_level
         use fciqmc_data
@@ -221,6 +221,7 @@ contains
         integer, allocatable :: cumulative_abs_pops(:)
         integer :: D0_pos, max_cluster_size,tot_abs_pop
         logical :: hit
+        type(bloom_stats_t) :: bloom_stats
 
         real :: t1, t2
 
@@ -341,6 +342,11 @@ contains
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
                         end if
 
+                        ! Prints nice warning messages/accumulate stats if a particle bloom occurs.
+                        if (abs(nspawned) > ceiling(bloom_stats%prop*(tot_abs_pop + D0_normalisation))) then
+                            call accumulate_bloom_stats(bloom_stats, nspawned)
+                        end if
+
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
@@ -377,6 +383,10 @@ contains
             if (soft_exit) exit
 
         end do
+
+        if(parent) then
+            call write_ccmc_bloom_report(bloom_stats)
+        end if
 
         if (parent) then
             call write_fciqmc_final(ireport)
@@ -995,5 +1005,56 @@ contains
         end do
 
     end subroutine convert_excitor_to_determinant
+
+
+    subroutine accumulate_bloom_stats(bloom_stats, nspawn)
+
+        ! Accumulate/print data about the blooming event.
+        ! in/out:
+        !     bloom_stats: stats about blooming to update
+        ! in:
+        !     nspawn: number of newly spawned excips
+
+        use ccmc_data, only: bloom_stats_t
+
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        integer, intent(in) :: nspawn
+                         
+        ! Print out a warning message the first nverbose warning times only.
+        if ( bloom_stats%nwarnings < bloom_stats%nverbose_warnings ) then
+            write (6,'(1X,a19,i2,a31,i12)') '# WARNING more than', int(bloom_stats%prop*100),&
+                ' % of the total excips spawned:', nspawn
+            write (6,'(1X,a26,i2,a47)') '# This warning only prints', bloom_stats%nverbose_warnings, & 
+                ' time(s). You may wish to reduce the time step.'
+        end if
+
+        ! Update bloom stats
+        bloom_stats%nwarnings = bloom_stats%nwarnings + 1
+        if(abs(nspawn) > bloom_stats%max_bloom) then
+            bloom_stats%max_bloom = abs(nspawn)
+        end if
+        bloom_stats%tot_bloom = bloom_stats%tot_bloom + abs(nspawn)
+
+    end subroutine accumulate_bloom_stats
+ 
+    subroutine write_ccmc_bloom_report(bloom_stats)
+
+        ! Prints a nice report on any blooming events which have occured.
+        ! in:
+        !     bloom_stats: stats about blooming to print
+
+        use ccmc_data, only: bloom_stats_t
+
+        type(bloom_stats_t), intent(in) :: bloom_stats
+
+        if(bloom_stats%nwarnings > 0) then
+            write (6,'()')
+            write (6,*) 'Blooming events occured: a more efficent calulation may be possible with a smaller timestep.'
+            write (6,*) 'Total number of blooming events:', bloom_stats%nwarnings
+            write (6,*) 'Maxium number of excips spawned in a blooming event:', bloom_stats%max_bloom
+            write (6,*) 'Mean number of excips spawned in a blooming event:', bloom_stats%tot_bloom/bloom_stats%nwarnings
+        end if
+
+    end subroutine write_ccmc_bloom_report
 
 end module ccmc
