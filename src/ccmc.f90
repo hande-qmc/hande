@@ -344,7 +344,9 @@ contains
 
                         ! Prints nice warning messages/accumulate stats if a particle bloom occurs.
                         if (abs(nspawned) > ceiling(bloom_stats%prop*(tot_abs_pop + D0_normalisation))) then
+                            ! omp critical
                             call accumulate_bloom_stats(bloom_stats, nspawned)
+                            ! omp end critical
                         end if
 
                         ! Does the cluster collapsed onto D0 produce
@@ -1016,16 +1018,17 @@ contains
         !     nspawn: number of newly spawned excips
 
         use ccmc_data, only: bloom_stats_t
+        use utils, only: int_fmt
 
         type(bloom_stats_t), intent(inout) :: bloom_stats
         integer, intent(in) :: nspawn
                          
         ! Print out a warning message the first nverbose warning times only.
         if ( bloom_stats%nwarnings < bloom_stats%nverbose_warnings ) then
-            write (6,'(1X,a19,i2,a31,i12)') '# WARNING more than', int(bloom_stats%prop*100),&
-                ' % of the total excips spawned:', nspawn
-            write (6,'(1X,a26,i2,a47)') '# This warning only prints', bloom_stats%nverbose_warnings, & 
-                ' time(s). You may wish to reduce the time step.'
+            write (6,'(1X, "# WARNING more than", '//int_fmt(int(bloom_stats%prop*100))//',&
+                " % of the total excips spawned: ", '//int_fmt(nspawn)//')'), int(bloom_stats%prop*100), nspawn
+            write (6,'(1X,"# This warning only prints",'//int_fmt(bloom_stats%nverbose_warnings)//',& 
+                " time(s). You may wish to reduce the time step.")'), bloom_stats%nverbose_warnings
         end if
 
         ! Update bloom stats
@@ -1044,15 +1047,19 @@ contains
         !     bloom_stats: stats about blooming to print
 
         use ccmc_data, only: bloom_stats_t
-
+        use utils, only: int_fmt
         type(bloom_stats_t), intent(in) :: bloom_stats
 
         if(bloom_stats%nwarnings > 0) then
             write (6,'()')
-            write (6,*) 'Blooming events occured: a more efficent calulation may be possible with a smaller timestep.'
-            write (6,*) 'Total number of blooming events:', bloom_stats%nwarnings
-            write (6,*) 'Maxium number of excips spawned in a blooming event:', bloom_stats%max_bloom
-            write (6,*) 'Mean number of excips spawned in a blooming event:', bloom_stats%tot_bloom/bloom_stats%nwarnings
+            write (6, '(1X, "Blooming events occured: a more efficent calulation may be possible &
+                with a smaller timestep.")')
+            write (6, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nwarnings)//')'), &
+                bloom_stats%nwarnings
+            write (6, '(1X, "Maxium number of excips spawned in a blooming event:",&
+                '//int_fmt(bloom_stats%max_bloom)//')'), bloom_stats%max_bloom
+            write (6, '(1X, "Mean number of excips spawned in a blooming event:", f11.2)'),&
+                bloom_stats%tot_bloom/bloom_stats%nwarnings
         end if
 
     end subroutine write_ccmc_bloom_report
