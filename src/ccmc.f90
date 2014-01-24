@@ -344,9 +344,9 @@ contains
 
                         ! Prints nice warning messages/accumulate stats if a particle bloom occurs.
                         if (abs(nspawned) > ceiling(bloom_stats%prop*(tot_abs_pop + D0_normalisation))) then
-                            ! omp critical
+                            !$omp critical (accumulate_bloom)
                             call accumulate_bloom_stats(bloom_stats, nspawned)
-                            ! omp end critical
+                            !$omp end critical (accumulate_bloom)
                         end if
 
                         ! Does the cluster collapsed onto D0 produce
