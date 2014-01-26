@@ -1008,13 +1008,13 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-
     subroutine accumulate_bloom_stats(bloom_stats, nspawn)
 
         ! Accumulate/print data about the blooming event.
-        ! in/out:
+
+        ! In/Out:
         !     bloom_stats: stats about blooming to update
-        ! in:
+        ! In:
         !     nspawn: number of newly spawned excips
 
         use ccmc_data, only: bloom_stats_t
@@ -1043,7 +1043,8 @@ contains
     subroutine write_ccmc_bloom_report(bloom_stats)
 
         ! Prints a nice report on any blooming events which have occured.
-        ! in:
+
+        ! In:
         !     bloom_stats: stats about blooming to print
 
         use ccmc_data, only: bloom_stats_t
