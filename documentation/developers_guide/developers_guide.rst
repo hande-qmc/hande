@@ -191,5 +191,3 @@ If your mail client/workstation/sendmail/exim4 is set up properly
 $ git request-pull master origin | mail -s "Pull request" hande-dev@imperial.ac.uk
 
 works as one would expect. 
-
-.. doxygenindex::

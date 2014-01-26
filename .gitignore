@@ -26,7 +26,6 @@ sub/
 *.dat
 *.pdf
 documentation/build
-documentation/developers_guide/xml
 test.out*
 test.err*
 submit.*
