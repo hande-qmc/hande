@@ -31,7 +31,7 @@ contains
         use spawn_data, only: spawn_t
         use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
                                nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
-                               load_balancing_tag, load_tag_done
+                               load_balancing_tag, load_tag_done, perc_imbalance
         use ranking, only: insertion_rank_int
 
         integer, intent(inout) :: proc_map(:)
@@ -47,10 +47,8 @@ contains
         integer :: ierr
         integer(lint) :: pop_av
         integer ::  d_siz, r_siz, d_map_size
-        integer :: up_thresh, low_thresh
-        real(dp) :: perc_diff
+        integer(lint) :: up_thresh, low_thresh
 
-        perc_diff = 0.05
         slot_list = 0
 
         ! Find slot populations.
@@ -63,8 +61,8 @@ contains
         procs_pop(:nprocs-1) = nparticles_proc(1,:nprocs)
         pop_av = sum(procs_pop(:nprocs-1))/nprocs
 
-        up_thresh = pop_av + int(real(pop_av*perc_diff))
-        low_thresh = pop_av - int(real(pop_av*perc_diff))
+        up_thresh = pop_av + int(real(pop_av*perc_imbalance))
+        low_thresh = pop_av - int(real(pop_av*perc_imbalance))
 
         ! Find donor/receiver processors.
         call find_processors(procs_pop, up_thresh, low_thresh, proc_map, receivers, donors, d_map_size)
@@ -100,19 +98,18 @@ contains
 
         use parallel, only: nprocs
         use fciqmc_data, only: nparticles_proc, load_tag_initial, &
-                               load_tag_doing
+                               load_tag_doing, perc_imbalance
 
         integer(lint), intent(in) :: average_pop
         integer, intent(out) :: dummy_tag
 
-        integer :: i, imbal
+        integer :: i, upper_threshold
         integer(lint) :: procs_pop(nprocs)
 
+        upper_threshold = average_pop + int(real(average_pop*perc_imbalance))
         procs_pop(:nprocs) = nparticles_proc(1,:nprocs)
 
-        imbal = 0
-
-        if (any(procs_pop > average_pop)) then
+        if (any(procs_pop > upper_threshold)) then
             dummy_tag = load_tag_doing
         else
             dummy_tag = load_tag_initial
@@ -146,7 +143,7 @@ contains
         integer(lint), intent(in) :: d_map(:)
         integer, intent(in) ::  d_index(:), d_rank(:)
         integer, intent(in) :: donors(:), receivers(:)
-        integer, intent(in) :: up_thresh, low_thresh
+        integer(lint), intent(in) :: up_thresh, low_thresh
         integer(lint), intent(inout) :: procs_pop(0:)
         integer, intent(inout) :: proc_map(0:)
 
@@ -237,7 +234,7 @@ contains
 
         integer(lint), intent(in) :: procs_pop(0:)
         integer, intent(in) :: proc_map(0:)
-        integer, intent(in) :: up_thresh, low_thresh
+        integer(lint), intent(in) :: up_thresh, low_thresh
         integer, intent(out) :: donor_slots
         integer, allocatable, intent(out) :: rec_dummy(:), don_dummy(:)
 
