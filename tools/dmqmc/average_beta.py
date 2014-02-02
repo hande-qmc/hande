@@ -204,15 +204,34 @@ def stats_stochastic_specific_heat(beta, estimator_array):
     se = scipy.sqrt((beta**4)*(estimator_array.se[TR_H2RHO_INDEX]**2+4*(estimator_array.mean[TR_HRHO_INDEX]**2)*estimator_array.se[TR_HRHO_INDEX]**2))
     return Stats(mean,se)
 
-def stats_full_renyi_2(estimator_array, trace_1):
+def stats_full_renyi_2(estimator_array, trace_1, cov_12, cov_13, cov_23):
     mean = -log(estimator_array.mean[Full_R2_INDEX]/(trace_1.mean*estimator_array.mean[TR_RHO2_INDEX]))/log(2)
-    se = (1/log(2))*scipy.sqrt((estimator_array.se[Full_R2_INDEX]/estimator_array.mean[Full_R2_INDEX])**2+(trace_1.se/trace_1.mean)**2+(estimator_array.se[TR_RHO2_INDEX]/estimator_array.mean[TR_RHO2_INDEX])**2)
+    se = (1/log(2)) * scipy.sqrt( (estimator_array.se[Full_R2_INDEX]/estimator_array.mean[Full_R2_INDEX])**2 + \
+                                  (trace_1.se/trace_1.mean)**2 + \
+                                  (estimator_array.se[TR_RHO2_INDEX]/estimator_array.mean[TR_RHO2_INDEX])**2 + \
+                                  2*cov_23/(trace_1.mean * estimator_array.mean[TR_RHO2_INDEX]) - \
+                                  2*cov_12/(estimator_array.mean[Full_R2_INDEX] * trace_1.mean) - \
+                                  2*cov_13/(estimator_array.mean[Full_R2_INDEX] * estimator_array.mean[TR_RHO2_INDEX]) )
+
+
     return Stats(mean,se)
 
-def stats_rdm_renyi_2(estimator_array):
+def stats_rdm_renyi_2(estimator_array, cov_12, cov_13, cov_23):
     mean = -log(estimator_array.mean[RDM_R2_INDEX]/(estimator_array.mean[RDM_TR1_INDEX]*estimator_array.mean[RDM_TR2_INDEX]))/log(2)
-    se = (1/log(2))*scipy.sqrt((estimator_array.se[RDM_R2_INDEX]/estimator_array.mean[RDM_R2_INDEX])**2+(estimator_array.se[RDM_TR1_INDEX]/estimator_array.mean[RDM_TR1_INDEX])**2+(estimator_array.se[RDM_TR2_INDEX]/estimator_array.mean[RDM_TR2_INDEX])**2)
+    se = (1/log(2)) * scipy.sqrt( (estimator_array.se[RDM_R2_INDEX]/estimator_array.mean[RDM_R2_INDEX])**2 + \
+                                (estimator_array.se[RDM_TR1_INDEX]/estimator_array.mean[RDM_TR1_INDEX])**2 + \
+                                (estimator_array.se[RDM_TR2_INDEX]/estimator_array.mean[RDM_TR2_INDEX])**2 + \
+                                2*cov_23/(estimator_array.mean[RDM_TR1_INDEX] * estimator_array.mean[RDM_TR2_INDEX]) - \
+                                2*cov_12/(estimator_array.mean[RDM_R2_INDEX] * estimator_array.mean[RDM_TR1_INDEX]) - \
+                                2*cov_13/(estimator_array.mean[RDM_R2_INDEX] * estimator_array.mean[RDM_TR2_INDEX]) )
+                                
     return Stats(mean,se)
+
+def calculate_covariance(list_1, list_1_mean, list_2, list_2_mean):
+    cov = 0
+    for i in range(len(list_1)):
+        cov += (list_1[i] - list_1_mean)*(list_2[i] - list_2_mean)
+    return cov/(len(list_1)*(len(list_1)-1))
 
 def extract_data(data_files, estimtor_col_no, start_averaging):
     data = {}
@@ -306,15 +325,58 @@ def get_data_stats(data):
     for (beta,data_values) in data.iteritems():
         covariances = data_values.calculate_covs()
         stats[beta] = data_values.calculate_stats()
-        
         # Bonus!  Now calculate ratio Tr[H\rho]/Tr[\rho]
         stats[beta].estimators = stats_array_ratio(stats[beta].numerators, stats[beta].Tr_rho, covariances)
+
+        FULL_R2 = []
+        FULL_TR1 = []
+        FULL_TR2 = []
+        RDM_R2 = []
+        RDM_TR1 = []
+        RDM_TR2 = []
+
         if H2_is_present and H_is_present:
             stats[beta].stochastic_specific_heat = stats_stochastic_specific_heat(beta,stats[beta].estimators)
+
         if Full_R2_is_present:
-            stats[beta].full_renyi_2 = stats_full_renyi_2(stats[beta].estimators, stats[beta].Tr_rho)
+            for i in range(len(data_values.numerators)):
+                FULL_R2.append(data_values.numerators[i][Full_R2_INDEX])
+                FULL_TR1.append(data_values.Tr_rho[i])
+                FULL_TR2.append(data_values.numerators[i][TR_RHO2_INDEX])
+
+            # Here, 1 refers to the R2 numerator, and 2 and 3 refer to the two RDM traces.
+            cov_12 = calculate_covariance(FULL_R2, stats[beta].estimators.mean[Full_R2_INDEX],
+                                          FULL_TR1, stats[beta].Tr_rho.mean)
+
+            cov_13 = calculate_covariance(FULL_R2, stats[beta].estimators.mean[Full_R2_INDEX],
+                                          FULL_TR2, stats[beta].estimators.mean[TR_RHO2_INDEX])
+
+            # Note that cov_23 should contribute a very small term to the error estimate as
+            # TR1 and TR2 are uncorrelated.
+            cov_23 = calculate_covariance(FULL_TR1, stats[beta].Tr_rho.mean,
+                                          FULL_TR2, stats[beta].estimators.mean[TR_RHO2_INDEX])
+
+            stats[beta].full_renyi_2 = stats_full_renyi_2(stats[beta].estimators, stats[beta].Tr_rho, cov_12, cov_13, cov_23)
+
         if RDM_R2_is_present:
-            stats[beta].rdm_renyi_2 = stats_rdm_renyi_2(stats[beta].estimators)
+            for i in range(len(data_values.numerators)):
+                RDM_R2.append(data_values.numerators[i][RDM_R2_INDEX])
+                RDM_TR1.append(data_values.numerators[i][RDM_TR1_INDEX])
+                RDM_TR2.append(data_values.numerators[i][RDM_TR2_INDEX])
+
+            # Here, 1 refers to the R2 numerator, and 2 and 3 refer to the two RDM traces.
+            cov_12 = calculate_covariance(RDM_R2, stats[beta].estimators.mean[RDM_R2_INDEX],
+                                          RDM_TR1, stats[beta].estimators.mean[RDM_TR1_INDEX])
+
+            cov_13 = calculate_covariance(RDM_R2, stats[beta].estimators.mean[RDM_R2_INDEX],
+                                          RDM_TR2, stats[beta].estimators.mean[RDM_TR2_INDEX])
+
+            # Note that cov_23 should contribute a very small term to the error estimate as
+            # TR1 and TR2 are uncorrelated.
+            cov_23 = calculate_covariance(RDM_TR1, stats[beta].estimators.mean[RDM_TR1_INDEX],
+                                          RDM_TR2, stats[beta].estimators.mean[RDM_TR2_INDEX])
+
+            stats[beta].rdm_renyi_2 = stats_rdm_renyi_2(stats[beta].estimators, cov_12, cov_13, cov_23)
 
     return stats
 
