@@ -68,7 +68,7 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        forall(i=1:sampling_size) nparticles_proc(i,:nprocs) = & 
+        forall(i=1:sampling_size) nparticles_proc(i,:nprocs) = &
                                   nint(ir_sum(i:sample_shift:sampling_size), lint)
         forall(i=1:sampling_size) ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
         proj_energy = ir_sum(sampling_size+1)

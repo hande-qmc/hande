@@ -478,7 +478,7 @@ contains
             case('BLOCK_SIZE')
                 call readi(block_size)
             case('LOAD_BALANCING')
-                doing_load_balancing = .true. 
+                doing_load_balancing = .true.
             case('LOAD_BALANCING_SLOTS')
                 call readi(load_balancing_slots)
             case('LOAD_BALANCING_POP')

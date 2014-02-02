@@ -559,8 +559,8 @@ contains
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
-        
-        if(doing_load_balancing .and. load_balancing_tag == load_tag_doing) then 
+
+        if(doing_load_balancing .and. load_balancing_tag == load_tag_doing) then
             call do_load_balancing(proc_map)
         end if
 

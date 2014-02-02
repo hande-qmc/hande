@@ -196,7 +196,7 @@ contains
 #ifdef PARALLEL
         allocate(nparticles_proc(sampling_size, nprocs), stat=ierr)
         call check_allocate('nparticles_proc', nprocs*sampling_size, ierr)
-#else 
+#else
         allocate(nparticles_proc(sampling_size, 1), stat=ierr)
         call check_allocate('nparticles_proc', sampling_size*1, ierr)
 #endif
