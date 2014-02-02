@@ -69,6 +69,9 @@ integer :: load_balancing_slots = 1
 ! Population which must be reached before load balancing is attempted.
 ! Default = 1000.
 integer(lint) :: load_balancing_pop = 1000
+! Percentage load imbalance we aim to achieve when performing load balancing.
+! Default = 0.05
+real(p) :: perc_imbalance = 0.05
 
 !--- Load Balancing Data ---
 
