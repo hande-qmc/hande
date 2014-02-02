@@ -474,8 +474,7 @@ contains
         !    slot_pos: position in proc_map for this determinant
 
         use hashing, only: murmurhash_bit_string
-        use loadbal_data, only: proc_map
-        use fciqmc_data, only: load_balancing_slots
+        use fciqmc_data, only: load_balancing_slots, proc_map
 
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np

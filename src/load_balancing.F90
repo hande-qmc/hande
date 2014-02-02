@@ -290,12 +290,12 @@ contains
     subroutine initialise_slot_pop(proc_map, load_balancing_slots, spawn, slot_pop)
 
         ! In:
-        !   proc_map(p_map_size): array which maps determinants to processors.
+        !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor
         !   load_balancing_slots: number of slots which we divide slot_pop (and similar arrays) into.
         !   spawn: spawn_t object.
         ! In/Out:
-        !   slot_pop(p_map_size): array containing population of slots in proc_map
+        !   slot_pop: array containing population of slots in proc_map
         !       processor dependendent.
 
         use parallel, only: nprocs, iproc

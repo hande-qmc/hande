@@ -522,7 +522,6 @@ contains
         !        cycle.  Reset to 0 on output.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc
-        use loadbal_data, only: proc_map
         use load_balancing, only: do_load_balancing
 
         integer(lint), intent(in), optional :: min_attempts
@@ -679,5 +678,31 @@ contains
         end if
 
     end subroutine send_tau
+
+    subroutine initialise_proc_map(load_balancing_slots, proc_map_d)
+
+        ! Determinants are assigned to processors using proc_map(0:load_balancing_slots*nprocs-1) which
+        ! is initialised so that its entries cyclically contain processors 0,..,nprocs-1
+
+        ! In:
+        !    load_balancing_slots: number of "slots" we subdivide interval by on each processor
+        ! Out:
+        !    proc_map_d: will become proc_map upon allocation.
+
+        use parallel, only : nprocs
+
+        integer, intent(in) :: load_balancing_slots
+        integer , allocatable, intent(out) :: proc_map_d(:)
+        integer :: i, p_map_size
+
+        p_map_size = load_balancing_slots*nprocs
+
+        allocate(proc_map(0:p_map_size-1))
+
+        do i = 0, p_map_size - 1
+            proc_map_d(i) = modulo(i, nprocs)
+        end do
+
+    end subroutine initialise_proc_map
 
 end module qmc_common

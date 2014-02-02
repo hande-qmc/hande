@@ -75,6 +75,11 @@ real(p) :: perc_imbalance = 0.05
 
 !--- Load Balancing Data ---
 
+! Array which maps particles to processors. If attempting load balancing then
+! proc_map is subdivided into load_balancing_slots number of slots which cyclically
+! map particles to processors using modular arithmetic. Otherwise it's entries are
+! 0,1,..,nprocs-1.
+integer, allocatable :: proc_map(:)
 ! load_tag_initial: default status, no load balancing is required.
 ! load_tag_doing: an imbalanced processor was detected, load balancing should procede.
 ! load_tag_done: completed load balancing for this report loop.
