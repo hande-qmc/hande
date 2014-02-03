@@ -305,6 +305,7 @@ contains
         integer(lint) :: load_data(sampling_size, nprocs)
         integer :: i, ierr
         real(dp) :: comms(nprocs)
+        character(4) :: lfmt
 
         if (nprocs > 1) then
             if (parent) then
@@ -316,17 +317,19 @@ contains
             if (parent) then
                 do i = 1, sampling_size
                     if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
-                    write (6,'(1X,a34,6X,i8)') 'Min # of particles on a processor:', minval(load_data(i,:))
-                    write (6,'(1X,a34,6X,i8)') 'Max # of particles on a processor:', maxval(load_data(i,:))
-                    write (6,'(1X,a35,5X,f11.2,/)') 'Mean # of particles on a processor:', real(sum(load_data(i,:)), p)/nprocs
+                    lfmt = int_fmt(maxval(load_data(i,:)),0)
+                    write (6,'(1X,"Min # of particles on a processor:",6X,'//lfmt//')') minval(load_data(i,:))
+                    write (6,'(1X,"Max # of particles on a processor:",6X,'//lfmt//')') maxval(load_data(i,:))
+                    write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
             call mpi_gather(tot_walkers, 1, mpi_integer8, load_data(1,:), 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data(1,:))
-                write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data(1,:))
-                write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data(1,:)), p)/nprocs
+                lfmt = int_fmt(maxval(load_data(1,:)),0)
+                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data(1,:))
+                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data(1,:))
+                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data(1,:)), p)/nprocs
                 write (6,'()')
                 write (6,'(1X,a38,5X,f8.2,a1)') 'Min time take by walker communication:', minval(comms),'s'
                 write (6,'(1X,a38,5X,f8.2,a1)') 'Max time take by walker communication:', maxval(comms),'s'
