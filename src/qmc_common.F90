@@ -321,12 +321,12 @@ contains
                     write (6,'(1X,a35,5X,f11.2,/)') 'Mean # of particles on a processor:', real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer, load_data(1,:), 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(tot_walkers, 1, mpi_integer8, load_data(1,:), 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 write (6,'(1X,a37,3X,i8)') 'Min # of determinants on a processor:', minval(load_data(1,:))
                 write (6,'(1X,a37,3X,i8)') 'Max # of determinants on a processor:', maxval(load_data(1,:))
-                write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data), p)/nprocs
+                write (6,'(1X,a38,2X,f11.2)') 'Mean # of determinants on a processor:', real(sum(load_data(1,:)), p)/nprocs
                 write (6,'()')
                 write (6,'(1X,a38,5X,f8.2,a1)') 'Min time take by walker communication:', minval(comms),'s'
                 write (6,'(1X,a38,5X,f8.2,a1)') 'Max time take by walker communication:', maxval(comms),'s'
