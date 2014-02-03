@@ -331,9 +331,9 @@ contains
                 write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data(1,:))
                 write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data(1,:)), p)/nprocs
                 write (6,'()')
-                write (6,'(1X,a38,5X,f8.2,a1)') 'Min time take by walker communication:', minval(comms),'s'
-                write (6,'(1X,a38,5X,f8.2,a1)') 'Max time take by walker communication:', maxval(comms),'s'
-                write (6,'(1X,a39,4X,f8.2,a1)') 'Mean time take by walker communication:', real(sum(comms), p)/nprocs,'s'
+                write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s.")') minval(comms)
+                write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s.")') maxval(comms)
+                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s.")') real(sum(comms), p)/nprocs
                 write (6,'()')
             end if
         end if
