@@ -4,6 +4,11 @@ module utils
 
 implicit none
 
+interface int_fmt
+    module procedure int_fmt_int
+    module procedure int_fmt_lint
+end interface int_fmt
+
 contains
 
 ! --- Combinatorics ---
@@ -174,6 +179,102 @@ contains
 
     end subroutine next_comb
 
+!--- format statement formatting ---
+
+    elemental function int_fmt_int(i, padding) result(fmt1)
+
+        ! In:
+        !    i: an integer
+        !    padding (optional): amount of padding to add to format statement.
+        !        Default: 2.
+        ! Returns:
+        !    fmt1: a format statement for an integer field which will hold
+        !        i perfectly plus an amount of padding.
+
+        ! This does take i/o formatting to a slightly OCD level addmittedly...
+
+        character(4) :: fmt1
+        integer, intent(in) :: i
+        integer, intent(in), optional :: padding
+        real :: logi
+
+        if (i == 0 .or. i==1) then
+            logi = 1.0
+        else
+            logi = log10(real(abs(i)+1))
+        end if
+        if (i < 0) logi = logi + 1
+
+        fmt1 = int_fmt_helper(logi, padding)
+
+    end function int_fmt_int
+
+    elemental function int_fmt_lint(i, padding) result(fmt1)
+
+        ! In:
+        !    i: a long integer
+        !    padding (optional): amount of padding to add to format statement.
+        !        Default: 2.
+        ! Returns:
+        !    fmt1: a format statement for an integer field which will hold
+        !        i perfectly plus an amount of padding.
+
+        ! This does take i/o formatting to a slightly OCD level addmittedly...
+
+        use const, only: lint
+
+        character(4) :: fmt1
+        integer(lint), intent(in) :: i
+        integer, intent(in), optional :: padding
+        real :: logi
+
+        if (i == 0 .or. i==1) then
+            logi = 1.0
+        else
+            logi = log10(real(abs(i)+1))
+        end if
+        if (i < 0) logi = logi + 1
+
+        fmt1 = int_fmt_helper(logi, padding)
+
+    end function int_fmt_lint
+
+    elemental function int_fmt_helper(logi, padding) result(fmt1)
+
+        ! In:
+        !    logi: log10 of an integer.
+        !    padding (optional): amount of padding to add to format statement.
+        !        The default amount is 2.  The padding is used to include the
+        !        sign if i is negative.
+        ! Returns:
+        !    fmt1: a format statement for an real field using the G format
+        !       statement which will hold i perfectly plus an amount of padding.
+
+        character(4) :: fmt1
+        real, intent(in) :: logi
+        integer, intent(in), optional :: padding
+        integer :: p
+
+        if (present(padding)) then
+            p = padding
+        else
+            p = 2
+        end if
+
+        p = ceiling(logi+p)
+
+        if (p < 10) then
+            write (fmt1,'("i",i1)') p
+        else if (p < 100) then
+            write (fmt1,'("i",i2)') p
+        else
+            ! By this point we'll have hit integer overflow (for 32- and 64-bit
+            ! integers) anyway...
+            write (fmt1,'("i",i3)') p
+        end if
+
+    end function int_fmt_helper
+
 ! --- File names and file handling ---
 
     function get_free_unit() result(free_unit)
@@ -199,50 +300,6 @@ contains
         if (i == max_unit+1) call stop_all('get_free_unit','Cannot find a free unit below max_unit.')
 
     end function get_free_unit
-
-    elemental function int_fmt(i, padding) result(fmt1)
-
-        ! In:
-        !    i: an integer
-        !    padding (optional): amount of padding to add to format statement.
-        !        The default amount is 2.  The padding is used to include the
-        !        sign if i is negative.
-        ! Returns:
-        !    fmt1: a format statement for an integer field which will hold
-        !        i perfectly plus an amount of padding.
-
-        ! This does take i/o formatting to a slightly OCD level addmittedly...
-
-        character(4) :: fmt1
-        integer, intent(in) :: i
-        integer, intent(in), optional :: padding
-        integer :: p
-        real :: r
-
-        if (present(padding)) then
-            p = padding
-        else
-            p  = 2
-        end if
-
-        if (i == 0 .or. i==1) then
-            r = 1.0
-        else
-            r = log10(real(abs(i)+1))
-        end if
-        p = ceiling(r+p)
-        if (i<0) p = p + 1
-
-        if (p < 10) then
-            write (fmt1,'("i",i1)') p
-        else if (p < 100) then
-            write (fmt1,'("i",i2)') p
-        else
-            ! By this point we'll have hit integer overflow anyway...
-            write (fmt1,'("i",i3)') p
-        end if
-
-    end function int_fmt
 
     elemental subroutine append_ext(stem, n, s)
 
