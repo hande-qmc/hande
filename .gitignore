@@ -30,3 +30,5 @@ documentation/developers_guide/xml
 test.out*
 test.err*
 submit.*
+*pyc
+__pycache__
