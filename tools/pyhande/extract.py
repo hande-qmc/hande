@@ -56,14 +56,14 @@ pandas.DataFrame
 
     # Read table --- only read the first N columns, where N is the number of
     # column names found.
-    cols = list(range(len(column_names)))
-    data = pd.io.parsers.read_table(filename, sep=r'\s*', 
-               delim_whitespace=True, skiprows=start_line, 
-               skipfooter=skip_footer, names=column_names, usecols=cols)
+    data = pd.io.parsers.read_table(filename, sep='\s+', delim_whitespace=True,
+               skiprows=start_line, skipfooter=skip_footer, names=column_names,
+               comment='#')
 
-    # Remove comments and convert all columns to numeric data.
-    data.replace('#', float('nan'), inplace=True)
-    data = data.dropna(subset=['iterations'])
+    # Remove comment lines and convert all columns to numeric data.
+    # Lines starting with a comment have been set to NaN in the iterations
+    # column.
+    data.dropna(subset=['iterations'], inplace=True)
     data.reset_index(drop=True, inplace=True)
     data = data.convert_objects(convert_numeric=True, copy=False)
 
