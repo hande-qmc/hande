@@ -88,6 +88,7 @@ H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
 
     return stats
 
+def find_optimal_block(ndata, stats):
     '''Find the optimal block length from a reblocking calculation.
 
 Inspect a reblocking calculation and find the block length which minimises the
