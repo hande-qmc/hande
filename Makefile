@@ -267,6 +267,12 @@ $(DEST)/%.o: %.f
 $(DEST)/%.o: %.f90
 	$(FC) -c $(FFLAGS) $< -o $@ $(F90_MOD_FLAG)$(DEST)
 
+# .mod files are automatically created by the .o rules above.
+# Create a null rule for .mod files so that chaining of prerequisites correctly
+# occurs (otherwise Make thinks existing .mod files don't get updated and source files
+# that depend upon them would not necessarily be rebuilt if the module is recompiled.).
+%.mod: ;
+
 #--- C ---
 
 # All C files are preprocessed as part of the compilation.
