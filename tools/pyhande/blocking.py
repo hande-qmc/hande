@@ -134,7 +134,7 @@ References
 .. [1] "Monte Carlo errors with less errors", U. Wolff, Comput. Phys. Commun.
 156, 143 (2004) and arXiv:hep-lat/0306017.
 .. [2] "Strategies for improving the efficiency of quantum Monte Carlo
-calculations", R. M. Lee, G. J. Conduit, N. Nemec, P. López Ríos, and N. D.
+calculations", R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N. D.
 Drummond, Phys. Rev. E. 83, 066706 (2011).
 '''
 
