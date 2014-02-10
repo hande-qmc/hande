@@ -82,14 +82,15 @@ pandas.DataFrame
     #           300       ....
     #            10       ....
     #            20       ....
-    #     then label each set of iterations with calc_X.
-    # Otherwise just label the data just read in by the same calc_X.
+    #     then label each set of iterations with X.
+    # Otherwise just label the data just read in by the same X.
     niterations = len(data)
     nunique = len(unique_iterations)
     nitems = int(numpy.ceil(float(niterations)/nunique))
     data = [ data[i*nunique:(i+1)*nunique] for i in range(nitems) ]
-    multi_keys = ['calc_%i' % (i+offset) for i in range(len(data))]
+    multi_keys = [i+offset for i in range(len(data))]
     data = pd.concat(data, keys=multi_keys)
+    data.index.names = ['calc', '']
 
     # [todo] - return metadata as well.
     return data
