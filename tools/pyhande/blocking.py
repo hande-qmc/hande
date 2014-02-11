@@ -130,6 +130,8 @@ taken into account.  Hence the condition becomes:
 where SE(B) is the estimate of the standard error of the data divided in
 blocks of size B.
 
+I am grateful to Will Vigor for discussions and the initial implementation.
+
 References
 ----------
 .. [1] "Monte Carlo errors with less errors", U. Wolff, Comput. Phys. Commun.
