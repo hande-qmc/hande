@@ -770,9 +770,6 @@ module restart_hdf5
 
         end subroutine write_array_2d_real_p
 
-! [review] -  AJWT: This looks potentially dangerous - if dtype differs from the actual type of arr_ptr
-! [review] -  AJWT: Might an overloaded interface not be better?
-! [reply] - JSS: done (as wrappers around write_ptr).  See above!
         subroutine write_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
 
             ! Write an array to an open HDF5 file/group.
@@ -1028,9 +1025,6 @@ module restart_hdf5
 
         end subroutine read_array_2d_real_p
 
-! [review] -  AJWT: I feel the frisson of data overflow and horrible bugs for the future in this code.
-! [review] -  AJWT: Perhaps at least a length check?
-! [reply] - JSS: See above and below.  Check rank, bounds and data type.
         subroutine read_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
 
             ! Read an array from an open HDF5 file/group.
