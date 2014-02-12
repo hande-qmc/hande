@@ -16,7 +16,7 @@ data: numpy.array
 rowvar: int
     If `rowvar` is non-zero (default) then each row represents a variable and
     each column a data point per variable.  Otherwise the relationship is
-    swapped.
+    swapped.  Only used if data is a 2D array.
 ddof: int
     If not ``None``, then the standard error and covariance are normalised by
     ``(N - ddof)``, where ``N`` is the number of data points per variable.
