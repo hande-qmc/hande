@@ -29,7 +29,6 @@ integer, parameter :: i0 = selected_int_kind(6)
 ! C int type which interoperates with i0.
 integer, parameter :: c_i0 = c_int32_t
 #elif DET_SIZE == 64
-! [review] - AJWT: This seems a very sensible move just in case somebody tries to use 48-bit integers for example.
 integer, parameter :: i0 = selected_int_kind(15)
 integer, parameter :: c_i0 = c_int64_t
 #endif

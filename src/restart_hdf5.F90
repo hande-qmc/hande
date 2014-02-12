@@ -1,4 +1,5 @@
 module restart_hdf5
+
     ! Restart functionality based on the HDF5 library.  Note: this is only
     ! for QMC (ie FCIQMC, DMQMC or CCMC) calculations).
     ! Due to the use of HDF5, the format is pretty flexible (i.e. we can easily add or
@@ -62,9 +63,6 @@ module restart_hdf5
     ! doesn't then handle the situation gracefully (e.g. by falling back to
     ! default values).
 
-#include "cdefs.h"
-
-    use hdf5, only: hid_t
     implicit none
 
     private
@@ -92,7 +90,6 @@ module restart_hdf5
 
     ! Version id of the restart file *produced*.  Please increment if you add
     ! anything to dump_restart_hdf5!
-! [reply] - JSS:
     ! Note that the restart version is not currently used anywhere but might be helpful
     ! when writing post-processing utilities which act upon restart files.
     integer, parameter :: restart_version = 1
@@ -123,41 +120,6 @@ module restart_hdf5
                                dref_pop = 'reference population @ t-1', &
                                dhsref = 'Hilbert space reference determinant'
 
-    ! HDF5 kinds equivalent to the kinds defined in const.  Set in init_restart_hdf5.
-    type h5_kinds_t
-        integer(hid_t) :: i0
-        integer(hid_t) :: lint
-        integer(hid_t) :: p
-    end type h5_kinds_t
-
-! [review] - AJWT: It almost looks as if all of these should be in a separate hdf interface file.  Similarly, as
-! [review] - AJWT:    was done in NECI, you can put all of these in a single overloaded hdf5_write.  Not sure if it's useful though
-    interface write_array
-        module procedure write_array_1d_int_lint
-        module procedure write_array_2d_int
-#if DET_SIZE != 64
-        module procedure write_array_1d_int_i0
-#endif
-#if DET_SIZE != 32
-        module procedure write_array_2d_int_i0
-#endif
-        module procedure write_array_1d_real_p
-        module procedure write_array_2d_real_p
-    end interface write_array
-
-    interface read_array
-        module procedure read_array_1d_int_lint
-        module procedure read_array_2d_int
-#if DET_SIZE != 64
-        module procedure read_array_1d_int_i0
-#endif
-#if DET_SIZE != 32
-        module procedure read_array_2d_int_i0
-#endif
-        module procedure read_array_1d_real_p
-        module procedure read_array_2d_real_p
-    end interface read_array
-
     contains
 
         subroutine init_restart_hdf5(ri, write_mode, filename, kinds)
@@ -181,16 +143,15 @@ module restart_hdf5
             !    kinds: derived type containing HDF5 types which correspond to the
             !        non-standard integer and real kinds used in HANDE.
 
-            use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_kinds_init
 
-            use const, only: i0, lint, p
             use parallel, only: nprocs, iproc, parent
             use utils, only: int_fmt, get_unique_filename
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: write_mode
             character(*), intent(out) :: filename
-            type(h5_kinds_t), intent(out) :: kinds
+            type(hdf5_kinds_t), intent(out) :: kinds
 
             character(10) :: proc_suf
             integer :: id, ierr
@@ -222,10 +183,7 @@ module restart_hdf5
                 end if
             end if
 
-            ! Convert our non-standard kinds to something HDF5 understands.
-            kinds%i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
-            kinds%p = h5kind_to_type(p, H5_REAL_KIND)
-            kinds%lint = h5kind_to_type(lint, H5_INTEGER_KIND)
+            call hdf5_kinds_init(kinds)
 
         end subroutine init_restart_hdf5
 
@@ -239,6 +197,7 @@ module restart_hdf5
             !    total_population: the total population of each particle type.
 
             use hdf5
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_write
             use const
             use, intrinsic :: iso_c_binding
             use report, only: VCS_VERSION, GLOBAL_UUID
@@ -256,7 +215,7 @@ module restart_hdf5
             character(255) :: restart_file
 
             ! HDF5 kinds
-            type(h5_kinds_t) :: kinds
+            type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
             integer(hid_t) :: file_id, group_id, subgroup_id
 
@@ -283,22 +242,22 @@ module restart_hdf5
             call h5gcreate_f(file_id, gmetadata, group_id, ierr)
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
-                call write_string(group_id, dhande, VCS_VERSION)
+                call hdf5_write(group_id, dhande, VCS_VERSION)
 
-                call write_string(group_id, duuid, GLOBAL_UUID)
+                call hdf5_write(group_id, duuid, GLOBAL_UUID)
 
                 call date_and_time(values=date_time)
                 ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
                 write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
-                call write_string(group_id, ddate, date_str)
+                call hdf5_write(group_id, ddate, date_str)
 
-                call write_integer(group_id, dnprocs, nprocs)
+                call hdf5_write(group_id, dnprocs, nprocs)
 
-                call write_integer(group_id, di0_length, i0_length)
+                call hdf5_write(group_id, di0_length, i0_length)
 
-                call write_integer(group_id, drestart, restart_version)
+                call hdf5_write(group_id, drestart, restart_version)
 
-                call write_integer(group_id, dcalc, calc_type)
+                call hdf5_write(group_id, dcalc, calc_type)
 
             call h5gclose_f(group_id, ierr)
 
@@ -312,20 +271,20 @@ module restart_hdf5
 
                 ! Don't write out the entire array for storing particles but
                 ! rather only the slots in use...
-                call write_array(subgroup_id, ddets, kinds, shape(walker_dets(:,:tot_walkers)), &
+                call hdf5_write(subgroup_id, ddets, kinds, shape(walker_dets(:,:tot_walkers)), &
                                  walker_dets(:,:tot_walkers))
 
-                call write_array(subgroup_id, dpops, kinds, shape(walker_population(:,:tot_walkers)), &
+                call hdf5_write(subgroup_id, dpops, kinds, shape(walker_population(:,:tot_walkers)), &
                                  walker_population(:,:tot_walkers))
 
-                call write_array(subgroup_id, ddata, kinds, shape(walker_data(:,:tot_walkers)), &
+                call hdf5_write(subgroup_id, ddata, kinds, shape(walker_data(:,:tot_walkers)), &
                                  walker_data(:,:tot_walkers))
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
                 allocate(tmp_pop(size(total_population)))
                 tmp_pop = total_population
-                call write_array(subgroup_id, dtot_pop, kinds, shape(tmp_pop), tmp_pop)
+                call hdf5_write(subgroup_id, dtot_pop, kinds, shape(tmp_pop), tmp_pop)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -333,9 +292,9 @@ module restart_hdf5
                 call h5gcreate_f(group_id, gstate, subgroup_id, ierr)
                 call h5gopen_f(group_id, gstate, subgroup_id, ierr)
 
-                    call write_integer(subgroup_id, dncycles, ncycles)
+                    call hdf5_write(subgroup_id, dncycles, ncycles)
 
-                    call write_array(subgroup_id, dshift, kinds, shape(shift), shift)
+                    call hdf5_write(subgroup_id, dshift, kinds, shape(shift), shift)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -343,12 +302,12 @@ module restart_hdf5
                 call h5gcreate_f(group_id, gref, subgroup_id, ierr)
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    call write_array(subgroup_id, dref, kinds, shape(f0), f0)
+                    call hdf5_write(subgroup_id, dref, kinds, shape(f0), f0)
 
-                    call write_array(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
+                    call hdf5_write(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
 
                     tmp = D0_population_cycle
-                    call write_array(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
+                    call hdf5_write(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -373,6 +332,7 @@ module restart_hdf5
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
 
             use hdf5
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read
             use errors, only: stop_all
             use const
 
@@ -385,7 +345,7 @@ module restart_hdf5
             type(restart_info_t), intent(in) :: ri
 
             ! HDF5 kinds
-            type(h5_kinds_t) :: kinds
+            type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
             integer(hid_t) :: file_id, group_id, subgroup_id, dset_id, dspace_id
 
@@ -407,13 +367,13 @@ module restart_hdf5
             ! --- metadata group ---
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
-                call read_integer(group_id, dnprocs, nprocs_restart)
+                call hdf5_read(group_id, dnprocs, nprocs_restart)
 
-                call read_integer(group_id, drestart, restart_version_restart)
+                call hdf5_read(group_id, drestart, restart_version_restart)
 
-                call read_integer(group_id, di0_length, i0_length_restart)
+                call hdf5_read(group_id, di0_length, i0_length_restart)
 
-                call read_integer(group_id, dcalc, calc_type_restart)
+                call hdf5_read(group_id, dcalc, calc_type_restart)
 
 
 ! [review] -  AJWT: While bit strings are nice, I think the code below lacks modularity.
@@ -468,33 +428,33 @@ module restart_hdf5
                 ! Number of determinants is the last index...
                 tot_walkers = dims(size(dims))
 
-                call read_array(subgroup_id, ddets, kinds, shape(walker_dets), walker_dets)
+                call hdf5_read(subgroup_id, ddets, kinds, shape(walker_dets), walker_dets)
 
-                call read_array(subgroup_id, dpops, kinds, shape(walker_population), walker_population)
+                call hdf5_read(subgroup_id, dpops, kinds, shape(walker_population), walker_population)
 
-                call read_array(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
+                call hdf5_read(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
 
-                call read_array(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
+                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
 
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/state group ---
                 call h5gopen_f(group_id, gstate, subgroup_id, ierr)
 
-                    call read_integer(subgroup_id, dncycles, mc_cycles_done)
+                    call hdf5_read(subgroup_id, dncycles, mc_cycles_done)
 
-                    call read_array(subgroup_id, dshift, kinds, shape(shift), shift)
+                    call hdf5_read(subgroup_id, dshift, kinds, shape(shift), shift)
 
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/reference group ---
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    call read_array(subgroup_id, dref, kinds, shape(f0), f0)
+                    call hdf5_read(subgroup_id, dref, kinds, shape(f0), f0)
 
-                    call read_array(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
+                    call hdf5_read(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
 
-                    call read_array(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
+                    call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
                     D0_population = tmp(1)
 
                 call h5gclose_f(subgroup_id, ierr)
@@ -510,578 +470,5 @@ module restart_hdf5
             call h5close_f(ierr)
 
         end subroutine read_restart_hdf5
-
-        ! === Helper procedures: writing ===
-
-! [review] -  AJWT: The write_* lends it self to being overloaded to a single function write_hdf5.  Similarly read_*
-        subroutine write_string(id, dset, string)
-
-            ! Write a string to an open HDF5 file/group.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    string: string to write out.
-
-            use hdf5
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset, string
-
-            integer(hid_t) :: type_id, dspace_id, dset_id
-            integer :: ierr
-
-
-            ! Set up fortran string type of *this* length...
-            call h5tcopy_f(H5T_FORTRAN_S1, type_id, ierr)
-            call h5tset_size_f(type_id, len(string, HSIZE_T), ierr)
-
-            ! Create space and write string.
-            call h5screate_f(H5S_SCALAR_F, dspace_id, ierr)
-            call h5dcreate_f(id, dset, type_id, dspace_id, dset_id, ierr)
-            call h5dwrite_f(dset_id, type_id, string, [0_HSIZE_T], ierr)
-            call h5sclose_f(dspace_id, ierr)
-            call h5dclose_f(dset_id, ierr)
-
-            ! Release fortran string type.
-            call h5tclose_f(type_id, ierr)
-
-        end subroutine write_string
-
-        subroutine write_integer(id, dset, val)
-
-            ! Write an integer to an open HDF5 file/group.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    val: integer to write out.
-
-            use hdf5
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            integer, intent(in) :: val
-
-            integer(hid_t) :: dspace_id, dset_id
-            integer :: ierr
-
-            call h5screate_f(H5S_SCALAR_F, dspace_id, ierr)
-            call h5dcreate_f(id, dset, H5T_NATIVE_INTEGER, dspace_id, dset_id, ierr)
-
-            call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, val, [0_HSIZE_T,0_HSIZE_T], ierr)
-
-            call h5dclose_f(dset_id, ierr)
-            call h5sclose_f(dspace_id, ierr)
-
-        end subroutine write_integer
-
-        ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
-        ! types and array dimensions as needed!
-
-        subroutine write_array_1d_int_lint(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 1D integer(lint) array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: lint
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            integer(lint), intent(in), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%lint, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
-
-        end subroutine write_array_1d_int_lint
-
-        subroutine write_array_2d_int(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 2D integer array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T, H5T_NATIVE_INTEGER
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            integer, intent(in), target :: arr(arr_shape(1), arr_shape(2))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, H5T_NATIVE_INTEGER, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
-
-        end subroutine write_array_2d_int
-
-! 1D array version for i0 needed if i0 is not the same as lint...
-#if DET_SIZE != 64
-        subroutine write_array_1d_int_i0(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 1D integer(i0) array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: i0
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            integer(i0), intent(in), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine write_array_1d_int_i0
-#endif
-
-! 1D array version for i0 needed if i0 is not the same as standard integer (which we assume to be 32 bits)...
-#if DET_SIZE != 32
-        subroutine write_array_2d_int_i0(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 2D integer(i0) array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: i0
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            integer(i0), intent(in), target :: arr(arr_shape(1), arr_shape(2))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine write_array_2d_int_i0
-#endif
-
-        subroutine write_array_1d_real_p(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 1D real(p) array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: p
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            real(p), intent(in), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine write_array_1d_real_p
-
-        subroutine write_array_2d_real_p(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 2D real(p) array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: p
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            real(p), intent(in), target :: arr(arr_shape(1), arr_shape(2))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine write_array_2d_real_p
-
-        subroutine write_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
-
-            ! Write an array to an open HDF5 file/group.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    dtype: HDF5 data type of array.
-            !    arr_rank: rank of array.
-            !    arr_dim: size of array along each dimension.
-            !    arr_ptr: C pointer to first element in array to be written out.
-
-            ! NOTE: get dtype from h5kind_to_type if not using a native HDF5
-            ! Fortran type.
-
-            use hdf5
-            use, intrinsic :: iso_c_binding
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            integer(hid_t), intent(in) :: dtype
-            integer, intent(in) :: arr_rank
-            integer(hsize_t), intent(in) :: arr_dim(:)
-            type(c_ptr), intent(in) :: arr_ptr
-
-            integer :: ierr
-            integer(hid_t) :: dspace_id, dset_id
-
-            call h5screate_simple_f(arr_rank, arr_dim, dspace_id, ierr)
-            call h5dcreate_f(id, dset, dtype, dspace_id, dset_id, ierr)
-
-            call h5dwrite_f(dset_id, dtype, arr_ptr, ierr)
-
-            call h5dclose_f(dset_id, ierr)
-            call h5sclose_f(dspace_id, ierr)
-
-        end subroutine write_ptr
-
-        ! === Helper procedures: reading ===
-
-        subroutine read_integer(id, dset, val)
-
-            ! Read an integer from an open HDF5 file/group.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            ! Out:
-            !    val: integer read from HDF5 file.
-
-            use hdf5
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            integer, intent(out) :: val
-
-            integer(hid_t) :: dset_id
-            integer :: ierr
-
-            call h5dopen_f(id, dset, dset_id, ierr)
-            call h5dread_f(dset_id, H5T_NATIVE_INTEGER, val, [0_HSIZE_T,0_HSIZE_T], ierr)
-            call h5dclose_f(dset_id, ierr)
-
-        end subroutine read_integer
-
-        ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
-        ! types and array dimensions as needed!
-
-        subroutine read_array_1d_int_lint(id, dset, kinds, arr_shape, arr)
-
-            ! Read in 1D integer(lint) array from an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
-            ! Out:
-            !    arr: array to be read.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: lint
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            integer(lint), intent(out), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%lint, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
-
-        end subroutine read_array_1d_int_lint
-
-        subroutine read_array_2d_int(id, dset, kinds, arr_shape, arr)
-
-            ! Read in 2D integer array from an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
-            ! Out:
-            !    arr: array to be read.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T, H5T_NATIVE_INTEGER
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            integer, intent(out), target :: arr(arr_shape(1), arr_shape(2))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, H5T_NATIVE_INTEGER, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
-
-        end subroutine read_array_2d_int
-
-! 1D array version for i0 needed if i0 is not the same as lint...
-#if DET_SIZE != 64
-        subroutine read_array_1d_int_i0(id, dset, kinds, arr_shape, arr)
-
-            ! Read in 1D integer(i0) array from an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
-            ! Out:
-            !    arr: array to be read.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: i0
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            integer(i0), intent(in), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine read_array_1d_int_i0
-#endif
-
-! 1D array version for i0 needed if i0 is not the same as standard integer (which we assume to be 32 bits)...
-#if DET_SIZE != 32
-        subroutine read_array_2d_int_i0(id, dset, kinds, arr_shape, arr)
-
-            ! Read in 2D integer(i0) array from an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
-            ! Out:
-            !    arr: array to be read.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: i0
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            integer(i0), intent(out), target :: arr(arr_shape(1), arr_shape(2))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine read_array_2d_int_i0
-#endif
-
-        subroutine read_array_1d_real_p(id, dset, kinds, arr_shape, arr)
-
-            ! Read in 1D real(p) array from an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
-            ! Out:
-            !    arr: array to be read.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: p
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            real(p), intent(out), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine read_array_1d_real_p
-
-        subroutine read_array_2d_real_p(id, dset, kinds, arr_shape, arr)
-
-            ! Read in 2D real(p) array from an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: h5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
-            ! Out:
-            !    arr: array to be read.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: p
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(h5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            real(p), intent(out), target :: arr(arr_shape(1), arr_shape(2))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine read_array_2d_real_p
-
-        subroutine read_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
-
-            ! Read an array from an open HDF5 file/group.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    dtype: HDF5 data type of array.
-            !    arr_rank: rank of array.
-            !    arr_dim: size of array along each dimension.
-            ! In/Out:
-            !    arr_ptr: C pointer to first element in array to read.  On
-            !        output, the dataset is store in the array pointed to by
-            !        arr_ptr.
-
-            ! NOTE: get dtype from h5kind_to_type if not using a native HDF5
-            ! Fortran type.
-
-            use, intrinsic :: iso_c_binding
-            use hdf5
-
-            use errors, only: stop_all
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            integer(hid_t), intent(in) :: dtype
-            integer, intent(in) :: arr_rank
-            integer(hsize_t), intent(in) :: arr_dim(:)
-            type(c_ptr), intent(inout) :: arr_ptr
-
-            integer :: ierr, arr_rank_stored
-            integer(hsize_t) :: arr_dim_stored(size(arr_dim)), arr_max_dim_stored(size(arr_dim))
-            integer(hid_t) :: dspace_id, dset_id, dtype_stored
-            logical :: dtype_equal
-
-            call h5dopen_f(id, dset, dset_id, ierr)
-
-            call h5dget_type_f(dset_id, dtype_stored, ierr)
-            call h5tequal_f(dtype, dtype_stored, dtype_equal, ierr)
-            if (.not.dtype_equal) call stop_all('read_ptr', 'Reading mismatched data type.')
-
-            call h5dget_space_f(dset_id, dspace_id, ierr)
-
-            call h5sget_simple_extent_ndims_f(dspace_id, arr_rank_stored, ierr)
-            if (arr_rank /= arr_rank_stored) call stop_all('read_ptr', 'Reading mismatched data rank.')
-
-            call h5sget_simple_extent_dims_f(dspace_id, arr_dim_stored, arr_max_dim_stored, ierr)
-            if (any(arr_dim(:arr_rank-1) - arr_dim_stored(:arr_rank-1) /= 0)) &
-                call stop_all('read_ptr', 'Reading mismatched array bounds')
-            if (arr_dim(arr_rank) - arr_dim_stored(arr_rank) < 0) &
-                call stop_all('read_ptr', 'Reading mismatched array bounds')
-
-            call h5sclose_f(dspace_id, ierr)
-
-            call h5dread_f(dset_id, dtype, arr_ptr, ierr)
-            call h5dclose_f(dset_id, ierr)
-
-        end subroutine read_ptr
 
 end module restart_hdf5
