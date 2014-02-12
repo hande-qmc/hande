@@ -1,8 +1,6 @@
 module restart_hdf5
     ! Restart functionality based on the HDF5 library.  Note: this is only
     ! for QMC (ie FCIQMC, DMQMC or CCMC) calculations).
-! [review] -  AJWT: We should consider future usage at this point before the format is entrenched!
-! [reply] - JSS:
     ! Due to the use of HDF5, the format is pretty flexible (i.e. we can easily add or
     ! remove data items, though changing the data structure of the existing output is more
     ! problematic from a backward-compatibility viewpoint.
@@ -23,21 +21,13 @@ module restart_hdf5
     ! space to regurgitate/add thorough explanation to the full HDF5 documentation.
 
     ! The HDF5 structure we use is:
-! [review] -  AJWT: Does order matter?
-! [reply] - JSS:
     ! (Note: order does not matter as HDF5 requires explicitly statement of the group and
     ! dataspace names for each read and write operation.)
-! [review] -  AJWT: How do we keep this specification consistent with what is actually done?
-! [reply] - JSS: I don't think we can ensure this.  It's like any commenting---the
-! [reply] - JSS: programmers must update the comments along with code.  A social rather
-! [reply] - JSS: than technical issue.
 
     ! /                                # ROOT/
     !
     !  metadata/
     !           restart version        # Version of restart module used to produce the restart file.
-! [review] -  AJWT: Probably best to say 'not currently used on read-in'
-! [reply] - JSS done.
     !           hande version          # git sha1 hash.  For info only (not currently used on read-in).
     !           date                   # For info only (not currently used on read-in).
     !           uuid                   # UUID of calculation.  For info only (not currently used on read-in).
@@ -81,8 +71,6 @@ module restart_hdf5
     public :: dump_restart_hdf5, read_restart_hdf5, restart_info_global
 
     type restart_info_t
-! [review] -  AJWT: The comments in parse_input are not helpful in this regard!  More please.
-! [reply] - JSS:
         ! If write_id is negative, then it was set by the user in the input file.  Set
         ! Y=-ID-1 to undo the transformation in parse_input, where Y is in the restart
         ! filename below.  If non-negative, generate Y such that the restart filename is unique.
@@ -104,8 +92,6 @@ module restart_hdf5
 
     ! Version id of the restart file *produced*.  Please increment if you add
     ! anything to dump_restart_hdf5!
-! [review] -  AJWT: Although the git history will protect the meaning of the version number, is it advisable to document this elsewhere too?
-! [review] -  AJWT: I presume we will deal with conflicts in this organically
 ! [reply] - JSS:
     ! Note that the restart version is not currently used anywhere but might be helpful
     ! when writing post-processing utilities which act upon restart files.
@@ -144,6 +130,8 @@ module restart_hdf5
         integer(hid_t) :: p
     end type h5_kinds_t
 
+! [review] - AJWT: It almost looks as if all of these should be in a separate hdf interface file.  Similarly, as
+! [review] - AJWT:    was done in NECI, you can put all of these in a single overloaded hdf5_write.  Not sure if it's useful though
     interface write_array
         module procedure write_array_1d_int_lint
         module procedure write_array_2d_int
@@ -213,9 +201,6 @@ module restart_hdf5
                 id = ri%read_id
             end if
 
-! [review] -  AJWT: A comment as to the format of the filename would be helpful.  I'd've written one, but I couldn't immediately figure it out
-! [review] -  AJWT: Having looked back I saw:   the format is restart_stem.Y.pX, where X is the processor rank and Y is a common integer given by write_id or read_id.
-! [reply] - JSS: see above also.
             ! Figure out filename: restart_stem.Y.pX, where Y is related to id and X is the processor rank.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
             if (id < 0) then
@@ -237,9 +222,6 @@ module restart_hdf5
                 end if
             end if
 
-! [review] -  AJWT: I don't immediately see what these are used for.
-! [review] -  AJWT: These kinds are used in the write_* functions.
-! [reply] - JSS:
             ! Convert our non-standard kinds to something HDF5 understands.
             kinds%i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
             kinds%p = h5kind_to_type(p, H5_REAL_KIND)
@@ -271,9 +253,6 @@ module restart_hdf5
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: ncycles
             integer(lint), intent(in) :: total_population(:)
-! [review] -  AJWT: This 255 character limit seems a trifle out-dated!
-! [reply] - JSS: out-dated but rather convenient.  The user should not be able to change the filename stem (as it's marked private),
-! [reply] - JSS: and so it leaves plenty of room for the processor rank and file id.
             character(255) :: restart_file
 
             ! HDF5 kinds
@@ -281,8 +260,6 @@ module restart_hdf5
             ! HDF5 handles
             integer(hid_t) :: file_id, group_id, subgroup_id
 
-! [review] -  AJWT: By now I'm getting the sinking feeling from the variable list that this procedure is quite monolithic!
-! [reply] - JSS: not really but comments added for important variables.
             integer :: date_time(8)
             character(19) :: date_str
             integer :: ierr
@@ -295,34 +272,22 @@ module restart_hdf5
             integer(lint), allocatable, target :: tmp_pop(:)
             real(p), target :: tmp(1)
 
-! [review] -  AJWT: Might ri be an input parameter whose value defaults to restart_info_global?
-! [reply] - JSS: done.
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
             call init_restart_hdf5(ri, .true., restart_file, kinds)
-! [review] -  AJWT: But the get_unique_filename above ensures this doesn't happen?
-! [reply] - JSS:
             ! NOTE: if file exists (ie user requested we re-use an existing file), then it is overwritten.
             call h5fcreate_f(restart_file, H5F_ACC_TRUNC_F, file_id, ierr)
 
-! [review] -  AJWT: This is getting a bit cryptic (but ok if you bear with it)
-! [reply] - JSS: added links to HDF5 documentation at top of restart file.  Not sure what
-! [reply] - JSS: else can be done without direct brain transfer or one going through the
-! [reply] - JSS: HDF tutorial.
             ! --- metadata group ---
             call h5gcreate_f(file_id, gmetadata, group_id, ierr)
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
                 call write_string(group_id, dhande, VCS_VERSION)
 
-! [review] -  AJWT: This doesn't appear to agree with the comments at the top
-! [reply] - JSS: fixed.
                 call write_string(group_id, duuid, GLOBAL_UUID)
 
                 call date_and_time(values=date_time)
-! [review] -  AJWT: What does this actually look like?
-! [reply] - JSS:
                 ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
                 write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
                 call write_string(group_id, ddate, date_str)
@@ -433,15 +398,12 @@ module restart_hdf5
 
             integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
 
-! [review] -  AJWT: This seems like needless duplication of what happens in dump_restart_hdf5 which could be put in a procedure
-! [reply] - JSS: abstracted into a common init procedure.
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
             call init_restart_hdf5(ri, .false., restart_file, kinds)
             call h5fopen_f(restart_file, H5F_ACC_RDONLY_F, file_id, ierr)
 
-! [review] -  AJWT: Here endeth the duplication
             ! --- metadata group ---
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
@@ -461,6 +423,7 @@ module restart_hdf5
 ! [reply] - JSS: leave as todo for now.
                 ! [todo] - Allow restart files for one calculation types to be used to
                 ! [todo] - restart a (suitably compatible) different calculation.
+! [review] - AJWT: Not entirely sure what to do now - leave it up to JSS
                 ! Different calc types are either not compatible or require
                 ! hyperslabs (fewer particle types) or require copying (more
                 ! particle types).
@@ -568,13 +531,6 @@ module restart_hdf5
             integer(hid_t) :: type_id, dspace_id, dset_id
             integer :: ierr
 
-! [review] -  AJWT: This indicates perhaps a misunderstanding of the format which might not be good news
-! [review] -  AJWT:  for compatability.  Any chance this can be looked at again?
-! [reply] - JSS: Misled by documentation and examples indicating h5dwrite_vl_f was the way to write out a string.  Despite the
-! [reply] - JSS: documentation for h5dwrite_vl_f claiming otherwise, an inspection of the HDF5 source reveals that h5dwrite_vl_f
-! [reply] - JSS: is only declared for arrays.  However, a careful look at the documentation reveals strings can be written out as
-! [reply] - JSS: scalars, if one declares their length using h5tset_size_f.  The term 'variable length' is hence a red herring, as
-! [reply] - JSS: one can write strings out which have lengths not known at compile-time using the standard scalar approach...
 
             ! Set up fortran string type of *this* length...
             call h5tcopy_f(H5T_FORTRAN_S1, type_id, ierr)
