@@ -375,15 +375,14 @@ module restart_hdf5
 
                 call hdf5_read(group_id, dcalc, calc_type_restart)
 
-
-! [review] -  AJWT: While bit strings are nice, I think the code below lacks modularity.
-!              I foresee a time when the calc_type format will change, and the code
-!              below will be a pain.  Perhaps some sort of interface for this.
-!             In particular, I don't think the restart_read should be dealing with this sort of thing.
-! [reply] - JSS: leave as todo for now.
                 ! [todo] - Allow restart files for one calculation types to be used to
                 ! [todo] - restart a (suitably compatible) different calculation.
-! [review] - AJWT: Not entirely sure what to do now - leave it up to JSS
+                ! AJWT (correctly) doesn't like the low-level handling of the
+                ! calc_type bit string.  It's not very modular and doesn't
+                ! really belong in the restart code.
+                ! However, this will all change as the purity work progresses.
+                ! [todo] - refactor calc_type handling into a reusable procedure.
+
                 ! Different calc types are either not compatible or require
                 ! hyperslabs (fewer particle types) or require copying (more
                 ! particle types).
