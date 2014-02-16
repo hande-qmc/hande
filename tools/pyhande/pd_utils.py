@@ -24,7 +24,7 @@ axis:
 
 Returns
 -------
-block_data: pandas.DataFrame
+block_info: pandas.DataFrame
     Mean, standard error and estimated standard error for each variable at each
     reblock step.
 covariance: pandas.DataFrame
@@ -134,8 +134,8 @@ matplotlib.figure.Figure
         line = ax.errorbar(block, std_err, std_err_err, marker='o', label=col)
 
         # There should only be (at most) one non-null value for optimal block.
-        opt = block_info.loc[:,(col, 'optimal block')]
-        opt = opt.ix[opt != ''].index.values
+        opt = block_info.xs((col, 'optimal block'), axis=1, copy=False)
+        opt = opt[opt != ''].index.values
         if opt:
             opt = opt[0]
             ax.annotate('', (block[opt], std_err[opt]-std_err_err[opt]), 
