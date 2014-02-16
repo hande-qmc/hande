@@ -24,6 +24,10 @@ axis:
 
 Returns
 -------
+data_len: pandas.Series
+    Number of data points used in each reblocking iteration.  Note some
+    reblocking iterations discard a data point if there were an odd number of
+    data points in the previous iteration.
 block_info: pandas.DataFrame
     Mean, standard error and estimated standard error for each variable at each
     reblock step.
@@ -55,6 +59,7 @@ implementation.  See there for documentation about the reblocking procedure.
     # Now nicely package it up into a dict of pandas/built-in objects.
 
     iblock = []
+    data_len = []
     block_info = []
     covariance = []
     keys = ['mean', 'standard error', 'standard error error', 'optimal block']
@@ -64,14 +69,18 @@ implementation.  See there for documentation about the reblocking procedure.
     for stat in block_stats:
         # (iblock, mean, covariance, standard err, error on standard error)
         iblock.append(stat[0])
+        data_len.append(stat[1])
 
-        pd_stat = numpy.array([stat[1], stat[3], stat[4], null]).T.flatten()
+        pd_stat = numpy.array([stat[2], stat[4], stat[5], null]).T.flatten()
         block_info.append(pd.Series(pd_stat, index=multi_keys))
 
         # Covariance is a 2D matrix (in general) so can't put it into
         # a DataFrame with everything else, so put it in its own.
-        cov = numpy.array(stat[2], ndmin=2)
+        cov = numpy.array(stat[3], ndmin=2)
         covariance.append(pd.DataFrame(cov, index=columns, columns=columns))
+
+    data_len = pd.Series(data_len, index=iblock, name='data length')
+    data_len.index.name = 'reblock'
 
     block_info = pd.concat(block_info, axis=1, keys=iblock).transpose()
     block_info.index.name = 'reblock'
@@ -85,7 +94,7 @@ implementation.  See there for documentation about the reblocking procedure.
         if optimal >= 0:
             block_info.loc[optimal,(columns[ivar], 'optimal block')] = '<---    '
 
-    return (block_info, covariance)
+    return (data_len, block_info, covariance)
 
 def plot_reblocking(block_info, plotfile=None, plotshow=True):
     '''Plot the reblocking data.

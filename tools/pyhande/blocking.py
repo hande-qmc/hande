@@ -31,6 +31,8 @@ list of tuples
         the blocking iteration.  Each iteration successively averages
         neighbouring pairs of data points.  The final data point is discarded if
         the number of data points is odd.
+    data_len
+        number of data points in the blocking iteration.
     mean
         the mean of each variable in the data set.
     cov
@@ -75,8 +77,9 @@ H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
             std_err = numpy.array(numpy.sqrt(cov / data.shape[axis]))
         else:
             std_err = numpy.sqrt(cov.diagonal() / data.shape[axis])
-        std_err_err =  std_err * 1.0/(numpy.sqrt(2*(data.shape[axis]-ddof)))
-        stats.append( (iblock, mean, cov, std_err, std_err_err) )
+        data_len = data.shape[axis]
+        std_err_err =  std_err * 1.0/(numpy.sqrt(2*(data_len-ddof)))
+        stats.append( (iblock, data_len, mean, cov, std_err, std_err_err) )
 
         # last even-indexed value (ignore the odd one, if relevant)
         last = 2*int(data.shape[axis]/2)
@@ -143,13 +146,13 @@ Drummond, Phys. Rev. E. 83, 066706 (2011).
 
     # Get the number of variables by looking at the number of means calculated
     # in the first stats entry.
-    nvariables = stats[0][1].size
+    nvariables = stats[0][2].size
     optimal_block = [float('NaN')]*nvariables
     # If the data was just of a single variable, then the numpy arrays returned
     # by blocking are all 0-dimensions.  Make sure they're 1-D so we can use
     # enumerate safely (just to keep the code short).
-    std_err_first = numpy.array(stats[0][3], ndmin=1)
-    for (iblock, mean, cov, std_err, std_err_err) in reversed(stats):
+    std_err_first = numpy.array(stats[0][4], ndmin=1)
+    for (iblock, data_len, mean, cov, std_err, std_err_err) in reversed(stats):
         # 2**iblock data points per block.
         B3 = 2**(3*iblock)
         std_err = numpy.array(std_err, ndmin=1)
