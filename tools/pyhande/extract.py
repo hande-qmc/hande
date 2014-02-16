@@ -5,6 +5,32 @@ import numpy
 import re
 import sys
 
+def extract_data_sets(filenames):
+    '''Extract QMC data tables from multiple HANDE calculations.
+
+Parameters
+----------
+filenames: list of strings
+    names of files containing HANDE QMC calculation output.
+
+Returns
+-------
+pandas.DataFrame
+    HANDE QMC data.  Each calculation (and each beta loop in the case of DMQMC)
+    is labelled separately using a hierarchical index.
+
+See Also
+--------
+``extract_data``: underlying data extraction implementation.
+'''
+
+    offset = 0
+    data = []
+    for filename in filenames:
+        data.append(extract_data(filename, offset))
+        offset += data[-1].index.levshape[0]
+    return pd.concat(data)
+
 def extract_data(filename, offset=0):
     '''Extract QMC data table from a HANDE calculation.
 
