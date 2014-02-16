@@ -159,3 +159,64 @@ matplotlib.figure.Figure
         plt.savefig(plotfile)
 
     return fig
+
+def optimal_block(block_sub_info):
+    '''Get the optimal block value from the reblocking data.
+
+Parameters
+----------
+block_sub_info: pandas.DataFrame or pandas.Series
+    Reblocking data (i.e. the first item of the tuple returned by ``reblock``),
+    or a subset thereof containing the statistics columns for one or more data
+    items.
+
+Returns
+-------
+int
+    Reblocking index corresponding to the reblocking iteration at which serial
+    correlation has been removed (as estimated by the procedure in
+    ``pyhande.blocking.find_optimal_block``).  If multiple data sets are passed
+    in block_sub_info, this is the maximum index out of all data sets.  Set to
+    inf if an optimal block is not found for a data set.
+
+Raises
+------
+ValueError
+    block_sub_info contains no Series or column in DataFrame named 'optimal
+    block'.
+'''
+
+    # Handle the following cases:
+    # * Series with optimal block in it.
+    # * block_sub_info DataFrame for one variable (no hierarchical column names)
+    # * block_sub_info DataFrame for multiple variables (hierarchical column names)
+    # (each set of columns for one variable in block_sub_info contains the mean,
+    # standard error and estimated error in the standard error for that
+    # variable).
+    try:
+        if 'optimal block' in block_sub_info.name:
+            iterator = [('optimal block', block_sub_info)]
+        else:
+            raise ValueError('No optimal block data')
+    except AttributeError:
+        # Have DataFrame.
+        # 'optimal block' is in the innermost level.
+        level = block_sub_info.columns.nlevels - 1
+        cols = block_sub_info.columns.get_level_values(level) == 'optimal block'
+        if not any(cols):
+            raise ValueError('No optimal block data')
+        iterator = block_sub_info.loc[:,cols].items()
+
+    opt = -1
+    for (name, col) in iterator:
+        col_opt = col[col != ''].index
+        if len(col_opt) == 0:
+            opt = float('inf')
+        elif len(col_opt) == 1:
+            opt = max(col_opt[0], opt)
+        else:
+            raise ValueError('Multiple entries listed as optimal.')
+    if opt < 0:
+        opt = float('inf')
+
+    return opt
