@@ -34,7 +34,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use system, only: sys_t
-        use restart_hdf5, only: dump_restart_hdf5
+        use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
         type(sys_t), intent(in) :: sys
 
@@ -137,7 +137,7 @@ contains
         end if
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(mc_cycles_done, nparticles_old)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
             if (parent) write (6,'()')
         end if
 

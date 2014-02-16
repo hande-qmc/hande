@@ -32,7 +32,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
         use utils, only: rng_init_info
-        use restart_hdf5, only: dump_restart_hdf5
+        use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
@@ -247,7 +247,7 @@ contains
         end if
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(mc_cycles_done, nparticles_old)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
             write (6,'()')
         end if
 

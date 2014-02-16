@@ -506,7 +506,7 @@ contains
 
         ! Write restart file if required.
         if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-            call dump_restart_hdf5(mc_cycles_done+ncycles*ireport, ntot_particles)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, ntot_particles)
 
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time

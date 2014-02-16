@@ -29,7 +29,7 @@ integer, parameter :: i0 = selected_int_kind(6)
 ! C int type which interoperates with i0.
 integer, parameter :: c_i0 = c_int32_t
 #elif DET_SIZE == 64
-integer, parameter :: i0 = selected_int_kind(10)
+integer, parameter :: i0 = selected_int_kind(15)
 integer, parameter :: c_i0 = c_int64_t
 #endif
 
