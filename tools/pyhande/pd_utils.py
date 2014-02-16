@@ -220,3 +220,38 @@ ValueError
         opt = float('inf')
 
     return opt
+
+def reblock_summary(block_sub_info):
+    '''Get the data corresponding to the optimal block from the reblocking data.
+
+Parameters
+----------
+block_sub_info: pandas.DataFrame or pandas.Series
+    Reblocking data (i.e. the first item of the tuple returned by ``reblock``),
+    or a subset thereof containing the statistics columns for one or more data
+    items.
+
+Returns
+-------
+pandas.DataFrame
+    Mean, standard error and estimate of the error in the standard error
+    corresponding to the optimal block size in the reblocking data (or largest
+    optimal size if multiple data sets are given.  The index is labelled with
+    the data name, if known.  An empty DataFrame is returned if no optimal block
+    size was found.
+'''
+    opt = optimal_block(block_sub_info)
+    if opt < float('inf'):
+        summary = block_sub_info.loc[opt]
+        # Convert to DataFrame, with statistics in columns.
+        if summary.index.nlevels == 1:
+            # Sadly don't know the data name; leave to user.
+            summary = pd.DataFrame(summary).T
+        else:
+            # Have hierarchical index; can pivot into a DataFrame.
+            # Each row will be labelled by the data name.
+            summary = summary.unstack()
+        summary.drop('optimal block', axis=1, inplace=True)
+    else:
+        summary = pd.DataFrame()
+    return summary
