@@ -89,7 +89,11 @@ pandas.DataFrame
     # Remove comment lines and convert all columns to numeric data.
     # Lines starting with a comment have been set to NaN in the iterations
     # column.
-    data.dropna(subset=['iterations'], inplace=True)
+    try:
+        data.dropna(subset=['iterations'], inplace=True)
+    except TypeError:
+        # Be slightly less efficient if using pandas version < 0.13.
+        data = data.dropna(subset=['iterations'])
     data.reset_index(drop=True, inplace=True)
     data = data.convert_objects(convert_numeric=True, copy=False)
 
