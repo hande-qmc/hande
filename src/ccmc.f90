@@ -1019,10 +1019,18 @@ contains
 
         use ccmc_data, only: bloom_stats_t
         use utils, only: int_fmt
+        use errors, only: stop_all
 
         type(bloom_stats_t), intent(inout) :: bloom_stats
         integer, intent(in) :: nspawn
                          
+        ! If the number of warnings exceeds the size of an integer then the
+        ! population may have exploded.
+        if ( bloom_stats%nwarnings == huge(bloom_stats%nwarnings) ) then
+            call stop_all('accumulate_bloom_stats', 'Number of bloom events exceeded &
+                 the size of an integer: the population may have exploded')
+        end if
+
         ! Print out a warning message the first nverbose warning times only.
         if ( bloom_stats%nwarnings < bloom_stats%nverbose_warnings ) then
             write (6,'(1X, "# WARNING more than", '//int_fmt(int(bloom_stats%prop*100))//',&
