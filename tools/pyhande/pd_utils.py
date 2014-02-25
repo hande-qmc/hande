@@ -168,7 +168,7 @@ matplotlib.figure.Figure
 
     if plotfile == '-' or (not plotfile and plotshow):
         plt.show()
-    else:
+    elif plotfile:
         plt.savefig(plotfile)
 
     return fig
