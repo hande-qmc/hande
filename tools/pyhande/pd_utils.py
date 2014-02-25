@@ -44,6 +44,8 @@ implementation.  See there for documentation about the reblocking procedure.
 
     try:
         columns = [data.name]
+        if data.name is None:
+            columns = ['data']
         axis = 0
     except AttributeError:
         # Have DataFrame rather than Series.
