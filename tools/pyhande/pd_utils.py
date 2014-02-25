@@ -13,33 +13,33 @@ def reblock(data, axis=0):
 
 Parameters
 ----------
-data: pandas.Series or pandas.DataFrame
+data : :class:`pandas.Series` or :class:`pandas.DataFrame`
     Data to be blocked.  See ``axis`` for order.
-axis:
+axis : int
     If non-zero, variables in data are in rows with the columns
     corresponding to the observation values.  Blocking is the performed along
     the rows.  Otherwise each column is a variable, the observations are in the
     columns and blocking is performed down the columns.  Only used if data is
-    a pandas.DataFrame.
+    a :class:`pandas.DataFrame`.
 
 Returns
 -------
-data_len: pandas.Series
+data_len : :class:`pandas.Series`
     Number of data points used in each reblocking iteration.  Note some
     reblocking iterations discard a data point if there were an odd number of
     data points in the previous iteration.
-block_info: pandas.DataFrame
+block_info : :class:`pandas.DataFrame`
     Mean, standard error and estimated standard error for each variable at each
     reblock step.
-covariance: pandas.DataFrame
+covariance : :class:`pandas.DataFrame`
     Covariance matrix at each reblock step.
 
 See also
 --------
-``pyhande.blocking.reblock``: numpy-based implementation.
-
-``pyhande.pd_utils.reblock`` is a simple wrapper around the numpy-based
-implementation.  See there for documentation about the reblocking procedure.
+:func:`pyblock.blocking.reblock`:
+    numpy-based implementation; see for documentation and notes on the
+    reblocking procedure.  :func:`pyblock.pd_utils.reblock` is a simple wrapper
+    around this.
 '''
 
     try:
@@ -105,17 +105,17 @@ def plot_reblocking(block_info, plotfile=None, plotshow=True):
 
 Parameters
 ----------
-block_info: pandas.DataFrame
+block_info : :class:`pandas.DataFrame`
     Reblocking data (i.e. the first item of the tuple returned by ``reblock``).
-plotfile: string
+plotfile : string
     If not null, save the plot to the given filename.  If '-', then show the
     plot interactively.  See also ``plotshow``.
-plotshow: bool
+plotshow : bool
     If ``plotfile`` is not given or is '-', then show the plot interactively.
 
 Returns
 -------
-matplotlib.figure.Figure
+fig : :class:`matplotlib.figure.Figure`
     plot of the reblocking data.
 '''
 
@@ -178,14 +178,14 @@ def optimal_block(block_sub_info):
 
 Parameters
 ----------
-block_sub_info: pandas.DataFrame or pandas.Series
+block_sub_info: :class:`pandas.DataFrame` or :class:`pandas.Series`
     Reblocking data (i.e. the first item of the tuple returned by ``reblock``),
     or a subset thereof containing the statistics columns for one or more data
     items.
 
 Returns
 -------
-int
+index : int
     Reblocking index corresponding to the reblocking iteration at which serial
     correlation has been removed (as estimated by the procedure in
     ``pyhande.blocking.find_optimal_block``).  If multiple data sets are passed
@@ -239,14 +239,14 @@ def reblock_summary(block_sub_info):
 
 Parameters
 ----------
-block_sub_info: pandas.DataFrame or pandas.Series
+block_sub_info : :class:`pandas.DataFrame` or :class:`pandas.Series`
     Reblocking data (i.e. the first item of the tuple returned by ``reblock``),
     or a subset thereof containing the statistics columns for one or more data
     items.
 
 Returns
 -------
-pandas.DataFrame
+summary : :class:`pandas.DataFrame`
     Mean, standard error and estimate of the error in the standard error
     corresponding to the optimal block size in the reblocking data (or largest
     optimal size if multiple data sets are given.  The index is labelled with

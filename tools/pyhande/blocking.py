@@ -7,48 +7,51 @@ def reblock(data, rowvar=1, ddof=None):
 
 Repeatedly average neighbouring data points in order to remove the effect of
 serial correlation on the estimate of the standard error of a data set, as
-described by Flyvbjerg and Petersen[1]_.  The standard error is constant (within error bars) once the correlation has been removed.
+described by Flyvbjerg and Petersen [1]_.  The standard error is constant
+(within error bars) once the correlation has been removed.
+
+.. default-role:: math
 
 Parameters
 ----------
-data: numpy.array
-    1D or 2D array containing multiple variables and data points.  See `rowvar`.
-rowvar: int
-    If `rowvar` is non-zero (default) then each row represents a variable and
+data : :class:`numpy.ndarray`
+    1D or 2D array containing multiple variables and data points.  See ``rowvar``.
+rowvar : int
+    If ``rowvar`` is non-zero (default) then each row represents a variable and
     each column a data point per variable.  Otherwise the relationship is
     swapped.  Only used if data is a 2D array.
-ddof: int
+ddof : int
     If not ``None``, then the standard error and covariance are normalised by
-    ``(N - ddof)``, where ``N`` is the number of data points per variable.
-    Otherwise, the numpy default is used (i.e. ``(N - 1)``).
+    `(N - \\text{ddof})`, where `N` is the number of data points per variable.
+    Otherwise, the numpy default is used (i.e. `(N - 1)`).
 
 Returns
 -------
 list of tuples
     Statistics from each reblocking iteration.  Each tuple contains:
 
-    iblock
-        the blocking iteration.  Each iteration successively averages
-        neighbouring pairs of data points.  The final data point is discarded if
-        the number of data points is odd.
-    data_len
-        number of data points in the blocking iteration.
-    mean
-        the mean of each variable in the data set.
-    cov
-        the covariance matrix.
-    std_err
-        the standard error of each variable.
-    std_err_err
-        an estimate of the error in the standard error, assuming a Gaussian
-        distribution.
+iblock : int
+    blocking iteration.  Each iteration successively averages neighbouring
+    pairs of data points.  The final data point is discarded if the number
+    of data points is odd.
+data_len : int
+    number of data points in the blocking iteration.
+mean : :class:`numpy.ndarray`
+    mean of each variable in the data set.
+cov : :class:`numpy.ndarray`
+    covariance matrix.
+std_err : :class:`numpy.ndarray`
+    standard error of each variable.
+std_err_err : :class:`numpy.ndarray`
+    an estimate of the error in the standard error, assuming a Gaussian
+    distribution.
 
-    mean, cov, std_err and std_err_err are all numpy arrays.
+[todo] - notes on blocking.
 
 References
 ----------
 .. [1]  "Error estimates on averages of correlated data", H. Flyvbjerg and
-H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
+        H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
 '''
     
     if ddof is not None and ddof != int(ddof):
@@ -90,6 +93,7 @@ H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
             data = (data[:,:last:2] + data[:,1:last:2]) / 2
         iblock += 1
 
+    # [todo] - named tuple?
     return stats
 
 def find_optimal_block(ndata, stats):
@@ -97,14 +101,16 @@ def find_optimal_block(ndata, stats):
 
 Inspect a reblocking calculation and find the block length which minimises the
 stochastic error and removes the effect of correlation from the data set.  This
-follows the procedures detailed by Wolff[1]_ and Lee et al.[2]_.
+follows the procedures detailed by Wolff [1]_ and Lee et al. [2]_.
+
+.. default-role:: math
 
 Parameters
 ----------
-ndata: int
+ndata : int
     number of data points ('observations') in the data set.
-stats: list of tuples
-    statistics in the format as returned by ``reblock``.
+stats : list of tuples
+    statistics in the format as returned by :func:`pyblock.blocking.reblock`.
 
 Returns
 -------
@@ -116,33 +122,50 @@ list of int
 
 Notes
 -----
-Wolff (Eq 47) and Lee et al. (Eq 14) give the optimal block size to be
-    B^3 = 2 n n_corr^2
-where n is the number of data points in the data set, B is the number of
-data points in each 'block' (ie the data set has been divided into n/B
-contiguous blocks) and n_corr
-Following the scheme proposed by Lee et al, we hence look for the largest
+Wolff [1]_ (Eq 47) and Lee et al. [2]_ (Eq 14) give the optimal block size to be
+
+.. math::
+
+    B^3 = 2 n n_{\\text{corr}}^2
+
+where `n` is the number of data points in the data set, `B` is the number of
+data points in each 'block' (ie the data set has been divided into `n/B`
+contiguous blocks) and `n_{\\text{corr}}`.
+[todo] - describe n_corr.
+Following the scheme proposed by Lee et al. [2]_, we hence look for the largest
 block size which satisfies 
-    B^3 >= 2 n n_corr^2.
-From Eq 13 in Lee et al. (which they cast in terms of the variance):
-    n_err SE = SE_{true}
-where the 'error factor', n_err, is the square root of the estimated
-correlation length,  SE is the standard error of the data set and
-SE_{true} is the true standard error once the correlation length has been
-taken into account.  Hence the condition becomes:
-    B^3 >= 2 n (SE(B) / SE(0))**4
-where SE(B) is the estimate of the standard error of the data divided in
-blocks of size B.
+
+.. math::
+
+    B^3 >= 2 n n_{\\text{corr}}^2.
+
+From Eq 13 in Lee et al. [2]_ (which they cast in terms of the variance):
+
+.. math::
+
+    n_{\\text{err}} SE = SE_{\\text{true}}
+
+where the 'error factor', `n_{\\text{err}}`, is the square root of the
+estimated correlation length,  `SE` is the standard error of the data set and
+`SE_{\text{true}}` is the true standard error once the correlation length has
+been taken into account.  Hence the condition becomes:
+
+.. math::
+
+    B^3 >= 2 n (SE(B) / SE(0))^4
+
+where `SE(B)` is the estimate of the standard error of the data divided in
+blocks of size `B`.
 
 I am grateful to Will Vigor for discussions and the initial implementation.
 
 References
 ----------
 .. [1] "Monte Carlo errors with less errors", U. Wolff, Comput. Phys. Commun.
-156, 143 (2004) and arXiv:hep-lat/0306017.
+       156, 143 (2004) and arXiv:hep-lat/0306017.
 .. [2] "Strategies for improving the efficiency of quantum Monte Carlo
-calculations", R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N. D.
-Drummond, Phys. Rev. E. 83, 066706 (2011).
+       calculations", R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N.
+       D.  Drummond, Phys. Rev. E. 83, 066706 (2011).
 '''
 
     # Get the number of variables by looking at the number of means calculated
