@@ -141,6 +141,14 @@ real(p), allocatable, target :: walker_data(:,:) ! (sampling_size+info_size,walk
 ! Walker information: spawned list.
 type(spawn_t) :: qmc_spawn
 
+! Walker information: received list for non-blocking communications.
+type(spawn_t) :: received_list
+
+! Array of requests used for the MPI_ISend of qmc_spawn.
+! This needs to be global as we initially require a send in the
+! first iteration from qmc.F90.
+integer, allocatable :: req_data_s(:)
+
 ! spawn times of the progeny (only used for ct_fciqmc)
 real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
 
@@ -682,6 +690,7 @@ contains
             call check_deallocate('estimator_numerators', ierr)
         end if
         call dealloc_spawn_t(qmc_spawn)
+        call dealloc_spawn_t(received_list)
 
     end subroutine end_fciqmc
 

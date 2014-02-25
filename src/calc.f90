@@ -92,6 +92,9 @@ integer, parameter :: distribute_cols = 2
 
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
+! Flag for using non-blocking communications.
+! Default: False.
+logical :: non_blocking_comm = .false.
 
 !--- Input data: Hilbert space truncation ---
 

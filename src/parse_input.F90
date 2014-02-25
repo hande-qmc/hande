@@ -477,6 +477,8 @@ contains
             ! Parameters for parallel calculations.
             case('BLOCK_SIZE')
                 call readi(block_size)
+            case('NON_BLOCKING_COMM')
+                non_blocking_comm = .true.
 
             case('FINITE_CLUSTER')
                 ! this will be checked in check_input to ensure that it
@@ -886,6 +888,7 @@ contains
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(fold_line, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(P__, 1, mpi_preal, 0, mpi_comm_world, ierr)

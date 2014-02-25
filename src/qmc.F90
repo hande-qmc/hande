@@ -98,7 +98,7 @@ contains
         use reference_determinant, only: set_reference_det
         use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
-        use spawn_data, only: alloc_spawn_t
+        use spawn_data, only: alloc_spawn_t, non_blocking_send
         use spawning, only: assign_particle_processor
         use system
         use symmetry, only: symmetry_orb_list
@@ -114,6 +114,7 @@ contains
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
         integer(lint) :: tmp_lint
+        integer :: initial_spawned_list(0:nprocs-1)
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -212,6 +213,9 @@ contains
 
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, 7, qmc_spawn)
+        call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
+                         spawned_walker_length, 7, received_list)
+
 
         allocate(f0(basis_length), stat=ierr)
         call check_allocate('f0',basis_length,ierr)
@@ -423,6 +427,15 @@ contains
         ! quantities if necessary.
         if (doing_calc(dmqmc_calc)) then
             call init_dmqmc(sys)
+        end if
+
+        ! For non-blocking communication we first need to send zero walkers to the spawned list on each processor
+        ! in order to carry the first iteration.
+        if (non_blocking_comm) then
+            allocate(req_data_s(0:nprocs-1))
+            call check_allocate('req_data_s', nprocs, ierr)
+            initial_spawned_list = 0
+            call non_blocking_send(qmc_spawn, initial_spawned_list, req_data_s)
         end if
 
         if (parent) then

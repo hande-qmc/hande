@@ -90,7 +90,7 @@ contains
 
         ! In:
         !    bit_str_len, ntypes, array_len, hash_seed: see description of
-        !       matching components in the spawn_t definition. 
+        !       matching components in the spawn_t definition.
         !    flag: whether or not to append an element for storing flags (ie
         !       additional information in bit string format) for the data stored
         !       for each entry.
@@ -153,7 +153,7 @@ contains
         ! In/Out:
         !    spawn: On output the spawn_t object is completely deallocated and
         !       pointers nullified.
-        
+
         use checking, only: check_deallocate
 
         type(spawn_t), intent(inout) :: spawn
@@ -252,6 +252,120 @@ contains
         end do
 
     end subroutine annihilate_wrapper_spawn_t_arr
+
+    subroutine annihilate_wrapper_spawned_list(spawn, tinitiator)
+
+        ! Helper procedure for annihiliating within a portion of a spawn_t object.
+        ! For non-blocking communications only particles spawned into chunk of
+        ! spawned list corresponding to current processor are annihilated with main
+        ! list.
+
+        ! In:
+        !    tinitiator: true if the initiator approximation is being used.
+        ! In/Out:
+        !    spawn: spawn_t object containing spawned particles.
+        !       On output subsection of spawn_t object which contains information
+        !       of walkers spawned onto current processor is compressed so that
+        !       each determinant appears at most once.
+
+        use parallel, only: nthreads, iproc
+        use sort, only: qsort
+
+        type(spawn_t), intent(inout) :: spawn
+        logical, intent(in) :: tinitiator
+
+        integer, parameter :: thread_id = 0
+        integer :: start, endp
+
+        ! Compress the sucessful spawning events from each thread so the spawned list
+        ! contains no gaps.
+        if (nthreads > 1) call compress_threaded_spawn_t(spawn)
+
+        ! Want to perform annihilation on spawn%sdata(:,start:endp).
+        start = spawn%head_start(thread_id, iproc)
+        endp = spawn%head(thread_id, iproc)
+        if (endp > start) then
+            start = start + 1
+            call qsort(spawn%sdata, endp, spawn%bit_str_len, start)
+            ! Annihilate within spawned walkers list.
+            ! Compress the remaining spawned walkers list.
+            if (tinitiator) then
+                call annihilate_spawn_t_initiator(spawn, start, endp)
+            else
+                call annihilate_spawn_t(spawn, start, endp)
+            end if
+        end if
+
+    end subroutine annihilate_wrapper_spawned_list
+
+    subroutine annihilate_wrapper_received_list(spawn, tinitiator)
+
+        ! Helper procedure for preparing list of walkers spawned onto
+        ! current processor from last iteration for annihilation with the main list.
+        ! This is slightly different from the annihilation of the spawned
+        ! list, as walkers here have already undergone compression and the whole
+        ! list needs to be sorted and annihilated.
+
+        ! In:
+        !    tinitiator: true if the initiator approximation is being used.
+        ! In/Out:
+        !    spawn: spawn_t object containing spawned particles.
+        !       On output spawn_t object will have undergone annihilation within
+        !       the list itself and will have been sorted for annihilation with
+        !       main list.
+
+        use parallel, only: iproc
+        use sort, only: qsort
+
+        logical, intent(in) :: tinitiator
+        type(spawn_t), intent(inout) :: spawn
+
+        integer, parameter :: thread_id = 0
+        integer :: start, endp
+
+        ! Here we annihilate among the whole list.
+        start = 1
+        endp = spawn%head(thread_id, 0)
+        if (endp > 0) then
+            call qsort(spawn%sdata, endp, spawn%bit_str_len, start)
+
+            ! Annihilate within spawned walkers list.
+            ! Compress the remaining spawned walkers list.
+            if (tinitiator) then
+                call annihilate_spawn_t_initiator(spawn, start, endp)
+            else
+                call annihilate_spawn_t(spawn, start, endp)
+            end if
+        end if
+
+    end subroutine annihilate_wrapper_received_list
+
+    subroutine calculate_displacements(spawn, send_disp)
+
+        ! Work out how many particles we are sending from the current processor
+        ! to all other processors. Necessary for non-blocking communications.
+
+        ! In:
+        !    spawn: spawn_t object containing spawned particles in blocks (one
+        !      per processor).
+        ! Out:
+        !    send_disp: Each element of this array contains how many walker will be sent
+        !      from current processor to every other processor.
+
+        use parallel, only: nprocs, iproc
+
+        type(spawn_t), intent(in) :: spawn
+        integer, intent(out) :: send_disp(0:)
+
+        integer :: i
+        integer, parameter :: thread_id = 0
+
+        do i = 0, nprocs-1
+            send_disp(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i)
+        end do
+        send_disp(iproc) = 0
+
+    end subroutine calculate_displacements
 
 !--- Thread handling and communication ---
 
@@ -410,9 +524,155 @@ contains
 
     end subroutine comm_spawn_t
 
+    subroutine receive_spawned_walkers(received_list, req_data_s)
+
+        ! Receive walkers spawned onto this processor from previous iteration.
+
+        ! To avoid having to deal with non-contiguous received list array
+        ! we received messages in order of message size so any zero messages
+        ! appear at the end of the array and are ignored.
+
+        ! In/Out:
+        !   received_list: spawn_t list we receive spawned walkers into.
+        !   req_data_s: array of requests initialised from previous iteration's send of walker list.
+
+#ifdef PARALLEL
+
+        use parallel
+        use ranking, only: insertion_rank
+
+        type(spawn_t), intent(inout):: received_list
+        integer, intent(inout) :: req_data_s(0:)
+
+        integer :: i, ierr, start, endp
+        integer, parameter :: thread_id = 0
+        ! These can probably be combined into a type.
+        integer :: message_size(0:nprocs-1), message_rank(0:nprocs-1), displacements(0:nprocs-1)
+        integer :: req_size_r(0:nprocs-1), req_data_r(0:nprocs-1)
+        integer :: stat_size_r(MPI_STATUS_SIZE, nprocs)
+        integer :: stat_data_s(MPI_STATUS_SIZE, nprocs), stat_data_r(MPI_STATUS_SIZE, nprocs)
+
+        ! Find out the number of walkers we are about to receive onto this processor from all others.
+        do i = 0, nprocs-1
+            call MPI_IRecv(message_size(i), 1, mpi_integer, i, 123, mpi_comm_world, req_size_r(i), ierr)
+        end do
+        ! Need to complete the request. Should return immediately.
+        call MPI_Waitall(nprocs, req_size_r, stat_size_r, ierr)
+
+        ! Sort the messages array in descending order so that any messages of size zero
+        ! will be at the end of the received list i.e. they will appear after received_list%head(thread_id, 0).
+        call insertion_rank(message_size, message_rank)
+        ! Fortran indexing.
+        message_rank = message_rank - 1
+        ! Insertion rank ranks in increasing order, we want decreasing order.
+        ! Maybe copying array is a bad idea and could use different iterator in the two loops below.
+        message_rank(0:nprocs-1) = message_rank(nprocs-1:0:-1)
+        do i = 0, nprocs-1
+            ! Messages of size 1 have a zero displacement in an array i.e. they go from
+            ! arr(pos:pos). Don't want any negative displacements.
+            ! Also message_size = num_dets*element_len.
+            if (message_size(message_rank(i)) > 0) then
+                displacements(i) = message_size(message_rank(i))/received_list%element_len - 1
+            else
+                displacements(i) = 0
+            end if
+        end do
+
+        ! Receive the spawned walkers from other processors.
+        ! We collect the messages in descending order of message size. I think this is well behaved
+        ! as uniquely size messages will be received from correct processor while for messages of same
+        ! size there is nothing to worry about.
+        start = 1
+        endp = 1
+        do i = 0, nprocs-1
+            endp = start + displacements(i)
+            call MPI_IRecv(received_list%sdata(:,start:endp), message_size(message_rank(i)), &
+                           mpi_det_integer, message_rank(i), 456, mpi_comm_world, req_data_r(i), ierr)
+            start = endp + 1
+        end do
+        call MPI_Waitall(nprocs, req_data_s, stat_data_s, ierr)
+        call MPI_Waitall(nprocs, req_data_r, stat_data_r, ierr)
+        ! Define the following as the number of determinants in received list.
+        received_list%head(thread_id, 0) = sum(message_size)/received_list%element_len
+
+#else
+        type(spawn_t), intent(inout):: received_list
+        integer, intent(inout) :: req_data_s(0:)
+#endif
+
+    end subroutine receive_spawned_walkers
+
+    subroutine non_blocking_send(spawn, send_counts, req_data_s)
+
+        ! Send remaining walkers from spawned walker list to their
+        ! new processors.
+
+        ! In:
+        !   send_counts: array containing the number of spawned walkers we wish to send
+        !       to each processor.
+        ! In/Out:
+        !   spawn: spawn_t object containing spawned particles which
+        !       need to be sent to their processor.
+        !   req_data_s: array of requests used when sending spawned list. This will be initialised
+        !       by MPI_ISend call when sending spawn to other processors.
+
+#ifdef PARALLEL
+
+        use parallel
+
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(inout) :: send_counts(0:)
+        integer, intent(inout) :: req_data_s(0:)
+
+        integer, parameter :: thread_id = 0
+        integer :: i, start_point, end_point
+        integer(i0), pointer :: tmp_data(:,:)
+        integer :: ierr
+        integer :: req_size_s(0:nprocs-1)
+        integer :: stat_size_s(MPI_STATUS_SIZE, 0:nprocs-1)
+
+        ! We want to copy the spawned walker list to another store for communication.
+        ! This is to avoid any potential accesses of the send buffer. Potentially need
+        ! different spawn_t type. I'm not sure if there is an issue because they
+        ! are both elements of the same type?
+        tmp_data => spawn%sdata_recvd
+        spawn%sdata_recvd => spawn%sdata
+        spawn%sdata => tmp_data
+
+        send_counts = send_counts*spawn%element_len
+
+        ! To receive the walkers we need to know the size of the message.
+        ! I think it's easier to send the sizes rather than use MPI_Probe
+        ! as these can block, although the receive is essentially blocking anyway.
+        ! These are single integers so they should send quickly.
+        do i = 0, nprocs-1
+            call MPI_ISend(send_counts(i), 1, mpi_integer, i, 123, MPI_COMM_WORLD, req_size_s(i), ierr)
+        end do
+        ! Make sure these messages send as we need them for the next call. This should complete immediately.
+        ! Need to check this, might require a copying, or look into MPI_PROBE..
+        call MPI_Waitall(nprocs, req_size_s, stat_size_s, ierr)
+        ! Send the walkers to their processors. The information may not send immediately
+        ! due to potentially large messages. So we don't want to access the array.
+        ! In the worse case scenario the send will only complete when there is a matching receive posted.
+        ! As a result the MPI_Waitall, which is required to ensure message completion, is called in the receive
+        ! subroutine to prevent blocking at this point.
+        do i = 0, nprocs-1
+            start_point = spawn%head_start(thread_id, i) + 1
+            end_point = start_point + send_counts(i)/spawn%element_len - 1
+            call MPI_ISend(spawn%sdata_recvd(:,start_point:end_point), send_counts(i), mpi_det_integer, i, 456, MPI_COMM_WORLD, req_data_s(i), ierr)
+        end do
+
+#else
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: send_counts(0:)
+        integer, intent(inout) :: req_data_s(0:)
+#endif
+
+    end subroutine non_blocking_send
+
 !--- Annihilation within spawned data (ie combine particles on same element) ---
 
-    elemental subroutine annihilate_spawn_t(spawn)
+    elemental subroutine annihilate_spawn_t(spawn, start, endp)
 
         ! Annihilate the list of spawned particles: ie sum the populations of
         ! particles residing on each location and remove any locations which
@@ -426,10 +686,14 @@ contains
         !        this is compressed so that each location occurs (at most) once
         !        and locations with a total of zero spawned particles (ie all
         !        particles cancel out) are removed.
+        ! In:
+        !   start (optional): Starting point in spawn_t object we search from.
+        !   endp (optional): Search spawn_t object until we reach endp.
 
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(in), optional :: start, endp
 
-        integer :: islot, k
+        integer :: islot, k, upper_bound
         integer, parameter :: thread_id = 0
 
         ! The spawned list is already sorted, so annihilation amounts to
@@ -437,16 +701,29 @@ contains
         ! they're on the same location.
 
         ! islot is the current element in the spawned lists.
-        islot = 1
         ! k is the current element which is being compressed into islot (if
         ! k and islot refer to the same determinants).
-        k = 1
+
+        if (present(start)) then
+            islot = start
+            k = start
+        else
+            islot = 1
+            k = 1
+        end if
+
+        if (present(endp)) then
+            upper_bound = endp
+        else
+            upper_bound = spawn%head(thread_id,0)
+        end if
+
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned location.
             spawn%sdata(:,islot) = spawn%sdata(:,k)
             compress: do
                 k = k + 1
-                if (k > spawn%head(thread_id,0)) exit self_annihilate
+                if (k > upper_bound) exit self_annihilate
                 if (all(spawn%sdata(:spawn%bit_str_len,k) == spawn%sdata(:spawn%bit_str_len,islot))) then
                     ! Add the populations of the subsequent identical particles.
                     spawn%sdata(spawn%bit_str_len+1:,islot) =    &
@@ -458,7 +735,7 @@ contains
                 end if
             end do compress
             ! All done?
-            if (islot == spawn%head(thread_id,0)) exit self_annihilate
+            if (islot == upper_bound) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
             if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0)) islot = islot + 1
@@ -473,7 +750,7 @@ contains
 
     end subroutine annihilate_spawn_t
 
-    elemental subroutine annihilate_spawn_t_initiator(spawn)
+    elemental subroutine annihilate_spawn_t_initiator(spawn, start, endp)
 
         ! Annihilate the list of spawned particles: ie sum the populations of
         ! particles residing on each location and remove any locations which
@@ -487,14 +764,18 @@ contains
         !        this is compressed so that each location occurs (at most) once
         !        and locations with a total of zero spawned particles (ie all
         !        particles cancel out) are removed.
+        ! In:
+        !   start (optional): Starting point in spawn_t object we search from.
+        !   end (optional): Search spawn_t object until we reach head.
 
         ! This version is for the initiator algorithm, whereby we also need to
         ! take care of the parent flag (ie handle the origin of the spawned
         ! particles).
 
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(in), optional :: start, endp
 
-        integer :: islot, ipart, k, pop_sign
+        integer :: islot, ipart, k, pop_sign, upper_bound
         integer, allocatable :: events(:)
         integer(i0), allocatable :: initiator_pop(:)
         integer, parameter :: thread_id = 0
@@ -504,10 +785,22 @@ contains
         allocate(initiator_pop(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes))
 
         ! islot is the current element in the spawned list.
-        islot = 1
         ! k is the current element which is being compressed into islot (if
         ! k and islot refer to the same determinants).
-        k = 1
+        if (present(start)) then
+            islot = start
+            k = start
+        else
+            islot = 1
+            k = 1
+        end if
+
+        if (present(endp)) then
+            upper_bound = endp
+        else
+            upper_bound = spawn%head(thread_id,0)
+        end if
+
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned location.
             spawn%sdata(:,islot) = spawn%sdata(:,k)
@@ -583,7 +876,7 @@ contains
                 end if
             end do compress
             ! All done?
-            if (islot == spawn%head(thread_id,0) .or. k > spawn%head(thread_id,0)) exit self_annihilate
+            if (islot == upper_bound .or. k > upper_bound) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
             if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0)) islot = islot + 1
