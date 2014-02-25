@@ -79,6 +79,7 @@ H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
             std_err = numpy.sqrt(cov.diagonal() / data.shape[axis])
         data_len = data.shape[axis]
         std_err_err =  std_err * 1.0/(numpy.sqrt(2*(data_len-ddof)))
+        std_err_err = numpy.array(std_err_err)
         stats.append( (iblock, data_len, mean, cov, std_err, std_err_err) )
 
         # last even-indexed value (ignore the odd one, if relevant)
