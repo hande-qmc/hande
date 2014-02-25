@@ -10,18 +10,18 @@ def extract_data_sets(filenames):
 
 Parameters
 ----------
-filenames: list of strings
+filenames : list of strings
     names of files containing HANDE QMC calculation output.
 
 Returns
 -------
-pandas.DataFrame
+data : :class:`pandas.DataFrame`
     HANDE QMC data.  Each calculation (and each beta loop in the case of DMQMC)
     is labelled separately using a hierarchical index.
 
 See Also
 --------
-``extract_data``: underlying data extraction implementation.
+``extract_data`` : underlying data extraction implementation.
 '''
 
     offset = 0
@@ -42,14 +42,14 @@ def extract_data(filename, offset=0):
 
 Parameters
 ----------
-filename: string
+filename : string
     name of file containing the HANDE QMC calculation output.
-offset: int
+offset : int
     first index for the calculation level label in data (default: 0).
 
 Returns
 -------
-pandas.DataFrame
+data : :class:`pandas.DataFrame`
     HANDE QMC data.  Multiple loops over iterations (e.g. in DMQMC) are labelled
     using a hierarchical index, starting from the supplied offset, otherwise the
     entire data set is given the offset as the hierarchical index.
@@ -130,14 +130,14 @@ def _get_last_lines(filename, bytes=2048):
 
 Parameters
 ----------
-filename: string
+filename : string
     name of file.
-bytes: int
+bytes : int
     number of bytes from the end of file to examine.
     
 Returns
 -------
-list
+last_lines : list
     list of lines.
 '''
 
