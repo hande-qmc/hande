@@ -67,9 +67,11 @@ implementation.  See there for documentation about the reblocking procedure.
     keys = ['mean', 'standard error', 'standard error error', 'optimal block']
     multi_keys = [(col,k) for col in columns for k in keys]
     multi_keys = pd.MultiIndex.from_tuples(multi_keys)
-    null = [0]*len(columns)
+    null = numpy.zeros(len(columns))
     for stat in block_stats:
-        # (iblock, mean, covariance, standard err, error on standard error)
+        # Contents of stat:
+        #     (iblock, data_len, mean, covariance, standard err,
+        #      esimate of error in standard error)
         iblock.append(stat[0])
         data_len.append(stat[1])
 
