@@ -33,7 +33,12 @@ Returns
 None.
 '''
 
-    float_fmt = '{0:-#.8e}'.format
+    try:
+        float_fmt = '{0:-#.8e}'.format
+        float_fmt(1.0)
+    except ValueError:
+        # GAH.  Alternate formatting only added to format function after python 2.6..
+        float_fmt = '{0:-.8e}'.format
     data = pyhande.extract.extract_data_sets(files)
 
     # Reblock over desired window.
