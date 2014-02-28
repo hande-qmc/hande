@@ -72,12 +72,12 @@ None.
     opt_data.append(summary)
     opt_data = pd.concat(opt_data)
     if not opt_data.empty:
-        print()
+        print('')
         print('Recommended statistics from optimal block size:')
-        print()
+        print('')
         print(opt_data.to_string(float_format=float_fmt))
     if no_opt:
-        print()
+        print('')
         print('WARNING: could not find optimal block size.')
         print('Insufficient statistics collected for the following variables: '
               '%s.' % (', '.join(no_opt)))
