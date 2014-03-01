@@ -5,8 +5,11 @@ Run a reblocking analysis on HANDE QMC output files.  CCMC and FCIQMC
 calculations only are supported.'''
 
 import pandas as pd
-import pyhande
+from os import path
 import sys
+sys.path.append(path.join(path.abspath(path.dirname(sys.argv[0])), 'pyblock'))
+import pyblock
+import pyhande
 
 # Still supporting 2.6.  *sigh*
 import optparse
@@ -14,7 +17,7 @@ import optparse
 def run_hande_blocking(files, start_iteration, reblock_plot=None):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
-See ``pyhande.pd_utils.reblock`` and ``pyhande.blocking.reblock`` for details on
+See ``pyblock.pd_utils.reblock`` and ``pyblock.blocking.reblock`` for details on
 the reblocking procedure.
 
 Parameters
@@ -46,13 +49,13 @@ None.
     # Reblock over desired window.
     indx = data['iterations'] >= start_iteration
     mc_data =  data.ix[indx, ['Instant shift', '\sum H_0j Nj', '# D0']]
-    (data_length, reblock, covariance) = pyhande.pd_utils.reblock(mc_data)
+    (data_length, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
 
     # Calculate projected energy.
     proje_sum = reblock.ix[:, '\sum H_0j Nj']
     ref_pop = reblock.ix[:, '# D0']
     proje_ref_cov = covariance.xs('# D0', level=1)['\sum H_0j Nj']
-    proje = pyhande.error.ratio(proje_sum, ref_pop, proje_ref_cov, data_length)
+    proje = pyblock.error.ratio(proje_sum, ref_pop, proje_ref_cov, data_length)
 
     print(reblock.to_string(float_format=float_fmt, line_width=80))
 
@@ -60,13 +63,13 @@ None.
     opt_data = []
     no_opt = []
     for col in ('Instant shift', '\sum H_0j Nj', '# D0'):
-        summary = pyhande.pd_utils.reblock_summary(reblock.ix[:, col])
+        summary = pyblock.pd_utils.reblock_summary(reblock.ix[:, col])
         if summary.empty:
             no_opt.append(col)
         else:
             summary.index = [col]
         opt_data.append(summary)
-    summary = pyhande.pd_utils.reblock_summary(proje)
+    summary = pyblock.pd_utils.reblock_summary(proje)
     if summary.empty:
         no_opt.append('Proj. Energy')
     else:
@@ -85,7 +88,7 @@ None.
               '%s.' % (', '.join(no_opt)))
 
     if reblock_plot:
-        pyhande.pd_utils.plot_reblocking(reblock, reblock_plot)
+        pyblock.pd_utils.plot_reblocking(reblock, reblock_plot)
 
     # [todo] - return stuff.
 

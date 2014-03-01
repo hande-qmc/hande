@@ -8,7 +8,7 @@
 
 import numpy
 import pandas as pd
-import pyhande.pd_utils as pd_utils
+import pyblock.pd_utils as pd_utils
 
 def ratio(stats_A, stats_B, cov_AB, data_len):
     '''Calculate the mean and standard error of :math:`f = A/B`.

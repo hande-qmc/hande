@@ -1,4 +1,4 @@
-'''Pandas-based wrapper around ``pyhande.blocking``.'''
+'''Pandas-based wrapper around ``pyblock.blocking``.'''
 
 import numpy
 import matplotlib.pyplot as plt
@@ -6,7 +6,7 @@ import mpl_toolkits
 import mpl_toolkits.axisartist as mpl_aa
 import matplotlib.tight_layout as mpl_tl
 import pandas as pd
-import pyhande.blocking
+import pyblock.blocking
 
 def reblock(data, axis=0):
     '''Blocking analysis of correlated data.
@@ -54,9 +54,9 @@ See also
         else:
             columns = data.columns.values
 
-    block_stats = pyhande.blocking.reblock(data.values, rowvar=axis)
+    block_stats = pyblock.blocking.reblock(data.values, rowvar=axis)
     data_size = data.shape[axis]
-    optimal_blocks = pyhande.blocking.find_optimal_block(data_size, block_stats)
+    optimal_blocks = pyblock.blocking.find_optimal_block(data_size, block_stats)
 
     # Now nicely package it up into a dict of pandas/built-in objects.
 
@@ -189,7 +189,7 @@ Returns
 index : int
     Reblocking index corresponding to the reblocking iteration at which serial
     correlation has been removed (as estimated by the procedure in
-    ``pyhande.blocking.find_optimal_block``).  If multiple data sets are passed
+    ``pyblock.blocking.find_optimal_block``).  If multiple data sets are passed
     in block_sub_info, this is the maximum index out of all data sets.  Set to
     inf if an optimal block is not found for a data set.
 
