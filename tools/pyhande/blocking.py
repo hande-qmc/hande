@@ -1,6 +1,7 @@
 '''Tools for reblocking of data to remove serial correlation from data sets.'''
 
 import numpy
+import collections
 
 def reblock(data, rowvar=1, ddof=None):
     '''Blocking analysis of correlated data.
@@ -27,14 +28,14 @@ ddof : int
 
 Returns
 -------
-list of tuples
+list of `collections.namedtuples`
     Statistics from each reblocking iteration.  Each tuple contains:
 
-iblock : int
+block : int
     blocking iteration.  Each iteration successively averages neighbouring
     pairs of data points.  The final data point is discarded if the number
     of data points is odd.
-data_len : int
+ndata: int
     number of data points in the blocking iteration.
 mean : :class:`numpy.ndarray`
     mean of each variable in the data set.
@@ -45,8 +46,6 @@ std_err : :class:`numpy.ndarray`
 std_err_err : :class:`numpy.ndarray`
     an estimate of the error in the standard error, assuming a Gaussian
     distribution.
-
-[todo] - notes on blocking.
 
 References
 ----------
@@ -72,6 +71,8 @@ References
 
     iblock = 0
     stats = []
+    block_tuple_fields = 'block ndata mean cov std_err std_err_err'.split()
+    block_tuple = collections.namedtuple('BlockTuple', block_tuple_fields)
     while data.shape[axis] >= 2:
 
         mean = numpy.array(numpy.mean(data, axis=axis))
@@ -83,7 +84,9 @@ References
         data_len = data.shape[axis]
         std_err_err =  std_err * 1.0/(numpy.sqrt(2*(data_len-ddof)))
         std_err_err = numpy.array(std_err_err)
-        stats.append( (iblock, data_len, mean, cov, std_err, std_err_err) )
+        stats.append(
+                block_tuple(iblock, data_len, mean, cov, std_err, std_err_err)
+                    )
 
         # last even-indexed value (ignore the odd one, if relevant)
         last = 2*int(data.shape[axis]/2)
@@ -93,7 +96,6 @@ References
             data = (data[:,:last:2] + data[:,1:last:2]) / 2
         iblock += 1
 
-    # [todo] - named tuple?
     return stats
 
 def find_optimal_block(ndata, stats):

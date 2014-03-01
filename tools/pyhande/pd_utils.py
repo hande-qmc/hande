@@ -72,15 +72,16 @@ See also
         # Contents of stat:
         #     (iblock, data_len, mean, covariance, standard err,
         #      esimate of error in standard error)
-        iblock.append(stat[0])
-        data_len.append(stat[1])
+        iblock.append(stat.block)
+        data_len.append(stat.ndata)
 
-        pd_stat = numpy.array([stat[2], stat[4], stat[5], null]).T.flatten()
+        pd_stat = [stat.mean, stat.std_err, stat.std_err_err, null]
+        pd_stat = numpy.array(pd_stat).T.flatten()
         block_info.append(pd.Series(pd_stat, index=multi_keys))
 
         # Covariance is a 2D matrix (in general) so can't put it into
         # a DataFrame with everything else, so put it in its own.
-        cov = numpy.array(stat[3], ndmin=2)
+        cov = numpy.array(stat.cov, ndmin=2)
         covariance.append(pd.DataFrame(cov, index=columns, columns=columns))
 
     data_len = pd.Series(data_len, index=iblock, name='data length')
