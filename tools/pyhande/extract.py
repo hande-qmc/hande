@@ -1,7 +1,7 @@
 '''Data extraction from the (standard) output of a HANDE calculation.'''
 
-import pandas as pd
 import numpy
+import pandas as pd
 import re
 import sys
 
@@ -15,6 +15,9 @@ filenames : list of strings
 
 Returns
 -------
+metadata : :class:`pandas.DataFrame`
+    metadata (i.e. calculation information, parameters and settings) extracted
+    from output files.
 data : :class:`pandas.DataFrame`
     HANDE QMC data.  Each calculation (and each beta loop in the case of DMQMC)
     is labelled separately using a hierarchical index.
@@ -26,10 +29,13 @@ See Also
 
     offset = 0
     data = []
+    metadata = []
     for filename in filenames:
-        data.append(extract_data(filename, offset))
+        (calc_metadata, calc_data) = extract_data(filename, offset)
+        data.append(calc_data)
+        metadata.append(calc_metadata)
         offset += data[-1].index.levshape[0]
-    return pd.concat(data)
+    return (pd.concat(metadata).unstack(level=0), pd.concat(data))
 
 def extract_data(filename, offset=0):
     '''Extract QMC data table from a HANDE calculation.
@@ -49,19 +55,63 @@ offset : int
 
 Returns
 -------
+metadata : :class:`pandas.Series`
+    metadata (i.e. calculation information, parameters and settings) extracted
+    from output file..
 data : :class:`pandas.DataFrame`
     HANDE QMC data.  Multiple loops over iterations (e.g. in DMQMC) are labelled
     using a hierarchical index, starting from the supplied offset, otherwise the
     entire data set is given the offset as the hierarchical index.
 '''
 
+    md_regex = dict(
+        UUID = '^ Calculation UUID:',
+        calc = '^ *(fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc) *$',
+        sym = r'\bsym\b +\d+',
+        ms = 'ms +-*\d+',
+        nel = 'nel',
+        nbasis = 'Number of basis functions:',
+        truncation = 'truncation_level',
+        tau = 'tau',
+        seed = 'random number generator with a seed of',
+        bit_length = 'Bit-length',
+        ref = 'Reference determinant, \|D0> = ',
+        ref_energy = r'E0 = <D0\|H\|D0>',
+        psingle = 'Probability of attempting a single',
+        pdouble = 'Probability of attempting a double',
+        init_pop = 'Initial population on reference',
+    )
+    md_int = 'sym ms nel nbasis truncation seed bit_length'.split()
+    md_float = 'tau ref_energy psingle pdouble init_pop'.split()
+    for (k,v) in md_regex.items():
+        md_regex[k] = re.compile(v, re.IGNORECASE)
+
     # Read metadata and figure out how the start line of the data table.
     f = open(filename, 'r')
     start_line = 0
-    for line in f.readlines():
+    metadata = pd.Series(index=md_regex.keys(), name='metadata')
+    unseen_calc = True
+    for line in f:
         start_line += 1
-        # [todo] - extract metadata.
-
+        # extract metadata.
+        for (k,v) in md_regex.items():
+            if v.search(line):
+                # Special cases for unusual formats...
+                if k == 'ref':
+                    metadata[k] = v.split(line)[-1].strip()
+                elif k == 'calc' and unseen_calc:
+                    unseen_calc = False
+                    metadata[k] = line.split()[0]
+                elif k == 'seed':
+                    metadata[k] = int(float(line.split()[-1]))
+                else:
+                    val = line.split()[-1]
+                    if k in md_int:
+                        metadata[k] = int(val)
+                    elif k in md_float:
+                        metadata[k] = float(val)
+                    else:
+                        metadata[k] = val
         # Hunt for start of data table.
         if ' # iterations' in line:
             # Columns are separated by at least two spaces but each column name
@@ -121,9 +171,10 @@ data : :class:`pandas.DataFrame`
     multi_keys = [i+offset for i in range(len(data))]
     data = pd.concat(data, keys=multi_keys)
     data.index.names = ['calc', '']
+    metadata = pd.concat([metadata], keys=[multi_keys[0]])
+    metadata.index.names = ['calc', '']
 
-    # [todo] - return metadata as well.
-    return data
+    return (metadata, data)
 
 def _get_last_lines(filename, bytes=2048):
     '''Get the lines within a given number of bytes from the end of the file.

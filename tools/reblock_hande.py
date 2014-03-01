@@ -37,9 +37,11 @@ None.
         float_fmt = '{0:-#.8e}'.format
         float_fmt(1.0)
     except ValueError:
-        # GAH.  Alternate formatting only added to format function after python 2.6..
+        # GAH.  Alternate formatting only added to format function after
+        # python 2.6..
         float_fmt = '{0:-.8e}'.format
-    data = pyhande.extract.extract_data_sets(files)
+    (metadata, data) = pyhande.extract.extract_data_sets(files)
+    # [todo] - quiet and verbose print options.
 
     # Reblock over desired window.
     indx = data['iterations'] >= start_iteration
@@ -84,6 +86,8 @@ None.
 
     if reblock_plot:
         pyhande.pd_utils.plot_reblocking(reblock, reblock_plot)
+
+    # [todo] - return stuff.
 
 def parse_args(args):
     '''Parse command-line arguments.
