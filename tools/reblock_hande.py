@@ -40,7 +40,14 @@ verbose : int
 
 Returns
 -------
-None.
+metadata : :class:`pandas.DataFrame`
+    Metadata extracted from the calculation output file.
+data : :class:`pandas.DataFrame`
+    QMC data extracted from the calculation output file.
+opt_data: :class:`pandas.DataFrame`
+    Recommended statistics based upon the estimated 'optimal' block size
+    as suggested by Wolff and Lee et al. (see
+    :func:`pyblock.blocking.find_optimal_block`).
 '''
 
     try:
@@ -99,7 +106,7 @@ None.
     if reblock_plot:
         pyblock.pd_utils.plot_reblocking(reblock, reblock_plot)
 
-    # [todo] - return stuff.
+    return (metadata, data, opt_data)
 
 def parse_args(args):
     '''Parse command-line arguments.
