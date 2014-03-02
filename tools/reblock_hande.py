@@ -17,14 +17,14 @@ import optparse
 def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
-See ``pyblock.pd_utils.reblock`` and ``pyblock.blocking.reblock`` for details on
-the reblocking procedure.
+See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
+details on the reblocking procedure.
 
 Parameters
 ----------
-files: list of strings
+files : list of strings
     names of files containing HANDE QMC calculation output.
-start_iteration: int
+start_iteration : int
     QMC iteration from which statistics are gathered.
 reblock_plot : string
     Filename to which the reblocking convergence plot (standard error vs reblock
@@ -106,7 +106,7 @@ def parse_args(args):
 
 Parameters
 ----------
-args: list of strings
+args : list of strings
     command-line arguments.
 
 Returns
@@ -115,11 +115,11 @@ Returns
 
 where
 
-filenames: list of strings
+filenames : list of strings
     list of QMC output files
-start_iteration: int
+start_iteration : int
     iteration number from which statistics should be gathered.
-reblock_plot: string
+reblock_plot : string
     filename for the reblock convergence plot output.
 '''
 
@@ -150,7 +150,7 @@ def main(args):
 
 Parameters
 ----------
-args: list of strings
+args : list of strings
     command-line arguments.
 
 Returns
