@@ -14,7 +14,7 @@ import pyhande
 # Still supporting 2.6.  *sigh*
 import optparse
 
-def run_hande_blocking(files, start_iteration, reblock_plot=None):
+def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See ``pyblock.pd_utils.reblock`` and ``pyblock.blocking.reblock`` for details on
@@ -26,10 +26,17 @@ files: list of strings
     names of files containing HANDE QMC calculation output.
 start_iteration: int
     QMC iteration from which statistics are gathered.
-reblock_plot: string
+reblock_plot : string
     Filename to which the reblocking convergence plot (standard error vs reblock
     iteration) is saved.  The plot is not created if None and shown
     interactively if '-'.
+verbose : int
+    Level of verbosity.
+
+    <0: print nothing
+    0: print only the recommended statistics from the optimal block length.
+    1: print blocking analysis and recommended statistics.
+    2: print calculation metadata, blocking analysis and recommended statistics.
 
 Returns
 -------
@@ -44,7 +51,9 @@ None.
         # python 2.6..
         float_fmt = '{0:-.8e}'.format
     (metadata, data) = pyhande.extract.extract_data_sets(files)
-    # [todo] - quiet and verbose print options.
+    if verbose >= 2:
+        print(metadata.to_string())
+        print('')
 
     # Reblock over desired window.
     indx = data['iterations'] >= start_iteration
@@ -57,7 +66,9 @@ None.
     proje_ref_cov = covariance.xs('# D0', level=1)['\sum H_0j Nj']
     proje = pyblock.error.ratio(proje_sum, ref_pop, proje_ref_cov, data_length)
 
-    print(reblock.to_string(float_format=float_fmt, line_width=80))
+    if verbose >= 1:
+        print(reblock.to_string(float_format=float_fmt, line_width=80))
+        print('')
 
     # Data summary: suggested data to use from reblocking analysis.
     opt_data = []
@@ -76,13 +87,11 @@ None.
         summary.index = ['Proj. Energy']
     opt_data.append(summary)
     opt_data = pd.concat(opt_data)
-    if not opt_data.empty:
-        print('')
+    if not opt_data.empty and verbose >= 0:
         print('Recommended statistics from optimal block size:')
         print('')
         print(opt_data.to_string(float_format=float_fmt))
-    if no_opt:
-        print('')
+    if no_opt and verbose >= 0:
         print('WARNING: could not find optimal block size.')
         print('Insufficient statistics collected for the following variables: '
               '%s.' % (', '.join(no_opt)))
@@ -119,9 +128,13 @@ reblock_plot: string
                       help='Filename to which the reblocking convergence plot '
                       'is saved.  Use \'-\' to show plot interactively.  '
                       'Default: off.')
+    parser.add_option('-q', '--quiet', dest='verbose', action='store_const',
+                      const=0, default=1, help='')
     parser.add_option('-s', '--start', type='int', dest='start_iteration',
                       default=0, help='Iteration number from which to gather '
                            'statistics.  Default: %default.')
+    parser.add_option('-v', '--verbose', dest='verbose', action='store_const',
+                      const=2, help='')
 
     (options, filenames) = parser.parse_args(args)
 
@@ -129,7 +142,8 @@ reblock_plot: string
         parser.print_help()
         sys.exit(1)
 
-    return (filenames, options.start_iteration, options.plotfile)
+    return (filenames, options.start_iteration, options.plotfile,
+            options.verbose)
 
 def main(args):
     '''Run reblocking and data analysis on HANDE output.
@@ -144,8 +158,8 @@ Returns
 None.
 '''
 
-    (files, start_iteration, reblock_plot) = parse_args(args)
-    run_hande_blocking(files, start_iteration, reblock_plot)
+    (files, start_iteration, reblock_plot, verbose) = parse_args(args)
+    run_hande_blocking(files, start_iteration, reblock_plot, verbose)
 
 if __name__ == '__main__':
 
