@@ -125,7 +125,6 @@ fig : :class:`matplotlib.figure.Figure`
     # Create host axes.  Must plot to here first and then clone...
     fig = plt.figure()
     host = mpl_toolkits.axes_grid1.host_subplot(111, axes_class=mpl_aa.Axes)
-    print('host', type(host))
 
     offset = -90 # distance between y axes.
     axes = []
