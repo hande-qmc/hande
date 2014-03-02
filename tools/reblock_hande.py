@@ -59,7 +59,7 @@ opt_data: :class:`pandas.DataFrame`
         float_fmt = '{0:-.8e}'.format
     (metadata, data) = pyhande.extract.extract_data_sets(files)
     if verbose >= 2:
-        print(metadata.to_string())
+        print(metadata.to_string(na_rep='n/a'))
         print('')
 
     # Reblock over desired window.
@@ -97,7 +97,7 @@ opt_data: :class:`pandas.DataFrame`
     if not opt_data.empty and verbose >= 0:
         print('Recommended statistics from optimal block size:')
         print('')
-        print(opt_data.to_string(float_format=float_fmt))
+        print(opt_data.to_string(float_format=float_fmt, na_rep='n/a'))
     if no_opt and verbose >= 0:
         print('WARNING: could not find optimal block size.')
         print('Insufficient statistics collected for the following variables: '
