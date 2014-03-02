@@ -149,7 +149,7 @@ From Eq 13 in Lee et al. [2]_ (which they cast in terms of the variance):
 
 where the 'error factor', `n_{\\text{err}}`, is the square root of the
 estimated correlation length,  `SE` is the standard error of the data set and
-`SE_{\text{true}}` is the true standard error once the correlation length has
+`SE_{\\text{true}}` is the true standard error once the correlation length has
 been taken into account.  Hence the condition becomes:
 
 .. math::
