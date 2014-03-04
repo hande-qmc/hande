@@ -82,7 +82,7 @@ contains
             if (hi - lo < switch_threshold) then
                 do j = lo + 1, hi
                     tmp = list(:,j)
-                    do i = j - 1, 1, -1
+                    do i = j - 1, lo, -1
                         if (tmp(1:ns) .bitstrgt. list(1:ns,i)) exit
                         list(:,i+1) = list(:,i)
                     end do
