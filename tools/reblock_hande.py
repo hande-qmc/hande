@@ -58,42 +58,24 @@ opt_data: :class:`pandas.DataFrame`
         # python 2.6..
         float_fmt = '{0:-.8e}'.format
     (metadata, data) = pyhande.extract.extract_data_sets(files)
-    if verbose >= 2:
-        print(metadata.to_string(na_rep='n/a'))
-        print('')
 
     # Reblock over desired window.
     indx = data['iterations'] >= start_iteration
     mc_data =  data.ix[indx, ['Instant shift', '\sum H_0j Nj', '# D0']]
     (data_length, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
 
-    # Calculate projected energy.
-    proje_sum = reblock.ix[:, '\sum H_0j Nj']
-    ref_pop = reblock.ix[:, '# D0']
-    proje_ref_cov = covariance.xs('# D0', level=1)['\sum H_0j Nj']
-    proje = pyblock.error.ratio(proje_sum, ref_pop, proje_ref_cov, data_length)
+    proje = pyhande.analysis.projected_energy(reblock, covariance, data_length)
+    reblock = pd.concat([reblock, proje], axis=1)
 
+    # Data summary: suggested data to use from reblocking analysis.
+    (opt_data, no_opt) = pyhande.analysis.qmc_summary(reblock)
+
+    if verbose >= 2:
+        print(metadata.to_string(na_rep='n/a'))
+        print('')
     if verbose >= 1:
         print(reblock.to_string(float_format=float_fmt, line_width=80))
         print('')
-
-    # Data summary: suggested data to use from reblocking analysis.
-    opt_data = []
-    no_opt = []
-    for col in ('Instant shift', '\sum H_0j Nj', '# D0'):
-        summary = pyblock.pd_utils.reblock_summary(reblock.ix[:, col])
-        if summary.empty:
-            no_opt.append(col)
-        else:
-            summary.index = [col]
-        opt_data.append(summary)
-    summary = pyblock.pd_utils.reblock_summary(proje)
-    if summary.empty:
-        no_opt.append('Proj. Energy')
-    else:
-        summary.index = ['Proj. Energy']
-    opt_data.append(summary)
-    opt_data = pd.concat(opt_data)
     if not opt_data.empty and verbose >= 0:
         print('Recommended statistics from optimal block size:')
         print('')
@@ -102,7 +84,6 @@ opt_data: :class:`pandas.DataFrame`
         print('WARNING: could not find optimal block size.')
         print('Insufficient statistics collected for the following variables: '
               '%s.' % (', '.join(no_opt)))
-
     if reblock_plot:
         pyblock.pd_utils.plot_reblocking(reblock, reblock_plot)
 
