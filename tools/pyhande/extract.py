@@ -80,7 +80,10 @@ data : :class:`pandas.DataFrame`
         psingle = 'Probability of attempting a single',
         pdouble = 'Probability of attempting a double',
         init_pop = 'Initial population on reference',
-        git_hash = 'VCS BASE repository version:'
+        git_hash = 'VCS BASE repository version:',
+        target = 'varyshift_target',
+        shift_damping = 'shift_damping',
+        mc_cycles = 'mc_cycles'
     )
     md_int = 'sym ms nel nbasis truncation seed bit_length'.split()
     md_float = 'tau ref_energy psingle pdouble init_pop'.split()
