@@ -153,7 +153,7 @@ contains
 
             ! 3. Return generation probability and conecting matrix element.
 
-            pgen = calc_pgen_ueg_no_renorm(sys, max_na)
+            pgen = calc_pgen_ueg_no_renorm(sys, max_na, ij_spin)
 
             call find_excitation_permutation2(cdet%f, connection)
             hmatel = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%from_orb(2), &
@@ -402,23 +402,14 @@ contains
             ! Ok, b is now completely defined.
             kb = ij_k - basis_fns(a)%l
 
-            ! Now, we have to be careful!
-            ! max_na is the maximum number of ways of choosing a.
-            ! However, we then use it to calculate the number of ways of
-            ! generating this unique excitation.  As the UEG is a one-band
-            ! model (and hence b is uniquely defined), then if a and b are of
-            ! the same spin, they were both possible choices for a.  We hence
-            ! need to half max_na in order to give the number of unique possible
-            ! excitations given the choice of i and j.
+            ! Implementation detail: b must be down spin if possible as a is up spin if possible.
             select case(ij_spin)
             case(2)
                 b = ueg_basis_index(kb, 1)
-                max_na = max_na / 2
             case(0)
                 b = ueg_basis_index(kb, -1)
             case(-2)
                 b = ueg_basis_index(kb, -1)
-                max_na = max_na / 2
             end select
 
             ! Excitation is forbidden if b is already occupied!
@@ -443,10 +434,10 @@ contains
 
 !--- Excitation generation probabilities ---
 
-    pure function calc_pgen_ueg_no_renorm(sys, max_na) result(pgen)
+    pure function calc_pgen_ueg_no_renorm(sys, max_na, ij_spin) result(pgen)
 
         ! NOTE: this assumes that the corresponding excitation (i,j)->(a,b) is
-        ! actually allowed.  Cases where this is not true must be explcitly
+        ! actually allowed.  Cases where this is not true must be explicitly
         ! handled.
 
         ! In:
@@ -464,23 +455,36 @@ contains
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: max_na
+        integer, intent(in) :: max_na, ij_spin
 
         ! We explicitly reject excitations i,j->a,b where b is already
         ! occupied.
 
-        ! **WARNING**
-        ! As an implementation detail, we have required a to be up spin if possible.
-        ! Hence, given we require a to be unoccupied (but not b), the generation
-        ! probability is asymmetric:
-        ! pgen = p(i,j) p(a|i,j) p(b|i,j,a)
+        ! Having selected i and j, we could either choose a and then b or vice
+        ! versa.  Hence:
+
+        ! pgen = p(i,j) [ p(a|i,j) p(b|i,j,a) + p(b|a,j) p(a|i,j,b) ]
 
         ! p(i,j) = 1/binom(nel,2) = 2/(nel*(nel-1))
-        ! p(a|i,j) is the number of unoccupied a orbitals which i,j can excite
-        ! into.
-        ! UEG is a one-band system, so p(b|i,j,a) = 1.
+        ! As the UEG is a one-band system, the fourth orbital is completely
+        ! defined by the selection of the previous three:
+        ! p(b|i,j,a) = p(a|i,j,b) = 1.
+        ! p(a|i,j) = max_na, the number of choices for the a orbital (see
+        ! find_ab_ueg).
+
+        ! **WARNING**
+        ! As an implementation detail, we have required a to be up spin if possible.
+        ! This introduces an asymmetry into the excitation generator.
+        ! If the excitation is spin parallel (up,up->up,up or
+        ! down,down->down,down), then we could have chosen the a orbital first
+        ! *or* the b orbital first as both will have been in the same list or
+        ! available virtual orbitals.
+        ! However, if the excitation is spin anti-parallel, then we could not
+        ! have chosen b first.
+        ! Hence p(b|i,j) = p(a|i,j) \delta(Ms_a, Ms_b).
 
         pgen = 2.0_p / ( sys%nel*(sys%nel-1) * max_na )
+        if (ij_spin /= 0) pgen = pgen * 2
 
     end function calc_pgen_ueg_no_renorm
 
