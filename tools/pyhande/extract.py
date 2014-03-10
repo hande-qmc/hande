@@ -80,6 +80,7 @@ data : :class:`pandas.DataFrame`
         psingle = 'Probability of attempting a single',
         pdouble = 'Probability of attempting a double',
         init_pop = 'Initial population on reference',
+        git_hash = 'VCS BASE repository version:'
     )
     md_int = 'sym ms nel nbasis truncation seed bit_length'.split()
     md_float = 'tau ref_energy psingle pdouble init_pop'.split()
@@ -91,9 +92,13 @@ data : :class:`pandas.DataFrame`
     start_line = 0
     metadata = pd.Series(index=md_regex.keys(), name='metadata')
     unseen_calc = True
+    have_git_hash_next = False
     for line in f:
         start_line += 1
         # extract metadata.
+        if have_git_hash_next:
+             metadata['git_hash'] = line.split()[0]
+             have_git_hash_next = False
         for (k,v) in md_regex.items():
             if v.search(line):
                 # Special cases for unusual formats...
@@ -104,6 +109,8 @@ data : :class:`pandas.DataFrame`
                     metadata[k] = line.split()[0]
                 elif k == 'seed':
                     metadata[k] = int(float(line.split()[-1]))
+                elif k == 'git_hash':
+                    have_git_hash_next = True
                 else:
                     val = line.split()[-1]
                     if k in md_int:
