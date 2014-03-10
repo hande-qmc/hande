@@ -141,12 +141,6 @@ contains
         integer :: ij_k(sys%lattice%ndim), ij_spin, max_na
         real(dp) :: r
 
-        if (sum(count_set_bits(cdet%f)) /= 4) then
-            write (6,*) 'HUH?'
-            write (6,'(2(B32.32,2X))') cdet%f
-            stop
-        end if
-
         ! 1. Must have a double excitation.
         connection%nexcit = 2
 
