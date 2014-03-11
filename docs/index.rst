@@ -6,15 +6,12 @@
 pyblock
 =======
 
-Contents:
-
 .. toctree::
    :maxdepth: 1
-   :glob:
 
-   *
-
-
+   install
+   api
+   tutorial
 
 Indices and tables
 ==================

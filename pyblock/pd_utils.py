@@ -1,4 +1,4 @@
-'''Pandas-based wrapper around ``pyblock.blocking``.'''
+'''Pandas-based wrapper around :mod:`pyblock.blocking`.'''
 
 import numpy
 import matplotlib.pyplot as plt
