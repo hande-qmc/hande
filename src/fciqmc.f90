@@ -36,7 +36,7 @@ contains
         use utils, only: rng_init_info
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use spawn_data, only: receive_spawned_walkers
+        use spawn_data, only: receive_spawned_walkers, non_blocking_send
 
         type(sys_t), intent(in) :: sys
 
@@ -49,6 +49,7 @@ contains
         integer :: nspawned, ndeath
         type(excit) :: connection
         real(p) :: hmatel
+        integer :: send_counts(0:nprocs-1), req_size_s(0:nprocs-1), req_data_s(0:nprocs-1)
 
         logical :: soft_exit
 
@@ -64,6 +65,12 @@ contains
         ! Folded spectrum *needs* the bit strings to be allocated as it needs
         ! be able to manipulate the bit string to create excited states.
         if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
+        ! For non-blocking communications we need to initially send zero walkers
+        ! to all processors.
+        if (non_blocking_comm) then
+            send_counts = 0
+            call non_blocking_send(qmc_spawn, send_counts, req_size_s, req_data_s)
+        end if
 
         ! from restart
         nparticles_old = tot_nparticles
@@ -121,7 +128,7 @@ contains
                 if (non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_size_s, req_data_s)
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
-                    call direct_annihilation_non_blocking(sys, initiator_approximation, req_size_s, req_data_s)
+                    call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_size_s, req_data_s)
                 else
                     call direct_annihilation(sys, initiator_approximation)
                 end if

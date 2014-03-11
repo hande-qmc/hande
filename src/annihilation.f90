@@ -61,7 +61,7 @@ contains
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_non_blocking(sys, tinitiator, req_size_s, req_data_s)
+    subroutine direct_annihilation_non_blocking(sys, tinitiator, send_counts, req_size_s, req_data_s)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -75,6 +75,8 @@ contains
         !    sys: system being studied.
         !    tinitiator: true if the initiator approximation is being used.
         ! In/Out:
+        !    send_counts: array of messages sizes. Will be allocated in
+        !       calculate_displacements and sent in non_blocking_send.
         !    req_size_s: array of requests for non-blocking send of message sizes.
         !    req_data_s: array of requests for non-blocking send of walkers.
 
@@ -86,10 +88,10 @@ contains
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: tinitiator
+        integer, intent(inout) :: send_counts(0:)
         integer, intent(inout) :: req_size_s(0:), req_data_s(0:)
 
         integer, parameter :: thread_id = 0
-        integer :: send_counts(0:nprocs-1)
 
         ! Perform annihilation inside received list.
         call annihilate_wrapper_received_list(received_list, tinitiator)
