@@ -135,3 +135,49 @@ ValueError
         stats = pd.Series(stats_dict)
 
     return stats
+
+def pretty_fmt_err(val, err):
+    '''Pretty formatting of a value and associated error.
+
+Parameters
+----------
+
+val : number
+    a (noisy) value.
+err: number
+    error associated with the value.
+
+Returns
+-------
+val_str : str
+    Value to the number of significant digits known, with the error in the
+    last digit in brackets.
+
+Examples
+--------
+>>> pretty_fmt_err(1.2345, 0.01)
+'1.23(1)'
+>>> pretty_fmt_err(12331, 40)
+'12330(40)'
+
+Notes
+-----
+Rounding is handled with Python's `round` function, which handles rounding numbers at the midpoint in a range (eg 5 if round to the nearest 10) in a slightly odd way.  As we're normally dealing with noisy data and rounding to remove more than just one significant figure, this is unlikely to impact us.
+'''
+    # Sig figs of accuracy is:
+    sig_figs = -int(numpy.floor(numpy.log10(err)))
+
+    # Round value and error to accuracy known:
+    sig_val = round(val, sig_figs)
+    sig_err = round(err, sig_figs)
+
+    # Format.
+    if sig_err > 1:
+        sig_val = int(sig_val)
+        sig_err = int(round(sig_err))
+        fmt = '%i(%i)'
+    else:
+        sig_err = int(round(sig_err*10**sig_figs))
+        fmt = '%%.%if(%%i)' % (sig_figs)
+
+    return (fmt % (sig_val, sig_err))
