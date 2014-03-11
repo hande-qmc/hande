@@ -184,6 +184,15 @@ data : :class:`pandas.DataFrame`
     metadata = pd.concat([metadata], keys=[multi_keys[0]])
     metadata.index.names = ['calc', '']
 
+    # Do we have an old table?  If so, rename the headings to the new ones for
+    # convenience...
+    data.rename(inplace=True, columns={
+            'Instant shift': 'Shift',
+            '\sum H_0j Nj': '\sum H_0j N_j',
+            '# D0': 'N_0',
+            '# particles': '# H psips',
+        })
+
     return (metadata, data)
 
 def _get_last_lines(filename, bytes=2048):

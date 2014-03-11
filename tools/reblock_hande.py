@@ -57,11 +57,12 @@ opt_data: :class:`pandas.DataFrame`
         # GAH.  Alternate formatting only added to format function after
         # python 2.6..
         float_fmt = '{0:-.8e}'.format
+
     (metadata, data) = pyhande.extract.extract_data_sets(files)
 
     # Reblock over desired window.
     indx = data['iterations'] >= start_iteration
-    mc_data =  data.ix[indx, ['Instant shift', '\sum H_0j Nj', '# D0']]
+    mc_data =  data.ix[indx, ['Shift', '\sum H_0j N_j', 'N_0']]
     (data_length, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
 
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_length)

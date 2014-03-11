@@ -8,7 +8,8 @@ sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../pyblock'))
 import pyblock.error
 import pyblock.pd_utils
 
-def projected_energy(reblock_data, covariance, data_length):
+def projected_energy(reblock_data, covariance, data_length,
+                     sum_key='\sum H_0j N_j', ref_key='N_0'):
     '''Calculate the projected energy estimator and associated error.
 
 The projected energy estimator is given by
@@ -30,6 +31,13 @@ covariance: :class:`pandas.DataFrame`
     and denominator in the projected energy estimator.
 data_length: :class:`pandas.DataFrame`
     number of data points in each reblock iteration.
+sum_key : string
+    column name in reblock_data containing :math:`\\sum_H_0j N_j``, i.e. the sum
+    of the population weighted by the Hamiltonian matrix element with the trial
+    wavefunction.
+ref_key : string
+    column name in reblock_data containing :math:`N_0``, i.e. the population of
+    the trial wavefunction (often/originally just a single determinant).
 
 Returns
 -------
@@ -41,17 +49,16 @@ See also
 :func:`pyblock.pd_utils.reblock` for producing the input parameters.
 '''
 
-    proje_sum = reblock_data.ix[:, '\sum H_0j Nj']
-    ref_pop = reblock_data.ix[:, '# D0']
-    proje_ref_cov = covariance.xs('# D0', level=1)['\sum H_0j Nj']
+    proje_sum = reblock_data.ix[:, sum_key]
+    ref_pop = reblock_data.ix[:, ref_key]
+    proje_ref_cov = covariance.xs(ref_key, level=1)[sum_key]
     proje = pyblock.error.ratio(proje_sum, ref_pop, proje_ref_cov, data_length)
     proje.columns = pd.MultiIndex.from_tuples(
             [('Proj. Energy', col) for col in proje.columns])
     return proje
 
-def qmc_summary(data, keys=('Instant shift', '\sum H_0j Nj', '# D0',
+def qmc_summary(data, keys=('Shift', '\sum H_0j N_j', 'N_0',
                             'Proj. Energy')):
-
     '''Summarise a reblocked data set by the optimal block.
 
 Parameters
