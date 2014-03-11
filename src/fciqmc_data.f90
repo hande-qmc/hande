@@ -148,6 +148,8 @@ type(spawn_t) :: received_list
 ! This needs to be global as we initially require a send in the
 ! first iteration from qmc.F90.
 integer, allocatable :: req_data_s(:)
+! Array of requests used for MPI_ISend of message sizes.
+integer, allocatable :: req_size_s(:)
 
 ! spawn times of the progeny (only used for ct_fciqmc)
 real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)

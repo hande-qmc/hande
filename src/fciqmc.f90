@@ -119,9 +119,9 @@ contains
                 end do
 
                 if (non_blocking_comm) then
-                    call receive_spawned_walkers(received_list, req_data_s)
+                    call receive_spawned_walkers(received_list, req_size_s, req_data_s)
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
-                    call direct_annihilation_non_blocking(sys, initiator_approximation, req_data_s)
+                    call direct_annihilation_non_blocking(sys, initiator_approximation, req_size_s, req_data_s)
                 else
                     call direct_annihilation(sys, initiator_approximation)
                 end if
@@ -139,7 +139,7 @@ contains
         end do
 
         if (non_blocking_comm) then
-            call receive_spawned_walkers(received_list, req_data_s)
+            call receive_spawned_walkers(received_list, req_size_s, req_data_s)
         end if
 
         if (parent) then

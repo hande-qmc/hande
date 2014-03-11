@@ -432,10 +432,12 @@ contains
         ! For non-blocking communication we first need to send zero walkers to the spawned list on each processor
         ! in order to carry the first iteration.
         if (non_blocking_comm) then
+            allocate(req_size_s(0:nprocs-1))
+            call check_allocate('req_size_s', nprocs, ierr)
             allocate(req_data_s(0:nprocs-1))
             call check_allocate('req_data_s', nprocs, ierr)
             initial_spawned_list = 0
-            call non_blocking_send(qmc_spawn, initial_spawned_list, req_data_s)
+            call non_blocking_send(qmc_spawn, initial_spawned_list, req_size_s, req_data_s)
         end if
 
         if (parent) then

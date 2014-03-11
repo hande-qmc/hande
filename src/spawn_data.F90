@@ -524,7 +524,7 @@ contains
 
     end subroutine comm_spawn_t
 
-    subroutine receive_spawned_walkers(received_list, req_data_s)
+    subroutine receive_spawned_walkers(received_list, req_size_s, req_data_s)
 
         ! Receive walkers spawned onto this processor from previous iteration.
 
@@ -534,6 +534,7 @@ contains
 
         ! In/Out:
         !   received_list: spawn_t list we receive spawned walkers into.
+        !   req_size_s: array of requests initialised from previous iterations's send of message sizes.
         !   req_data_s: array of requests initialised from previous iteration's send of walker list.
 
 #ifdef PARALLEL
@@ -542,22 +543,24 @@ contains
         use ranking, only: insertion_rank
 
         type(spawn_t), intent(inout):: received_list
-        integer, intent(inout) :: req_data_s(0:)
+        integer, intent(inout) :: req_size_s(0:), req_data_s(0:)
 
         integer :: i, ierr, start, endp
         integer, parameter :: thread_id = 0
         ! These can probably be combined into a type.
         integer :: message_size(0:nprocs-1), message_rank(0:nprocs-1), displacements(0:nprocs-1)
         integer :: req_size_r(0:nprocs-1), req_data_r(0:nprocs-1)
-        integer :: stat_size_r(MPI_STATUS_SIZE, nprocs)
+        integer :: stat_size_r(MPI_STATUS_SIZE, nprocs), stat_size_s(MPI_STATUS_SIZE, nprocs)
         integer :: stat_data_s(MPI_STATUS_SIZE, nprocs), stat_data_r(MPI_STATUS_SIZE, nprocs)
 
         ! Find out the number of walkers we are about to receive onto this processor from all others.
         do i = 0, nprocs-1
             call MPI_IRecv(message_size(i), 1, mpi_integer, i, 123, mpi_comm_world, req_size_r(i), ierr)
         end do
-        ! Need to complete the request. Should return immediately.
+        ! Need to complete the receive and send so that the receive/send buffer and array of
+        ! requests can safely be used again.
         call MPI_Waitall(nprocs, req_size_r, stat_size_r, ierr)
+        call MPI_Waitall(nprocs, req_size_s, stat_size_s, ierr)
 
         ! Sort the messages array in descending order so that any messages of size zero
         ! will be at the end of the received list i.e. they will appear after received_list%head(thread_id, 0).
@@ -590,19 +593,19 @@ contains
                            mpi_det_integer, message_rank(i), 456, mpi_comm_world, req_data_r(i), ierr)
             start = endp + 1
         end do
-        call MPI_Waitall(nprocs, req_data_s, stat_data_s, ierr)
         call MPI_Waitall(nprocs, req_data_r, stat_data_r, ierr)
+        call MPI_Waitall(nprocs, req_data_s, stat_data_s, ierr)
         ! Define the following as the number of determinants in received list.
         received_list%head(thread_id, 0) = sum(message_size)/received_list%element_len
 
 #else
         type(spawn_t), intent(inout):: received_list
-        integer, intent(inout) :: req_data_s(0:)
+        integer, intent(inout) :: req_size_s(0:), req_data_s(0:)
 #endif
 
     end subroutine receive_spawned_walkers
 
-    subroutine non_blocking_send(spawn, send_counts, req_data_s)
+    subroutine non_blocking_send(spawn, send_counts, req_size_s, req_data_s)
 
         ! Send remaining walkers from spawned walker list to their
         ! new processors.
@@ -613,8 +616,8 @@ contains
         ! In/Out:
         !   spawn: spawn_t object containing spawned particles which
         !       need to be sent to their processor.
-        !   req_data_s: array of requests used when sending spawned list. This will be initialised
-        !       by MPI_ISend call when sending spawn to other processors.
+        !   req_size_s: array of requests used when sending send_counts array.
+        !   req_data_s: array of requests used when sending spawned list.
 
 #ifdef PARALLEL
 
@@ -622,14 +625,12 @@ contains
 
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout) :: send_counts(0:)
-        integer, intent(inout) :: req_data_s(0:)
+        integer, intent(inout) :: req_size_s(0:), req_data_s(0:)
 
         integer, parameter :: thread_id = 0
         integer :: i, start_point, end_point
         integer(i0), pointer :: tmp_data(:,:)
-        integer :: ierr
-        integer :: req_size_s(0:nprocs-1)
-        integer :: stat_size_s(MPI_STATUS_SIZE, 0:nprocs-1)
+        integer :: ierr, send_copy(0:nprocs-1)
 
         ! We want to copy the spawned walker list to another store for communication.
         ! This is to avoid any potential accesses of the send buffer. Potentially need
@@ -640,6 +641,7 @@ contains
         spawn%sdata => tmp_data
 
         send_counts = send_counts*spawn%element_len
+        send_copy = send_counts
 
         ! To receive the walkers we need to know the size of the message.
         ! I think it's easier to send the sizes rather than use MPI_Probe
@@ -648,9 +650,6 @@ contains
         do i = 0, nprocs-1
             call MPI_ISend(send_counts(i), 1, mpi_integer, i, 123, MPI_COMM_WORLD, req_size_s(i), ierr)
         end do
-        ! Make sure these messages send as we need them for the next call. This should complete immediately.
-        ! Need to check this, might require a copying, or look into MPI_PROBE..
-        call MPI_Waitall(nprocs, req_size_s, stat_size_s, ierr)
         ! Send the walkers to their processors. The information may not send immediately
         ! due to potentially large messages. So we don't want to access the array.
         ! In the worse case scenario the send will only complete when there is a matching receive posted.
@@ -658,14 +657,14 @@ contains
         ! subroutine to prevent blocking at this point.
         do i = 0, nprocs-1
             start_point = spawn%head_start(thread_id, i) + 1
-            end_point = start_point + send_counts(i)/spawn%element_len - 1
-            call MPI_ISend(spawn%sdata_recvd(:,start_point:end_point), send_counts(i), mpi_det_integer, i, 456, MPI_COMM_WORLD, req_data_s(i), ierr)
+            end_point = start_point + send_copy(i)/spawn%element_len - 1
+            call MPI_ISend(spawn%sdata_recvd(:,start_point:end_point), send_copy(i), mpi_det_integer, i, 456, MPI_COMM_WORLD, req_data_s(i), ierr)
         end do
 
 #else
         type(spawn_t), intent(inout) :: spawn
         integer, intent(in) :: send_counts(0:)
-        integer, intent(inout) :: req_data_s(0:)
+        integer, intent(inout) :: req_size_s(0:), req_data_s(0:)
 #endif
 
     end subroutine non_blocking_send
