@@ -165,11 +165,14 @@ Notes
 Rounding is handled with Python's `round` function, which handles rounding numbers at the midpoint in a range (eg 5 if round to the nearest 10) in a slightly odd way.  As we're normally dealing with noisy data and rounding to remove more than just one significant figure, this is unlikely to impact us.
 '''
     # Sig figs of accuracy is:
-    sig_figs = -int(numpy.floor(numpy.log10(err)))
+    sig_figs = lambda x: -int(numpy.floor(numpy.log10(x)))
 
     # Round value and error to accuracy known:
-    sig_val = round(val, sig_figs)
-    sig_err = round(err, sig_figs)
+    sig_err = round(err, sig_figs(err))
+    # Use the rounded error in case the error was 'rounded up' (e.g. 9.8->10) to
+    # get the number of sif figs the value is actually known to.
+    sig_err_figs = sig_figs(sig_err)
+    sig_val = round(val, sig_err_figs)
 
     # Format.
     if sig_err > 1:
@@ -177,7 +180,7 @@ Rounding is handled with Python's `round` function, which handles rounding numbe
         sig_err = int(round(sig_err))
         fmt = '%i(%i)'
     else:
-        sig_err = int(round(sig_err*10**sig_figs))
-        fmt = '%%.%if(%%i)' % (sig_figs)
+        sig_err = int(round(sig_err*10**sig_err_figs))
+        fmt = '%%.%if(%%i)' % (sig_err_figs)
 
     return (fmt % (sig_val, sig_err))
