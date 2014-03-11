@@ -44,7 +44,7 @@ metadata : :class:`pandas.DataFrame`
     Metadata extracted from the calculation output file.
 data : :class:`pandas.DataFrame`
     QMC data extracted from the calculation output file.
-opt_data: :class:`pandas.DataFrame`
+opt_block: :class:`pandas.DataFrame`
     Recommended statistics based upon the estimated 'optimal' block size
     as suggested by Wolff and Lee et al. (see
     :func:`pyblock.blocking.find_optimal_block`).
@@ -58,37 +58,26 @@ opt_data: :class:`pandas.DataFrame`
         # python 2.6..
         float_fmt = '{0:-.8e}'.format
 
-    (metadata, data) = pyhande.extract.extract_data_sets(files)
-
-    # Reblock over desired window.
-    indx = data['iterations'] >= start_iteration
-    mc_data =  data.ix[indx, ['Shift', '\sum H_0j N_j', 'N_0']]
-    (data_length, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
-
-    proje = pyhande.analysis.projected_energy(reblock, covariance, data_length)
-    reblock = pd.concat([reblock, proje], axis=1)
-
-    # Data summary: suggested data to use from reblocking analysis.
-    (opt_data, no_opt) = pyhande.analysis.qmc_summary(reblock)
+    info = pyhande.lazy.std_analysis(files, start_iteration)
 
     if verbose >= 2:
-        print(metadata.to_string(na_rep='n/a'))
+        print(info.metadata.to_string(na_rep='n/a'))
         print('')
     if verbose >= 1:
-        print(reblock.to_string(float_format=float_fmt, line_width=80))
+        print(info.reblock.to_string(float_format=float_fmt, line_width=80))
         print('')
-    if not opt_data.empty and verbose >= 0:
+    if not info.opt_block.empty and verbose >= 0:
         print('Recommended statistics from optimal block size:')
         print('')
-        print(opt_data.to_string(float_format=float_fmt, na_rep='n/a'))
-    if no_opt and verbose >= 0:
+        print(info.opt_block.to_string(float_format=float_fmt, na_rep='n/a'))
+    if info.no_opt_block and verbose >= 0:
         print('WARNING: could not find optimal block size.')
         print('Insufficient statistics collected for the following variables: '
-              '%s.' % (', '.join(no_opt)))
+              '%s.' % (', '.join(info.no_opt_block)))
     if reblock_plot:
         pyblock.pd_utils.plot_reblocking(reblock, reblock_plot)
 
-    return (metadata, data, opt_data)
+    return info
 
 def parse_args(args):
     '''Parse command-line arguments.
