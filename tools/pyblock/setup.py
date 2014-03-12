@@ -9,5 +9,5 @@ setup(
     license='Modified BSD license',
     description='Reblocking analysis tools for correlated data',
     #long_description=open('README.txt').read(),
-    requires=['numpy', 'pandas (>=0.12)'],
+    requires=['numpy', 'pandas (>=0.13)', 'matplotlib'],
 )
