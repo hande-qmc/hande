@@ -1022,6 +1022,16 @@ The following options are valid for FCIQMC calculations.
     
     When this guiding function is used, the Neel singlet must be used in the projected energy, so
     the neel_singlet_estimator option is automatically applied.
+
+Calculation options: CCMC options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**move_freq** [x]
+    Optional integer.  Default: 5.
+
+    Excitors are allowed to move processors every 2^x iterations in order to
+    allow all composite excitors to be correctly sampled.  Relevant only when
+    performing CCMC calculations with multiple MPI processes.
     
 Calculation options: DMQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

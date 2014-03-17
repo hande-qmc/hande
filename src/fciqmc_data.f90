@@ -53,6 +53,12 @@ integer :: initiator_cas(2) = (/ 0,0 /)
 ! Population above which a determinant is an initiator.
 integer :: initiator_population = 3
 
+!--- Input data: CCMC ---
+
+! How frequently (in log_2) an excitor can be moved to a different processor.
+! See comments in spawn_t and assign_particle_processor.
+integer :: ccmc_move_freq = 5
+
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless

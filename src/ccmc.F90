@@ -201,7 +201,7 @@ contains
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
                                dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
                                tot_walkers, walker_length, write_fciqmc_report_header,               &
-                               write_fciqmc_final, nparticles
+                               write_fciqmc_final, nparticles, ccmc_move_freq
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle
         use proc_pointers
@@ -295,7 +295,7 @@ contains
         ! Initialise hash shift if restarting...
         qmc_spawn%hash_shift = mc_cycles_done
         ! Hard code how frequently (ie 2^10) a determinant can move.
-        qmc_spawn%move_freq = 10
+        qmc_spawn%move_freq = ccmc_move_freq
 
         do ireport = 1, nreport
 
