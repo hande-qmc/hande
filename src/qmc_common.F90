@@ -247,7 +247,7 @@ contains
         !       minimum length of nactive.
         !    nactive: number of occupied determinants/excitors (ie pops(:,1:nactive)
         !       contains the population(s) on each currently "active"
-        !       determinat/excitor.
+        !       determinant/excitor.
         !    D0_pos: position in the pops list of the reference.  Only relevant if
         !       1<=D0_pos<=nactive and the processor holds the reference.
         ! Out:
@@ -291,7 +291,11 @@ contains
                 cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
             end do
         end if
-        tot_pop = cumulative_pops(nactive)
+        if (nactive > 0) then
+            tot_pop = cumulative_pops(nactive)
+        else
+            tot_pop = 0
+        end if
 
     end subroutine cumulative_population
 
