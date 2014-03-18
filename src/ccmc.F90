@@ -1114,7 +1114,7 @@ contains
         integer :: iexcitor, pproc
 
         !$omp parallel do default(none) &
-        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs) &
+        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs, nparticles) &
         !$omp private(pproc)
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
