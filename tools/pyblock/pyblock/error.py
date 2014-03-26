@@ -6,6 +6,9 @@
 
 '''
 
+# copyright: (c) 2014 James Spencer
+# license: modified BSD license; see LICENSE for further details.
+
 import numpy
 import pandas as pd
 import pyblock.pd_utils as pd_utils

@@ -1,5 +1,8 @@
 '''Tools for reblocking of data to remove serial correlation from data sets.'''
 
+# copyright: (c) 2014 James Spencer
+# license: modified BSD license; see LICENSE for further details.
+
 import numpy
 import collections
 
