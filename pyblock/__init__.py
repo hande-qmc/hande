@@ -26,6 +26,9 @@ References
        D.  Drummond, Phys. Rev. E. 83, 066706 (2011).
 '''
 
+# copyright: (c) 2014 James Spencer
+# license: modified BSD license; see LICENSE for further details.
+
 # For convenience, import all submodules so the user need only import pyblock.
 import pyblock.error
 import pyblock.blocking

@@ -1,5 +1,8 @@
 '''Pandas-based wrapper around :mod:`pyblock.blocking`.'''
 
+# copyright: (c) 2014 James Spencer
+# license: modified BSD license; see LICENSE for further details.
+
 import numpy
 import matplotlib.pyplot as plt
 import mpl_toolkits
