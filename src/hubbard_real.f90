@@ -361,8 +361,94 @@ contains
 
     end subroutine create_next_nearest_orbs
 
+    subroutine find_translational_symmetry_vecs(sys, sym_vecs, nsym)
+
+        ! This routine will find all symmetry vectors for the lattice provided
+        ! and return them in sym_vecs.
+
+        ! In:
+        !     sys: system being studied.
+        ! In/Out:
+        !     sym_vecs: An array which on output will hold all translational
+        !         symmetry vectors. Should be deallocated on input.
+        ! Out:
+        !     nsym: The total number of symmetry vectors.
+
+        use checking, only: check_allocate
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        real(p), allocatable, intent(inout) :: sym_vecs(:,:)
+        integer, intent(out) :: nsym
+        integer :: i, j, k, l, ierr
+        integer :: nvecs(3)
+        real(p) :: v(sys%lattice%ndim), test_vec(sys%lattice%ndim)
+        integer :: scale_fac
+
+        ! The maximum number of translational symmetry vectors is nsites (for
+        ! the case of a non-tilted lattice), so allocate this much storage.
+        allocate(sym_vecs(sys%lattice%ndim,sys%lattice%nsites),stat=ierr)
+        call check_allocate('sym_vecs',sys%lattice%ndim*sys%lattice%nsites,ierr)
+        sym_vecs = 0
+
+        ! The number of symmetry vectors in each direction.
+        nvecs = 0
+        ! The total number of symmetry vectors.
+        nsym = 0
+
+        do i = 1, sys%lattice%ndim
+            scale_fac = maxval(abs(sys%lattice%lattice(:,i)))
+            v = real(sys%lattice%lattice(:,i),p)/real(scale_fac,p)
+
+            do j = 1, scale_fac-1
+                test_vec = v*j
+                ! If test_vec has all integer components.
+                if (all(.not. (abs(test_vec-real(nint(test_vec),p)) > 0.0_p) )) then
+                    ! If this condition is obeyed then this is a symmetry vector,
+                    ! so store it.
+                    nvecs(i) = nvecs(i) + 1
+                    nsym = nsym + 1
+                    sym_vecs(:,nsym) = test_vec
+                end if
+            end do
+        end do
+
+        ! Next, add all combinations of the above generated vectors to form a closed group.
+
+        ! Add all pairs of the above vectors.
+        do i = 1, nvecs(1)
+            do j = nvecs(1)+1, sum(nvecs)
+                nsym = nsym + 1
+                sym_vecs(:,nsym) = sym_vecs(:,i)+sym_vecs(:,j)
+            end do
+        end do
+        do i = nvecs(1)+1, nvecs(1)+nvecs(2)
+            do j = nvecs(1)+nvecs(2)+1, sum(nvecs)
+                nsym = nsym + 1
+                sym_vecs(:,nsym) = sym_vecs(:,i)+sym_vecs(:,j)
+            end do
+        end do
+
+        ! Add all triples of the above vectors.
+        do i = 1, nvecs(1)
+            do j = nvecs(1)+1, nvecs(1)+nvecs(2)
+                do k = nvecs(1)+nvecs(2)+1, sum(nvecs)
+                    nsym = nsym + 1
+                    sym_vecs(:,nsym) = sym_vecs(:,i)+sym_vecs(:,j)+sym_vecs(:,k)
+                end do
+            end do
+        end do
+
+        ! Include the identity transformation vector in the first slot.
+        sym_vecs(:,2:nsym+1) = sym_vecs(:,1:nsym)
+        sym_vecs(:,1) = 0
+        nsym = nsym + 1
+
+    end subroutine find_translational_symmetry_vecs
+
     subroutine map_vec_to_cell(ndim, lvecs, r)
 
+        ! Map a vector, r, outside from outside to inside the simulation cell.
         ! This subroutine assumes that the site specified by r is outside the cell
         ! by no more than one lattice vector, along each lattice vector.
 
@@ -378,12 +464,12 @@ contains
         use basis, only: basis_fns, nbasis
 
         integer, intent(in) :: ndim, lvecs(ndim, 3**ndim)
-        integer, intent(inout) :: r(ndim)        
+        integer, intent(inout) :: r(ndim) 
         integer :: v(ndim)
         integer :: i, j
 
         do i = 1, 3**ndim
-            ! Add all combinations of lattices vectors in lvecs.
+            ! Add all combinations of lattice vectors (stored in lvecs).
             v = r + lvecs(:,i)
             do j = 1, nbasis
                 ! Loop over all basis functions and check if the shifted vector is

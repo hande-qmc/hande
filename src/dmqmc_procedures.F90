@@ -328,74 +328,18 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors
         use fciqmc_data, only: nrdms, nsym_vec
-        use hubbard_real, only: map_vec_to_cell
+        use hubbard_real, only: find_translational_symmetry_vecs, map_vec_to_cell
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-
         integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer :: r(sys%lattice%ndim), nvecs(3), A_mask(basis_length)
-        real(p) :: v(sys%lattice%ndim), test_vec(sys%lattice%ndim), temp_vec(sys%lattice%ndim)
-        real(p), allocatable :: trans_vecs(:,:)
-        integer :: scale_fac
+        integer :: A_mask(basis_length)
+        real(p), allocatable :: sym_vecs(:,:)
+        integer :: r(sys%lattice%ndim)
 
-        ! The maximum number of translational symmetry vectors is nsites (for
-        ! the case of a non-tilted lattice), so allocate this much storage.
-        allocate(trans_vecs(sys%lattice%ndim,sys%lattice%nsites),stat=ierr)
-        call check_allocate('trans_vecs',sys%lattice%ndim*sys%lattice%nsites,ierr)
-
-        ! The number of symmetry vectors in each direction.
-        nvecs = 0
-        ! The total number of symmetry vectors.
-        nsym_vec = 0
-
-        do i = 1, sys%lattice%ndim
-            scale_fac = maxval(abs(sys%lattice%lattice(:,i)))
-            v = real(sys%lattice%lattice(:,i),p)/real(scale_fac,p)
-
-            do j = 1, scale_fac-1
-                test_vec = v*j
-                if (all(.not. (abs(test_vec-real(nint(test_vec),p)) > 0.0_p) )) then
-                    ! If test_vec has all integer components.
-                    ! This is a symmetry vector, so store it.
-                    nvecs(i) = nvecs(i) + 1
-                    nsym_vec = nsym_vec + 1
-                    trans_vecs(:,nsym_vec) = test_vec
-                end if
-            end do
-        end do
-
-        ! Next, add all combinations of the above generated vectors to form a closed group.
-
-        ! Add all pairs of the above vectors.
-        do i = 1, nvecs(1)
-            do j = nvecs(1)+1, sum(nvecs)
-                nsym_vec = nsym_vec + 1
-                trans_vecs(:,nsym_vec) = trans_vecs(:,i)+trans_vecs(:,j)
-            end do
-        end do
-        do i = nvecs(1)+1, nvecs(1)+nvecs(2)
-            do j = nvecs(1)+nvecs(2)+1, sum(nvecs)
-                nsym_vec = nsym_vec + 1
-                trans_vecs(:,nsym_vec) = trans_vecs(:,i)+trans_vecs(:,j)
-            end do
-        end do
-
-        ! Add all triples of the above vectors.
-        do i = 1, nvecs(1)
-            do j = nvecs(1)+1, nvecs(1)+nvecs(2)
-                do k = nvecs(1)+nvecs(2)+1, sum(nvecs)
-                    nsym_vec = nsym_vec + 1
-                    trans_vecs(:,nsym_vec) = trans_vecs(:,i)+trans_vecs(:,j)+trans_vecs(:,k)
-                end do
-            end do
-        end do
-
-        ! Include the identity transformation vector in the first slot.
-        trans_vecs(:,2:nsym_vec+1) = trans_vecs(:,1:nsym_vec)
-        trans_vecs(:,1) = 0
-        nsym_vec = nsym_vec + 1
+        ! Return all translational symmetry vectors in sym_vecs.
+        call find_translational_symmetry_vecs(sys, sym_vecs, nsym_vec)
 
         ! Allocate the RDM arrays.
         do i = 1, nrdms
@@ -420,7 +364,7 @@ contains
                 A_mask = 0
                 do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
                     r = basis_fns(rdms(i)%subsystem_A(k))%l
-                    r = r + nint(trans_vecs(:,j))
+                    r = r + nint(sym_vecs(:,j))
                     ! If r is outside the cell considered in this simulation, shift it by the
                     ! appropriate lattice vector so that it is in this cell.
                     call map_vec_to_cell(sys%lattice%ndim, sys%lattice%lvecs, r)
@@ -454,8 +398,8 @@ contains
             end do
         end do
 
-        deallocate(trans_vecs,stat=ierr)
-        call check_deallocate('trans_vecs',ierr)
+        deallocate(sym_vecs,stat=ierr)
+        call check_deallocate('sym_vecs',ierr)
 
     end subroutine find_rdm_masks
 
