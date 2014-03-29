@@ -8,19 +8,14 @@ contains
 
     pure subroutine update_proj_energy_heisenberg_basic(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
-        ! Add the contribution of the current spin tensor product to the projected
-        ! energy.
-        ! The correlation energy given by the projected energy is:
+        ! Add the contribution of the current basis function to the
+        ! projected energy.
+        ! The projected energy estimator is:
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
-        ! where N_i is the population on the i-th spin product, D_i,
-        ! and D_0 refers to the trial wavefunction (here, a single spin tensor
-        ! product).
-        ! During a MC cycle we store
-        !   \sum_{i \neq 0} <D_i|H|D_0> N_i
-        ! If the current spin product is the trial wavefunction, then
-        ! N_0 is stored as D0_population.  This makes normalisation very
-        ! efficient.
-        ! This procedure is for the Heisenberg model only
+        ! where N_i is the population on the i-th basis_function, D_i,
+        ! and 0 refers to the reference basis function.
+        ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i
+        ! This procedure is for the Heisenberg model only.
 
         ! In:
         !    sys: system being studied.
@@ -80,12 +75,12 @@ contains
 
     pure subroutine update_proj_energy_heisenberg_positive(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
-        ! Add the contribution of the current basis fucntion to the
+        ! Add the contribution of the current basis function to the
         ! projected energy.
         ! This uses the trial function
         ! |psi> = \sum_{i} |D_i>
         ! Meaning that every single basis function has a weight of one in
-        ! the sum. A unitary transformation is applied to h when using this
+        ! the sum. A unitary transformation is applied to H when using this
         ! estimator, so that all components of the true ground state
         ! are positive, and hence we get a good overlap.
         ! This procedure is for the Heisenberg model only.
@@ -197,9 +192,8 @@ contains
         if (guiding_function==neel_singlet_guiding) importance_sampling_factor = &
                                                                1.0_p/neel_singlet_amp(n)
 
-        ! Deduce the number of 0-1 bonds, where the 1's are on the
-        ! second sublattice:
-        ! The total number of 0-1 bonds, n(0-1) can be found from the diagonal
+        ! Deduce the number of 0-1 bonds where the 1's are on the second sublattice:
+        ! The total number of 0-1 bonds, n(0-1), can be found from the diagonal
         ! element of the current basis function:
         ! hmatel = -J*(nbonds - 2*n(0-1))
         ! This means we can avoid calculating n(0-1) again, which is expensive.
@@ -210,25 +204,28 @@ contains
         ! There are three contributions to add to the projected energy from
         ! the current basis function. Consider the Neel singlet state:
         ! |NS> = \sum_{i} a_i|D_i>
-        ! The amplitude a_i only depend on the number of spins up on sublattice 1.
-        ! We want to calculate \sum_{i} (a_i * <D_i|H|D_j> * n_j) where |D_j> is the
+        ! The amplitudes, a_i, only depend on the number of spins up on sublattice 1.
+        ! We want to calculate \sum_{i} (a_i * <D_i|H|D_j> * n_j), where |D_j> is the
         ! current basis function, and then add this to the current projected energy.
 
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
         hmatel = neel_singlet_amp(n) * cdet%data(1)
 
-        ! Now, to find all other basis functions connected to |D_j>, we find 0-1 bonds
-        ! and then flip both of these spins. The resulting basis function, |D_i> will be
-        ! connected. The amplitude a_i only depends on the number of spins up on
-        ! sublattice 1. This will depend on whether, for the 0-1 bond flipped,
-        ! the 1 (up spin) was one sublattice 1 or 2. If the up spin was on lattice
-        ! 1, there will be one less up spin on sublattice 1 after the flip. If it
-        ! was on sublattice 2, there will be one extra spin. So we can have either of
-        ! the two amplitudes, neel_singlet_amp(n-1) or neel_singlet_amp(n+1)
-        ! respectively. We just need to know how many of each type of 0-1 bonds there
-        ! are. But we have these already - they are stored as lattice_1_up and lattice_2_up.
-        ! Finally note that the matrix element is -2*J, and we can put this together...
+        ! Now consider off-diagonal contributions, |D_i> /= |D_j>.
+        ! To create a connected |D_i> from |D_j>, simply find a pair of anti-parallel
+        ! spins in |D_j> (a 0-1 bond) and flip both of these spins. Following this
+        ! procedure for every pair of anti-parallel spins generates *all* connected
+        ! |D_i>'s, and hence every term which needs to be considered for the following.
+        ! Now, the amplitude a_i only depends on the number of spins up on sublattice 1.
+        ! This will depend on whether, for the 0-1 bond flipped, the 1 (up spin) was one
+        ! sublattice 1 or 2. If the up spin was on lattice 1, there will be one less up
+        ! spin on sublattice 1 after the flip. If it was on sublattice 2, there will be
+        ! one extra spin. So we can have either of the two amplitudes, neel_singlet_amp(n-1)
+        ! or neel_singlet_amp(n+1) respectively. We just need to know how many of each type
+        ! of 0-1 bonds there are. But we have these already - they are stored as lattice_1_up
+        ! and lattice_2_up. Finally note that the matrix element is -2*J, and we can put
+        ! this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
         hmatel = hmatel - (2 * sys%heisenberg%J * lattice_1_up * neel_singlet_amp(n-1))
@@ -244,8 +241,7 @@ contains
         ! \sum_{i} (a_i * n_i)
         ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
 
-        D0_pop_sum = D0_pop_sum + &
-                                pop*neel_singlet_amp(n)*importance_sampling_factor
+        D0_pop_sum = D0_pop_sum + pop*neel_singlet_amp(n)*importance_sampling_factor
 
     end subroutine update_proj_energy_heisenberg_neel_singlet
 
@@ -256,6 +252,7 @@ contains
         ! of 0-1 bonds where the up spins lie on this same sublattice. These are
         ! later used in the update_proj_energy_heisenberg_neel_singlet subroutine.
         ! This procedure is for the Heisenberg model only.
+
         ! In:
         !    f: bit string representation of the basis function.
         ! Returns:

@@ -108,9 +108,9 @@ contains
         hmatel = -sys%heisenberg%J*(sys%heisenberg%nbonds-2*counter)
 
         ! Contribution to Hamiltonian from external field:
-        ! Each spin up (bit set) up gives a contirbution of -magnetic_field. Each spin down
-        ! gives a contirbution of +magnetic_field. There are bits_set spins up, and
-        ! (nsites - bits_set) spins down, so the total contirbution is
+        ! Each spin up (bit set) up gives a contribution of -magnetic_field. Each spin down
+        ! gives a contribution of +magnetic_field. There are bits_set spins up, and
+        ! (nsites - bits_set) spins down, so the total contribution is
         ! -magnetic_field*(2*bits_set-nsites) = -h_field*ms_in
         hmatel = hmatel - sys%heisenberg%magnetic_field*ms_in
 
