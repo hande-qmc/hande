@@ -321,20 +321,16 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer, parameter :: thread_id = 0
-        integer :: start, endp
 
         ! Here we annihilate among the whole list.
-        start = 1
-        endp = spawn%head(thread_id, 0)
-        if (endp > 0) then
-            call qsort(spawn%sdata, endp, spawn%bit_str_len, start)
-
+        if (spawn%head(thread_id,0) > 0) then
+            call qsort(spawn%sdata, spawn%head(thread_id, 0), spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
             if (tinitiator) then
-                call annihilate_spawn_t_initiator(spawn, start, endp)
+                call annihilate_spawn_t_initiator(spawn)
             else
-                call annihilate_spawn_t(spawn, start, endp)
+                call annihilate_spawn_t(spawn)
             end if
         end if
 
@@ -686,8 +682,8 @@ contains
         !        and locations with a total of zero spawned particles (ie all
         !        particles cancel out) are removed.
         ! In:
-        !   start (optional): Starting point in spawn_t object we search from.
-        !   endp (optional): Search spawn_t object until we reach endp.
+        !    start (optional): Starting point in spawn_t object we search from.
+        !    endp (optional): Search spawn_t object until we reach endp.
 
         type(spawn_t), intent(inout) :: spawn
         integer, intent(in), optional :: start, endp
@@ -764,8 +760,8 @@ contains
         !        and locations with a total of zero spawned particles (ie all
         !        particles cancel out) are removed.
         ! In:
-        !   start (optional): Starting point in spawn_t object we search from.
-        !   end (optional): Search spawn_t object until we reach head.
+        !    start (optional): Starting point in spawn_t object we search from.
+        !    end (optional): Search spawn_t object until we reach head.
 
         ! This version is for the initiator algorithm, whereby we also need to
         ! take care of the parent flag (ie handle the origin of the spawned
