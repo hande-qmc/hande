@@ -10,7 +10,7 @@ contains
 
         ! Update the shift and average the shift and estimators.
 
-        ! This is called every report loop in an DMQMC calculation.
+        ! This is called every report loop in a DMQMC calculation.
 
         ! Inout:
         !    ntot_particles_old: total number (across all processors) of
@@ -202,8 +202,8 @@ contains
        ! If diagonal element, add to the trace.
        if (excitation%nexcit == 0) trace = trace + walker_population(:,idet)
 
-       ! The following only use the populations with ireplica = 1, so don't waste time calculating
-       ! them if there won't be a contribution.
+       ! The following only use the populations with ireplica = 1, so only call them if the
+       ! determinant is occupied in the first replica.
        if (abs(unweighted_walker_pop(1)) > 0) then
            ! See which estimators are to be calculated, and call the corresponding procedures.
            ! Energy
@@ -221,15 +221,15 @@ contains
            ! Excitation distribution
            if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
                    excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
-           ! Excitation_distribtuion for calculating importance sampling weights
+           ! Excitation distribtuion for calculating importance sampling weights
            if (dmqmc_find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
                    excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
        end if
 
-       ! Full Renyi 2
+       ! Full Renyi entropy (S_2)
        if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop)
 
-       ! Reduced density matrix
+       ! Reduced density matrices
        if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
                &(idet, excitation, walker_population(:,idet), iteration)
 
@@ -275,7 +275,7 @@ contains
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
-       ! neighbours on the lattice, and if so, add the contirbution from this site.
+       ! neighbours on the lattice, and if so, add the contribution from this site.
            bit_position = bit_lookup(1,excitation%from_orb(1))
            bit_element = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
@@ -430,7 +430,7 @@ contains
        else if (excitation%nexcit == 1) then
        ! If not a diagonal element, but only a single excitation, then the corresponding
        ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
-       ! neighbours on the lattice, and if so, add the contirbution from this site.
+       ! neighbours on the lattice, and if so, add the contribution from this site.
            hmatel = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
                                  (hmatel*walker_pop)
@@ -581,7 +581,7 @@ contains
    subroutine update_full_renyi_2(walker_pop)
 
        ! Add the contribution from the current density matrix element
-       ! to the Renyi 2 entropy of the full density matrix.
+       ! to the Renyi entropy (S_2) of the full density matrix.
 
        ! In:
        !    walker_pop: number of particles on the current density matrix
@@ -598,19 +598,21 @@ contains
 
    subroutine update_reduced_density_matrix_heisenberg(idet, excitation, walker_pop, iteration)
 
-       ! Add a contribution from the current walker to the reduced density
-       ! matrix estimator, which is produced by 'tracing out' a given set of
-       ! spins.
+       ! Add the contribution from the current walker to the reduced density matrices
+       ! being sampled. This is performed by 'tracing out' the subsystem B spins.
 
        ! Applicable only to the Heisenberg model.
 
        ! This procedure takes the two determinants bitstrings for the current
-       ! walker and, if the two bitstrings of the B subsystem are identical,
+       ! psips and, if the two bitstrings of the B subsystem are identical,
        ! adds the walker population to the corresponding reduced density matrix
        ! element.
 
        ! In:
-       !    idet: Current position in the main bitstring (density matrix) list.
+       !    idet: current position in the main bitstring (density matrix) list.
+       !    excitation: excit type variable which stores information on
+       !        the excitation between the two bitstring ends, corresponding
+       !        to the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element. Note that this walker population is still weighted
        !        by the importance sampling factors. These factors must be
@@ -645,9 +647,9 @@ contains
                f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis_length,idet))
                f2 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(basis_length+1:total_basis_length,idet))
 
-               ! Once this is done, check if the resulting bitstring (which can only possibly
-               ! have 1's in the B subsystem) are identical. If they are, then this psip gives
-               ! a contibution to the reduced density matrix for subsystem A. This is because we
+               ! Once this is done, check if the resulting bitstrings (which can only possibly
+               ! have 1's in the B subsystem) are identical. If they are, then this psip
+               ! contributes to the reduced density matrix for subsystem A. This is because we
                ! get the reduced density matrix for A by 'tracing out' over B, which in practice
                ! means only keeping matrix elements that are on the diagonal for subsystem B.
                if (sum(abs(f1-f2)) == 0) then
@@ -685,7 +687,10 @@ contains
 
     subroutine call_ground_rdm_procedures(beta_cycle)
 
-        ! Wrapper for calling relevant reduced density matrix procedures.
+        ! Wrapper for calling ground-state RDM procedures (*not* beta-dependent RDMs).
+
+       ! In:
+       !    beta_cycle: index of the beta loop being performed.
 
         use checking, only: check_allocate, check_deallocate
         use dmqmc_procedures, only: rdms
@@ -714,9 +719,7 @@ contains
         call check_allocate('dm_sum',num_eigv**2,ierr)
 
         dm = reduced_density_matrix
-
         call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-
         reduced_density_matrix = dm_sum
 
         deallocate(dm)
@@ -729,15 +732,13 @@ contains
         rdm_traces = 0.0_p
 
         if (parent) then
-            ! Force the reduced desnity matrix to be symmetric by averaging the upper and
-            ! lower triangles.
+            ! Force the reduced density matrix to be symmetric by averaging the upper and lower triangles.
             do i = 1, ubound(reduced_density_matrix,1)
                 do j = 1, i-1
-                    reduced_density_matrix(i,j) = 0.5_p*(reduced_density_matrix(i,j) +&
-                            reduced_density_matrix(j,i))
+                    reduced_density_matrix(i,j) = 0.5_p*(reduced_density_matrix(i,j) + reduced_density_matrix(j,i))
                     reduced_density_matrix(j,i) = reduced_density_matrix(i,j)
                 end do
-                ! Add current contirbution to the trace.
+                ! Add current contribution to the trace.
                 rdm_traces(1,1) = rdm_traces(1,1) + reduced_density_matrix(i,i)
             end do
 
@@ -774,6 +775,9 @@ contains
         ! Need to paralellise for large subsystems and introduce test to
         ! check whether diagonalisation should be performed in serial or
         ! paralell.
+
+        ! In:
+        !    trace_rdm: The trace of the RDM being considered.
 
         use checking, only: check_allocate, check_deallocate
         use dmqmc_procedures, only: rdms
@@ -883,13 +887,21 @@ contains
 #endif
         ! Calculate the concurrence. Take abs of eigenvalues so that this is equivelant to sqauring
         ! and then square-rooting.
-        concurrence = 2._p*maxval(abs(reigv)) - sum(abs(reigv)) 
-        concurrence = max(0._p, concurrence)
+        concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv)) 
+        concurrence = max(0.0_p, concurrence)
         write (6,'(1x,a28,1X,f22.12)') "# Unnormalised concurrence= ", concurrence
 
     end subroutine calculate_concurrence
     
     subroutine calculate_rdm_traces(rdm_data, rdm_lists, traces)
+
+        ! In:
+        !    rdm_data: Array of rdm derived types, holding information about the various subsystems
+        !        for which RDMs are being estimated.
+        !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of the RDM psips which
+        !        belong to this processor.
+        ! Out:
+        !    r2: The calculated RDM traces.
 
         use dmqmc_procedures, only: rdm
         use excitations, only: get_excitation_level
@@ -903,10 +915,12 @@ contains
 
         traces = 0.0_p 
 
+        ! Loop over all RDMs being calculated.
         do irdm = 1, size(rdm_data)
             rdm_bl = rdm_data(irdm)%rdm_basis_length
+            ! Loop over the total population of RDM psips on this processor.
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
-
+                ! If on the diagonal of the RDM...
                 if (all( rdm_lists(irdm)%sdata(1:rdm_bl,i) == rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i))) then
                     traces(:,irdm) = traces(:,irdm) + &
                         real(rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1:rdm_lists(irdm)%element_len,i),p)
@@ -917,6 +931,16 @@ contains
     end subroutine calculate_rdm_traces
 
     subroutine calculate_rdm_renyi_2(rdm_data, rdm_lists, r2)
+
+        ! Calculate the Renyi entropy (S_2) for all instantaneous RDMs being calculated.
+
+        ! In:
+        !    rdm_data: Array of rdm derived types, holding information about the various subsystems
+        !        for which RDMs are being estimated.
+        !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of the RDM psips which
+        !        belong to this processor.
+        ! Out:
+        !    r2: The calculated Renyi entropies (S_2).
 
         use dmqmc_procedures, only: rdm
         use excitations, only: get_excitation_level
@@ -932,21 +956,23 @@ contains
 
         r2 = 0.0_p 
 
+        ! Loop over all RDMs being calculated.
         do irdm = 1, size(rdm_data)
             rdm_bl = rdm_data(irdm)%rdm_basis_length
+            ! Loop over the total population of RDM psips on this processor.
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
 
                 excit_level = get_excitation_level(rdm_lists(irdm)%sdata(1:rdm_bl,i),&
                     rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i))
 
+                ! Renormalise the psip populations to correct for the importance sampling procedure used.
                 unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*dmqmc_accumulated_probs_old(excit_level)
                 unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2,i)*dmqmc_accumulated_probs_old(excit_level)
 
+                ! As we only hold RDM elements above the diagonal, off-diagonal elements must be counted twice.
                 if (excit_level == 0) then
                     r2(irdm) = r2(irdm) + unweighted_pop_1*unweighted_pop_2
                 else
-                    ! As we only hold RDM elements above the diagonal, off-diagonal elements must
-                    ! be counted twice.
                     r2(irdm) = r2(irdm) + 2*unweighted_pop_1*unweighted_pop_2
                 end if
 

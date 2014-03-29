@@ -317,7 +317,9 @@ contains
     subroutine find_rdm_masks(sys)
 
         ! Initialise bit masks for converting a density matrix basis function
-        ! into its corresponding reduced density matrix basis function.
+        ! into its corresponding reduced density matrix basis function. Bit
+        ! masks will be calculated for the subsystems requested by the user, and
+        ! also for all subsystems which are equivalent by translational symmetry.
 
         ! In:
         !    sys: system being studied.
@@ -400,7 +402,7 @@ contains
             if (rdms(i)%A_nsites == sys%lattice%nsites) then
                 call stop_all('find_rdm_masks','You are attempting to use the full density matrix &
                               &as an RDM. This is not supported. You should use the &
-                              &dmqmc_full_renyi_2 option to calculate the Renyi 2 entropy of the &
+                              &dmqmc_full_renyi_2 option to calculate the Renyi entropy of the &
                               &whole lattice.')
             else
                 allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
@@ -414,7 +416,6 @@ contains
 
         ! Run through every site on every subsystem and add every translational symmetry vector.
         do i = 1, nrdms ! Over every subsystem.
-
             do j = 1, nsym_vec ! Over every symmetry vector.
                 A_mask = 0
                 do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
@@ -459,6 +460,18 @@ contains
     end subroutine find_rdm_masks
 
     subroutine create_initial_density_matrix(rng, sys, nparticles_tot)
+
+        ! Create a starting density matrix by sampling the elements of the (unnormalised)
+        ! identity matrix. This is a sampling of the (unnormalised) infinite-temperature
+        ! density matrix. This is done by picking determinants/spin configurations from
+        ! with uniform probabilities in the space being considered.
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    sys: system being studied.
+        ! Out:
+        !    nparticles_tot: The total number of psips in the generated density matrix.
 
         use annihilation, only: direct_annihilation
         use calc, only: initiator_approximation
@@ -592,21 +605,24 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_particle(f,f,1,ireplica)
+            call create_diagonal_density_matrix_particle(f,1,ireplica)
 
         end do
 
     end subroutine random_distribution_heisenberg
 
-    subroutine create_particle(f1, f2, nspawn, particle_type)
+    subroutine create_diagonal_density_matrix_particle(f, nspawn, particle_type)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly
         ! by the direct_annihilation routine.
 
         ! In:
-        !    f_new: Bit string representation of index of the diagonal
-        !           element upon which a new psip shall be placed.
+        !    f: bitstring representation of index of the diagonal element upon
+        !        which a new psip shall be placed.
+        !    nspawn: the number of particles to be added to this diagonal element.
+        !    particle_type: the label of the replica to which this particle is
+        !        to sample.
 
         use hashing
         use basis, only: basis_length, total_basis_length
@@ -614,7 +630,7 @@ contains
         use parallel
         use errors, only: stop_all
 
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f(basis_length)
         integer, intent(in) :: nspawn, particle_type
         integer(i0) :: f_new(total_basis_length)
 #ifndef PARALLEL
@@ -623,13 +639,13 @@ contains
         integer :: iproc_spawn
 #endif
 
-        ! Create the bitstring of the psip.
+        ! Create the bitstring of the determinant.
         f_new = 0
-        f_new(:basis_length) = f1
-        f_new((basis_length+1):(total_basis_length)) = f2
+        f_new(:basis_length) = f
+        f_new((basis_length+1):(total_basis_length)) = f
 
 #ifdef PARALLEL
-        ! Need to determine which processor the spawned walker should be sent to.
+        ! Need to determine which processor the spawned psip should be sent to.
         iproc_spawn = modulo(murmurhash_bit_string(f_new, &
                                 total_basis_length, qmc_spawn%hash_seed), nprocs)
 #endif
@@ -639,7 +655,7 @@ contains
 
         ! qmc_spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
         if (qmc_spawn%head(0,iproc_spawn) - qmc_spawn%head_start(0,iproc_spawn) >= qmc_spawn%head_start(0,1)) &
-            call stop_all('create_particle', 'There is no space left in the spawning array.')
+            call stop_all('create_diagonal_density_matrix_particle', 'There is no space left in the spawning array.')
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
@@ -649,7 +665,7 @@ contains
         ! The final index stores the number of psips created.
         qmc_spawn%sdata((total_basis_length)+particle_type,qmc_spawn%head(0,iproc_spawn)) = nspawn
 
-    end subroutine create_particle
+    end subroutine create_diagonal_density_matrix_particle
 
     subroutine decode_dm_bitstring(f, irdm, isym)
 
@@ -661,6 +677,11 @@ contains
         ! equivalent by symmetry, then equivalent sites in those two subsystems will be mapped to
         ! the same RDM bitstrings. This is clearly a requirement to obtain a correct representation
         ! of the RDM when using translational symmetry.
+
+        ! In:
+        !    f: bitstring representation of the subsystem-A state.
+        !    irdm: The label of the RDM being considered.
+        !    isym: The label of the symmetry vector being considered.
 
         use basis, only: basis_length, bit_lookup
 
