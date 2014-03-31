@@ -632,7 +632,22 @@ calculation is performed.
     Find only the eigenvalues of the Hamiltonian matrix.
 **eigenvectors**
     Find the eigenvectors and eigenvalues of the Hamiltonian matrix.  This is
-    much slower.  Currently the eigenvectors are not used or even outputted.
+    much slower.
+**print_fci_wfn** *nwfn* *wfn_file*
+    Optional integer, default: -1.  Optional string, default: FCI_WFN.
+
+    Print out the first *nwfn* FCI wavefunctions from each spin and symmetry block.
+    If nwfn is negative (default) then all wavefunctions are printed out.  The
+    wavefunctions are printed to *wfn_file* (defaults to FCI_WFN).
+**analyse_fci_wfn** *nwfn*
+    Optional integer, default: -1.
+
+    Calculate properties of the first *nwfn* FCI wavefunctions from each spin and
+    symmetry block.  If nwfn is negative (default) then all wavefunctions are
+    analysed.  This is slow, and uses a very simple algorithm.  It is only
+    designed for debugging purposes.  The properties evaluated depend upon the system
+    and are liable to change without warning.
+
 
 Calculation options: Lanczos options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

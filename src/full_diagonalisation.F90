@@ -35,14 +35,14 @@ contains
         type(sys_t), intent(in) :: sys
         real(p), intent(out) :: eigv(ndets)
         real(p), allocatable :: work(:), eigvec(:,:)
-        integer :: info, ierr, lwork
+        integer :: info, ierr, lwork, i, nwfn
         character(1) :: job
 
         if (parent) then
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
-        if (analyse_ground_state .or. print_ground_state .or. doing_exact_rdm_eigv) then
+        if (analyse_fci_wfn /= 0 .or. print_fci_wfn /= 0 .or. doing_exact_rdm_eigv) then
             job = 'V'
         else
             job = 'N'
@@ -119,19 +119,24 @@ contains
         deallocate(work, stat=ierr)
         call check_deallocate('work',ierr)
 
-        if (analyse_ground_state) then
+        nwfn = analyse_fci_wfn
+        if (nwfn < 0) nwfn = ndets
+        do i = 1, nwfn
             if (nprocs == 1) then
-                call analyse_wavefunction(sys, hamil(:,1))
+                call analyse_wavefunction(sys, hamil(:,i))
             else
-                call analyse_wavefunction(sys, eigvec(:,1))
+                call analyse_wavefunction(sys, eigvec(:,i))
             end if
-        else if (print_ground_state) then
+        end do
+        nwfn = print_fci_wfn
+        if (nwfn < 0) nwfn = ndets
+        do i = 1, nwfn
             if (nprocs == 1) then
-                call print_wavefunction('GROUND_STATE_WFN', hamil(:,1))
+                call print_wavefunction(print_fci_wfn_file, hamil(:,i))
             else
-                call print_wavefunction('GROUND_STATE_WFN', eigvec(:,1))
+                call print_wavefunction(print_fci_wfn_file, eigvec(:,i))
             end if
-        end if
+        end do
 
         if (nprocs > 1) then
             deallocate(eigvec, stat=ierr)

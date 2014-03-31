@@ -298,10 +298,13 @@ contains
                 use_sparse_hamil = .true.
 
             ! Calculation options: lanczos/exact diagonalisation.
-            case('PRINT_GROUND_STATE')
-                print_ground_state = .true.
-            case('ANALYSE_GROUND_STATE')
-                analyse_ground_state = .true.
+            case('PRINT_FCI_WFN')
+                print_fci_wfn = -1
+                if (item /= nitems) call readi(print_fci_wfn)
+                if (item /= nitems) call reada(print_fci_wfn_file)
+            case('ANALYSE_FCI_WFN')
+                analyse_fci_wfn = -1
+                if (item /= nitems) call readi(analyse_fci_wfn)
 
             ! Calculation options: fciqmc.
             case('MC_CYCLES')
@@ -508,10 +511,10 @@ contains
 
         if (sys%system == read_in) then
 
-            if (analyse_ground_state .and. sys%read_in%dipole_int_file == '') then
+            if (analyse_fci_wfn /= 0 .and. sys%read_in%dipole_int_file == '') then
                 call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
-                             &integrals file.  Turning analyse_ground_state option off...')
-                analyse_ground_state = .false.
+                             &integrals file.  Turning analyse_fci_wfn option off...')
+                analyse_fci_wfn = 0
             end if
 
         else
@@ -723,8 +726,8 @@ contains
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(use_sparse_hamil, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(print_ground_state, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(analyse_ground_state, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(print_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(analyse_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)

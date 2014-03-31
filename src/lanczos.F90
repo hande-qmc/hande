@@ -54,7 +54,7 @@ contains
         integer :: mev
         real(dp), allocatable :: eval(:) ! (mev)
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
-        integer :: ierr, nrows
+        integer :: ierr, nrows, i, nwfn
         type(trl_info_t) :: info
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
@@ -130,11 +130,16 @@ contains
         nfound = min(nlanczos_eigv,ndets)
         eigv(1:nfound) = eval(1:nfound)
 
-        if (analyse_ground_state) then
-            call analyse_wavefunction(sys, evec(:,1))
-        else if (print_ground_state) then
-            call print_wavefunction('GROUND_STATE_WFN', evec(:,1))
-        end if
+        nwfn = analyse_fci_wfn
+        if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
+        do i = 1, nwfn
+            call analyse_wavefunction(sys, evec(:,i))
+        end do
+        nwfn = print_fci_wfn
+        if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
+        do i = 1, nwfn
+            call print_wavefunction(print_fci_wfn_file, evec(:,i))
+        end do
 
         deallocate(eval, stat=ierr)
         call check_deallocate('eval',ierr)
