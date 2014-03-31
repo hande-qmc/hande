@@ -64,11 +64,13 @@ logical :: use_sparse_hamil = .false.
 ! during exact diagonalisation as well as the eigenvalues.  Doing this is
 ! substantially more expensive.
 
-! Print out the ground state wavefunction.
-logical :: print_ground_state = .false.
+! Number of FCI wavefunctions to print out.
+integer :: print_fci_wfn = 0
+! ...and file to write them to.
+character(255) :: print_fci_wfn_file = 'FCI_WFN'
 
-! Analyse the ground state wavefunction.
-logical :: analyse_ground_state = .false.
+! Number of FCI wavefunctions to compute properties of.
+integer :: analyse_fci_wfn = 0
 
 ! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
 logical :: write_hamiltonian = .false.

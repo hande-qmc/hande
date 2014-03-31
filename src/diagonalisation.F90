@@ -34,7 +34,7 @@ contains
         use symmetry, only: symmetry_orb_list
 
         use errors, only: stop_all
-        use utils, only: int_fmt
+        use utils, only: int_fmt, get_free_unit
         use ranking, only: insertion_rank_rp
 
         type(sys_t), intent(inout) :: sys
@@ -68,6 +68,13 @@ contains
         if (parent) write (6,'(1X,a15,/,1X,15("="),/)') 'Diagonalisation'
 
         call copy_sys_spin_info(sys, sys_bak)
+        if (print_fci_wfn /= 0) then
+            ! Overwrite any existing file...
+            ! Open a fresh file here so we can just append to it later.
+            i = get_free_unit()
+            open(i, file=print_fci_wfn_file, status='unknown')
+            close(i, status='delete')
+        end if
 
         ! The Hamiltonian can be written in block diagonal form using the spin
         ! quantum number.  < D_1 | H | D_2 > /= 0 only if D_1 and D_2 have the

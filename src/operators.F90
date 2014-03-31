@@ -465,12 +465,13 @@ contains
         use determinant_enumeration, only: dets_list, ndets
 
         use checking, only: check_allocate, check_deallocate
+        use utils, only: get_free_unit
         use parallel
 
         character(*), intent(in) :: filename
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
 
-        integer :: idet, i, ii, ilocal
+        integer :: idet, i, ii, ilocal, iunit
 
 #ifdef PARALLEL
         integer :: ierr
@@ -480,11 +481,14 @@ contains
         integer, parameter :: comm_tag = 123
 #endif
 
-        if (parent) open(12,file=filename,status='unknown')
+        if (parent) then
+            iunit = get_free_unit()
+            open(iunit,file=filename,status='unknown', position='append')
+        end if
 
         if (nprocs == 1) then
             do idet = 1, size(wfn)
-                write (12,*) dets_list(:,idet), wfn(idet)
+                write (iunit,*) idet, dets_list(:,idet), wfn(idet)
             end do
         else
 #ifdef PARALLEL
@@ -513,7 +517,7 @@ contains
 #endif
         end if
 
-        if (parent) close(12,status='keep')
+        if (parent) close(iunit,status='keep')
 
         contains
 
@@ -526,7 +530,7 @@ contains
                     do ii = 1, min(block_size, nrows - i + 1)
                         ilocal = i - 1 + ii
                         idet =  (i-1)*nproc_rows + procx* block_size + ii
-                        write (12,*) dets_list(:,idet), wfn_curr(ilocal)
+                        write (iunit,*) idet, dets_list(:,idet), wfn_curr(ilocal)
                     end do
                 end do
 
