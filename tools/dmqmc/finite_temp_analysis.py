@@ -35,6 +35,9 @@ None.
     trace_2 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
     numerator = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
 
+    means = estimates.groupby(level=2).mean()
+    covariances = estimates.groupby(level=2).cov()
+
     # The keys hold the names to be output and the values hold the possible
     # columns names in the estimates DataFrame.
     observables = dict([
@@ -45,12 +48,8 @@ None.
         ('Tr[H2p]/Tr[p]','\\sum\\rho_{ij}H2{ji}')
     ])
 
-    means = estimates.groupby(level=2).mean()
-    covariances = estimates.groupby(level=2).cov()
-
     trace_1['mean'] = means['Trace']
     trace_1['standard error'] = numpy.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
-
     for (k,v) in observables.items():
         if v in columns:
             numerator['mean'] = means[v]
@@ -61,20 +60,38 @@ None.
             final_estimates[k] = stats['mean']
             final_estimates[k+' error'] = stats['standard error']
 
-    v = 'Full_R2_numerator'
-    k = 'Full S2'
-    if v in columns:
-        numerator['mean'] = means[v]
-        numerator['standard error'] = numpy.sqrt(covariances.xs(v,level=1)[v]/nsamples)
-        trace_2['mean'] = means['Trace_2']
-        trace_2['standard error'] = numpy.sqrt(covariances.xs('Trace_2',level=1)['Trace_2']/nsamples)
+    nrdms = 0
+    for column in columns:
+        have_s2 = False
+        if 'Renyi_2_numerator' in column: # RDM S2
+            nrdms += 1
+            have_s2 = True
+            num_str = column
+            tr1_str = 'RDM'+str(nrdms)+'_trace_1'
+            tr2_str = 'RDM'+str(nrdms)+'_trace_2'
+            out_str = 'RDM'+str(nrdms)+' S2'
+        elif 'Full_R2_numerator' in column: # Full S2
+            have_s2 = True
+            num_str = column
+            tr1_str = 'Trace'
+            tr2_str = 'Trace_2'
+            out_str = 'Full S2'
 
-        # A denotes the numerator, B denotes the first trace and C denotes the second trace.
-        cov_AB = covariances.xs(v,level=1)['Trace']
-        cov_AC = covariances.xs(v,level=1)['Trace_2']
-        cov_BC = covariances.xs('Trace',level=1)['Trace_2']
+        if have_s2:
+            numerator['mean'] = means[num_str]
+            trace_1['mean'] = means[tr1_str]
+            trace_2['mean'] = means[tr2_str]
+            numerator['standard error'] = numpy.sqrt(covariances.xs(num_str,level=1)[num_str]/nsamples)
+            trace_1['standard error'] = numpy.sqrt(covariances.xs(tr1_str,level=1)[tr1_str]/nsamples)
+            trace_2['standard error'] = numpy.sqrt(covariances.xs(tr2_str,level=1)[tr2_str]/nsamples)
 
-        final_estimates[k], final_estimates[k+' error'] = calc_S2(numerator, trace_1, trace_2, cov_AB, cov_AC, cov_BC, nsamples)
+            # A denotes the numerator, B denotes the first trace and C denotes the second trace.
+            cov_AB = covariances.xs(num_str,level=1)[tr1_str]
+            cov_AC = covariances.xs(num_str,level=1)[tr2_str]
+            cov_BC = covariances.xs(tr1_str,level=1)[tr2_str]
+
+            final_estimates[out_str], final_estimates[out_str+' error'] = \
+                calc_S2(numerator, trace_1, trace_2, cov_AB, cov_AC, cov_BC, nsamples)
 
     print final_estimates.to_string()
 
