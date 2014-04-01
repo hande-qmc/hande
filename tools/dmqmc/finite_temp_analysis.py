@@ -78,6 +78,7 @@ None.
 
     print final_estimates.to_string()
 
+
 def calc_S2(stats_A, stats_B, stats_C, cov_AB, cov_AC, cov_BC, data_len):
     '''Calculate the mean and standard error of :math:`f = -log(A/BC)`.
 
@@ -87,13 +88,13 @@ stats_A : :class:`pandas.DataFrame`
     Statistics (containing at least the 'mean' and 'standard error' fields) for
     variable :math:`A`.  The rows contain different values of these statistics
     for different Beta values.
-stats_B : :class:`pandas.Series` or :class:`pandas.DataFrame`
+stats_B : :class:`pandas.DataFrame`
     Similarly for variable :math:`B`.
-stats_B : :class:`pandas.Series` or :class:`pandas.DataFrame`
+stats_C : :class:`pandas.DataFrame`
     Similarly for variable :math:`C`.
 cov_AB : :class:`pandas.Series`
     Covariance between variables A and B.
-cov_AB : :class:`pandas.Series`
+cov_AC : :class:`pandas.Series`
     Covariance between variables A and C.
 cov_BC : :class:`pandas.Series`
     Covariance between variables B and C.
