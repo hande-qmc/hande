@@ -30,10 +30,15 @@ None.
 '''
 
     columns = list(estimates.columns.values)
+
+    #DataFrame for all of the final estimates to be printed.
     final_estimates = pd.DataFrame(index=beta_values)
-    trace_1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
-    trace_2 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
-    numerator = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+    # DataFrame for the numerator.
+    num = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+    # DataFrame for the trace from the first replica.
+    tr1 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
+    # DataFrame for the trace from the second replica.
+    tr2 = pd.DataFrame(columns=['mean','standard error'], index=beta_values)
 
     means = estimates.groupby(level=2).mean()
     covariances = estimates.groupby(level=2).cov()
@@ -48,15 +53,17 @@ None.
         ('Tr[H2p]/Tr[p]','\\sum\\rho_{ij}H2{ji}')
     ])
 
-    trace_1['mean'] = means['Trace']
-    trace_1['standard error'] = numpy.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
+    tr1['mean'] = means['Trace']
+    tr1['standard error'] = numpy.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
+
     for (k,v) in observables.items():
         if v in columns:
-            numerator['mean'] = means[v]
-            numerator['standard error'] = numpy.sqrt(covariances.xs(v,level=1)[v]/nsamples)
+            num['mean'] = means[v]
+            num['standard error'] = numpy.sqrt(covariances.xs(v,level=1)[v]/nsamples)
+
             cov_AB = covariances.xs('Trace',level=1)[v]
 
-            stats = pyblock.error.ratio(numerator, trace_1, cov_AB, nsamples)
+            stats = pyblock.error.ratio(num, tr1, cov_AB, nsamples)
             final_estimates[k] = stats['mean']
             final_estimates[k+' error'] = stats['standard error']
 
@@ -78,12 +85,12 @@ None.
             out_str = 'Full S2'
 
         if have_s2:
-            numerator['mean'] = means[num_str]
-            trace_1['mean'] = means[tr1_str]
-            trace_2['mean'] = means[tr2_str]
-            numerator['standard error'] = numpy.sqrt(covariances.xs(num_str,level=1)[num_str]/nsamples)
-            trace_1['standard error'] = numpy.sqrt(covariances.xs(tr1_str,level=1)[tr1_str]/nsamples)
-            trace_2['standard error'] = numpy.sqrt(covariances.xs(tr2_str,level=1)[tr2_str]/nsamples)
+            num['mean'] = means[num_str]
+            tr1['mean'] = means[tr1_str]
+            tr2['mean'] = means[tr2_str]
+            num['standard error'] = numpy.sqrt(covariances.xs(num_str,level=1)[num_str]/nsamples)
+            tr1['standard error'] = numpy.sqrt(covariances.xs(tr1_str,level=1)[tr1_str]/nsamples)
+            tr2['standard error'] = numpy.sqrt(covariances.xs(tr2_str,level=1)[tr2_str]/nsamples)
 
             # A denotes the numerator, B denotes the first trace and C denotes the second trace.
             cov_AB = covariances.xs(num_str,level=1)[tr1_str]
@@ -91,7 +98,7 @@ None.
             cov_BC = covariances.xs(tr1_str,level=1)[tr2_str]
 
             final_estimates[out_str], final_estimates[out_str+' error'] = \
-                calc_S2(numerator, trace_1, trace_2, cov_AB, cov_AC, cov_BC, nsamples)
+                calc_S2(num, tr1, tr2, cov_AB, cov_AC, cov_BC, nsamples)
 
     print final_estimates.to_string()
 
