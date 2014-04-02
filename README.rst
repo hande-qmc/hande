@@ -7,7 +7,11 @@ serially-correlated data.
 The algorithms implemented in `pyblock` are not new; please see the documentation for
 references.
 
-pyblock is compatible with (and tested on!) python 2.7 and python 3.3.
+pyblock is compatible with (and tested on!) python 2.7 and python 3.3-3.4 and should work
+on any other version supported by `pandas`.
+
+.. image:: https://travis-ci.org/jsspencer/pyblock.svg?branch=master
+    :target: https://travis-ci.org/jsspencer/pyblock
 
 Documentation
 -------------
