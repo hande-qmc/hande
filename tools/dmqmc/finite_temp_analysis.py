@@ -9,9 +9,10 @@ import sys
 import pyhande
 import pyblock
 import optparse
-import numpy
+import numpy as np
+import scipy.interpolate
 
-def run_dmqmc_analysis(beta_values, estimates, nsamples, options):
+def perform_averaging(beta_values, estimates, nsamples, options):
     '''Perform analysis of DMQMC data from a HANDE calculation.
 
 Parameters
@@ -28,6 +29,8 @@ options : :class:`OptionParser`
 
 Returns
 -------
+final_estimates : :class:`pandas.Series`
+    All of the final mean and error estimates as a function of beta, ready for output.
 None.
 '''
 
@@ -56,25 +59,24 @@ None.
     ])
 
     tr1['mean'] = means['Trace']
-    tr1['standard error'] = numpy.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
+    tr1['standard error'] = np.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
 
     # If requested, add the shift and traces to the final_estimates DataFrame, to be output later.
     if options.with_shift:
         final_estimates['Shift'] = means['Shift']
-        final_estimates['Shift s.d.'] = numpy.sqrt(covariances.xs('Shift',level=1)['Shift'])
+        final_estimates['Shift s.d.'] = np.sqrt(covariances.xs('Shift',level=1)['Shift'])
     if options.with_trace:
         final_estimates['Trace'] = tr1['mean']
-        final_estimates['Trace s.d.'] = numpy.sqrt(covariances.xs('Trace',level=1)['Trace'])
+        final_estimates['Trace s.d.'] = np.sqrt(covariances.xs('Trace',level=1)['Trace'])
         if 'Trace_2' in columns:
             final_estimates['Trace 2'] = means['Trace_2']
-            final_estimates['Trace 2 s.d.'] = numpy.sqrt(covariances.xs('Trace_2',level=1)['Trace_2'])
-
+            final_estimates['Trace 2 s.d.'] = np.sqrt(covariances.xs('Trace_2',level=1)['Trace_2'])
 
     # Compute the mean and standard error estimates for all quantities of the form Tr(\rho O)/Tr(\rho).
     for (k,v) in observables.items():
         if v in columns:
             num['mean'] = means[v]
-            num['standard error'] = numpy.sqrt(covariances.xs(v,level=1)[v]/nsamples)
+            num['standard error'] = np.sqrt(covariances.xs(v,level=1)[v]/nsamples)
             cov_AB = covariances.xs('Trace',level=1)[v]
             stats = pyblock.error.ratio(num, tr1, cov_AB, nsamples)
 
@@ -103,9 +105,9 @@ None.
             num['mean'] = means[num_col]
             tr1['mean'] = means[tr1_col]
             tr2['mean'] = means[tr2_col]
-            num['standard error'] = numpy.sqrt(covariances.xs(num_col,level=1)[num_col]/nsamples)
-            tr1['standard error'] = numpy.sqrt(covariances.xs(tr1_col,level=1)[tr1_col]/nsamples)
-            tr2['standard error'] = numpy.sqrt(covariances.xs(tr2_col,level=1)[tr2_col]/nsamples)
+            num['standard error'] = np.sqrt(covariances.xs(num_col,level=1)[num_col]/nsamples)
+            tr1['standard error'] = np.sqrt(covariances.xs(tr1_col,level=1)[tr1_col]/nsamples)
+            tr2['standard error'] = np.sqrt(covariances.xs(tr2_col,level=1)[tr2_col]/nsamples)
 
             # A denotes the numerator, B denotes the first trace and C denotes the second trace.
             cov_AB = covariances.xs(num_col,level=1)[tr1_col]
@@ -115,7 +117,7 @@ None.
             final_estimates[out_str], final_estimates[out_str+' error'] = \
                 calc_S2(num, tr1, tr2, cov_AB, cov_AC, cov_BC, nsamples)
 
-    print final_estimates.to_string()
+    return final_estimates
 
 
 def calc_S2(stats_A, stats_B, stats_C, cov_AB, cov_AC, cov_BC, data_len):
@@ -149,8 +151,8 @@ std_err: :class:`pandas.Series`
     Standard error for :math:`f = -log(A/BC)
 '''
 
-    mean = -numpy.log(stats_A['mean']/(stats_B['mean']*stats_C['mean']))/numpy.log(2)
-    std_err = 1/numpy.log(2) * numpy.sqrt(
+    mean = -np.log(stats_A['mean']/(stats_B['mean']*stats_C['mean']))/np.log(2)
+    std_err = 1/np.log(2) * np.sqrt(
         (stats_A['standard error']/stats_A['mean'])**2 +
         (stats_B['standard error']/stats_B['mean'])**2 +
         (stats_C['standard error']/stats_C['mean'])**2 -
@@ -159,6 +161,32 @@ std_err: :class:`pandas.Series`
         2*cov_BC/(data_len*stats_B['mean']*stats_C['mean']) )
 
     return mean, std_err
+
+def calc_spline_fit(column, estimates):
+    '''Find a cubic B-spline fit for the requested column in estimates.
+
+Parameters
+----------
+column: string
+    Column name of estimate for which to find a spline fit.
+estimates : :class:`pandas.DataFrame`
+    Must contain a column with the above name, and another with the
+    name column+' error'. The indices are used for the beta values.
+
+Returns
+-------
+spline_fit : :class:`pandas.Series`
+    Cubic B-spline fit.
+'''
+    
+    beta_values = list(estimates.index.values)
+    values = list(estimates[column].values)
+    weights = list(1/estimates[column+' error'].values)
+    
+    tck = scipy.interpolate.splrep(beta_values, values, weights, k=3)
+    spline_fit = scipy.interpolate.splev(beta_values, tck)
+    
+    return pd.Series(spline_fit)
 
 def parse_args(args):
     '''Parse command-line arguments.
@@ -183,6 +211,9 @@ options : :class:`OptionParser`
     parser.add_option('-t', '--with-trace', action='store_true', dest='with_trace',
                       default=False, help='Output the averaged traces and the '
                       'standard deviation of these traces, for all replicas present.')
+    parser.add_option('-b', '--with-spline', action='store_true', dest='with_spline',
+                      default=False, help='Output a B-spline fit for each of '
+                      ' estimates calculated')
 
     (options, filenames) = parser.parse_args(args)
 
@@ -219,7 +250,16 @@ None.
     beta_values = pd.Series(nsamples.index)
     estimates = data.loc[:,'Shift':'# H psips']
 
-    run_dmqmc_analysis(beta_values, estimates, nsamples, options)
+    final_estimates = perform_averaging(beta_values, estimates, nsamples, options)
+
+    # If requested, calculate a spline fit for all mean estimates.
+    if options.with_spline:
+        columns = list(final_estimates.columns.values)
+        for column in columns:
+            if ('Tr[p]' in column or 'S2' in column) and (not 'error' in column):
+                final_estimates[column+' spline'] = calc_spline_fit(column, final_estimates)
+
+    print final_estimates.to_string()
 
 if __name__ == '__main__':
 
