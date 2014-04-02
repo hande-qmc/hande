@@ -233,8 +233,6 @@ ValueError
             opt = max(col_opt[0], opt)
         else:
             raise ValueError('Multiple entries listed as optimal.')
-    if opt < 0:
-        opt = float('inf')
 
     return opt
 
