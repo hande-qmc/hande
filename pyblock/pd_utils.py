@@ -218,10 +218,11 @@ ValueError
         # Have DataFrame.
         # 'optimal block' is in the innermost level.
         level = block_sub_info.columns.nlevels - 1
-        cols = block_sub_info.columns.get_level_values(level) == 'optimal block'
-        if not any(cols):
+        opt_cols = [col == 'optimal block'
+                     for col in block_sub_info.columns.get_level_values(level)]
+        if not any(opt_cols):
             raise ValueError('No optimal block data')
-        iterator = block_sub_info.loc[:,cols].iteritems()
+        iterator = block_sub_info.loc[:,opt_cols].iteritems()
 
     opt = -1
     for (name, col) in iterator:
