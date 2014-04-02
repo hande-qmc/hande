@@ -11,7 +11,7 @@ import pyblock
 import optparse
 import numpy
 
-def run_dmqmc_analysis(beta_values, estimates, nsamples):
+def run_dmqmc_analysis(beta_values, estimates, nsamples, options):
     '''Perform analysis of DMQMC data from a HANDE calculation.
 
 Parameters
@@ -23,6 +23,8 @@ estimates : :class:`pandas.DataFrame`
     All of the estimates from all beta loops, which are to be combined and analysed.
 nsamples : :class:`pandas.Series`
     The number of samples at the various values in beta_values.
+options : :class:`OptionParser`
+    Options read in from command line.
 
 Returns
 -------
@@ -56,46 +58,59 @@ None.
     tr1['mean'] = means['Trace']
     tr1['standard error'] = numpy.sqrt(covariances.xs('Trace',level=1)['Trace']/nsamples)
 
+    # If requested, add the shift and traces to the final_estimates DataFrame, to be output later.
+    if options.with_shift:
+        final_estimates['Shift'] = means['Shift']
+        final_estimates['Shift s.d.'] = numpy.sqrt(covariances.xs('Shift',level=1)['Shift'])
+    if options.with_trace:
+        final_estimates['Trace'] = tr1['mean']
+        final_estimates['Trace s.d.'] = numpy.sqrt(covariances.xs('Trace',level=1)['Trace'])
+        if 'Trace_2' in columns:
+            final_estimates['Trace 2'] = means['Trace_2']
+            final_estimates['Trace 2 s.d.'] = numpy.sqrt(covariances.xs('Trace_2',level=1)['Trace_2'])
+
+
+    # Compute the mean and standard error estimates for all quantities of the form Tr(\rho O)/Tr(\rho).
     for (k,v) in observables.items():
         if v in columns:
             num['mean'] = means[v]
             num['standard error'] = numpy.sqrt(covariances.xs(v,level=1)[v]/nsamples)
-
             cov_AB = covariances.xs('Trace',level=1)[v]
-
             stats = pyblock.error.ratio(num, tr1, cov_AB, nsamples)
+
             final_estimates[k] = stats['mean']
             final_estimates[k+' error'] = stats['standard error']
 
+    # Compute the mean and standard error estimates for the Renyi entropy (S2), for all subsystems.
     nrdms = 0
     for column in columns:
         have_s2 = False
         if 'Renyi_2_numerator' in column: # RDM S2
             nrdms += 1
             have_s2 = True
-            num_str = column
-            tr1_str = 'RDM'+str(nrdms)+'_trace_1'
-            tr2_str = 'RDM'+str(nrdms)+'_trace_2'
+            num_col = column
+            tr1_col = 'RDM'+str(nrdms)+'_trace_1'
+            tr2_col = 'RDM'+str(nrdms)+'_trace_2'
             out_str = 'RDM'+str(nrdms)+' S2'
         elif 'Full_R2_numerator' in column: # Full S2
             have_s2 = True
-            num_str = column
-            tr1_str = 'Trace'
-            tr2_str = 'Trace_2'
+            num_col = column
+            tr1_col = 'Trace'
+            tr2_col = 'Trace_2'
             out_str = 'Full S2'
 
         if have_s2:
-            num['mean'] = means[num_str]
-            tr1['mean'] = means[tr1_str]
-            tr2['mean'] = means[tr2_str]
-            num['standard error'] = numpy.sqrt(covariances.xs(num_str,level=1)[num_str]/nsamples)
-            tr1['standard error'] = numpy.sqrt(covariances.xs(tr1_str,level=1)[tr1_str]/nsamples)
-            tr2['standard error'] = numpy.sqrt(covariances.xs(tr2_str,level=1)[tr2_str]/nsamples)
+            num['mean'] = means[num_col]
+            tr1['mean'] = means[tr1_col]
+            tr2['mean'] = means[tr2_col]
+            num['standard error'] = numpy.sqrt(covariances.xs(num_col,level=1)[num_col]/nsamples)
+            tr1['standard error'] = numpy.sqrt(covariances.xs(tr1_col,level=1)[tr1_col]/nsamples)
+            tr2['standard error'] = numpy.sqrt(covariances.xs(tr2_col,level=1)[tr2_col]/nsamples)
 
             # A denotes the numerator, B denotes the first trace and C denotes the second trace.
-            cov_AB = covariances.xs(num_str,level=1)[tr1_str]
-            cov_AC = covariances.xs(num_str,level=1)[tr2_str]
-            cov_BC = covariances.xs(tr1_str,level=1)[tr2_str]
+            cov_AB = covariances.xs(num_col,level=1)[tr1_col]
+            cov_AC = covariances.xs(num_col,level=1)[tr2_col]
+            cov_BC = covariances.xs(tr1_col,level=1)[tr2_col]
 
             final_estimates[out_str], final_estimates[out_str+' error'] = \
                 calc_S2(num, tr1, tr2, cov_AB, cov_AC, cov_BC, nsamples)
@@ -157,9 +172,17 @@ Returns
 -------
 filenames : list of strings
     list of QMC output files
+options : :class:`OptionParser`
+    Options read in from command line.
 '''
 
     parser = optparse.OptionParser(usage = __doc__)
+    parser.add_option('-s', '--with-shift', action='store_true', dest='with_shift', 
+                      default=False, help='Output the averaged shift profile and '
+                      'the standard deviation of these profiles across beta loops.')
+    parser.add_option('-t', '--with-trace', action='store_true', dest='with_trace',
+                      default=False, help='Output the averaged traces and the '
+                      'standard deviation of these traces, for all replicas present.')
 
     (options, filenames) = parser.parse_args(args)
 
@@ -167,7 +190,7 @@ filenames : list of strings
         parser.print_help()
         sys.exit(1)
 
-    return (filenames)
+    return (filenames, options)
 
 def main(args):
     '''Run data analysis on finite-temperature HANDE output.
@@ -182,19 +205,21 @@ Returns
 None.
 '''
 
-    (files) = parse_args(args)
+    (files, options) = parse_args(args)
     (metadata, data) = pyhande.extract.extract_data_sets(files)
-    tau = metadata[0]['tau']
 
     # Convert the iteration number to the beta value.
+    tau = metadata[0]['tau']
     data.rename(columns={'iterations' : 'Beta'}, inplace=True)
     data['Beta'] = data['Beta']*tau
 
     data.set_index('Beta', inplace=True, append=True)
+    # The number of beta loops contributing to each beta value.
     nsamples = data['Trace'].groupby(level=2).count()
     beta_values = pd.Series(nsamples.index)
     estimates = data.loc[:,'Shift':'# H psips']
-    run_dmqmc_analysis(beta_values, estimates, nsamples)
+
+    run_dmqmc_analysis(beta_values, estimates, nsamples, options)
 
 if __name__ == '__main__':
 
