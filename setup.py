@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='pyblock',
-    version='1.0',
+    version='0.1',
     author='James Spencer',
     url='http://github.com/jsspencer/pyblock',
     packages=('pyblock', 'pyblock.tests'),
