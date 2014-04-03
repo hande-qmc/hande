@@ -472,8 +472,19 @@ contains
                     write (6,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
                 end if
             else
-                write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
-                                     &density matrix.'
+                if (doing_dmqmc_calc(dmqmc_full_r2)) then
+                    write (6, '(1X,a104)') 'Trace: The current total population on the diagonal elements of the &
+                                         &first replica of the density matrix.'
+                    write (6, '(1X,a107)') 'Trace 2: The current total population on the diagonal elements of the &
+                                         &second replica of the density matrix.'
+                else
+                    write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
+                                         &density matrix.'
+                end if
+                if (doing_dmqmc_calc(dmqmc_full_r2)) then
+                    write (6, '(1X,a81)') 'Full S2: The numerator of the estimator for the Renyi entropy of the &
+                                          &full system.'
+                end if
                 if (doing_dmqmc_calc(dmqmc_energy)) then
                     write (6, '(1X,a92)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
                                          &value of the energy.'
@@ -483,12 +494,23 @@ contains
                                          &value of the energy squared.'
                 end if
                 if (doing_dmqmc_calc(dmqmc_correlation)) then
-                    write (6, '(1X,a111)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+                    write (6, '(1X,a111)') '\sum\rho_{ij}S_{ji}: The numerator of the estimator for the expectation &
                                          &value of the spin correlation function.'
                 end if
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                     write (6, '(1X,a109)') '\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
                                          &value of the staggered magnetisation.'
+                end if
+                if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
+                    write (6, '(1x,a73)') 'RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.'
+                end if
+                if (calc_inst_rdm) then
+                    write (6, '(1x,a83)') 'RDM(n) trace m: The current total population on the diagonal of replica m &
+                                          &of RDM n.'
+                end if
+                if (calculate_excit_distribution) then
+                    write (6, '(1x,a86)') 'Excit. level n: The fraction of particles on excitation level n of the &
+                                          &density matrix.'
                 end if
             end if
             write (6,'(1X,a61)') '# H psips: current total population of Hamiltonian particles.'

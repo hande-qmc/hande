@@ -472,7 +472,7 @@ contains
            '# iterations','Instant shift','Trace'
 
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(6X,a7,5X,a17)', advance = 'no') 'Trace_2','Full_R2_numerator'
+                write (6, '(6X,a7,14X,a7)', advance = 'no') 'Trace 2','Full S2'
             end if
             if (doing_dmqmc_calc(dmqmc_energy)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
@@ -481,31 +481,31 @@ contains
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H2{ji}'
             end if
             if (doing_dmqmc_calc(dmqmc_correlation)) then
-                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}C_{ji}'
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}S_{ji}'
             end if
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
             end if
             if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
                 do i = 1, nrdms
-                    write (6, '(4X,a18,'//int_fmt(i,0)//')', advance = 'no') 'Renyi_2_numerator_', i
+                    write (6, '(16X,a3,'//int_fmt(i,0)//',1x,a2)', advance = 'no') 'RDM', i, 'S2'
                 end do
             end if
             if (calc_inst_rdm) then
                 do i = 1, nrdms
                     do j = 1, sampling_size
-                        write (6, '(8X,a3,'//int_fmt(i,0)//',a7,'//int_fmt(j,0)//')', advance = 'no') &
-                                'RDM', i, '_trace_', j
+                        write (6, '(7X,a3,'//int_fmt(i,0)//',1x,a5,1x,'//int_fmt(j,0)//')', advance = 'no') &
+                                'RDM', i, 'trace', j
                     end do
                 end do
             end if
             if (calculate_excit_distribution) then
                 do i = 0, ubound(excit_distribution,1)
-                    write (6, '(4X,a13,1X,i3)', advance = 'no') 'Excit. level:', i
+                    write (6, '(5X,a13,1X,i2)', advance = 'no') 'Excit. level:', i
                 end do
             end if
 
-            write (6, '(2X,a11,2X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
+            write (6, '(2X,a11,3X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
 
         else
             write (6,'(1X,a13,3(2X,a17))', advance='no') &
@@ -569,7 +569,7 @@ contains
             if (calc_inst_rdm) then
                 do i = 1, nrdms
                     do j = 1, sampling_size
-                        write (6, '(3x,es17.10)', advance = 'no') rdm_traces(j,i)
+                        write (6, '(2x,es17.10)', advance = 'no') rdm_traces(j,i)
                     end do
                 end do
             end if
@@ -579,7 +579,7 @@ contains
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
-            write (6, '(2X, i11)', advance='no') ntot_particles(1)
+            write (6, '(2X,i11)', advance='no') ntot_particles(1)
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
