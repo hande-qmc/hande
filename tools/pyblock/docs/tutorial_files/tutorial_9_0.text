@@ -1,0 +1,2 @@
+[10]
+BlockTuple(block=10, ndata=64, mean=array(0.02972941238888185), cov=array(0.0455635621966979), std_err=array(0.026682028770755133), std_err_err=array(0.002377024048671685))
