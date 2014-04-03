@@ -1,0 +1,18 @@
+HANDE (and related) tools
+=========================
+
+[todo] - summary of what each tool does
+
+pyblock
+    blocking analysis module in python.  Very flexible and used extensively in the main
+    analysis tools.  pyblock is maintained at https://github.com/jsspencer/pyblock and is
+    incorporated into the HANDE repository using git-subtree (available in git 1.7.11
+    onwards though usually has to be installed separately).  To get additional changes
+    from upstream use:
+
+        $ git remote add st/pyblock git@github.com:jsspencer/pyblock.git
+        $ git subtree pull --prefix=tools/pyblock st/pyblock master
+
+    git-subtree can similarly be used to send changes upstream.  Note that as pyblock was
+    incorporated without using --squash, do *not* using --squash to retrieve subsequent
+    updates---bad things and conflicts seem to happen if you do!

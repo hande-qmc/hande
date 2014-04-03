@@ -306,27 +306,27 @@ The running averages of the shift and projected energy can be reset using the
 emphasised that the best estimates of the energy and associated standard error
 are obtained via re-blocking the data as a post-processing step.  Often the
 averaged values printed out are only adequate for (at best) monitoring
-convergence and stability.  The blocking.py script (in the tools subdirectory)
+convergence and stability.  The reblock_hande.py script (in the tools subdirectory)
 does this.  Run
 
 .. code-block:: bash
 
-    blocking.py --help
+    reblock_hande.py --help
 
 to see the available options.  Estimates for the shift and projected energy are
 typically obtained using
 
 .. code-block:: bash
 
-    blocking.py -f N out
-    blocking.py -f N -d 3 -d 5 -o/ out
+    reblock_hande.py --start N out
 
 respectively, where N is the iteration from which data should be blocked (i.e.
 after the calculation has equilibrated) and out is the file to which the
 calculation output was saved.
 
-Note that blocking.py can accept multiple output files for the case when
-a calculation is restarted.
+Note that reblock_hande.py can accept multiple output files for the case when
+a calculation is restarted.  More complicated analysis can be performed in python by
+using the pyhande library (which reblock_hande is a simple wrapper around).
 
 Input options
 -------------
