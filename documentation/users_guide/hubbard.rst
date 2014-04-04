@@ -573,8 +573,8 @@ Note that multiple calculations can be specified within a single input, but are 
     can be selected by specifying a reference determinant.
 **folded_spectrum**
     Perform a folded spectrum (FSFCIQMC) calculation. This involves mapping the
-    Hamiltonian :math:`H \rightarrow (H-\eps)^2`. This will compute the excited
-    state closest to :math:`\eps`.
+    Hamiltonian :math:`H \rightarrow (H-\varepsilon)^2`. This will compute the excited
+    state closest to :math:`\varepsilon`.
 
     For the real space formulation of the Hubbard model and the Heisenberg
     model, the exact size of the space (at least to the first 8 significant
@@ -951,23 +951,24 @@ The following options are valid for FCIQMC calculations.
     Furthermore, the current implementation does not allow restart files
     produced with one value of DET_SIZE to be used with binaries produced with
     a different value of DET_SIZE.  However, this is not checked!
+
 **uniform_combination**
 
     For the Heisenberg model only. If this keyword is specified then instead of using a
     single reference detereminant to calculate the projected energy, a linear combination
     of all basis functions with amplitudes 1 is used:
 
+    .. math::
+
     	|psi> = \sum_{i} |D_i>
 
     hence the estimator used is
 
-    	        <psi|H|psi_0>
-    	E_0 =  ---------------
-             	 <psi|psi_0>
-              
-           	\sum_{i,j} <D_i|H|D_j> c_j
-            = ----------------------------
-                      sum_{i} c_i
+
+    .. math::
+
+        E_0 = \frac{ <\psi|H|\psi_0> }{ <\psi|\psi_0> }
+            = \frac{ \sum_{i,j} <D_i|H|D_j> c_j } { sum_{i} c_i }
                   
     A unitary transformation will be applied to the Hamiltonian so that all the
     off-diagonal elements are multiplied by -1. This has the effect of making
@@ -980,7 +981,7 @@ The following options are valid for FCIQMC calculations.
 
     For the Heisenberg model only. If this keyword is specified then instead of using a single
     reference detereminant to calculate the projected energy, the Neel singlet state is used.
-    This is a state |NS> = \sum_{i} a_i * |D_i> where the amplitudes a_i are defined in the
+    This is a state :math:`|NS> = \sum_{i} a_i * |D_i>` where the amplitudes a_i are defined in the
     K. Runge, Phys. Rev. B 45, 7229 (1992).
     For further details, see the comments in the subroutine update_proj_energy_heisenberg_neel_singlet
     in heisenberg_estimator.F90.
@@ -1219,9 +1220,9 @@ These options are valid when performing a folded spectrum calculation
     Default: 0.0
 
     Choose the point about which to fold the hamiltonian, i.e. the value of
-    :math:`\eps` in :math:`(H-\eps)^2`. In the case of convergence the psips
+    :math:`\varepsilon` in :math:`(H-\varepsilon)^2`. In the case of convergence the psips
     settle on a stochastic representation of the eigenstate(s) with energy
-    closest to :math:`\eps`.
+    closest to :math:`\varepsilon`.
 
 **P__** *P_*
     Real.

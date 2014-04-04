@@ -10,7 +10,6 @@ hubbard_fciqmc
    :maxdepth: 2
 
    users_guide/hubbard
-   research_meetings/index
    developers_guide/developers_guide
 
    bibliography
