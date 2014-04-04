@@ -970,8 +970,7 @@ contains
         iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, &
                                                 spawn%hash_shift, spawn%move_freq, nprocs)
 
-        ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
-        if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) + nthreads >= spawn%block_size) &
             call stop_all('create_spawned_particle_density_matrix',&
                            'There is no space left in the spawning array.')
 
@@ -1046,8 +1045,7 @@ contains
         iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, &
                                                 spawn%hash_shift, spawn%move_freq, nprocs)
 
-        ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
-        if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) + nthreads >= spawn%block_size) &
             call stop_all('create_spawned_particle_half_density_matrix',&
                            'There is no space left in the spawning array.')
 
@@ -1132,8 +1130,7 @@ contains
             iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, &
                                                     spawn%hash_shift, spawn%move_freq, nprocs)
 
-            ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
-            if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) + nthreads >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_half_density_matrix',&
                                'There is no space left in the spawning array.')
 
@@ -1208,8 +1205,7 @@ contains
             iproc_spawn = assign_particle_processor(f_new_tot, total_basis_length, spawn%hash_seed, &
                                                     spawn%hash_shift, spawn%move_freq, nprocs)
 
-            ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
-            if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) + nthreads >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_density_matrix', &
                                'There is no space left in the spawning array.')
 
@@ -1313,8 +1309,7 @@ contains
                 ! for this thread/processor.
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-                ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
-                if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) >= spawn%head_start(0,1)) &
+                if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(0,iproc_spawn) + nthreads >= spawn%block_size) &
                     call stop_all('create_spawned_particle_rdm','There is no space left in the RDM array.')
 
                 ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)

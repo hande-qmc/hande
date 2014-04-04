@@ -29,7 +29,7 @@ type spawn_t
     ! sdata(flag_indx,i) is the element containing flags (ie additional info)
     ! for the i-th element.
     integer :: flag_indx
-    ! Total number of elements in each spawned object/element (ie len(sdata(:,1)). 
+    ! Total number of elements in each spawned object/element (ie len(sdata(:,1)).
     integer :: element_len
     ! Not actually allocated but actually points to an internal store for
     ! efficient communication.
@@ -44,14 +44,19 @@ type spawn_t
     ! NOTE: this assumes that each thread will produce a roughly equal number of
     ! spawned particles and each processor will be sent a roughly equal number
     ! of spawned particles.
+    ! block_size is the size of each block of sdata (in terms of the outer-most index)
+    ! which is associated with a single processor.
+    integer :: block_size
     ! head(j,i) gives the position in sdata of the last spawned particle created
     ! by thread j to be sent to processor i.  The meaning of head is changed by
     ! the compression and communication routines (see below).  head must be set
     ! to head_start at the start of each set of spawning events.
-    integer, allocatable :: head(:,:)  ! (0:nthreads-1,0:max(1,nprocs-1))
-    ! head_start(j,i) gives the position in sdata of the first spawned particle
-    ! created by thread j to be sent to processor i.
-    integer, allocatable :: head_start(:,:) ! (0:nthreads-1,0:max(1,nprocs-1))
+    integer, allocatable :: head(:,:)  ! (0:nthreads-1,0:nprocs-1)
+    ! head_start(j,i)+nthreads gives the position in sdata of the first spawned
+    ! particle created by thread j to be sent to processor i.
+    ! (Note that the first thing the particle creation routines do is add nthread to the
+    ! appropriate element of head to find the next empty slot to spawn into.)
+    integer, allocatable :: head_start(:,:) ! (0:nthreads-1,0:nprocs-1)
     ! seed for hash routine used to determine which processor a given bit string
     ! should be sent to.
     integer(c_int) :: hash_seed
@@ -120,9 +125,9 @@ contains
         allocate(spawn%store2(spawn%element_len, spawn%array_len), stat=ierr)
         call check_allocate('spawn%store2', size(spawn%store2), ierr)
 
-        allocate(spawn%head(0:nthreads-1,0:max(1,nprocs-1)), stat=ierr)
+        allocate(spawn%head(0:nthreads-1,0:nprocs-1), stat=ierr)
         call check_allocate('spawn%head', size(spawn%head), ierr)
-        allocate(spawn%head_start(0:nthreads-1,0:max(1,nprocs-1)), stat=ierr)
+        allocate(spawn%head_start(0:nthreads-1,0:nprocs-1), stat=ierr)
         call check_allocate('spawn%head_start', size(spawn%head_start), ierr)
 
         spawn%sdata => spawn%store1
@@ -134,14 +139,10 @@ contains
         ! We manage this by keeping track of the 'head' of the data array
         ! for each thread on each processor (ie the last position spawned
         ! to).  We need to know where to start though...
-        block_size = array_len / nprocs
+        spawn%block_size = array_len / nprocs
         forall (i=0:nprocs-1)
-            forall (j=0:nthreads-1) spawn%head_start(j,i) = i*block_size+j
+            forall (j=0:nthreads-1) spawn%head_start(j,i) = i*spawn%block_size + j - nthreads + 1
         end forall
-        ! spawn%head_start(nthreads-1,1) should contain the number of elements
-        ! allocated for each processor so we allow it to be accessible even if
-        ! the number of processors is 1.
-        spawn%head_start(0,1) = block_size
 
         spawn%head = spawn%head_start
 
@@ -281,26 +282,30 @@ contains
 
         type(spawn_t), intent(inout) :: spawn
 
-        integer :: iproc, i, offset
+        integer :: ip, i, offset, istart, iend, it
 
-        do iproc = 0, nprocs-1
+        do ip = 0, nprocs-1
             offset = 0
             ! Assuming a large enough number of spawning events, each thread
             ! should have had roughly the same number of successful spawning
             ! events, so this loop should be fast.
-            ! Start from the first element which might have been spawned into.
-            do i = max(1,minval(spawn%head(:,iproc))), maxval(spawn%head(:,iproc))
-                ! element i was created (or should have been) by thread
-                ! index mod(i,nthreads).
-                if (spawn%head(mod(i,nthreads),iproc) < i .or. &
-                        spawn%head(mod(i,nthreads),iproc) == spawn%head_start(mod(i,nthreads),iproc)) then
+            ! First element *not* spawned to:
+            istart = minval(spawn%head(:,ip)+nthreads)
+            ! Last element spawned to:
+            iend = maxval(spawn%head(:,ip))
+            do i = istart, iend
+                ! Find which thread (should have) created this element.
+                ! block_size*ip is the first element in the processor block.
+                ! thread indices are from 0 to nthreads-1.
+                it = mod(i-spawn%block_size*ip-1,nthreads)
+                if (spawn%head(it,ip) < i) then
                     ! This element was *not* spawned into.  Filling in this gap...
                     offset = offset + 1
                 else
                     spawn%sdata(:,i-offset) = spawn%sdata(:,i)
                 end if
             end do
-            spawn%head(0,iproc) = i - 1 - offset
+            spawn%head(0,ip) = i - 1 - offset
         end do
 
     end subroutine compress_threaded_spawn_t
@@ -359,7 +364,7 @@ contains
 
         ! Find out how many particles we are going to send and receive.
         forall (i=0:nprocs-1)
-            send_counts(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i)
+            send_counts(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i) + nthreads - 1
         end forall
 
         call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
@@ -384,7 +389,8 @@ contains
         ! displacements accordingly:
         send_counts = send_counts*spawn%element_len
         receive_counts = receive_counts*spawn%element_len
-        send_displacements = spawn%head_start(thread_id,:nprocs-1)*spawn%element_len
+        ! displacement is the number of elements in the preceding processor blocks.
+        send_displacements = (spawn%head_start(thread_id,:nprocs-1)+nthreads-1)*spawn%element_len
         receive_displacements = receive_displacements*spawn%element_len
 
         call MPI_AlltoAllv(spawn%sdata, send_counts, send_displacements, mpi_det_integer, &
