@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 '''Usage: extract.py filename
 
 Extract data from the output of a hubbard_fciqmc calculation.'''
@@ -98,14 +98,15 @@ filename: file to examine.
         # print header
         for d in data_elements:
             if d.value:
-                print d.fmt(padding) % d.name,
-        print
+                # Use sys.stdout directly to handle python 2 and python 3 easily.
+                sys.stdout.write(d.fmt(padding) % d.name)
+        sys.stdout.write('\n')
 
         # print values
         for d in data_elements:
             if d.value:
-                print d.fmt(padding) % d.value,
-        print
+                sys.stdout.write(d.fmt(padding) % d.value)
+        sys.stdout.write('\n')
 
     return None
 
