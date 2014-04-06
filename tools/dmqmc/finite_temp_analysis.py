@@ -5,7 +5,11 @@ Analyse the output of a HANDE DMQMC calculation by averaging
 temperature-dependent data across beta loops.'''
 
 import pandas as pd
+import os
 import sys
+script_dir = os.path.dirname(__file__)
+sys.path.extend([os.path.join(script_dir, '../'),
+                 os.path.join(script_dir, '../pyblock')])
 import pyhande
 import pyblock
 import optparse
