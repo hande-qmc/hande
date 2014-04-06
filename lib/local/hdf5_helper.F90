@@ -93,7 +93,7 @@ module hdf5_helper
 
             ! Set up fortran string type of *this* length...
             call h5tcopy_f(H5T_FORTRAN_S1, type_id, ierr)
-            call h5tset_size_f(type_id, len(string, HSIZE_T), ierr)
+            call h5tset_size_f(type_id, len(string, SIZE_T), ierr)
 
             ! Create space and write string.
             call h5screate_f(H5S_SCALAR_F, dspace_id, ierr)
