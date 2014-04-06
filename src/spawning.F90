@@ -1297,7 +1297,7 @@ contains
         integer :: nspawn, rdm_bl
 
         integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_basis_length)
-        integer(i0) :: f_temp1(rdms(irdm)%rdm_basis_length), f_temp2(rdms(irdm)%rdm_basis_length)
+        integer(i0) :: f1(rdms(irdm)%rdm_basis_length), f2(rdms(irdm)%rdm_basis_length)
 
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
@@ -1316,25 +1316,21 @@ contains
         integer :: err_code
 
         rdm_bl = rdms(irdm)%rdm_basis_length
-        ! nspawn will be doubles for diagonal elements.
         nspawn = nspawn_in
 
-        ! To enforce that the rdm is symmetric, add this psip to both \rho_{ij} and
-        ! \rho_{ji}. These will lead to an rdm with a trace twice what it would have
-        ! been, but this is not a problem.
         f_new_tot = 0
+        f1 = rdms(irdm)%end1
+        f2 = rdms(irdm)%end2
 
-        f_temp1 = rdms(irdm)%end1
-        f_temp2 = rdms(irdm)%end2
-
-        if (f_temp1 .bitstrgt. f_temp2) then
+        ! Symmetry is enforced on the RDM in the following.
+        if (f1 .bitstrgt. f2) then
             ! If below the diagonal, swap the bitstrings so that the spawning occurs above it.
-            f_new_tot(:rdm_bl) = f_temp2
-            f_new_tot(rdm_bl+1:2*rdm_bl) = f_temp1
+            f_new_tot(:rdm_bl) = f2
+            f_new_tot(rdm_bl+1:2*rdm_bl) = f1
         else
-            f_new_tot(:rdm_bl) = f_temp1
-            f_new_tot(rdm_bl+1:2*rdm_bl) = f_temp2
-            if (all(f_temp1 == f_temp2)) then
+            f_new_tot(:rdm_bl) = f1
+            f_new_tot(rdm_bl+1:2*rdm_bl) = f2
+            if (all(f1 == f2)) then
                 ! Because off-diagonal elements have been doubled (elements above the diagonal taking
                 ! contributions from both below and above it), we must double the diagonal elements too.
                 nspawn = nspawn*2
@@ -1366,8 +1362,7 @@ contains
                     call stop_all('create_spawned_particle_rdm','Error in assigning hash &
                                   &table entry.')
                 end if
-                ! Fix hash table to point to the head of the spawn data
-                ! for this thread/processor.
+                ! Fix hash table to point to the head of the spawn data for this thread/processor.
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
                 ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.

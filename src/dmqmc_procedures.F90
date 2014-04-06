@@ -170,6 +170,8 @@ contains
                  dmqmc_accumulated_probs = 1.0_p
              end if
          else
+             ! If not using the importance sampling procedure, turn it off by setting all
+             ! amplitudes to 1.0 in the relevant arrays.
              allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
              allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
@@ -201,7 +203,8 @@ contains
 
         ! Setup the bit masks needed for RDM calculations. These are masks for the bits referring
         ! to either subsystem A or B. Also calculate the positions and elements of the sites
-        ! in subsyetsm A, and finally allocate the RDM itself.
+        ! in subsyetsm A, and finally allocate the RDM itself (including allocating the instances
+        ! of the RDM spawning arrays and hash tables, for instantaneous RDM calculations).
 
         ! In:
         !    sys: system being studied.
@@ -227,26 +230,29 @@ contains
         if (sys%system==heisenberg) then
             call find_rdm_masks(sys)
         else
-            call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for the &
-                           &Heisenberg model.")
+            call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for &
+                           &the Heisenberg model.")
         end if
 
         total_size_spawned_rdm = 0
         nbytes_int = bit_size(i)/8
 
+        ! Create the instances of the rdm_spawn_t type for instantaneous RDM calculatons.
         if (calc_inst_rdm) then
             allocate(rdm_spawn(nrdms), stat=ierr)
             call check_allocate('rdm_spawn', nrdms, ierr)
         end if
+        ! If calculating Renyi entropy (S2).
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             allocate(renyi_2(nrdms), stat=ierr)
             call check_allocate('renyi_2', nrdms, ierr)
             renyi_2 = 0.0_p
         end if
 
+        ! Loop over all subsystems for which we are calculating RDMs.
         do i = 1, nrdms
+            ! Initialise the instance of the rdm type for this subsystem.
             rdms(i)%rdm_basis_length = ceiling(real(rdms(i)%A_nsites)/i0_length)
-
             allocate(rdms(i)%end1(rdms(i)%rdm_basis_length), stat=ierr)
             call check_allocate('rdms(i)%end1', rdms(i)%rdm_basis_length, ierr)
             allocate(rdms(i)%end2(rdms(i)%rdm_basis_length), stat=ierr)
@@ -260,6 +266,7 @@ contains
             if (calc_ground_rdm .and. rdms(i)%rdm_basis_length > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
+            ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
                 size_spawned_rdm = (rdms(i)%rdm_basis_length*2+sampling_size)*i0_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
@@ -267,7 +274,7 @@ contains
                     ! Given in MB.  Convert.
                     ! Note that the factor of 2 is because two spawning arrays are stored, and
                     ! 21*nbytes_int is added because there are 21 integers in the hash table for each
-                    ! spawned rdm slot.
+                    ! spawned rdm slot. 21 was found to be appropriate after testing.
                     spawned_rdm_length = int((-real(spawned_rdm_length,p)*10**6)/&
                                           (2*size_spawned_rdm + 21*nbytes_int))
                 end if
@@ -275,17 +282,15 @@ contains
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
                                  spawned_rdm_length, 27, rdm_spawn(i)%spawn)
-                ! Hard code hash table collision limit for now.  This should
-                ! give an ok performance...
-                ! We will only use the first 2*rdm_basis_length elements for the
-                ! hash, even though rdm_spawn%spawn%sdata is larger than that in
-                ! the first dimension...
+                ! Hard code hash table collision limit for now.  This should give an ok performance...
+                ! We will only use the first 2*rdm_basis_length elements for the hash, even though
+                ! rdm_spawn%spawn%sdata is larger than that in the first dimension...
                 call alloc_hash_table(3*spawned_rdm_length, 7, rdms(i)%rdm_basis_length*2, &
                                      0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
 
-        if (parent) then
+        if (parent .and. calc_inst_rdm) then
             write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
                 total_size_spawned_rdm*real(2*spawned_rdm_length,p)/10**6
             write (6,'(1X,a49,'//int_fmt(spawned_rdm_length,1)//',/)') &
@@ -372,11 +377,10 @@ contains
                     ! over all basis functions and check...
                     do l = 1, nbasis
                         if (all(basis_fns(l)%l == r)) then
+                            ! Found the correct basis function!
                             bit_position = bit_lookup(1,l)
                             bit_element = bit_lookup(2,l)
-
                             A_mask(bit_element) = ibset(A_mask(bit_element), bit_position)
-
                             rdms(i)%bit_pos(k,j,1) = bit_position
                             rdms(i)%bit_pos(k,j,2) = bit_element
                         end if
@@ -407,8 +411,8 @@ contains
 
         ! Create a starting density matrix by sampling the elements of the (unnormalised)
         ! identity matrix. This is a sampling of the (unnormalised) infinite-temperature
-        ! density matrix. This is done by picking determinants/spin configurations from
-        ! with uniform probabilities in the space being considered.
+        ! density matrix. This is done by picking determinants/spin configurations with
+        ! uniform probabilities in the space being considered.
 
         ! In/Out:
         !    rng: random number generator.
@@ -499,7 +503,7 @@ contains
         ! along the main diagonal. Each diagonal element should be chosen
         ! with the same probability.
 
-        ! Start from state with all spins down, then choose the above number of
+        ! Start from a state with all spins down, then choose the above number of
         ! spins to flip up with equal probability.
 
         ! In/Out:
@@ -629,7 +633,7 @@ contains
 
         use basis, only: basis_length, bit_lookup
 
-        integer(i0), intent(in) :: f(2*basis_length)
+        integer(i0), intent(in) :: f(total_basis_length)
         integer, intent(in) :: irdm, isym
         integer :: i, bit_pos, bit_element
 
