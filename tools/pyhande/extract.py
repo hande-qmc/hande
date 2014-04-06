@@ -79,7 +79,7 @@ data : :class:`pandas.DataFrame`
         ref_energy = r'E0 = <D0\|H\|D0>',
         psingle = 'Probability of attempting a single',
         pdouble = 'Probability of attempting a double',
-        init_pop = 'Initial population on reference',
+        init_pop = 'Initial population on',
         git_hash = 'VCS BASE repository version:',
         target = 'varyshift_target',
         shift_damping = 'shift_damping',
