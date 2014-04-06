@@ -304,7 +304,7 @@ None.
                 results[column+' spline'] = calc_spline_fit(column, results)
 
     # Finally, output the results!
-    print results.to_string(index=False)
+    print(results.to_string(index=False))
 
 if __name__ == '__main__':
 
