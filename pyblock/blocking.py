@@ -6,13 +6,17 @@
 import numpy
 import collections
 
-def reblock(data, rowvar=1, ddof=None):
+def reblock(data, rowvar=1, ddof=None, weights=None):
     '''Blocking analysis of correlated data.
 
 Repeatedly average neighbouring data points in order to remove the effect of
 serial correlation on the estimate of the standard error of a data set, as
 described by Flyvbjerg and Petersen [1]_.  The standard error is constant
 (within error bars) once the correlation has been removed.
+
+If a weighting is provided then the weighted variance and standard error of
+each variable is calculated, as described in [2]_. Bessel correction is
+obtained using the "effective sample size" from [3]_.
 
 .. default-role:: math
 
@@ -28,6 +32,9 @@ ddof : int
     If not ``None``, then the standard error and covariance are normalised by
     `(N - \\text{ddof})`, where `N` is the number of data points per variable.
     Otherwise, the numpy default is used (i.e. `(N - 1)`).
+weights : :class:`numpy.array`
+    A 1D weighting of the data to be reblocked. For multidimensional data an
+    identical weighting is applied to the data for each variable.
 
 Returns
 -------
@@ -54,6 +61,9 @@ References
 ----------
 .. [1]  "Error estimates on averages of correlated data", H. Flyvbjerg and
    H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
+.. [2]  "Exponential smoothing weighted correlations", F. Pozzi, T. Matteo,
+   and T. Aste, Eur. Phys. J. B. 85, 175 (2012).
+.. [3]  www.analyticalgroup.com/download/weighted_variance.pdf
 '''
 
     if ddof is not None and ddof != int(ddof):
@@ -62,15 +72,26 @@ References
         ddof = 1
 
     if data.ndim > 2:
-        raise RuntimeError("do not understand how to reblock in more than two dimensions.")
+        raise RuntimeError("do not understand how to reblock in more than two dimensions")
 
     if data.ndim == 1 or data.shape[0] == 1:
         rowvar = 1
         axis = 0
+        nvar = 1
     elif rowvar:
+        nvar = data.shape[0]
         axis = 1
     else:
+        nvar = data.shape[1]
         axis = 0
+
+    if weights is not None:
+        if weights.ndim > 1:
+            raise RuntimeError("cannot handle multidimensional weights")
+        if weights.shape[0] != data.shape[axis]:
+            raise RuntimeError("incompatible numbers of weights and samples")
+        if numpy.any(weights < 0):
+            raise RuntimeError("cannot handle negative weights")
 
     iblock = 0
     stats = []
@@ -78,25 +99,67 @@ References
     block_tuple = collections.namedtuple('BlockTuple', block_tuple_fields)
     while data.shape[axis] >= 2:
 
-        mean = numpy.array(numpy.mean(data, axis=axis))
-        cov = numpy.cov(data, rowvar=rowvar, ddof=ddof)
-        if cov.ndim < 2:
-            std_err = numpy.array(numpy.sqrt(cov / data.shape[axis]))
-        else:
-            std_err = numpy.sqrt(cov.diagonal() / data.shape[axis])
         data_len = data.shape[axis]
-        std_err_err =  std_err * 1.0/(numpy.sqrt(2*(data_len-ddof)))
-        std_err_err = numpy.array(std_err_err)
+
+        if weights is None:
+            nsamp = data_len
+            mean = numpy.array(numpy.mean(data, axis=axis))
+            cov = numpy.cov(data, rowvar=rowvar, ddof=ddof)
+        else:
+            mean, tot_weight = numpy.array(
+                numpy.average(data, axis=axis, weights=weights, returned=True)
+            )
+            if nvar > 1:
+                tot_weight = tot_weight[0]
+            norm_wts = weights/tot_weight
+            nsamp = 1.0/numpy.sum(norm_wts*norm_wts)
+            bessel = nsamp/(nsamp - ddof)
+            if data.ndim == 1:
+                ds = data - mean
+                cov = bessel*numpy.sum(norm_wts*ds*ds)
+            else:
+                ds = numpy.empty((nvar, data_len))
+                for i in range(nvar):
+                    d = data[i, :] if rowvar else data[:, i]
+                    ds[i] = d - mean[i]
+                cov = numpy.zeros((nvar, nvar))
+                for i in range(nvar):
+                    for j in range(i, nvar):
+                        cov[i, j] = bessel*numpy.sum(norm_wts*ds[i]*ds[j])
+            if nvar > 1:
+                cov = cov + cov.T - numpy.diag(cov.diagonal())
+
+        if cov.ndim < 2:
+            std_err = numpy.array(numpy.sqrt(cov/nsamp))
+        else:
+            std_err = numpy.sqrt(cov.diagonal()/nsamp)
+        std_err_err = numpy.array(std_err/(numpy.sqrt(2*(nsamp - ddof))))
         stats.append(
-                block_tuple(iblock, data_len, mean, cov, std_err, std_err_err)
-                    )
+            block_tuple(iblock, data_len, mean, cov, std_err, std_err_err)
+        )
 
         # last even-indexed value (ignore the odd one, if relevant)
-        last = 2*int(data.shape[axis]/2)
-        if data.ndim == 1 or not rowvar:
-            data = (data[:last:2] + data[1:last:2]) / 2
+        half = int(data.shape[axis]/2)
+        last = 2*half
+        if weights is None:
+            if data.ndim == 1 or not rowvar:
+                data = (data[:last:2] + data[1:last:2])/2
+            else:
+                data = (data[:,:last:2] + data[:,1:last:2])/2
         else:
-            data = (data[:,:last:2] + data[:,1:last:2]) / 2
+            weights = norm_wts[:last:2] + norm_wts[1:last:2]
+            if data.ndim == 1:
+                wt_data = data[:last]*norm_wts[:last]
+                data = (wt_data[::2] + wt_data[1::2])/weights
+            elif rowvar:
+                wt_data = data[:,:last]*norm_wts[:last]
+                data = (wt_data[:,::2] + wt_data[:,1::2])/weights
+            else:
+                idxs = 'ij,i->ij'
+                wt_data = numpy.einsum(idxs, data[:last], norm_wts[:last])
+                summed_wt_data = wt_data[::2] + wt_data[1::2]
+                data = numpy.einsum(idxs, summed_wt_data, 1.0/weights)
+
         iblock += 1
 
     return stats
