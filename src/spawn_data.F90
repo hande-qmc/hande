@@ -3,7 +3,7 @@ module spawn_data
 ! Generic structures for storing and manipulating spawned particles (ie
 ! psips/excips in FCIQMC/CCMC/DMQMC calculations).
 
-use const, only: p, dp, i0
+use const, only: p, dp, int_s
 use, intrinsic :: iso_c_binding, only: c_int
 
 implicit none
@@ -33,7 +33,7 @@ type spawn_t
     integer :: element_len
     ! Not actually allocated but actually points to an internal store for
     ! efficient communication.
-    integer(i0), pointer :: sdata(:,:)
+    integer(int_s), pointer :: sdata(:,:)
     ! When creating spawned particles, a particle residing on one processor can
     ! create a particle which needs to reside on any other processor.  To make
     ! the communication easy, we assign different sections of sdata to particles
@@ -58,8 +58,8 @@ type spawn_t
     ! Time spent doing MPI communication.
     real(dp) :: comm_time = 0.0_dp
     ! Private storage arrays for communication.
-    integer(i0), pointer, private :: sdata_recvd(:,:)
-    integer(i0), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
+    integer(int_s), pointer, private :: sdata_recvd(:,:)
+    integer(int_s), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
 end type spawn_t
 
 interface annihilate_wrapper_spawn_t
@@ -325,7 +325,7 @@ contains
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
         integer :: i, ierr
-        integer(i0), pointer :: tmp_data(:,:)
+        integer(int_s), pointer :: tmp_data(:,:)
 
         real(dp) :: t1
         ! Must be compressed by now, if using threads.
@@ -372,15 +372,15 @@ contains
 
         ! Send data.
         ! Each element contains element_len integers (of type
-        ! i0/mpi_det_integer) so we need to change the counts and
+        ! int_s/mpi_sdata_integer) so we need to change the counts and
         ! displacements accordingly:
         send_counts = send_counts*spawn%element_len
         receive_counts = receive_counts*spawn%element_len
         send_displacements = spawn%head_start(thread_id,:nprocs-1)*spawn%element_len
         receive_displacements = receive_displacements*spawn%element_len
 
-        call MPI_AlltoAllv(spawn%sdata, send_counts, send_displacements, mpi_det_integer, &
-                           spawn%sdata_recvd, receive_counts, receive_displacements, mpi_det_integer, &
+        call MPI_AlltoAllv(spawn%sdata, send_counts, send_displacements, mpi_sdata_integer, &
+                           spawn%sdata_recvd, receive_counts, receive_displacements, mpi_sdata_integer, &
                            MPI_COMM_WORLD, ierr)
 
         spawn%comm_time = spawn%comm_time + MPI_WTIME() - t1
@@ -482,7 +482,7 @@ contains
 
         integer :: islot, ipart, k, pop_sign
         integer, allocatable :: events(:)
-        integer(i0), allocatable :: initiator_pop(:)
+        integer(int_s), allocatable :: initiator_pop(:)
         integer, parameter :: thread_id = 0
         logical :: new_slot
 
@@ -504,7 +504,7 @@ contains
                     events(ipart) = 0
                 else
                     initiator_pop(ipart) = 0
-                    events(ipart) = sign(1_i0,spawn%sdata(ipart,k))
+                    events(ipart) = sign(1_int_s,spawn%sdata(ipart,k))
                 end if
             end do
             compress: do
@@ -536,7 +536,7 @@ contains
                     spawn%sdata(spawn%flag_indx,islot) = 0
                     do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
                         if (initiator_pop(ipart) /= 0 .and.  &
-                                sign(1_i0,spawn%sdata(ipart,islot)) == sign(1_i0,initiator_pop(ipart)) ) then
+                                sign(1_int_s,spawn%sdata(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
                             ! Keep all.  We should still annihilate psips of
                             ! opposite sign from non-initiator events(spawn%bit_str_len+1).
                         else if (abs(events(spawn%bit_str_len+1)) > 1) then

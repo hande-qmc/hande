@@ -119,7 +119,7 @@ integer :: info_size
 ! a) determinants
 integer(i0), allocatable, target :: walker_dets(:,:) ! (basis_length, walker_length)
 ! b) walker population
-integer, allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
+integer(int_p), allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
 ! c) Walker information.  This contains:
 ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the

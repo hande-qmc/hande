@@ -305,7 +305,7 @@ contains
                 max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
 
                 ! Find cumulative population...
-                call cumulative_population(walker_population, tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
+                call cumulative_population(int(walker_population), tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
@@ -570,7 +570,7 @@ contains
                     cdet%f = walker_dets(:,pos)
                     cluster_population = walker_population(1,pos)
                 else
-                    call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population, allowed)
+                    call collapse_cluster(walker_dets(:,pos), int(walker_population(1,pos)), cdet%f, cluster_population, allowed)
                     if (.not.allowed) exit
                 end if
                 if (walker_population(1,pos) <= initiator_population) cdet%initiator_flag = 1

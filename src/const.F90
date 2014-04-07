@@ -43,6 +43,12 @@ integer, parameter :: int_p = selected_int_kind(15)
 integer, parameter :: int_p = selected_int_kind(15)
 #endif
 
+#ifdef POP_SIZE == 64 || DET_SIZE == 64
+integer, parameter :: int_s = selected_int_kind(15)
+#else
+integer, parameter :: int_s = selected_int_kind(6)
+#endif
+
 ! Number of bits in an integer of type i0.
 ! Note that pgi 10.3 has a bug are returns 32 if bit_size(int(0,i0)) is used.
 integer, parameter :: i0_length = bit_size(0_i0)

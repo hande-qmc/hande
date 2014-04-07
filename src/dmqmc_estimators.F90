@@ -630,7 +630,7 @@ contains
        use spawning, only: create_spawned_particle_rdm
 
        integer, intent(in) :: idet, iteration
-       integer, intent(in) :: walker_pop(sampling_size)
+       integer(int_p), intent(in) :: walker_pop(sampling_size)
        type(excit), intent(in) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
        integer :: irdm, isym, ireplica
@@ -962,8 +962,8 @@ contains
             ! Loop over the total population of RDM psips on this processor.
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
 
-                excit_level = get_excitation_level(rdm_lists(irdm)%sdata(1:rdm_bl,i),&
-                    rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i))
+                excit_level = get_excitation_level(int(rdm_lists(irdm)%sdata(1:rdm_bl,i), i0), &
+                    int(rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i), i0) )
 
                 ! Renormalise the psip populations to correct for the importance sampling procedure used.
                 unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*dmqmc_accumulated_probs_old(excit_level)

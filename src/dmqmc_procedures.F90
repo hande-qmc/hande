@@ -603,11 +603,11 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0
+        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
         ! indices 1 to total_basis_length store the bitstring.
-        qmc_spawn%sdata(:(total_basis_length),qmc_spawn%head(0,iproc_spawn)) = f_new
+        qmc_spawn%sdata(:(total_basis_length),qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
         ! The final index stores the number of psips created.
-        qmc_spawn%sdata((total_basis_length)+particle_type,qmc_spawn%head(0,iproc_spawn)) = nspawn
+        qmc_spawn%sdata((total_basis_length)+particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_diagonal_density_matrix_particle
 
@@ -701,7 +701,7 @@ contains
                 else
                     sign_factor = +1
                 end if
-                nspawn = sign(nspawn,walker_population(ireplica,idet)*sign_factor)
+                nspawn = sign(int(nspawn),int(walker_population(ireplica,idet))*sign_factor)
                 ! Update the population on this determinant.
                 walker_population(ireplica,idet) = walker_population(ireplica,idet) + nspawn
                 ! Update the total number of walkers.

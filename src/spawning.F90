@@ -516,9 +516,9 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_spawned_particle
 
@@ -582,13 +582,13 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
         ! initiator_flag: flag indicating the staturs of the parent determinant.
         !     initiator_flag = 0 indicates the parent is an initiator.
         !     initiator_flag = 1 indicates the parent is not an initiator.
-        spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
+        spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(cdet%initiator_flag, int_s)
 
     end subroutine create_spawned_particle_initiator
 
@@ -659,9 +659,9 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
         end if
 
@@ -734,13 +734,13 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
             ! initiator_flag: flag indicating the staturs of the parent determinant.
             !     initiator_flag = 0 indicates the parent is an initiator.
             !     initiator_flag = 1 indicates the parent is not an initiator.
-            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
+            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(cdet%initiator_flag, int_s)
 
         end if
 
@@ -813,9 +813,9 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
         end if
 
@@ -888,13 +888,13 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
             ! initiator_flag: flag indicating the staturs of the parent determinant.
             !     initiator_flag = 0 indicates the parent is an initiator.
             !     initiator_flag = 1 indicates the parent is not an initiator.
-            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
+            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(cdet%initiator_flag, int_s)
 
         end if
 
@@ -975,9 +975,9 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new_tot, int_s)
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_spawned_particle_density_matrix
 
@@ -1066,9 +1066,9 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new_tot, int_s)
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_spawned_particle_half_density_matrix
 
@@ -1167,9 +1167,9 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new_tot, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
         end if
 
@@ -1258,9 +1258,9 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
-            spawn%sdata(total_basis_length+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new_tot, int_s)
+            spawn%sdata(total_basis_length+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
         end if
 
@@ -1356,7 +1356,7 @@ contains
             if (hit) then
                 associate(indx => ht%table(pos%ientry,pos%islot))
                     ! Direct annihilation/cancellation in spawning array.
-                    spawn%sdata(bsl+particle_type,indx) = spawn%sdata(bsl+particle_type,indx) + nspawn
+                    spawn%sdata(bsl+particle_type,indx) = spawn%sdata(bsl+particle_type,indx) + int(nspawn, int_s)
                 end associate
             else
                 ! Move to the next position in the spawning array.
@@ -1378,9 +1378,9 @@ contains
                 associate(indx => ht%table(pos%ientry,pos%islot))
                     ! Set info in spawning array.
                     ! Zero it as not all fields are set.
-                    spawn%sdata(:,indx) = 0
-                    spawn%sdata(:bsl,indx) = f_new_tot
-                    spawn%sdata(bsl+particle_type,indx) = nspawn
+                    spawn%sdata(:,indx) = 0_int_s
+                    spawn%sdata(:bsl,indx) = int(f_new_tot, int_s)
+                    spawn%sdata(bsl+particle_type,indx) = int(nspawn, int_s)
                 end associate
             end if
 

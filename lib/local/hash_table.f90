@@ -57,14 +57,14 @@ module hash_table
         integer, allocatable :: table(:,:) ! (0:entries, 0:nslots-1)
 
         ! data_label(:,i) is the i-th (unique) data item being stored.
-        integer(i0), pointer :: data_label(:,:) => null() ! (:,nentries*nslots)
+        integer(int_s), pointer :: data_label(:,:) => null() ! (:,nentries*nslots)
         ! Using an internal array for data label (ie allocation) or pointing to
         ! an external array?
         logical, private :: extern_data_label = .false.
 
-        ! payload(:,i) is the 'payload' or information associated with
+        ! payload(:,i) i$ the 'payload' or information associated with
         ! the i-th data item in data_label.
-        integer, pointer :: payload(:,:) => null() ! (:,nentries*nslots)
+        integer(int_p), pointer :: payload(:,:) => null() ! (:,nentries*nslots)
         ! Using an internal array for payload (ie allocation) or pointing to
         ! an external array?
         logical, private :: extern_payload = .false.
@@ -139,8 +139,8 @@ module hash_table
             use checking, only: check_allocate
 
             integer, intent(in) :: nslots, nentries, data_len, payload_len, max_free_reqd, seed
-            integer(i0), intent(in), optional, target :: data_label(:,:)
-            integer, intent(in), optional, target :: payload(:,:)
+            integer(int_s), intent(in), optional, target :: data_label(:,:)
+            integer(int_p), intent(in), optional, target :: payload(:,:)
             type(hash_table_t), intent(out) :: ht
 
             integer :: ierr
@@ -393,7 +393,7 @@ module hash_table
             use hashing, only: murmurhash_bit_string
 
             type(hash_table_t), intent(in) :: ht
-            integer(i0), intent(in) :: label(:)
+            integer(int_s), intent(in) :: label(:)
             type(hash_table_pos_t), intent(out) :: pos
             logical, intent(out) :: hit
 
@@ -438,8 +438,8 @@ module hash_table
             !        See error codes defined at module-level.
 
             type(hash_table_t), intent(inout) :: ht
-            integer(i0), intent(in) :: labels(:,:)
-            integer(i0), intent(in) :: payload(:,:)
+            integer(int_s), intent(in) :: labels(:,:)
+            integer(int_p), intent(in) :: payload(:,:)
             integer, intent(out) :: err_code
 
             type(hash_table_pos_t) :: pos

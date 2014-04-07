@@ -90,7 +90,7 @@ contains
         call check_allocate('qmc_spawn%sdata',ndets,ierr)
         ! Zero these.
         walker_population = 0
-        qmc_spawn%sdata = 0
+        qmc_spawn%sdata = 0_int_s
 
         allocate(shift(1), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
@@ -173,7 +173,7 @@ contains
             do icycle = 1, ncycles
 
                 ! Zero spawning arrays.
-                qmc_spawn%sdata = 0
+                qmc_spawn%sdata = 0_int_s
 
                 ! Number of spawning attempts that will be made.
                 ! convert to integer from integer(lint).  should only be doing
@@ -289,17 +289,17 @@ contains
                 ! Flip child sign.
                 if (walker_population(1,iwalker) < 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + int(nspawn, int_s)
                 else
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - int(nspawn, int_s)
                 end if
             else
                 ! Same sign as parent.
                 if (walker_population(1,iwalker) > 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + int(nspawn, int_s)
                 else
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - int(nspawn, int_s)
                 end if
             end if
 
@@ -371,7 +371,7 @@ contains
         ! determinants for both the main and spawned lists so it just amounts to
         ! adding the two arrays together,
 
-        walker_population = walker_population + qmc_spawn%sdata
+        walker_population = walker_population + int(qmc_spawn%sdata, int_p)
 
     end subroutine simple_annihilation
 

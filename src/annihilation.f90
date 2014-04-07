@@ -78,13 +78,13 @@ contains
         istart = 1
         iend = tot_walkers
         do i = 1, qmc_spawn%head(thread_id,0)
-            f = qmc_spawn%sdata(:total_basis_length,i)
+            f = int(qmc_spawn%sdata(:total_basis_length,i), i0)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
                 old_pop = walker_population(:,pos)
                 walker_population(:,pos) = walker_population(:,pos) + &
-                    qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i)
+                    int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i), int_p)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -128,7 +128,7 @@ contains
         istart = 1
         iend = tot_walkers
         do i = 1, qmc_spawn%head(thread_id,0)
-            f = qmc_spawn%sdata(:total_basis_length,i)
+            f = int(qmc_spawn%sdata(:total_basis_length,i), i0)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 old_pop = walker_population(:,pos)
@@ -138,7 +138,7 @@ contains
                     if (walker_population(ipart,pos) /= 0) then
                         ! Annihilate!
                         walker_population(ipart,pos) = walker_population(ipart,pos) + &
-                                                        qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i)
+                                                        int(qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i), int_p)
                     else if (.not.btest(qmc_spawn%sdata(qmc_spawn%flag_indx,i),ipart+qmc_spawn%bit_str_len)) then
                         ! Keep only if from a multiple spawning event or an
                         ! initiator.
@@ -146,7 +146,7 @@ contains
                         ! does not have a bit set in corresponding to 2**pop_indx, 
                         ! where pop_indx is the index of this walker type in the
                         ! qmc_spawn%sdata array (i.e. ipart+bit_str_len).
-                        walker_population(ipart,pos) = qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i)
+                        walker_population(ipart,pos) = int(qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i), int_p)
                     end if
                 end do
                 ! The change in the number of particles is a bit subtle.
@@ -174,7 +174,7 @@ contains
                         ! onto unoccupied determinants.
                         ! note that the number of particles (nparticles) was not
                         ! updated at the time of spawning, so doesn't change.
-                        qmc_spawn%sdata(ipart,i-nannihilate) = 0
+                        qmc_spawn%sdata(ipart,i-nannihilate) = 0_int_s
                     else
                         ! keep!
                         qmc_spawn%sdata(ipart,i-nannihilate) = qmc_spawn%sdata(ipart,i)
@@ -267,7 +267,7 @@ contains
         iend = tot_walkers
         do i = qmc_spawn%head(thread_id,0), 1, -1
             ! spawned det is not in the main walker list
-            call binary_search(walker_dets, qmc_spawn%sdata(:total_basis_length,i), istart, iend, hit, pos)
+            call binary_search(walker_dets, int(qmc_spawn%sdata(:total_basis_length,i), i0), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
@@ -279,8 +279,8 @@ contains
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
-            walker_dets(:,k) = qmc_spawn%sdata(:total_basis_length,i)
-            walker_population(:,k) = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i)
+            walker_dets(:,k) = int(qmc_spawn%sdata(:total_basis_length,i), i0)
+            walker_population(:,k) = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i), int_p)
             nparticles = nparticles + abs(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i))
             walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))

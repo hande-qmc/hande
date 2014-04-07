@@ -201,7 +201,8 @@ contains
                     hf_signed_pop = hf_signed_pop + abs(walker_population(2,i))
                 end if
             else
-                hf_signed_pop = hf_signed_pop + sign(1, walker_population(1,i))*walker_population(2,i)
+                hf_signed_pop = hf_signed_pop + sign(1_lint, int(walker_population(1,i), lint))*&
+                                                 int(walker_population(2,i), lint)
             end if
         end do
 

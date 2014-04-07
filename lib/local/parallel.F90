@@ -78,6 +78,13 @@ integer, parameter :: mpi_det_integer = MPI_INTEGER
 integer, parameter :: mpi_det_integer = MPI_INTEGER8
 #endif
 
+! MPI data type for 32-bit or 64-bit integers used in the sdata component of spawn_t.
+#if POP_SIZE == 64 || DET_SIZE == 64
+integer, parameter :: mpi_sdata_integer = MPI_INTEGER8
+#else
+integer, parameter :: mpi_sdata_integer = MPI_INTEGER
+#endif
+
 ! MPI data type for reals of single/double precision (as chosen at
 ! compile-time).
 #ifdef SINGLE_PRECISION

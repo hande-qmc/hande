@@ -122,7 +122,7 @@ contains
 
                         if ( time > t_barrier ) exit
 
-                        call ct_spawn(rng, sys, cdet, walker_data(1,idet), walker_population(1,idet), &
+                        call ct_spawn(rng, sys, cdet, walker_data(1,idet), int(walker_population(1,idet)), &
                                       R, nspawned, connection)
 
                         if (nspawned /= 0) then
@@ -174,7 +174,7 @@ contains
                         ! processor proc_id.  Need to advance them to the barrier.
 
                         ! decode the spawned walker bitstring
-                        cdet%f = qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id))
+                        cdet%f = int(qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id)), i0)
                         K_ii = sc0_ptr(sys, cdet%f) - H00
                         call decoder_ptr(sys, cdet%f,cdet)
 
@@ -395,9 +395,9 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0
-        qmc_spawn%sdata(:basis_length,qmc_spawn%head(0,iproc_spawn)) = f_new
-        qmc_spawn%sdata(particle_type,qmc_spawn%head(0,iproc_spawn)) = nspawn
+        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
+        qmc_spawn%sdata(:basis_length,qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
+        qmc_spawn%sdata(particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
         spawn_times(qmc_spawn%head(0,iproc_spawn)) = spawn_time
 
     end subroutine create_spawned_particle_ct
