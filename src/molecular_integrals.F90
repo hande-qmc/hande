@@ -536,21 +536,19 @@ contains
         if (i < a) then
             ii = a
             aa = i
-            ia = tri_ind(basis_fns(a)%spatial_index, basis_fns(i)%spatial_index)
         else
             ii = i
             aa = a
-            ia = tri_ind(basis_fns(i)%spatial_index, basis_fns(a)%spatial_index)
         end if
         if (j < b) then
             jj = b
             bb = j
-            jb = tri_ind(basis_fns(b)%spatial_index, basis_fns(j)%spatial_index)
         else
             jj = j
             bb = b
-            jb = tri_ind(basis_fns(j)%spatial_index, basis_fns(b)%spatial_index)
         end if
+        ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
+        jb = tri_ind(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
 
         ! Comine ia and jb in a unique way.
         ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
