@@ -343,6 +343,8 @@ contains
                 end if
             case('TAU')
                 call readf(tau)
+            case('TAU_SEARCH')
+                tau_search = .true.
             case('INITIAL_SHIFT')
                 call readf(initial_shift)
                 ! We assume the user is sensible/knows what he/she is doing if
@@ -733,6 +735,7 @@ contains
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_rdm_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)

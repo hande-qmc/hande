@@ -380,6 +380,13 @@ contains
 
             end do
 
+            ! Calculate the number of warnings which occurred only on the last iteration
+            bloom_stats%nwarnings_last = bloom_stats%nwarnings - bloom_stats%nwarnings_last 
+            if(bloom_stats%nwarnings_last > 0 .and. tau_search .and. .not. vary_shift) then
+                call decrease_tau()
+            end if
+            bloom_stats%nwarnings_last = bloom_stats%nwarnings
+
             call end_report_loop(ireport, nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit

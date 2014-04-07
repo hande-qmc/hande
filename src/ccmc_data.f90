@@ -35,6 +35,8 @@ end type cluster_t
 type bloom_stats_t
     ! The number of blooms.
     integer :: nwarnings = 0
+    ! The number of blooms on the last itteration.
+    integer :: nwarnings_last = 0
     ! The maxium number of excips spawned by a bloom.
     integer :: max_bloom = 0
     ! The total number of excips spawned by a bloom.

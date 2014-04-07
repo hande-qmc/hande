@@ -24,6 +24,9 @@ integer :: beta_loops = 100
 ! timestep
 real(p) :: tau
 
+! Are we doing a timestep search
+logical :: tau_search = .false.
+
 ! Array sizes
 ! If these are < 0, then the values represent the number of MB to be used to
 ! store the main walker and spawned walker data respectively.
@@ -431,6 +434,8 @@ type fciqmc_bloom_stats_t
     integer :: n_bloom = 3
     ! The number of warnings which have occured
     integer :: nwarnings = 0
+    ! The number of bloom warnings on the last cycle
+    integer :: nwarnings_last = 0
 end type fciqmc_bloom_stats_t
 
 contains

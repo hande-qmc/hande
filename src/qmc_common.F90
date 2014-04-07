@@ -537,4 +537,18 @@ contains
 
     end subroutine end_mc_cycle
 
+    subroutine decrease_tau()
+
+        ! If a bloom occurs decrease the timestep  
+        use utils, only: int_fmt
+        use parallel
+        tau = 0.95*tau
+        if(parent) then
+            write(6, '(1X, "# Warning timestep changed to: ",f7.5)'), tau
+        end if
+#ifdef PARALLEL
+        call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
+#endif
+    end subroutine decrease_tau
+
 end module qmc_common
