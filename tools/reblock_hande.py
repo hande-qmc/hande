@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''reblock_hande.py [options] file_1 file_2 ... file_N
 
 Run a reblocking analysis on HANDE QMC output files.  CCMC and FCIQMC
