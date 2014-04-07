@@ -218,6 +218,23 @@ contains
         allocate(hs_f0(basis_length), stat=ierr)
         call check_allocate('hs_f0', size(hs_f0), ierr)
 
+        ! Set the real encoding shift, depending on whether 32 or 64-bit integers
+        ! are being used.
+        if (real_amplitudes) then
+            if (bit_size(int_p) == 64) then
+                ! Allow a maximum population of 2^32, and a minimum fractional
+                ! part of 2^-31.
+                real_encoding = 31
+            else if (bit_size(int_p) == 32) then
+                ! Allow a maximum population of 2^20, and a minimum fractional
+                ! part of 2^-11.
+                real_encoding = 11
+            end if
+        else
+            ! Allow no fractional part for walker populations.
+            real_encoding = 0
+        end if
+
         ! --- Initial walker distributions ---
         ! Note occ_list could be set and allocated in the input.
 

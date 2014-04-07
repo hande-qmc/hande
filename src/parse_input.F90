@@ -216,6 +216,9 @@ contains
             case('REPLICA_TRICKS')
                 replica_tricks = .true.
 
+            case('REAL_AMPLITUDES')
+                real_amplitudes = .true.
+
             ! DMQMC expectation values to be calculated
             case('DMQMC_FULL_RENYI_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_full_r2
@@ -684,6 +687,7 @@ contains
             end if
             call mpi_bcast(sys%lattice%lattice, sys%lattice%ndim*sys%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
+        call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)

@@ -50,6 +50,12 @@ integer :: initiator_cas(2) = (/ 0,0 /)
 ! Population above which a determinant is an initiator.
 integer :: initiator_population = 3
 
+! True if allowing non-integer values for psip populations.
+logical :: real_amplitudes = .false.
+! Real amplitudes can be any multiple of 2**(-real_encoding). They are
+! encoded as integers by multiplying them by 2**(real_encoding).
+integer :: real_encoding
+
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless

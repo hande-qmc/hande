@@ -33,6 +33,16 @@ integer, parameter :: i0 = selected_int_kind(15)
 integer, parameter :: c_i0 = c_int64_t
 #endif
 
+! int_p determines whether 32 or 64 integers are used for walker_population.
+#if POP_SIZE == 32
+integer, parameter :: int_p = selected_int_kind(6)
+#elif POP_SIZE == 64
+integer, parameter :: int_p = selected_int_kind(15)
+#else
+! Use 64-bit integers by default.
+integer, parameter :: int_p = selected_int_kind(15)
+#endif
+
 ! Number of bits in an integer of type i0.
 ! Note that pgi 10.3 has a bug are returns 32 if bit_size(int(0,i0)) is used.
 integer, parameter :: i0_length = bit_size(0_i0)
