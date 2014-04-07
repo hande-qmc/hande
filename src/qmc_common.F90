@@ -292,6 +292,32 @@ contains
 
     end subroutine cumulative_population
 
+    function decide_nattempts(rng, int_population) result(nattempts)
+
+        ! Decide how many spawning attempts should be made from a determinant
+        ! with the input population. If this population is not an integer, it
+        ! must be stochastically rounded up or down in an unbiased manner.
+
+        ! In:
+        !    rng: random number generator.
+        !    int_population: population of determinant, in its shifted integer
+        !    form.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: int_population
+        real(dp) :: real_population
+        real(dp) :: r, pextra
+        integer :: nattempts
+
+        real_population = real(int_population, dp)/2**bit_shift
+        nattempts = int(real_population)
+        pextra = real_population - nattempts
+        if (pextra > get_rand_close_open(rng)) nattempts = nattempts + 1
+
+    end function decide_nattempts
+
     subroutine load_balancing_report()
 
         ! Print out a load-balancing report when run in parallel showing how

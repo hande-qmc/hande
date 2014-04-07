@@ -44,7 +44,7 @@ contains
         type(det_info) :: cdet
         type(dSFMT_t) :: rng
 
-        integer :: nspawned, ndeath
+        integer :: nspawned, ndeath, nattempts_current_det
         type(excit) :: connection
         real(p) :: hmatel
 
@@ -95,7 +95,9 @@ contains
                     ! Is this determinant an initiator?
                     call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)
 
-                    do iparticle = 1, abs(walker_population(1,idet))
+                    nattempts_current_det = decide_nattempts(rng, walker_population(1,idet))
+
+                    do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
                         call spawner_ptr(rng, sys, qmc_spawn, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
