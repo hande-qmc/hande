@@ -225,7 +225,7 @@ contains
 
             call end_mc_cycle(ndeath, nattempts)
 
-            call direct_annihilation(sys, initiator_approximation)
+            call direct_annihilation(sys, rng, initiator_approximation)
 
             call end_report_loop(ireport, nparticles_old, t1, soft_exit)
 

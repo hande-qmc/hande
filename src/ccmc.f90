@@ -362,7 +362,7 @@ contains
                 !$omp end do
                 !$omp end parallel
 
-                call direct_annihilation(sys, initiator_approximation)
+                call direct_annihilation(sys, rng(it), initiator_approximation)
 
                 ! Ok, this is fairly non-obvious.
                 ! Because we sample the projected estimator (and normalisation

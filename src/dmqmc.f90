@@ -200,7 +200,7 @@ contains
 
                     ! Perform the annihilation step where the spawned walker list is merged with the
                     ! main walker list, and walkers of opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, initiator_approximation)
+                    call direct_annihilation(sys, rng, initiator_approximation)
 
                     ! If doing importance sampling *and* varying the weights of the trial function, call a routine
                     ! to update these weights and alter the number of psips on each excitation level accordingly.

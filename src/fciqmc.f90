@@ -111,7 +111,7 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, initiator_approximation)
+                call direct_annihilation(sys, rng, initiator_approximation)
 
                 call end_mc_cycle(ndeath, nattempts)
 

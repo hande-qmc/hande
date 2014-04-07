@@ -489,7 +489,7 @@ contains
         nparticles_tot = nparticles_temp
 #endif
 
-        call direct_annihilation(sys, initiator_approximation)
+        call direct_annihilation(sys, rng, initiator_approximation)
 
     end subroutine create_initial_density_matrix
 

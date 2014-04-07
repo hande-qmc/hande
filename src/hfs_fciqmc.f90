@@ -211,7 +211,7 @@ contains
                 ! total.
                 rspawn = rspawn + spawning_rate(ndeath, nattempts)
 
-                call direct_annihilation(sys, initiator_approximation)
+                call direct_annihilation(sys, rng, initiator_approximation)
 
             end do
 
