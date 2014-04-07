@@ -37,7 +37,6 @@ contains
 
         integer(lint) :: slot_pop(0:size(proc_map)-1)
         integer(lint) :: slot_list(0:size(proc_map)-1)
-        integer(lint) :: procs_pop(0:nprocs-1)
 
         integer, allocatable :: donors(:), receivers(:)
         integer, allocatable :: d_rank(:), d_index(:)
@@ -57,14 +56,13 @@ contains
         call MPI_AllReduce(slot_pop, slot_list, size(proc_map), MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
         ! Find population per processor, store in procs_pop.
-        procs_pop(:nprocs-1) = nparticles_proc(1,:nprocs)
-        pop_av = sum(procs_pop(:nprocs-1))/nprocs
+        pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
 
         up_thresh = pop_av + int(real(pop_av*perc_imbalance))
         low_thresh = pop_av - int(real(pop_av*perc_imbalance))
 
         ! Find donor/receiver processors.
-        call find_processors(procs_pop, up_thresh, low_thresh, proc_map, receivers, donors, d_map_size)
+        call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, proc_map, receivers, donors, d_map_size)
         ! Number of processors we can donate from.
         d_siz = size(donors)
         ! Number of processors we can donate to.
@@ -81,7 +79,7 @@ contains
         call insertion_rank_int(d_map, d_rank, 0)
 
         ! Attempt to modify proc map to get more even population distribution.
-        call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
+        call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, nparticles_proc(1,:nprocs))
 
     end subroutine do_load_balancing
 
