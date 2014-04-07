@@ -891,11 +891,13 @@ The following options are valid for FCIQMC calculations.
     Optional integer.
 
     Write out information required for restarting an FCIQMC calculation to
-    a file called restart.x, where x is *id* if *id* is given.  Otherwise 
-    x is chosen to be the smallest integer possible such that restart.x does
-    not exist in the calculation directory.
+    a file called HANDE.RS.x.py, where x is *id* if *id* is given and y is 
+    the processor rank. If x is not given, it is chosen to be the smallest 
+    integer possible such that HANDE.RS.x.py does not exist in the calculation 
+    directory.
 
-    Restart is currently only implemented in serial.
+    Restarting a parallel run with a different number of processors is not 
+    currently supported.
 
     Warning: these files can become very large, so care should be taken when
     not re-using the same filenames.
@@ -932,10 +934,10 @@ The following options are valid for FCIQMC calculations.
 **restart** [*id*]
     Optional integer.
 
-    Restart an FCIQMC calculation using a previous restart file, restart.x,
-    where x is a non-negative integer.  If *id* is given, then the file
-    restart.id is used, otherwise x is chosen to be the largest integer such
-    that restart.x exists and restart.x+1 does not.
+    Restart an FCIQMC calculation using a previous restart file, HANDE.RS.x.py,
+    where x is a non-negative integer and y is the processor rank.  If *id* is 
+    given, x is set to *id*; otherwise x is chosen to be the largest integer 
+    such that HANDE.RS.x.py exists and HANDE.RS.x+1.py does not.
 
     The restart file does not contain system information such as the U and
     T parameter, lattice vectors, number of electrons or if the walker
