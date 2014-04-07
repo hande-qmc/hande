@@ -519,7 +519,7 @@ contains
         logical, intent(in) :: uhf
         integer, intent(in) :: i, j, a, b
 
-        integer :: ia, jb, ii, jj, aa, bb, swap
+        integer :: ia, jb, ii, jj, aa, bb
 
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
@@ -532,36 +532,35 @@ contains
         ! during the permutations so we know which spin channel the integral is
         ! in.
 
-        ! CARE: swap uses bits to detect which indices have been permuted.
-        swap = 0
-
         ! Require i>=a and j>=b.
         if (i < a) then
             ii = a
             aa = i
-            swap = swap + 1
+            ia = tri_ind(basis_fns(a)%spatial_index, basis_fns(i)%spatial_index)
         else
             ii = i
             aa = a
+            ia = tri_ind(basis_fns(i)%spatial_index, basis_fns(a)%spatial_index)
         end if
         if (j < b) then
             jj = b
             bb = j
-            swap = swap + 2
+            jb = tri_ind(basis_fns(b)%spatial_index, basis_fns(j)%spatial_index)
         else
             jj = j
             bb = b
+            jb = tri_ind(basis_fns(j)%spatial_index, basis_fns(b)%spatial_index)
         end if
-        ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
-        jb = tri_ind(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
 
-        ! Combine ia and jb in a unique way.  Note we must handle the case where ia and
-        ! jb are identical (ie ia and jb both involve one spin orbital from each of two
-        ! spatial orbitals) in order to get a single spin channel for all permutations..
+        ! Comine ia and jb in a unique way.
+        ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
+        ! for example.
         ! Hence find overall index after applying 3-fold permutation symmetry.
-        if (ia < jb .or. (ia == jb .and. ii < jj)) then
+        ! NOTE: this test *only* looks at the spatial indices so it is not
+        ! sufficient for detecting the case where (e.g.) i and j are different
+        ! spin-orbitals with the same spatial index.
+        if (ia < jb) then
             indx%indx = tri_ind(jb, ia)
-            swap = swap + 4
         else
             indx%indx = tri_ind(ia, jb)
         end if
@@ -569,40 +568,16 @@ contains
         ! Find spin channel.
         if (uhf) then
 
-            select case(swap)
-            case(0)
-                ! No swaps: <ij|ab>.
-                ii = i
-                jj = j
-            case(1)
-                ! Swapped i,a: <aj|ib>.
-                ii = a
-                jj = j
-            case(2)
-                ! Swapped j,b: <ib|aj>.
-                ii = i
-                jj = b
-            case(3)
-                ! Swapped i,a and j,b: <ab|ij>.
-                ii = a
-                jj = b
-            case(4)
-                ! Swapped (i,a) with (j,b): <ji|ba>.
-                ii = j
-                jj = i
-            case(5)
-                ! Swapped i,a and then (i,a) with (j,b): <ja|bi>.
-                ii = j
-                jj = a
-            case(6)
-                ! Swapped j,b and then (i,a) with (j,b): <bi|ja>.
-                ii = b
-                jj = i
-            case(7)
-                ! Swapped i,a and j,b and then (i,a) with (j,b): <ba|ji>.
-                ii = b
-                jj = a
-            end select
+            ! Due to overall index depending on spatial indices, we must check
+            ! the spin indices to determine whether there's another flip in
+            ! order to obtain the unique set of indices for this integral.
+            ! Must compare the spin indices to get the right spin channel (for
+            ! reasons given above).
+            if ( ii < jj .or. ( ii == jj .and. aa < bb) ) then
+                aa = ii ! don't need aa and bb any more; use as scratch space
+                ii = jj
+                jj = aa
+            end if
 
             if (basis_fns(ii)%ms == -1) then
                 if (basis_fns(jj)%ms == -1) then
