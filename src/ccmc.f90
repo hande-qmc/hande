@@ -207,7 +207,8 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
-        integer(lint) :: iattempt, nattempts, nparticles_old(sampling_size)
+        integer(lint) :: iattempt, nattempts
+        real(dp) :: nparticles_old(sampling_size)
         type(det_info), allocatable :: cdet(:)
 
         integer :: nspawned, ndeath, ierr

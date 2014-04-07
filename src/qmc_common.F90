@@ -302,7 +302,8 @@ contains
         use parallel
         use utils, only: int_fmt
 
-        integer(lint) :: load_data(sampling_size, nprocs)
+        real(dp) :: load_data(sampling_size, nprocs)
+        integer(lint) :: load_data_lint(nprocs)
         integer :: i, ierr
         real(dp) :: comms(nprocs)
         character(4) :: lfmt
@@ -312,24 +313,23 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, sampling_size, mpi_integer8, load_data, sampling_size, &
-                            mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, sampling_size, mpi_real8, load_data, sampling_size, &
+                            mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 do i = 1, sampling_size
                     if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
-                    lfmt = int_fmt(maxval(load_data(i,:)),0)
-                    write (6,'(1X,"Min # of particles on a processor:",6X,'//lfmt//')') minval(load_data(i,:))
-                    write (6,'(1X,"Max # of particles on a processor:",6X,'//lfmt//')') maxval(load_data(i,:))
+                    write (6,'(1X,"Min # of particles on a processor:",6X,es12.6)') minval(load_data(i,:))
+                    write (6,'(1X,"Max # of particles on a processor:",6X,es12.6)') maxval(load_data(i,:))
                     write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
             call mpi_gather(tot_walkers, 1, mpi_integer8, load_data(1,:), 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                lfmt = int_fmt(maxval(load_data(1,:)),0)
-                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data(1,:))
-                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data(1,:))
-                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data(1,:)), p)/nprocs
+                lfmt = int_fmt(maxval(load_data_lint),0)
+                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_lint)
+                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_lint)
+                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_lint), p)/nprocs
                 write (6,'()')
                 write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s.")') minval(comms)
                 write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s.")') maxval(comms)
@@ -360,7 +360,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer :: idet
-        integer(lint) :: ntot_particles(sampling_size)
+        real(dp) :: ntot_particles(sampling_size)
         type(det_info) :: cdet
         real(p):: hmatel
         type(excit) :: D0_excit
@@ -388,7 +388,7 @@ contains
 #ifdef PARALLEL
         call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
-        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         ! TODO: HFS, DMQMC quantities
 #else
@@ -456,11 +456,11 @@ contains
             ! ct algorithm: kinda poorly defined.
             ! ccmc: number of excitor clusters we'll randomly generate and
             ! attempt to spawn from.
-            nattempts = nparticles(1)
+            nattempts = nint(nparticles(1))
         else
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
-            nattempts = 2*nparticles(1)
+            nattempts = nint(2*nparticles(1))
         end if
 
     end subroutine init_mc_cycle
@@ -489,7 +489,7 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         integer, intent(in) :: ireport
-        integer(lint), intent(inout) :: ntot_particles(sampling_size)
+        real(dp), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
 

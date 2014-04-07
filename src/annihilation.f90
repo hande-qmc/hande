@@ -73,7 +73,8 @@ contains
         use basis, only: total_basis_length
         use search, only: binary_search
 
-        integer :: i, pos, k, istart, iend, nannihilate, old_pop(sampling_size)
+        integer :: i, pos, k, istart, iend, nannihilate
+        integer(int_p) :: old_pop(sampling_size)
         integer(i0) :: f(total_basis_length)
         logical :: hit
         integer, parameter :: thread_id = 0
@@ -96,7 +97,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + abs(walker_population(:,pos)) - abs(old_pop(:))
+                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),dp)/2**bit_shift
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -159,7 +160,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + abs(walker_population(:,pos)) - abs(old_pop)
+                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop), dp)/2**bit_shift
                 ! One more entry to be removed from the qmc_spawn%sdata array.
                 nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
@@ -316,7 +317,7 @@ contains
             k = pos + i - nremoved - 1
             walker_dets(:,k) = int(qmc_spawn%sdata(:total_basis_length,i), i0)
             walker_population(:,k) = spawned_pop
-            nparticles = nparticles + abs(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i))
+            nparticles = nparticles + real(abs(spawned_pop),dp)/2**bit_shift
             walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then

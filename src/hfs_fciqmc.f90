@@ -56,7 +56,8 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
-        integer(lint) :: nattempts, nparticles_old(sampling_size)
+        integer(lint) :: nattempts
+        real(dp) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
 
         integer :: nspawned, ndeath
@@ -108,7 +109,7 @@ contains
                 ! itself into a Hellmann-Feynman particle.  Each H-F particle
                 ! gets a chance to spawn and a chance to clone/die.
                 ! This is used for accounting later, not for controlling the spawning.
-                nattempts = 4*nparticles(1) + 2*nparticles(2)
+                nattempts = nint(4*nparticles(1) + 2*nparticles(2))
 
                 ! Reset death counter.
                 ndeath = 0

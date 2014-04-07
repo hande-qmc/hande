@@ -39,7 +39,8 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle
-        integer(lint) :: nattempts, nparticles_old(sampling_size)
+        integer(lint) :: nattempts
+        real(dp) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
         type(dSFMT_t) :: rng
 

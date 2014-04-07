@@ -428,8 +428,8 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(lint), intent(out) :: nparticles_tot(sampling_size)
-        integer(lint) :: nparticles_temp(sampling_size)
+        real(dp), intent(out) :: nparticles_tot(sampling_size)
+        real(dp) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
         integer :: npsips, npsips_this_proc
         real(dp) :: total_size, sector_size
@@ -441,7 +441,7 @@ contains
         if (nint(D0_population)-(nprocs*int(D0_population/nprocs)) > iproc) &
               npsips_this_proc = npsips_this_proc + 1
 
-        nparticles_temp = 0
+        nparticles_temp = 0.0_dp
 
         do ireplica = 1, sampling_size
             select case(sys%system)
@@ -461,12 +461,12 @@ contains
                         r = get_rand_close_open(rng)
                         if (r < prob) npsips = npsips + 1
 
-                        nparticles_temp(ireplica) = nparticles_temp(ireplica) + int(npsips, lint)
+                        nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, dp)
                         call random_distribution_heisenberg(rng, nel, npsips, ireplica)
                     end do
                 else
                     ! This process will always create excatly D0_population psips.
-                    nparticles_tot = nint(D0_population, lint)
+                    nparticles_tot = nint(real(D0_population, dp))
 
                     call random_distribution_heisenberg(rng, sys%nel, npsips_this_proc, ireplica)
                 end if
@@ -479,7 +479,7 @@ contains
         if (all_sym_sectors) then
             ! Finally, count the total number of particles across all processes.
 #ifdef PARALLEL
-            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_INTEGER8, MPI_SUM, &
+            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_REAL8, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
             nparticles_tot = nparticles_temp
@@ -670,7 +670,8 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer :: idet, ireplica, excit_level, nspawn, sign_factor, old_population
+        integer :: idet, ireplica, excit_level, nspawn, sign_factor
+        integer(int_p) :: old_population
         real(p) :: new_factor
         real(dp) :: rand_num, prob
 
@@ -705,8 +706,8 @@ contains
                 ! Update the population on this determinant.
                 walker_population(ireplica,idet) = walker_population(ireplica,idet) + nspawn
                 ! Update the total number of walkers.
-                nparticles(ireplica) = nparticles(ireplica) - old_population + &
-                        abs(walker_population(ireplica,idet))
+                nparticles(ireplica) = nparticles(ireplica) - real(old_population + &
+                        abs(walker_population(ireplica,idet)),dp)
             end do
         end do
 

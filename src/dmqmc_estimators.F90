@@ -36,9 +36,9 @@ contains
         use hash_table, only: reset_hash_table
         use parallel
 
-        integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
+        real(dp), intent(inout) :: ntot_particles_old(sampling_size)
         integer, intent(in) :: ireport, nreplica
-        integer(lint) :: ntot_particles(sampling_size)
+        real(dp) :: ntot_particles(sampling_size)
         integer :: irdm, ireplica, i
 
 #ifdef PARALLEL

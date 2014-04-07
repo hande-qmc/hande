@@ -400,10 +400,10 @@ contains
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
-        forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
+        forall (i=1:sampling_size) nparticles(i) = sum(abs( real(walker_population(i,:tot_walkers),dp)/2**bit_shift ))
         ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
-        call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
         tot_nparticles = nparticles
 #endif

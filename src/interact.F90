@@ -95,7 +95,7 @@ contains
                             ! Change timestep.
                             call readf(tau)
                         case('VARYSHIFT_TARGET')
-                            call readli(target_particles)
+                            call readf(target_particles)
                             if (target_particles < 0) then
                                 ! start varying the shift now.
                                 vary_shift = .true.

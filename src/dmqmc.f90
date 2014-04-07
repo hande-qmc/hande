@@ -46,7 +46,7 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
-        integer(lint) :: nparticles_old(sampling_size)
+        real(dp) :: nparticles_old(sampling_size)
         integer(lint) :: nattempts
         integer :: nel_temp
         type(det_info) :: cdet1, cdet2
@@ -86,7 +86,7 @@ contains
             qmc_spawn%head = qmc_spawn%head_start
             tot_walkers = 0
             shift = initial_shift
-            nparticles = 0
+            nparticles = 0.0_dp
             if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
             if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
             if (dmqmc_find_weights) excit_distribution = 0
@@ -119,7 +119,7 @@ contains
                     ! Each particle and each end gets to attempt to
                     ! spawn onto a connected determinant and a chance
                     ! to die/clone.
-                    nattempts = 4*nparticles(1)*sampling_size
+                    nattempts = nint(4*nparticles(1)*sampling_size)
 
                     ! Reset death counter.
                     ndeath = 0

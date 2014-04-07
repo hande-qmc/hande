@@ -38,7 +38,8 @@ contains
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer :: nspawned, ndeath, ireport, idet
-        integer(lint) :: nattempts, nparticles_old(sampling_size)
+        integer(lint) :: nattempts
+        real(dp) :: nparticles_old(sampling_size)
         integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
         integer, allocatable :: current_pos(:,:) ! (nthreads, 0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag

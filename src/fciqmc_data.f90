@@ -31,7 +31,7 @@ integer :: walker_length
 integer :: spawned_walker_length
 
 ! Number of particles before which varyshift mode is turned on.
-integer(lint) :: target_particles = 10000
+real(dp) :: target_particles = 10000.0_dp
 
 ! Don't bother renormalising generation probabilities; instead allow forbidden
 ! excitations to be generated and then rejected.
@@ -108,9 +108,9 @@ integer :: tot_walkers
 ! Updated during death and annihilation and merging.
 ! The first element is the number of normal (Hamiltonian) particles.
 ! Subsequent elements are the number of Hellmann--Feynamnn particles.
-integer(lint), allocatable :: nparticles(:) ! (sampling_size)
+real(dp), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
-integer(lint), allocatable, target :: tot_nparticles(:) ! (sampling_size)
+real(dp), allocatable, target :: tot_nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -545,7 +545,7 @@ contains
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
-        integer(lint), intent(in) :: ntot_particles(:)
+        real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical :: comment
         integer :: mc_cycles, i, j
@@ -588,16 +588,16 @@ contains
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
-            write (6, '(2X,i11)', advance='no') ntot_particles(1)
+            write (6, '(2X,es11.2)', advance='no') ntot_particles(1)
         else if (doing_calc(hfs_fciqmc_calc)) then
-            write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
+            write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,es11.2)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
                                              D0_hf_population, &
                                              ntot_particles
         else
-            write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,i11)', advance='no') &
+            write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,es11.2)', advance='no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              ntot_particles

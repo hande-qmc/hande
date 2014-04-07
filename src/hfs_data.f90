@@ -2,7 +2,7 @@ module hfs_data
 
 ! Module for storing data specific to Hellmann--Feynman sampling.
 
-use const, only: p, i0, lint
+use const, only: p, i0, lint, dp
 
 implicit none
 
@@ -59,6 +59,6 @@ real(p) :: O00
 ! where
 !     N_i is the Hamiltonian population on i 
 !     \tilde{N}_i is the Hellmann--Feynman population on i 
-integer(lint) :: hf_signed_pop
+real(dp) :: hf_signed_pop
 
 end module hfs_data
