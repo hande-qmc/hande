@@ -1,0 +1,19 @@
+[DEFAULT]
+include_f = -I $${HDF5_ROOT-/usr}/include
+
+[main]
+fc = mpif90
+cc = mpicc
+cxx = mpiCC
+ld = mpif90
+cppflags = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=32 -DDISABLE_LANCZOS
+libs = -lscalapack -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -luuid
+f90_module_flag = -J
+
+[opt]
+fflags = %(include_f)s -O3
+cxxflags = -O3
+
+[dbg]
+fflags = %(include_f)s -g -fbacktrace -fbounds-check
+cxxflags = -g -fbacktrace
