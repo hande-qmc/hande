@@ -11,20 +11,19 @@ contains
     subroutine do_load_balancing(proc_map)
 
         ! Main subroutine in module, carries out load balancing as follows:
-        ! 1. Work out if we want to perform load balancing.
-        ! 2. If we do then:
+        ! 1. If doing load balancing then:
         !   * Find processors which have above/below average population
         !   * For processors with above average populations enter slots from slot_list
         !   * into smaller array which is then ranked according to population.
         !   * Attempt to move these slots to processors with below average population.
-        ! 3. Once proc_map is modified so that its entries contain the new locations
+        ! 2. Once proc_map is modified so that its entries contain the new locations
         !   of of donor slots, we then add these determinants to spawned walker list so
         !   that they can be moved to their new processor.
-        ! 4. Set load_tag to be other than one to prevent another call this report loop
+        ! 3. Set load_tag to be other than one to prevent another call this report loop
 
         ! In/Out:
         ! proc_map: array which maps determinants to processors
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor
+        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs) = processor
 
         use parallel
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
@@ -67,9 +66,9 @@ contains
         ! Find donor/receiver processors.
         call find_processors(procs_pop, up_thresh, low_thresh, proc_map, receivers, donors, d_map_size)
         ! Number of processors we can donate from.
-        d_siz=size(donors)
+        d_siz = size(donors)
         ! Number of processors we can donate to.
-        r_siz=size(receivers)
+        r_siz = size(receivers)
         ! Smaller list of donor slot populations.
         allocate(d_map(d_map_size))
         ! Contains ranked version of d_map.
@@ -82,7 +81,7 @@ contains
         call insertion_rank_int(d_map, d_rank, 0)
 
         ! Attempt to modify proc map to get more even population distribution.
-        call redistribute_slots( d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
+        call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
 
     end subroutine do_load_balancing
 
@@ -155,12 +154,12 @@ contains
 
         do i = 1, size(d_map)
             ! Loop over receivers.
-            pos=d_rank(i)
+            pos = d_rank(i)
             do j = 1, size(receivers)
                 ! Try to add this to below average population.
                 new_pop = d_map(pos) + procs_pop(receivers(j))
                 ! Modify donor population.
-                donor_pop = procs_pop(proc_map(d_index(pos)))-d_map(pos)
+                donor_pop = procs_pop(proc_map(d_index(pos))) - d_map(pos)
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (donor_pop .ge. low_thresh)  then
                     ! Changing processor population.
@@ -253,10 +252,10 @@ contains
         do i = 0, size(procs_pop) - 1
             if (procs_pop(i) .lt. low_thresh) then
                 tmp_rec(j) = i
-                j = j+1
+                j = j + 1
             else if (procs_pop(i) .gt. up_thresh) then
                 tmp_don(k) = i
-                k = k+1
+                k = k + 1
             end if
         end do
 
