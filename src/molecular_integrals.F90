@@ -536,21 +536,19 @@ contains
         if (i < a) then
             ii = a
             aa = i
-            ia = tri_ind(basis_fns(a)%spatial_index, basis_fns(i)%spatial_index)
         else
             ii = i
             aa = a
-            ia = tri_ind(basis_fns(i)%spatial_index, basis_fns(a)%spatial_index)
         end if
         if (j < b) then
             jj = b
             bb = j
-            jb = tri_ind(basis_fns(b)%spatial_index, basis_fns(j)%spatial_index)
         else
             jj = j
             bb = b
-            jb = tri_ind(basis_fns(j)%spatial_index, basis_fns(b)%spatial_index)
         end if
+        ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
+        jb = tri_ind(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
 
         ! Comine ia and jb in a unique way.
         ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
@@ -558,7 +556,7 @@ contains
         ! Hence find overall index after applying 3-fold permutation symmetry.
         ! NOTE: this test *only* looks at the spatial indices so it is not
         ! sufficient for detecting the case where (e.g.) i and j are different
-        ! spin-orbitals with the same spatial index.
+        ! spin-orbitals with the same spatial index (see below).
         if (ia < jb) then
             indx%indx = tri_ind(jb, ia)
         else
@@ -571,9 +569,11 @@ contains
             ! Due to overall index depending on spatial indices, we must check
             ! the spin indices to determine whether there's another flip in
             ! order to obtain the unique set of indices for this integral.
-            ! Must compare the spin indices to get the right spin channel (for
-            ! reasons given above).
-            if ( ii < jj .or. ( ii == jj .and. aa < bb) ) then
+            ! If ia and jb are different, then the choice of ordering is trivial.
+            ! If ia = jb (ie i,a and j,b both have one spin orbital from each of a pair
+            ! of spatial orbitals) then we need to make an arbitrary choice as to which
+            ! permutation to look up.
+            if ( ia < jb .or. ( ia == jb .and. ii < jj) ) then
                 aa = ii ! don't need aa and bb any more; use as scratch space
                 ii = jj
                 jj = aa
