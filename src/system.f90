@@ -183,6 +183,9 @@ type sys_t
     integer :: sym0 = 1
     ! Index of highest symmetry (i.e. nsym+(sym0-1))
     integer :: sym_max
+
+    ! Used to offset the Lz values when encoding into a symmetry
+    integer :: Lz_offset
     ! System uses Bloch states for basis functions (i.e. hub_k and UEG)?
     logical :: momentum_space = .false.
 

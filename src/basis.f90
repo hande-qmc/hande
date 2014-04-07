@@ -46,6 +46,9 @@ type basis_fn
     !     sp_eigv is the single-particle energy read in from the FCIDUMP file
     !     (e.g. Hartree--Fock or Kohn--Sham eigenvalue).
     real(p) :: sp_eigv
+    !     Store the Lz of the an orbital when reading in from an FCIDUMP
+    !     This is later encoded in the symmetry information.
+    integer :: lz=0
 end type basis_fn
 
 ! Store of information about the (spin) basis functions of the system.
@@ -105,7 +108,7 @@ integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, basis_length)
 
 contains
 
-    subroutine init_basis_fn(sys, b, l, sym, ms)
+    subroutine init_basis_fn(sys, b, l, sym, lz, ms)
 
         ! Initialise a variable of type basis_fn.
         ! In:
@@ -119,6 +122,9 @@ contains
         !            position of basis function within the crystal cell in units
         !            of the primitive lattice vectors.
         !    sym (optional): symmetry label of the basis function.  Used only in
+        !        systems with point group symmetry (i.e. read in from an FCIDUMP
+        !        file).
+        !    lz  (optional): lz of the basis function.  Used only in
         !        systems with point group symmetry (i.e. read in from an FCIDUMP
         !        file).
         !    ms (optional): set spin of an electron occupying the basis function.
@@ -138,7 +144,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(basis_fn), intent(out) :: b
         integer, intent(in), optional  :: l(sys%lattice%ndim)
-        integer, intent(in), optional  :: sym, ms
+        integer, intent(in), optional  :: sym, ms, lz
         integer :: ierr
 
         if (.not.associated(b%l)) then
@@ -157,6 +163,7 @@ contains
 
         if (present(sym)) b%sym = sym
 
+        if (present(lz)) b%lz = b%lz
         if (present(ms)) b%ms = ms
 
     end subroutine init_basis_fn

@@ -384,7 +384,7 @@ contains
 
         use basis, only: basis_length, basis_fns, bit_lookup, nbasis
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns
+        use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns, pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -405,7 +405,7 @@ contains
         select case(spin)
         case(-2)
             do isyma = sys%sym0, sys%sym_max
-                isymb = cross_product_pg_sym(isyma, sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, sym))
                 if ( symunocc(1,isyma) > 0 .and. &
                         ( symunocc(1,isymb) > 1 .or. &
                         ( symunocc(1,isymb) == 1 .and. (isyma /= isymb))) ) then

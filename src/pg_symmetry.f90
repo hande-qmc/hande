@@ -57,8 +57,8 @@ use const
 implicit none
 
 ! Following the above discussion, the totally symmetric representation is given
-! by the null bit string.
-integer, parameter :: gamma_sym = 0
+! by the null bit string (with some Lz symmetry which is added later)
+integer :: gamma_sym = 0
 
 ! nbasis_sym(i) gives the number of (spin) basis functions in the i-th symmetry,
 ! where i is the bit string describing the irreducible representation.
@@ -76,6 +76,11 @@ integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sym0:sym_max)
 ! indicates no more basis functions with the given spin and spatial symmetries.
 integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0:sym_max)
 
+integer :: pg_mask= 7  !The 3 symmetry generators.
+
+!Lz symmetry is stored in the higher bits of the symmetry.
+integer :: Lz_max=10  !This is set to I functions
+integer :: Lz_mask=63*8 !We allow -32...31 as our range for Lz in the bits above the Abelian symmetry
 contains
 
     subroutine init_pg_symmetry(sys)
@@ -96,6 +101,7 @@ contains
 
         integer :: i, ierr, ims, ind
 
+        integer :: maxsym, maxLz, maxpg
         ! molecular systems use symmetry indices starting from 0.
         sys%sym0 = 0
 
@@ -107,7 +113,19 @@ contains
         ! spanned by the wavefunctions.
         ! +1 comes from the fact that the basis_fn%sym gives the bit string
         ! representation.
-        sys%nsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
+
+        maxsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
+        maxLz = maxval(basis_fns(:)%lz)
+       
+        pg_mask=maxsym-1
+
+        !The maximum encountered value of Lz will be maxLz*3 (and the minimum the negative of this)
+        !We allocate bits for this above the pointgroup symmetry bits.
+        Lz_mask=(2**ceiling(log(real(3*maxLz+1))/log(2.0))-1)*maxsym
+        !In Lz world, 0 means Lz=-3*maxLz, so Lz_offset means Lz=0
+        sys%Lz_offset=3*maxLz
+        gamma_sym=sys%Lz_offset
+        sys%nsym = (6*maxLz+1)*maxsym
         sys%sym_max = sys%nsym-1
 
         allocate(nbasis_sym(0:sys%nsym-1), stat=ierr)
@@ -119,7 +137,8 @@ contains
         nbasis_sym_spin = 0
 
         do i = 1, nbasis
-
+            !Encode the Lz into the symmetry.
+            basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz+sys%Lz_offset)*maxsym
             nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
             basis_fns(i)%sym_index = nbasis_sym(basis_fns(i)%sym)
 
@@ -218,7 +237,7 @@ contains
         integer :: sym_ij
         integer, intent(in) :: i, j
 
-        sym_ij = ieor(basis_fns(i)%sym, basis_fns(j)%sym)
+        sym_ij = cross_product_pg_sym(basis_fns(i)%sym, basis_fns(j)%sym)
 
     end function cross_product_pg_basis
 
@@ -234,10 +253,21 @@ contains
         integer :: sym_ij
         integer, intent(in) :: sym_i, sym_j
 
-        sym_ij = ieor(sym_i, sym_j)
-
+        sym_ij = ior(iand(ieor(sym_i, sym_j),pg_mask), &
+                iand(sym_i,Lz_mask)+iand(sym_j,Lz_mask))
     end function cross_product_pg_sym
 
+
+    elemental function pg_sym_conj(sym) result(rsym)
+        integer, intent(in) :: sym
+        integer :: rsym
+
+        !Take the symmetry conjugate.  The point group part is the same.
+        !The Lz needs to become -Lz, but
+        rsym  = ior(iand(sym,pg_mask), &
+                iand(-iand(sym,Lz_mask),Lz_mask))
+
+    end function pg_sym_conj
     elemental function is_gamma_irrep_pg_sym(sym) result(is_gamma)
 
         ! In:
