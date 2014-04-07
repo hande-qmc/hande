@@ -286,7 +286,7 @@ contains
         endp = spawn%head(thread_id, iproc)
         if (endp > start) then
             start = start + 1
-            call qsort(spawn%sdata, endp, spawn%bit_str_len, start)
+            call qsort(spawn%sdata(:,start:endp), endp-start+1, spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
             if (tinitiator) then

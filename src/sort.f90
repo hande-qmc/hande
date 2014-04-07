@@ -20,7 +20,7 @@ contains
 
 !--- In-place quicksort.  Uses the sample code in Numerical Recipies as a base.  ---
 
-    pure subroutine qsort_i0_list(list, head, nsort, tail)
+    pure subroutine qsort_i0_list(list, head, nsort)
 
         ! Sort a 2D array of i0 integers.
 
@@ -31,7 +31,6 @@ contains
         ! In/Out:
         !    list: 2D array of i0 integers.  Sorted on output.
         ! In:
-        !    tail (optional): sort list beginning from tail.
         !    head (optional): sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
         !        entire array.
@@ -43,7 +42,7 @@ contains
         use bit_utils, only: operator(.bitstrgt.)
 
         integer(i0), intent(inout) :: list(:,:)
-        integer, intent(in), optional ::  head, nsort, tail
+        integer, intent(in), optional ::  head, nsort
 
         ! Threshold.  When a sublist gets to this length, switch to using
         ! insertion sort to sort the sublist.
@@ -65,12 +64,7 @@ contains
         end if
 
         nstack = 0
-
-        if (present(tail)) then
-            lo = tail
-        else
-            lo = 1
-        end if
+        lo = 1
         if (present(head)) then
             hi = head
         else
@@ -82,7 +76,7 @@ contains
             if (hi - lo < switch_threshold) then
                 do j = lo + 1, hi
                     tmp = list(:,j)
-                    do i = j - 1, lo, -1
+                    do i = j - 1, 1, -1
                         if (tmp(1:ns) .bitstrgt. list(1:ns,i)) exit
                         list(:,i+1) = list(:,i)
                     end do
