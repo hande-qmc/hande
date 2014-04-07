@@ -210,7 +210,7 @@ contains
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
-        use fciqmc_data, only: replica_tricks, renyi_2, sampling_size
+        use fciqmc_data, only: replica_tricks, renyi_2, sampling_size, bit_shift, spawn_cutoff
         use fciqmc_data, only: spawned_rdm_length, rdm_spawn
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
@@ -273,8 +273,8 @@ contains
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
-                call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
-                                 spawned_rdm_length, 27, rdm_spawn(i)%spawn)
+                call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., spawned_rdm_length, &
+                                     spawn_cutoff, bit_shift, 27, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  This should
                 ! give an ok performance...
                 ! We will only use the first 2*rdm_basis_length elements for the

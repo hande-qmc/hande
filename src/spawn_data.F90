@@ -3,7 +3,7 @@ module spawn_data
 ! Generic structures for storing and manipulating spawned particles (ie
 ! psips/excips in FCIQMC/CCMC/DMQMC calculations).
 
-use const, only: p, dp, int_s
+use const, only: p, dp, int_s, int_p
 use, intrinsic :: iso_c_binding, only: c_int
 
 implicit none
@@ -31,6 +31,13 @@ type spawn_t
     integer :: flag_indx
     ! Total number of elements in each spawned object/element (ie len(sdata(:,1)). 
     integer :: element_len
+    ! The minimum allowed population of a spawning event. Any events with
+    ! with populations below this threshold should be stochastically rounded
+    ! up to it or down to zero.
+    ! During creation of a spawn_t instance, cutoff is multiplied by
+    ! 2^(bit_shift) and rounded up to nearest integer, and then stored in
+    ! this format.
+    integer(int_p) :: cutoff
     ! Not actually allocated but actually points to an internal store for
     ! efficient communication.
     integer(int_s), pointer :: sdata(:,:)
@@ -71,7 +78,7 @@ contains
 
 !--- Initialisation/finalisation ---
 
-    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, hash_seed, spawn)
+    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, cutoff, bit_shift, hash_seed, spawn)
 
         ! Allocate and initialise a spawn_t object.
 
@@ -81,6 +88,8 @@ contains
         !    flag: whether or not to append an element for storing flags (ie
         !       additional information in bit string format) for the data stored
         !       for each entry.
+        !    cutoff: The size of the minimum spawning event allowed.
+        !    bit_shift: The number of bits to shift the cutoff by when encoding it.
         ! Out:
         !    spawn: initialised object for storing, communicating and
         !       annihilation spawned particles.
@@ -88,7 +97,8 @@ contains
         use parallel, only: nthreads, nprocs
         use checking, only: check_allocate
 
-        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed
+        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift
+        real(p) :: cutoff
         logical, intent(in) :: flag
         type(spawn_t), intent(out) :: spawn
 
@@ -106,6 +116,7 @@ contains
         spawn%array_len = array_len
         spawn%hash_seed = hash_seed
         spawn%comm_time = 0.0_dp
+        spawn%cutoff = int(ceiling(cutoff*2**(bit_shift), int_p))
 
         allocate(spawn%store1(spawn%element_len, spawn%array_len), stat=ierr)
         call check_allocate('spawn%store1', size(spawn%store1), ierr)

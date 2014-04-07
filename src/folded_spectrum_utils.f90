@@ -108,7 +108,7 @@ contains
 
     end subroutine create_cdet_excit
 
-    subroutine fs_spawner(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine fs_spawner(rng, sys, spawn, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a daughter or granddaughter determinant according to
         ! the folded spectrum algorithm for a given system
@@ -117,6 +117,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    spawn: spawn_t object to which the spawned particle will be added.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -142,6 +143,7 @@ contains
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(spawn_t), intent(in) :: spawn
         type(det_info), intent(in) :: cdet
         integer, intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr

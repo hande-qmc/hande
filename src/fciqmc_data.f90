@@ -52,9 +52,12 @@ integer :: initiator_population = 3
 
 ! True if allowing non-integer values for psip populations.
 logical :: real_amplitudes = .false.
-! Real amplitudes can be any multiple of 2**(-real_encoding). They are
-! encoded as integers by multiplying them by 2**(real_encoding).
-integer :: real_encoding
+! Real amplitudes can be any multiple of 2**(-bit_shift). They are
+! encoded as integers by multiplying them by 2**(bit_shift).
+integer :: bit_shift
+! The minimum amplitude of a spawning event which can be added to
+! the spawned list.
+real(dp) :: spawn_cutoff
 
 !--- Energy data ---
 

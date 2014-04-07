@@ -224,15 +224,15 @@ contains
             if (bit_size(int_p) == 64) then
                 ! Allow a maximum population of 2^32, and a minimum fractional
                 ! part of 2^-31.
-                real_encoding = 31
+                bit_shift = 31
             else if (bit_size(int_p) == 32) then
                 ! Allow a maximum population of 2^20, and a minimum fractional
                 ! part of 2^-11.
-                real_encoding = 11
+                bit_shift = 11
             end if
         else
             ! Allow no fractional part for walker populations.
-            real_encoding = 0
+            bit_shift = 0
         end if
 
         ! --- Initial walker distributions ---
@@ -586,7 +586,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         ! 0. In general, use the default spawning routine.
-        spawner_ptr => spawn
+        spawner_ptr => spawn_standard
 
         ! 1. Set system-specific procedure pointers.
         !     * projected energy estimator
