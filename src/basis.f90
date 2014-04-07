@@ -163,7 +163,7 @@ contains
 
         if (present(sym)) b%sym = sym
 
-        if (present(lz)) b%lz = b%lz
+        if (present(lz)) b%lz = lz
         if (present(ms)) b%ms = ms
 
     end subroutine init_basis_fn
@@ -229,7 +229,7 @@ contains
             write (6,'()')
             write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
         case(read_in)
-            write (6,'(/,1X,a5,2X,a7,X,a8,X,a9,2X)', advance='no') 'index','spatial','symmetry','sym_index'
+            write (6,'(/,1X,a5,2X,a7,X,a8,X,a9,X,a2,3X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
         end select
 
         if (sys%system /= read_in) then
@@ -277,6 +277,7 @@ contains
         !        the quantum numbers are printed.
 
         use system
+        use point_group_symmetry, only: pg_mask
 
         type(sys_t), intent(in) :: sys
         type(basis_fn), intent(in) :: b
@@ -304,7 +305,7 @@ contains
         end if
 
         if (sys%system == read_in) then
-            write (io, '(i5,2(3X,i5),X)',advance='no') b%spatial_index, b%sym, b%sym_index
+            write (io, '(i5,3(3X,i5),X)',advance='no') b%spatial_index, iand(b%sym,pg_mask), b%sym_index,b%lz
         else
             write (io,'(1X,"(")', advance='no')
             write (io,'(i3)',advance='no') b%l(1)

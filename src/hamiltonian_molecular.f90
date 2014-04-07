@@ -128,6 +128,7 @@ contains
         use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
                                        one_e_h_integrals, coulomb_integrals
         use system, only: sys_t
+        use basis, only: basis_fns
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
@@ -136,18 +137,23 @@ contains
 
         integer :: iel
 
-        ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+        !Check that this excitation is symmetry allowed
+        if(basis_fns(i)%sym/=basis_fns(a)%sym) then
+            hmatel=0
+        else
 
-        hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
+            ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
-        do iel = 1, sys%nel
-            if (occ_list(iel) /= i) &
-                hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
-                                - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
-        end do
+            hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
 
-        if (perm) hmatel = -hmatel
+            do iel = 1, sys%nel
+                if (occ_list(iel) /= i) &
+                    hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
+                                    - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
+            end do
 
+            if (perm) hmatel = -hmatel
+        endif
     end function slater_condon1_mol
 
     pure function slater_condon1_mol_excit(sys, occ_list, i, a, perm) result(hmatel)
@@ -222,18 +228,26 @@ contains
 
         use molecular_integrals, only: get_two_body_int_mol, coulomb_integrals
         use system, only: sys_t
+        use basis, only: basis_fns
+        use point_group_symmetry, only: cross_product_pg_sym
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        ! < D | H | D_{ij}^{ab} > = < ij || ab >
+        !Chem Sym
+        if(cross_product_pg_sym(basis_fns(i)%sym,basis_fns(j)%sym)  &
+            ==cross_product_pg_sym(basis_fns(a)%sym,basis_fns(b)%sym)) then
+         
+            ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = get_two_body_int_mol(coulomb_integrals, i, j, a, b) - get_two_body_int_mol(coulomb_integrals, i, j, b, a)
+            hmatel = get_two_body_int_mol(coulomb_integrals, i, j, a, b) - get_two_body_int_mol(coulomb_integrals, i, j, b, a)
 
-        if (perm) hmatel = -hmatel
-
+            if (perm) hmatel = -hmatel
+        else
+            hmatel=0
+        endif
     end function slater_condon2_mol
 
     elemental function slater_condon2_mol_excit(sys, i, j, a, b, perm) result(hmatel)

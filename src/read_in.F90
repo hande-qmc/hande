@@ -185,6 +185,7 @@ contains
         ! This is changed to the number of spin-orbitals active the calculation
         ! later on.
 
+
         if (sys%read_in%uhf) then
             nbasis = norb
             rhf_fac = 1
@@ -683,8 +684,8 @@ contains
                 basis_arr(i)%sp_eigv = sp_eigv(rank)
             else
                 ! Need to initialise both up- and down-spin basis functions.
-                call init_basis_fn(sys, basis_arr(2*i), sym=orbsym(rank)-1, ms=-1)
-                call init_basis_fn(sys, basis_arr(2*i-1), sym=orbsym(rank)-1, ms=1)
+                call init_basis_fn(sys, basis_arr(2*i), sym=orbsym(rank)-1, lz=lz(rank), ms=-1)
+                call init_basis_fn(sys, basis_arr(2*i-1), sym=orbsym(rank)-1, lz=lz(rank), ms=1)
                 basis_arr(2*i-1)%spatial_index = i
                 basis_arr(2*i)%spatial_index = i
                 basis_arr(2*i-1)%sp_eigv = sp_eigv(rank)

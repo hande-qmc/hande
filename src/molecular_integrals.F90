@@ -268,6 +268,7 @@ contains
 
         logical, intent(in) :: uhf
 
+        write(6, *) "Gamma sym is ", gamma_sym
         call init_one_body_int_store(uhf, gamma_sym, one_e_h_integrals)
         call init_two_body_int_store(uhf, gamma_sym, coulomb_integrals)
 
@@ -354,7 +355,7 @@ contains
         !       by symmetry but is larger than depsilon.
 
         use basis, only: basis_fns
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
         use system
 
         use const, only: depsilon
@@ -373,7 +374,7 @@ contains
 
         ierr = 0
 
-        sym = cross_product_pg_basis(i, j)
+        sym = cross_product_pg_sym(pg_sym_conj(basis_fns(i)%sym), basis_fns(j)%sym)
         sym = cross_product_pg_sym(sym, store%op_sym)
 
         if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
@@ -624,7 +625,7 @@ contains
         !       by symmetry but is larger than depsilon.
 
         use basis, only: basis_fns
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
 
         use const, only: depsilon
         use errors, only: warning
@@ -644,7 +645,7 @@ contains
         ! Should integral be non-zero by symmetry?
         sym_ij = cross_product_pg_basis(i, j)
         sym_ab = cross_product_pg_basis(a, b)
-        sym = cross_product_pg_sym(sym_ij, sym_ab)
+        sym = cross_product_pg_sym(pg_sym_conj(sym_ij), sym_ab)
         sym = cross_product_pg_sym(sym, store%op_sym)
 
         if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &

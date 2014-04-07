@@ -81,6 +81,8 @@ integer :: pg_mask= 7  !The 3 symmetry generators.
 !Lz symmetry is stored in the higher bits of the symmetry.
 integer :: Lz_max=10  !This is set to I functions
 integer :: Lz_mask=63*8 !We allow -32...31 as our range for Lz in the bits above the Abelian symmetry
+! Used to offset the Lz values when encoding into a symmetry
+integer :: Lz_offset
 contains
 
     subroutine init_pg_symmetry(sys)
@@ -96,6 +98,7 @@ contains
 
         use basis, only: basis_fns, nbasis
         use system, only: sys_t
+        use calc, only: sym_in
 
         type(sys_t), intent(inout) :: sys
 
@@ -115,16 +118,25 @@ contains
         ! representation.
 
         maxsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
+        write(6,*) "Maximum symmetry found", maxsym
         maxLz = maxval(basis_fns(:)%lz)
-       
+        write(6,*) "Maximum Lz found", maxLz 
         pg_mask=maxsym-1
+        write(6,*) "Symmetry Mask:", pg_mask
 
         !The maximum encountered value of Lz will be maxLz*3 (and the minimum the negative of this)
         !We allocate bits for this above the pointgroup symmetry bits.
-        Lz_mask=(2**ceiling(log(real(3*maxLz+1))/log(2.0))-1)*maxsym
-        !In Lz world, 0 means Lz=-3*maxLz, so Lz_offset means Lz=0
-        sys%Lz_offset=3*maxLz
-        gamma_sym=sys%Lz_offset
+        Lz_mask=(2**ceiling(log(real(6*maxLz+1))/log(2.0))-1)*maxsym
+        write(6,*) "Lz Mask:", Lz_mask
+        !In Lz world, 0 means Lz=-3*maxLz*maxsym, so Lz_offset means Lz=0
+        Lz_offset=3*maxLz*maxsym
+        write(6,*) "Lz offset (corresponds to Lz=0):", Lz_offset
+        gamma_sym=Lz_offset*maxsym
+        write(6,*) "Totally symmetric symmetry: ", gamma_sym
+        if(sym_in /= huge(1)) then
+            !Need to modify to include Lz:
+            sym_in=sym_in+Lz_offset
+        endif
         sys%nsym = (6*maxLz+1)*maxsym
         sys%sym_max = sys%nsym-1
 
@@ -138,7 +150,7 @@ contains
 
         do i = 1, nbasis
             !Encode the Lz into the symmetry.
-            basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz+sys%Lz_offset)*maxsym
+            basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz*maxsym+Lz_offset)
             nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
             basis_fns(i)%sym_index = nbasis_sym(basis_fns(i)%sym)
 
@@ -254,7 +266,7 @@ contains
         integer, intent(in) :: sym_i, sym_j
 
         sym_ij = ior(iand(ieor(sym_i, sym_j),pg_mask), &
-                iand(sym_i,Lz_mask)+iand(sym_j,Lz_mask))
+                iand(sym_i,Lz_mask)+iand(sym_j,Lz_mask)-Lz_offset)
     end function cross_product_pg_sym
 
 
@@ -265,7 +277,7 @@ contains
         !Take the symmetry conjugate.  The point group part is the same.
         !The Lz needs to become -Lz, but
         rsym  = ior(iand(sym,pg_mask), &
-                iand(-iand(sym,Lz_mask),Lz_mask))
+                iand(2*Lz_offset-iand(sym,Lz_mask),Lz_mask))
 
     end function pg_sym_conj
     elemental function is_gamma_irrep_pg_sym(sym) result(is_gamma)

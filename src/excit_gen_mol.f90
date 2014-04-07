@@ -240,7 +240,7 @@ contains
         !        symmetry.
 
         use basis, only: basis_length, basis_fns, bit_lookup
-        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym
+        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym, pg_sym_conj
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -276,7 +276,7 @@ contains
                 i = occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
                 ! Conserve symmetry (spatial and spin) in selecting a.
                 ims = (basis_fns(i)%Ms+3)/2
-                isym = cross_product_pg_sym(basis_fns(i)%sym, op_sym)
+                isym = pg_sym_conj(cross_product_pg_sym(basis_fns(i)%sym, op_sym))
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
                         ! It's cheaper to draw additional random numbers than

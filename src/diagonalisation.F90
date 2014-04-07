@@ -106,7 +106,7 @@ contains
             isym_min = sym_in
             isym_max = sym_in
         end if
-
+        write(6,*) "enumerating sym blocks ", isym_min, " to ", isym_max
         spin_flip = .false.
         if (allocated(occ_list0)) then
             ! If a reference determinant was supplied, then we need to only
