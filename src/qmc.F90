@@ -221,11 +221,11 @@ contains
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers
         ! are being used.
         if (real_amplitudes) then
-            if (bit_size(int_p) == 64) then
+            if (bit_size(0_int_p) == 64) then
                 ! Allow a maximum population of 2^32, and a minimum fractional
                 ! part of 2^-31.
                 bit_shift = 31
-            else if (bit_size(int_p) == 32) then
+            else if (bit_size(0_int_p) == 32) then
                 ! Allow a maximum population of 2^20, and a minimum fractional
                 ! part of 2^-11.
                 bit_shift = 11
