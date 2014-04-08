@@ -440,7 +440,7 @@ contains
 
     !--- Statistics. ---
 
-    function spawning_rate(ndeath, nattempts) result(rate)
+    function spawning_rate(ndeath, nattempts, non_block_spawn) result(rate)
 
         ! Calculate the rate of spawning on the current processor.
         ! In:
@@ -453,15 +453,23 @@ contains
         !    It is, however, identical to the number of particles on the
         !    processor at the beginning of the Monte Carlo cycle (multiplied by
         !    2 for the timestep algorithm).
+        ! In (optional):
+        !    non_block_spawn: number of spawned particles during MC cycle.
+        !    For use with non-blocking communications.
 
         use parallel, only: nprocs
 
         real(p) :: rate
         integer, intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
+        integer, optional, intent(in) :: non_block_spawn
         integer :: nspawn
 
-        nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
+        if (present(non_block_spawn)) then
+            nspawn = non_block_spawn
+        else
+            nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
+        end if
         ! The total spawning rate is
         !   (nspawn + ndeath) / nattempts
         ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different

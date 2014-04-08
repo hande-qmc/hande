@@ -129,11 +129,11 @@ contains
                     call receive_spawned_walkers(received_list, req_size_s, req_data_s)
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
                     call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_size_s, req_data_s)
+                    call end_mc_cycle(ndeath, nattempts, sum(send_counts)/qmc_spawn%element_len)
                 else
                     call direct_annihilation(sys, initiator_approximation)
+                    call end_mc_cycle(ndeath, nattempts)
                 end if
-
-                call end_mc_cycle(ndeath, nattempts)
 
             end do
 

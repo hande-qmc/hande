@@ -543,20 +543,23 @@ contains
 
     end subroutine end_report_loop
 
-    subroutine end_mc_cycle(ndeath, nattempts)
+    subroutine end_mc_cycle(ndeath, nattempts, non_block_spawn)
 
         ! Execute common code at the end of a Monte Carlo cycle.
 
         ! In:
         !    ndeath: number of particle deaths in the cycle.
         !    nattempts: number of attempted spawning events in the cycle.
+        ! In (optional):
+        !    non_block_spawn: number of walkers spawned during MC cycle.
 
         integer, intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
+        integer, optional, intent(in) :: non_block_spawn
 
         ! Add the spawning rate (for the processor) to the running
         ! total.
-        rspawn = rspawn + spawning_rate(ndeath, nattempts)
+        rspawn = rspawn + spawning_rate(ndeath, nattempts, non_block_spawn)
 
         ! Accumulate population on reference and projected estimator.
         D0_population = D0_population + D0_population_cycle
