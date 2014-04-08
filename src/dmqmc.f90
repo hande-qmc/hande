@@ -50,7 +50,7 @@ contains
         integer(lint) :: nattempts
         integer :: nel_temp
         type(det_info) :: cdet1, cdet2
-        integer :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath
         type(excit) :: connection
         integer :: spawning_end
         logical :: soft_exit

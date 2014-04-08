@@ -365,7 +365,7 @@ contains
             case('DMQMC_AVERAGE_SHIFT')
                 call readi(average_shift_until)
             case('VARYSHIFT_TARGET')
-                call readli(target_particles)
+                call readf(target_particles)
             case('INIT_POP')
                 call readf(D0_population)
             case('REFERENCE_DET')

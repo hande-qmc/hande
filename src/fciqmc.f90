@@ -44,9 +44,10 @@ contains
         type(det_info) :: cdet
         type(dSFMT_t) :: rng
 
-        integer :: nspawned, ndeath, nattempts_current_det
+        integer(int_p) :: nspawned, ndeath
+        integer :: nattempts_current_det
         type(excit) :: connection
-        real(p) :: hmatel
+        real(p) :: hmatel, real_population
 
         logical :: soft_exit
 
@@ -85,15 +86,17 @@ contains
                     cdet%data => walker_data(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
+                    ! Extract the real sign from the encoded sign.
+                    real_population = real(walker_population(1,idet),p)/2**bit_shift
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, &
+                    call update_proj_energy_ptr(sys, f0, cdet, real_population, D0_population_cycle, &
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
-                    call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)
+                    call set_parent_flag_ptr(real_population, cdet%f, cdet%initiator_flag)
 
                     nattempts_current_det = decide_nattempts(rng, walker_population(1,idet))
 

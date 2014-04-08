@@ -58,9 +58,10 @@ contains
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
+        real(p) :: real_population(sampling_size)
         type(det_info) :: cdet
 
-        integer :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath
         type(excit) :: connection
         type(dSFMT_t) :: rng
         real(p) :: hmatel
@@ -120,14 +121,15 @@ contains
                     cdet%data => walker_data(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
+                    real_population = real(walker_population(:,idet),p)
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p),  &
+                    call update_proj_energy_ptr(sys, f0, cdet, real_population(1),  &
                                                 D0_population_cycle, proj_energy, connection, hmatel)
-                    call update_proj_hfs_ptr(sys, cdet%f, walker_population(1,idet),&
-                                             walker_population(2,idet), cdet%data,  &
+                    call update_proj_hfs_ptr(sys, cdet%f, int(walker_population(1,idet)),&
+                                             int(walker_population(2,idet)), cdet%data,  &
                                              connection, hmatel, D0_hf_population,  &
                                              proj_hf_O_hpsip, proj_hf_H_hfpsip)
 
@@ -138,8 +140,8 @@ contains
                     ! annihilation routine in the appropriate create_spawned_particle_*
                     ! routine, so we must set cdet%initiator_flag
                     ! appropriately...
-                    call set_parent_flag_ptr(walker_population(1,idet), cdet%f, h_initiator_flag)
-                    call set_parent_flag_ptr(walker_population(2,idet), cdet%f, hf_initiator_flag)
+                    call set_parent_flag_ptr(real_population(1), cdet%f, h_initiator_flag)
+                    call set_parent_flag_ptr(real_population(2), cdet%f, hf_initiator_flag)
                     cdet%initiator_flag = h_initiator_flag
 
                     do iparticle = 1, abs(walker_population(1,idet))
@@ -151,7 +153,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
-                        call spawner_hfs_ptr(rng, sys, cdet, walker_population(1,idet), &
+                        call spawner_hfs_ptr(rng, sys, qmc_spawn, cdet, walker_population(1,idet), &
                                              gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)

@@ -37,12 +37,12 @@ contains
         real(p), intent(in) :: Kii
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
-        integer, intent(inout) :: population, ndeath
-        integer(lint), intent(inout) :: tot_population
+        integer(int_p), intent(inout) :: population, ndeath
+        real(dp), intent(inout) :: tot_population
 
         real(p) :: pd
         real(dp) :: r
-        integer :: kill, old_population
+        integer(int_p) :: kill, old_population
 
         ! Optimisation: the number of particles on a given determinant can die
         ! stochastically...
@@ -67,7 +67,7 @@ contains
         pd = pd*abs(population)
 
         ! Number that definitely die...
-        kill = int(pd)
+        kill = int(pd, int_p)
 
         ! In addition, stochastic death (bad luck! ;-))
         pd = pd - kill ! Remaining chance...
@@ -123,8 +123,8 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: Oii
-        integer, intent(in) :: hamiltonian_pop
-        integer, intent(out) :: ncloned
+        integer(int_p), intent(in) :: hamiltonian_pop
+        integer(int_p), intent(out) :: ncloned
 
         real(p) :: pd, matel
         real(dp) :: r
@@ -137,7 +137,7 @@ contains
         pd = tau*abs(matel*hamiltonian_pop)
 
         ! Number that are definitely cloned...
-        ncloned = int(pd)
+        ncloned = int(pd, int_p)
 
         ! In addition, stochastic cloning.
         pd = pd - ncloned

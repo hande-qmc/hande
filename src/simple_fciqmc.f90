@@ -89,7 +89,7 @@ contains
         allocate(qmc_spawn%sdata(1,ndets), stat=ierr)
         call check_allocate('qmc_spawn%sdata',ndets,ierr)
         ! Zero these.
-        walker_population = 0
+        walker_population = 0_int_p
         qmc_spawn%sdata = 0_int_s
 
         allocate(shift(1), stat=ierr)
@@ -148,7 +148,7 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         integer :: ireport, icycle, iwalker, ipart
-        integer(lint) :: nparticles, nparticles_old
+        real(dp) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
         type(dSFMT_t) :: rng
@@ -156,7 +156,7 @@ contains
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
-        nparticles = sum(abs(walker_population(1,:)))
+        nparticles = real(sum(abs(walker_population(1,:))),dp)
         nparticles_old = nparticles
 
         call write_fciqmc_report_header()
@@ -176,8 +176,6 @@ contains
                 qmc_spawn%sdata = 0_int_s
 
                 ! Number of spawning attempts that will be made.
-                ! convert to integer from integer(lint).  should only be doing
-                ! very small calculations with this algothim!
                 nattempts = int(nparticles)
 
                 ! Consider all walkers.
@@ -207,7 +205,7 @@ contains
             end do
 
             ! Update the shift
-            nparticles = sum(abs(walker_population(1,:)))
+            nparticles = real(sum(abs(walker_population(1,:))),dp)
             if (vary_shift) then
                 call update_shift(shift(1), nparticles_old, nparticles, ncycles)
             end if

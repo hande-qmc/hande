@@ -211,7 +211,7 @@ contains
         end if
 
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
-                         spawned_walker_length, 7, qmc_spawn)
+                         spawned_walker_length, spawn_cutoff, bit_shift, 7, qmc_spawn)
 
         allocate(f0(basis_length), stat=ierr)
         call check_allocate('f0',basis_length,ierr)
@@ -295,9 +295,9 @@ contains
             if (.not.doing_calc(dmqmc_calc)) then
                 tot_walkers = 1
                 ! Zero all populations...
-                walker_population(:,tot_walkers) = 0
+                walker_population(:,tot_walkers) = 0_int_p
                 ! Set initial population of Hamiltonian walkers.
-                walker_population(1,tot_walkers) = nint(D0_population)
+                walker_population(1,tot_walkers) = nint(D0_population)*2**bit_shift
                 ! Set the bitstring of this psip to be that of the
                 ! reference state.
                 walker_dets(:,tot_walkers) = f0
@@ -371,9 +371,9 @@ contains
                 if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
                     tot_walkers = tot_walkers + 1
                     ! Zero all populations for this determinant.
-                    walker_population(:,tot_walkers) = 0
+                    walker_population(:,tot_walkers) = 0_int_p
                     ! Set the population for this basis function.
-                    walker_population(1,tot_walkers) = nint(D0_population)
+                    walker_population(1,tot_walkers) = nint(D0_population)*2**bit_shift
                     walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                     select case(sys%system)
                     case(heisenberg)

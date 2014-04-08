@@ -76,7 +76,7 @@ contains
         use basis, only: basis_length
         use fciqmc_data, only: initiator_population
 
-        integer, intent(in) :: parent_population
+        real(p), intent(in) :: parent_population
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(out) :: parent_flag
 
@@ -103,7 +103,7 @@ contains
 
         use basis, only: basis_length
 
-        integer, intent(in) :: parent_population
+        real(p), intent(in) :: parent_population
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(out) :: parent_flag
         

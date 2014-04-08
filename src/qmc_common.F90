@@ -31,9 +31,10 @@ contains
         use errors, only: stop_all
 
         integer, parameter :: particle_type = 1
-        integer :: i, fmax(basis_length), max_pop
+        integer :: i, fmax(basis_length)
+        integer(int_p) :: max_pop
 #ifdef PARALLEL
-        integer :: in_data(2), out_data(2), ierr
+        integer(int_p) :: in_data(2), out_data(2), ierr
 #endif
         real(p) :: H00_max, H00_old
         logical :: updated
@@ -42,7 +43,7 @@ contains
 
         updated = .false.
         ! Find determinant with largest population.
-        max_pop = 0
+        max_pop = 0_int_p
         do i = 1, tot_walkers
             if (abs(walker_population(particle_type,i)) > abs(max_pop)) then
                 max_pop = walker_population(particle_type,i)
@@ -62,17 +63,17 @@ contains
 #ifdef PARALLEL
 
         if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle)) then
-            in_data = (/ max_pop, iproc /)
+            in_data = (/ max_pop, int(iproc, int_p) /)
         else if (iproc == D0_proc) then
             ! Ensure that D0_proc has the correct (average) population.
-            in_data = (/ nint(D0_population_cycle), iproc /)
+            in_data = (/ int(nint(D0_population_cycle), int_p), int(iproc, int_p) /)
         else
             ! No det with sufficient population to become reference det on this
             ! processor.
-            in_data = (/ 0, iproc /)
+            in_data = (/ 0_int_p, int(iproc, int_p) /)
         end if
 
-        call mpi_allreduce(in_data, out_data, 1, MPI_2INTEGER, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(in_data, out_data, 1, mpi_pop_integer, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
         if (out_data(1) /= nint(D0_population_cycle) .and. all(fmax /= f0)) then
             max_pop = out_data(1)
@@ -306,7 +307,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(in) :: int_population
+        integer(int_p), intent(in) :: int_population
         real(dp) :: real_population
         real(dp) :: r, pextra
         integer :: nattempts
@@ -387,8 +388,9 @@ contains
         type(sys_t), intent(in) :: sys
         integer :: idet
         real(dp) :: ntot_particles(sampling_size)
+        real(p) :: real_population(sampling_size)
         type(det_info) :: cdet
-        real(p):: hmatel
+        real(p) :: hmatel
         type(excit) :: D0_excit
 #ifdef PARALLEL
         integer :: ierr
@@ -404,9 +406,10 @@ contains
             cdet%f = walker_dets(:,idet)
             call decode_det(cdet%f, cdet%occ_list)
             cdet%data => walker_data(:,idet)
+            real_population = real(walker_population(:,idet),dp)/2**bit_shift
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
-            call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
+            call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &
                                         D0_population_cycle, proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info(cdet)
@@ -458,14 +461,14 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc
 
         integer(lint), intent(out) :: nattempts
-        integer, intent(out) :: ndeath
+        integer(int_p), intent(out) :: ndeath
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
         qmc_spawn%head = qmc_spawn%head_start
 
         ! Reset death counter
-        ndeath = 0
+        ndeath = 0_int_p
 
         ! Reset accumulation of the reference population over the MC cycle.
         ! Reset accumulation of the projected estimator over MC cycle.
@@ -550,7 +553,7 @@ contains
         !    ndeath: number of particle deaths in the cycle.
         !    nattempts: number of attempted spawning events in the cycle.
 
-        integer, intent(in) :: ndeath
+        integer(int_p), intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
 
         ! Add the spawning rate (for the processor) to the running

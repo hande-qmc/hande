@@ -124,7 +124,8 @@ contains
         use basis, only: total_basis_length
         use search, only: binary_search
 
-        integer :: i, ipart, pos, k, istart, iend, nannihilate, old_pop(sampling_size)
+        integer :: i, ipart, pos, k, istart, iend, nannihilate
+        integer(int_p) :: old_pop(sampling_size)
         integer(i0) :: f(total_basis_length)
         logical :: hit, discard
         integer, parameter :: thread_id = 0
@@ -140,7 +141,7 @@ contains
                 ! Need to take into account that the determinant might not have
                 ! a non-zero population for all particle types.
                 do ipart = 1, sampling_size
-                    if (walker_population(ipart,pos) /= 0) then
+                    if (walker_population(ipart,pos) /= 0_int_p) then
                         ! Annihilate!
                         walker_population(ipart,pos) = walker_population(ipart,pos) + &
                                                         int(qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i), int_p)
@@ -212,7 +213,7 @@ contains
 
         nzero = 0
         do i = 1, tot_walkers
-            if (all(walker_population(:,i) == 0)) then
+            if (all(walker_population(:,i) == 0_int_p)) then
                 nzero = nzero + 1
             else if (nzero > 0) then
                 k = i - nzero

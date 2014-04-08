@@ -165,7 +165,7 @@ module ccmc
 ! accumulate all negative signs and take them into account when
 ! determining the sign of the child excips.
 
-use const, only: i0, lint, p
+use const, only: i0, int_p, lint, p
 
 implicit none
 
@@ -211,7 +211,8 @@ contains
         real(dp) :: nparticles_old(sampling_size)
         type(det_info), allocatable :: cdet(:)
 
-        integer :: nspawned, ndeath, ierr
+        integer(int_p) :: nspawned, ndeath
+        integer :: ierr
         type(excit) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
         type(dSFMT_t), allocatable :: rng(:)
@@ -291,7 +292,7 @@ contains
                 ! a cycle, the running total of D0_population is incorrect (by
                 ! a factor of the number of times it was selected).
                 call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
-                D0_normalisation = walker_population(1,D0_pos)
+                D0_normalisation = int(walker_population(1,D0_pos))
 
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
@@ -337,16 +338,16 @@ contains
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), sys, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
+                        call spawner_ccmc(rng(it), sys, qmc_spawn, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
 
-                        if (nspawned /= 0) then
+                        if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
                         end if
 
                         ! Prints nice warning messages/accumulate stats if a particle bloom occurs.
                         if (abs(nspawned) > ceiling(bloom_stats%prop*(tot_abs_pop + D0_normalisation))) then
                             !$omp critical (accumulate_bloom)
-                            call accumulate_bloom_stats(bloom_stats, nspawned)
+                            call accumulate_bloom_stats(bloom_stats, int(nspawned))
                             !$omp end critical (accumulate_bloom)
                         end if
 
@@ -569,14 +570,14 @@ contains
                 if (i == 1) then
                     ! First excitor 'seeds' the cluster:
                     cdet%f = walker_dets(:,pos)
-                    cluster_population = walker_population(1,pos)
+                    cluster_population = int(walker_population(1,pos))
                 else
                     call collapse_cluster(walker_dets(:,pos), int(walker_population(1,pos)), cdet%f, cluster_population, allowed)
                     if (.not.allowed) exit
                 end if
                 if (walker_population(1,pos) <= initiator_population) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = pop/tot_pop.
-                cluster%pselect = (cluster%pselect*abs(walker_population(1,pos)))/tot_excip_pop
+                cluster%pselect = (cluster%pselect*abs(int(walker_population(1,pos))))/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
                 prev_pos = pos
             end do
@@ -613,7 +614,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine spawner_ccmc(rng, sys, cdet, cluster, gen_excit_ptr, nspawn, connection)
+    subroutine spawner_ccmc(rng, sys, spawn, cdet, cluster, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -634,6 +635,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    spawn: spawn_t object to which the spawned particle will be added.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.  In
@@ -658,21 +660,23 @@ contains
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr_t
+        use spawn_data, only: spawn_t
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
+        type(spawn_t) :: spawn
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        integer, intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
         ! actually spawned by positive excips.
-        integer, parameter :: parent_sign = 1
+        integer(int_p), parameter :: parent_sign = 1_int_p
         real(p) :: hmatel, pgen
         integer(i0) :: fexcit(basis_length)
         integer :: excitor_sign, excitor_level
@@ -688,7 +692,7 @@ contains
         pgen = pgen*cluster%pselect
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, spawn, hmatel, pgen, parent_sign)
 
         if (nspawn /= 0) then
             ! 4. Convert the random excitation from a determinant into an
@@ -772,7 +776,7 @@ contains
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
-            call create_spawned_particle_truncated(cdet, null_excit, nkill, 1, qmc_spawn)
+            call create_spawned_particle_truncated(cdet, null_excit, int(nkill, int_p), 1, qmc_spawn)
         end if
 
     end subroutine stochastic_ccmc_death

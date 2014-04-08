@@ -452,16 +452,18 @@ contains
         !    2 for the timestep algorithm).
 
         real(p) :: rate
-        integer, intent(in) :: ndeath
+        integer(int_p), intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
+        real(dp) :: ndeath_real
         integer :: nspawn
 
         nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
+        ndeath_real = real(ndeath,dp)/2**bit_shift
         ! The total spawning rate is
-        !   (nspawn + ndeath) / nattempts
+        !   (nspawn + ndeath_real) / nattempts
         ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different
         ! determinant and one to clone/die).
-        rate = real(nspawn+ndeath,p)/nattempts
+        rate = (real(nspawn,p)+ndeath_real)/nattempts
 
     end function spawning_rate
 

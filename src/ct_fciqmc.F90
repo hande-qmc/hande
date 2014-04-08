@@ -37,10 +37,12 @@ contains
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
-        integer :: nspawned, ndeath, ireport, idet
+        integer(int_p) :: nspawned, ndeath
+        integer :: ireport, idet
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
-        integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
+        integer :: iparticle, max_nexcitations, ierr, proc_id
+        integer(int_p) :: tmp_pop
         integer, allocatable :: current_pos(:,:) ! (nthreads, 0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
@@ -123,10 +125,10 @@ contains
 
                         if ( time > t_barrier ) exit
 
-                        call ct_spawn(rng, sys, cdet, walker_data(1,idet), int(walker_population(1,idet)), &
+                        call ct_spawn(rng, sys, cdet, walker_data(1,idet), walker_population(1,idet), &
                                       R, nspawned, connection)
 
-                        if (nspawned /= 0) then
+                        if (nspawned /= 0_int_p) then
 
                             ! If the spawned walker and the parent (all the
                             ! walkers on a particular det. have the same sgn due
@@ -189,14 +191,15 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(rng, sys, cdet, K_ii, int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))), &
+                            call ct_spawn(rng, sys, cdet, K_ii, &
+                                          int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)), int_p), &
                                           R, nspawned, connection)
 
-                            if (nspawned /= 0) then
+                            if (nspawned /= 0_int_p) then
 
                                 ! Handle walker death
                                 if(connection%nexcit == 0 .and. &
-                                        qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))*nspawned < 0) then
+                                        qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))*nspawned < 0_int_p) then
                                     qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) = &
                                             qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) + nspawned
                                     ndeath = ndeath + 1
@@ -224,7 +227,7 @@ contains
 
             end do
 
-            call end_mc_cycle(ndeath, nattempts)
+            call end_mc_cycle(int(ndeath, int_p), nattempts)
 
             call direct_annihilation(sys, rng, initiator_approximation)
 
@@ -289,9 +292,9 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: K_ii, R
-        integer, intent(in) :: parent_sgn
+        integer(int_p), intent(in) :: parent_sgn
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(out) :: nspawned
+        integer(int_p), intent(out) :: nspawned
         type(excit), intent(out) :: connection
 
         real(p) :: rand, K_ij
@@ -331,11 +334,11 @@ contains
         end if
 
         if (K_ij == 0.0_p) then
-            nspawned = 0
+            nspawned = 0_int_p
         else if (K_ij < 0.0_p) then    ! child is same sign as parent
-            nspawned = sign(1,parent_sgn)
+            nspawned = sign(1_int_p,parent_sgn)
         else
-            nspawned = -sign(1,parent_sgn)
+            nspawned = -sign(1_int_p,parent_sgn)
         end if
 
     end subroutine ct_spawn
@@ -369,7 +372,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         real(p), intent(in) :: spawn_time
 

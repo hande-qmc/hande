@@ -139,15 +139,16 @@ contains
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t, sc0_ptr
         use spawning, only: nspawn_from_prob, set_child_sign
+        use spawn_data, only: spawn_t
 
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(spawn_t), intent(in) :: spawn
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
+        integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        integer, intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p)          :: choose_double_elt_type
@@ -176,7 +177,7 @@ contains
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(rng, pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, spawn, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -188,7 +189,7 @@ contains
                 pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(rng, pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, spawn, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -228,7 +229,7 @@ contains
             pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(rng, pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, spawn, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -245,7 +246,7 @@ contains
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(rng, pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, spawn, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -291,7 +292,7 @@ contains
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(rng, pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, spawn, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -306,7 +307,7 @@ contains
                 pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(rng, pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, spawn, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -385,8 +386,8 @@ contains
         real(p), intent(in) :: Kii
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
-        integer, intent(inout) :: population, ndeath
-        integer(lint), intent(inout) :: tot_population
+        integer(int_p), intent(inout) :: population, ndeath
+        real(dp), intent(inout) :: tot_population
 
         ! Corresponds to:
         !      ___
