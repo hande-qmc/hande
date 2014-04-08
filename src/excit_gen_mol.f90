@@ -321,7 +321,7 @@ contains
 
         use basis, only: basis_fns
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_basis
+        use point_group_symmetry, only: cross_product_pg_basis,pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -350,7 +350,7 @@ contains
         i = occ_list(i)
         j = occ_list(j)
 
-        ij_sym = cross_product_pg_basis(i,j)
+        ij_sym = pg_sym_conj(cross_product_pg_basis(i,j))
         ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
         ij_spin = basis_fns(i)%Ms + basis_fns(j)%Ms
 
@@ -423,7 +423,7 @@ contains
             na = nbasis/2
         case(0)
             do isyma = sys%sym0, sys%sym_max
-                isymb = cross_product_pg_sym(isyma, sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, sym))
                 if ( (symunocc(1,isyma) > 0 .and. symunocc(2,isymb) > 0) .or. &
                      (symunocc(2,isyma) > 0 .and. symunocc(1,isymb) > 0) ) then
                     allowed_excitation = .true.
@@ -439,7 +439,7 @@ contains
             na = nbasis
         case(2)
             do isyma = sys%sym0, sys%sym_max
-                isymb = cross_product_pg_sym(isyma, sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, sym))
                 if ( symunocc(2,isyma) > 0 .and. &
                         ( symunocc(2,isymb) > 1 .or. &
                         ( symunocc(2,isymb) == 1 .and. (isyma /= isymb))) ) then
@@ -472,7 +472,7 @@ contains
                 if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) then
                     ! b must conserve spatial and spin symmetry.
                     imsb = (spin-basis_fns(a)%Ms+3)/2
-                    isymb = cross_product_pg_sym(sym, basis_fns(a)%sym)
+                    isymb = pg_sym_conj(cross_product_pg_sym(sym, basis_fns(a)%sym))
                     ! Is there a possible b?
                     if ( (symunocc(imsb,isymb) > 1) .or. &
                             (symunocc(imsb,isymb) == 1 .and. (isymb /= basis_fns(a)%sym .or. spin == 0)) ) then
@@ -596,7 +596,7 @@ contains
         !        (i,j) or given the choice of (i,j,a).
 
         use basis, only: basis_length, basis_fns, bit_lookup, nbasis
-        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym
+        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym, pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -654,7 +654,7 @@ contains
         ims = (spin-basis_fns(a)%Ms+3)/2
         ! sym_i x sym_j x sym_a = sym_b
         ! (at least for Abelian point groups)
-        isym = cross_product_pg_sym(sym, basis_fns(a)%sym)
+        isym = pg_sym_conj(cross_product_pg_sym(sym, basis_fns(a)%sym))
 
         if (nbasis_sym_spin(ims,isym) == 0) then
             ! No orbitals with the correct symmetry.
@@ -712,7 +712,7 @@ contains
 
         use basis, only: basis_fns
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_sym
+        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
@@ -730,7 +730,7 @@ contains
         ni = sys%nel
         do i = 1, sys%nel
             ims = (basis_fns(occ_list(i))%Ms+3)/2
-            isym = cross_product_pg_sym(basis_fns(occ_list(i))%sym, op_sym)
+            isym = pg_sym_conj(cross_product_pg_sym(basis_fns(occ_list(i))%sym, op_sym))
             if (symunocc(ims,isym) == 0) ni = ni - 1
         end do
 
@@ -773,7 +773,7 @@ contains
 
         use basis, only: basis_fns
         use system, only: sys_t
-        use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym
+        use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym, pg_sym_conj
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
@@ -806,7 +806,7 @@ contains
             n_aij = sys%nvirt_beta
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = cross_product_pg_sym(isyma, ij_sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, ij_sym))
                 if (symunocc(1, isymb) == 0) then
                     n_aij = n_aij - symunocc(1,isyma)
                 else if (isyma == isymb .and. symunocc(1, isymb) == 1) then
@@ -827,7 +827,7 @@ contains
             n_aij = sys%nvirt
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = cross_product_pg_sym(isyma, ij_sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, ij_sym))
                 if (symunocc(1, isymb) == 0) then
                     n_aij = n_aij - symunocc(2,isyma)
                 end if
@@ -843,7 +843,7 @@ contains
             n_aij = sys%nvirt_alpha
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = cross_product_pg_sym(isyma, ij_sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, ij_sym))
                 if (symunocc(2, isymb) == 0) then
                     n_aij = n_aij - symunocc(2,isyma)
                 else if (isyma == isymb .and. symunocc(2, isymb) == 1) then
