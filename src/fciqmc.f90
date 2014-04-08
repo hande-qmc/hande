@@ -22,7 +22,8 @@ contains
 
         use parallel
 
-        use annihilation, only: direct_annihilation, direct_annihilation_non_blocking
+        use annihilation, only: direct_annihilation, direct_annihilation_non_blocking,    &
+                                annihilate_main_list_wrapper
         use basis, only: basis_length, nbasis
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm
@@ -36,7 +37,7 @@ contains
         use utils, only: rng_init_info
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use spawn_data, only: receive_spawned_walkers, non_blocking_send
+        use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_received_list
 
         type(sys_t), intent(in) :: sys
 
@@ -146,7 +147,10 @@ contains
         end do
 
         if (non_blocking_comm) then
+            ! Need to receive walkers sent from final iteration and merge into main list.
             call receive_spawned_walkers(received_list, req_size_s, req_data_s)
+            call annihilate_wrapper_received_list(received_list, initiator_approximation)
+            call annihilate_main_list_wrapper(sys, initiator_approximation, 0, received_list)
         end if
 
         if (parent) then
