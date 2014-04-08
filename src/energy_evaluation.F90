@@ -137,7 +137,7 @@ contains
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - log(nparticles/nparticles_old*shift_damping/(dmqmc_factor*tau*nupdate_steps))
+        loc_shift = loc_shift - log(nparticles/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
 
     end subroutine update_shift
 
