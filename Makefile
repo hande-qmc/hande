@@ -30,7 +30,7 @@ SHELL=/bin/bash # For our sanity!
 # Configuration
 
 # Program name (stem of binary and library).
-PROG_NAME = hubbard
+PROG_NAME = hande
 
 # Colon-separated list of directories containing source files.
 # Can be relative to the working directory.  Use . or $(PWD) to indicate the

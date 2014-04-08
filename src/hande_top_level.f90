@@ -46,7 +46,7 @@ contains
         call system_clock(start_wall_time)
 
         if (parent) then
-            write (6,'(/,a8,/)') 'Hubbard'
+            write (6,'(/,a8,/)') 'HANDE'
             call environment_report()
         end if
         call comm_global_uuid()
