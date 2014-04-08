@@ -40,7 +40,7 @@ contains
         use excitations, only: excit, get_excitation
         use basis, only: bit_lookup
         use system, only: sys_t
-        use hubbard_real, only: connected_orbs
+        use real_lattice, only: connected_orbs
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
@@ -264,7 +264,7 @@ contains
         use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
         use determinants, only: lattice_mask
-        use hubbard_real, only: connected_orbs
+        use real_lattice, only: connected_orbs
         use system
 
         integer(i0), intent(in) :: f(basis_length)

@@ -29,7 +29,7 @@ contains
         use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, nthreads, parent
-        use hubbard_real, only: init_real_space
+        use real_lattice, only: init_real_space
         use momentum_symmetry, only: init_momentum_symmetry
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
@@ -146,7 +146,7 @@ contains
         use fciqmc_data, only: end_fciqmc
         use ifciqmc, only: end_ifciqmc
         use parallel, only: parent, end_parallel
-        use hubbard_real, only: end_real_space
+        use real_lattice, only: end_real_space
         use momentum_symmetry, only: end_momentum_symmetry
         use report, only: end_report
 

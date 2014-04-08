@@ -1,4 +1,4 @@
-module hubbard_real
+module real_lattice
 
 ! Real space formulation of the Hubbard model.
 
@@ -234,7 +234,7 @@ contains
 
     subroutine end_real_space()
 
-        ! Clean up hubbard_real specific allocations.
+        ! Clean up real_lattice specific allocations.
 
         use checking, only: check_deallocate
 
@@ -484,4 +484,4 @@ contains
 
     end subroutine map_vec_to_cell
 
-end module hubbard_real
+end module real_lattice

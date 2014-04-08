@@ -328,7 +328,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors
         use fciqmc_data, only: nrdms, nsym_vec
-        use hubbard_real, only: find_translational_symmetry_vecs, map_vec_to_cell
+        use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys

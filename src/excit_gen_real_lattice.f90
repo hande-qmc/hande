@@ -100,7 +100,7 @@ contains
         use excitations, only: excit
         use system, only: sys_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
-        use hubbard_real, only: connected_sites
+        use real_lattice, only: connected_sites
         use basis, only: bit_lookup
         use spawning, only: attempt_to_spawn
 
@@ -231,7 +231,7 @@ contains
         use basis, only: bit_lookup
         use determinants, only: det_info
         use excitations, only: excit
-        use hubbard_real, only: connected_sites
+        use real_lattice, only: connected_sites
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -311,7 +311,7 @@ contains
 
         use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
-        use hubbard_real, only: connected_orbs, connected_sites
+        use real_lattice, only: connected_orbs, connected_sites
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -398,7 +398,7 @@ contains
 
         use basis, only: basis_length
         use system, only: sys_t
-        use hubbard_real, only: connected_orbs
+        use real_lattice, only: connected_orbs
 
         use errors
 

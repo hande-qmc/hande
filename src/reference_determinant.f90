@@ -45,7 +45,7 @@ contains
 
         use basis, only: bit_lookup, basis_fns, nbasis, basis_length
         use determinants, only: encode_det
-        use hubbard_real, only: connected_orbs
+        use real_lattice, only: connected_orbs
         use symmetry, only: symmetry_orb_list
         use system
 

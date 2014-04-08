@@ -12,7 +12,7 @@ use determinants
 use determinant_enumeration, only: write_determinants, determinant_file
 use fciqmc_data
 use restart_hdf5, only: restart_info_global
-use hubbard_real, only: finite_cluster
+use real_lattice, only: finite_cluster
 use hfs_data
 use dmqmc_procedures, only: rdms
 

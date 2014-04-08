@@ -87,7 +87,7 @@ contains
         !        the Hubbard model in real space.
 
         use determinants, only: decode_det, basis_length
-        use hubbard_real, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
+        use real_lattice, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -130,7 +130,7 @@ contains
         !    < D | H | D_i^a >, the Hamiltonian matrix element between a
         !        determinant and a single excitation of it.
 
-        use hubbard_real, only: get_one_e_int_real
+        use real_lattice, only: get_one_e_int_real
         use system, only: sys_t
 
         real(p) :: hmatel

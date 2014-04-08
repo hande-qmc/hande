@@ -89,7 +89,7 @@ contains
 
         use basis, only: bit_lookup
         use determinants, only: decode_det, basis_length
-        use hubbard_real, only: t_self_images, tmat, get_one_e_int_real
+        use real_lattice, only: t_self_images, tmat, get_one_e_int_real
         use system, only: sys_t
 
         real(p) :: hmatel
