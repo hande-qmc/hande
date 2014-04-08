@@ -218,6 +218,8 @@ contains
 
             case('REAL_AMPLITUDES')
                 real_amplitudes = .true.
+            case('SPAWN_CUTOFF')
+                call getf(spawn_cutoff)
 
             ! DMQMC expectation values to be calculated
             case('DMQMC_FULL_RENYI_2')

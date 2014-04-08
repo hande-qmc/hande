@@ -313,8 +313,8 @@ contains
         integer :: nattempts
 
         real_population = real(int_population, dp)/2**bit_shift
-        nattempts = int(real_population)
-        pextra = real_population - nattempts
+        nattempts = abs(int(real_population))
+        pextra = abs(real_population) - nattempts
         if (pextra > get_rand_close_open(rng)) nattempts = nattempts + 1
 
     end function decide_nattempts

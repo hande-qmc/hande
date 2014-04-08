@@ -377,7 +377,7 @@ contains
         ! when we later divide this factor back out.
         pspawn = (2**bit_shift)*probability
 
-        if (pspawn < real(spawn%cutoff,p)) then
+        if (abs(pspawn) < real(spawn%cutoff,p)) then
 
             ! If the spawning amplitude is below the minimum spawning event
             ! allowed, stochastically round it either down to zero or up
@@ -459,7 +459,6 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(in) :: spawn
-
         real(p) :: pspawn
 
         ! Calculate probability spawning is successful.
@@ -471,7 +470,7 @@ contains
         ! when we later divide this factor back out.
         pspawn = (2**bit_shift)*pspawn
 
-        if (pspawn < real(spawn%cutoff,p)) then
+        if (abs(pspawn) < real(spawn%cutoff,p)) then
 
             ! If the spawning amplitude is below the minimum spawning event
             ! allowed, stochastically round it either down to zero or up

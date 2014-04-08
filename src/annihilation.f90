@@ -285,9 +285,9 @@ contains
             ! Loop over all amplitudes for this determinant. For all amplitudes less than 1 (or less
             ! than 2**bit_shift in the encoded representation stored in sdata), stochastically round
             ! round the amplitude up to this cutoff or down to zero.
-            spawned_pop = int(qmc_spawn%sdata(qmc_spawn%bit_str_len:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
+            spawned_pop = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
             do itype = 1, qmc_spawn%ntypes
-                if (spawned_pop(itype) < 2**bit_shift) then
+                if (abs(spawned_pop(itype)) < 2**bit_shift) then
                     r = get_rand_close_open(rng)*(2**bit_shift)
                     if (spawned_pop(itype) > r) then
                         spawned_pop(itype) = 2**bit_shift

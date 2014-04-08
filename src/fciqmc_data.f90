@@ -57,7 +57,7 @@ logical :: real_amplitudes = .false.
 integer :: bit_shift
 ! The minimum amplitude of a spawning event which can be added to
 ! the spawned list.
-real(dp) :: spawn_cutoff
+real(p) :: spawn_cutoff
 
 !--- Energy data ---
 

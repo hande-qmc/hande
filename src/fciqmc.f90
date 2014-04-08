@@ -88,6 +88,7 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet)
                     ! Extract the real sign from the encoded sign.
                     real_population = real(walker_population(1,idet),p)/2**bit_shift
+                    !write(*,*) "idet:", idet, "int_pop:", walker_population(1,idet), "real_pop:", real_population
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
@@ -99,11 +100,14 @@ contains
                     call set_parent_flag_ptr(real_population, cdet%f, cdet%initiator_flag)
 
                     nattempts_current_det = decide_nattempts(rng, walker_population(1,idet))
+                    !write(6,*) "nattempts:", nattempts_current_det
+                    !flush(6)
 
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
                         call spawner_ptr(rng, sys, qmc_spawn, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        !write(*,*) "iparticle:", iparticle, "nspanwed:", nspawned
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
