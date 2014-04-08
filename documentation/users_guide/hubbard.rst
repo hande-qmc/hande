@@ -624,15 +624,9 @@ Calculation options: diagonalisation options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 These options are only valid when a diagonalisation (either full or Lanczos)
-calculation is performed.
+calculation is performed.  The eigenvectors are only calculated if required (i.e.
+**print_fci_wfn** or **analyse_fci_wfn** is positive), as doing so is much slower.
 
-**eigenvalues**
-    Default behaviour.
-
-    Find only the eigenvalues of the Hamiltonian matrix.
-**eigenvectors**
-    Find the eigenvectors and eigenvalues of the Hamiltonian matrix.  This is
-    much slower.
 **print_fci_wfn** *nwfn* *wfn_file*
     Optional integer, default: -1.  Optional string, default: FCI_WFN.
 
@@ -647,7 +641,6 @@ calculation is performed.
     analysed.  This is slow, and uses a very simple algorithm.  It is only
     designed for debugging purposes.  The properties evaluated depend upon the system
     and are liable to change without warning.
-
 
 Calculation options: Lanczos options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
