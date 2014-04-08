@@ -644,7 +644,7 @@ contains
         ! as these can block, although the receive is essentially blocking anyway.
         ! These are single integers so they should send quickly.
         do i = 0, nprocs-1
-            call MPI_ISend(send_copy(i), 1, mpi_integer, i, 123, MPI_COMM_WORLD, req_size_s(i), ierr)
+            call MPI_ISend(send_counts(i), 1, mpi_integer, i, 123, MPI_COMM_WORLD, req_size_s(i), ierr)
         end do
         ! Send the walkers to their processors. The information may not send immediately
         ! due to potentially large messages. So we don't want to access the array.
@@ -653,8 +653,8 @@ contains
         ! subroutine to prevent blocking at this point.
         do i = 0, nprocs-1
             start_point = spawn%head_start(thread_id, i) + 1
-            end_point = start_point + send_counts(i)/spawn%element_len - 1
-            call MPI_ISend(spawn%sdata_recvd(:,start_point:end_point), send_counts(i), mpi_det_integer, i, 456, MPI_COMM_WORLD, req_data_s(i), ierr)
+            end_point = start_point + send_copy(i)/spawn%element_len - 1
+            call MPI_ISend(spawn%sdata_recvd(:,start_point:end_point), send_copy(i), mpi_det_integer, i, 456, MPI_COMM_WORLD, req_data_s(i), ierr)
         end do
 
 #else

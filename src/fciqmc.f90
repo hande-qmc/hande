@@ -47,7 +47,7 @@ contains
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
 
-        integer :: nspawned, ndeath
+        integer :: nspawned, ndeath, non_block_spawn
         type(excit) :: connection
         real(p) :: hmatel
         integer :: send_counts(0:nprocs-1), req_size_s(0:nprocs-1), req_data_s(0:nprocs-1)
@@ -129,8 +129,8 @@ contains
                 if (non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_size_s, req_data_s)
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
-                    call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_size_s, req_data_s)
-                    call end_mc_cycle(ndeath, nattempts, sum(send_counts)/qmc_spawn%element_len)
+                    call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_size_s, req_data_s, non_block_spawn)
+                    call end_mc_cycle(ndeath, nattempts, non_block_spawn)
                 else
                     call direct_annihilation(sys, initiator_approximation)
                     call end_mc_cycle(ndeath, nattempts)

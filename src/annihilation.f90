@@ -61,7 +61,7 @@ contains
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_non_blocking(sys, tinitiator, send_counts, req_size_s, req_data_s)
+    subroutine direct_annihilation_non_blocking(sys, tinitiator, send_counts, req_size_s, req_data_s, non_block_spawn)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -79,6 +79,8 @@ contains
         !       calculate_displacements and sent in non_blocking_send.
         !    req_size_s: array of requests for non-blocking send of message sizes.
         !    req_data_s: array of requests for non-blocking send of walkers.
+        !    non_block_spawn: number of spawned particles on current processor
+        !       during current MC cycle.
 
         use parallel, only: nthreads, nprocs, iproc
         use spawn_data, only: annihilate_wrapper_spawned_list, calculate_displacements, &
@@ -90,6 +92,7 @@ contains
         logical, intent(in) :: tinitiator
         integer, intent(inout) :: send_counts(0:)
         integer, intent(inout) :: req_size_s(0:), req_data_s(0:)
+        integer, intent(inout) :: non_block_spawn
 
         integer, parameter :: thread_id = 0
 
@@ -101,6 +104,9 @@ contains
         ! Need to calculate how many walkers we are going to send elsewhere as spawn%head
         ! changes meaning upon annihilation.
         call calculate_displacements(qmc_spawn, send_counts)
+        ! Need to copy the number of walkers we've spawned during current time
+        ! step for estimating spawning rate.
+        non_block_spawn = sum(send_counts)
 
         ! Perform annihilation within the spawned walker list. We also locate, compress and sort
         ! section of spawned list which needs to be annihilated with main list on this processor.
