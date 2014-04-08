@@ -52,6 +52,8 @@ contains
 
         real :: t1
 
+        logical :: update_tau
+
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
@@ -124,10 +126,14 @@ contains
 
             end do
 
-            ! Calculate the number of warnings which occurred only on the last iteration
+               ! Calculate the number  f warnings which occurred only on the last iteration
             bloom_stats%nwarnings_last = bloom_stats%nwarnings - bloom_stats%nwarnings_last 
-            if(bloom_stats%nwarnings_last > 0 .and. tau_search .and. .not. vary_shift) then
-                call decrease_tau()
+            if(tau_search .and. .not. vary_shift) then
+                update_tau = .false.
+                if(bloom_stats%nwarnings_last > 0 ) then
+                    update_tau = .true.
+                end if
+                call send_tau(update_tau)
             end if
             bloom_stats%nwarnings_last = bloom_stats%nwarnings
 

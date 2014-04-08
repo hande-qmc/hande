@@ -385,7 +385,7 @@ contains
         end do
         call dealloc_det_info(cdet)
 
-#ifdef PARALLEL
+#ifdef parallel
         call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
         call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -537,18 +537,26 @@ contains
 
     end subroutine end_mc_cycle
 
-    subroutine decrease_tau()
+    subroutine send_tau(update_tau)
 
-        ! If a bloom occurs decrease the timestep  
-        use utils, only: int_fmt
+        ! Decrease the time-step across all the processors.
+        ! In:
+        !    update_tau: should this processor update the timestep.
+
         use parallel
-        tau = 0.95*tau
-        if(parent) then
-            write(6, '(1X, "# Warning timestep changed to: ",f7.5)'), tau
-        end if
-#ifdef PARALLEL
-        call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
+
+        integer :: ierr
+        logical, intent(in) :: update_tau
+
+#ifdef parallel
+       call mpi_allreduce(update_tau, update_tau, mpi_logical, MPI_LOR, MPI_COMM_WORLD, ierr)
 #endif
-    end subroutine decrease_tau
+        if(update_tau) then
+            tau = 0.95*tau
+            if(parent) then
+                write(6, '(1X, "# Warning timestep changed to: ",f7.5)'), tau
+            end if
+        end if
+    end subroutine send_tau
 
 end module qmc_common
