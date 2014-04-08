@@ -76,7 +76,7 @@ real(p) :: perc_imbalance = 0.05
 !--- Load Balancing Data ---
 
 ! Array which maps particles to processors. If attempting load balancing then
-! proc_map is subdivided into load_balancing_slots number of slots which cyclically
+! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
 ! map particles to processors using modular arithmetic. Otherwise it's entries are
 ! 0,1,..,nprocs-1.
 integer, allocatable :: proc_map(:)
