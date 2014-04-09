@@ -268,11 +268,6 @@ contains
         real(dp) :: r
         integer, parameter :: thread_id = 0
 
-        !write(6,*) "sdata before:"
-        !do i = 1, qmc_spawn%head(thread_id,0)
-        !    write(6,*) qmc_spawn%sdata(:,i)
-        !end do
-
         nremoved = 0
         do i = 1, qmc_spawn%head(thread_id,0)
 
@@ -306,11 +301,6 @@ contains
         end do
 
         qmc_spawn%head(thread_id,0) = qmc_spawn%head(thread_id,0) - nremoved
-
-        !write(6,*) "sdata after:"
-        !do i = 1, qmc_spawn%head(thread_id,0)
-        !    write(6,*) qmc_spawn%sdata(:,i)
-        !end do
 
     end subroutine round_low_population_spawns
 

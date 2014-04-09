@@ -235,8 +235,6 @@ contains
         ! Store 2**bit_shift for ease.
         encoding_factor = 2_int_p**(int(bit_shift, int_p))
 
-        write(6,*) "int_s size:", bit_size(int_s)
-
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, spawn_cutoff, bit_shift, 7, qmc_spawn)
 
