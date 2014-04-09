@@ -1,15 +1,15 @@
-.. hubbard_fciqmc documentation master file, created by
+.. HANDE documentation master file, created by
    sphinx-quickstart on Thu May 12 00:36:12 2011.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-hubbard_fciqmc
+HANDE QMC
 ==============
 
 .. toctree::
    :maxdepth: 2
 
-   users_guide/hubbard
+   users_guide/manual
    developers_guide/developers_guide
 
    bibliography

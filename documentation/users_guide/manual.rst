@@ -1299,7 +1299,7 @@ Interacting with FCIQMC calculations
 
 It is possible to interact with running FCIQMC calculations.
 
-After each FCIQMC update cycle, hubbard checks for the existence of the file
+After each FCIQMC update cycle, HANDE checks for the existence of the file
 FCIQMC.COMM in the current working directory for all processors. If FCIQMC.COMM
 exists, then the file is read and any modified parameters are then used for the
 rest of the calculation.  FCIQMC.COMM is deleted after it is read in to prevent
@@ -1316,7 +1316,7 @@ FCIQMC.COMM has the same syntax as the input file.  Available options are:
 
     The watchdog.py (for PBS queue systems) and send_softexit.py (for other
     queue systems) scripts in the tools subdirectory are useful for running
-    hubbard on a queueing system as they write **softexit** to FCIQMC.COMM a
+    HANDE on a queueing system as they write **softexit** to FCIQMC.COMM a
     certain amount of time before the walltime is reached.
 **varyshift_target** *varyshift_target*
     Long integer.

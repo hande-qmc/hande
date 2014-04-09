@@ -1,7 +1,7 @@
 HANDE QMC: High Accuracy N-DEterminant Quantum Monte Carlo.
 ===========================================================
 
-User-level documentation detailing the hubbard_fciqmc program is in the documentation/users_guide directory, written in reStructuredText (http://docutils.sourceforge.net/rst.html) and can be compiled in HTML/PDF/etc using sphinx (http://sphinx.pocoo.org).  
+User-level documentation detailing the HANDE program is in the documentation/users_guide directory, written in reStructuredText (http://docutils.sourceforge.net/rst.html) and can be compiled in HTML/PDF/etc using sphinx (http://sphinx.pocoo.org).  
 Developer-level documentation extracted from directly from the code is also included.
 
 A makefile (documentation/Makefile) is provided for running sphinx on the documentation source files; the output is placed in documentation/build.  
