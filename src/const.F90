@@ -43,7 +43,7 @@ integer, parameter :: int_p = selected_int_kind(15)
 integer, parameter :: int_p = selected_int_kind(15)
 #endif
 
-#ifdef POP_SIZE == 32 && DET_SIZE == 32
+#if POP_SIZE == 32 && DET_SIZE == 32
 integer, parameter :: int_s = selected_int_kind(6)
 #else
 integer, parameter :: int_s = selected_int_kind(15)
