@@ -24,6 +24,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
@@ -42,6 +43,7 @@ contains
         integer(lint) :: nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
         type(dSFMT_t) :: rng
+        type(bloom_stats_t) :: bloom_stats
 
         integer :: nspawned, ndeath
         type(excit) :: connection
@@ -50,6 +52,8 @@ contains
         logical :: soft_exit
 
         real :: t1
+
+        logical :: update_tau
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -72,7 +76,7 @@ contains
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
-            call init_report_loop()
+            call init_report_loop(bloom_stats)
 
             do icycle = 1, ncycles
 
@@ -102,6 +106,8 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
                             call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
+                            if (abs(nspawned) >= bloom_stats%n_bloom) &
+                                call accumulate_bloom_stats(bloom_stats, nspawned)
                         end if
 
                     end do
@@ -117,7 +123,9 @@ contains
 
             end do
 
-            call end_report_loop(ireport, nparticles_old, t1, soft_exit)
+            update_tau = bloom_stats%nwarnings_curr > 0
+
+            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit
 

@@ -385,7 +385,7 @@ contains
         end do
         call dealloc_det_info(cdet)
 
-#ifdef PARALLEL
+#ifdef parallel
         call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
         call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -407,10 +407,16 @@ contains
 
 ! --- QMC loop and cycle initialisation routines ---
 
-    subroutine init_report_loop()
+    subroutine init_report_loop(bloom_stats)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
+
+        use bloom_handler, only: bloom_stats_t
+
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+
+        bloom_stats%nwarnings_curr = 0
 
         proj_energy = 0.0_p
         rspawn = 0.0_p
@@ -467,10 +473,13 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(ireport, ntot_particles, report_time, soft_exit)
+    subroutine end_report_loop(ireport, update_tau, ntot_particles, report_time, soft_exit)
 
         ! In:
         !    ireport: index of current report loop.
+        !    update_tau: true if the processor thinks the timestep should be rescaled.
+        !             Only used if not in variable shift mode and if tau_search is being
+        !             used.
         ! In/Out:
         !    ntot_particles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -489,6 +498,7 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         integer, intent(in) :: ireport
+        logical, intent(in) :: update_tau
         integer(lint), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
@@ -514,6 +524,8 @@ contains
         call fciqmc_interact(soft_exit)
         if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
 
+        if (tau_search .and. .not. vary_shift) call send_tau(update_tau)
+
     end subroutine end_report_loop
 
     subroutine end_mc_cycle(ndeath, nattempts)
@@ -536,5 +548,38 @@ contains
         proj_energy = proj_energy + proj_energy_cycle
 
     end subroutine end_mc_cycle
+
+    subroutine send_tau(update_tau, factor)
+
+        ! Scale the timestep by across all the processors.  This is performed if at least
+        ! one processor thinks it should be.
+
+        ! In:
+        !    update_tau: true if the current processor thinks the timestep should be scaled.
+        !    factor: factor to scale the timestep by (default: 0.95).
+
+        use parallel
+
+        integer :: ierr
+        logical, intent(in) :: update_tau
+        real(p), intent(in), optional :: factor
+
+        logical :: update_tau_global
+
+#ifdef PARALLEL
+       call mpi_allreduce(update_tau, update_tau_global, 1, mpi_logical, MPI_LOR, MPI_COMM_WORLD, ierr)
+#else
+        update_tau_global = update_tau
+#endif
+        if(update_tau_global) then
+            if (present(factor)) then
+                tau = factor*tau
+            else
+                tau = 0.950_p*tau
+            end if
+            if(parent) write(6, '(1X, "# Warning timestep changed to: ",f7.5)'), tau
+        end if
+
+    end subroutine send_tau
 
 end module qmc_common

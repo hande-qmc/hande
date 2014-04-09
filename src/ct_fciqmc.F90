@@ -20,6 +20,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
+        use bloom_handler, only: bloom_stats_t
         use calc, only: seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info
         use excitations, only: excit
@@ -52,6 +53,7 @@ contains
         type(dSFMT_t) :: rng
         integer, parameter :: thread_id = 0
         integer :: spawned_pop
+        type(bloom_stats_t) :: bloom_stats
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -89,7 +91,7 @@ contains
         ! Main fciqmc loop
         do ireport = 1, nreport
 
-            call init_report_loop()
+            call init_report_loop(bloom_stats)
             call init_mc_cycle(nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
@@ -227,7 +229,7 @@ contains
 
             call direct_annihilation(sys, initiator_approximation)
 
-            call end_report_loop(ireport, nparticles_old, t1, soft_exit)
+            call end_report_loop(ireport, .false., nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit
 

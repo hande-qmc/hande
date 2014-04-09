@@ -29,21 +29,4 @@ type cluster_t
     real(p) :: pselect
 end type cluster_t
 
-! Type stores the stats about CCMC bloming events:
-! A bloom is deffined to have occured if a population of excips larger than 5% of
-! the total population is spawned by any one cluster.
-type bloom_stats_t
-    ! The number of blooms.
-    integer :: nwarnings = 0
-    ! The maxium number of excips spawned by a bloom.
-    integer :: max_bloom = 0
-    ! The total number of excips spawned by a bloom.
-    real(p) :: tot_bloom = 0
-    ! The proportion of the total number of excips which has to be spawned onto one
-    ! determinant to define a bloom. 
-    real(p) :: prop = 0.05
-    ! The number of verbose warnings to print out.
-    integer :: nverbose_warnings = 1
-end type bloom_stats_t 
-
 end module ccmc_data
