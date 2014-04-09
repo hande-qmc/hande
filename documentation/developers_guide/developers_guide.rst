@@ -296,7 +296,7 @@ How to add a new test
         Benchmark: 288ad50.
 
         ...
-        
+
         Failed tests in:
             /home/Alex/code/HANDE/master/test_suite/H2-RHF-cc-pVTZ-Lz
         Not all tests passed.
@@ -311,7 +311,7 @@ How to add a new test
     .. code-block:: bash
 
         $ git add userconfig jobconfig */benchmark.out.6d161d0.inp*
-    
+
     where 6d161d0 is the hash printed out at the end of the make-benchmarks
 
 #.  Do a quick git status to make sure you haven't missed anything important out, and 
@@ -323,4 +323,4 @@ How to add a new test
 
     Remember you're committing to a branch not the master.
 #.  Push this to the main repository and send round a pull request for review before its
-    to be merged with master..         
+    to be merged with master.
