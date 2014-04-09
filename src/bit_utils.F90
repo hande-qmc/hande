@@ -12,8 +12,8 @@ use const
 implicit none
 
 interface operator(.bitstrgt.)
-    module procedure bit_str_i0_gt
-    module procedure bit_str_int_s_gt
+    module procedure bit_str_32_gt
+    module procedure bit_str_64_gt
 end interface
 
 contains
@@ -247,7 +247,7 @@ contains
 
 !--- Comparison of bit strings---
 
-    pure function bit_str_i0_gt(f1, f2) result(gt)
+    pure function bit_str_32_gt(f1, f2) result(gt)
 
         ! In:
         !    f1(:), f2(:) bit string.
@@ -257,7 +257,7 @@ contains
         !    element in f2.
 
         logical :: gt
-        integer(i0), intent(in) :: f1(:), f2(:)
+        integer(4), intent(in) :: f1(:), f2(:)
 
         integer :: i
 
@@ -272,9 +272,9 @@ contains
             end if
         end do
 
-    end function bit_str_i0_gt
+    end function bit_str_32_gt
 
-    pure function bit_str_int_s_gt(f1, f2) result(gt)
+    pure function bit_str_64_gt(f1, f2) result(gt)
 
         ! In:
         !    f1(:), f2(:) bit string.
@@ -284,7 +284,7 @@ contains
         !    element in f2.
 
         logical :: gt
-        integer(int_s), intent(in) :: f1(:), f2(:)
+        integer(8), intent(in) :: f1(:), f2(:)
 
         integer :: i
 
@@ -299,6 +299,6 @@ contains
             end if
         end do
 
-    end function bit_str_int_s_gt
+    end function bit_str_64_gt
 
 end module bit_utils
