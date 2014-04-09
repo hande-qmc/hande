@@ -137,11 +137,10 @@ contains
 
         integer :: iel
 
-        !Check that this excitation is symmetry allowed
-        if(basis_fns(i)%sym/=basis_fns(a)%sym) then
-            hmatel = 0
+        ! Check that this excitation is symmetry allowed.
+        if (basis_fns(i)%sym/=basis_fns(a)%sym) then
+            hmatel = 0.0_p
         else
-
             ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
             hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
@@ -153,7 +152,8 @@ contains
             end do
 
             if (perm) hmatel = -hmatel
-        endif
+        end if
+
     end function slater_condon1_mol
 
     pure function slater_condon1_mol_excit(sys, occ_list, i, a, perm) result(hmatel)
@@ -236,8 +236,10 @@ contains
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        !Check Sym
-        if(cross_product_pg_sym(basis_fns(i)%sym,basis_fns(j)%sym)  &
+        ! Check symmetry.
+        ! [review] - JSS: is this not checked in get_two_body_int_mol?  If not, it really ought
+        ! [review] - JSS: to be given the promises made in the comments of get_two_body_int_mol...
+        if (cross_product_pg_sym(basis_fns(i)%sym,basis_fns(j)%sym)  &
             ==cross_product_pg_sym(basis_fns(a)%sym,basis_fns(b)%sym)) then
          
             ! < D | H | D_{ij}^{ab} > = < ij || ab >
@@ -246,8 +248,9 @@ contains
 
             if (perm) hmatel = -hmatel
         else
-            hmatel=0
+            hmatel=0.0_p
         endif
+
     end function slater_condon2_mol
 
     elemental function slater_condon2_mol_excit(sys, i, j, a, b, perm) result(hmatel)

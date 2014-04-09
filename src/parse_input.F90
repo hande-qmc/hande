@@ -163,6 +163,7 @@ contains
             case('SYM','SYMMETRY')
                 call readi(sym_in)
             case("LZ")
+                ! [review] - JSS: must be broadcast!
                 sys%read_in%useLz=.true.
             case('SEPARATE_STRINGS')
                 separate_strings = .true.

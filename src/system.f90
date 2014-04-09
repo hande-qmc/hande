@@ -187,6 +187,8 @@ type sys_t
 
     ! Because Lz symmetry is not closed, we store some additional irreps and information about them:
     ! These functions allow one to loop over those syms.
+    ! We go up to cross products involving three orbitals.  See comments in point_group_symmetry
+    ! and init_pg_symmetry.
     integer :: nsym_tot = 1
     integer :: sym0_tot = 1
     integer :: sym_max_tot

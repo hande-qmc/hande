@@ -314,7 +314,7 @@ contains
         !    i, j: orbitals in determinant from which two electrons are excited.
         !        Note that i,j are ordered such that i<j.
         !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
-        !        \phi_i*\phi_j. [We're assuming that ij is going to be in the bra of an excit]
+        !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
         !    ij_spin: spin label of the combined ij codensity.
         !        ij_spin = -2   i,j both down
         !                =  0   i up and j down or vice versa

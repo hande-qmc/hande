@@ -87,19 +87,19 @@ integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0
 
 ! The following masks are used to extract the point-group symmetry from the symmetry of a basis fn.
 ! pg symmetry occupies the lowest bits, and is extracted by iand with this mask.
-integer :: pg_mask  !Typically 0, 1, 3, or 7 depending on how many point-group operations there are
+integer :: pg_mask  ! Typically 0, 1, 3, or 7 depending on how many point-group operations there are.
 
-!Lz symmetry is stored in the higher bits of the symmetry and this mask can be used to access that  
+! Lz symmetry is stored in the higher bits of the symmetry and this mask can be used to access it.
 integer :: Lz_mask
 
 ! Used to offset the Lz values when encoding into a symmetry.  If iand(sym,Lz_mask)==Lz_offset,
 ! this corresponds to an Lz value of 0.
 integer :: Lz_offset
 
-! * or / bu Lz_divisor to move the Lz values from higher bits to lower ones.
+! * or / by Lz_divisor to move the Lz values from higher bits to lower ones.
 ! NB this is not used in time-critical applications, so needn't be a shift rather than *,/
-! To extract an Lz value from a symmetry sym, use (iand(sym,Lz_mask)-Lz_offset)/Lz_divisor.
-! or better, use pg_sym_getLz()
+! To extract an Lz value from a symmetry sym, use (iand(sym,Lz_mask)-Lz_offset)/Lz_divisor
+! or (better) use pg_sym_getLz().
 integer :: Lz_divisor
 contains
 
@@ -136,22 +136,23 @@ contains
         ! representation.
 
         maxsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
+        ! [review] - JSS: debug output or should be placed with the symmetry table?
         write(6,*) "Number of point group symmetries:", maxsym
         
         if(sys%read_in%useLz) then
             ! This is the Max Lz value we find in the basis functions.
             maxLz = maxval(basis_fns(:)%lz)
+            ! [review] - JSS: debug output or should be placed with the symmetry table?
             write(6,*) "Maximum Lz found:", maxLz
         else
-            maxLz=0 !let's not use Lz.
+            maxLz = 0 ! Let's not use Lz.
         endif
         ! The point group mask is used to extract the point group symmetry from a sym.
         ! Since the point group sym goes from 0..maxsym-1, and maxsym is always a power
         ! of 2, the mask is just maxsym-1
-        pg_mask =maxsym-1
-        write(6,*) "Symmetry Mask:", pg_mask
+        pg_mask = maxsym-1
 
-        !We'll put Lz in higher bits, and an encode or decode by multiplying or diviging by
+        ! We'll put Lz in higher bits, and an encode or decode by multiplying or diviging by:
         Lz_divisor = maxsym
 
         ! When we use excitation generators, we combine together at most three orbitals'
@@ -163,7 +164,6 @@ contains
         ! compromise on allowing Lz values from -3*MaxLz ... 3*MaxLz, which will
         ! be stored in the higher bits of the sym using this mask.
         Lz_mask = (2**ceiling(log(real(6*maxLz+1))/log(2.0))-1)*Lz_divisor
-        write(6,*) "Lz Mask:", Lz_mask
         ! However, in order to store these, two's complement is not a good idea as it does
         ! not provide a continuous set of numbers (e.g. in three bits, -1,0,1 would render
         ! as 111,000,001, and if these are stored as the higher bits of symmetry, they would
@@ -177,8 +177,9 @@ contains
         ! 0000, 0001, 0010, 0011, 0100, 0101 which are continuous integers.
         ! For reference in Lz world, 0 means Lz=-3*maxLz*maxsym, so Lz_offset means Lz=0
         Lz_offset = 3*maxLz*Lz_divisor
-        write(6,*) "Lz offset (corresponds to Lz=0):", Lz_offset
         gamma_sym = Lz_offset
+        ! [review] - JSS: output in symmetry table?
+        write(6,*) "Lz offset (corresponds to Lz=0):", Lz_offset
         write(6,*) "Totally symmetric symmetry: ", gamma_sym
 
         if(sym_in /= huge(1)) then
@@ -187,8 +188,8 @@ contains
             sym_in = sym_in + Lz_offset
         endif
 
-        !nsym, sym0 and sym_max allow one to iterate over the symmetries of the basis fns:
-
+        ! nsym, sym0 and sym_max allow one to iterate over the symmetries that occur in
+        ! the basis fns:
         sys%sym0 = iand((-maxLz*Lz_divisor+Lz_offset),Lz_mask)
         sys%sym_max = maxLz*Lz_divisor+Lz_offset+maxsym-1
         sys%nsym = sys%sym_max - sys%sym0
@@ -207,7 +208,7 @@ contains
 
         do i = 1, nbasis
             ! Encode the Lz into the symmetry. We shift the lz into higher bits (by *maxsym)  and offset.
-            if(maxlz>0) then
+            if (maxlz>0) then
                 basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz*Lz_divisor+Lz_offset)
             endif
             nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
@@ -333,10 +334,11 @@ contains
         integer :: sym_ij
         integer, intent(in) :: sym_i, sym_j
 
-        ! The pg part can be done with an exclusive or. To save on operations, we mask after that
+        ! The pg part can be done with an exclusive or. To save on operations, we mask after that.
+        ! The Lz is just additive (though we need to extract it and remember to remove an offset).
         sym_ij = ior(iand(ieor(sym_i, sym_j),pg_mask), &
                 iand(sym_i,Lz_mask)+iand(sym_j,Lz_mask)-Lz_offset)
-        !The Lz is just additive (though we need to extract it and remember to remove an offset)
+
     end function cross_product_pg_sym
 
 
@@ -346,27 +348,33 @@ contains
         !   sym: the bit representation of the irrep of the pg sym including
         !        Lz in its higher bits 
         ! Returns:
-        !   The symmetry conjugate of the symmetry. For pg symmetry this is the same,
-        !   But we need to take Lz to -Lz here.
+        !   The symmetry conjugate of the symmetry. For pg symmetry this is the same as
+        !   it's Abelian, but we need to take Lz to -Lz here.
+
         integer, intent(in) :: sym
         integer :: rsym
 
-        !Take the symmetry conjugate.  The point group part is the same.
-        !The Lz needs to become -Lz, but
+        ! Take the symmetry conjugate.  The point group part is the same.
+        ! [review] - JSS: but...?
+        ! The Lz needs to become -Lz, but
         rsym  = ior(iand(sym,pg_mask), &
                 iand(2*Lz_offset-iand(sym,Lz_mask),Lz_mask))
 
     end function pg_sym_conj
 
     elemental function pg_sym_getLz(sym) result(Lz)
+
         ! In:
         !    sym: bit string representation of an irreducible representation of
         !    a point group.
         ! Returns:
+        !    [review] - JSS: missing ) could change meaning...
         !    The Lz component of sym (unoffset, so Lz=0 is returned as 0
+
         integer, intent(in) :: sym
         integer :: Lz
         Lz = (iand(sym,Lz_mask)-Lz_offset)/Lz_divisor
+
     end function pg_sym_getLz
 
     elemental function is_basis_pg_sym(sys,sym) result(valid)
@@ -384,7 +392,8 @@ contains
         logical :: valid
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: sym
-        valid= sym>=sys%sym0 .and. sym<=sys%sym_max
+        valid = sym>=sys%sym0 .and. sym<=sys%sym_max
+
     end function is_basis_pg_sym 
 
     elemental function is_gamma_irrep_pg_sym(sym) result(is_gamma)
