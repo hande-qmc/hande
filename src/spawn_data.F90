@@ -336,7 +336,7 @@ contains
 
     end subroutine annihilate_wrapper_received_list
 
-    subroutine calculate_displacements(spawn, send_disp)
+    subroutine calculate_displacements(spawn, send_disp, non_block_spawn)
 
         ! Work out how many particles we are sending from the current processor
         ! to all other processors. Necessary for non-blocking communications.
@@ -347,11 +347,14 @@ contains
         ! Out:
         !    send_disp: Each element of this array contains how many walker will be sent
         !      from current processor to every other processor.
+        !    non_block_spawn: number of spawned particles on current processor
+        !      during current MC cycle.
 
         use parallel, only: nprocs, iproc
 
         type(spawn_t), intent(in) :: spawn
         integer, intent(out) :: send_disp(0:)
+        integer, intent(out) :: non_block_spawn
 
         integer :: i
         integer, parameter :: thread_id = 0
@@ -359,6 +362,9 @@ contains
         do i = 0, nprocs-1
             send_disp(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i)
         end do
+        ! Need to copy the number of walkers we've spawned during current time
+        ! step for estimating spawning rate.
+        non_block_spawn = sum(send_disp)
         send_disp(iproc) = 0
 
     end subroutine calculate_displacements
