@@ -1,0 +1,24 @@
+read FCIDUMP
+nel 2 
+
+ms 0
+sym 0
+Lz
+
+fci
+
+
+truncation_level 2
+walker_length 5 mb
+spawned_walker_length 1 mb
+
+no_renorm
+
+nreports 50000
+mc_cycles 50
+tau 0.0020
+varyshift_target  500
+
+dump_restart 0
+
+seed 7

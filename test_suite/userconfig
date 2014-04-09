@@ -7,5 +7,5 @@ extract_program = ../tools/extract.py
 
 [user]
 diff = vimdiff
-benchmark = 288ad50
+benchmark = 6d161d0
 
