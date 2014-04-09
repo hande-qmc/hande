@@ -91,7 +91,7 @@ type det_info
     ! Number of unoccupied orbitals with each spin and symmetry.
     ! The first index maps to spin using (Ms+3)/2, where Ms=-1 is spin-down and
     ! Ms=1 is spin-up.
-    integer, pointer :: symunocc(:,:) ! (2,sym0:sym_max)
+    integer, pointer :: symunocc(:,:) ! (2,sym0_tot:sym_max_tot)
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC).
     integer :: initiator_flag
@@ -327,7 +327,7 @@ contains
         call check_allocate('det_info_t%unocc_list_beta',sys%nvirt_beta,ierr)
 
         ! Components for symmetry summary of unoccupied basis functions...
-        allocate(det_info_t%symunocc(2,sys%sym0:sys%sym_max), stat=ierr)
+        allocate(det_info_t%symunocc(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
         call check_allocate('det_info_t%symunocc',size(det_info_t%symunocc),ierr)
 
     end subroutine alloc_det_info
@@ -633,7 +633,7 @@ contains
         !    d: det_info variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
-        !        symunocc(2, sym0:symmax): number of unoccupied orbitals of each
+        !        symunocc(2, sym0_tot:symmax_tot): number of unoccupied orbitals of each
         !            spin/symmetry.  The same indexing scheme is used for
         !            nbasis_sym_spin.
 

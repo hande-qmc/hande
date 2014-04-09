@@ -628,6 +628,8 @@ of the determinant is currently hard-coded.
 **sym** *isym*
     Synonym for **symmetry**.
 
+**lz**
+    Specify if Lz symmetry is to be used.
 Calculation options: diagonalisation options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

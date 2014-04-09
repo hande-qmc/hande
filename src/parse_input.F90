@@ -162,7 +162,8 @@ contains
                 call readi(ms_in)
             case('SYM','SYMMETRY')
                 call readi(sym_in)
-
+            case("LZ")
+                sys%read_in%useLz=.true.
             case('SEPARATE_STRINGS')
                 separate_strings = .true.
             case('CAS')

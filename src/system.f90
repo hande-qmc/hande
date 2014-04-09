@@ -145,6 +145,7 @@ type sys_read_in_t
     ! Contribution from frozen core orbitals and nucleii terms to dipole moment
     real(p) :: dipole_core
 
+    logical :: useLz = .false.
 end type sys_read_in_t
 
 ! --- System data container structure ---
@@ -177,12 +178,18 @@ type sys_t
     ! # number of virtual alpha, beta spin-orbitals
     integer :: nvirt_alpha, nvirt_beta
 
-    ! Number of symmetries.
+    ! Number of symmetries.  These are specified for orbitals.
     integer :: nsym = 1
     ! Index of lowest symmetry (normally 0 or 1).
     integer :: sym0 = 1
     ! Index of highest symmetry (i.e. nsym+(sym0-1))
     integer :: sym_max
+
+    ! Because Lz symmetry is not closed, we store some additional irreps and information about them:
+    ! These functions allow one to loop over those syms.
+    integer :: nsym_tot = 1
+    integer :: sym0_tot = 1
+    integer :: sym_max_tot
 
     ! System uses Bloch states for basis functions (i.e. hub_k and UEG)?
     logical :: momentum_space = .false.

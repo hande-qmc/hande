@@ -151,7 +151,7 @@ contains
         integer, intent(in) :: occ_list(sys%nel)
         real(p), intent(out) :: psingle, pdouble
 
-        integer :: i, j, virt_syms(2, sys%sym0:sys%sym_max), nsingles, ndoubles, isyma, isymb, ims1, ims2
+        integer :: i, j, virt_syms(2, sys%sym0_tot:sys%sym_max_tot), nsingles, ndoubles, isyma, isymb, ims1, ims2
 
         select case(sys%system)
         case(hub_k)

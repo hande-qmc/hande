@@ -62,19 +62,19 @@ integer :: gamma_sym = 0
 
 ! nbasis_sym(i) gives the number of (spin) basis functions in the i-th symmetry,
 ! where i is the bit string describing the irreducible representation.
-integer, allocatable :: nbasis_sym(:) ! (sym0:sym_max)
+integer, allocatable :: nbasis_sym(:) ! (sym0_tot:sym_max_tot)
 
 ! nbasis_sym_spin(1,i) gives the number of spin-down basis functions in the i-th
 ! symmetry where i is the bit string describing the irreducible representation.
 ! Similarly, j=2 gives the analagous quantity for spin-up basis functions.
 ! For RHF calculations nbasis_sym_spin(:,i) = nbasis_sym(i)/2.
-integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sym0:sym_max)
+integer, allocatable :: nbasis_sym_spin(:,:) ! (2,sym0_tot:sym_max_tot)
 
 ! sym_spin_basis_fns(:,ims,isym) gives the list of spin functions (ims=1 for
 ! down, ims=2 for up) with symmetry isym.  We merrily waste some memory (not all
 ! symmetries will have the same number of basis functions), so a 0 entry
 ! indicates no more basis functions with the given spin and spatial symmetries.
-integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0:sym_max)
+integer, allocatable :: sym_spin_basis_fns(:,:,:) ! (max(nbasis_sym_spin),2,sym0_tot:sym_max_tot)
 
 !The following masks are used to extract the point-group symmetry from the symmetry of a basis fn.
 integer :: pg_mask  !Typically 0,1,3,7 depending on how many point-group operations there are
@@ -85,6 +85,10 @@ integer :: Lz_mask
 ! Used to offset the Lz values when encoding into a symmetry.  If iand(sym,Lz_mask)==Lz_offset,
 ! this corresponds to an Lz value of 0.
 integer :: Lz_offset
+
+! To extract an Lz value from a symmetry sym, use (iand(sym,Lz_mask)-Lz_offset)/Lz_divisor.
+! or better, use pg_sym_getLz()
+integer :: Lz_divisor
 contains
 
     subroutine init_pg_symmetry(sys)
@@ -121,15 +125,22 @@ contains
 
         maxsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
         write(6,*) "Number of point group symmetries:", maxsym
-        ! This is the Max Lz value we find in the basis functions.
-        maxLz = maxval(basis_fns(:)%lz)
-        write(6,*) "Maximum Lz found:", maxLz
-
+        
+        if(sys%read_in%useLz) then
+            ! This is the Max Lz value we find in the basis functions.
+            maxLz = maxval(basis_fns(:)%lz)
+            write(6,*) "Maximum Lz found:", maxLz
+        else
+            maxLz=0 !let's not use Lz.
+        endif
         ! The point group mask is used to extract the point group symmetry from a sym.
         ! Since the point group sym goes from 0..maxsym-1, and maxsym is always a power
         ! of 2, the mask is just maxsym-1
-        pg_mask=maxsym-1
+        pg_mask =maxsym-1
         write(6,*) "Symmetry Mask:", pg_mask
+
+        !We'll put Lz in higher bits, and an encode or decode by multiplying or diviging by
+        Lz_divisor = maxsym
 
         ! When we use excitation generators, we combine together at most three orbitals'
         ! symmetries. The maximum encountered value of Lz will therefore be maxLz*3 
@@ -139,7 +150,7 @@ contains
         ! so we wish to keep the number of symmetries as low as possible.  We therefore
         ! compromise on allowing Lz values from -3*MaxLz ... 3*MaxLz, which will
         ! be stored in the higher bits of the sym using this mask.
-        Lz_mask=(2**ceiling(log(real(6*maxLz+1))/log(2.0))-1)*maxsym
+        Lz_mask = (2**ceiling(log(real(6*maxLz+1))/log(2.0))-1)*Lz_divisor
         write(6,*) "Lz Mask:", Lz_mask
         ! However, in order to store these, two's complement is not a good idea as it does
         ! not provide a continuous set of numbers (e.g. in three bits, -1,0,1 would render
@@ -153,31 +164,40 @@ contains
         ! 0010 (putting it in the right place in the bit string), giving symmetries:
         ! 0000, 0001, 0010, 0011, 0100, 0101 which are continuous integers.
         ! For reference in Lz world, 0 means Lz=-3*maxLz*maxsym, so Lz_offset means Lz=0
-        Lz_offset=3*maxLz*maxsym
+        Lz_offset = 3*maxLz*Lz_divisor
         write(6,*) "Lz offset (corresponds to Lz=0):", Lz_offset
-        gamma_sym=Lz_offset*maxsym
+        gamma_sym = Lz_offset
         write(6,*) "Totally symmetric symmetry: ", gamma_sym
 
         if(sym_in /= huge(1)) then
             ! If one wished to specify Lz in sym_in, it would be added in here.
             ! Need to modify to include Lz:
-            sym_in=sym_in+Lz_offset
+            sym_in = sym_in + Lz_offset
         endif
-        ! We can iterate from sys%sym0 .. sys%sym_max, which following the above discussion means
-        sys%nsym = (6*maxLz+1)*maxsym
-        sys%sym_max = sys%nsym-1
 
-        allocate(nbasis_sym(0:sys%nsym-1), stat=ierr)
-        call check_allocate('nbasis_sym', sys%nsym, ierr)
-        allocate(nbasis_sym_spin(2,0:sys%nsym-1), stat=ierr)
-        call check_allocate('nbasis_sym_spin', 2*sys%nsym, ierr)
+        !nsym, sym0 and sym_max allow one to iterate over the symmetries of the basis fns:
+
+        sys%sym0 = iand((-maxLz*Lz_divisor+Lz_offset),Lz_mask)
+        sys%sym_max = maxLz*Lz_divisor+Lz_offset+maxsym-1
+        sys%nsym = sys%sym_max - sys%sym0
+        ! We can iterate from sys%sym0 .. sys%sym_max, which following the above discussion means
+        sys%sym0_tot = 0
+        sys%nsym_tot = (6*maxLz+1)*Lz_divisor
+        sys%sym_max_tot = sys%nsym_tot-1
+
+        allocate(nbasis_sym(sys%sym0_tot:sys%sym_max_tot), stat=ierr)
+        call check_allocate('nbasis_sym', sys%nsym_tot, ierr)
+        allocate(nbasis_sym_spin(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
+        call check_allocate('nbasis_sym_spin', 2*sys%nsym_tot, ierr)
 
         nbasis_sym = 0
         nbasis_sym_spin = 0
 
         do i = 1, nbasis
             ! Encode the Lz into the symmetry. We shift the lz into higher bits (by *maxsym)  and offset.
-            basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz*maxsym+Lz_offset)
+            if(maxlz>0) then
+                basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz*Lz_divisor+Lz_offset)
+            endif
             nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
             basis_fns(i)%sym_index = nbasis_sym(basis_fns(i)%sym)
 
@@ -188,7 +208,7 @@ contains
 
         end do
 
-        allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,0:sys%nsym-1), stat=ierr)
+        allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
         call check_allocate('sym_spin_basis_fns', size(sym_spin_basis_fns), ierr)
         sym_spin_basis_fns = 0
 
@@ -235,25 +255,31 @@ contains
 
         type(sys_t), intent(in) :: sys
 
-        integer :: i, j
+        integer :: i, j, sym
 
         if (parent) then
             write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
 
             write (6,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
             ! Note that we never actually store this.
-            do i = 0, sys%nsym-1
-                do j = 0, sys%nsym-1
-                    write (6,'(1X,i2)',advance='no') cross_product_pg_sym(i,j)
+            do i = sys%sym0, sys%sym_max
+                do j = sys%sym0, sys%sym_max
+                    sym=cross_product_pg_sym(i,j)
+                    if (sym>=sys%sym0_tot.and.sym<sys%nsym_tot) then
+                        write (6,'(1X,i2)',advance='no') sym
+                    else
+                        write (6,'(3X)',advance='no')
+                    endif
                 end do
                 write (6,'()')
             end do
 
             write (6,'(/,1X,a93,/)') 'The table below gives the number of basis functions spanning each irreducible representation.'
 
-            write (6,'(1X,"irrep  nbasis  nbasis_up  nbasis_down")')
-            do i = 0, sys%nsym-1
-                write (6,'(1X,i3,4X,i5,3X,i5,6X,i5)') i, nbasis_sym(i), nbasis_sym_spin(:,i)
+            write (6,'(1X,"irrep  Lz   sym  nbasis  nbasis_up  nbasis_down")')
+            do i = sys%sym0, sys%sym_max
+                write (6,'(1X,i3,3X,i3,3X,i2,2X,i5,3X,i5,6X,i5)') i, pg_sym_getLz(i), iand(i,pg_mask), nbasis_sym(i), &
+                    nbasis_sym_spin(:,i)
             end do
 
             write (6,'()')
@@ -319,6 +345,35 @@ contains
                 iand(2*Lz_offset-iand(sym,Lz_mask),Lz_mask))
 
     end function pg_sym_conj
+
+    elemental function pg_sym_getLz(sym) result(Lz)
+        ! In:
+        !    sym: bit string representation of an irreducible representation of
+        !    a point group.
+        ! Returns:
+        !    The Lz component of sym (unoffset, so Lz=0 is returned as 0
+        integer, intent(in) :: sym
+        integer :: Lz
+        Lz = (iand(sym,Lz_mask)-Lz_offset)/Lz_divisor
+    end function pg_sym_getLz
+
+    elemental function is_basis_pg_sym(sys,sym) result(valid)
+        
+        ! In:
+        !    sys: system being studied
+        !    sym: bit string representation of an irreducible representation of
+        !    a point group.
+        !
+        ! Returns:
+        !   True if sym could have been one of the basis function symmetries
+        !   False otherwise
+
+        use system, only: sys_t
+        logical :: valid
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: sym
+        valid= sym>=sys%sym0 .and. sym<=sys%sym_max
+    end function is_basis_pg_sym 
 
     elemental function is_gamma_irrep_pg_sym(sym) result(is_gamma)
 

@@ -99,8 +99,8 @@ contains
         end if
 
         if (sym_in == huge(1)) then
-            isym_min = sys%sym0
-            isym_max = sys%sym_max
+            isym_min = sys%sym0_tot
+            isym_max = sys%sym_max_tot
         else
             ! sym was set in input
             isym_min = sym_in
@@ -170,7 +170,7 @@ contains
 
                 if (sym_space_size(isym)==0) then
                     if (parent) then
-                        associate(nsym=>sys%nsym)
+                        associate(nsym=>sys%nsym_tot)
                             fmt1 = '(1X,a25,'//int_fmt(isym,1)//',1X,a17,'//int_fmt(nsym,1)//',1X,a6,'//int_fmt(nsym,1)//')'
                             write (6,fmt1) 'No determinants with spin',ms,'in symmetry block',isym,'out of',nsym
                             write (6,'(/,1X,15("-"),/)')
@@ -180,8 +180,8 @@ contains
                 end if
 
                 if (parent) then
-                    fmt1 = '(1X,a28,'//int_fmt(isym,1)//',1X,a6,'//int_fmt(sys%nsym,1)//')'
-                    write (6,fmt1) 'Diagonalising symmetry block',isym,'out of',sys%nsym
+                    fmt1 = '(1X,a28,'//int_fmt(isym,1)//',1X,a6,'//int_fmt(sys%nsym_tot,1)//')'
+                    write (6,fmt1) 'Diagonalising symmetry block',isym,'out of',sys%nsym_tot
                 end if
 
                 ! Find all determinants with this spin.

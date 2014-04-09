@@ -248,7 +248,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0:)
+        integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0_tot:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a
         logical, intent(out) :: allowed_excitation
@@ -259,6 +259,7 @@ contains
         allowed_excitation = .false.
         do i = 1, sys%nel
             ims = (basis_fns(occ_list(i))%Ms+3)/2
+            ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
             isym = cross_product_pg_sym(basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims, isym) /= 0) then
                 allowed_excitation = .true.
@@ -390,7 +391,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: sym, spin, symunocc(:,sys%sym0:)
+        integer, intent(in) :: sym, spin, symunocc(:,sys%sym0_tot:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
@@ -717,7 +718,7 @@ contains
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
-        integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0:), a
+        integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0_tot:), a
 
         integer :: ims, isym, i, ni
 
@@ -777,7 +778,7 @@ contains
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: ij_sym, a, b, spin, symunocc(:,sys%sym0:)
+        integer, intent(in) :: ij_sym, a, b, spin, symunocc(:,sys%sym0_tot:)
 
         integer :: imsa, isyma, imsb, isymb, n_aij
         real(p) :: p_bija, p_aijb

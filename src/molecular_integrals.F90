@@ -428,6 +428,7 @@ contains
 
         use basis, only: basis_fns
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
+        use point_group_symmetry, only: pg_sym_conj
 
         real(p) :: intgrl
         type(one_body), intent(in) :: store
@@ -435,7 +436,7 @@ contains
 
         integer :: sym
 
-        sym = cross_product_pg_basis(i, j)
+        sym = cross_product_pg_sym(pg_sym_conj(basis_fns(i)%sym),basis_fns(j)%sym)
         sym = cross_product_pg_sym(sym, store%op_sym)
 
         if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
@@ -680,7 +681,7 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis, only: basis_fns
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
 
         real(p) :: intgrl
         type(two_body), intent(in) :: store
@@ -688,7 +689,7 @@ contains
 
         integer :: sym_ij, sym_ab, sym
 
-        sym_ij = cross_product_pg_basis(i, j)
+        sym_ij = pg_sym_conj(cross_product_pg_basis(i, j))
         sym_ab = cross_product_pg_basis(a, b)
         sym = cross_product_pg_sym(sym_ij, sym_ab)
         sym = cross_product_pg_sym(sym, store%op_sym)
