@@ -50,7 +50,7 @@ contains
 
             ! Remove determinants with zero walkers on them from the main
             ! walker list.
-            call remove_unoccupied_dets()
+            call remove_unoccupied_dets(rng)
 
             ! Stochastically round all spawns with amplitude magnitudes
             ! less than one either up to one or down to zero.
@@ -63,7 +63,7 @@ contains
 
             ! No spawned walkers so we only have to check to see if death has
             ! killed the entire population on a determinant.
-            call remove_unoccupied_dets()
+            call remove_unoccupied_dets(rng)
 
         end if
 
@@ -206,17 +206,41 @@ contains
 
     end subroutine annihilate_main_list_initiator
 
-    subroutine remove_unoccupied_dets()
+    subroutine remove_unoccupied_dets(rng)
 
         ! Remove any determinants with 0 population.
         ! This can be done in a more efficient manner by doing it only when necessary...
+        ! Also, before doing this, stochastically round up or down any populations which
+        ! are less than one.
+
+        ! In/Out:
+        !    rng: random number generator.
 
         use basis, only: total_basis_length
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        integer :: nzero, i, k
+        type(dSFMT_t), intent(inout) :: rng
+
+        integer :: nzero, i, k, itype
+        real(dp) :: r
 
         nzero = 0
         do i = 1, tot_walkers
+
+            ! Loop over all particle types on this determinant and stochastically round
+            ! any populations which are less than one (or less than encoding_factor =
+            ! 2^bit_shift, in the encoded representation of the populations).
+            do itype = 1, qmc_spawn%ntypes
+                if (abs(walker_population(itype,i)) < encoding_factor) then
+                    r = get_rand_close_open(rng)*encoding_factor
+                    if (abs(walker_population(itype,i)) > r) then
+                        walker_population(itype,i) = sign(encoding_factor, walker_population(itype,i))
+                    else
+                        walker_population(itype,i) = 0_int_p
+                    end if
+                end if
+            end do
+
             if (all(walker_population(:,i) == 0_int_p)) then
                 nzero = nzero + 1
             else if (nzero > 0) then
@@ -239,8 +263,8 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
 
-        integer :: i, itype, nremoved
-        integer(int_s) :: spawned_pop(sampling_size)
+        integer :: i, k, itype, nremoved
+        integer(int_s) :: spawned_population(sampling_size)
         real(dp) :: r
         integer, parameter :: thread_id = 0
 
@@ -253,14 +277,15 @@ contains
         do i = 1, qmc_spawn%head(thread_id,0)
 
             ! Loop over all amplitudes for this determinant. For all amplitudes less than 1 (or less
-            ! than encoding_factor = 2**bit_shift in the encoded representation stored in sdata),
+            ! than encoding_factor = 2^bit_shift in the encoded representation stored in sdata),
             ! stochastically round the amplitude up to this cutoff or down to zero.
-            spawned_pop = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i)
+            spawned_population = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i)
             do itype = 1, qmc_spawn%ntypes
-                if (abs(spawned_pop(itype)) < encoding_factor) then
+                if (abs(spawned_population(itype)) < encoding_factor) then
                     r = get_rand_close_open(rng)*encoding_factor
-                    if (abs(spawned_pop(itype)) > r) then
-                        qmc_spawn%sdata(qmc_spawn%bit_str_len+itype, i) = sign(int(encoding_factor,int_s), spawned_pop(itype))
+                    if (abs(spawned_population(itype)) > r) then
+                        qmc_spawn%sdata(qmc_spawn%bit_str_len+itype, i) = &
+                            sign(int(encoding_factor,int_s), spawned_population(itype))
                     else
                         qmc_spawn%sdata(qmc_spawn%bit_str_len+itype, i) = 0_int_s
                     end if
@@ -269,12 +294,13 @@ contains
 
             ! If all the amplitudes for this determinant were zeroed then we don't want to add it
             ! to the main list, so cycle.
-            spawned_pop = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i)
-            if (all(spawned_pop == 0_int_s)) then
+            spawned_population = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i)
+            if (all(spawned_population == 0_int_s)) then
                 nremoved = nremoved + 1
             else
                 ! Shuffle this determinant down to fill in any newly opened slots.
-                qmc_spawn%sdata(:,i-nremoved) = qmc_spawn%sdata(:,i)
+                k = i - nremoved
+                qmc_spawn%sdata(:,k) = qmc_spawn%sdata(:,i)
             end if
 
         end do
@@ -310,7 +336,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: i, istart, iend, j, k, pos
-        integer(int_p) :: spawned_pop(sampling_size)
+        integer(int_p) :: spawned_population(sampling_size)
         logical :: hit
         integer, parameter :: thread_id = 0
 
@@ -349,10 +375,10 @@ contains
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
-            spawned_pop = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
+            spawned_population = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
             walker_dets(:,k) = int(qmc_spawn%sdata(:total_basis_length,i), i0)
-            walker_population(:,k) = spawned_pop
-            nparticles = nparticles + real(abs(spawned_pop),dp)/encoding_factor
+            walker_population(:,k) = spawned_population
+            nparticles = nparticles + real(abs(spawned_population),dp)/encoding_factor
             walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then

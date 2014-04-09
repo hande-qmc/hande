@@ -713,7 +713,7 @@ contains
 
         ! Call the annihilation routine to update the main walker list, as some
         ! sites will have become unoccupied and so need removing from the simulation.
-        call remove_unoccupied_dets()
+        call remove_unoccupied_dets(rng)
 
     end subroutine update_sampling_weights
 
