@@ -92,7 +92,8 @@ contains
         else
             population = population - kill
         end if
-        tot_population = tot_population - abs(old_population) + abs(population)
+        tot_population = tot_population + &
+            real(abs(population) - abs(old_population),dp)/encoding_factor
         ndeath = ndeath + abs(kill)
 
     end subroutine stochastic_death

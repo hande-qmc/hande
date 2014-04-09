@@ -87,8 +87,8 @@ contains
 
                     call decoder_ptr(sys, cdet%f, cdet)
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(walker_population(1,idet),p)/2**bit_shift
-                    !write(*,*) "idet:", idet, "int_pop:", walker_population(1,idet), "real_pop:", real_population
+                    real_population = real(walker_population(1,idet),p)/encoding_factor
+                    !write(*,*) "idet:", idet, "det:", cdet%f, "int_pop:", walker_population(1,idet), "real_pop:", real_population
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're

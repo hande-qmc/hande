@@ -313,7 +313,7 @@ contains
         real(dp) :: r, pextra
         integer :: nattempts
 
-        real_population = real(int_population, dp)/2**bit_shift
+        real_population = real(int_population, dp)/encoding_factor
         nattempts = abs(int(real_population))
         pextra = abs(real_population) - nattempts
         ! If there is no probability of generating an extra attempt, then
@@ -411,7 +411,7 @@ contains
             cdet%f = walker_dets(:,idet)
             call decode_det(cdet%f, cdet%occ_list)
             cdet%data => walker_data(:,idet)
-            real_population = real(walker_population(:,idet),dp)/2**bit_shift
+            real_population = real(walker_population(:,idet),dp)/encoding_factor
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &

@@ -57,6 +57,7 @@ logical :: real_amplitudes = .false.
 integer :: bit_shift
 ! The minimum amplitude of a spawning event which can be added to
 ! the spawned list.
+integer(int_p) :: encoding_factor
 real(p) :: spawn_cutoff
 
 !--- Energy data ---
@@ -458,7 +459,7 @@ contains
         integer :: nspawn
 
         nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
-        ndeath_real = real(ndeath,dp)/2**bit_shift
+        ndeath_real = real(ndeath,dp)/encoding_factor
         ! The total spawning rate is
         !   (nspawn + ndeath_real) / nattempts
         ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different

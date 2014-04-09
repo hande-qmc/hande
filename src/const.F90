@@ -43,10 +43,10 @@ integer, parameter :: int_p = selected_int_kind(15)
 integer, parameter :: int_p = selected_int_kind(15)
 #endif
 
-#ifdef POP_SIZE == 64 || DET_SIZE == 64
-integer, parameter :: int_s = selected_int_kind(15)
-#else
+#ifdef POP_SIZE == 32 && DET_SIZE == 32
 integer, parameter :: int_s = selected_int_kind(6)
+#else
+integer, parameter :: int_s = selected_int_kind(15)
 #endif
 
 ! Number of bits in an integer of type i0.

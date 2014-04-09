@@ -12,7 +12,8 @@ use const
 implicit none
 
 interface operator(.bitstrgt.)
-    module procedure bit_str_gt
+    module procedure bit_str_i0_gt
+    module procedure bit_str_int_s_gt
 end interface
 
 contains
@@ -246,7 +247,7 @@ contains
 
 !--- Comparison of bit strings---
 
-    pure function bit_str_gt(f1, f2) result(gt)
+    pure function bit_str_i0_gt(f1, f2) result(gt)
 
         ! In:
         !    f1(:), f2(:) bit string.
@@ -271,6 +272,33 @@ contains
             end if
         end do
 
-    end function bit_str_gt
+    end function bit_str_i0_gt
+
+    pure function bit_str_int_s_gt(f1, f2) result(gt)
+
+        ! In:
+        !    f1(:), f2(:) bit string.
+        ! Returns:
+        !    True if the first element of f1 which is not equal to the
+        !    corresponding element of f2 is greater than the corresponding
+        !    element in f2.
+
+        logical :: gt
+        integer(int_s), intent(in) :: f1(:), f2(:)
+
+        integer :: i
+
+        gt = .false.
+        do i = 1, ubound(f1,dim=1)
+            if (f1(i) > f2(i)) then
+                gt = .true.
+                exit
+            else if (f1(i) < f2(i)) then
+                gt = .false.
+                exit
+            end if
+        end do
+
+    end function bit_str_int_s_gt
 
 end module bit_utils

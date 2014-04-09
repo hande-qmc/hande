@@ -393,7 +393,7 @@ module hash_table
             use hashing, only: murmurhash_bit_string
 
             type(hash_table_t), intent(in) :: ht
-            integer(int_s), intent(in) :: label(:)
+            integer(i0), intent(in) :: label(:)
             type(hash_table_pos_t), intent(out) :: pos
             logical, intent(out) :: hit
 
@@ -409,7 +409,7 @@ module hash_table
                 ! If data_label points to an external array, then the first
                 ! dimension might exceed ht%data_len.  We do, however, assume
                 ! the user has only passed in an array of size ht%data_len...
-                if (all(ht%data_label(:ht%data_len,pos%indx) == label)) then
+                if (all(ht%data_label(:ht%data_len,pos%indx) == int(label,int_s))) then
                     pos%ientry = i
                     hit = .true.
                     exit
@@ -438,7 +438,7 @@ module hash_table
             !        See error codes defined at module-level.
 
             type(hash_table_t), intent(inout) :: ht
-            integer(int_s), intent(in) :: labels(:,:)
+            integer(i0), intent(in) :: labels(:,:)
             integer(int_p), intent(in) :: payload(:,:)
             integer, intent(out) :: err_code
 
@@ -464,6 +464,6 @@ module hash_table
 
 !--- Hash table manipulation utilities ---
 
-! TODO: expand/resize ht%table.
+! TODO: expand/resize ht%table
 
 end module hash_table

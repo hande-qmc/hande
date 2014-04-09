@@ -116,7 +116,11 @@ contains
         spawn%array_len = array_len
         spawn%hash_seed = hash_seed
         spawn%comm_time = 0.0_dp
-        spawn%cutoff = int(ceiling(cutoff*2**(bit_shift), int_p))
+        spawn%cutoff = int(ceiling(cutoff*(2_int_p**int(bit_shift,int_p)), int_p))
+        write(6,*) "real cutoff:", cutoff
+        write(6,*) "before ceiling:", ceiling(cutoff*(2_int_p**int(bit_shift,int_p)))
+        write(6,*) "after ceiling:", ceiling(cutoff*(2_int_p**int(bit_shift,int_p)))
+        write(6,*) "cutoff:", spawn%cutoff
 
         allocate(spawn%store1(spawn%element_len, spawn%array_len), stat=ierr)
         call check_allocate('spawn%store1', size(spawn%store1), ierr)

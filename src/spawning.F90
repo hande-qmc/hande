@@ -361,7 +361,7 @@ contains
         !    number_spawned: the number spawned from this probability
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: bit_shift
+        use fciqmc_data, only: encoding_factor
         use spawn_data, only: spawn_t
 
         implicit none
@@ -375,14 +375,14 @@ contains
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
         ! when we later divide this factor back out.
-        pspawn = (2**bit_shift)*probability
+        pspawn = probability*encoding_factor
 
-        if (abs(pspawn) < real(spawn%cutoff,p)) then
+        if (abs(pspawn) < spawn%cutoff) then
 
             ! If the spawning amplitude is below the minimum spawning event
             ! allowed, stochastically round it either down to zero or up
             ! to the cutoff.
-            if (pspawn > get_rand_close_open(rng)) then
+            if (pspawn > get_rand_close_open(rng)*spawn%cutoff) then
                 nspawn = spawn%cutoff
             else
                 nspawn = 0_int_p
@@ -450,7 +450,7 @@ contains
         !    unsuccessful.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: tau, bit_shift
+        use fciqmc_data, only: tau, encoding_factor
         use spawn_data, only: spawn_t
 
         integer(int_p) :: nspawn
@@ -468,14 +468,14 @@ contains
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
         ! when we later divide this factor back out.
-        pspawn = (2**bit_shift)*pspawn
+        pspawn = pspawn*encoding_factor
 
-        if (abs(pspawn) < real(spawn%cutoff,p)) then
+        if (pspawn < spawn%cutoff) then
 
             ! If the spawning amplitude is below the minimum spawning event
             ! allowed, stochastically round it either down to zero or up
             ! to the cutoff.
-            if (pspawn > get_rand_close_open(rng)) then
+            if (pspawn > get_rand_close_open(rng)*spawn%cutoff) then
                 nspawn = spawn%cutoff
             else
                 nspawn = 0_int_p

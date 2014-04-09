@@ -52,8 +52,12 @@ contains
             ! walker list.
             call remove_unoccupied_dets()
 
+            ! Stochastically round all spawns with amplitude magnitudes
+            ! less than one either up to one or down to zero.
+            call round_low_population_spawns(rng)
+
             ! Insert new walkers into main walker list.
-            call insert_new_walkers(sys, rng)
+            call insert_new_walkers(sys)
 
         else
 
@@ -97,7 +101,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),dp)/2**bit_shift
+                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),dp)/encoding_factor
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -161,7 +165,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop), dp)/2**bit_shift
+                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop), dp)/encoding_factor
                 ! One more entry to be removed from the qmc_spawn%sdata array.
                 nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
@@ -180,7 +184,7 @@ contains
                         ! onto unoccupied determinants.
                         ! note that the number of particles (nparticles) was not
                         ! updated at the time of spawning, so doesn't change.
-                        qmc_spawn%sdata(ipart,i-nannihilate) = 0
+                        qmc_spawn%sdata(ipart,i-nannihilate) = 0_int_s
                     else
                         ! keep!
                         qmc_spawn%sdata(ipart,i-nannihilate) = qmc_spawn%sdata(ipart,i)
@@ -226,18 +230,72 @@ contains
 
     end subroutine remove_unoccupied_dets
 
-    subroutine insert_new_walkers(sys, rng)
+    subroutine round_low_population_spawns(rng)
+
+        ! In/Out:
+        !    rng: random number generator.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+
+        integer :: i, itype, nremoved
+        integer(int_s) :: spawned_pop(sampling_size)
+        real(dp) :: r
+        integer, parameter :: thread_id = 0
+
+        !write(6,*) "sdata before:"
+        !do i = 1, qmc_spawn%head(thread_id,0)
+        !    write(6,*) qmc_spawn%sdata(:,i)
+        !end do
+
+        nremoved = 0
+        do i = 1, qmc_spawn%head(thread_id,0)
+
+            ! Loop over all amplitudes for this determinant. For all amplitudes less than 1 (or less
+            ! than encoding_factor = 2**bit_shift in the encoded representation stored in sdata),
+            ! stochastically round the amplitude up to this cutoff or down to zero.
+            spawned_pop = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i)
+            do itype = 1, qmc_spawn%ntypes
+                if (abs(spawned_pop(itype)) < encoding_factor) then
+                    r = get_rand_close_open(rng)*encoding_factor
+                    if (abs(spawned_pop(itype)) > r) then
+                        qmc_spawn%sdata(qmc_spawn%bit_str_len+itype, i) = sign(int(encoding_factor,int_s), spawned_pop(itype))
+                    else
+                        qmc_spawn%sdata(qmc_spawn%bit_str_len+itype, i) = 0_int_s
+                    end if
+                end if
+            end do
+
+            ! If all the amplitudes for this determinant were zeroed then we don't want to add it
+            ! to the main list, so cycle.
+            spawned_pop = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i)
+            if (all(spawned_pop == 0_int_s)) then
+                nremoved = nremoved + 1
+            else
+                ! Shuffle this determinant down to fill in any newly opened slots.
+                qmc_spawn%sdata(:,i-nremoved) = qmc_spawn%sdata(:,i)
+            end if
+
+        end do
+
+        qmc_spawn%head(thread_id,0) = qmc_spawn%head(thread_id,0) - nremoved
+
+        !write(6,*) "sdata after:"
+        !do i = 1, qmc_spawn%head(thread_id,0)
+        !    write(6,*) qmc_spawn%sdata(:,i)
+        !end do
+
+    end subroutine round_low_population_spawns
+
+    subroutine insert_new_walkers(sys)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
         ! list contains only new walkers.
-        ! Only walkers with populations of at least 1 are added into the list.
-        ! All other walkers are stochastically rounded up to 1 or down to 0.
 
         ! In:
         !    sys: system being studied.
-        ! In/Out:
-        !    rng: random number generator.
 
         use basis, only: basis_length, total_basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
@@ -248,15 +306,12 @@ contains
         use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr
         use heisenberg_estimators, only: neel_singlet_data
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        type(dSFMT_t), intent(inout) :: rng
 
-        integer :: i, istart, iend, itype, j, k, pos, nremoved
-        integer(int_s) :: spawned_pop(sampling_size)
+        integer :: i, istart, iend, j, k, pos
+        integer(int_p) :: spawned_pop(sampling_size)
         logical :: hit
-        real(dp) :: r
         integer, parameter :: thread_id = 0
 
         ! Merge new walkers into the main list.
@@ -278,47 +333,26 @@ contains
         ! search through an ever-decreasing number of elements.
 
         istart = 1
-        nremoved = 0
         iend = tot_walkers
         do i = qmc_spawn%head(thread_id,0), 1, -1
-
-            ! Loop over all amplitudes for this determinant. For all amplitudes less than 1 (or less
-            ! than 2**bit_shift in the encoded representation stored in sdata), stochastically round
-            ! round the amplitude up to this cutoff or down to zero.
-            spawned_pop = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
-            do itype = 1, qmc_spawn%ntypes
-                if (abs(spawned_pop(itype)) < 2**bit_shift) then
-                    r = get_rand_close_open(rng)*(2**bit_shift)
-                    if (spawned_pop(itype) > r) then
-                        spawned_pop(itype) = 2**bit_shift
-                    else
-                        spawned_pop(itype) = 0_int_p
-                    end if
-                end if
-            end do
-            ! If all the amplitudes for this determinant were zeroed then we don't want to add it
-            ! to the main list, so cycle.
-            if (all(spawned_pop == 0_int_p)) then
-                nremoved = nremoved + 1
-                cycle
-            end if
 
             ! spawned det is not in the main walker list.
             call binary_search(walker_dets, int(qmc_spawn%sdata(:total_basis_length,i), i0), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
-                k = j + i - nremoved
+                k = j + i
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(:,k) = walker_population(:,j)
                 walker_data(:,k) = walker_data(:,j)
             end do
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
-            k = pos + i - nremoved - 1
+            k = pos + i - 1
+            spawned_pop = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
             walker_dets(:,k) = int(qmc_spawn%sdata(:total_basis_length,i), i0)
             walker_population(:,k) = spawned_pop
-            nparticles = nparticles + real(abs(spawned_pop),dp)/2**bit_shift
+            nparticles = nparticles + real(abs(spawned_pop),dp)/encoding_factor
             walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then

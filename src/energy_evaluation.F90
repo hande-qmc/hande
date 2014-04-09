@@ -184,7 +184,7 @@ contains
         ! \beta and \tilde{N}_j(\beta) is the Hellmann-Feynman population on
         ! j at imaginary time \beta.
 
-        use fciqmc_data, only: walker_population, tot_walkers, bit_shift, sampling_size
+        use fciqmc_data, only: walker_population, tot_walkers, encoding_factor, sampling_size
         use hfs_data, only: alpha0
 
         real(dp) :: hf_signed_pop
@@ -194,7 +194,7 @@ contains
 
         hf_signed_pop = 0.0_dp
         do i = 1, tot_walkers
-            real_population = real(abs(walker_population(:,i)),dp)/2**bit_shift
+            real_population = real(abs(walker_population(:,i)),dp)/encoding_factor
             if (walker_population(1,i) == 0_int_p) then
                 if (alpha0 < 0) then
                     ! letting alpha->0_-
