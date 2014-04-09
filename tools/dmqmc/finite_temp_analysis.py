@@ -308,7 +308,12 @@ None.
                 results[column+' spline'] = calc_spline_fit(column, results)
 
     # Finally, output the results!
-    print(results.to_string(index=False))
+    # For anal-retentiveness, print the energy first after beta and then all
+    # columns in alphabetical order.
+    columns = sorted(results.columns.values)
+    columns.insert(1, columns.pop(columns.index('Tr[Hp]/Tr[p]')))
+    columns.insert(2, columns.pop(columns.index('Tr[Hp]/Tr[p] error')))
+    print(results.to_string(index=False, columns=columns))
 
 if __name__ == '__main__':
 
