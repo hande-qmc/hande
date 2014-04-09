@@ -355,7 +355,7 @@ contains
                     write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer8, load_data(1,:), 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(tot_walkers, 1, mpi_integer8, load_data_lint, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 lfmt = int_fmt(maxval(load_data_lint),0)
