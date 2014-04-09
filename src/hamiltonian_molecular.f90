@@ -236,20 +236,12 @@ contains
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        ! Check symmetry.
-        ! [review] - JSS: is this not checked in get_two_body_int_mol?  If not, it really ought
-        ! [review] - JSS: to be given the promises made in the comments of get_two_body_int_mol...
-        if (cross_product_pg_sym(basis_fns(i)%sym,basis_fns(j)%sym)  &
-            ==cross_product_pg_sym(basis_fns(a)%sym,basis_fns(b)%sym)) then
          
-            ! < D | H | D_{ij}^{ab} > = < ij || ab >
+        ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-            hmatel = get_two_body_int_mol(coulomb_integrals, i, j, a, b) - get_two_body_int_mol(coulomb_integrals, i, j, b, a)
+        hmatel = get_two_body_int_mol(coulomb_integrals, i, j, a, b) - get_two_body_int_mol(coulomb_integrals, i, j, b, a)
 
-            if (perm) hmatel = -hmatel
-        else
-            hmatel=0.0_p
-        endif
+        if (perm) hmatel = -hmatel
 
     end function slater_condon2_mol
 

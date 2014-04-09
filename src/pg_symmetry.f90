@@ -136,14 +136,10 @@ contains
         ! representation.
 
         maxsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
-        ! [review] - JSS: debug output or should be placed with the symmetry table?
-        write(6,*) "Number of point group symmetries:", maxsym
         
         if(sys%read_in%useLz) then
             ! This is the Max Lz value we find in the basis functions.
             maxLz = maxval(basis_fns(:)%lz)
-            ! [review] - JSS: debug output or should be placed with the symmetry table?
-            write(6,*) "Maximum Lz found:", maxLz
         else
             maxLz = 0 ! Let's not use Lz.
         endif
@@ -178,9 +174,6 @@ contains
         ! For reference in Lz world, 0 means Lz=-3*maxLz*maxsym, so Lz_offset means Lz=0
         Lz_offset = 3*maxLz*Lz_divisor
         gamma_sym = Lz_offset
-        ! [review] - JSS: output in symmetry table?
-        write(6,*) "Lz offset (corresponds to Lz=0):", Lz_offset
-        write(6,*) "Totally symmetric symmetry: ", gamma_sym
 
         if(sym_in /= huge(1)) then
             ! If one wished to specify Lz in sym_in, it would be added in here.
@@ -208,7 +201,7 @@ contains
 
         do i = 1, nbasis
             ! Encode the Lz into the symmetry. We shift the lz into higher bits (by *maxsym)  and offset.
-            if (maxlz>0) then
+            if (maxLz>0) then
                 basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz*Lz_divisor+Lz_offset)
             endif
             nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
@@ -265,6 +258,7 @@ contains
 
         use system, only: sys_t
         use parallel, only: parent
+        use basis, only: basis_fns
 
         type(sys_t), intent(in) :: sys
 
@@ -273,6 +267,15 @@ contains
         if (parent) then
             write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
 
+            write(6,*) "Number of point group symmetries:", Lz_divisor
+            if(sys%read_in%useLz) then
+                ! This is the Max Lz value we find in the basis functions.
+                write(6,*) "Maximum Lz found:", maxval(basis_fns(:)%lz)
+                write(6,*) "Lz offset (corresponds to Lz=0):", Lz_offset
+            else
+                write(6,*) "Not using Lz symmetry."
+            endif
+            write(6,*) "Totally symmetric symmetry: ", gamma_sym
             write (6,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
             ! Note that we never actually store this.
             do i = sys%sym0, sys%sym_max
@@ -355,8 +358,7 @@ contains
         integer :: rsym
 
         ! Take the symmetry conjugate.  The point group part is the same.
-        ! [review] - JSS: but...?
-        ! The Lz needs to become -Lz, but
+        ! The Lz needs to become -Lz but also dealing with the offsetting.
         rsym  = ior(iand(sym,pg_mask), &
                 iand(2*Lz_offset-iand(sym,Lz_mask),Lz_mask))
 
@@ -368,8 +370,7 @@ contains
         !    sym: bit string representation of an irreducible representation of
         !    a point group.
         ! Returns:
-        !    [review] - JSS: missing ) could change meaning...
-        !    The Lz component of sym (unoffset, so Lz=0 is returned as 0
+        !    The Lz component of sym (de-offsetted), so Lz=0 is returned as 0
 
         integer, intent(in) :: sym
         integer :: Lz
