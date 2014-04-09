@@ -24,6 +24,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
@@ -42,7 +43,7 @@ contains
         integer(lint) :: nattempts, nparticles_old(sampling_size)
         type(det_info) :: cdet
         type(dSFMT_t) :: rng
-        type(fciqmc_bloom_stats_t) :: bloom_stats
+        type(bloom_stats_t) :: bloom_stats
 
         integer :: nspawned, ndeath
         type(excit) :: connection
@@ -75,7 +76,7 @@ contains
         do ireport = 1, nreport
 
             ! Zero report cycle quantities.
-            call init_report_loop()
+            call init_report_loop(bloom_stats)
 
             do icycle = 1, ncycles
 
@@ -104,13 +105,9 @@ contains
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0) then
-                            if(abs(nspawned) >= bloom_stats%n_bloom) then
-                                if(bloom_stats%nwarnings < bloom_stats%nverbose_warnings ) then
-                                    call print_bloom_warning(nspawned) 
-                                end if
-                                bloom_stats%nwarnings = bloom_stats%nwarnings + 1
-                            end if
                             call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
+                            if (abs(nspawned) >= bloom_stats%n_bloom) &
+                                call accumulate_bloom_stats(bloom_stats, nspawned)
                         end if
 
                     end do
@@ -126,18 +123,9 @@ contains
 
             end do
 
-               ! Calculate the number  f warnings which occurred only on the last iteration
-            bloom_stats%nwarnings_last = bloom_stats%nwarnings - bloom_stats%nwarnings_last 
-            if(tau_search .and. .not. vary_shift) then
-                update_tau = .false.
-                if(bloom_stats%nwarnings_last > 0 ) then
-                    update_tau = .true.
-                end if
-                call send_tau(update_tau)
-            end if
-            bloom_stats%nwarnings_last = bloom_stats%nwarnings
+            update_tau = bloom_stats%nwarnings_curr > 0
 
-            call end_report_loop(ireport, nparticles_old, t1, soft_exit)
+            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit
 
@@ -165,16 +153,5 @@ contains
         if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)
 
     end subroutine do_fciqmc
-
-    subroutine print_bloom_warning(nspawned)
-
-       ! Print a nice warning so the user knows a bloom has occurred
-        use utils, only: int_fmt
-        integer, intent(in) :: nspawned
-
-        write(6, '(1X, "# Warning a Blooming event occured a single psips spawned"'//int_fmt(nspawned,1)//&
-            '" children.")'), nspawned 
-
-    end subroutine print_bloom_warning
 
 end module fciqmc

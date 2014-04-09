@@ -425,19 +425,6 @@ real(p) :: P__=0.05, Po_=0.475, P_o=0.475
 ! The split generation normalisations
 real(p) :: X__=0, Xo_=0, X_o=0
 
-! -- FCIQMC Bloom warning
-type fciqmc_bloom_stats_t
-    ! The number of bloom warnings to print out.
-    integer :: nverbose_warnings  = 1
-    ! The number of psips to be spawned by one psips to define
-    ! a bloom
-    integer :: n_bloom = 3
-    ! The number of warnings which have occured
-    integer :: nwarnings = 0
-    ! The number of bloom warnings on the last cycle
-    integer :: nwarnings_last = 0
-end type fciqmc_bloom_stats_t
-
 contains
 
     !--- Statistics. ---
