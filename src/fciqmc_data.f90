@@ -591,19 +591,19 @@ contains
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
-            write (6, '(2X,es11.2)', advance='no') ntot_particles(1)
+            write (6, '(2X,i11)', advance='no') int(ntot_particles(1))
         else if (doing_calc(hfs_fciqmc_calc)) then
-            write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,es11.2)', advance = 'no') &
+            write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
-                                             D0_hf_population, &
-                                             ntot_particles
+                                             int(D0_hf_population), &
+                                             int(ntot_particles)
         else
-            write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,es11.2)', advance='no') &
+            write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,i11)', advance='no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
-                                             ntot_particles
+                                             int(ntot_particles)
         end if
         write (6,'(2X,f7.4,2X,f6.3)') rspawn, elapsed_time/ncycles
 
