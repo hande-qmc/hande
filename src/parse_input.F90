@@ -594,7 +594,7 @@ contains
                     end if
                 end if
             end if
-            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator sys%CAS space must be non-negative.')
+            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
 
