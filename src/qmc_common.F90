@@ -495,7 +495,7 @@ contains
         use energy_evaluation, only: update_energy_estimators
         use interact, only: fciqmc_interact
         use parallel, only: parent
-        use restart_hdf5, only: dump_restart_hdf5, restart_info_global
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
 
         integer, intent(in) :: ireport
         logical, intent(in) :: update_tau
@@ -515,9 +515,12 @@ contains
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 
         ! Write restart file if required.
-        if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
+        if (dump_restart_file_shift .and. vary_shift) then
+            dump_restart_file_shift = .false.
+            call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+ncycles*ireport, ntot_particles)
+        else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, ntot_particles)
-
+        end if
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time
 

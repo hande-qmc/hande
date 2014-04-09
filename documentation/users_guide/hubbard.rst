@@ -901,7 +901,7 @@ The following options are valid for FCIQMC calculations.
     into a spin-orbital which is already occupied.  Whilst this is wasteful, it
     avoids having to renormalise the excitation generation probabilities, which
     can be expensive for large systems.
-**dump_restart** [*id*]
+**dump_restart** [**shift**]  [*id*]
     Optional integer.
 
     Write out information required for restarting an FCIQMC calculation to
@@ -909,6 +909,10 @@ The following options are valid for FCIQMC calculations.
     the processor rank. If x is not given, it is chosen to be the smallest 
     integer possible such that HANDE.RS.x.py does not exist in the calculation 
     directory.
+
+    If **shift** is specified, then the restart information is dumped out before
+    the shift turns on. Both dump_restart and dump_restart shift may be specified
+    in the input file but the optional *id* (if specified) for both must be different.
 
     Restarting a parallel run with a different number of processors is not 
     currently supported.

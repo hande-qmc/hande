@@ -66,7 +66,7 @@ module restart_hdf5
     implicit none
 
     private
-    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_global
+    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_global, restart_info_global_shift
 
     type restart_info_t
         ! If write_id is negative, then it was set by the user in the input file.  Set
@@ -87,6 +87,9 @@ module restart_hdf5
     ! Global restart info store until we have a calc type which is passed
     ! around...
     type(restart_info_t) :: restart_info_global = restart_info_t(0,0,huge(0))
+    ! Global restart info to store the restart information about when the shift turns
+    ! on.
+    type(restart_info_t) :: restart_info_global_shift = restart_info_t(0,0,huge(0))
 
     ! Version id of the restart file *produced*.  Please increment if you add
     ! anything to dump_restart_hdf5!
