@@ -343,7 +343,7 @@ contains
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
         if (minval(basis_fns(:)%sym) < 0) then
-            if (parent) write (6,'(1X,a62)') 'Unconverged symmetry found.  Turning point group symmetry off.'
+            if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
             forall (i=1:nbasis) basis_fns(i)%sym = 0
         end if
 
