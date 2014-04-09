@@ -128,6 +128,7 @@ contains
         use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
                                        one_e_h_integrals, coulomb_integrals
         use system, only: sys_t
+        use basis, only: basis_fns
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
@@ -136,17 +137,22 @@ contains
 
         integer :: iel
 
-        ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
+        ! Check that this excitation is symmetry allowed.
+        if (basis_fns(i)%sym/=basis_fns(a)%sym) then
+            hmatel = 0.0_p
+        else
+            ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
-        hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
+            hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
 
-        do iel = 1, sys%nel
-            if (occ_list(iel) /= i) &
-                hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
-                                - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
-        end do
+            do iel = 1, sys%nel
+                if (occ_list(iel) /= i) &
+                    hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
+                                    - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
+            end do
 
-        if (perm) hmatel = -hmatel
+            if (perm) hmatel = -hmatel
+        end if
 
     end function slater_condon1_mol
 
@@ -222,12 +228,15 @@ contains
 
         use molecular_integrals, only: get_two_body_int_mol, coulomb_integrals
         use system, only: sys_t
+        use basis, only: basis_fns
+        use point_group_symmetry, only: cross_product_pg_sym
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
+         
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
         hmatel = get_two_body_int_mol(coulomb_integrals, i, j, a, b) - get_two_body_int_mol(coulomb_integrals, i, j, b, a)

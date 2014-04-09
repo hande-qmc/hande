@@ -240,7 +240,7 @@ contains
         !        symmetry.
 
         use basis, only: basis_length, basis_fns, bit_lookup
-        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym
+        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym, pg_sym_conj
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -248,7 +248,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0:)
+        integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0_tot:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a
         logical, intent(out) :: allowed_excitation
@@ -259,6 +259,7 @@ contains
         allowed_excitation = .false.
         do i = 1, sys%nel
             ims = (basis_fns(occ_list(i))%Ms+3)/2
+            ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
             isym = cross_product_pg_sym(basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims, isym) /= 0) then
                 allowed_excitation = .true.
@@ -276,7 +277,7 @@ contains
                 i = occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
                 ! Conserve symmetry (spatial and spin) in selecting a.
                 ims = (basis_fns(i)%Ms+3)/2
-                isym = cross_product_pg_sym(basis_fns(i)%sym, op_sym)
+                isym = pg_sym_conj(cross_product_pg_sym(basis_fns(i)%sym, op_sym))
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
                         ! It's cheaper to draw additional random numbers than
@@ -312,8 +313,8 @@ contains
         ! Out:
         !    i, j: orbitals in determinant from which two electrons are excited.
         !        Note that i,j are ordered such that i<j.
-        !    ij_sym: irreducible representation spanned by the codensity
-        !        \phi_i*\phi_j.
+        !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+        !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
         !    ij_spin: spin label of the combined ij codensity.
         !        ij_spin = -2   i,j both down
         !                =  0   i up and j down or vice versa
@@ -321,7 +322,7 @@ contains
 
         use basis, only: basis_fns
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_basis
+        use point_group_symmetry, only: cross_product_pg_basis,pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -350,7 +351,7 @@ contains
         i = occ_list(i)
         j = occ_list(j)
 
-        ij_sym = cross_product_pg_basis(i,j)
+        ij_sym = pg_sym_conj(cross_product_pg_basis(i,j))
         ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
         ij_spin = basis_fns(i)%Ms + basis_fns(j)%Ms
 
@@ -384,13 +385,13 @@ contains
 
         use basis, only: basis_length, basis_fns, bit_lookup, nbasis
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns
+        use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns, pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: sym, spin, symunocc(:,sys%sym0:)
+        integer, intent(in) :: sym, spin, symunocc(:,sys%sym0_tot:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
         logical, intent(out) :: allowed_excitation
@@ -405,7 +406,7 @@ contains
         select case(spin)
         case(-2)
             do isyma = sys%sym0, sys%sym_max
-                isymb = cross_product_pg_sym(isyma, sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, sym))
                 if ( symunocc(1,isyma) > 0 .and. &
                         ( symunocc(1,isymb) > 1 .or. &
                         ( symunocc(1,isymb) == 1 .and. (isyma /= isymb))) ) then
@@ -423,7 +424,7 @@ contains
             na = nbasis/2
         case(0)
             do isyma = sys%sym0, sys%sym_max
-                isymb = cross_product_pg_sym(isyma, sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, sym))
                 if ( (symunocc(1,isyma) > 0 .and. symunocc(2,isymb) > 0) .or. &
                      (symunocc(2,isyma) > 0 .and. symunocc(1,isymb) > 0) ) then
                     allowed_excitation = .true.
@@ -439,7 +440,7 @@ contains
             na = nbasis
         case(2)
             do isyma = sys%sym0, sys%sym_max
-                isymb = cross_product_pg_sym(isyma, sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, sym))
                 if ( symunocc(2,isyma) > 0 .and. &
                         ( symunocc(2,isymb) > 1 .or. &
                         ( symunocc(2,isymb) == 1 .and. (isyma /= isymb))) ) then
@@ -472,7 +473,7 @@ contains
                 if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) then
                     ! b must conserve spatial and spin symmetry.
                     imsb = (spin-basis_fns(a)%Ms+3)/2
-                    isymb = cross_product_pg_sym(sym, basis_fns(a)%sym)
+                    isymb = pg_sym_conj(cross_product_pg_sym(sym, basis_fns(a)%sym))
                     ! Is there a possible b?
                     if ( (symunocc(imsb,isymb) > 1) .or. &
                             (symunocc(imsb,isymb) == 1 .and. (isymb /= basis_fns(a)%sym .or. spin == 0)) ) then
@@ -582,7 +583,7 @@ contains
         ! In:
         !    f: bit string representation of the Slater determinant from which
         !        an electron is excited.
-        !    sym: irreducible representation spanned by the (i,j) codensity.
+        !    sym: sym conjugate of the irreducible representation spanned by the (i,j) codensity.
         !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
         !        and j are down, +2 if both are up and 0 otherwise.
         ! In/Out:
@@ -596,7 +597,7 @@ contains
         !        (i,j) or given the choice of (i,j,a).
 
         use basis, only: basis_length, basis_fns, bit_lookup, nbasis
-        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym
+        use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym, pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -652,9 +653,9 @@ contains
         ! Ms_i + Ms_j = Ms_a + Ms_b (Ms_i = -1,+1)
         ! => Ms_b = Ms_i + Ms_j - Ms_a
         ims = (spin-basis_fns(a)%Ms+3)/2
-        ! sym_i x sym_j x sym_a = sym_b
+        ! (sym_i* x sym_j* x sym_a)* = sym_b
         ! (at least for Abelian point groups)
-        isym = cross_product_pg_sym(sym, basis_fns(a)%sym)
+        isym = pg_sym_conj(cross_product_pg_sym(sym, basis_fns(a)%sym))
 
         if (nbasis_sym_spin(ims,isym) == 0) then
             ! No orbitals with the correct symmetry.
@@ -712,12 +713,12 @@ contains
 
         use basis, only: basis_fns
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_sym
+        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
-        integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0:), a
+        integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0_tot:), a
 
         integer :: ims, isym, i, ni
 
@@ -730,7 +731,7 @@ contains
         ni = sys%nel
         do i = 1, sys%nel
             ims = (basis_fns(occ_list(i))%Ms+3)/2
-            isym = cross_product_pg_sym(basis_fns(occ_list(i))%sym, op_sym)
+            isym = pg_sym_conj(cross_product_pg_sym(basis_fns(occ_list(i))%sym, op_sym))
             if (symunocc(ims,isym) == 0) ni = ni - 1
         end do
 
@@ -773,11 +774,11 @@ contains
 
         use basis, only: basis_fns
         use system, only: sys_t
-        use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym
+        use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym, pg_sym_conj
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: ij_sym, a, b, spin, symunocc(:,sys%sym0:)
+        integer, intent(in) :: ij_sym, a, b, spin, symunocc(:,sys%sym0_tot:)
 
         integer :: imsa, isyma, imsb, isymb, n_aij
         real(p) :: p_bija, p_aijb
@@ -806,7 +807,7 @@ contains
             n_aij = sys%nvirt_beta
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = cross_product_pg_sym(isyma, ij_sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, ij_sym))
                 if (symunocc(1, isymb) == 0) then
                     n_aij = n_aij - symunocc(1,isyma)
                 else if (isyma == isymb .and. symunocc(1, isymb) == 1) then
@@ -827,7 +828,7 @@ contains
             n_aij = sys%nvirt
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = cross_product_pg_sym(isyma, ij_sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, ij_sym))
                 if (symunocc(1, isymb) == 0) then
                     n_aij = n_aij - symunocc(2,isyma)
                 end if
@@ -843,7 +844,7 @@ contains
             n_aij = sys%nvirt_alpha
             do isyma = sys%sym0, sys%sym_max
                 ! find corresponding isymb.
-                isymb = cross_product_pg_sym(isyma, ij_sym)
+                isymb = pg_sym_conj(cross_product_pg_sym(isyma, ij_sym))
                 if (symunocc(2, isymb) == 0) then
                     n_aij = n_aij - symunocc(2,isyma)
                 else if (isyma == isymb .and. symunocc(2, isymb) == 1) then

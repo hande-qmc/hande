@@ -162,7 +162,8 @@ contains
                 call readi(ms_in)
             case('SYM','SYMMETRY')
                 call readi(sym_in)
-
+            case("LZ")
+                sys%read_in%useLz=.true.
             case('SEPARATE_STRINGS')
                 separate_strings = .true.
             case('CAS')
@@ -716,6 +717,7 @@ contains
 
         call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%read_in%useLz, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)

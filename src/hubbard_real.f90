@@ -95,6 +95,9 @@ contains
         sys%nsym = 1
         sys%sym0 = 1
         sys%sym_max = 1
+        sys%nsym_tot = 1
+        sys%sym0_tot = 1
+        sys%sym_max_tot = 1
 
         associate(sl=>sys%lattice)
 

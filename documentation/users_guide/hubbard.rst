@@ -610,16 +610,26 @@ of the determinant is currently hard-coded.
     
     This does not apply to the Heisenberg model
 
-    Only relevant for the momentum space formulation.  Diagonalise only blocks
+    For the momentum space formulation:  Diagonalise only blocks
     containing determinants of the same symmetry as the specified symmetry
     block *isym*.  *isym* refers to a wavevector label (as given in the
     output).  To see the symmetry labels for a specific crystal cell, run the
     calculation without any calculation type specified.  The :math:`\Gamma`
     wavevector is always given by *isym*:math:`=1` if *t* is positive and by
     the number of sites in the cell if *t* is negative.
+
+    For point group symmetries in molecular systems:
+        This specifies the symmetry of the wavefunction, and is zero-based,
+    with 0 being the totally symmetric irrep.  The other symmetries correspond
+    to those from the FCIDUMP (after subtracting 1 from the index).
+
+    If the FCIDUMP contains Lz symmetry, this is also used, but cannot currently
+    be specified, so the Lz=0 sector is chosen by default.
 **sym** *isym*
     Synonym for **symmetry**.
 
+**lz**
+    Specify if Lz symmetry is to be used.  Currently can only look at the Lz=0 block.
 Calculation options: diagonalisation options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -51,6 +51,9 @@ contains
         sys%sym0 = 1
         sys%nsym = nbasis/2 ! two spin orbitals per wavevector
         sys%sym_max = sys%nsym
+        sys%sym0_tot = sys%sym0
+        sys%nsym_tot = sys%nsym
+        sys%sym_max_tot = sys%sym_max
 
         select case(sys%system)
         case(hub_k)

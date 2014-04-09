@@ -140,7 +140,7 @@ contains
                 deallocate(sym_space_size, stat=ierr)
                 call check_deallocate('sym_space_size',ierr)
             end if
-            allocate(sym_space_size(sys%sym0:sys%sym_max), stat=ierr)
+            allocate(sym_space_size(sys%sym0_tot:sys%sym_max_tot), stat=ierr)
             call check_allocate('sym_space_size',sys%nsym,ierr)
             sym_space_size = 0
         else
