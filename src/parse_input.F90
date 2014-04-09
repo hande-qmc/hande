@@ -430,7 +430,7 @@ contains
                 call readi(initiator_cas(1))
                 call readi(initiator_cas(2))
             case('INITIATOR_POPULATION')
-                call readi(initiator_population)
+                call readf(initiator_population)
 
             ! Calculation options: operators sampled using Hellmann--Feynman.
             case('OPERATOR')
@@ -848,7 +848,7 @@ contains
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initiator_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)

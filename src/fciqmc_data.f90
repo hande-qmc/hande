@@ -48,7 +48,7 @@ real(p) :: pattempt_single = -1, pattempt_double = -1
 integer :: initiator_cas(2) = (/ 0,0 /)
 
 ! Population above which a determinant is an initiator.
-integer :: initiator_population = 3
+real(p) :: initiator_population = 3.0_p
 
 ! True if allowing non-integer values for psip populations.
 logical :: real_amplitudes = .false.

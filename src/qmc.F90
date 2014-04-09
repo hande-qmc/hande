@@ -479,7 +479,7 @@ contains
                 if (doing_calc(fciqmc_calc)) &
                     write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
                     'CAS space of initiator determinants:',initiator_CAS
-                write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
+                write (6,'(1X,a66,f3.1,/)') &
                     'Population for a determinant outside CAS space to be an initiator:', initiator_population
             end if
             write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
