@@ -629,7 +629,7 @@ of the determinant is currently hard-coded.
     Synonym for **symmetry**.
 
 **lz**
-    Specify if Lz symmetry is to be used.
+    Specify if Lz symmetry is to be used.  Currently can only look at the Lz=0 block.
 Calculation options: diagonalisation options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

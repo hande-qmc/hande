@@ -139,7 +139,7 @@ contains
 
         !Check that this excitation is symmetry allowed
         if(basis_fns(i)%sym/=basis_fns(a)%sym) then
-            hmatel=0
+            hmatel = 0
         else
 
             ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
@@ -236,7 +236,7 @@ contains
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        !Chem Sym
+        !Check Sym
         if(cross_product_pg_sym(basis_fns(i)%sym,basis_fns(j)%sym)  &
             ==cross_product_pg_sym(basis_fns(a)%sym,basis_fns(b)%sym)) then
          

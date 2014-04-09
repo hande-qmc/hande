@@ -313,8 +313,8 @@ contains
         ! Out:
         !    i, j: orbitals in determinant from which two electrons are excited.
         !        Note that i,j are ordered such that i<j.
-        !    ij_sym: irreducible representation spanned by the codensity
-        !        \phi_i*\phi_j.
+        !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
+        !        \phi_i*\phi_j. [We're assuming that ij is going to be in the bra of an excit]
         !    ij_spin: spin label of the combined ij codensity.
         !        ij_spin = -2   i,j both down
         !                =  0   i up and j down or vice versa
@@ -583,7 +583,7 @@ contains
         ! In:
         !    f: bit string representation of the Slater determinant from which
         !        an electron is excited.
-        !    sym: irreducible representation spanned by the (i,j) codensity.
+        !    sym: sym conjugate of the irreducible representation spanned by the (i,j) codensity.
         !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
         !        and j are down, +2 if both are up and 0 otherwise.
         ! In/Out:
@@ -653,7 +653,7 @@ contains
         ! Ms_i + Ms_j = Ms_a + Ms_b (Ms_i = -1,+1)
         ! => Ms_b = Ms_i + Ms_j - Ms_a
         ims = (spin-basis_fns(a)%Ms+3)/2
-        ! sym_i x sym_j x sym_a = sym_b
+        ! (sym_i* x sym_j* x sym_a)* = sym_b
         ! (at least for Abelian point groups)
         isym = pg_sym_conj(cross_product_pg_sym(sym, basis_fns(a)%sym))
 

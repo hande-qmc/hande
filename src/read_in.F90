@@ -185,7 +185,6 @@ contains
         ! This is changed to the number of spin-orbitals active the calculation
         ! later on.
 
-
         if (sys%read_in%uhf) then
             nbasis = norb
             rhf_fac = 1

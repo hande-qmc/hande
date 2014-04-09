@@ -268,7 +268,7 @@ contains
 
         logical, intent(in) :: uhf
 
-        write(6, *) "Gamma sym is ", gamma_sym
+        write(6, *) "Totally symmetric irrep has index ", gamma_sym
         call init_one_body_int_store(uhf, gamma_sym, one_e_h_integrals)
         call init_two_body_int_store(uhf, gamma_sym, coulomb_integrals)
 
