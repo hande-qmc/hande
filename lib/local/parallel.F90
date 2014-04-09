@@ -84,15 +84,15 @@ integer, parameter :: mpi_pop_integer = MPI_INTEGER
 #elif POP_SIZE == 64
 integer, parameter :: mpi_pop_integer = MPI_INTEGER8
 #else
-! Use 64-bit integers by default.
-integer, parameter :: mpi_pop_integer = MPI_INTEGER8
+! Use 32-bit integers by default.
+integer, parameter :: mpi_pop_integer = MPI_INTEGER
 #endif
 
 ! MPI data type for 32-bit or 64-bit integers used in the sdata component of spawn_t.
-#if POP_SIZE == 32 && DET_SIZE == 32
-integer, parameter :: mpi_sdata_integer = MPI_INTEGER
-#else
+#if POP_SIZE == 64 || DET_SIZE == 64
 integer, parameter :: mpi_sdata_integer = MPI_INTEGER8
+#else
+integer, parameter :: mpi_sdata_integer = MPI_INTEGER
 #endif
 
 ! MPI data type for reals of single/double precision (as chosen at

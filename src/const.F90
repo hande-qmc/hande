@@ -15,7 +15,7 @@ implicit none
 ! selected_int_kind(0): equivalent to a byte.  -128 <= int_i0 <= 127.
 ! selected_int_kind(3): equivalent to a 16 bit integer.  -32768 <= int_i0 <= 32767.
 ! selected_int_kind(6): equivalent to a 32 bit integer.  -2147483648 <= int_i0 <= 2147483647.
-! selected_int_kind(10): equivalent to a 64 bit integer. -9223372036854775808 <= int_i0 <= 9223372036854775807.
+! selected_int_kind(15): equivalent to a 64 bit integer. -9223372036854775808 <= int_i0 <= 9223372036854775807.
 ! Note that the memory wasted (but not having the number of basis functions
 ! being a multiple of the number of bits in i0) can increase with the kind.
 ! However, the performance of intrinsic bit operations with 32 bit integers is
@@ -39,14 +39,14 @@ integer, parameter :: int_p = selected_int_kind(6)
 #elif POP_SIZE == 64
 integer, parameter :: int_p = selected_int_kind(15)
 #else
-! Use 64-bit integers by default.
-integer, parameter :: int_p = selected_int_kind(15)
+! Use 32-bit integers by default.
+integer, parameter :: int_p = selected_int_kind(6)
 #endif
 
-#if POP_SIZE == 32 && DET_SIZE == 32
-integer, parameter :: int_s = selected_int_kind(6)
-#else
+#if POP_SIZE == 64 || DET_SIZE == 64
 integer, parameter :: int_s = selected_int_kind(15)
+#else
+integer, parameter :: int_s = selected_int_kind(6)
 #endif
 
 ! Number of bits in an integer of type i0.
