@@ -708,6 +708,17 @@ The following options are valid for FCIQMC calculations.
     large a timestep, on the other hand, leads to a rapid particle growth which
     takes a long time to stabilise, even once the shift begins to vary, and
     coarse population dynamics.
+**update_tau**
+    Update the **tau** automatically by scaling it by 0.95 if a bloom event is
+    detected.  A bloom event is defined as one which spawns more than three
+    particles in a single spawning event in FCIQMC and one which spawns more than 5% of
+    the total current population in a single spawning event in CCMC.
+
+    .. note::
+
+        This is an experimental option and feedback on required flexibility or
+        alternative approaches is most welcome.
+
 **initial_shift** *initial_shift*
     Real.
 
