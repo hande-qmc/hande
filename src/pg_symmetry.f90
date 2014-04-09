@@ -259,6 +259,7 @@ contains
         use system, only: sys_t
         use parallel, only: parent
         use basis, only: basis_fns
+        use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
 
@@ -267,15 +268,16 @@ contains
         if (parent) then
             write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
 
-            write(6,*) "Number of point group symmetries:", Lz_divisor
+            write(6,'(1X,"Number of point group symmetries:",'//int_fmt(Lz_divisor,1)//')') Lz_divisor
             if(sys%read_in%useLz) then
                 ! This is the Max Lz value we find in the basis functions.
-                write(6,*) "Maximum Lz found:", maxval(basis_fns(:)%lz)
-                write(6,*) "Lz offset (corresponds to Lz=0):", Lz_offset
+                i = maxval(basis_fns(:)%lz)
+                write(6,'(1X,"Maximum Lz found:",'//int_fmt(i,1)//')') i
+                write(6,'(1X,"Lz offset (corresponds to Lz=0):",'//int_fmt(Lz_offset,1)//')') Lz_offset
             else
-                write(6,*) "Not using Lz symmetry."
+                write(6,'(1X,"Not using Lz symmetry.")')
             endif
-            write(6,*) "Totally symmetric symmetry: ", gamma_sym
+            write(6,'(1X,"Totally symmetric symmetry:",'//int_fmt(gamma_sym,1)//')') gamma_sym
             write (6,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
             ! Note that we never actually store this.
             do i = sys%sym0, sys%sym_max
