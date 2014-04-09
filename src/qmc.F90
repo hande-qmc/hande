@@ -450,9 +450,14 @@ contains
             end select
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', pattempt_single
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', pattempt_double
-            write (6,'(1X,a44,1X,f11.4,/)') &
+            if (doing_calc(dmqmc_calc)) then
+                write (6,'(1X,a54,'//int_fmt(int(D0_population,lint),1)//')') &
+                              'Initial population on the trace of the density matrix:', int(D0_population,lint)
+            else
+                write (6,'(1X,a44,1X,f11.4,/)') &
                               'Initial population on reference determinant:',D0_population
-            write (6,'(1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
+                write (6,'(1X,a53,/)') 'Note that the correlation energy is relative to |D0>.'
+            end if
             if (initiator_approximation) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
                 if (doing_calc(fciqmc_calc)) &

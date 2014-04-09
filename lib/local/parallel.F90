@@ -127,8 +127,8 @@ contains
 
         character(4) :: fmt1, fmt2
 
-        fmt1 = int_fmt(nprocs)
-        fmt2 = int_fmt(nthreads)
+        fmt1 = int_fmt(nprocs,1)
+        fmt2 = int_fmt(nthreads,1)
         if (nprocs == 1) then
             write (6,'(1X,"Running on"'//fmt1//'" processor.")') nprocs
             if (nthreads == 1) then
