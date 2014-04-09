@@ -456,8 +456,8 @@ contains
             else
                 write (6,'(1X,a44,1X,f11.4,/)') &
                               'Initial population on reference determinant:',D0_population
+                write (6,'(1X,a53,/)') 'Note that the correlation energy is relative to |D0>.'
             end if
-            write (6,'(1X,a53,/)') 'Note that the correlation energy is relative to |D0>.'
             if (initiator_approximation) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
                 if (doing_calc(fciqmc_calc)) &
