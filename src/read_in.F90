@@ -71,7 +71,7 @@ contains
         logical, allocatable :: seen_iha(:)
         real(p), allocatable :: sp_eigv(:)
         logical :: not_found_sp_eigv, uhf
-        integer :: int_err, max_err_msg
+        integer :: int_err, max_err_msg, tmp
         character(1024) :: err_msg
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz
@@ -191,6 +191,36 @@ contains
         else
             nbasis = 2*norb
             rhf_fac = 2  ! need to double count some integrals.
+        end if
+
+        ! Sanity check
+        if (any(sys%cas /= -1) .and. parent) then
+            if (sys%cas(1) > sys%nel) then
+                write (6,'(1X,"Number of electrons in the system:",'//int_fmt(sys%nel,1)//',".")') sys%nel
+                write (6,'(1X,"Number of active electrons in CAS:",'//int_fmt(sys%cas(1),1)//',".")') sys%cas(1)
+                call stop_all('read_in_integrals', 'CAS cannot have more active electrons than in the system.')
+            end if
+            if (sys%cas(2) > (nbasis-(sys%nel-sys%cas(1)))/2) then
+                ! The maximum number of active spin orbitals is nbasis - # core orbitals.
+                ! The number of core orbitals is nel-cas(1).
+                ! CAS(2) is in terms of spatial orbitals.
+                write (6,'(1X,"Number of spin-orbitals:",'//int_fmt(nbasis,1)//',".")') nbasis
+                tmp = sys%nel-cas(1)
+                write (6,'(1X,"Number of core electrons:",'//int_fmt(tmp,1)//',".")') tmp
+                tmp = nbasis-(sys%nel-sys%cas(1))
+                write (6,'(1X,"Number of possible active spin-orbitals:",' &
+                               //int_fmt(tmp,1)//',".")') tmp
+                tmp = sys%cas(2)*2
+                write (6,'(1X,"Number of active spin-orbitals in CAS:",' &
+                               //int_fmt(tmp,1)//',".")') tmp
+                call stop_all('read_in_integrals', 'CAS cannot have more active basis functions than in the system')
+            end if
+        end if
+        if (nelec /= sys%nel .and. parent) then
+            write (6,'(1X,"WARNING: overriding the number of electrons in FCIDUMP file: '&
+                //trim(sys%read_in%fcidump)//'.")')
+            write (6,'(1X,"FCIDUMP file indicates",'//int_fmt(nelec,1)//'" electrons.")') nelec
+            write (6,'(1X,"Input file set",'//int_fmt(sys%nel,1)//'" electrons.",/)') sys%nel
         end if
 
         if (present(cas_info)) then
@@ -313,7 +343,7 @@ contains
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
         if (minval(basis_fns(:)%sym) < 0) then
-            if (parent) write (6,'(1X,a62)') 'Unconverged symmetry found.  Turning point group symmetry off.'
+            if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
             forall (i=1:nbasis) basis_fns(i)%sym = 0
         end if
 
