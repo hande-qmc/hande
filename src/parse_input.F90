@@ -11,7 +11,7 @@ use lanczos
 use determinants
 use determinant_enumeration, only: write_determinants, determinant_file
 use fciqmc_data
-use restart_hdf5, only: restart_info_global
+use restart_hdf5, only: restart_info_global, restart_info_global_shift
 use hubbard_real, only: finite_cluster
 use hfs_data
 use dmqmc_procedures, only: rdms
@@ -406,10 +406,25 @@ contains
                     restart_info_global%read_id = -restart_info_global%read_id -1
                 end if
             case('DUMP_RESTART')
-                dump_restart_file = .true.
                 if (item /= nitems) then
-                    call readi(restart_info_global%write_id)
-                    restart_info_global%write_id = -restart_info_global%write_id-1
+                    call readu(w)
+                    ! Do we want to dump a restart file, when the shift turns on.
+                    if(w == 'SHIFT') then
+                        dump_restart_file_shift = .true.
+                        ! Do we have a restart number for when the shift turns on.
+                        if (item /= nitems) then
+                            call readi(restart_info_global_shift%write_id)
+                            restart_info_global_shift%write_id = -restart_info_global_shift%write_id-1
+                        end if
+                    ! Otherwise we have read a restart number.
+                    else
+                        call reread(0)
+                        call readi(restart_info_global%write_id)
+                        restart_info_global%write_id = -restart_info_global%write_id-1
+                        dump_restart_file = .true.
+                    end if
+                else
+                dump_restart_file = .true.
                 end if
             case('DUMP_RESTART_FREQUENCY')
                 call readi(restart_info_global%write_restart_freq)
@@ -635,6 +650,13 @@ contains
                     call stop_all(this, 'The use_all_sym_sectors option cannot be used with magnetic fields.')
         end if
 
+        if (dump_restart_file_shift) then
+             if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_id<0 &
+                 .and. restart_info_global%write_id == restart_info_global_shift%write_id) &
+                 call stop_all(this, 'The ids of the restart files are the same.')
+             if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
+                 call stop_all(this, 'The ids of the restart files could be the same')
+        end if   
         if (parent) write (6,'(/,1X,13("-"),/)')
 
     end subroutine check_input
@@ -829,6 +851,7 @@ contains
         end if
         call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dump_restart_file_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_restart_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)

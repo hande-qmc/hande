@@ -408,6 +408,9 @@ logical :: restart = .false.
 ! Print out restart file.
 logical :: dump_restart_file = .false.
 
+! Print out a restart file before the shift turns on.
+logical :: dump_restart_file_shift = .false.
+
 ! Restart data.
 integer :: mc_cycles_done = 0
 
