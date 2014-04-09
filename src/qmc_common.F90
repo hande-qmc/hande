@@ -567,7 +567,7 @@ contains
         logical :: update_tau_global
 
 #ifdef PARALLEL
-       call mpi_allreduce(update_tau, update_tau_global, mpi_logical, MPI_LOR, MPI_COMM_WORLD, ierr)
+       call mpi_allreduce(update_tau, update_tau_global, 1, mpi_logical, MPI_LOR, MPI_COMM_WORLD, ierr)
 #else
         update_tau_global = update_tau
 #endif
