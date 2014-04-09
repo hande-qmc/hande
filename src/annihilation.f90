@@ -231,7 +231,7 @@ contains
             ! any populations which are less than one (or less than encoding_factor =
             ! 2^bit_shift, in the encoded representation of the populations).
             do itype = 1, qmc_spawn%ntypes
-                if (abs(walker_population(itype,i)) < encoding_factor) then
+                if (abs(walker_population(itype,i)) < encoding_factor .and. abs(walker_population(itype,i)) /= 0_int_p) then
                     r = get_rand_close_open(rng)*encoding_factor
                     if (abs(walker_population(itype,i)) > r) then
                         walker_population(itype,i) = sign(encoding_factor, walker_population(itype,i))
