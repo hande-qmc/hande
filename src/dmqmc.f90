@@ -48,7 +48,7 @@ contains
         integer :: beta_cycle
         real(dp) :: nparticles_old(sampling_size)
         integer(lint) :: nattempts
-        integer :: nel_temp
+        integer :: nel_temp, nattempts_current_det
         type(det_info) :: cdet1, cdet2
         integer(int_p) :: nspawned, ndeath
         type(excit) :: connection
@@ -155,7 +155,8 @@ contains
                             ! If this condition is met then there will only be one det in this
                             ! symmetry sector, so don't attempt to spawn.
                             if (.not. (sys%nel == 0 .or. sys%nel == sys%lattice%nsites)) then
-                                do iparticle = 1, abs(walker_population(ireplica,idet))
+                                nattempts_current_det = decide_nattempts(rng, walker_population(ireplica,idet))
+                                do iparticle = 1, nattempts_current_det
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.

@@ -202,7 +202,7 @@ integer :: number_dmqmc_estimators = 0
 ! used in calculating all thermal estimators. This quantity stores
 ! the this value, Tr(\rho), where rho is the density matrix which
 ! the DMQMC algorithm calculates stochastically.
-integer(i0), allocatable :: trace(:) ! (sampling_size)
+real(p), allocatable :: trace(:) ! (sampling_size)
 
 ! estimator_numerators stores all the numerators for the estimators in DMQMC
 ! which the user has asked to be calculated. These are, for a general
@@ -480,11 +480,11 @@ contains
         integer :: i, j
 
         if (doing_calc(dmqmc_calc)) then
-           write (6,'(1X,a12,3X,a13,8X,a5)', advance = 'no') &
+           write (6,'(1X,a12,3X,a13,15X,a5)', advance = 'no') &
            '# iterations','Instant shift','Trace'
 
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(6X,a7,14X,a7)', advance = 'no') 'Trace 2','Full S2'
+                write (6, '(13X,a7,14X,a7)', advance = 'no') 'Trace 2','Full S2'
             end if
             if (doing_dmqmc_calc(dmqmc_energy)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
@@ -563,12 +563,12 @@ contains
 
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
-            write (6,'(i8,2X,es17.10,i10)',advance = 'no') &
-                                             (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
+            write (6,'(i8,2X,es17.10,es17.10)',advance = 'no') &
+                (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write(6, '(3X,i10)',advance = 'no') trace(2)
+                write(6, '(3X,es17.10)',advance = 'no') trace(2)
             end if
             do i = 1, number_dmqmc_estimators
                 write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)

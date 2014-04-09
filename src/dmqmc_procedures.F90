@@ -471,7 +471,7 @@ contains
                     call random_distribution_heisenberg(rng, sys%nel, npsips_this_proc, ireplica)
                 end if
             case default
-                call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
+                call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
             end select
         end do
 
@@ -514,6 +514,7 @@ contains
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use fciqmc_data, only: encoding_factor
         use parallel
         use system
 
@@ -549,7 +550,7 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_diagonal_density_matrix_particle(f,1,ireplica)
+            call create_diagonal_density_matrix_particle(f,encoding_factor,ireplica)
 
         end do
 
@@ -575,7 +576,8 @@ contains
         use errors, only: stop_all
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: nspawn, particle_type
+        integer(int_p), intent(in) :: nspawn
+        integer ::particle_type
         integer(i0) :: f_new(total_basis_length)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
