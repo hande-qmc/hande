@@ -369,7 +369,7 @@ contains
         use parallel
 
         use hamiltonian, only: get_hmatel_dets
-        use hubbard_real
+        use real_lattice
         use determinant_enumeration, only: ndets
         use system, only: sys_t
 

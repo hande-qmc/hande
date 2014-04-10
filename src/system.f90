@@ -70,7 +70,7 @@ type sys_lattice_t
     ! lvecs contains all combinations of the above lattice vectors, where the
     ! amplitude for each lattice vector can be either -1, 0 or +1. lvec(:,i)
     ! stores the i'th such combination.
-    ! TODO: move to hubbard_real (ie sole place where it is actually used).
+    ! TODO: move to real_lattice (ie sole place where it is actually used).
     integer, allocatable :: lvecs(:,:) ! ndim, 3**ndim
 
     ! Contains integer lattice lengths. If less than 3 dimensions are used

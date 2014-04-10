@@ -258,7 +258,7 @@ contains
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
-       use hubbard_real, only: connected_orbs
+       use real_lattice, only: connected_orbs
        use system, only: sys_t
 
        type(sys_t), intent(in) :: sys
@@ -306,7 +306,7 @@ contains
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_squared_index
-       use hubbard_real, only: connected_orbs, next_nearest_orbs
+       use real_lattice, only: connected_orbs, next_nearest_orbs
        use system, only: sys_t
 
        type(sys_t), intent(in) :: sys
@@ -460,7 +460,7 @@ contains
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00, correlation_mask
        use fciqmc_data, only: estimator_numerators, correlation_index
-       use hubbard_real, only: connected_orbs
+       use real_lattice, only: connected_orbs
        use system, only: sys_t
 
        type(sys_t), intent(in) :: sys

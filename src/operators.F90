@@ -172,7 +172,7 @@ contains
 
         use basis, only: basis_length
         use bit_utils, only: count_set_bits
-        use hubbard_real, only: get_coulomb_matel_real
+        use real_lattice, only: get_coulomb_matel_real
         use system, only: sys_t
 
         use const, only: p, i0

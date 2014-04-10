@@ -1,7 +1,0 @@
-Research meetings
-=================
-
-.. toctree::
-   :glob:
-
-   *

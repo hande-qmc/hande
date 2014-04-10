@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# hubbard_fciqmc documentation build configuration file, created by
+# HANDE documentation build configuration file, created by
 # sphinx-quickstart on Thu May 12 00:36:12 2011.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -40,8 +40,10 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'hubbard_fciqmc'
-copyright = u'2011, James Spencer'
+project = u'HANDE QMC'
+
+# [todo] - AJWT: This copyright notice needs changing
+copyright = u'2014, James Spencer'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -92,8 +94,8 @@ pngmath_use_preview = True
 
 # -- breathe configuration -----------------------------------------------------
 
-breathe_projects = { 'hubbard_fciqmc': 'developers_guide/xml' }
-breathe_default_project = 'hubbard_fciqmc'
+breathe_projects = { 'HANDE QMC': 'developers_guide/xml' }
+breathe_default_project = 'HANDE QMC'
 
 # -- Options for HTML output ---------------------------------------------------
 
@@ -172,7 +174,7 @@ html_static_path = ['static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'hubbard_fciqmcdoc'
+htmlhelp_basename = 'handedoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -186,7 +188,7 @@ htmlhelp_basename = 'hubbard_fciqmcdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'hubbard_fciqmc.tex', u'hubbard\\_fciqmc Documentation',
+  ('index', 'hande.tex', u'HANDE Documentation',
    u'James Spencer', 'manual'),
 ]
 
@@ -219,6 +221,6 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'hubbard_fciqmc', u'hubbard_fciqmc Documentation',
+    ('index', 'hande', u'HANDE Documentation',
      [u'James Spencer'], 1)
 ]
