@@ -660,6 +660,10 @@ contains
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
                  call stop_all(this, 'The ids of the restart files could be the same')
         end if   
+        if (dmqmc_vary_weights .and. (.not. dmqmc_weighted_sampling)) then
+            call stop_all(this, 'The dmqmc_vary_weights option can only be used together with the dmqmc_weighted_sampling option.')
+        end if
+
         if (parent) write (6,'(/,1X,13("-"),/)')
 
     end subroutine check_input

@@ -631,7 +631,7 @@ contains
         !    irdm: The label of the RDM being considered.
         !    isym: The label of the symmetry vector being considered.
 
-        use basis, only: basis_length, bit_lookup
+        use basis, only: basis_length, total_basis_length, bit_lookup
 
         integer(i0), intent(in) :: f(total_basis_length)
         integer, intent(in) :: irdm, isym
