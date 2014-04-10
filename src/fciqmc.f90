@@ -38,6 +38,7 @@ contains
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_received_list
+        use energy_evaluation, only: update_energy_estimators_recv
 
         type(sys_t), intent(in) :: sys
 
@@ -47,10 +48,12 @@ contains
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
 
-        integer :: nspawned, ndeath, non_block_spawn
+        integer :: nspawned, ndeath, non_block_spawn(2)
         type(excit) :: connection
         real(p) :: hmatel
-        integer :: send_counts(0:nprocs-1), req_size_s(0:nprocs-1), req_data_s(0:nprocs-1)
+        real(dp) :: ir(sampling_size+7)
+        integer :: send_counts(0:nprocs-1)
+        integer :: req_size_s(0:nprocs-1), req_data_s(0:nprocs-1), req_ir_s(0:nprocs-1)
 
         logical :: soft_exit
 
@@ -78,7 +81,11 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys)
+        if (non_blocking_comm) then
+            call initial_fciqmc_status(sys, 0, ir, req_ir_s)
+        else
+            call initial_fciqmc_status(sys)
+        end if
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -140,7 +147,7 @@ contains
 
             update_tau = bloom_stats%nwarnings_curr > 0
 
-            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit)
+            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit, non_block_spawn(2), ir, req_ir_s)
 
             if (soft_exit) exit
 
@@ -151,6 +158,7 @@ contains
             call receive_spawned_walkers(received_list, req_size_s, req_data_s)
             call annihilate_wrapper_received_list(received_list, initiator_approximation)
             call annihilate_main_list_wrapper(sys, initiator_approximation, 0, received_list)
+            call update_energy_estimators_recv(req_ir_s, nparticles_old)
         end if
 
         if (parent) then

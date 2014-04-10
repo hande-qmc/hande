@@ -350,7 +350,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys)
+    subroutine initial_fciqmc_status(sys, spawn_elsewhere, ir, req_ir_s)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -358,14 +358,26 @@ contains
 
         ! In:
         !    sys: system being studied.
+        ! In (optional):
+        !    spawn_elsewhere: number of walkers spawned from current processor
+        !       to all other processors except current one.
+        ! Out (Optional):
+        !    ir: array containing local quantities, such as initial walker population.
+        !    req_ir_s: array of requests for non_blocking_send.
 
         use determinants, only: det_info, alloc_det_info, dealloc_det_info, decode_det
         use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         use system, only: sys_t
+        use calc, only: non_blocking_comm
+        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
 
         type(sys_t), intent(in) :: sys
+        integer, optional, intent(in) :: spawn_elsewhere
+        real(dp), optional, intent(out) :: ir(:)
+        integer, optional, intent(out) :: req_ir_s(:)
+
         integer :: idet
         integer(lint) :: ntot_particles(sampling_size)
         type(det_info) :: cdet
@@ -393,17 +405,27 @@ contains
         call dealloc_det_info(cdet)
 
 #ifdef PARALLEL
-        call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        proj_energy = proj_energy_sum
-        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        ! TODO: HFS, DMQMC quantities
+        if (present(ir)) then
+            if (parent) then
+                D0_population = D0_population*10
+            else
+                D0_population = 0
+            end if
+            call local_energy_estimators(ir, spawn_elsewhere)
+            call update_energy_estimators_send(ir, req_ir_s)
+        else
+            call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            proj_energy = proj_energy_sum
+            call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            ! TODO: HFS, DMQMC quantities
+        end if
 #else
         ntot_particles = nparticles
         D0_population = D0_population_cycle
 #endif
 
-        if (parent) then
+        if (.not. non_blocking_comm .and. parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
@@ -485,7 +507,7 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(ireport, update_tau, ntot_particles, report_time, soft_exit)
+    subroutine end_report_loop(ireport, update_tau, ntot_particles, report_time, soft_exit, spawn_elsewhere, ir, req_ir_s)
 
         ! In:
         !    ireport: index of current report loop.
@@ -503,22 +525,46 @@ contains
         ! Out:
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
+        ! In (optional):
+        !    spawn_elsewhere: number of walkers spawned from current processor
+        !        to other processors not including the current processor.
+        ! Out (optional):
+        !    ir: array containing local report loop quantities.
+        !    req_ir_s: array of requests for non-blocking send.
 
-        use energy_evaluation, only: update_energy_estimators
+        use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
+                                     update_energy_estimators_recv, update_energy_estimators_send
         use interact, only: fciqmc_interact
         use parallel, only: parent
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
+        use calc, only: non_blocking_comm
 
         integer, intent(in) :: ireport
         logical, intent(in) :: update_tau
         integer(lint), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
+        integer, optional, intent(in) :: spawn_elsewhere
+        real(dp), optional, intent(out) :: ir(:)
+        integer, optional, intent(inout) :: req_ir_s(:)
 
         real :: curr_time
+        real(dp) :: ir_copy(sampling_size+7)
 
-        ! Update the energy estimators (shift & projected energy).
-        call update_energy_estimators(ntot_particles)
+        if (.not. non_blocking_comm) then
+            ! Update the energy estimators (shift & projected energy).
+            call update_energy_estimators(ntot_particles)
+        else
+           ! Save current report loop quantitites.
+           ! Can't overwrite the send buffer before message completion
+           ! so copy information somewhere else.
+           call local_energy_estimators(ir_copy, spawn_elsewhere)
+           ! Receive previous iterations report loop quantities.
+           call update_energy_estimators_recv(req_ir_s, ntot_particles)
+           ! Send current report loop quantities.
+           ir = ir_copy
+           call update_energy_estimators_send(ir, req_ir_s)
+        end if
 
         call cpu_time(curr_time)
 
@@ -555,7 +601,7 @@ contains
 
         integer, intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
-        integer, optional, intent(in) :: non_block_spawn
+        integer, optional, intent(in) :: non_block_spawn(:)
 
         ! Add the spawning rate (for the processor) to the running
         ! total.

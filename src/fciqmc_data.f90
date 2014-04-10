@@ -462,11 +462,11 @@ contains
         real(p) :: rate
         integer, intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
-        integer, optional, intent(in) :: non_block_spawn
+        integer, optional, intent(in) :: non_block_spawn(:)
         integer :: nspawn
 
         if (present(non_block_spawn)) then
-            nspawn = non_block_spawn
+            nspawn = non_block_spawn(1)
         else
             nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
         end if

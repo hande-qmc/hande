@@ -93,7 +93,7 @@ contains
         logical, intent(in) :: tinitiator
         integer, intent(inout) :: send_counts(0:)
         integer, intent(inout) :: req_size_s(0:), req_data_s(0:)
-        integer, intent(out) :: non_block_spawn
+        integer, intent(out) :: non_block_spawn(:)
 
         integer, parameter :: thread_id = 0
 

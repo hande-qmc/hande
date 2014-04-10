@@ -22,6 +22,40 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
 
+        use fciqmc_data, only: sampling_size
+
+        use parallel
+
+        integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
+
+        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7)
+        integer :: ierr
+
+        call local_energy_estimators(ir)
+
+        ! Don't bother to optimise for running in serial.  This is a fast
+        ! routine and is run only once per report loop anyway!
+#ifdef PARALLEL
+        call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+#else
+        ir_sum = ir
+        ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
+#endif
+
+        call communicated_energy_estimators(ir_sum, ntot_particles_old)
+
+    end subroutine update_energy_estimators
+
+    subroutine update_energy_estimators_send(ir, req_ir_s)
+
+        ! Send report loop quantities to other processors.
+        ! These won't be received until after the next full evolution of main
+        ! list.
+
+        ! In/Out:
+        !    ir: array containing report loop quantities.
+        !    req_ir_s: array of requests for non-blocking communication.
+
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
                                vary_shift_from_proje, D0_population, fold_line
@@ -30,15 +64,88 @@ contains
 
         use parallel
 
-        integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
+        real(dp), intent(inout) :: ir(:)
+        integer, intent(inout) :: req_ir_s(0:)
 
-        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7)
-        integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
-        integer :: ierr
+        integer :: i, ierr
+
+        do i = 0, nprocs-1
+           call MPI_ISend(ir, size(ir), MPI_REAL8, i, 789, MPI_COMM_WORLD, req_ir_s(i), ierr)
+        end do
+
+    end subroutine update_energy_estimators_send
+
+    subroutine update_energy_estimators_recv(req_ir_s, ntot_particles_old)
+
+        ! Receive report loop quantities from all other processors and reduce.
+
+        ! In/Out:
+        !    req_ir_s: array of requests initialised during non-blocking send of
+        !        information.
+        !    ntot_particles_old: total number (across all processors) of
+        !        particles in the simulation at end of the previous report loop.
+        !        Returns the current total number of particles for use in the
+        !        next report loop.
+
+        use fciqmc_data, only: sampling_size
+        use parallel
+
+        integer, intent(inout) :: req_ir_s(:)
+        integer(lint), intent(inout) :: ntot_particles_old(:)
+
+        real(dp) :: ir_local(sampling_size+7), ir_sum(nprocs*(sampling_size+7))
+        integer :: req_ir_r(0:nprocs-1)
+        integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs)
+        integer :: i, ierr
+
+        do i = 0, nprocs-1
+            call MPI_IRecv(ir_sum(i*(sampling_size+7)+1:(i+1)*(sampling_size+7)), sampling_size+7, MPI_REAL8, &
+                           i, 789, MPI_COMM_WORLD, req_ir_r(i), ierr)
+        end do
+        call MPI_Waitall(nprocs, req_ir_r, stat_ir_r, ierr)
+        call MPI_Waitall(nprocs, req_ir_s, stat_ir_s, ierr)
+
+        ! Reduce quantities across processors.
+        ir_local(1:sampling_size) = sum(ir_sum(1:size(ir_sum):sampling_size+7))
+        ir_local(sampling_size+1) = sum(ir_sum(sampling_size+1:size(ir_sum):sampling_size+7))
+        ir_local(sampling_size+2) = sum(ir_sum(sampling_size+2:size(ir_sum):sampling_size+7))
+        ir_local(sampling_size+3) = sum(ir_sum(sampling_size+3:size(ir_sum):sampling_size+7))
+        ir_local(sampling_size+4) = sum(ir_sum(sampling_size+4:size(ir_sum):sampling_size+7))
+        ir_local(sampling_size+5) = sum(ir_sum(sampling_size+5:size(ir_sum):sampling_size+7))
+        ir_local(sampling_size+6) = sum(ir_sum(sampling_size+6:size(ir_sum):sampling_size+7))
+        ir_local(sampling_size+7) = sum(ir_sum(sampling_size+7:size(ir_sum):sampling_size+7))
+
+        call communicated_energy_estimators(ir_local, ntot_particles_old)
+
+    end subroutine update_energy_estimators_recv
+
+    subroutine local_energy_estimators(ir, spawn_elsewhere)
+
+        ! Enter processor dependent report loop quantites into array for
+        ! efficient sending to other processors.
+
+        ! Out:
+        !    ir: array containing local quantities required for energy
+        !    evaluation.
+        ! In (optional):
+        !    spawn_elsewhere: number of walkers spawned from current processor
+        !        not including those spawned to current processor.
+
+        use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
+                               proj_energy, D0_population
+        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
+        use calc, only: doing_calc, hfs_fciqmc_calc
+
+        real(dp), intent(out) :: ir(:)
+        integer, optional, intent(in) :: spawn_elsewhere
 
         ! Need to sum the number of particles and the projected energy over
         ! all processors.
-        ir(1:sampling_size) = nparticles
+        if (present(spawn_elsewhere)) then
+            ir(1:sampling_size) = nparticles + spawn_elsewhere
+        else
+            ir(1:sampling_size) = nparticles
+        end if
         ir(sampling_size+1) = proj_energy
         ir(sampling_size+2) = D0_population
         ir(sampling_size+3) = rspawn
@@ -53,14 +160,33 @@ contains
             ir(sampling_size+7) = D0_hf_population
         end if
 
-        ! Don't bother to optimise for running in serial.  This is a fast
-        ! routine and is run only once per report loop anyway!
-#ifdef PARALLEL
-        call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-#else
-        ir_sum = ir
-        ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
-#endif
+    end subroutine local_energy_estimators
+
+    subroutine communicated_energy_estimators(ir_sum, ntot_particles_old)
+
+        ! Update report loop quantites with information received from other
+        ! processors.
+
+        ! In:
+        !    ir_sum: array containing quantites required for energy
+        !        evaluation.
+        ! In/Out:
+        !    ntot_particles_old: total number (across all processors) of
+        !        particles in the simulation at end of the previous report loop.
+        !        Returns the current total number of particles for use in the
+        !        next report loop.
+
+        use fciqmc_data, only: sampling_size, target_particles, ncycles, rspawn,               &
+                               proj_energy, shift, vary_shift, vary_shift_from,                &
+                               vary_shift_from_proje, D0_population, fold_line
+        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
+        use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
+        use parallel, only: nprocs, iproc
+
+        real(dp), intent(in) :: ir_sum(:)
+        integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
+
+        integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
 
         ntot_particles = nint(ir_sum(1:sampling_size), lint)
         proj_energy = ir_sum(sampling_size+1)
@@ -86,8 +212,8 @@ contains
             vary_shift = .true.
             if (vary_shift_from_proje) then
                 if(doing_calc(folded_spectrum)) then
-                  !if running a folded spectrum calculation, set the shift to
-                  !instantaneously be the projected energy of the folded hamiltonian
+                  ! if running a folded spectrum calculation, set the shift to
+                  ! instantaneously be the projected energy of the folded hamiltonian
                   shift = (proj_energy/D0_population - fold_line)**2
                 else
                   ! Set shift to be instantaneous projected energy.
@@ -110,7 +236,7 @@ contains
         ! average spawning rate over report loop and processor.
         rspawn = rspawn/(ncycles*nprocs)
 
-    end subroutine update_energy_estimators
+    end subroutine communicated_energy_estimators
 
     subroutine update_shift(loc_shift, nparticles_old, nparticles, nupdate_steps)
 

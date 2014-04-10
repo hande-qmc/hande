@@ -354,7 +354,7 @@ contains
 
         type(spawn_t), intent(in) :: spawn
         integer, intent(out) :: send_disp(0:)
-        integer, intent(out) :: non_block_spawn
+        integer, intent(out) :: non_block_spawn(:)
 
         integer :: i
         integer, parameter :: thread_id = 0
@@ -364,7 +364,13 @@ contains
         end do
         ! Need to copy the number of walkers we've spawned during current time
         ! step for estimating spawning rate.
-        non_block_spawn = sum(send_disp)
+        non_block_spawn(1) = sum(send_disp)
+        ! After each time step we have main_list + walkers spawned onto current
+        ! processor + walkers spawned to other processors. Walkers on current
+        ! processor will annihilate with main list and update nparticles
+        ! accordingly, so the total number of walkers across processors is
+        ! \sum_i nparticles(i) + non_block_spawn(1)_i - send_disp(i)_i.
+        non_block_spawn(2) = non_block_spawn(1) - send_disp(iproc)
         send_disp(iproc) = 0
 
     end subroutine calculate_displacements
