@@ -860,6 +860,7 @@ contains
         call mpi_bcast(restart_info_global%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_restart_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_info_global_shift%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
