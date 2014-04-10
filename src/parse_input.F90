@@ -563,6 +563,13 @@ contains
 
         end if
 
+        if (real_amplitudes) then
+            if (doing_calc(ccmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc) .or. &
+               doing_calc(folded_spectrum)) then
+                call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
+            end if
+        end if
+
         if (init_spin_inv_D0 .and. ms_in /= 0) then
             call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
@@ -573,7 +580,7 @@ contains
                &sites for the correlation function option.')
 
           if (dmqmc_find_weights .and. calculate_excit_distribution) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
-              &_DISTRIBUTION options should cannot be used together.')
+              &_DISTRIBUTION options cannot be used together.')
 
         ! Calculation specific checking.
         if (doing_calc(lanczos_diag)) then
