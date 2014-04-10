@@ -116,7 +116,7 @@ contains
         spawn%array_len = array_len
         spawn%hash_seed = hash_seed
         spawn%comm_time = 0.0_dp
-        spawn%cutoff = int(ceiling(cutoff*(2_int_p**int(bit_shift,int_p)), int_p))
+        spawn%cutoff = ceiling(cutoff*(2_int_p**int(bit_shift,int_p)), int_p)
 
         allocate(spawn%store1(spawn%element_len, spawn%array_len), stat=ierr)
         call check_allocate('spawn%store1', size(spawn%store1), ierr)
@@ -458,12 +458,12 @@ contains
             if (islot == spawn%head(thread_id,0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0)) islot = islot + 1
+            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0_int_s)) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0)) islot = islot - 1
+        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0_int_s)) islot = islot - 1
 
         ! update spawn%head(thread_id,0)
         spawn%head(thread_id,0) = islot
@@ -509,7 +509,7 @@ contains
             ! Set the current free slot to be the next unique spawned location.
             spawn%sdata(:,islot) = spawn%sdata(:,k)
             do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                if (spawn%sdata(spawn%flag_indx,k) == 0) then
+                if (spawn%sdata(spawn%flag_indx,k) == 0_int_s) then
                     ! from an initiator
                     initiator_pop(ipart) = spawn%sdata(ipart,k)
                     events(ipart) = 0
@@ -544,9 +544,9 @@ contains
                     !   initiators and the two sets have opposite sign, the flag
                     !   is determined by number of coherent events from
                     !   non-initiator parents.
-                    spawn%sdata(spawn%flag_indx,islot) = 0
+                    spawn%sdata(spawn%flag_indx,islot) = 0_int_s
                     do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                        if (initiator_pop(ipart) /= 0 .and.  &
+                        if (initiator_pop(ipart) /= 0_int_s .and.  &
                                 sign(1_int_s,spawn%sdata(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
                             ! Keep all.  We should still annihilate psips of
                             ! opposite sign from non-initiator events(spawn%bit_str_len+1).
@@ -563,11 +563,11 @@ contains
                 else
                     ! Accumulate the population on this determinant, how much of the population came
                     ! from an initiator and the sign of the event.
-                    if (spawn%sdata(spawn%flag_indx,k) == 0) then
+                    if (spawn%sdata(spawn%flag_indx,k) == 0_int_s) then
                         initiator_pop = initiator_pop + spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,k)
                     else
                         do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                            if (spawn%sdata(ipart,k) < 0) then
+                            if (spawn%sdata(ipart,k) < 0_int_s) then
                                 events(ipart) = events(ipart) - 1
                             else
                                 events(ipart) = events(ipart) + 1
@@ -583,12 +583,12 @@ contains
             if (islot == spawn%head(thread_id,0) .or. k > spawn%head(thread_id,0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0)) islot = islot + 1
+            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0_int_s)) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0)) islot = islot - 1
+        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0_int_s)) islot = islot - 1
 
         ! update spawn%head(thread_id,0)
         spawn%head(thread_id,0) = islot

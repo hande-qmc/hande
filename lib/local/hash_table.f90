@@ -62,7 +62,7 @@ module hash_table
         ! an external array?
         logical, private :: extern_data_label = .false.
 
-        ! payload(:,i) i$ the 'payload' or information associated with
+        ! payload(:,i) is the 'payload' or information associated with
         ! the i-th data item in data_label.
         integer(int_p), pointer :: payload(:,:) => null() ! (:,nentries*nslots)
         ! Using an internal array for payload (ie allocation) or pointing to

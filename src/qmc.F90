@@ -85,7 +85,7 @@ contains
         !    sys: system being studied.
 
         use checking, only: check_allocate, check_deallocate
-        use errors, only: stop_all, warning
+        use errors, only: stop_all
         use hashing, only: murmurhash_bit_string
         use parallel
         use utils, only: int_fmt
@@ -208,12 +208,6 @@ contains
         if (doing_calc(ct_fciqmc_calc)) then
             allocate(spawn_times(spawned_walker_length),stat=ierr)
             call check_allocate('spawn_times',spawned_walker_length,ierr)
-        end if
-
-        if (real_amplitudes .and. bit_size(0_int_p) == 32) then
-            call warning('init_qmc','You are using 32-bit walker populations with real amplitudes. The maximum &
-                         &population size on a given determinant is 2^20=1048576. Errors will occur if this is &
-                         &exceeded. Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
         end if
 
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers

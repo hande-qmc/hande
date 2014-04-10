@@ -568,6 +568,11 @@ contains
                doing_calc(folded_spectrum)) then
                 call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
             end if
+            if (bit_size(0_int_p) == 32) then
+                call warning('init_qmc','You are using 32-bit walker populations with real amplitudes. The maximum &
+                             &population size on a given determinant is 2^20=1048576. Errors will occur if this is &
+                             &exceeded. Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
+            end if
         end if
 
         if (init_spin_inv_D0 .and. ms_in /= 0) then

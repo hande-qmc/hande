@@ -52,9 +52,9 @@ contains
             ! walker list.
             call remove_unoccupied_dets(rng)
 
-            ! Stochastically round all spawns with amplitude magnitudes
-            ! less than one either up to one or down to zero.
-            call round_low_population_spawns(rng)
+            ! Remove low-population spawned walkers by stochastically
+            ! rounding their population up to one or down to zero.
+            if (real_amplitudes) call round_low_population_spawns(rng)
 
             ! Insert new walkers into main walker list.
             call insert_new_walkers(sys)
@@ -231,7 +231,7 @@ contains
             ! any populations which are less than one (or less than encoding_factor =
             ! 2^bit_shift, in the encoded representation of the populations).
             do itype = 1, qmc_spawn%ntypes
-                if (abs(walker_population(itype,i)) < encoding_factor .and. abs(walker_population(itype,i)) /= 0_int_p) then
+                if (abs(walker_population(itype,i)) < encoding_factor .and. walker_population(itype,i) /= 0_int_p) then
                     r = get_rand_close_open(rng)*encoding_factor
                     if (abs(walker_population(itype,i)) > r) then
                         walker_population(itype,i) = sign(encoding_factor, walker_population(itype,i))
@@ -256,6 +256,12 @@ contains
 
     subroutine round_low_population_spawns(rng)
 
+        ! Loop over all spawned walkers. For each walker with a population of less
+        ! than one, round it up to one with a probability equal to its population,
+        ! otherwise down to zero. This will ensure that the expectation value of the
+        ! amplitudes on all determinants are the same as before, but will prevent
+        ! many low-weight walkers remaining in the simulation.
+
         ! In/Out:
         !    rng: random number generator.
 
@@ -264,39 +270,40 @@ contains
         type(dSFMT_t), intent(inout) :: rng
 
         integer :: i, k, itype, nremoved
-        integer(int_s) :: spawned_population(sampling_size)
         real(dp) :: r
         integer, parameter :: thread_id = 0
 
         nremoved = 0
         do i = 1, qmc_spawn%head(thread_id,0)
 
-            ! Loop over all amplitudes for this determinant. For all amplitudes less than 1 (or less
-            ! than encoding_factor = 2^bit_shift in the encoded representation stored in sdata),
-            ! stochastically round the amplitude up to this cutoff or down to zero.
-            spawned_population = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i)
-            do itype = 1, qmc_spawn%ntypes
-                if (abs(spawned_population(itype)) < encoding_factor) then
-                    r = get_rand_close_open(rng)*encoding_factor
-                    if (abs(spawned_population(itype)) > r) then
-                        qmc_spawn%sdata(qmc_spawn%bit_str_len+itype, i) = &
-                            sign(int(encoding_factor,int_s), spawned_population(itype))
-                    else
-                        qmc_spawn%sdata(qmc_spawn%bit_str_len+itype, i) = 0_int_s
-                    end if
-                end if
-            end do
+            ! Loop over all amplitudes for this determinant. For all amplitudes less
+            ! than 1 (or less than encoding_factor = 2^bit_shift in the encoded
+            ! representation stored in sdata), stochastically round the amplitude up
+            ! to this cutoff or down to zero.
+            associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i))
 
-            ! If all the amplitudes for this determinant were zeroed then we don't want to add it
-            ! to the main list, so cycle.
-            spawned_population = qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i)
-            if (all(spawned_population == 0_int_s)) then
-                nremoved = nremoved + 1
-            else
-                ! Shuffle this determinant down to fill in any newly opened slots.
-                k = i - nremoved
-                qmc_spawn%sdata(:,k) = qmc_spawn%sdata(:,i)
-            end if
+                do itype = 1, qmc_spawn%ntypes
+                    if (abs(spawned_population(itype)) < encoding_factor) then
+                        r = get_rand_close_open(rng)*encoding_factor
+                        if (abs(spawned_population(itype)) > r) then
+                            spawned_population(itype) = sign(int(encoding_factor,int_s), spawned_population(itype))
+                        else
+                            spawned_population(itype) = 0_int_s
+                        end if
+                    end if
+                end do
+
+                ! If all the amplitudes for this determinant were zeroed then we don't
+                ! want to add it to the main list.
+                if (all(spawned_population == 0_int_s)) then
+                    nremoved = nremoved + 1
+                else
+                    ! Shuffle this determinant down to fill in any newly opened slots.
+                    k = i - nremoved
+                    qmc_spawn%sdata(:,k) = qmc_spawn%sdata(:,i)
+                end if
+
+            end associate
 
         end do
 
