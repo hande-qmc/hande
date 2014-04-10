@@ -708,8 +708,8 @@ contains
                 ! Update the population on this determinant.
                 walker_population(ireplica,idet) = walker_population(ireplica,idet) + nspawn
                 ! Update the total number of walkers.
-                nparticles(ireplica) = nparticles(ireplica) - real(old_population + &
-                        abs(walker_population(ireplica,idet)),dp)
+                nparticles(ireplica) = nparticles(ireplica) + &
+                    real(abs(walker_population(ireplica,idet)) - old_population, dp)
             end do
         end do
 
