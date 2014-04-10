@@ -300,7 +300,7 @@ $(DEPEND_DIR)/%.d: %.cpp
 #-----
 # Goals.
 
-.PHONY: clean cleanall new help program library __FORCE_BUILD__
+.PHONY: check-distribute clean cleanall new help program library __FORCE_BUILD__
 
 LINK_MACRO = cd $(@D) && ln -s -f $(<F) $(@F)
 
@@ -309,7 +309,7 @@ ifneq ($(filter-out library, $(MODE)),)
 $(BIN_DIR)/$(PROG): $(BIN_DIR)/$(PROG_VERSION) $(call md5_check, $(BIN_DIR)/$(PROG_VERSION), $(BIN_DIR)/$(PROG))
 	$(LINK_MACRO)
 
-$(BIN_DIR)/$(PROG_VERSION): $(OBJECTS) | $(BIN_DIR)
+$(BIN_DIR)/$(PROG_VERSION): $(OBJECTS) check-distribute | $(BIN_DIR)
 	$(LD) -o $@ $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
 
 # shortcut
@@ -321,8 +321,8 @@ ifneq ($(filter-out program, $(MODE)),)
 $(LIB_DIR)/$(LIB): $(LIB_DIR)/$(LIB_VERSION) $(call md5_check, $(LIB_DIR)/$(LIB_VERSION), $(LIB_DIR)/$(LIB))
 	$(LINK_MACRO)
 
-$(LIB_DIR)/$(LIB_VERSION): $(LIB_OBJECTS) | $(LIB_DIR)
-	$(AR) $(ARFLAGS) $@ $^
+$(LIB_DIR)/$(LIB_VERSION): $(LIB_OBJECTS) check-distribute | $(LIB_DIR)
+	$(AR) $(ARFLAGS) $@ $(LIB_OBJECTS)
 
 # shortcut
 library: $(LIB_DIR)/$(LIB)
@@ -364,6 +364,10 @@ new:
 # Generate dependency file.
 $(F_DEPEND): $(F_FILES)
 	tools/sfmakedepend --file - --silent --objdir \$$\(DEST\) --moddir \$$\(DEST\) --depend=mod $^ > $@
+
+# Check all input options are distributed to all MPI processes.
+check-distribute:
+	tools/check_distribute.py
 
 # tag files
 # ctags >> etags supplied by emacs
