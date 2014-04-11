@@ -274,8 +274,10 @@ logical :: replica_tricks = .false.
 ! For DMQMC: If this locial is true then the fraction of psips at each
 ! excitation level will be output at each report loop. These fractions
 ! will be stored in the array below.
+! The number of excitations for a given system is defined by
+! sys_t%max_number_excitations; see comments in sys_t for more details.
 logical :: calculate_excit_distribution = .false.
-real(p), allocatable :: excit_distribution(:) ! (min(nel, nsites-nel) + 1)
+real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
 
 ! If true then the simulation will start with walkers uniformly distributed
 ! along the diagonal of the entire density matrix, including all symmetry
