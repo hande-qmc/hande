@@ -6,40 +6,28 @@ implicit none
 
 contains
 
-   subroutine update_dmqmc_estimators(ntot_particles_old, ireport, nreplica)
+   subroutine communicate_dmqmc_estimates()
 
-        ! Update the shift and average the shift and estimators.
+        ! Sum together the contributions to the various DMQMC estimators (and
+        ! some other non-physical quantities such as the rate of spawning
+        ! and total number of walkers) across all MPI processes.
 
         ! This is called every report loop in a DMQMC calculation.
-
-        ! Inout:
-        !    ntot_particles_old: total number (across all processors) of
-        !        particles in the simulation at end of the previous report loop.
-        !        Returns the current total number of particles for use in the
-        !        next report loop.
-        ! In:
-        !    ireport: The number of the report loop currently being performed.
-        !    nreplica: The total number of replica simulations being performed.
 
         use spawn_data, only: annihilate_wrapper_spawn_t
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_rdm_r2
         use checking, only: check_allocate
         use dmqmc_procedures, only: rdms
-        use energy_evaluation, only: update_shift
-        use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn
-        use fciqmc_data, only: shift, vary_shift, nreport, replica_tricks
+        use fciqmc_data, only: nparticles, sampling_size, rspawn, shift, replica_tricks
         use fciqmc_data, only: estimator_numerators, number_dmqmc_estimators
-        use fciqmc_data, only: nreport, ncycles, trace, calculate_excit_distribution
-        use fciqmc_data, only: excit_distribution, average_shift_until, shift_profile
+        use fciqmc_data, only: ncycles, trace, calculate_excit_distribution
+        use fciqmc_data, only: excit_distribution, tot_nparticles
         use fciqmc_data, only: calc_inst_rdm, rdm_spawn, nrdms, rdm_traces, renyi_2
         use hash_table, only: reset_hash_table
         use parallel
 
-        integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
-        integer, intent(in) :: ireport, nreplica
-        integer(lint) :: ntot_particles(sampling_size)
-        integer :: irdm, ireplica, i
+        integer :: irdm
 
 #ifdef PARALLEL
         real(dp), allocatable :: ir(:)
@@ -111,7 +99,7 @@ contains
         call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 
         min_ind = 1; max_ind = sampling_size
-        ntot_particles = nint(ir_sum(min_ind:max_ind))
+        tot_nparticles = nint(ir_sum(min_ind:max_ind))
         min_ind = max_ind + 1; max_ind = min_ind
         rspawn = ir_sum(min_ind)
         min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1
@@ -133,30 +121,51 @@ contains
             renyi_2 = real(ir_sum(min_ind:max_ind),p)
         end if
 #else
-        ntot_particles = nparticles
+        tot_nparticles = nparticles
 #endif
 
-        ! If average_shift_until = -1 then it means that the shift should be updated to
-        ! use the values of shift stored in shift_profile. Otherwise, use the standard update
-        ! routine.
+        rspawn = rspawn/(ncycles*nprocs)
+
+   end subroutine communicate_dmqmc_estimates
+
+   subroutine update_shift_dmqmc(loc_tot_nparticles, loc_tot_nparticles_old, ireport)
+
+        ! In/Out:
+        !    loc_tot_nparticles: total number (across all processors) of
+        !        particles in the simulation at end of the previous report loop.
+        !    loc_tot_nparticles_old: total number (across all processors) of
+        !        particles in the simulation currently.
+        ! In:
+        !    ireport: The number of the report loop currently being performed.
+
+        use energy_evaluation, only: update_shift
+        use fciqmc_data, only: shift, shift_profile, average_shift_until, ncycles
+        use fciqmc_data, only: target_particles, vary_shift, nreport
+
+        integer(lint), intent(in) :: loc_tot_nparticles(:)
+        integer(lint), intent(in) :: loc_tot_nparticles_old(:)
+        integer, intent(in) :: ireport
+        integer :: ireplica
+
+        ! If average_shift_until = -1 then it means that the shift should be
+        ! updated to use the values of shift stored in shift_profile.
+        ! Otherwise, use the standard update routine.
         if (average_shift_until == -1) then
             if (ireport < nreport) shift = shift_profile(ireport+1)
         else
             if (vary_shift) then
-                do ireplica = 1, nreplica
-                    call update_shift(shift(ireplica), ntot_particles_old(ireplica), &
-                        ntot_particles(ireplica), ncycles)
+                do ireplica = 1, size(loc_tot_nparticles)
+                    call update_shift(shift(ireplica), loc_tot_nparticles_old(ireplica), &
+                        loc_tot_nparticles(ireplica), ncycles)
                 end do
             end if
-            if (ntot_particles(1) > target_particles .and. .not.vary_shift) vary_shift = .true.
+            if (loc_tot_nparticles(1) > target_particles .and. (.not. vary_shift)) &
+                vary_shift = .true.
         end if
 
-        ntot_particles_old = ntot_particles
-        rspawn = rspawn/(ncycles*nprocs)
+   end subroutine update_shift_dmqmc
 
-   end subroutine update_dmqmc_estimators
-
-   subroutine call_dmqmc_estimators(sys, idet, iteration)
+   subroutine update_dmqmc_estimators(sys, idet, iteration)
 
        ! This function calls the processes to update the estimators which
        ! have been requested by the user to be calculated.
@@ -235,7 +244,7 @@ contains
 
        dmqmc_accumulated_probs_old = dmqmc_accumulated_probs
 
-   end subroutine call_dmqmc_estimators
+   end subroutine update_dmqmc_estimators
 
    subroutine dmqmc_energy_heisenberg(sys, idet, excitation, walker_pop)
 
@@ -316,7 +325,7 @@ contains
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        real(p) :: sum_H1_H2, J_coupling_squared
 
-       sum_H1_H2 = 0
+       sum_H1_H2 = 0.0_p
        J_coupling_squared = sys%heisenberg%J**2
 
        if (excitation%nexcit == 0) then
@@ -346,7 +355,7 @@ contains
            ! intermediate spins will only allow one order of spin flipping for each path, no
            ! matter which way up they are, so we only need to check if there are two possible paths.
 
-           if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0) then
+           if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0_i0) then
                ! Contribution for next-nearest neighbors.
                sum_H1_H2 = 4.0*J_coupling_squared*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
            end if
@@ -652,7 +661,7 @@ contains
                ! contributes to the reduced density matrix for subsystem A. This is because we
                ! get the reduced density matrix for A by 'tracing out' over B, which in practice
                ! means only keeping matrix elements that are on the diagonal for subsystem B.
-               if (sum(abs(f1-f2)) == 0) then
+               if (sum(abs(f1-f2)) == 0_i0) then
                    ! Call a function which maps the subsystem A state to two RDM bitstrings.
                    call decode_dm_bitstring(walker_dets(:,idet),irdm,isym)
 
@@ -792,7 +801,7 @@ contains
         real(p) :: vn_entropy
         
         rdm_size = 2**rdms(1)%A_nsites
-        vn_entropy = 0._p
+        vn_entropy = 0.0_p
 
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)

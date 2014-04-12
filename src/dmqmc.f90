@@ -23,30 +23,28 @@ contains
 
         use parallel
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length, bit_lookup, nbasis
+        use basis, only: basis_length
         use bit_utils, only: count_set_bits
         use death, only: stochastic_death
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_procedures, only: update_sampling_weights, output_and_alter_weights
         use dmqmc_procedures, only: create_initial_density_matrix
-        use dmqmc_estimators, only: update_dmqmc_estimators, call_dmqmc_estimators
-        use dmqmc_estimators, only: call_ground_rdm_procedures
-        use excitations, only: excit, get_excitation_level
+        use dmqmc_estimators, only: update_dmqmc_estimators, communicate_dmqmc_estimates
+        use dmqmc_estimators, only: update_shift_dmqmc, call_ground_rdm_procedures
+        use excitations, only: excit
         use qmc_common
         use interact, only: fciqmc_interact
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
-        use calc, only: seed, doing_dmqmc_calc, dmqmc_energy, initiator_approximation
-        use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared
+        use calc, only: seed, initiator_approximation
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: int_fmt, rng_init_info
-        use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
-        integer(lint) :: nparticles_old(sampling_size)
+        integer(lint) :: tot_nparticles_old(sampling_size)
         integer(lint) :: nattempts
         integer :: nel_temp
         type(det_info) :: cdet1, cdet2
@@ -86,13 +84,13 @@ contains
             qmc_spawn%head = qmc_spawn%head_start
             tot_walkers = 0
             shift = initial_shift
-            nparticles = 0
+            nparticles = 0_lint
             if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
             if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
-            if (dmqmc_find_weights) excit_distribution = 0
+            if (dmqmc_find_weights) excit_distribution = 0.0_p
             vary_shift = .false.
 
-            if (beta_cycle .ne. 1 .and. parent) then
+            if (beta_cycle /= 1 .and. parent) then
                 write (6,'(a32,i7)') &
                        " # Resetting beta... Beta loop =", beta_cycle
                 write (6,'(a52,'//int_fmt(seed,1)//',a1)') &
@@ -102,14 +100,15 @@ contains
             ! iteration)
             call dSFMT_init(seed+iproc+(beta_cycle-1)*nprocs, 50000, rng)
 
-            call create_initial_density_matrix(rng, sys, nparticles_old)
+            call create_initial_density_matrix(rng, sys, tot_nparticles_old)
 
             do ireport = 1, nreport
                 ! Zero report cycle quantities.
                 rspawn = 0.0_p
                 trace = 0.0_p
                 estimator_numerators = 0.0_p
-                if (calculate_excit_distribution) excit_distribution = 0
+                tot_nparticles_old = tot_nparticles
+                if (calculate_excit_distribution) excit_distribution = 0.0_p
 
                 do icycle = 1, ncycles
                     qmc_spawn%head = qmc_spawn%head_start
@@ -148,7 +147,7 @@ contains
 
                         ! Call wrapper function which calls all requested estimators
                         ! to be updated, and also always updates the trace separately.
-                        if (icycle == 1) call call_dmqmc_estimators(sys, idet, iteration)
+                        if (icycle == 1) call update_dmqmc_estimators(sys, idet, iteration)
 
                         do ireplica = 1, sampling_size
 
@@ -188,8 +187,8 @@ contains
                         end do
                     end do
 
-                    ! Now we have finished looping over all dets, set the symmetry labels back to
-                    ! their default value, if necessary.
+                    ! Now we have finished looping over all determinants, set the symmetry
+                    ! labels back to their default value, if necessary.
                     if (all_sym_sectors) then
                         sys%nel = nel_temp
                         sys%nvirt = sys%lattice%nsites - sys%nel
@@ -211,18 +210,20 @@ contains
                 ! If averaging the shift to use in future beta loops, add contirubtion from this report.
                 if (average_shift_until > 0) shift_profile(ireport) = shift_profile(ireport) + shift(1)
 
-                ! Update the shift and desired thermal quantites.
-                call update_dmqmc_estimators(nparticles_old, ireport, sampling_size)
+                ! Sum all quantities being considered across all MPI processes.
+                call communicate_dmqmc_estimates()
+
+                call update_shift_dmqmc(tot_nparticles, tot_nparticles_old, ireport)
 
                 call cpu_time(t2)
 
                 ! t1 was the time at the previous iteration, t2 the current time.
                 ! t2-t1 is thus the time taken by this report loop.
-                if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
+                if (parent) call write_fciqmc_report(ireport, tot_nparticles, t2-t1, .false.)
 
                 ! Write restart file if required.
                 if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                    call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, nparticles_old)
+                    call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, tot_nparticles)
 
                 ! cpu_time outputs an elapsed time, so update the reference timer.
                 t1 = t2
@@ -264,7 +265,7 @@ contains
         end if
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done, tot_nparticles)
             if (parent) write (6,'()')
         end if
 

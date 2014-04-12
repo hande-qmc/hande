@@ -20,7 +20,7 @@ type rdm
     ! B_masks(:,i) has bits set at all bit positions corresponding to
     ! sites in version i of subsystem B, where the different 'versions'
     ! correspond to subsystems which are equivalent by symmetry.
-    integer, allocatable :: B_masks(:,:)
+    integer(i0), allocatable :: B_masks(:,:)
     ! bit_pos(i,j,1) contains the position of the bit corresponding to
     ! site i in 'version' j of subsystem A.
     ! bit_pos(i,j,2) contains the element of the bit corresponding to
@@ -108,7 +108,7 @@ contains
 
          allocate(estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
          call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
-         estimator_numerators = 0
+         estimator_numerators = 0.0_p
 
          if (calculate_excit_distribution .or. dmqmc_find_weights) then
              allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
@@ -445,7 +445,7 @@ contains
         if (nint(D0_population)-(nprocs*int(D0_population/nprocs)) > iproc) &
               npsips_this_proc = npsips_this_proc + 1
 
-        nparticles_temp = 0
+        nparticles_temp = 0_lint
 
         do ireplica = 1, sampling_size
             select case(sys%system)
@@ -588,7 +588,7 @@ contains
 #endif
 
         ! Create the bitstring of the determinant.
-        f_new = 0
+        f_new = 0_i0
         f_new(:basis_length) = f
         f_new((basis_length+1):(total_basis_length)) = f
 
@@ -638,8 +638,8 @@ contains
         integer :: i, bit_pos, bit_element
 
         ! Start from all bits down, so that we can flip bits up one by one.
-        rdms(irdm)%end1 = 0
-        rdms(irdm)%end2 = 0
+        rdms(irdm)%end1 = 0_i0
+        rdms(irdm)%end2 = 0_i0
 
         ! Loop over all the sites in the subsystem considered for the reduced density matrix.
         do i = 1, rdms(irdm)%A_nsites
