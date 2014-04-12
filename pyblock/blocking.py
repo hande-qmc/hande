@@ -63,7 +63,9 @@ References
    H.G. Petersen, J. Chem. Phys. 91, 461 (1989).
 .. [2]  "Exponential smoothing weighted correlations", F. Pozzi, T. Matteo,
    and T. Aste, Eur. Phys. J. B. 85, 175 (2012).
-.. [3]  www.analyticalgroup.com/download/weighted_variance.pdf
+.. [3]  "An Analysis of WinCross, SPSS, and Mentor Procedures for Estimating
+   the Variance of a Weighted Mean", A. Madansky and H. G. B. Alexander,
+   www.analyticalgroup.com/download/weighted_variance.pdf
 '''
 
     if ddof is not None and ddof != int(ddof):
