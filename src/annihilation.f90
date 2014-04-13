@@ -209,9 +209,10 @@ contains
     subroutine remove_unoccupied_dets(rng)
 
         ! Remove any determinants with 0 population.
-        ! This can be done in a more efficient manner by doing it only when necessary...
-        ! Also, before doing this, stochastically round up or down any populations which
-        ! are less than one.
+        ! This can be done in a more efficient manner by doing it only when
+        ! necessary...
+        ! Also, before doing this, stochastically round up or down any
+        ! populations which are less than one.
 
         ! In/Out:
         !    rng: random number generator.
@@ -227,9 +228,10 @@ contains
         nzero = 0
         do i = 1, tot_walkers
 
-            ! Loop over all particle types on this determinant and stochastically round
-            ! any populations which are less than one (or less than encoding_factor =
-            ! 2^bit_shift, in the encoded representation of the populations).
+            ! Loop over all particle types on this determinant and
+            ! stochastically round any populations which are less than one (or
+            ! less than encoding_factor = 2^bit_shift, in the encoded
+            ! representation of the populations).
             do itype = 1, qmc_spawn%ntypes
                 if (abs(walker_population(itype,i)) < encoding_factor .and. walker_population(itype,i) /= 0_int_p) then
                     r = get_rand_close_open(rng)*encoding_factor
@@ -256,11 +258,12 @@ contains
 
     subroutine round_low_population_spawns(rng)
 
-        ! Loop over all spawned walkers. For each walker with a population of less
-        ! than one, round it up to one with a probability equal to its population,
-        ! otherwise down to zero. This will ensure that the expectation value of the
-        ! amplitudes on all determinants are the same as before, but will prevent
-        ! many low-weight walkers remaining in the simulation.
+        ! Loop over all spawned walkers. For each walker with a population of
+        ! less than one, round it up to one with a probability equal to its
+        ! population, otherwise down to zero. This will ensure that the
+        ! expectation value of the amplitudes on all determinants are the same
+        ! as before, but will prevent many low-weight walkers remaining in the
+        ! simulation.
 
         ! In/Out:
         !    rng: random number generator.
@@ -276,12 +279,15 @@ contains
         nremoved = 0
         do i = 1, qmc_spawn%head(thread_id,0)
 
-            ! Loop over all amplitudes for this determinant. For all amplitudes less
-            ! than 1 (or less than encoding_factor = 2^bit_shift in the encoded
-            ! representation stored in sdata), stochastically round the amplitude up
-            ! to this cutoff or down to zero.
+            ! spawned_population holds the spawned population in its encoded
+            ! form (see comments for walker_population).
             associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i))
 
+                ! Loop over all amplitudes for this determinant. For all
+                ! amplitudes less than one (or less than encoding_factor =
+                ! 2^bit_shift in the encoded representation stored in sdata),
+                ! stochastically round the amplitude up to this cutoff or down
+                ! to zero.
                 do itype = 1, qmc_spawn%ntypes
                     if (abs(spawned_population(itype)) < encoding_factor) then
                         r = get_rand_close_open(rng)*encoding_factor
@@ -293,12 +299,13 @@ contains
                     end if
                 end do
 
-                ! If all the amplitudes for this determinant were zeroed then we don't
-                ! want to add it to the main list.
+                ! If all the amplitudes for this determinant were zeroed then we
+                ! don't want to add it to the main list.
                 if (all(spawned_population == 0_int_s)) then
                     nremoved = nremoved + 1
                 else
-                    ! Shuffle this determinant down to fill in any newly opened slots.
+                    ! Shuffle this determinant down to fill in any newly opened
+                    ! slots.
                     k = i - nremoved
                     qmc_spawn%sdata(:,k) = qmc_spawn%sdata(:,i)
                 end if
@@ -334,6 +341,7 @@ contains
 
         integer :: i, istart, iend, j, k, pos
         integer(int_p) :: spawned_population(sampling_size)
+        real(dp) :: real_population(sampling_size)
         logical :: hit
         integer, parameter :: thread_id = 0
 
@@ -372,10 +380,13 @@ contains
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
+            ! The encoded walker sign.
             spawned_population = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
+            ! Extract the real sign from the encoded sign.
+            real_population = real(spawned_population,dp)/encoding_factor
             walker_dets(:,k) = int(qmc_spawn%sdata(:total_basis_length,i), i0)
             walker_population(:,k) = spawned_population
-            nparticles = nparticles + real(abs(spawned_population),dp)/encoding_factor
+            nparticles = nparticles + abs(real_population)
             walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then

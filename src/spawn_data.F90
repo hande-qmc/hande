@@ -116,6 +116,10 @@ contains
         spawn%array_len = array_len
         spawn%hash_seed = hash_seed
         spawn%comm_time = 0.0_dp
+        ! Convert the spawning cutoff to the encoded representation for walker
+        ! populations (see comments for walker_population) and round up to
+        ! nearest integer. (It may not be possible to use the exact cutoff
+        ! requested. This will be the case if rounding is required).
         spawn%cutoff = ceiling(cutoff*(2_int_p**int(bit_shift,int_p)), int_p)
 
         allocate(spawn%store1(spawn%element_len, spawn%array_len), stat=ierr)

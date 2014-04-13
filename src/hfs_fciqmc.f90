@@ -58,7 +58,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
-        real(p) :: real_population(sampling_size)
+        real(dp) :: real_population(sampling_size)
         type(det_info) :: cdet
 
         integer(int_p) :: nspawned, ndeath
@@ -113,7 +113,7 @@ contains
                 nattempts = nint(4*nparticles(1) + 2*nparticles(2))
 
                 ! Reset death counter.
-                ndeath = 0
+                ndeath = 0_int_p
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -121,7 +121,9 @@ contains
                     cdet%data => walker_data(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
-                    real_population = real(walker_population(:,idet),p)
+
+                    ! Extract the real sign from the encoded sign.
+                    real_population = real(walker_population(1,idet),dp)/encoding_factor
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
@@ -149,14 +151,14 @@ contains
                         ! Attempt to spawn Hamiltonian walkers..
                         call spawner_ptr(rng, sys, qmc_spawn, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
+                        if (nspawned /= 0_int_p) call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         call spawner_hfs_ptr(rng, sys, qmc_spawn, cdet, walker_population(1,idet), &
                                              gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
+                        if (nspawned /= 0_int_p) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
 
                     end do
 
@@ -168,7 +170,7 @@ contains
                         ! Hellmann--Feynman walkers.
                         call spawner_ptr(rng, sys, qmc_spawn, cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
+                        if (nspawned /= 0_int_p) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
 
                     end do
 

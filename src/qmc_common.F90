@@ -293,7 +293,7 @@ contains
 
     end subroutine cumulative_population
 
-    function decide_nattempts(rng, int_population) result(nattempts)
+    function decide_nattempts(rng, population) result(nattempts)
 
         ! Decide how many spawning attempts should be made from a determinant
         ! with the input population. If this population is not an integer, it
@@ -308,14 +308,12 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer(int_p), intent(in) :: int_population
-        real(dp) :: real_population
+        real(dp), intent(in) :: population
         real(dp) :: r, pextra
         integer :: nattempts
 
-        real_population = real(int_population, dp)/encoding_factor
-        nattempts = abs(int(real_population))
-        pextra = abs(real_population) - nattempts
+        nattempts = abs(int(population))
+        pextra = abs(population) - nattempts
         ! If there is no probability of generating an extra attempt, then
         ! don't bother using an extra random number.
         if (abs(pextra) > depsilon) then
@@ -393,7 +391,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer :: idet
         real(dp) :: ntot_particles(sampling_size)
-        real(p) :: real_population(sampling_size)
+        real(dp) :: real_population(sampling_size)
         type(det_info) :: cdet
         real(p) :: hmatel
         type(excit) :: D0_excit

@@ -43,6 +43,9 @@ integer, parameter :: int_p = selected_int_kind(15)
 integer, parameter :: int_p = selected_int_kind(6)
 #endif
 
+! The sdata array holds both walker populations and determinants together.
+! Therefore, if 64-bit integers are being used for either walker populations
+! or determinants, int_s must be 64-bit. Otherwise it can be 32-bit.
 #if POP_SIZE == 64 || DET_SIZE == 64
 integer, parameter :: int_s = selected_int_kind(15)
 #else

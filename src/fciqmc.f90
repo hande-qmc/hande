@@ -47,7 +47,8 @@ contains
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det
         type(excit) :: connection
-        real(p) :: hmatel, real_population
+        real(p) :: hmatel
+        real(dp) :: real_population
 
         logical :: soft_exit
 
@@ -86,8 +87,9 @@ contains
                     cdet%data => walker_data(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
+
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(walker_population(1,idet),p)/encoding_factor
+                    real_population = real(walker_population(1,idet),dp)/encoding_factor
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
@@ -98,7 +100,7 @@ contains
                     ! Is this determinant an initiator?
                     call set_parent_flag_ptr(real_population, cdet%f, cdet%initiator_flag)
 
-                    nattempts_current_det = decide_nattempts(rng, walker_population(1,idet))
+                    nattempts_current_det = decide_nattempts(rng, real_population)
 
                     do iparticle = 1, nattempts_current_det
 
@@ -106,7 +108,7 @@ contains
                         call spawner_ptr(rng, sys, qmc_spawn, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) then
+                        if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
                         end if
 

@@ -123,6 +123,16 @@ integer :: info_size
 ! a) determinants
 integer(i0), allocatable, target :: walker_dets(:,:) ! (basis_length, walker_length)
 ! b) walker population
+! NOTE:
+!   When using the real_amplitudes option, walker_population stores encoded
+!   representations of the true walker populations. To convert
+!   walker_population(:,i) to the actual population on determinant i, one must
+!   take real(walker_population(:,i),dp)/encoding_factor. Thus, the resolution
+!   in the true walker populations is 1/encoding_factor. This is how
+!   non-integers populations are implemented. When not using the real_amplitudes
+!   option, encoding_factor will be equal to 1, allowing only integer
+!   populations. In general, when one sees that a integer is of kind int_p, it
+!   should be understood that it stores a population in its encoded form.
 integer(int_p), allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
 ! c) Walker information.  This contains:
 ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.

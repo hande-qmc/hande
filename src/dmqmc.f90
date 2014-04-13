@@ -44,9 +44,8 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: idet, ireport, icycle, iparticle, iteration, ireplica
-        integer :: beta_cycle
-        real(dp) :: nparticles_old(sampling_size)
+        integer :: idet, ireport, icycle, iparticle, iteration, ireplica, beta_cycle
+        real(dp) :: nparticles_old(sampling_size), real_population
         integer(lint) :: nattempts
         integer :: nel_temp, nattempts_current_det
         type(det_info) :: cdet1, cdet2
@@ -89,7 +88,7 @@ contains
             nparticles = 0.0_dp
             if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
             if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
-            if (dmqmc_find_weights) excit_distribution = 0
+            if (dmqmc_find_weights) excit_distribution = 0.0_p
             vary_shift = .false.
 
             if (beta_cycle .ne. 1 .and. parent) then
@@ -109,7 +108,7 @@ contains
                 rspawn = 0.0_p
                 trace = 0.0_p
                 estimator_numerators = 0.0_p
-                if (calculate_excit_distribution) excit_distribution = 0
+                if (calculate_excit_distribution) excit_distribution = 0.0_p
 
                 do icycle = 1, ncycles
                     qmc_spawn%head = qmc_spawn%head_start
@@ -146,6 +145,9 @@ contains
                         call decoder_ptr(sys, cdet1%f, cdet1)
                         call decoder_ptr(sys, cdet2%f, cdet2)
 
+                        ! Extract the real sign from the encoded sign.
+                        real_population = real(walker_population(1,idet),dp)/encoding_factor
+
                         ! Call wrapper function which calls all requested estimators
                         ! to be updated, and also always updates the trace separately.
                         if (icycle == 1) call call_dmqmc_estimators(sys, idet, iteration)
@@ -155,7 +157,7 @@ contains
                             ! If this condition is met then there will only be one det in this
                             ! symmetry sector, so don't attempt to spawn.
                             if (.not. (sys%nel == 0 .or. sys%nel == sys%lattice%nsites)) then
-                                nattempts_current_det = decide_nattempts(rng, walker_population(ireplica,idet))
+                                nattempts_current_det = decide_nattempts(rng, real_population)
                                 do iparticle = 1, nattempts_current_det
                                     ! Spawn from the first end.
                                     spawning_end = 1
@@ -163,7 +165,7 @@ contains
                                     call spawner_ptr(rng, sys, qmc_spawn, cdet1, walker_population(ireplica,idet), &
                                                      gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
-                                    if (nspawned /= 0) then
+                                    if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
                                                                             ireplica, qmc_spawn)
                                     end if
@@ -172,7 +174,7 @@ contains
                                     spawning_end = 2
                                     call spawner_ptr(rng, sys, qmc_spawn, cdet2, walker_population(ireplica,idet), &
                                                      gen_excit_ptr, nspawned, connection)
-                                    if (nspawned /= 0) then
+                                    if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
                                                                             ireplica, qmc_spawn)
                                     end if

@@ -694,7 +694,7 @@ contains
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, spawn, hmatel, pgen, parent_sign)
 
-        if (nspawn /= 0) then
+        if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
             ! excitor.  This might incur a sign change and hence result in
             ! a change in sign to the sign of the progeny.

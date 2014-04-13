@@ -51,7 +51,7 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
+        !    nspawn: number of particles spawned. 0 indicates the spawning
         !        attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
@@ -374,7 +374,8 @@ contains
         ! 'Encode' the spawning probability by multiplying by 2^(bit_shift).
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
-        ! when we later divide this factor back out.
+        ! when we later divide this factor back out. (See comments for
+        ! walker_population).
         pspawn = probability*encoding_factor
 
         if (abs(pspawn) < spawn%cutoff) then
@@ -467,7 +468,8 @@ contains
         ! 'Encode' the spawning probability by multiplying by 2^(bit_shift).
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
-        ! when we later divide this factor back out.
+        ! when we later divide this factor back out. (See comments for
+        ! walker_population).
         pspawn = pspawn*encoding_factor
 
         if (pspawn < spawn%cutoff) then
