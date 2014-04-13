@@ -9,8 +9,8 @@ contains
    subroutine communicate_dmqmc_estimates()
 
         ! Sum together the contributions to the various DMQMC estimators (and
-        ! some other non-physical quantities such as the rate of spawning
-        ! and total number of walkers) across all MPI processes.
+        ! some other non-physical quantities such as the rate of spawning and
+        ! total number of walkers) across all MPI processes.
 
         ! This is called every report loop in a DMQMC calculation.
 
@@ -61,6 +61,8 @@ contains
         end if
 
 #ifdef PARALLEL
+        ! Put all the quantities to be communicated together in one array.
+
         array_size = 2*sampling_size+1+number_dmqmc_estimators
         if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
         if (calc_inst_rdm) array_size = array_size + size(rdm_traces)
@@ -95,9 +97,10 @@ contains
             ir(min_ind:max_ind) = renyi_2
         end if
 
-        ! Merge the lists from each processor together.
+        ! Sum the data from each processor together.
         call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 
+        ! Extract the summed data from the combined array.
         min_ind = 1; max_ind = sampling_size
         tot_nparticles = nint(ir_sum(min_ind:max_ind))
         min_ind = max_ind + 1; max_ind = min_ind
@@ -148,8 +151,8 @@ contains
         integer :: ireplica
 
         ! If average_shift_until = -1 then it means that the shift should be
-        ! updated to use the values of shift stored in shift_profile.
-        ! Otherwise, use the standard update routine.
+        ! updated to use the values of shift stored in shift_profile. Otherwise,
+        ! use the standard update routine.
         if (average_shift_until == -1) then
             if (ireport < nreport) shift = shift_profile(ireport+1)
         else
@@ -167,12 +170,12 @@ contains
 
    subroutine update_dmqmc_estimators(sys, idet, iteration)
 
-       ! This function calls the processes to update the estimators which
-       ! have been requested by the user to be calculated.
-       ! First, calculate the excitation level between the two bitsrtings
-       ! corresponding to the the two ends. Then add the contribution from
-       ! the current density matrix element to the trace, which is always
-       ! calculated. Then call other estimators, as required.
+       ! This function calls the processes to update the estimators which have
+       ! been requested by the user to be calculated. First, calculate the
+       ! excitation level between the two bitstrings corresponding to the the
+       ! two ends. Then add the contribution from the current density matrix
+       ! element to the trace, which is always calculated. Then call other
+       ! estimators, as required.
 
        ! In:
        !    sys: system being studied.
@@ -200,10 +203,11 @@ contains
        excitation = get_excitation(sys%nel, walker_dets(:basis_length,idet), &
                         walker_dets((1+basis_length):total_basis_length,idet))
 
-       ! When performing importance sampling the result is that certain excitation
-       ! levels have smaller psips populations than the true density matrix by some
-       ! factor. In these cases, we want to multiply the psip population by this factor
-       ! to calculate the contribution from these excitation levels correctly.
+       ! When performing importance sampling the result is that certain
+       ! excitation levels have smaller psips populations than the true density
+       ! matrix by some factor. In these cases, we want to multiply the psip
+       ! population by this factor to calculate the contribution from these
+       ! excitation levels correctly.
 
        ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet).
        unweighted_walker_pop = walker_population(:,idet)*dmqmc_accumulated_probs(excitation%nexcit)
@@ -211,34 +215,35 @@ contains
        ! If diagonal element, add to the trace.
        if (excitation%nexcit == 0) trace = trace + walker_population(:,idet)
 
-       ! The following only use the populations with ireplica = 1, so only call them if the
-       ! determinant is occupied in the first replica.
+       ! The following only use the populations with ireplica = 1, so only call
+       ! them if the determinant is occupied in the first replica.
        if (abs(unweighted_walker_pop(1)) > 0) then
-           ! See which estimators are to be calculated, and call the corresponding procedures.
+           ! See which estimators are to be calculated, and call the
+           ! corresponding procedures.
            ! Energy
            If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr&
                    &(sys, idet, excitation, unweighted_walker_pop(1))
-           ! Energy squared
+           ! Energy squared.
            if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
                    &(sys, idet, excitation, unweighted_walker_pop(1))
-           ! Spin-spin correlation function
+           ! Spin-spin correlation function.
            if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
                    &(sys, idet, excitation, unweighted_walker_pop(1))
-           ! Staggered magnetisation
+           ! Staggered magnetisation.
            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
                    &(sys, idet, excitation, unweighted_walker_pop(1))
-           ! Excitation distribution
+           ! Excitation distribution.
            if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
                    excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
-           ! Excitation distribtuion for calculating importance sampling weights
+           ! Excitation distribtuion for calculating importance sampling weights.
            if (dmqmc_find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
                    excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
        end if
 
-       ! Full Renyi entropy (S_2)
+       ! Full Renyi entropy (S_2).
        if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop)
 
-       ! Reduced density matrices
+       ! Reduced density matrices.
        if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
                &(idet, excitation, walker_population(:,idet), iteration)
 
@@ -249,8 +254,8 @@ contains
    subroutine dmqmc_energy_heisenberg(sys, idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
-       ! Add the contribution from the current density matrix element
-       ! to the thermal energy estimate.
+       ! Add the contribution from the current density matrix element to the 
+       ! thermal energy estimate.
 
        ! In:
        !    sys: system being studied.
@@ -276,15 +281,16 @@ contains
        real(p), intent(in) :: walker_pop
        integer :: bit_element, bit_position
 
-       ! If no excitation, we have a diagonal element, so add elements
-       ! which involve the diagonal element of the Hamiltonian.
+       ! If no excitation, we have a diagonal element, so add elements which
+       ! involve the diagonal element of the Hamiltonian.
        if (excitation%nexcit == 0) then
            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
                                     (walker_data(1,idet)+H00)*walker_pop
        else if (excitation%nexcit == 1) then
-       ! If not a diagonal element, but only a single excitation, then the corresponding
-       ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
-       ! neighbours on the lattice, and if so, add the contribution from this site.
+       ! If not a diagonal element, but only a single excitation, then the
+       ! corresponding Hamiltonian element may be non-zero. Calculate if the
+       ! flipped spins are neighbours on the lattice, and if so, add the
+       ! contribution from this site.
            bit_position = bit_lookup(1,excitation%from_orb(1))
            bit_element = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
@@ -297,15 +303,15 @@ contains
    subroutine dmqmc_energy_squared_heisenberg(sys, idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
-       ! Add the contribution from the current density matrix element
-       ! to the thermal energy squared estimate.
+       ! Add the contribution from the current density matrix element to the
+       ! thermal energy squared estimate.
 
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
-       !        the excitation between the two bitstring ends, corresponding
-       !        to the two labels for the density matrix element.
+       !    excitation: excit type variable which stores information on the
+       !        excitation between the two bitstring ends, corresponding to the
+       !        two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
@@ -330,10 +336,11 @@ contains
 
        if (excitation%nexcit == 0) then
            ! If there are 0 excitations then either nothing happens twice, or we
-           ! flip the same pair of spins twice. The Hamiltonian element for doing nothing
-           ! is just the diagonal element. For each possible pairs of spins which can be
-           ! flipped, there is a mtarix element of -2*J, so we just need to count
-           ! the number of such pairs, which can be found simply from the diagonal element.
+           ! flip the same pair of spins twice. The Hamiltonian element for doing
+           ! nothing is just the diagonal element. For each possible pairs of
+           ! spins which can be flipped, there is a mtarix element of -2*J, so
+           ! we just need to count the number of such pairs, which can be found 
+           ! simply from the diagonal element.
 
            sum_H1_H2 = (walker_data(1,idet)+H00)**2
            associate(sh=>sys%heisenberg)
@@ -341,47 +348,53 @@ contains
            end associate
 
        else if (excitation%nexcit == 1) then
-           ! If there is only one excitation (2 spins flipped) then the contribution to H^2
-           ! depend on the positions of the spins relative to one another.
-           ! If the the spins are nearest neighbors then we could either do nothing and then
-           ! flip the pair, or flip the pair and then do nothing.
-           ! If next nearest neighbors and there is only one two-bond path to get from one
-           ! spin to the other, we first flip the pair on the first bond, then flip the pair
-           ! on the second bond. This flipping can only be done in exactly one order, not both -
-           ! the two spins which change are opposite, so the middle spin will initially only
-           ! be the same as one or the other spin. This is nice, because we don't have check
-           ! which way up the intermediate spin is - there will always be one order which contributes.
-           ! If there are two such paths, then this could happen by either paths, but again, the two
-           ! intermediate spins will only allow one order of spin flipping for each path, no
-           ! matter which way up they are, so we only need to check if there are two possible paths.
+           ! If there is only one excitation (2 spins flipped) then the
+           ! contribution to H^2 depend on the positions of the spins relative
+           ! to one another. If the the spins are nearest neighbors then we
+           ! could either do nothing and then flip the pair, or flip the pair
+           ! and then do nothing. If next nearest neighbors and there is only
+           ! one two-bond path to get from one spin to the other, we first flip
+           ! the pair on the first bond, then flip the pair on the second bond.
+           ! This flipping can only be done in exactly one order, not both - the
+           ! two spins which change are opposite, so the middle spin will
+           ! initially only be the same as one or the other spin. This is nice, 
+           ! because we don't have check which way up the intermediate spin is -
+           ! there will always be one order which contributes. If there are two
+           ! such paths, then this could happen by either paths, but again, the
+           ! two intermediate spins will only allow one order of spin flipping
+           ! for each path, no matter which way up they are, so we only need to
+           ! check if there are two possible paths.
 
            if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0_i0) then
                ! Contribution for next-nearest neighbors.
                sum_H1_H2 = 4.0*J_coupling_squared*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
            end if
            ! Contributions for nearest neighbors.
-           ! Note, for certain lattices, such as the triangular lattice, two spins can be both
-           ! nearest neighbors *and* next-nearest neighbors. Therefore, it is necessary in general
-           ! to check for both situations.
+           ! Note, for certain lattices, such as the triangular lattice, two
+           ! spins can be both nearest neighbors *and* next-nearest neighbors.
+           ! Therefore, it is necessary in general to check for both situations.
            bit_position1 = bit_lookup(1,excitation%from_orb(1))
            bit_element1 = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
                    sum_H1_H2 = sum_H1_H2 - 4.0*sys%heisenberg%J*(walker_data(1,idet)+H00)
 
        else if (excitation%nexcit == 2) then
-           ! If there are two excitations (4 spins flipped) then, once again, the contribution
-           ! to the thermal energy squared will depend on the positions of the spins. If there
-           ! are two pairs of spins flipped which are separated then there is one way
-           ! for this to happen - by flipping one pair, and then the other (this also requires
-           ! that the two spins within each neighboring pair are opposite, as ever for the
-           ! Heisenberg model). These two flips can happen in either order.
-           ! In some cases the spins may be such that we may pair the spins in more than one way.
-           ! For example, if the four spins are in a square shape, or for a 4-by-4 Heisenberg
-           ! model, the spins could be connected across the whole lattice, forming a ring due
-           ! to the periodic boundaries. In these cases it may be possible to perform the spin
-           ! flips by pairing them in either of two ways. To account for this possibility we
-           ! have to try and pair the spins in both ways, so we always check both if statements
-           ! below. Again, once these pairings have been chosen, the flips can be performed in
+           ! If there are two excitations (4 spins flipped) then, once again,
+           ! the contribution to the thermal energy squared will depend on the
+           ! positions of the spins. If there are two pairs of spins flipped
+           ! which are separated then there is one way for this to happen - by
+           ! flipping one pair, and then the other (this also requires that the
+           ! two spins within each neighboring pair are opposite, as ever for
+           ! the Heisenberg model). These two flips can happen in either order.
+           ! In some cases the spins may be such that we may pair the spins in
+           ! more than one way. For example, if the four spins are in a square
+           ! shape, or for a 4-by-4 Heisenberg model, the spins could be
+           ! connected across the whole lattice, forming a ring due to the
+           ! periodic boundaries. In these cases it may be possible to perform
+           ! the spin flips by pairing them in either of two ways. To account
+           ! for this possibility we have to try and pair the spins in both
+           ! ways, so we always check both if statements below. Again, once
+           ! these pairings have been chosen, the flips can be performed in
            ! either order.
 
            bit_position1 = bit_lookup(1,excitation%from_orb(1))
@@ -404,16 +417,15 @@ contains
 
    subroutine dmqmc_energy_hub_real(sys, idet, excitation, walker_pop)
 
-       ! For the Heisenberg model only.
-       ! Add the contribution from the current density matrix element
-       ! to the thermal energy estimate.
+       ! Add the contribution from the current density matrix element to the
+       ! thermal energy estimate.
 
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
-       !        the excitation between the two bitstring ends, corresponding
-       !        to the two labels for the density matrix element.
+       !        the excitation between the two bitstring ends, corresponding to
+       !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
@@ -431,15 +443,16 @@ contains
        real(p), intent(in) :: walker_pop
        real(p) :: hmatel
 
-       ! If no excitation, we have a diagonal element, so add elements
-       ! which involve the diagonal element of the Hamiltonian.
+       ! If no excitation, we have a diagonal element, so add elements which
+       ! involve the diagonal element of the Hamiltonian.
        if (excitation%nexcit == 0) then
            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
                                  (walker_data(1,idet)+H00)*walker_pop
        else if (excitation%nexcit == 1) then
-       ! If not a diagonal element, but only a single excitation, then the corresponding
-       ! Hamiltonian element may be non-zero. Calculate if the flipped spins are
-       ! neighbours on the lattice, and if so, add the contribution from this site.
+       ! If not a diagonal element, but only a single excitation, then the
+       ! corresponding Hamiltonian element may be non-zero. Calculate if the
+       ! flipped spins are neighbours on the lattice, and if so, add the
+       ! contribution from this site.
            hmatel = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
                                  (hmatel*walker_pop)
@@ -450,15 +463,15 @@ contains
    subroutine dmqmc_correlation_function_heisenberg(sys, idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
-       ! Add the contribution from the current density matrix element
-       ! to the thermal spin correlation function estimator.
+       ! Add the contribution from the current density matrix element to the
+       ! thermal spin correlation function estimator.
 
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
-       !        the excitation between the two bitstring ends, corresponding
-       !        to the two labels for the density matrix element.
+       !        the excitation between the two bitstring ends, corresponding to
+       !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
@@ -480,35 +493,38 @@ contains
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer :: sign_factor
 
-       ! If no excitation, we want the diagonal element of the correlation function operator.
+       ! If no excitation, we want the diagonal element of the correlation
+       ! function operator.
        if (excitation%nexcit == 0) then
-           ! If the two spis i and j are the same, the matrix element is +1/4.
-           ! If they are different, the matrix element is -1/4.
-           ! So we want sign_factor to be +1 in the former case, and -1 in the latter case.
-           ! f as calculated below will have 0's at sites other than i and j, and the same values
-           ! as walker_dets at i and j. Hence, if f has two 1's or no 1's, we want
-           ! sign_factor = +1. Else if we have one 1, we want sign_factor = -1.
+           ! If the two spins i and j are the same, the matrix element is +1/4.
+           ! If they are different, the matrix element is -1/4. So we want
+           ! sign_factor to be +1 in the former case, and -1 in the latter case.
+           ! f as calculated below will have 0's at sites other than i and j,
+           ! and the same values as walker_dets at i and j. Hence, if f has
+           ! two 1's or no 1's, we want sign_factor = +1. Else if we have one 1,
+           ! we want sign_factor = -1.
            f = iand(walker_dets(:basis_length,idet), correlation_mask)
            ! Count if we have zero, one or two 1's.
            sign_factor = sum(count_set_bits(f))
-           ! The operation below will map 0 and 2 to +1, and will map 1 to -1, as is easily checked.
+           ! The operation below will map 0 and 2 to +1, and will map 1 to -1,
+           ! as is easily checked.
            sign_factor = (mod(sign_factor+1,2)*2)-1
-           ! Hence sign_factor can be used to find the matrix element, as used below.
+           ! Hence sign_factor can be used to find the matrix element, as used
+           ! below.
            estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + &
                                     (sign_factor*(walker_pop/4))
        else if (excitation%nexcit == 1) then
-       ! If not a diagonal element, but only a single excitation, then the corresponding
-       ! matrix element will be 1/2 if and only if the two sites which are flipped are
-       ! sites i and j, else it will be 0. We assume that excitations will only be set if
-       ! i and j are opposite (else they could not be flipped, for ms=0).
+           ! If not a diagonal element, but only a single excitation, then the
+           ! corresponding matrix element will be 1/2 if and only if the two
+           ! sites which are flipped are sites i and j, else it will be 0. We
+           ! assume that excitations will only be set if i and j are opposite
+           ! (else they could not be flipped, for ms=0).
            bit_position1 = bit_lookup(1,excitation%from_orb(1))
            bit_element1 = bit_lookup(2,excitation%from_orb(1))
            bit_position2 = bit_lookup(1,excitation%to_orb(1))
            bit_element2 = bit_lookup(2,excitation%to_orb(1))
-           if (btest(correlation_mask(bit_element1), bit_position1).and.&
-               btest(correlation_mask(bit_element2), bit_position2)) &
-                 estimator_numerators(correlation_index) = &
-                     estimator_numerators(correlation_index) + (walker_pop/2)
+           if (btest(correlation_mask(bit_element1), bit_position1) .and. btest(correlation_mask(bit_element2), bit_position2)) &
+                 estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + (walker_pop/2)
        end if
 
    end subroutine dmqmc_correlation_function_heisenberg
@@ -516,8 +532,8 @@ contains
    subroutine dmqmc_stag_mag_heisenberg(sys, idet, excitation, walker_pop)
 
        ! For the Heisenberg model only.
-       ! Add the contribution from the current density matrix element
-       ! to the thermal staggered magnetisation estimate.
+       ! Add the contribution from the current density matrix element to the
+       ! thermal staggered magnetisation estimate.
 
        ! In:
        !    sys: system being studied.
@@ -554,31 +570,34 @@ contains
        if (excitation%nexcit == 0) then
            ! Need to calculate the number of spins up on sublattice 1:
            ! N_u(+) - Number up on + sublattice (where (-1)^i above is +1)
-           ! Note the number of down spins on a sublattice is easily obtained from
-           ! N_u(+) since there are N/2 spins on each - and the number of spins up on
-           ! a different sublattice is easily obtained since there are nel spins
-           ! up in total. Hence the matrix element will be written only in terms
-           ! of the number of up spins on sublattice 1, to save computation.
+           ! Note the number of down spins on a sublattice is easily obtained
+           ! from N_u(+) since there are N/2 spins on each - and the number of
+           ! spins up on a different sublattice is easily obtained since there
+           ! are nel spins up in total. Hence the matrix element will be written
+           ! only in terms of the number of up spins on sublattice 1, to save
+           ! computation.
            f = iand(walker_dets(:basis_length,idet), lattice_mask)
            n_up_plus = sum(count_set_bits(f))
-           ! Below, the term in brackets and middle term come from the z component (the
-           ! z operator is diagonal) and one nsites/4 factor comes from the x operator,
-           ! the other nsites/4 factor from the y operator.
+           ! Below, the term in brackets and middle term come from the z
+           ! component (the z operator is diagonal) and one nsites/4 factor
+           ! comes from the x operator, the other nsites/4 factor from the y
+           ! operator.
            total_sum = (2*n_up_plus-sys%nel)**2 + (sys%lattice%nsites/2)
        else if (excitation%nexcit == 1) then
-           ! Off-diagonal elements from the y and z operators. For the pair of spins
-           ! that are flipped, if they are on the same sublattice, we get a factor of
-           ! 1, or if on different sublattices, a factor of -1.
+           ! Off-diagonal elements from the y and z operators. For the pair of
+           ! spins that are flipped, if they are on the same sublattice, we get
+           ! a factor of 1, or if on different sublattices, a factor of -1.
            bit_position1 = bit_lookup(1,excitation%from_orb(1))
            bit_element1 = bit_lookup(2,excitation%from_orb(1))
            bit_position2 = bit_lookup(1,excitation%to_orb(1))
            bit_element2 = bit_lookup(2,excitation%to_orb(1))
            if (btest(lattice_mask(bit_element1), bit_position1)) total_sum = total_sum+1
            if (btest(lattice_mask(bit_element2), bit_position2)) total_sum = total_sum+1
-           ! The operation below will map 0 and 2 to +1, and will map 1 to -1, as is easily checked.
-           ! We want this - if both or no spins on this sublattice, then both on same sublattice
-           ! either way, so plus one. Else they are on different sublattices, so we want a factor
-           ! of -1, as we get.
+           ! The operation below will map 0 and 2 to +1, and will map 1 to -1,
+           ! as is easily checked. We want this - if both or no spins on this
+           ! sublattice, then both on same sublattice either way, so plus one.
+           ! Else they are on different sublattices, so we want a factor of -1,
+           ! as we get.
            total_sum = (mod(total_sum+1,2)*2)-1
        end if
 
@@ -589,8 +608,8 @@ contains
 
    subroutine update_full_renyi_2(walker_pop)
 
-       ! Add the contribution from the current density matrix element
-       ! to the Renyi entropy (S_2) of the full density matrix.
+       ! Add the contribution from the current density matrix element to the
+       ! Renyi entropy (S_2) of the full density matrix.
 
        ! In:
        !    walker_pop: number of particles on the current density matrix
@@ -607,8 +626,9 @@ contains
 
    subroutine update_reduced_density_matrix_heisenberg(idet, excitation, walker_pop, iteration)
 
-       ! Add the contribution from the current walker to the reduced density matrices
-       ! being sampled. This is performed by 'tracing out' the subsystem B spins.
+       ! Add the contribution from the current walker to the reduced density
+       ! matrices being sampled. This is performed by 'tracing out' the
+       ! subsystem B spins.
 
        ! Applicable only to the Heisenberg model.
 
@@ -620,8 +640,8 @@ contains
        ! In:
        !    idet: current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
-       !        the excitation between the two bitstring ends, corresponding
-       !        to the two labels for the density matrix element.
+       !        the excitation between the two bitstring ends, corresponding to
+       !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element. Note that this walker population is still weighted
        !        by the importance sampling factors. These factors must be
@@ -652,28 +672,34 @@ contains
            ! Loop over every symmetry-equivalent subsystem for this RDM.
            do isym = 1, nsym_vec
 
-               ! Apply the mask for the B subsystem to set all sites in the A subsystem to 0.
+               ! Apply the mask for the B subsystem to set all sites in the A
+               ! subsystem to 0.
                f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis_length,idet))
                f2 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(basis_length+1:total_basis_length,idet))
 
-               ! Once this is done, check if the resulting bitstrings (which can only possibly
-               ! have 1's in the B subsystem) are identical. If they are, then this psip
-               ! contributes to the reduced density matrix for subsystem A. This is because we
-               ! get the reduced density matrix for A by 'tracing out' over B, which in practice
-               ! means only keeping matrix elements that are on the diagonal for subsystem B.
+               ! Once this is done, check if the resulting bitstrings (which can
+               ! only possibly have 1's in the B subsystem) are identical. If
+               ! they are, then this psip contributes to the reduced density
+               ! matrix for subsystem A. This is because we get the reduced
+               ! density matrix for A by 'tracing out' over B, which in practice
+               ! means only keeping matrix elements that are on the diagonal for
+               ! subsystem B.
                if (sum(abs(f1-f2)) == 0_i0) then
-                   ! Call a function which maps the subsystem A state to two RDM bitstrings.
+                   ! Call a function which maps the subsystem A state to two RDM
+                   ! bitstrings.
                    call decode_dm_bitstring(walker_dets(:,idet),irdm,isym)
 
                    if (calc_ground_rdm) then
-                       ! The above routine actually maps to numbers between 0 and 2^rdms(1)%A_nsites-1,
-                       ! but the smallest and largest reduced density matrix indices are one more than
-                       ! these, so add one.
+                       ! The above routine actually maps to numbers between 0
+                       ! and 2^rdms(1)%A_nsites-1, but the smallest and largest
+                       ! reduced density matrix indices are one more than these,
+                       ! so add one.
                        rdms(irdm)%end1 = rdms(irdm)%end1 + 1
                        rdms(irdm)%end2 = rdms(irdm)%end2 + 1
                        unweighted_walker_pop = walker_population(:,idet)*dmqmc_accumulated_probs(excitation%nexcit)
-                       ! Note, when storing the entire RDM (as done here), the maximum value of
-                       ! rdms(i)%rdm_basis_length is 1, so we only consider this one element here.
+                       ! Note, when storing the entire RDM (as done here), the
+                       ! maximum value of rdms(i)%rdm_basis_length is 1, so we
+                       ! only consider this one element here.
                        reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) = &
                            reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) + unweighted_walker_pop(1)
                    end if
@@ -696,7 +722,8 @@ contains
 
     subroutine call_ground_rdm_procedures(beta_cycle)
 
-        ! Wrapper for calling ground-state RDM procedures (*not* beta-dependent RDMs).
+        ! Wrapper for calling ground-state RDM procedures (*not*
+        ! beta-dependent RDMs).
 
        ! In:
        !    beta_cycle: index of the beta loop being performed.
@@ -713,7 +740,8 @@ contains
         real(p), allocatable :: old_rdm_elements(:)
         integer :: i, j, k, ierr, new_unit
         character(10) :: rdm_filename
-        ! If in paralell then merge the reduced density matrix onto one processor.
+        ! If in parallel then merge the reduced density matrix onto one
+        ! processor.
 #ifdef PARALLEL
 
         real(dp), allocatable :: dm(:,:)
@@ -741,7 +769,8 @@ contains
         rdm_traces = 0.0_p
 
         if (parent) then
-            ! Force the reduced density matrix to be symmetric by averaging the upper and lower triangles.
+            ! Force the reduced density matrix to be symmetric by averaging the
+            ! upper and lower triangles.
             do i = 1, ubound(reduced_density_matrix,1)
                 do j = 1, i-1
                     reduced_density_matrix(i,j) = 0.5_p*(reduced_density_matrix(i,j) + reduced_density_matrix(j,i))
@@ -781,9 +810,8 @@ contains
         ! eigenvalues {\lambda_j} of the reduced density matrix.
         ! Then VN Entropy S = -\sum_j\lambda_j\log_2{\lambda_j}.
 
-        ! Need to paralellise for large subsystems and introduce test to
-        ! check whether diagonalisation should be performed in serial or
-        ! paralell.
+        ! Need to paralellise for large subsystems and introduce test to check
+        ! whether diagonalisation should be performed in serial or paralell.
 
         ! In:
         !    trace_rdm: The trace of the RDM being considered.
@@ -820,9 +848,9 @@ contains
         allocate(work(lwork), stat=ierr)
         call check_allocate('work',lwork,ierr)
 
-        ! The matrix input into the following diagonalisation routines will have their upper half
-        ! (including the diagonal) destroyed. We might want reduced_desntiy_matrix later, so
-        ! use some temporary space:
+        ! The matrix input into the following diagonalisation routines will have
+        ! their upper half (including the diagonal) destroyed. We might want
+        ! reduced_desntiy_matrix later, so use some temporary space:
         allocate(dm_tmp(rdm_size,rdm_size), stat=ierr)
         call check_allocate('dm_tmp',rdm_size**2,ierr)
         dm_tmp = reduced_density_matrix
@@ -850,17 +878,22 @@ contains
     
     subroutine calculate_concurrence()
 
-        ! Calculate the concurrence of a qubit. For a reduced density matrix \rho,
-        ! the concurrence, C =  max(0, \lamda_1 - \lambda_2 - \lambda_3 -\lambda_4) where
-        ! \lambda_i are the eigenvalues of the matrix, R = \sqrt{\sqrt{\rho}\~{\rho}\sqrt{\rho}}.
-        ! Where \~\rho = {\sigma_y \otimes \sigma_y} \rho^{\ast} {\sigma_y \otimes \sigma_y}. 
+        ! Calculate the concurrence of a qubit. For a reduced density matrix
+        ! \rho, the concurrence,
+        ! C =  max(0, \lamda_1 - \lambda_2 - \lambda_3 -\lambda_4)
+        ! where \lambda_i are the eigenvalues of the matrix,
+        ! R = \sqrt{\sqrt{\rho}\~{\rho}\sqrt{\rho}},
+        ! and
+        ! \~\rho = {\sigma_y \otimes \sigma_y} \rho^{\ast} {\sigma_y \otimes \sigma_y}. 
         ! \lambda_1 > ... > \lambda_4.
 
-        ! This can be simplified to finding the square root of the eigenvalues \{\lambda_i\} of \rho\~{\rho} 
-        ! and in the case where \rho is a real, symmetric matrix then we can further simplify the problem
-        ! to finding the eigenvalues of R = \rho \sigma_y \otimes \sigma_y.
+        ! This can be simplified to finding the square root of the eigenvalues
+        ! \{\lambda_i\} of \rho\~{\rho} and in the case where \rho is a real,
+        ! symmetric matrix then we can further simplify the problem to finding
+        ! the eigenvalues of R = \rho \sigma_y \otimes \sigma_y.
 
-        ! Below we have named {\sigma_y \otimes \sigma_y} flip_spin_matrix as in the literature.
+        ! Below we have named {\sigma_y \otimes \sigma_y} flip_spin_matrix as in
+        ! the literature.
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: reduced_density_matrix, flip_spin_matrix
@@ -894,8 +927,8 @@ contains
 #else
         call dgeev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, work, lwork, info)
 #endif
-        ! Calculate the concurrence. Take abs of eigenvalues so that this is equivelant to sqauring
-        ! and then square-rooting.
+        ! Calculate the concurrence. Take abs of eigenvalues so that this is
+        ! equivalant to sqauring and then square-rooting.
         concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv)) 
         concurrence = max(0.0_p, concurrence)
         write (6,'(1x,a28,1X,f22.12)') "# Unnormalised concurrence= ", concurrence
@@ -905,10 +938,10 @@ contains
     subroutine calculate_rdm_traces(rdm_data, rdm_lists, traces)
 
         ! In:
-        !    rdm_data: Array of rdm derived types, holding information about the various subsystems
-        !        for which RDMs are being estimated.
-        !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of the RDM psips which
-        !        belong to this processor.
+        !    rdm_data: Array of rdm derived types, holding information about
+        !        the various subsystems for which RDMs are being estimated.
+        !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of
+        !        the RDM psips which belong to this processor.
         ! Out:
         !    r2: The calculated RDM traces.
 
@@ -941,13 +974,14 @@ contains
 
     subroutine calculate_rdm_renyi_2(rdm_data, rdm_lists, r2)
 
-        ! Calculate the Renyi entropy (S_2) for all instantaneous RDMs being calculated.
+        ! Calculate the Renyi entropy (S_2) for all instantaneous RDMs being
+        ! calculated.
 
         ! In:
-        !    rdm_data: Array of rdm derived types, holding information about the various subsystems
-        !        for which RDMs are being estimated.
-        !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of the RDM psips which
-        !        belong to this processor.
+        !    rdm_data: Array of rdm derived types, holding information about the
+        !        various subsystems for which RDMs are being estimated.
+        !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of
+        !        the RDM psips which belong to this processor.
         ! Out:
         !    r2: The calculated Renyi entropies (S_2).
 
@@ -974,11 +1008,13 @@ contains
                 excit_level = get_excitation_level(rdm_lists(irdm)%sdata(1:rdm_bl,i),&
                     rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i))
 
-                ! Renormalise the psip populations to correct for the importance sampling procedure used.
+                ! Renormalise the psip populations to correct for the importance
+                ! sampling procedure used.
                 unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*dmqmc_accumulated_probs_old(excit_level)
                 unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2,i)*dmqmc_accumulated_probs_old(excit_level)
 
-                ! As we only hold RDM elements above the diagonal, off-diagonal elements must be counted twice.
+                ! As we only hold RDM elements above the diagonal, off-diagonal
+                ! elements must be counted twice.
                 if (excit_level == 0) then
                     r2(irdm) = r2(irdm) + unweighted_pop_1*unweighted_pop_2
                 else
