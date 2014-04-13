@@ -398,7 +398,7 @@ contains
             nspawn = int(pspawn, int_p)
             pspawn = pspawn - nspawn
 
-            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
 
         end if
 
@@ -492,7 +492,7 @@ contains
             nspawn = int(pspawn, int_p)
             pspawn = pspawn - nspawn
 
-            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
 
         end if
 

@@ -668,14 +668,14 @@ contains
         use excitations, only: get_excitation_level
         use fciqmc_data, only: dmqmc_accumulated_probs, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
-        use fciqmc_data, only: nparticles, sampling_size
+        use fciqmc_data, only: nparticles, sampling_size, encoding_factor
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
-        integer(int_p) :: old_population
-        real(p) :: new_factor
-        real(dp) :: rand_num, prob
+        real(dp) :: new_population_target(sampling_size)
+        integer(int_p) :: old_population(sampling_size), new_population(sampling_size)
+        real(dp) :: r, pextra
 
         ! Alter weights for the next iteration.
         dmqmc_accumulated_probs = dble(dmqmc_accumulated_probs)*weight_altering_factors
@@ -683,34 +683,40 @@ contains
         ! When the weights for an excitation level are increased by a factor, the number
         ! of psips on that level has to decrease by the same factor, else the wavefunction
         ! which the psips represent will not be the correct importance sampled wavefunction
-        ! for the new weights. The code below loops over every psips and destroys (or creates)
+        ! for the new weights. The code below loops over every psip and destroys (or creates)
         ! it with the appropriate probability.
         do idet = 1, tot_walkers
 
-            excit_level = get_excitation_level(walker_dets(1:basis_length,idet),&
+            excit_level = get_excitation_level(walker_dets(1:basis_length,idet), &
                     walker_dets(basis_length+1:total_basis_length,idet))
 
+            old_population = abs(walker_population(:,idet))
+
+            ! The new population that we are aiming for. If this is not an
+            ! integer then we will have to round up or down to an integer with
+            ! an unbiased probability.
+            new_population_target = abs(real(walker_population(:,idet),dp))/weight_altering_factors(excit_level)
+            new_population = int(new_population_target, int_p)
+
+            ! If new_population_target is not an integer, round it up or down
+            ! with an unbiased probability. Do this for each replica.
             do ireplica = 1, sampling_size
-                old_population = abs(walker_population(ireplica,idet))
-                rand_num = get_rand_close_open(rng)
-                ! If weight_altering_factors(excit_level) > 1, need to kill psips.
-                ! If weight_altering_factors(excit_level) < 1, need to create psips.
-                prob = abs(1.0_dp - weight_altering_factors(excit_level)**(-1))*old_population
-                nspawn = int(prob)
-                prob = prob - nspawn
-                if (rand_num < prob) nspawn = nspawn + 1
-                if (weight_altering_factors(excit_level) > 1.0_dp) then
-                    sign_factor = -1
-                else
-                    sign_factor = +1
+
+                pextra = new_population_target(ireplica) - new_population(ireplica)
+
+                if (pextra > depsilon) then
+                    r = get_rand_close_open(rng)
+                    if (r < pextra) new_population(ireplica) = new_population(ireplica) + 1_int_p
                 end if
-                nspawn = sign(int(nspawn),int(walker_population(ireplica,idet))*sign_factor)
-                ! Update the population on this determinant.
-                walker_population(ireplica,idet) = walker_population(ireplica,idet) + nspawn
-                ! Update the total number of walkers.
-                nparticles(ireplica) = nparticles(ireplica) + &
-                    real(abs(walker_population(ireplica,idet)) - old_population, dp)
+
+                ! Finally, update the walker population.
+                walker_population(ireplica,idet) = sign(new_population(ireplica), walker_population(ireplica,idet))
+
             end do
+
+            ! Update the total number of walkers.
+            nparticles = nparticles + real(new_population - old_population, dp)/encoding_factor
+
         end do
 
         ! Call the annihilation routine to update the main walker list, as some
