@@ -108,9 +108,11 @@ References
             mean = numpy.array(numpy.mean(data, axis=axis))
             cov = numpy.cov(data, rowvar=rowvar, ddof=ddof)
         else:
-            mean, tot_weight = numpy.array(
-                numpy.average(data, axis=axis, weights=weights, returned=True)
-            )
+            mean, tot_weight = numpy.average(data,
+                                             axis=axis,
+                                             weights=weights,
+                                             returned=True)
+            mean = numpy.array(mean)
             if nvar > 1:
                 tot_weight = tot_weight[0]
             norm_wts = weights/tot_weight
