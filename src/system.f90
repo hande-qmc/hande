@@ -457,10 +457,12 @@ contains
             ! See comments in init_system and at module-level.
             sys%nel = (sys%lattice%nsites + Ms)/2
             sys%nvirt = (sys%lattice%nsites - Ms)/2
-            ! The Heisenberg model doesn't use nalpha or nbeta, but they need
-            ! to be initialized to something sensible.
+            ! The Heisenberg model doesn't use these values, but they need to be
+            ! initialized to something sensible.
             sys%nalpha = 0
             sys%nbeta = 0
+            sys%nvirt_alpha = 0
+            sys%nvirt_beta = 0
 
         case(chung_landau)
 
