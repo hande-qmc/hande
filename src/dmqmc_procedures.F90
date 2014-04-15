@@ -94,7 +94,7 @@ contains
              correlation_index = number_dmqmc_estimators
              allocate(correlation_mask(1:basis_length), stat=ierr)
              call check_allocate('correlation_mask',basis_length,ierr)
-             correlation_mask = 0
+             correlation_mask = 0_i0
              do i = 1, 2
                  bit_position = bit_lookup(1,correlation_sites(i))
                  bit_element = bit_lookup(2,correlation_sites(i))
@@ -334,7 +334,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer :: A_mask(basis_length)
+        integer(i0) :: A_mask(basis_length)
         real(p), allocatable :: sym_vecs(:,:)
         integer :: r(sys%lattice%ndim)
 
@@ -354,14 +354,14 @@ contains
                 allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
                 call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
             end if
-            rdms(i)%B_masks = 0
+            rdms(i)%B_masks = 0_i0
             rdms(i)%bit_pos = 0
         end do
 
         ! Run through every site on every subsystem and add every translational symmetry vector.
         do i = 1, nrdms ! Over every subsystem.
             do j = 1, nsym_vec ! Over every symmetry vector.
-                A_mask = 0
+                A_mask = 0_i0
                 do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
                     r = basis_fns(rdms(i)%subsystem_A(k))%l
                     r = r + nint(sym_vecs(:,j))
@@ -527,7 +527,7 @@ contains
         do i = 1, npsips
 
             ! Start with all spins down.
-            f = 0
+            f = 0_i0
             bits_set = 0
 
             do

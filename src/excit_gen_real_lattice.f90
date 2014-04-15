@@ -340,7 +340,7 @@ contains
             ! Neat, huh?
             virt_avail = iand(not(f), connected_orbs(:,i))
 
-            if (any(virt_avail /= 0)) then
+            if (any(virt_avail /= 0_i0)) then
                 ! Have found an i with at least one available orbital we can
                 ! excite into.
                 exit
@@ -438,7 +438,7 @@ contains
             ! See if there are any allowed excitations from this electron
             ! (Or excitations from this spin up for Hesienberg)
             ! (see notes in choose_ia_real for how this works)
-            if (all(iand(not(f), connected_orbs(:,occ_list(i))) == 0)) then
+            if (all(iand(not(f), connected_orbs(:,occ_list(i))) == 0_i0)) then
                 ! none allowed from this orbial
                 no_excit = no_excit + 1
             end if

@@ -121,8 +121,8 @@ contains
                 call check_allocate('next_nearest_orbs',nbasis*nbasis,ierr)
             end if
 
-            tmat = 0
-            connected_orbs = 0
+            tmat = 0_i0
+            connected_orbs = 0_i0
 
             ! For the Hubbard model, each orbital can have spin up or down, so
             ! basis_fns(i) refers to alternating alpha and beta orbitals.
@@ -343,7 +343,7 @@ contains
         integer :: ibasis, jbasis, kbasis
         integer :: bit_position, bit_element
 
-        next_nearest_orbs = 0
+        next_nearest_orbs = 0_i0
 
         do ibasis = 1, nbasis
             do jbasis = 1, nbasis
@@ -359,7 +359,7 @@ contains
                     end do
                 end if
             end do
-            next_nearest_orbs(ibasis,ibasis) = 0
+            next_nearest_orbs(ibasis,ibasis) = 0_i0
         end do
 
     end subroutine create_next_nearest_orbs
