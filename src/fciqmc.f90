@@ -53,7 +53,7 @@ contains
         real(p) :: hmatel
         real(dp) :: ir(sampling_size+7)
         integer :: send_counts(0:nprocs-1)
-        integer :: req_size_s(0:nprocs-1), req_data_s(0:nprocs-1), req_ir_s(0:nprocs-1)
+        integer :: req_data_s(0:nprocs-1), req_ir_s(0:nprocs-1)
 
         logical :: soft_exit
 
@@ -73,7 +73,7 @@ contains
         ! to all processors.
         if (non_blocking_comm) then
             send_counts = 0
-            call non_blocking_send(qmc_spawn, send_counts, req_size_s, req_data_s)
+            call non_blocking_send(qmc_spawn, send_counts, req_data_s)
         end if
 
         ! from restart
@@ -134,9 +134,9 @@ contains
                 end do
 
                 if (non_blocking_comm) then
-                    call receive_spawned_walkers(received_list, req_size_s, req_data_s)
+                    call receive_spawned_walkers(received_list, req_data_s)
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
-                    call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_size_s, req_data_s, non_block_spawn)
+                    call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_data_s, non_block_spawn)
                     call end_mc_cycle(ndeath, nattempts, non_block_spawn)
                 else
                     call direct_annihilation(sys, initiator_approximation)
@@ -155,7 +155,7 @@ contains
 
         if (non_blocking_comm) then
             ! Need to receive walkers sent from final iteration and merge into main list.
-            call receive_spawned_walkers(received_list, req_size_s, req_data_s)
+            call receive_spawned_walkers(received_list, req_data_s)
             call annihilate_wrapper_received_list(received_list, initiator_approximation)
             call annihilate_main_list_wrapper(sys, initiator_approximation, 0, received_list)
             call update_energy_estimators_recv(req_ir_s, nparticles_old)

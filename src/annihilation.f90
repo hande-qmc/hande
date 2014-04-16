@@ -61,7 +61,7 @@ contains
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_non_blocking(sys, tinitiator, send_counts, req_size_s, req_data_s, non_block_spawn)
+    subroutine direct_annihilation_non_blocking(sys, tinitiator, send_counts, req_data_s, non_block_spawn)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -77,7 +77,6 @@ contains
         ! In/Out:
         !    send_counts: array of messages sizes. Will be allocated in
         !       calculate_displacements and sent in non_blocking_send.
-        !    req_size_s: array of requests for non-blocking send of message sizes.
         !    req_data_s: array of requests for non-blocking send of walkers.
         ! Out:
         !    non_block_spawn: number of spawned particles on current processor
@@ -92,7 +91,7 @@ contains
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: tinitiator
         integer, intent(inout) :: send_counts(0:)
-        integer, intent(inout) :: req_size_s(0:), req_data_s(0:)
+        integer, intent(inout) :: req_data_s(0:)
         integer, intent(out) :: non_block_spawn(:)
 
         integer, parameter :: thread_id = 0
@@ -112,7 +111,7 @@ contains
         ! Annihilate portion of spawned list with main list.
         call annihilate_main_list_wrapper(sys, tinitiator, qmc_spawn%head_start(thread_id, iproc), qmc_spawn)
         ! Communicate walkers.
-        call non_blocking_send(qmc_spawn, send_counts, req_size_s, req_data_s)
+        call non_blocking_send(qmc_spawn, send_counts, req_data_s)
 
     end subroutine direct_annihilation_non_blocking
 
