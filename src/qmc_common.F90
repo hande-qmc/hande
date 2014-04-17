@@ -385,7 +385,7 @@ contains
         end do
         call dealloc_det_info(cdet)
 
-#ifdef parallel
+#ifdef PARALLEL
         call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
         call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
