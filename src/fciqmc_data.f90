@@ -436,8 +436,6 @@ contains
 
     function spawning_rate(ndeath, nattempts) result(rate)
 
-        use parallel, only: nprocs
-
         ! Calculate the rate of spawning on the current processor.
         ! In:
         !    ndeath: number of particles that were killed/cloned during the MC
@@ -450,6 +448,8 @@ contains
         !    processor at the beginning of the Monte Carlo cycle (multiplied by
         !    2 for the timestep algorithm).
 
+        use parallel, only: nprocs
+
         real(p) :: rate
         integer, intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
@@ -460,7 +460,12 @@ contains
         !   (nspawn + ndeath) / nattempts
         ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different
         ! determinant and one to clone/die).
-        rate = real(nspawn+ndeath,p)/nattempts
+        if (nattempts > 0) then
+            rate = real(nspawn+ndeath,p)/nattempts
+        else
+            ! Can't have done anything.
+            rate = 0.0_p
+        end if
 
     end function spawning_rate
 
