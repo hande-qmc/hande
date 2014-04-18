@@ -257,6 +257,7 @@ contains
         !    element in f2.
 
         logical :: gt
+        ! [review] - JSS: specifying kind=4 is not portable.
         integer(4), intent(in) :: f1(:), f2(:)
 
         integer :: i
@@ -284,6 +285,7 @@ contains
         !    element in f2.
 
         logical :: gt
+        ! [review] - JSS: specifying kind=8 is not portable.
         integer(8), intent(in) :: f1(:), f2(:)
 
         integer :: i

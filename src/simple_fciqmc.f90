@@ -277,6 +277,7 @@ contains
             ! As K_ij = H_ij for off-diagonal elements, we can just use the
             ! stored Hamiltonian matrix directly.
             rate = abs(Tau*hamil(iwalker,j))
+            ! [review] - JSS: use int(rate, int_s)
             nspawn = int(rate)
             rate = rate - nspawn
             r = get_rand_close_open(rng)
@@ -287,6 +288,7 @@ contains
                 ! Flip child sign.
                 if (walker_population(1,iwalker) < 0) then
                     ! Positive offspring.
+                    ! [review] - JSS: better to change nspawn to be integer(int_s) rather than do the conversion here.
                     qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + int(nspawn, int_s)
                 else
                     qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - int(nspawn, int_s)

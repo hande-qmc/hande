@@ -57,6 +57,7 @@ module hdf5_helper
             type(hdf5_kinds_t), intent(out) :: kinds
 
             ! Convert our non-standard kinds to something HDF5 understands.
+            ! [review] - JSS: should these kinds be parameters in const?
             kinds%i32 = h5kind_to_type(selected_int_kind(6), H5_INTEGER_KIND)
             kinds%i64 = h5kind_to_type(selected_int_kind(15), H5_INTEGER_KIND)
             kinds%p = h5kind_to_type(p, H5_REAL_KIND)
@@ -150,6 +151,8 @@ module hdf5_helper
             integer, intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
+            ! [review] - JSS: integer(X) where X is a constant integer is not partable.
+            ! [review] -JSS: Only using selected_int_kind is portable...
             integer(4), intent(in), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
@@ -180,6 +183,8 @@ module hdf5_helper
             integer, intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
+            ! [review] - JSS: integer(X) where X is a constant integer is not partable.
+            ! [review] -JSS: Only using selected_int_kind is portable...
             integer(8), intent(in), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
@@ -240,6 +245,8 @@ module hdf5_helper
             integer, intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
+            ! [review] - JSS: integer(X) where X is a constant integer is not partable.
+            ! [review] -JSS: Only using selected_int_kind is portable...
             integer(8), intent(in), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr
@@ -430,6 +437,8 @@ module hdf5_helper
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
             integer, intent(in) :: arr_shape(:)
+            ! [review] - JSS: integer(X) where X is a constant integer is not partable.
+            ! [review] -JSS: Only using selected_int_kind is portable...
             integer(8), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
@@ -459,6 +468,8 @@ module hdf5_helper
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
             integer, intent(in) :: arr_shape(:)
+            ! [review] - JSS: integer(X) where X is a constant integer is not partable.
+            ! [review] -JSS: Only using selected_int_kind is portable...
             integer(4), intent(out), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr
@@ -488,6 +499,8 @@ module hdf5_helper
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
             integer, intent(in) :: arr_shape(:)
+            ! [review] - JSS: integer(X) where X is a constant integer is not partable.
+            ! [review] -JSS: Only using selected_int_kind is portable...
             integer(8), intent(out), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr

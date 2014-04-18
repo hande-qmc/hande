@@ -130,6 +130,7 @@ contains
                     ! already looping over the determinants.
                     call update_proj_energy_ptr(sys, f0, cdet, real_population(1),  &
                                                 D0_population_cycle, proj_energy, connection, hmatel)
+                    ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(walker_population(1,idet)),&
                                              int(walker_population(2,idet)), cdet%data,  &
                                              connection, hmatel, D0_hf_population,  &
@@ -155,6 +156,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
+                        ! [todo] - JSS: real populations for HFS spawner.
                         call spawner_hfs_ptr(rng, sys, qmc_spawn, cdet, walker_population(1,idet), &
                                              gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
@@ -204,6 +206,7 @@ contains
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
                     cdet%initiator_flag = h_initiator_flag
+                    ! [todo] - JSS: real populations for HFS spawner.
                     call stochastic_hf_cloning(rng, walker_data(2,idet), walker_population(1,idet), nspawned)
                     if (nspawned /= 0) call create_spawned_particle_ptr(cdet, null_excit, nspawned, 2, qmc_spawn)
 

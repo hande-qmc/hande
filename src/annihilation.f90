@@ -277,6 +277,7 @@ contains
         integer, parameter :: thread_id = 0
 
         nremoved = 0
+        ! [review] - JSS: combine with (a version of) insert_new_walkers?
         do i = 1, qmc_spawn%head(thread_id,0)
 
             ! spawned_population holds the spawned population in its encoded
@@ -290,6 +291,9 @@ contains
                 ! to zero.
                 do itype = 1, qmc_spawn%ntypes
                     if (abs(spawned_population(itype)) < encoding_factor) then
+                        ! [review] - JSS: repeated code from remove_unoccupied_dets.  What
+                        ! [review] - JSS: about refactoring into a function (possibly using
+                        ! [review] - JSS: overloading to handle the integer types?)
                         r = get_rand_close_open(rng)*encoding_factor
                         if (abs(spawned_population(itype)) > r) then
                             spawned_population(itype) = sign(int(encoding_factor,int_s), spawned_population(itype))
@@ -381,6 +385,8 @@ contains
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
             ! The encoded walker sign.
+            ! [review] - JSS: as in round_low_population_spawns, associate is your friend
+            ! [review] - JSS: to avoid copies.
             spawned_population = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
             ! Extract the real sign from the encoded sign.
             real_population = real(spawned_population,dp)/encoding_factor

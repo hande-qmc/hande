@@ -52,12 +52,14 @@ real(p) :: initiator_population = 3.0_p
 
 ! True if allowing non-integer values for psip populations.
 logical :: real_amplitudes = .false.
+! [review] - JSS: would (e.g.) real_shift and real_factor be better (ie more specific) names?
 ! Real amplitudes can be any multiple of 2**(-bit_shift). They are
 ! encoded as integers by multiplying them by 2**(bit_shift).
 integer :: bit_shift
+! encoding_factor = 2**(bit_shift)
+integer(int_p) :: encoding_factor
 ! The minimum amplitude of a spawning event which can be added to
 ! the spawned list.
-integer(int_p) :: encoding_factor
 real(p) :: spawn_cutoff
 
 !--- Energy data ---
@@ -601,6 +603,7 @@ contains
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
+            ! [review] - JSS: why only output the integer part of the number of particles?
             write (6, '(2X,i11)', advance='no') int(ntot_particles(1))
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &

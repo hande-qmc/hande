@@ -37,6 +37,7 @@ contains
         real(p), intent(in) :: Kii
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
+        ! [review] - JSS: shouldn't population be real as well (ie scaled by encoding_factor)?
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
 

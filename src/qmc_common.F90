@@ -66,6 +66,7 @@ contains
             in_data = (/ max_pop, int(iproc, int_p) /)
         else if (iproc == D0_proc) then
             ! Ensure that D0_proc has the correct (average) population.
+            ! [review] - JSS: nint(val, KIND) rather than int(nint(val), KIND).
             in_data = (/ int(nint(D0_population_cycle), int_p), int(iproc, int_p) /)
         else
             ! No det with sufficient population to become reference det on this

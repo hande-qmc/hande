@@ -31,6 +31,8 @@ contains
 
 !--- Spawning wrappers ---
 
+    ! [review] - JSS: do we really need to pass through the spawn object rather than
+    ! [review] - JSS: just the components needed?
     subroutine spawn_standard(rng, sys, spawn, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -346,6 +348,10 @@ contains
 
 !--- Attempt spawning based upon random excitation ---
 
+    ! [review] - JSS: only really need encoding_factor and spawn%cutoff.
+    ! [review] - JSS: avoid accessing global data from a low-level routine
+    ! [review] - JSS: and passing through a large structure unnecessarily,
+    ! [review] - JSS: which would make nspawn_from_prob easier to reuse?
     function nspawn_from_prob(rng, spawn, probability) result(nspawn)
 
         ! Generate the number spawned from a probability. If probability is greater than
@@ -497,7 +503,7 @@ contains
         end if
 
         if (nspawn > 0) then
-            ! 4. If H_ij is positive, then the spawned walker is of opposite
+            ! If H_ij is positive, then the spawned walker is of opposite
             ! sign to the parent, otherwise the spawned walkers if of the same
             ! sign as the parent.
             if (hmatel > 0.0_p) then

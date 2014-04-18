@@ -409,6 +409,7 @@ module hash_table
                 ! If data_label points to an external array, then the first
                 ! dimension might exceed ht%data_len.  We do, however, assume
                 ! the user has only passed in an array of size ht%data_len...
+                ! [review] - JSS: should label and ht%label not have the same kind?
                 if (all(ht%data_label(:ht%data_len,pos%indx) == int(label,int_s))) then
                     pos%ientry = i
                     hit = .true.
