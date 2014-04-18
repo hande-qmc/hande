@@ -41,7 +41,7 @@ contains
         allocate(excit_mask(basis_length, nbasis), stat=ierr)
         call check_allocate('excit_mask', basis_length*nbasis, ierr)
 
-        excit_mask = 0
+        excit_mask = 0_i0
 
         do ibasis = 1, nbasis
             ipos = bit_lookup(1, ibasis)

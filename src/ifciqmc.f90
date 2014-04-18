@@ -19,7 +19,7 @@ implicit none
 ! core or inactive orbitals.  The determinant is only in the CAS if the
 ! result is identical to the cas_core mask (i.e. all the core orbitals
 ! are filled and no electrons are in the inactive orbitals).
-integer(i0), allocatable :: cas_mask(:), cas_core(:)
+integer(i0), allocatable :: cas_mask(:), cas_core(:) ! (basis_length)
 
 contains
 
@@ -44,8 +44,8 @@ contains
 
         ! Create a mask which has bits set for all core electrons and a mask
         ! which has bits set for all inactive orbitals.
-        cas_mask = 0
-        cas_core = 0
+        cas_mask = 0_i0
+        cas_core = 0_i0
         ! Set core obitals.
         do i = 1, nel - initiator_CAS(1)
             bit_pos = bit_lookup(1,i)

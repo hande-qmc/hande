@@ -252,7 +252,7 @@ contains
         integer :: iel, a, a_pos, a_el, b, b_pos, b_el
 
         ! Alpha electrons.
-        f = 0
+        f = 0_i0
         iel = 0
         do
             ! generate random number 1,3,5,...

@@ -457,14 +457,21 @@ contains
             ! See comments in init_system and at module-level.
             sys%nel = (sys%lattice%nsites + Ms)/2
             sys%nvirt = (sys%lattice%nsites - Ms)/2
-            ! The Heisenberg model doesn't use nalpha or nbeta, but they need
-            ! to be initialized to something sensible.
+            ! The Heisenberg model doesn't use these values, but they need to be
+            ! initialized to something sensible as we allocate memory using them in 
+            ! alloc_det_info.
             sys%nalpha = 0
             sys%nbeta = 0
+            sys%nvirt_alpha = 0
+            sys%nvirt_beta = 0
 
         case(chung_landau)
 
-            ! Spinless system.
+            ! Spinless system.  Similarly for the Heisenberg model but treat all fermions as alpha electrons.
+            sys%nalpha = Ms
+            sys%nvirt_alpha = sys%lattice%nsites - sys%nalpha
+            sys%nbeta = 0
+            sys%nvirt_beta = 0
 
         case default
 

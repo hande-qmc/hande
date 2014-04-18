@@ -367,7 +367,7 @@ real(p), allocatable :: shift_profile(:) ! (nreport)
 ! correlation_mask is a bit string with a 1 at positions i and j which
 ! are considered when finding the spin correlation function, C(r_{i,j}).
 ! All other bits are set to 0. i and j are chosen by the user initially.
-integer(i0), allocatable :: correlation_mask(:)
+integer(i0), allocatable :: correlation_mask(:) ! (basis_length)
 ! correlation_sites stores the site positions specified by the users
 ! initially (as orbital labels).
 integer, allocatable :: correlation_sites(:)

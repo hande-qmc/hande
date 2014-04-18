@@ -191,8 +191,8 @@ contains
         ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
         ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
         ! This is assumming separate_strings is off...
-        alpha_mask = 0
-        beta_mask = 0
+        alpha_mask = 0_i0
+        beta_mask = 0_i0
         do i = 0, i0_end
             if (mod(i,2)==0) then
                 alpha_mask = ibset(alpha_mask,i)
@@ -207,7 +207,7 @@ contains
         if (sys%system == heisenberg .and. sys%lattice%bipartite_lattice) then
             allocate (lattice_mask(basis_length), stat=ierr)
             call check_allocate('lattice_mask',basis_length,ierr)
-            lattice_mask = 0
+            lattice_mask = 0_i0
             do k = 1,sys%lattice%lattice_size(3)
                 do j = 1,sys%lattice%lattice_size(2)
                     do i = 1,sys%lattice%lattice_size(1),2
