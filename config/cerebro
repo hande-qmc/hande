@@ -1,0 +1,18 @@
+[main]
+fc = ifort
+cc = icc
+cxx = icpc
+ld = ifort
+cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDET_SIZE=64
+libs = -lirc -limf -mkl -lmkl_lapack95_lp64 -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -Wl,--end-group -lpthread -cxxlib -lhdf5_fortran -luuid
+f90_module_flag = -module
+
+[opt]
+fflags = -O3 -openmp -ipo
+cxxflags = -O3 -openmp -ipo
+ldflags =  -openmp -ipo
+cflags = -O3 -ipo
+
+[dbg]
+fflags = -g -traceback -CB -openmp
+cxxflags = -g -traceback  -openmp

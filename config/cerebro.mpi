@@ -1,0 +1,29 @@
+# This uses 
+#Currently Loaded Modulefiles:
+#  1) torque/2.5.12
+#  2) maui/3.3.1
+#  3) use.own
+#  4) /home/ajwt3/privatemodules/hdf5/1.8.12/ifort2013_sp1_2_144
+#  5) /home/ajwt3/privatemodules/trlan/201009/openmpi_intel_2013
+#  6) mpi/intel/64/intel/4.0.0/028
+#  7) ifort/64/2013/5/192
+#  8) mkl/64/11.0/lp64/5
+
+[main]
+fc = mpif90
+cc = mpicc
+cxx = mpicxx
+ld = mpif90
+cppflags = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=64 
+LIBS =  $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a -L$(MKLROOT)/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lmkl_blacs_intelmpi_lp64 -lpthread -lm -liomp5 -cxxlib -lhdf5_fortran -luuid -ltrlan_mpi
+f90_module_flag = -module
+
+[opt]
+fflags = -O3 -openmp -ipo
+cxxflags = -O3 -openmp -ipo
+ldflags =  -openmp -ipo
+cflags = -O3 -ipo
+
+[dbg]
+fflags = -g -traceback -CB -openmp
+cxxflags = -g -traceback  -openmp
