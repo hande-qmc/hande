@@ -24,7 +24,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
-        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
@@ -136,6 +136,7 @@ contains
             write (6,'()')
         end if
 
+        call write_bloom_report(bloom_stats)
         call load_balancing_report()
 
         if (soft_exit) then
