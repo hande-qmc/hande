@@ -111,10 +111,11 @@ module bloom_handler
             ! In:
             !     bloom_stats: stats about blooming to print
 
+            use parallel, only: parent
             use utils, only: int_fmt
             type(bloom_stats_t), intent(in) :: bloom_stats
 
-            if(bloom_stats%nwarnings > 0) then
+            if (bloom_stats%nwarnings > 0 .and. parent) then
                 write (6,'()')
                 write (6, '(1X, "Blooming events occured: a more efficent calulation may be possible &
                     with a smaller timestep.")')
