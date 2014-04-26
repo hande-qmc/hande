@@ -111,11 +111,28 @@ module bloom_handler
             ! In:
             !     bloom_stats: stats about blooming to print
 
-            use parallel, only: parent
+            use parallel
             use utils, only: int_fmt
+
             type(bloom_stats_t), intent(in) :: bloom_stats
 
-            if (bloom_stats%nwarnings > 0 .and. parent) then
+            type(bloom_stats_t) :: bloom_stats_sum
+
+#ifdef PARALLEL
+            integer :: ierr
+
+            bloom_stats_sum = bloom_stats
+            call mpi_reduce(bloom_stats%nwarnings, bloom_stats_sum%nwarnings, 1, &
+                            MPI_INTEGER, MPI_SUM, root, MPI_COMM_WORLD, ierr)
+            call mpi_reduce(bloom_stats%tot_bloom, bloom_stats_sum%tot_bloom, 1, &
+                            mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
+            call mpi_reduce(bloom_stats%max_bloom, bloom_stats_sum%max_bloom, 1, &
+                            MPI_INTEGER, MPI_MAX, root, MPI_COMM_WORLD, ierr)
+#else
+            bloom_stats_sum = bloom_stats
+#endif
+
+            if(bloom_stats%nwarnings > 0 .and. parent) then
                 write (6,'()')
                 write (6, '(1X, "Blooming events occured: a more efficent calulation may be possible &
                     with a smaller timestep.")')
