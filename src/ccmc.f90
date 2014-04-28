@@ -390,11 +390,11 @@ contains
         end do
 
         if (parent) then
-            call write_bloom_report(bloom_stats)
             call write_fciqmc_final(ireport)
             write (6,'()')
         end if
 
+        call write_bloom_report(bloom_stats)
         call load_balancing_report()
 
         if (soft_exit) then
