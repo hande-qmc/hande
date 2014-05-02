@@ -30,7 +30,7 @@ contains
         use spawn_data, only: spawn_t
         use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
                                nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
-                               load_balancing_tag, load_tag_done, perc_imbalance
+                               load_balancing_tag, load_tag_done, perc_imbalance, load_attempts
         use ranking, only: insertion_rank_int
 
         integer, intent(inout) :: proc_map(:)
@@ -80,6 +80,7 @@ contains
 
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, nparticles_proc(1,:nprocs))
+        load_attempts = load_attempts + 1
 
     end subroutine do_load_balancing
 
@@ -159,7 +160,7 @@ contains
                 ! Modify donor population.
                 donor_pop = procs_pop(proc_map(d_index(pos))) - d_map(pos)
                 ! If adding subtracting slot doesn't move processor pop past a bound.
-                if (donor_pop .ge. low_thresh)  then
+                if (donor_pop .ge. low_thresh .and. new_pop .le. up_thresh)  then
                     ! Changing processor population.
                     procs_pop(proc_map(d_index(pos))) = donor_pop
                     procs_pop(receivers(j)) = new_pop

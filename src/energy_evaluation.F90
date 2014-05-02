@@ -26,7 +26,7 @@ contains
                                proj_energy, shift, vary_shift, vary_shift_from,                &
                                vary_shift_from_proje, D0_population, fold_line,                &
                                nparticles_proc, load_balancing_tag,  doing_load_balancing,     &
-                               load_balancing_pop
+                               load_balancing_pop, load_attempts, max_load_attempts
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
         use load_balancing, only: check_imbalance
@@ -81,7 +81,7 @@ contains
             D0_hf_population = ir_sum(sampling_size+7)
         end if
 
-        if(doing_load_balancing .and. ntot_particles(1) > load_balancing_pop) then
+        if(doing_load_balancing .and. ntot_particles(1) > load_balancing_pop .and. load_attempts < max_load_attempts) then
             pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
             ! Check if there is at least one processor with load imbalance.
             call check_imbalance(pop_av, load_balancing_tag)
