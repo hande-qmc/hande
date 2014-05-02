@@ -30,7 +30,8 @@ contains
         use spawn_data, only: spawn_t
         use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
                                nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
-                               load_balancing_tag, load_tag_done, perc_imbalance, load_attempts
+                               load_balancing_tag, load_tag_done, perc_imbalance, load_attempts,  &
+                               write_load_info
         use ranking, only: insertion_rank_int
 
         integer, intent(inout) :: proc_map(:)
@@ -77,6 +78,12 @@ contains
         ! Put donor slots into array so we can sort them.
         call reduce_slots(donors, slot_list, proc_map, d_index, d_map)
         call insertion_rank_int(d_map, d_rank, 0)
+
+        if (write_load_info .and. parent) then
+            write (6, '(1X, "#",2X,"Load balancing info:")')
+            write (6, '(1X, "# ",1X,a12,7X,a12,7X,a8)') 'Max particles', "Min particles", "Min slot"
+            write (6, '(1X, "#",1X,3(es17.10,2X))') maxval(real(nparticles_proc(1,:))), minval(real(nparticles_proc(1,:))), real(d_map(d_index(1)))
+        end if
 
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, nparticles_proc(1,:nprocs))

@@ -487,6 +487,8 @@ contains
                 call readf(perc_imbalance)
             case('MAX_LOAD_ATTEMPTS')
                 call readi(max_load_attempts)
+            case('WRITE_LOAD_INFO')
+                write_load_info = .true.
 
             case('FINITE_CLUSTER')
                 ! this will be checked in check_input to ensure that it
@@ -906,6 +908,7 @@ contains
         call mpi_bcast(load_balancing_pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(perc_imbalance, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(max_load_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(write_load_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(fold_line, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(P__, 1, mpi_preal, 0, mpi_comm_world, ierr)

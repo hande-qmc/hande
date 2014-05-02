@@ -452,6 +452,8 @@ real(p) :: perc_imbalance = 0.05
 ! Maximum number of load balancing attempts.
 ! Default = 2.
 integer :: max_load_attempts = 2
+! Write load balancing information every time load balancing is attempted.
+logical :: write_load_info = .false.
 
 !--- Load Balancing Data ---
 
