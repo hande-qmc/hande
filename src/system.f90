@@ -23,12 +23,14 @@ implicit none
 ! --- System type constants ---
 
 ! Parameters to used to specify the system type.
-integer, parameter :: hub_k = 0
-integer, parameter :: hub_real = 1
-integer, parameter :: read_in = 2
-integer, parameter :: heisenberg = 3
-integer, parameter :: ueg = 4
-integer, parameter :: chung_landau = 5
+enum, bind(c)
+    enumerator :: hub_k
+    enumerator :: hub_real
+    enumerator :: read_in
+    enumerator :: heisenberg
+    enumerator :: ueg
+    enumerator :: chung_landau
+end enum
 
 ! --- System-specific data structures ---
 
