@@ -30,7 +30,7 @@ contains
 
     end function get_one_e_int_k
 
-    elemental function get_two_e_int_k(sys, phi1, phi2, phi3, phi4) result(two_e_int)
+    elemental function get_two_e_int_hub_k(sys, phi1, phi2, phi3, phi4) result(two_e_int)
 
         ! In:
         !    sys: system being studied
@@ -74,7 +74,7 @@ contains
             two_e_int = 0.0_p
         end if
 
-    end function get_two_e_int_k
+    end function get_two_e_int_hub_k
 
     elemental function momentum_conserved(i, j, k, l) result(conserved)
 
