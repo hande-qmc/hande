@@ -108,7 +108,7 @@ contains
 
     end subroutine create_cdet_excit
 
-    subroutine fs_spawner(rng, sys, spawn, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine fs_spawner(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a daughter or granddaughter determinant according to
         ! the folded spectrum algorithm for a given system
@@ -117,7 +117,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    spawn: spawn_t object to which the spawned particle will be added.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -126,8 +130,8 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -139,12 +143,12 @@ contains
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t, sc0_ptr
         use spawning, only: nspawn_from_prob, set_child_sign
-        use spawn_data, only: spawn_t
 
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -177,7 +181,7 @@ contains
             pspawn_ki = Xo_ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(rng, spawn, pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, spawn_cutoff, real_factor, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -189,7 +193,7 @@ contains
                 pspawn_jk = Xo_ * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(rng, spawn, pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, spawn_cutoff, real_factor, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -229,7 +233,7 @@ contains
             pspawn_ki = X_o * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(rng, spawn, pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, spawn_cutoff, real_factor, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -246,7 +250,7 @@ contains
                 pspawn_jk = X_o * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(rng, spawn, pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, spawn_cutoff, real_factor, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk
@@ -292,7 +296,7 @@ contains
             pspawn_ki = X__ * abs(hmatel_ki) / Pgen_ki
 
             ! Attempt spawning
-            nspawn_ki = nspawn_from_prob(rng, spawn, pspawn_ki)
+            nspawn_ki = nspawn_from_prob(rng, spawn_cutoff, real_factor, pspawn_ki)
 
             if (nspawn_ki > 0 ) then
             ! Successful spawning on ki
@@ -307,7 +311,7 @@ contains
                 pspawn_jk = X__ * abs(hmatel_jk) / Pgen_jk
 
                 ! Attempt spawning
-                nspawn_jk = nspawn_from_prob(rng, spawn, pspawn_jk)
+                nspawn_jk = nspawn_from_prob(rng, spawn_cutoff, real_factor, pspawn_jk)
 
                 if (nspawn_jk > 0) then
                 ! Successful spawning on jk

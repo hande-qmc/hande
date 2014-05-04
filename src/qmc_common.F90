@@ -6,6 +6,14 @@ use fciqmc_data
 
 implicit none
 
+public
+private :: stochastic_round_int_32, stochastic_round_int_64
+
+interface stochastic_round
+    module procedure stochastic_round_int_32
+    module procedure stochastic_round_int_64
+end interface stochastic_round
+
 contains
 
 ! --- Utility routines ---
@@ -66,8 +74,7 @@ contains
             in_data = (/ max_pop, int(iproc, int_p) /)
         else if (iproc == D0_proc) then
             ! Ensure that D0_proc has the correct (average) population.
-            ! [review] - JSS: nint(val, KIND) rather than int(nint(val), KIND).
-            in_data = (/ int(nint(D0_population_cycle), int_p), int(iproc, int_p) /)
+            in_data = (/ nint(D0_population_cycle, int_p), int(iproc, int_p) /)
         else
             ! No det with sufficient population to become reference det on this
             ! processor.
@@ -264,8 +271,9 @@ contains
         use fciqmc_data, only: D0_proc
         use parallel, only: iproc
 
-        integer, intent(in) :: pops(:,:), nactive, d0_pos
-        integer, intent(out) :: cumulative_pops(:), tot_pop
+        integer(int_p), intent(in) :: pops(:,:)
+        integer, intent(in) :: nactive, d0_pos
+        integer(int_p), intent(out) :: cumulative_pops(:), tot_pop
 
         integer :: i
 
@@ -323,13 +331,84 @@ contains
 
     end function decide_nattempts
 
+    subroutine stochastic_round_int_32(rng, population, cutoff, ntypes)
+
+        ! For any values in population less than cutoff, round up to cutoff or
+        ! down to zero. This is done such that the expectation value of the
+        ! resulting populations is equal to the input values.
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    population: populations to be stochastically rounded.
+        !    cutoff: the value to round up to.
+        !    
+
+        use const, only: int_4
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+        integer(int_4), intent(inout) :: population(:)
+        integer(int_4), intent(in) :: cutoff
+        integer, intent(in) :: ntypes
+        integer :: itype
+        real(p) :: r
+
+        do itype = 1, ntypes
+            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_4) then
+                r = get_rand_close_open(rng)*cutoff
+                if (abs(population(itype)) > r) then
+                    population(itype) = sign(cutoff, population(itype))
+                else
+                    population(itype) = 0_int_4
+                end if
+            end if
+        end do
+
+    end subroutine stochastic_round_int_32
+
+    subroutine stochastic_round_int_64(rng, population, cutoff, ntypes)
+
+        ! For any values in population less than cutoff, round up to cutoff or
+        ! down to zero. This is done such that the expectation value of the
+        ! resulting populations is equal to the input values.
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    population: populations to be stochastically rounded.
+        !    cutoff: the value to round up to.
+        !    
+
+        use const, only: int_8
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+        integer(int_8), intent(inout) :: population(:)
+        integer(int_8), intent(in) :: cutoff
+        integer, intent(in) :: ntypes
+        integer :: itype
+        real(p) :: r
+
+        do itype = 1, ntypes
+            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_8) then
+                r = get_rand_close_open(rng)*cutoff
+                if (abs(population(itype)) > r) then
+                    population(itype) = sign(cutoff, population(itype))
+                else
+                    population(itype) = 0_int_8
+                end if
+            end if
+        end do
+
+    end subroutine stochastic_round_int_64
+
     subroutine load_balancing_report()
 
         ! Print out a load-balancing report when run in parallel showing how
         ! determinants and walkers/particles are distributed over the processors.
 
 #ifdef PARALLEL
-        use annihilation, only: annihilation_comms_time
         use parallel
         use utils, only: int_fmt
 
@@ -410,7 +489,7 @@ contains
             cdet%f = walker_dets(:,idet)
             call decode_det(cdet%f, cdet%occ_list)
             cdet%data => walker_data(:,idet)
-            real_population = real(walker_population(:,idet),dp)/encoding_factor
+            real_population = real(walker_population(:,idet),dp)/real_factor
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &

@@ -31,9 +31,7 @@ contains
 
 !--- Spawning wrappers ---
 
-    ! [review] - JSS: do we really need to pass through the spawn object rather than
-    ! [review] - JSS: just the components needed?
-    subroutine spawn_standard(rng, sys, spawn, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_standard(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -44,7 +42,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    spawn: spawn_t object to which the spawned particle will be added.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -53,8 +55,8 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         ! Out:
-        !    nspawn: number of particles spawned. 0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -63,11 +65,11 @@ contains
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
-        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -80,11 +82,11 @@ contains
         call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, spawn, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_standard
 
-    subroutine spawn_importance_sampling(rng, sys, spawn, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -99,7 +101,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    spawn: spawn_t object to which the spawned particle will be added.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -108,8 +114,8 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -118,11 +124,11 @@ contains
         use excitations, only: excit
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
-        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -138,11 +144,11 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, spawn, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(rng, sys, spawn, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -164,7 +170,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    spawn: spawn_t object to which the spawned particle will be added.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -176,8 +186,8 @@ contains
         !        element and gen_excit_ptr%finalise must fill in the rest of the
         !        information about the excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -187,11 +197,11 @@ contains
         use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
-        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -205,9 +215,9 @@ contains
         call gen_excit_ptr%init(rng, sys, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = nspawn_from_prob(rng, spawn, tau*abs_hmatel/pgen)
+        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs_hmatel/pgen)
 
-        if (nspawn /= 0) then
+        if (nspawn /= 0_int_p) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
             call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
@@ -219,7 +229,7 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, spawn, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -238,7 +248,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    spawn: spawn_t object to which the spawned particle will be added.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -250,8 +264,8 @@ contains
         !        element and gen_excit_ptr%finalise must fill in the rest of the
         !        information about the excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -261,11 +275,11 @@ contains
         use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
-        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -282,9 +296,9 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, tilde_hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = nspawn_from_prob(rng, spawn, tau*abs(tilde_hmatel)/pgen)
+        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs(tilde_hmatel)/pgen)
 
-        if (nspawn /= 0) then
+        if (nspawn /= 0_int_p) then
 
             ! 4. Complete excitation and find sign of connecting matrix element.
             ! *NOTE*: this returns the original matrix element and *not* the
@@ -300,7 +314,7 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(rng, sys, spawn, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_null(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -310,15 +324,19 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    spawn: spawn_t object to which the spawned particle will be added.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from (or not, in this case!).
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -327,11 +345,11 @@ contains
         use excitations, only: excit
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
-        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -348,17 +366,18 @@ contains
 
 !--- Attempt spawning based upon random excitation ---
 
-    ! [review] - JSS: only really need encoding_factor and spawn%cutoff.
-    ! [review] - JSS: avoid accessing global data from a low-level routine
-    ! [review] - JSS: and passing through a large structure unnecessarily,
-    ! [review] - JSS: which would make nspawn_from_prob easier to reuse?
-    function nspawn_from_prob(rng, spawn, probability) result(nspawn)
+    function nspawn_from_prob(rng, spawn_cutoff, real_factor, probability) result(nspawn)
 
         ! Generate the number spawned from a probability. If probability is greater than
         ! zero, then number spawned = int(probability) + stochastic{0,1}
         ! where the latter half of the RHS is a stochastic spawning from the remainder
         !
         ! In:
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    probability: the spawning probability
         ! In/Out:
         !    rng: random number generator.
@@ -367,30 +386,29 @@ contains
         !    number_spawned: the number spawned from this probability
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: encoding_factor
-        use spawn_data, only: spawn_t
 
         implicit none
         real(p), intent(in) :: probability
         type(dSFMT_t), intent(inout) :: rng
-        type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         integer(int_s) :: nspawn
         real(p) :: pspawn
 
-        ! 'Encode' the spawning probability by multiplying by 2^(bit_shift).
+        ! 'Encode' the spawning probability by multiplying by 2^(real_bit_shift).
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
         ! when we later divide this factor back out. (See comments for
         ! walker_population).
-        pspawn = probability*encoding_factor
+        pspawn = probability*real_factor
 
-        if (abs(pspawn) < spawn%cutoff) then
+        if (abs(pspawn) < spawn_cutoff) then
 
             ! If the spawning amplitude is below the minimum spawning event
             ! allowed, stochastically round it either down to zero or up
             ! to the cutoff.
-            if (pspawn > get_rand_close_open(rng)*spawn%cutoff) then
-                nspawn = spawn%cutoff
+            if (pspawn > get_rand_close_open(rng)*spawn_cutoff) then
+                nspawn = spawn_cutoff
             else
                 nspawn = 0_int_p
             end if
@@ -441,10 +459,14 @@ contains
 
     end subroutine set_child_sign
 
-    function attempt_to_spawn(rng, spawn, hmatel, pgen, parent_sign) result(nspawn)
+    function attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign) result(nspawn)
 
         ! In:
-        !    spawn: spawn_t object to which the spawned particle will be added.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    hmatel: Hamiltonian matrix element connecting a determinant and an
         !    excitation of that determinant.
         !    pgen: probability of generating the excitation.
@@ -457,34 +479,34 @@ contains
         !    unsuccessful.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: tau, encoding_factor
-        use spawn_data, only: spawn_t
+        use fciqmc_data, only: tau
 
         integer(int_p) :: nspawn
 
         real(p), intent(in) :: pgen, hmatel
         integer(int_p), intent(in) :: parent_sign
         type(dSFMT_t), intent(inout) :: rng
-        type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         real(p) :: pspawn
 
         ! Calculate probability spawning is successful.
         pspawn = tau*abs(hmatel)/pgen
 
-        ! 'Encode' the spawning probability by multiplying by 2^(bit_shift).
+        ! 'Encode' the spawning probability by multiplying by 2^(real_bit_shift).
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
         ! when we later divide this factor back out. (See comments for
         ! walker_population).
-        pspawn = pspawn*encoding_factor
+        pspawn = pspawn*real_factor
 
-        if (pspawn < spawn%cutoff) then
+        if (pspawn < spawn_cutoff) then
 
             ! If the spawning amplitude is below the minimum spawning event
             ! allowed, stochastically round it either down to zero or up
             ! to the cutoff.
-            if (pspawn > get_rand_close_open(rng)*spawn%cutoff) then
-                nspawn = spawn%cutoff
+            if (pspawn > get_rand_close_open(rng)*spawn_cutoff) then
+                nspawn = spawn_cutoff
             else
                 nspawn = 0_int_p
             end if

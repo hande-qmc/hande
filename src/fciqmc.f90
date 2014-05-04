@@ -89,7 +89,7 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet)
 
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(walker_population(1,idet),dp)/encoding_factor
+                    real_population = real(walker_population(1,idet),dp)/real_factor
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
@@ -105,7 +105,7 @@ contains
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qmc_spawn, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
@@ -116,6 +116,8 @@ contains
 
                     ! Clone or die.
                     ! [review] - JSS: shouldn't real_population be passed through to death?
+                    ! [reply] - NSB: See reply in death.f90 - could do but I think its more
+                    ! [reply] - natural and cleaner to do it this way.
                     call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do

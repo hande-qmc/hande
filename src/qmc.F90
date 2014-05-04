@@ -216,21 +216,21 @@ contains
             if (bit_size(0_int_p) == 64) then
                 ! Allow a maximum population of 2^32, and a minimum fractional
                 ! part of 2^-31.
-                bit_shift = 31
+                real_bit_shift = 31
             else if (bit_size(0_int_p) == 32) then
                 ! Allow a maximum population of 2^20, and a minimum fractional
                 ! part of 2^-11.
-                bit_shift = 11
+                real_bit_shift = 11
             end if
         else
             ! Allow no fractional part for walker populations.
-            bit_shift = 0
+            real_bit_shift = 0
         end if
-        ! Store 2**bit_shift for ease.
-        encoding_factor = 2_int_p**(int(bit_shift, int_p))
+        ! Store 2**real_bit_shift for ease.
+        real_factor = 2_int_p**(int(real_bit_shift, int_p))
 
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
-                         spawned_walker_length, spawn_cutoff, bit_shift, 7, qmc_spawn)
+                         spawned_walker_length, spawn_cutoff, real_bit_shift, 7, qmc_spawn)
 
         allocate(f0(basis_length), stat=ierr)
         call check_allocate('f0',basis_length,ierr)
@@ -299,7 +299,7 @@ contains
                 ! Zero all populations...
                 walker_population(:,tot_walkers) = 0_int_p
                 ! Set initial population of Hamiltonian walkers.
-                walker_population(1,tot_walkers) = nint(D0_population)*encoding_factor
+                walker_population(1,tot_walkers) = nint(D0_population)*real_factor
                 ! Set the bitstring of this psip to be that of the
                 ! reference state.
                 walker_dets(:,tot_walkers) = f0
@@ -375,7 +375,7 @@ contains
                     ! Zero all populations for this determinant.
                     walker_population(:,tot_walkers) = 0_int_p
                     ! Set the population for this basis function.
-                    walker_population(1,tot_walkers) = nint(D0_population)*encoding_factor
+                    walker_population(1,tot_walkers) = nint(D0_population)*real_factor
                     walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                     select case(sys%system)
                     case(heisenberg)
@@ -402,7 +402,7 @@ contains
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
-        forall (i=1:sampling_size) nparticles(i) = sum(abs( real(walker_population(i,:tot_walkers),dp)/encoding_factor))
+        forall (i=1:sampling_size) nparticles(i) = sum(abs( real(walker_population(i,:tot_walkers),dp)/real_factor))
         ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
         call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)

@@ -5,6 +5,7 @@ module const
 #include "cdefs.h"
 
 use, intrinsic :: iso_c_binding, only: c_int32_t, c_int64_t
+use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
 
 implicit none
 
@@ -59,6 +60,11 @@ integer, parameter :: i0_length = bit_size(0_i0)
 ! Index of the last bit in an integer of type i0.
 ! (Bit indexing in fortran ranges from 0 to bit_size-1.)
 integer, parameter :: i0_end = i0_length - 1
+
+! 4-byte integer.
+integer, parameter :: int_4 = selected_int_kind(6)
+! 8-byte integer.
+integer, parameter :: int_8 = selected_int_kind(15)
 
 ! Single precision kind.
 integer, parameter :: sp = selected_real_kind(6,37)

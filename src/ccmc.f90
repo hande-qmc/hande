@@ -220,8 +220,9 @@ contains
 
         logical :: soft_exit
 
-        integer, allocatable :: cumulative_abs_pops(:)
-        integer :: D0_pos, max_cluster_size,tot_abs_pop
+        integer(int_p), allocatable :: cumulative_abs_pops(:)
+        integer :: D0_pos, max_cluster_size
+        integer(int_p) :: tot_abs_pop
         logical :: hit
         type(bloom_stats_t) :: bloom_stats
 
@@ -293,6 +294,9 @@ contains
                 ! a factor of the number of times it was selected).
                 call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
                 ! [review] - JSS: D0_normalisation will need to be real for CCMC with real excips.
+                ! [reply] - NSB: I just set it to this for now so that it will compile, to be
+                ! [reply] - NSB: fixed when reals are implemented for CCMC (similarly in a few
+                ! [reply] - NSB: other places).
                 D0_normalisation = int(walker_population(1,D0_pos))
 
                 ! Note that 'death' in CCMC creates particles in the spawned
@@ -311,7 +315,7 @@ contains
                 ! [review] - JSS: DANGER.  walker_population is a large array so this causes
                 ! [review] - JSS: a temporary array to be created, which is slow and costly
                 ! [review] - JSS: in memory.  We should adapt cumulative_population instead...
-                call cumulative_population(int(walker_population), tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
+                call cumulative_population(walker_population, tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
@@ -322,7 +326,7 @@ contains
                 !$omp do schedule(dynamic,200) private(nspawned, connection, junk) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
-                    call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
+                    call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, int(tot_abs_pop), max_cluster_size, &
                                         cdet(it), cluster(it))
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
@@ -342,7 +346,7 @@ contains
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), sys, qmc_spawn, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
+                        call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
 
                         if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
@@ -472,7 +476,8 @@ contains
 
         integer(lint), intent(in) :: nattempts
         integer, intent(in) :: D0_pos
-        integer, intent(in) :: cumulative_excip_pop(:), tot_excip_pop, max_size
+        integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
+        integer :: max_size
         type(dSFMT_t), intent(inout) :: rng
         type(det_info), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
@@ -620,7 +625,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine spawner_ccmc(rng, sys, spawn, cdet, cluster, gen_excit_ptr, nspawn, connection)
+    subroutine spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -641,7 +646,11 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    spawn: spawn_t object to which the spawned particle will be added.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.  In
@@ -654,8 +663,8 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
@@ -666,12 +675,12 @@ contains
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr_t
-        use spawn_data, only: spawn_t
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(spawn_t) :: spawn
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
@@ -698,7 +707,7 @@ contains
         pgen = pgen*cluster%pselect
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, spawn, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an

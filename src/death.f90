@@ -38,6 +38,10 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
         ! [review] - JSS: shouldn't population be real as well (ie scaled by encoding_factor)?
+        ! [reply] - NSB: I don't think so, population just points to walker_population(1,idet).
+        ! [reply] - NSB: I could create a copy, scale it down by real_factor and work with this,
+        ! [reply] - NSB: but it would have to be scaled back up in order to perform the stochastic
+        ! [reply] - NSB: rounding in this routine anyway.
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
 
@@ -94,7 +98,7 @@ contains
             population = population - kill
         end if
         tot_population = tot_population + &
-            real(abs(population) - abs(old_population),dp)/encoding_factor
+            real(abs(population) - abs(old_population),dp)/real_factor
         ndeath = ndeath + abs(kill)
 
     end subroutine stochastic_death

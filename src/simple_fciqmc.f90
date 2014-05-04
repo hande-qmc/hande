@@ -259,7 +259,8 @@ contains
         integer, intent(in) :: iwalker
         type(dSFMT_t), intent(inout) :: rng
 
-        integer :: j, nspawn
+        integer :: j
+        integer(int_s) :: nspawn
         real(p) :: rate
         real(p) :: r
 
@@ -277,29 +278,27 @@ contains
             ! As K_ij = H_ij for off-diagonal elements, we can just use the
             ! stored Hamiltonian matrix directly.
             rate = abs(Tau*hamil(iwalker,j))
-            ! [review] - JSS: use int(rate, int_s)
-            nspawn = int(rate)
+            nspawn = int(rate, int_s)
             rate = rate - nspawn
             r = get_rand_close_open(rng)
-            if (rate > r) nspawn = nspawn + 1
+            if (rate > r) nspawn = nspawn + 1_int_s
 
             ! Create particles.
             if (hamil(iwalker,j) > 0.0_p) then
                 ! Flip child sign.
                 if (walker_population(1,iwalker) < 0) then
                     ! Positive offspring.
-                    ! [review] - JSS: better to change nspawn to be integer(int_s) rather than do the conversion here.
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + int(nspawn, int_s)
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
                 else
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - int(nspawn, int_s)
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
                 end if
             else
                 ! Same sign as parent.
                 if (walker_population(1,iwalker) > 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + int(nspawn, int_s)
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
                 else
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - int(nspawn, int_s)
+                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
                 end if
             end if
 

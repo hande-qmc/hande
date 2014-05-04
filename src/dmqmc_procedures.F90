@@ -210,7 +210,7 @@ contains
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
-        use fciqmc_data, only: replica_tricks, renyi_2, sampling_size, bit_shift, spawn_cutoff
+        use fciqmc_data, only: replica_tricks, renyi_2, sampling_size, real_bit_shift, spawn_cutoff
         use fciqmc_data, only: spawned_rdm_length, rdm_spawn
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
@@ -274,7 +274,7 @@ contains
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., spawned_rdm_length, &
-                                     spawn_cutoff, bit_shift, 27, rdm_spawn(i)%spawn)
+                                     spawn_cutoff, real_bit_shift, 27, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  This should
                 ! give an ok performance...
                 ! We will only use the first 2*rdm_basis_length elements for the
@@ -514,7 +514,7 @@ contains
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: encoding_factor
+        use fciqmc_data, only: real_factor
         use parallel
         use system
 
@@ -550,7 +550,7 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_diagonal_density_matrix_particle(f,encoding_factor,ireplica)
+            call create_diagonal_density_matrix_particle(f,real_factor,ireplica)
 
         end do
 
@@ -668,7 +668,7 @@ contains
         use excitations, only: get_excitation_level
         use fciqmc_data, only: dmqmc_accumulated_probs, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
-        use fciqmc_data, only: nparticles, sampling_size, encoding_factor
+        use fciqmc_data, only: nparticles, sampling_size, real_factor
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
@@ -699,6 +699,11 @@ contains
             new_population = int(new_population_target, int_p)
 
             ! [review] - JSS: why does the target need to be an integer?
+            ! [reply] - NSB: I'm not too sure what you mean - the target is a real. That's what we would
+            ! [reply] - NSB: use if doing it deterministically. But because we store the populations
+            ! [reply] - NSB: encoded as integers with a finite resolution, then we have to convert
+            ! [reply] - NSB: it to an integer in the encoded form and round it up or down with the
+            ! [reply] - NSB: correct probability. Its identical to a death or cloning step.
             ! If new_population_target is not an integer, round it up or down
             ! with an unbiased probability. Do this for each replica.
             do ireplica = 1, sampling_size
@@ -716,7 +721,7 @@ contains
             end do
 
             ! Update the total number of walkers.
-            nparticles = nparticles + real(new_population - old_population, dp)/encoding_factor
+            nparticles = nparticles + real(new_population - old_population, dp)/real_factor
 
         end do
 

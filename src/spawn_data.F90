@@ -35,7 +35,7 @@ type spawn_t
     ! with populations below this threshold should be stochastically rounded
     ! up to it or down to zero.
     ! During creation of a spawn_t instance, cutoff is multiplied by
-    ! 2^(bit_shift) and rounded up to nearest integer, and then stored in
+    ! 2^(real_bit_shift) and rounded up to nearest integer, and then stored in
     ! this format.
     integer(int_p) :: cutoff
     ! Not actually allocated but actually points to an internal store for

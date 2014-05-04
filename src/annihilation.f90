@@ -5,8 +5,6 @@ use fciqmc_data
 
 implicit none
 
-real(dp) :: annihilation_comms_time = 0.0_dp
-
 contains
 
     subroutine direct_annihilation(sys, rng, tinitiator)
@@ -101,7 +99,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),dp)/encoding_factor
+                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),dp)/real_factor
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -165,7 +163,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop), dp)/encoding_factor
+                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop), dp)/real_factor
                 ! One more entry to be removed from the qmc_spawn%sdata array.
                 nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
@@ -219,6 +217,7 @@ contains
 
         use basis, only: total_basis_length
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use qmc_common, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
 
@@ -228,20 +227,9 @@ contains
         nzero = 0
         do i = 1, tot_walkers
 
-            ! Loop over all particle types on this determinant and
-            ! stochastically round any populations which are less than one (or
-            ! less than encoding_factor = 2^bit_shift, in the encoded
-            ! representation of the populations).
-            do itype = 1, qmc_spawn%ntypes
-                if (abs(walker_population(itype,i)) < encoding_factor .and. walker_population(itype,i) /= 0_int_p) then
-                    r = get_rand_close_open(rng)*encoding_factor
-                    if (abs(walker_population(itype,i)) > r) then
-                        walker_population(itype,i) = sign(encoding_factor, walker_population(itype,i))
-                    else
-                        walker_population(itype,i) = 0_int_p
-                    end if
-                end if
-            end do
+            ! Stochastically round the walker populations up or down to
+            ! real_factor (which is equal to 1 in the decoded representation).
+            call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
 
             if (all(walker_population(:,i) == 0_int_p)) then
                 nzero = nzero + 1
@@ -269,39 +257,37 @@ contains
         !    rng: random number generator.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use qmc_common, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
 
         integer :: i, k, itype, nremoved
+        integer(int_s) :: real_factor_s
         real(dp) :: r
         integer, parameter :: thread_id = 0
 
+        real_factor_s = int(real_factor, int_s)
+
         nremoved = 0
         ! [review] - JSS: combine with (a version of) insert_new_walkers?
+        ! [reply] - NSB: I did this originally but had problems because it loops through
+        ! [reply] - NSB: sdata backwards. It is only able to do this because it already knows
+        ! [reply] - NSB: how many new determinants are to be added, and hence how many
+        ! [reply] - NSB: slots to move the end determinants down by ('k = j + i').
+        ! [reply] - NSB: But now some determinants may be removed and hence not
+        ! [reply] - NSB: added to the main list. Hence there would be gaps with this
+        ! [reply] - NSB: approach. So I think you would have to loop through sdata forwards
+        ! [reply] - NSB: to avoid this? I decided it would be better just to create this new
+        ! [reply] - NSB: function. But happy to move it to insert_new_walkers if you prefer.
         do i = 1, qmc_spawn%head(thread_id,0)
 
             ! spawned_population holds the spawned population in its encoded
             ! form (see comments for walker_population).
             associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i))
 
-                ! Loop over all amplitudes for this determinant. For all
-                ! amplitudes less than one (or less than encoding_factor =
-                ! 2^bit_shift in the encoded representation stored in sdata),
-                ! stochastically round the amplitude up to this cutoff or down
-                ! to zero.
-                do itype = 1, qmc_spawn%ntypes
-                    if (abs(spawned_population(itype)) < encoding_factor) then
-                        ! [review] - JSS: repeated code from remove_unoccupied_dets.  What
-                        ! [review] - JSS: about refactoring into a function (possibly using
-                        ! [review] - JSS: overloading to handle the integer types?)
-                        r = get_rand_close_open(rng)*encoding_factor
-                        if (abs(spawned_population(itype)) > r) then
-                            spawned_population(itype) = sign(int(encoding_factor,int_s), spawned_population(itype))
-                        else
-                            spawned_population(itype) = 0_int_s
-                        end if
-                    end if
-                end do
+                ! Stochastically round the walker populations up or down to
+                ! real_factor (which is equal to 1 in the decoded representation).
+                call stochastic_round(rng, spawned_population, real_factor_s, qmc_spawn%ntypes)
 
                 ! If all the amplitudes for this determinant were zeroed then we
                 ! don't want to add it to the main list.
@@ -385,13 +371,12 @@ contains
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
             ! The encoded walker sign.
-            ! [review] - JSS: as in round_low_population_spawns, associate is your friend
-            ! [review] - JSS: to avoid copies.
-            spawned_population = int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), int_p)
-            ! Extract the real sign from the encoded sign.
-            real_population = real(spawned_population,dp)/encoding_factor
+            associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i))
+                ! Extract the real sign from the encoded sign.
+                real_population = real(spawned_population,dp)/real_factor
+                walker_population(:,k) = int(spawned_population, int_p)
+            end associate
             walker_dets(:,k) = int(qmc_spawn%sdata(:total_basis_length,i), i0)
-            walker_population(:,k) = spawned_population
             nparticles = nparticles + abs(real_population)
             walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))

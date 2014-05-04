@@ -53,11 +53,14 @@ real(p) :: initiator_population = 3.0_p
 ! True if allowing non-integer values for psip populations.
 logical :: real_amplitudes = .false.
 ! [review] - JSS: would (e.g.) real_shift and real_factor be better (ie more specific) names?
-! Real amplitudes can be any multiple of 2**(-bit_shift). They are
-! encoded as integers by multiplying them by 2**(bit_shift).
-integer :: bit_shift
-! encoding_factor = 2**(bit_shift)
-integer(int_p) :: encoding_factor
+! [reply] - NSB: Yes, although I avoided real_shift because I thought people might assume that
+! [reply] - NSB: it is something to do with the population control shift, so will use
+! [reply] - NSB: real_bit_shift.
+! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
+! encoded as integers by multiplying them by 2**(real_bit_shift).
+integer :: real_bit_shift
+! real_factor = 2**(real_bit_shift)
+integer(int_p) :: real_factor
 ! The minimum amplitude of a spawning event which can be added to
 ! the spawned list.
 real(p) :: spawn_cutoff
@@ -129,10 +132,10 @@ integer(i0), allocatable, target :: walker_dets(:,:) ! (basis_length, walker_len
 !   When using the real_amplitudes option, walker_population stores encoded
 !   representations of the true walker populations. To convert
 !   walker_population(:,i) to the actual population on determinant i, one must
-!   take real(walker_population(:,i),dp)/encoding_factor. Thus, the resolution
-!   in the true walker populations is 1/encoding_factor. This is how
+!   take real(walker_population(:,i),dp)/real_factor. Thus, the resolution
+!   in the true walker populations is 1/real_factor. This is how
 !   non-integers populations are implemented. When not using the real_amplitudes
-!   option, encoding_factor will be equal to 1, allowing only integer
+!   option, real_factor will be equal to 1, allowing only integer
 !   populations. In general, when one sees that a integer is of kind int_p, it
 !   should be understood that it stores a population in its encoded form.
 integer(int_p), allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
@@ -409,6 +412,8 @@ integer :: select_ref_det_every_nreports = huge(1)
 ! determinant.
 real(p) :: ref_det_factor = 1.50_p
 
+real(dp) :: annihilation_comms_time = 0.0_dp
+
 !--- Simple FCIQMC ---
 
 ! Data used *only* in the simple_fciqmc algorithm.
@@ -471,7 +476,7 @@ contains
         integer :: nspawn
 
         nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
-        ndeath_real = real(ndeath,dp)/encoding_factor
+        ndeath_real = real(ndeath,dp)/real_factor
         ! The total spawning rate is
         !   (nspawn + ndeath_real) / nattempts
         ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different
