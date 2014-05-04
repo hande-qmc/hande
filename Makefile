@@ -309,7 +309,8 @@ ifneq ($(filter-out library, $(MODE)),)
 $(BIN_DIR)/$(PROG): $(BIN_DIR)/$(PROG_VERSION) $(call md5_check, $(BIN_DIR)/$(PROG_VERSION), $(BIN_DIR)/$(PROG))
 	$(LINK_MACRO)
 
-$(BIN_DIR)/$(PROG_VERSION): $(OBJECTS) check-distribute | $(BIN_DIR)
+$(BIN_DIR)/$(PROG_VERSION): $(OBJECTS) | $(BIN_DIR)
+	$(MAKE) check-distribute
 	$(LD) -o $@ $(LDFLAGS) -I $(DEST) $(OBJECTS) $(LIBS)
 
 # shortcut
@@ -321,7 +322,8 @@ ifneq ($(filter-out program, $(MODE)),)
 $(LIB_DIR)/$(LIB): $(LIB_DIR)/$(LIB_VERSION) $(call md5_check, $(LIB_DIR)/$(LIB_VERSION), $(LIB_DIR)/$(LIB))
 	$(LINK_MACRO)
 
-$(LIB_DIR)/$(LIB_VERSION): $(LIB_OBJECTS) check-distribute | $(LIB_DIR)
+$(LIB_DIR)/$(LIB_VERSION): $(LIB_OBJECTS) | $(LIB_DIR)
+	$(MAKE) check-distribute
 	$(AR) $(ARFLAGS) $@ $(LIB_OBJECTS)
 
 # shortcut
