@@ -74,8 +74,8 @@ contains
     ! [review] - JSS: tolerance is not required (and not used) for the integer version.
     ! [review] - JSS: remove tolerance and tol.
     ! [reply] - FM: spotted this the other day, hadn't committed.
-    pure subroutine insertion_rank_int(arr, rank, tolerance)
-        
+    pure subroutine insertion_rank_lint(arr, rank)
+
         ! Rank an array of long integers in increasing order using the insertion sort
         ! algorithm.
         !
@@ -93,11 +93,6 @@ contains
         !
         ! In:
         !   arr: array of real values.
-        !   tolerance (optional, default 0.0): tolerance for comparing values.
-        !   If present, then two values which differ by less than tolerance are
-        !   treated as equal.  This allows one to avoid changing the order of
-        !   items that have identical values to within a desired precision.
-        !   Naturally, one should have this as small as possible.
         ! In/Out:
         !    rank: on output rank(i) contains the ranked index (in increasing
         !    order) of the value in arr(i), that is arr(rank(i)) returns the
@@ -105,24 +100,23 @@ contains
         !    NOTE: rank must have at least the dimensions of arr on input.
 
         integer(lint), intent(in) :: arr(:)
-        integer, intent(in) :: tolerance
         integer, intent(inout) :: rank(:) ! inout to avoid automatic deallocation
                                           ! of an allocatable array on entry
-        integer :: i, j, tmp, tol
+        integer :: i, j, tmp
 
         forall (i=1:size(arr)) rank(i) = i
-        tol=tolerance
+
         do i = 2, size(arr)
             j = i - 1
             tmp = rank(i)
             do while ( j >= 1 )
-                if (arr(rank(j)) - arr(tmp) < tol) exit
+                if (arr(rank(j)) - arr(tmp) < 0) exit
                 rank(j+1) = rank(j)
                 j = j - 1
             end do
             rank(j+1) = tmp
         end do
 
-    end subroutine insertion_rank_int
+    end subroutine insertion_rank_lint
 
 end module ranking

@@ -39,7 +39,7 @@ contains
                                nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
                                load_balancing_tag, load_tag_done, perc_imbalance, load_attempts,  &
                                write_load_info
-        use ranking, only: insertion_rank_int
+        use ranking, only: insertion_rank_lint
         use checking, only: check_allocate, check_deallocate
 
         integer, intent(inout) :: proc_map(:)
@@ -93,7 +93,7 @@ contains
 
         ! Put donor slots into array so we can sort them.
         call reduce_slots(donors, slot_list, proc_map, d_index, d_map)
-        call insertion_rank_int(d_map, d_rank, 0)
+        call insertion_rank_lint(d_map, d_rank)
 
         if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_map(1))
 
@@ -342,7 +342,7 @@ contains
         !       modified.
 
         use parallel, only: nprocs
-        use ranking, only: insertion_rank_int
+        use ranking, only: insertion_rank_lint
         use checking, only: check_allocate, check_deallocate
 
         integer(lint), intent(in) :: procs_pop(0:)
@@ -392,7 +392,7 @@ contains
         rec_dummy = tmp_rec(:nrecv)
 
         ! Sort receiver processers.
-        call insertion_rank_int(procs_pop, rank_nparticles, 0)
+        call insertion_rank_lint(procs_pop, rank_nparticles)
         do i = 1, size(rec_dummy)
             rec_sort(i) = rank_nparticles(i) - 1
         end do
