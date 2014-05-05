@@ -362,6 +362,8 @@ contains
 
     subroutine redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
 
+        ! [todo] JSS: - update comments to be more general than just for CCMC.
+
         ! Due to the cooperative spawning (ie from multiple excitors at once) in
         ! CCMC, we need to give each excitor the chance to be on the same
         ! processor with all combinations of excitors, unlike in FCIQMC where

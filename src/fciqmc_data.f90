@@ -112,6 +112,7 @@ integer(lint), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
 integer(lint), allocatable, target :: tot_nparticles(:) ! (sampling_size)
 ! Total number of particles on all determinants for each processor
+! [todo] - JSS: check type with Nick when merging due to the reals work.
 integer(lint), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
 
 ! Walker information: main list.
@@ -441,6 +442,8 @@ real(p) :: X__=0, Xo_=0, X_o=0
 logical :: doing_load_balancing = .false.
 ! Number of slots walker lists are initially subdivided into for proc_map
 ! Default = 1
+! [review] - JSS: if this is 1, does the load balancing reduce to the original non-balanced case?
+! [review] - JSS: if so, then should a sane default be chosen if load balancing is turned on?
 integer :: load_balancing_slots = 1
 ! Population which must be reached before load balancing is attempted.
 ! Default = 1000.
@@ -448,6 +451,8 @@ integer(lint) :: load_balancing_pop = 1000
 ! Percentage load imbalance we aim to achieve when performing load balancing.
 ! i.e. min_pop = (1-perc_imbalance)*av_pop, max_pop = (1+perc_imbalance)*av_pop.
 ! Default = 0.05
+! [review] - JSS: perc->percent please!  I find perc a bit of a mental hiccup (I couldn't
+! [review] - JSS: immediately guess what it was short for...)
 real(p) :: perc_imbalance = 0.05
 ! Maximum number of load balancing attempts.
 ! Default = 2.

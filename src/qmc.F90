@@ -193,10 +193,14 @@ contains
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
         allocate(walker_data(sampling_size+info_size,walker_length), stat=ierr)
         call check_allocate('walker_data', size(walker_data), ierr)
+        ! [review] - JSS: please check but nprocs is set to 1 if compiled without MPI.
+        ! [review] - JSS: remove conditional compilation code.
 #ifdef PARALLEL
+        ! [review] - JSS: you should be able to use this bit even without MPI.
         allocate(nparticles_proc(sampling_size, nprocs), stat=ierr)
         call check_allocate('nparticles_proc', nprocs*sampling_size, ierr)
 #else
+        ! [review] - JSS: these two lines unnecessary.
         allocate(nparticles_proc(sampling_size, 1), stat=ierr)
         call check_allocate('nparticles_proc', sampling_size*1, ierr)
 #endif

@@ -71,6 +71,8 @@ contains
 
     end subroutine insertion_rank_rp
 
+    ! [review] - JSS: tolerance is not required (and not used) for the integer version.
+    ! [review] - JSS: remove tolerance and tol.
     pure subroutine insertion_rank_int(arr, rank, tolerance)
         
         ! Rank an array of long integers in increasing order using the insertion sort
