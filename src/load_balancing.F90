@@ -82,11 +82,13 @@ contains
         if (write_load_info .and. parent) then
             write (6, '(1X, "#",2X,"Load balancing info:")')
             write (6, '(1X, "# ",1X,a12,7X,a12,7X,a8)') 'Max particles', "Min particles", "Min slot"
-            write (6, '(1X, "#",1X,3(es17.10,2X))') maxval(real(nparticles_proc(1,:))), minval(real(nparticles_proc(1,:))), real(d_map(d_index(1)))
+            write (6, '(1X, "#",1X,3(es17.10,2X))') maxval(real(nparticles_proc(1,:))), &
+                minval(real(nparticles_proc(1,:))), real(d_map(d_index(1)))
         end if
 
         ! Attempt to modify proc map to get more even population distribution.
-        call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, nparticles_proc(1,:nprocs))
+        call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, &
+                                low_thresh, proc_map, nparticles_proc(1,:nprocs))
         load_attempts = load_attempts + 1
 
     end subroutine do_load_balancing

@@ -632,7 +632,8 @@ contains
             if (any(initiator_CAS < 0)) call stop_all(this,'Initiator sys%CAS space must be non-negative.')
             if (load_balancing_slots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
             if (load_balancing_pop < 0) call stop_all(this, 'Load balancing population must be positive.')
-            if (perc_imbalance < 0 .or. perc_imbalance > 1.0) call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
+            if (perc_imbalance < 0 .or. perc_imbalance > 1.0) &
+                call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
             if (max_load_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
         end if
         if (doing_calc(ct_fciqmc_calc)) ncycles = 1
@@ -668,7 +669,7 @@ contains
 
         if (all_sym_sectors) then
             if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_sym_sectors option can only be used in&
-                                                                DMQMC calculations.')
+                                                                &DMQMC calculations.')
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
                     call stop_all(this, 'The use_all_sym_sectors option cannot be used with magnetic fields.')
