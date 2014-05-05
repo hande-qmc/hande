@@ -215,9 +215,13 @@ contains
         !   [reply] - FM: d_rank contains the indices which correspond to the ranked (lowest to highest) entries in d_map. Need the index for d_index etc.
         !   [review] - JSS: ending sentence on a /?
         !   [review] - FM: "/" is close to ".".
-        !   d_map: array containing populations of donor slots which we try and redistribute/.
-        !   d_index: array containing index of entries in d_map in proc_map.
-        !   d_rank: array containing indices of d_map ranked in increasing population.
+        !   d_map: array containing populations of donor slots which we try and redistribute
+        !       to receiver processors. This is a reduced version of slot_list
+        !       containing only slots corresponding to donor processors.
+        !   d_index: slot_list(d_index(i)) = d_map(i), i.e. contains the
+        !       original index of the entry in slot_list/proc_map.
+        !   d_rank: array containing indices which correspond to the ranked (lowest to highest)
+        !       entries in d_map.
         !   donors/receivers: array containing donor/receiver processors
         !       (ones with above/below average population).
         !   up_thresh: Upper population threshold for load imbalance.
@@ -271,7 +275,10 @@ contains
 
     subroutine reduce_slots(donors, slot_list, proc_map, d_index, d_map)
 
-        ! Reduce the size of array we have to search when finding large/small slots to redistribute.
+        ! slot_list and proc_map are arrays of length load_balancing_slots*nprocs.
+        ! Only interested in slots corresponding to the donor processors, so put
+        ! these in smaller and more straightforwardly ordered array d_map, which can be sorted
+        ! etc.
 
         ! In:
         !   donors: array containing donor processors.
@@ -279,8 +286,11 @@ contains
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor.
         ! Out:
-        !   d_index: array containing index of entries in d_map in proc_map.
+        !   d_index: slot_list(d_index(i)) = d_map(i), i.e. contains the
+        !       original index of entry in slot_list/proc_map.
         !   d_map: array containing populations of donor slots which we try and redistribute
+        !       to receiver processors. This is a reduced version of slot_list
+        !       containing only slots corresponding to donor processors.
 
         integer, intent (in) :: donors(:)
         integer(lint), intent(in) :: slot_list(0:)
