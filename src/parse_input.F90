@@ -629,7 +629,6 @@ contains
                 end if
             end if
             if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
-            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator sys%CAS space must be non-negative.')
             if (load_balancing_slots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
             if (load_balancing_pop < 0) call stop_all(this, 'Load balancing population must be positive.')
             if (perc_imbalance < 0 .or. perc_imbalance > 1.0) &
