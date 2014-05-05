@@ -298,12 +298,12 @@ contains
         integer(lint), intent(out) :: d_map(:)
         integer, intent(out) :: d_index(:)
 
-        integer :: i, j, k
+        integer :: i, j, ndonor
 
         ! [review] - JSS: much easier to read if you use i/j/k for loop indices and use longer variable
         ! [review] - JSS: names for other quantities.
         ! [reply] - FM: OK.
-        k = 1
+        ndonor = 1
 
         ! [review] - JSS: it would be helpful to note that proc_map and slot_list are arrays of size nslots*nprocs and hence you're
         ! [review] - JSS: listing all slots which can be moved (if I understand what you're doing correctly!).
@@ -315,10 +315,10 @@ contains
             do j = 0, size(slot_list) - 1
                 ! Putting appropriate blocks of slots in d_map.
                 if (proc_map(j) == donors(i)) then
-                    d_map(k) = slot_list(j)
+                    d_map(ndonor) = slot_list(j)
                     ! Index is important as well.
-                    d_index(k) = j
-                    k = k + 1
+                    d_index(ndonor) = j
+                    ndonor = ndonor + 1
                 end if
             end do
         end do
@@ -351,45 +351,45 @@ contains
         integer, intent(out) :: donor_slots
         integer, allocatable, intent(out) :: rec_dummy(:), don_dummy(:)
 
-        integer ::  i, j, k, upper, lower
-        integer :: ierr
+        integer ::  i, j, upper, lower
+        integer :: ierr, nrecv, ndonor
         integer, allocatable, dimension(:) ::  tmp_rec, tmp_don, rec_sort
         integer :: rank_nparticles(nprocs)
 
-        allocate(tmp_rec(nprocs), stat=ierr)
+        allocate(tmp_rec(0:nprocs-1), stat=ierr)
         call check_allocate('tmp_rec', nprocs, ierr)
-        allocate(tmp_don(nprocs), stat=ierr)
+        allocate(tmp_don(0:nprocs-1), stat=ierr)
         call check_allocate('tmp_don', nprocs, ierr)
 
         ! [review] - JSS: initialise to 0 and then you don't have to use k-1 etc later.
         ! [review] - JSS: much easier to read if you use i/j/k for loop indices and use longer variable
         ! [review] - JSS: names for other quantities (e.g. nlow and nhigh or nrecv and ndonor).
         ! [reply] - FM: Will do.
-        k = 1
-        j = 1
+        ndonor = 0
+        nrecv = 0
 
         ! Find donor/receiver processors.
 
         do i = 0, size(procs_pop) - 1
             if (procs_pop(i) .lt. low_thresh) then
-                tmp_rec(j) = i
-                j = j + 1
+                tmp_rec(nrecv) = i
+                nrecv = nrecv + 1
             else if (procs_pop(i) .gt. up_thresh) then
-                tmp_don(k) = i
-                k = k + 1
+                tmp_don(ndonor) = i
+                ndonor = ndonor + 1
             end if
         end do
 
         ! Put processor ID into smaller array.
-        allocate(rec_dummy(j-1), stat=ierr)
-        call check_allocate('rec_dummy', j-1, ierr)
-        allocate(rec_sort(j-1), stat=ierr)
-        call check_allocate('rec_sort', j-1, ierr)
-        allocate(don_dummy(k-1), stat=ierr)
-        call check_allocate('don_dummy', k-1, ierr)
+        allocate(rec_dummy(nrecv), stat=ierr)
+        call check_allocate('rec_dummy', nrecv, ierr)
+        allocate(rec_sort(nrecv), stat=ierr)
+        call check_allocate('rec_sort', nrecv, ierr)
+        allocate(don_dummy(ndonor), stat=ierr)
+        call check_allocate('don_dummy', ndonor, ierr)
 
-        don_dummy = tmp_don(:k-1)
-        rec_dummy = tmp_rec(:j-1)
+        don_dummy = tmp_don(:ndonor)
+        rec_dummy = tmp_rec(:nrecv)
 
         ! Sort receiver processers.
         call insertion_rank_int(procs_pop, rank_nparticles, 0)
