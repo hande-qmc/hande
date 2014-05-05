@@ -14,7 +14,7 @@ contains
         ! 1. If doing load balancing then:
         !   * Find processors which have above/below average population
         !   * For processors with above average populations enter slots from slot_list
-        !   * into smaller array which is then ranked according to population.
+        !     into smaller array which is then ranked according to population.
         !   * Attempt to move these slots to processors with below average population.
         ! 2. Once proc_map is modified so that its entries contain the new locations
         !   of of donor slots, we then add these determinants to spawned walker list so
@@ -23,7 +23,7 @@ contains
 
         ! In/Out:
         ! proc_map: array which maps determinants to processors
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs) = processor
+        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)) = processor
 
         use parallel
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
@@ -141,7 +141,7 @@ contains
         !   low_thresh: lower population threshold for load imbalance.
         ! In/Out:
         !   proc_map: array which maps determinants to processors.
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs) = processor.
+        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)) = processor.
         !   procs_pop: array containing populations on each processor.
 
         use parallel, only: nprocs
@@ -191,7 +191,7 @@ contains
         !   donors: array containing donor processors.
         !   slot_list: array containing populations of slots across all processors.
         !   proc_map: array which maps determinants to processors.
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor.
+        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor.
         ! Out:
         !   d_index: array containing index of entries in d_map in proc_map.
         !   d_map: array containing populations of donor slots which we try and redistribute
@@ -230,7 +230,7 @@ contains
         !   upper/lower_thresh: upper/lower thresholds for load imblance i.e. how close to the average population
         !       we aspire to.
         !   proc_map: array which maps determinants to processors.
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor.
+        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor.
         ! Out:
         !   rec_dummy/don_dummy: arrays which contain donor/receivers processors.
         !   donor_slots: number of slots which we can donate, this varies as more entries in proc_map are
@@ -298,12 +298,11 @@ contains
 
         ! In:
         !   proc_map: array which maps determinants to processors.
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)=processor
+        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor
         !   load_balancing_slots: number of slots which we divide slot_pop (and similar arrays) into.
         !   spawn: spawn_t object.
         ! In/Out:
-        !   slot_pop: array containing population of slots in proc_map
-        !       processor dependendent.
+        !   slot_pop: array containing population of slots in proc_map. Processor dependendent.
 
         use parallel, only: nprocs, iproc
         use basis, only: basis_length
