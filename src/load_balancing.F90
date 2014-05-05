@@ -176,6 +176,10 @@ contains
         ! [review] - JSS: What about if there's a processor below the lower threshold?
         ! [review] - JSS: Shouldn't we do load balancing then?
         ! [review] - FM: You're right, hadn't considered that.
+        ! [reply] - FM: Actually, this might change things, I don't think the
+        ! [reply] - FM: current implementation could necessarily take this into
+        ! [reply] - FM: account without some modifications. So we always rely on some
+        ! [reply] - FM: processors having a population above the threshold.
         if (any(procs_pop > upper_threshold)) then
             dummy_tag = load_tag_doing
         else
