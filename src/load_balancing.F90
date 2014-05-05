@@ -1,6 +1,80 @@
 module load_balancing
 
-! Module for performing load balancing
+! Module for performing load balancing for FCIQMC and i-FCIQMC calculations.
+
+! Load balancing
+! ==============
+
+! In full configuration interaction (FCIQMC) and coupled cluster (CCMC) form of
+! quantum Monte Carlo, the wavefunction is sampled by a set of particles across
+! a discetized Hilbert space (the space of determinants/excitors).  We wish to
+! distribute the particles such that the load balance across N_p processors is as
+! even as possible.
+!
+! This is tricky: it is far more memory efficient to store the particles
+! according to their location (as there can be, and usually is, a number of
+! locations occupied by a large number of particles).  Further, the occupancy is
+! rather sparse to naively dividing the Hilbert space evenly between processors
+! according to (say) the determinant/excitor representation is not necessarily
+! a good idea.  We are further hampered by the fact that we don't know anything
+! a priori about the wavefunction.
+!
+! Hash-based load balancing
+! -------------------------
+!
+! By default a determinant (with some representation D) is assigned to
+! processor P out of N_p processors using a hash function:
+!
+! P = modulo(hash(D), N_p)
+!
+! If we assume:
+!
+! * the hash function gives a uniform distribution across processors
+! * the random assignment of determinants to processors results in the a small
+!    spread in total populations on each processor
+!
+! then this load balancing procedure will perform very well.
+!
+! In some cases these assumptions do not seem to hold.  How can we do better
+! without (dramatically) increasing the cost?
+!
+! Flexible hash-based load balancing
+! ----------------------------------------------
+!
+! First, let's generalise the above function:
+!
+! P = proc_map(modulo(hash(D), X*N_p))
+!
+! where X (load_balancing_slots) is an integer constant and proc_map is an X*N_p array.
+! This is only slightly more expensive to compute (by 1 multiplication and 1 memory load).
+!
+! Let's start by initialising proc_map such that each processor index occurs
+! X times (either uniformly, randomly or in some cyclic fashion).  (If X=1 and
+! proc_map(i)=i, this is identical to the current procedure.)
+!
+! How does this help?  Well, let's consider a simulation where the load balancing
+! not particularly uniform.  We can dynamically change proc_map, say by donating
+! a slot from a processor with an above-average population to a processor with
+! a below-average population.  Before the simulation can proceed, determinants on
+! the above-average processors will need to be reassigned and (potentially) sent
+! to their new location.
+!
+! Some comments:
+!
+! * one should not redistribute frequently, especially at the start of
+!    a calculation.
+! * after equilibriation, no further redistribution should be required and
+!    the procedure described above should be extremely efficient.
+! * Increasing X increases the flexibility but also the cost of determining the
+!    load balancing.
+! * This is not very smart load balancing: it does not give you control to force
+!    each processor to have almost the same number of particles.  What it does do
+!    is introduce just a little more flexibility into the algorithm (in the hope
+!    that this will overcome the worst of the problems.
+! * The proc_map can be stored in the restart file (especially useful if
+!    restarting a calculation on the same number of processors).  Load balancing
+!    should probably be performed at the start of a calculation if the population
+!    is held constant.
 
 ! [review] - JSS: I'm trying to be better about top-level comments (compare ccmc.f90 to fciqmc.f90).
 ! [review] - JSS: Perhaps a general outline of the load balancing scheme could be placed here?
