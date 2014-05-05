@@ -33,3 +33,4 @@ submit.*
 __pycache__
 _build/
 build/
+.vimrc
