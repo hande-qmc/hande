@@ -441,13 +441,13 @@ real(p) :: X__=0, Xo_=0, X_o=0
 ! Are we doing load balancing? Default false
 logical :: doing_load_balancing = .false.
 ! Number of slots walker lists are initially subdivided into for proc_map
-! Default = 1
+! Default = 20. This reverts to 1 when run in serial.
 ! [review] - JSS: if this is 1, does the load balancing reduce to the original non-balanced case?
 ! [reply] - FM: yes, I defaulted to 1 originally to take care of the serial case.
 ! [reply] - FM: I will set the default before the initialisation of proc_map.
 ! [review] - JSS: if so, then should a sane default be chosen if load balancing is turned on?
 ! [reply] - FM: Will do.
-integer :: load_balancing_slots = 1
+integer :: load_balancing_slots = 20
 ! Population which must be reached before load balancing is attempted.
 ! Default = 1000.
 integer(lint) :: load_balancing_pop = 1000
