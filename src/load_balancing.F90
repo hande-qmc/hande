@@ -40,6 +40,7 @@ contains
                                load_balancing_tag, load_tag_done, perc_imbalance, load_attempts,  &
                                write_load_info
         use ranking, only: insertion_rank_int
+        use checking, only: check_allocate, check_deallocate
 
         integer, intent(inout) :: proc_map(:)
 
@@ -81,11 +82,14 @@ contains
         ! Number of processors we can donate to.
         r_siz = size(receivers)
         ! Smaller list of donor slot populations.
-        allocate(d_map(d_map_size))
+        allocate(d_map(d_map_size), stat=ierr)
+        call check_allocate('d_map', d_map_size, ierr)
         ! Contains ranked version of d_map.
-        allocate(d_rank(d_map_size))
+        allocate(d_rank(d_map_size), stat=ierr)
+        call check_allocate('d_rank', d_map_size, ierr)
         ! Contains index in proc_map of donor slots.
-        allocate(d_index(d_map_size))
+        allocate(d_index(d_map_size), stat=ierr)
+        call check_allocate('d_index', d_map_size, ierr)
 
         ! Put donor slots into array so we can sort them.
         call reduce_slots(donors, slot_list, proc_map, d_index, d_map)
@@ -112,6 +116,16 @@ contains
 
         ! [review] - JSS: Please explicitly deallocate allocated memory.
         ! [reply] - FM: will do.
+        deallocate(donors, stat=ierr)
+        call check_deallocate('donors', ierr)
+        deallocate(receivers, stat=ierr)
+        call check_deallocate('receivers', ierr)
+        deallocate(d_map, stat=ierr)
+        call check_deallocate('d_map', ierr)
+        deallocate(d_rank, stat=ierr)
+        call check_deallocate('d_rank', ierr)
+        deallocate(d_index, stat=ierr)
+        call check_deallocate('d_index', ierr)
 
     end subroutine do_load_balancing
 
@@ -294,6 +308,7 @@ contains
 
         use parallel, only: nprocs
         use ranking, only: insertion_rank_int
+        use checking, only: check_allocate, check_deallocate
 
         integer(lint), intent(in) :: procs_pop(0:)
         integer, intent(in) :: proc_map(0:)
@@ -302,11 +317,14 @@ contains
         integer, allocatable, intent(out) :: rec_dummy(:), don_dummy(:)
 
         integer ::  i, j, k, upper, lower
+        integer :: ierr
         integer, allocatable, dimension(:) ::  tmp_rec, tmp_don, rec_sort
         integer :: rank_nparticles(nprocs)
 
-        allocate(tmp_rec(nprocs))
-        allocate(tmp_don(nprocs))
+        allocate(tmp_rec(nprocs), stat=ierr)
+        call check_allocate('tmp_rec', nprocs, ierr)
+        allocate(tmp_don(nprocs), stat=ierr)
+        call check_allocate('tmp_don', nprocs, ierr)
 
         ! [review] - JSS: initialise to 0 and then you don't have to use k-1 etc later.
         ! [review] - JSS: much easier to read if you use i/j/k for loop indices and use longer variable
@@ -328,9 +346,12 @@ contains
         end do
 
         ! Put processor ID into smaller array.
-        allocate(rec_dummy(j-1))
-        allocate(rec_sort(j-1))
-        allocate(don_dummy(k-1))
+        allocate(rec_dummy(j-1), stat=ierr)
+        call check_allocate('rec_dummy', j-1, ierr)
+        allocate(rec_sort(j-1), stat=ierr)
+        call check_allocate('rec_sort', j-1, ierr)
+        allocate(don_dummy(k-1), stat=ierr)
+        call check_allocate('don_dummy', k-1, ierr)
 
         don_dummy = tmp_don(:k-1)
         rec_dummy = tmp_rec(:j-1)
@@ -354,6 +375,12 @@ contains
 
         ! [review] - JSS: Please explicitly deallocate allocated memory.
         ! [reply] - FM: will do.
+        deallocate(rec_sort, stat=ierr)
+        call check_deallocate('rec_sort', ierr)
+        deallocate(tmp_rec, stat=ierr)
+        call check_deallocate('tmp_rec', ierr)
+        deallocate(tmp_don, stat=ierr)
+        call check_deallocate('tmp_don', ierr)
 
     end subroutine find_processors
 

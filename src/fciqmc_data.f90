@@ -732,6 +732,14 @@ contains
             deallocate(estimator_numerators, stat=ierr)
             call check_deallocate('estimator_numerators', ierr)
         end if
+        if (allocated(proc_map)) then
+            deallocate(proc_map, stat=ierr)
+            call check_deallocate('proc_map', ierr)
+        end if
+        if (allocated(nparticles_proc)) then
+            deallocate(nparticles_proc, stat=ierr)
+            call check_deallocate('nparticles_proc', ierr)
+        end if
         call dealloc_spawn_t(qmc_spawn)
 
     end subroutine end_fciqmc
