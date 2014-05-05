@@ -71,8 +71,8 @@ contains
 
         ! [review] - JSS: don't need real(...) as an integer*real will return a real.
         ! [reply] - FM: ok.
-        up_thresh = pop_av + int(real(pop_av*perc_imbalance))
-        low_thresh = pop_av - int(real(pop_av*perc_imbalance))
+        up_thresh = pop_av + int(pop_av*perc_imbalance)
+        low_thresh = pop_av - int(pop_av*perc_imbalance)
 
         ! Find donor/receiver processors.
         call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, proc_map, receivers, donors, d_map_size)
@@ -135,7 +135,7 @@ contains
         integer :: i, upper_threshold
         integer(lint) :: procs_pop(nprocs)
 
-        upper_threshold = average_pop + int(real(average_pop*perc_imbalance))
+        upper_threshold = average_pop + int(average_pop*perc_imbalance)
         procs_pop(:nprocs) = nparticles_proc(1,:nprocs)
 
         ! [review] - JSS: What about if there's a processor below the lower threshold?
