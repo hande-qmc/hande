@@ -95,24 +95,14 @@ contains
         call reduce_slots(donors, slot_list, proc_map, d_index, d_map)
         call insertion_rank_int(d_map, d_rank, 0)
 
-        if (write_load_info .and. parent) then
-            write (6, '(1X, "#",2X,"Load balancing info:")')
-            write (6, '(1X, "# ",1X,a12,7X,a12,7X,a8)') 'Max particles', "Min particles", "Min slot"
-            write (6, '(1X, "#",1X,3(es17.10,2X))') maxval(real(nparticles_proc(1,:))), &
-                minval(real(nparticles_proc(1,:))), real(d_map(d_index(1)))
-            ! [review] - JSS: could we also print out this information after the load balancing, so we know how good it's been?
-            ! [reply] - FM: yes, it would require modifying nparticles_proc in
-            ! [reply] - FM: redistribute slots, but that's not much of an issue. I could make
-            ! [reply] - FM: this a subroutine as it's being called twice, but min_slot is fairly meaningless at
-            ! [reply] - FM: that point. (It's use is seing if no load balancing can take place
-            ! [reply] - FM: because the minimum number of transfered walkers would move the
-            ! [reply] - FM: donor processor past the threshold).
-        end if
+        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_map(1))
 
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, &
                                 low_thresh, proc_map, nparticles_proc(1,:nprocs))
         load_attempts = load_attempts + 1
+
+        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_map(1))
 
         ! [review] - JSS: Please explicitly deallocate allocated memory.
         ! [reply] - FM: will do.
@@ -128,6 +118,37 @@ contains
         call check_deallocate('d_index', ierr)
 
     end subroutine do_load_balancing
+
+    subroutine write_load_balancing_info(nparticles_proc, min_slot)
+
+        ! Write out information about the most and least heavily populated
+        ! processor. Also write out the smallest available slot we can donate,
+        ! which is useful to see why load balancing can't occur i.e. if the
+        ! percentage imbalance needs to be lowered.
+
+        ! In:
+        !    nparticles_proc: array containing population of walkers on each
+        !       processor
+        !    min_slot: smallest slot of walkers which can be donated from a
+        !       donor processor. Only really has meaning before load balancing
+        !       takes place.
+
+        integer(lint), intent(in) :: nparticles_proc(:,:), min_slot
+
+        write (6, '(1X, "#",2X,"Load balancing info:")')
+        write (6, '(1X, "# ",1X,a18,2X,a18,2X,a12)') 'Max # of particles', "Min # of particles", "Min slot pop"
+        write (6, '(1X, "#",1X,3(es17.10,3X))') maxval(real(nparticles_proc(1,:))), &
+            minval(real(nparticles_proc(1,:))), real(min_slot)
+        ! [review] - JSS: could we also print out this information after the load balancing, so we know how good it's been?
+        ! [reply] - FM: yes, it would require modifying nparticles_proc in
+        ! [reply] - FM: redistribute slots, but that's not much of an issue. I could make
+        ! [reply] - FM: this a subroutine as it's being called twice, but min_slot is fairly meaningless at
+        ! [reply] - FM: that point. (It's use is seing if no load balancing can take place
+        ! [reply] - FM: because the minimum number of transfered walkers would move the
+        ! [reply] - FM: donor processor past the threshold).
+        ! [reply] - FM: Actually I think I was doing the modification to nparticles_proc anyway..
+
+    end subroutine write_load_balancing_info
 
     subroutine check_imbalance(average_pop, dummy_tag)
 
