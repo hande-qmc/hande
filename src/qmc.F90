@@ -195,6 +195,7 @@ contains
         call check_allocate('walker_data', size(walker_data), ierr)
         ! [review] - JSS: please check but nprocs is set to 1 if compiled without MPI.
         ! [review] - JSS: remove conditional compilation code.
+        ! [reply] - FM: nprocs is set to 1, will remove.
 #ifdef PARALLEL
         ! [review] - JSS: you should be able to use this bit even without MPI.
         allocate(nparticles_proc(sampling_size, nprocs), stat=ierr)

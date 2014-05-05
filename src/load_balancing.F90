@@ -5,6 +5,7 @@ module load_balancing
 ! [review] - JSS: I'm trying to be better about top-level comments (compare ccmc.f90 to fciqmc.f90).
 ! [review] - JSS: Perhaps a general outline of the load balancing scheme could be placed here?
 ! [review] - JSS: A (shorter?) version of the notes I made would be fine.
+! [reply] - FM: I'll probably insert a shortened version of your notes.
 
 use const , only: lint
 
@@ -24,6 +25,7 @@ contains
         !   of of donor slots, we then add these determinants to spawned walker list so
         !   that they can be moved to their new processor.
         ! [review] - JSS: load_tag is now set to a different constant in the enumerator rather than 1...
+        ! [reply] - FM: Good addition.
         ! 3. Set load_tag to be other than one to prevent another call this report loop
 
         ! In/Out:
@@ -62,10 +64,13 @@ contains
         call MPI_AllReduce(slot_pop, slot_list, size(proc_map), MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
         ! [review] - JSS: procs_pop?
+        ! [reply] - FM: I deleted this array (87b450a2ad89 I think), forgot to
+        ! [reply] - FM: remove this line.
         ! Find population per processor, store in procs_pop.
         pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
 
         ! [review] - JSS: don't need real(...) as an integer*real will return a real.
+        ! [reply] - FM: ok.
         up_thresh = pop_av + int(real(pop_av*perc_imbalance))
         low_thresh = pop_av - int(real(pop_av*perc_imbalance))
 
@@ -92,6 +97,12 @@ contains
             write (6, '(1X, "#",1X,3(es17.10,2X))') maxval(real(nparticles_proc(1,:))), &
                 minval(real(nparticles_proc(1,:))), real(d_map(d_index(1)))
             ! [review] - JSS: could we also print out this information after the load balancing, so we know how good it's been?
+            ! [reply] - FM: yes, it would require modifying nparticles_proc in
+            ! [reply] - FM: redistribute slots, but that's not much of an issue. I could make
+            ! [reply] - FM: this a subroutine as it's being called twice, but min_slot is fairly meaningless at
+            ! [reply] - FM: that point. (It's use is seing if no load balancing can take place
+            ! [reply] - FM: because the minimum number of transfered walkers would move the
+            ! [reply] - FM: donor processor past the threshold).
         end if
 
         ! Attempt to modify proc map to get more even population distribution.
@@ -100,6 +111,7 @@ contains
         load_attempts = load_attempts + 1
 
         ! [review] - JSS: Please explicitly deallocate allocated memory.
+        ! [reply] - FM: will do.
 
     end subroutine do_load_balancing
 
@@ -128,6 +140,7 @@ contains
 
         ! [review] - JSS: What about if there's a processor below the lower threshold?
         ! [review] - JSS: Shouldn't we do load balancing then?
+        ! [review] - FM: You're right, hadn't considered that.
         if (any(procs_pop > upper_threshold)) then
             dummy_tag = load_tag_doing
         else
@@ -141,6 +154,8 @@ contains
         ! Attempt to modify entries in proc_map to get a more even population distribution across processors.
 
         ! [review] - JSS: Please delete/change if you don't agree with the comment!
+        ! [reply] - FM: I think it's true and gives some basis for why we're
+        ! [reply] - FM: doing what we're doing.
         ! Working out the optimal distribution of slots is an NP-hard problem so we instead just
         ! use simple heuristics.
 
@@ -151,7 +166,16 @@ contains
         ! In:
         !   [review] - JSS: I don't understant what d_* arrays hold.  Perhaps examples would aid the reader?
         !   [review] - JSS: e.g. d_map(i) = ....
+        !   [reply] - FM: d_map(i) contains the population of a slot we can
+        !   [reply] - FM: donate from a donor processor to a receiver processor
+        !   [reply] - FM: perhaps d_pop is a better name?
+        !   [reply] - FM: d_index(i) contains the index of the slot in proc_map
+        !   [reply] - FM: (technically slot_list as proc_map contains processor ids,
+        !   [reply] - FM: slot list contains the corresponding populations of the slots) to which the ith entry in d_map corresponds.
+        !   [reply] - FM: So, slot_list(d_index(i)) = d_map(i), is probably more straightforward, but we use d_index more to find entries in proc_map.
+        !   [reply] - FM: d_rank contains the indices which correspond to the ranked (lowest to highest) entries in d_map. Need the index for d_index etc.
         !   [review] - JSS: ending sentence on a /?
+        !   [review] - FM: "/" is close to ".".
         !   d_map: array containing populations of donor slots which we try and redistribute/.
         !   d_index: array containing index of entries in d_map in proc_map.
         !   d_rank: array containing indices of d_map ranked in increasing population.
@@ -189,6 +213,8 @@ contains
                 ! Modify donor population.
                 donor_pop = procs_pop(proc_map(d_index(pos))) - d_map(pos)
                 ! [review] - JSS: 'adding subtracting' doesn't make sense.
+                ! [reply] - FM: meant adding or subtracting.
+                ! [reply] - FM: I'm not sure this comment adds anything. Delete it?
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (donor_pop .ge. low_thresh .and. new_pop .le. up_thresh)  then
                     ! Changing processor population.
@@ -227,10 +253,14 @@ contains
 
         ! [review] - JSS: much easier to read if you use i/j/k for loop indices and use longer variable
         ! [review] - JSS: names for other quantities.
+        ! [reply] - FM: OK.
         k = 1
 
         ! [review] - JSS: it would be helpful to note that proc_map and slot_list are arrays of size nslots*nprocs and hence you're
         ! [review] - JSS: listing all slots which can be moved (if I understand what you're doing correctly!).
+        ! [reply] - FM: yes, I'm finding the slots in proc map which correspond to the donor processors and storing both the number of
+        ! [reply] - FM: walkers in each of these slots and the associated index in the proc_map array.
+        ! [reply] - FM: I'll write comments to this effect at the beginning of this subroutine.
 
         do i = 1, size(donors)
             do j = 0, size(slot_list) - 1
@@ -281,6 +311,7 @@ contains
         ! [review] - JSS: initialise to 0 and then you don't have to use k-1 etc later.
         ! [review] - JSS: much easier to read if you use i/j/k for loop indices and use longer variable
         ! [review] - JSS: names for other quantities (e.g. nlow and nhigh or nrecv and ndonor).
+        ! [reply] - FM: Will do.
         k = 1
         j = 1
 
@@ -322,6 +353,7 @@ contains
         end do
 
         ! [review] - JSS: Please explicitly deallocate allocated memory.
+        ! [reply] - FM: will do.
 
     end subroutine find_processors
 
