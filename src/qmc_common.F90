@@ -355,6 +355,8 @@ contains
 
         if (load_balancing_tag == load_tag_doing) then
             call redistribute_particles(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
+            ! Modify load_balancing_tag so that there are no further attempts at
+            ! load balancing this report loop.
             load_balancing_tag = load_tag_done
         end if
 

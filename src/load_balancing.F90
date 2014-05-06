@@ -102,7 +102,8 @@ contains
         ! [reply] - FM: Good addition.
         ! [review] - JSS: Please change the comment!  I guess load_balancing_tag is set to load_tag_done?
         ! [reply] - FM: Oh, sorry.
-        ! 3. Set load_tag to be other than one to prevent another call this report loop
+        ! [reply] - FM: Actually, the tag isn't modified here, it's modified in redistribute_load_balancing_dets.
+        ! [reply] - FM: I'll amend the comments there.
 
         ! In/Out:
         ! proc_map: array which maps determinants to processors
@@ -113,8 +114,7 @@ contains
         use spawn_data, only: spawn_t
         use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
                                nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
-                               load_balancing_tag, load_tag_done, percent_imbal, load_attempts,  &
-                               write_load_info
+                               percent_imbal, load_attempts, write_load_info
         use ranking, only: insertion_rank_lint
         use checking, only: check_allocate, check_deallocate
 
@@ -124,12 +124,12 @@ contains
         integer(lint) :: slot_list(0:size(proc_map)-1)
 
         integer, allocatable :: donors(:), receivers(:)
-        integer, allocatable :: d_rank(:), d_index(:)
-        integer(lint), allocatable :: d_map(:)
+        integer, allocatable :: d_slot_rank(:), d_slot_index(:)
+        integer(lint), allocatable :: d_slot_pop(:)
 
         integer :: ierr
         integer(lint) :: pop_av
-        integer :: d_map_size
+        integer :: d_slot_pop_size
         integer(lint) :: up_thresh, low_thresh
 
         slot_list = 0
@@ -145,7 +145,6 @@ contains
         ! [reply] - FM: remove this line.
         ! [review] - JSS: still to do...
         ! [reply] - FM: Sorry.
-        ! Find population per processor, store in procs_pop.
         pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
 
         ! [review] - JSS: don't need real(...) as an integer*real will return a real.
@@ -154,30 +153,30 @@ contains
         low_thresh = pop_av - int(pop_av*percent_imbal)
 
         ! Find donor/receiver processors.
-        call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, proc_map, receivers, donors, d_map_size)
+        call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, proc_map, receivers, donors, d_slot_pop_size)
 
         ! Smaller list of donor slot populations.
-        allocate(d_map(d_map_size), stat=ierr)
-        call check_allocate('d_map', d_map_size, ierr)
-        ! Contains ranked version of d_map.
-        allocate(d_rank(d_map_size), stat=ierr)
-        call check_allocate('d_rank', d_map_size, ierr)
+        allocate(d_slot_pop(d_slot_pop_size), stat=ierr)
+        call check_allocate('d_slot_pop', d_slot_pop_size, ierr)
+        ! Contains ranked version of d_slot_pop.
+        allocate(d_slot_rank(d_slot_pop_size), stat=ierr)
+        call check_allocate('d_slot_rank', d_slot_pop_size, ierr)
         ! Contains index in proc_map of donor slots.
-        allocate(d_index(d_map_size), stat=ierr)
-        call check_allocate('d_index', d_map_size, ierr)
+        allocate(d_slot_index(d_slot_pop_size), stat=ierr)
+        call check_allocate('d_slot_index', d_slot_pop_size, ierr)
 
         ! Put donor slots into array so we can sort them.
-        call reduce_slots(donors, slot_list, proc_map, d_index, d_map)
-        call insertion_rank_lint(d_map, d_rank)
+        call reduce_slots(donors, slot_list, proc_map, d_slot_index, d_slot_pop)
+        call insertion_rank_lint(d_slot_pop, d_slot_rank)
 
-        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_map(1))
+        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(1))
 
         ! Attempt to modify proc map to get more even population distribution.
-        call redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, &
+        call redistribute_slots(d_slot_pop, d_slot_index, d_slot_rank, donors, receivers, up_thresh, &
                                 low_thresh, proc_map, nparticles_proc(1,:nprocs))
         load_attempts = load_attempts + 1
 
-        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_map(1))
+        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(1))
 
         ! [review] - JSS: Please explicitly deallocate allocated memory.
         ! [reply] - FM: will do.
@@ -185,12 +184,12 @@ contains
         call check_deallocate('donors', ierr)
         deallocate(receivers, stat=ierr)
         call check_deallocate('receivers', ierr)
-        deallocate(d_map, stat=ierr)
-        call check_deallocate('d_map', ierr)
-        deallocate(d_rank, stat=ierr)
-        call check_deallocate('d_rank', ierr)
-        deallocate(d_index, stat=ierr)
-        call check_deallocate('d_index', ierr)
+        deallocate(d_slot_pop, stat=ierr)
+        call check_deallocate('d_slot_pop', ierr)
+        deallocate(d_slot_rank, stat=ierr)
+        call check_deallocate('d_slot_rank', ierr)
+        deallocate(d_slot_index, stat=ierr)
+        call check_deallocate('d_slot_index', ierr)
 
     end subroutine do_load_balancing
 
@@ -272,7 +271,7 @@ contains
 
     end subroutine check_imbalance
 
-    subroutine redistribute_slots(d_map, d_index, d_rank, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
+    subroutine redistribute_slots(d_slot_pop, d_slot_index, d_slot_rank, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
 
         ! Attempt to modify entries in proc_map to get a more even population distribution across processors.
 
@@ -282,34 +281,34 @@ contains
         ! Working out the optimal distribution of slots is an NP-hard problem so we instead just
         ! use simple heuristics.
 
-        ! Slots from d_map are currently donated in increasing slot population.
+        ! Slots from d_slot_pop are currently donated in increasing slot population.
         ! This is carried out while the donor processor's population is above a specified threshold
         ! or the receiver processor's population is below a certain threshold.
 
         ! In:
         !   [review] - JSS: I don't understant what d_* arrays hold.  Perhaps examples would aid the reader?
-        !   [review] - JSS: e.g. d_map(i) = ....
-        !   [reply] - FM: d_map(i) contains the population of a slot we can
+        !   [review] - JSS: e.g. d_slot_pop(i) = ....
+        !   [reply] - FM: d_slot_pop(i) contains the population of a slot we can
         !   [reply] - FM: donate from a donor processor to a receiver processor
         !   [reply] - FM: perhaps d_pop is a better name?
         !   [reply] - JSS: How about donor_slot_pop or d_slot_pop?
-        !   [reply] - FM: d_index(i) contains the index of the slot in proc_map
+        !   [reply] - FM: d_slot_index(i) contains the index of the slot in proc_map
         !   [reply] - JSS: donor_slot_index or d_slot_index?
         !   [reply] - FM: (technically slot_list as proc_map contains processor ids,
-        !   [reply] - FM: slot list contains the corresponding populations of the slots) to which the ith entry in d_map corresponds.
-        !   [reply] - FM: So, slot_list(d_index(i)) = d_map(i), is probably more straightforward, but we use d_index more to find entries in proc_map.
-        !   [reply] - FM: d_rank contains the indices which correspond to the ranked (lowest to highest) entries in d_map. Need the index for d_index etc.
+        !   [reply] - FM: slot list contains the corresponding populations of the slots) to which the ith entry in d_slot_pop corresponds.
+        !   [reply] - FM: So, slot_list(d_slot_index(i)) = d_slot_pop(i), is probably more straightforward, but we use d_slot_index more to find entries in proc_map.
+        !   [reply] - FM: d_slot_rank contains the indices which correspond to the ranked (lowest to highest) entries in d_slot_pop. Need the index for d_slot_index etc.
         !   [reply] - JSS: This makes more sense.  Turn your reply into a set of comments and that will be fine, I think.
         !   [reply] - FM: I think I've done this, I'll rename them soon.
         !   [review] - JSS: ending sentence on a /?
         !   [review] - FM: "/" is close to ".".
-        !   d_map: array containing populations of donor slots which we try and redistribute
-        !       to receiver processors. This is a reduced version of slot_list
-        !       containing only slots corresponding to donor processors.
-        !   d_index: slot_list(d_index(i)) = d_map(i), i.e. contains the
+        !   d_slot_pop: array containing populations of donor slots which we try and redistribute
+        !       to receiver processors. This is a reduced version of slot_list containing
+        !       only slots corresponding to donor processors.
+        !   d_slot_index: slot_list(d_slot_index(i)) = d_slot_pop(i), i.e. contains the
         !       original index of the entry in slot_list/proc_map.
-        !   d_rank: array containing indices which correspond to the ranked (lowest to highest)
-        !       entries in d_map.
+        !   d_slot_rank: array containing indices which correspond to the ranked (lowest to highest)
+        !       entries in d_slot_pop.
         !   donors/receivers: array containing donor/receiver processors
         !       (ones with above/below average population).
         !   up_thresh: Upper population threshold for load imbalance.
@@ -322,8 +321,8 @@ contains
         use parallel, only: nprocs
         use fciqmc_data, only: load_balancing_slots
 
-        integer(lint), intent(in) :: d_map(:)
-        integer, intent(in) ::  d_index(:), d_rank(:)
+        integer(lint), intent(in) :: d_slot_pop(:)
+        integer, intent(in) ::  d_slot_index(:), d_slot_rank(:)
         integer, intent(in) :: donors(:), receivers(:)
         integer(lint), intent(in) :: up_thresh, low_thresh
         integer(lint), intent(inout) :: procs_pop(0:)
@@ -335,14 +334,14 @@ contains
         donor_pop = 0
         new_pop = 0
 
-        do i = 1, size(d_map)
+        do i = 1, size(d_slot_pop)
             ! Loop over receivers.
-            pos = d_rank(i)
+            pos = d_slot_rank(i)
             do j = 1, size(receivers)
                 ! Try to add this to below average population.
-                new_pop = d_map(pos) + procs_pop(receivers(j))
+                new_pop = d_slot_pop(pos) + procs_pop(receivers(j))
                 ! Modify donor population.
-                donor_pop = procs_pop(proc_map(d_index(pos))) - d_map(pos)
+                donor_pop = procs_pop(proc_map(d_slot_index(pos))) - d_slot_pop(pos)
                 ! [review] - JSS: 'adding subtracting' doesn't make sense.
                 ! [reply] - FM: meant adding or subtracting.
                 ! [reply] - FM: I'm not sure this comment adds anything. Delete it?
@@ -350,10 +349,10 @@ contains
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (donor_pop .ge. low_thresh .and. new_pop .le. up_thresh)  then
                     ! Changing processor population.
-                    procs_pop(proc_map(d_index(pos))) = donor_pop
+                    procs_pop(proc_map(d_slot_index(pos))) = donor_pop
                     procs_pop(receivers(j)) = new_pop
                     ! Updating proc_map.
-                    proc_map(d_index(pos)) = receivers(j)
+                    proc_map(d_slot_index(pos)) = receivers(j)
                     ! Leave the j loop, could be more than one receiver.
                     exit
                  end if
@@ -362,11 +361,11 @@ contains
 
     end subroutine redistribute_slots
 
-    subroutine reduce_slots(donors, slot_list, proc_map, d_index, d_map)
+    subroutine reduce_slots(donors, slot_list, proc_map, d_slot_index, d_slot_pop)
 
         ! slot_list and proc_map are arrays of length load_balancing_slots*nprocs.
         ! Only interested in slots corresponding to the donor processors, so put
-        ! these in smaller and more straightforwardly ordered array d_map, which can be sorted
+        ! these in smaller and more straightforwardly ordered array d_slot_pop, which can be sorted
         ! etc.
 
         ! In:
@@ -375,17 +374,17 @@ contains
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor.
         ! Out:
-        !   d_index: slot_list(d_index(i)) = d_map(i), i.e. contains the
+        !   d_slot_index: slot_list(d_slot_index(i)) = d_slot_pop(i), i.e. contains the
         !       original index of entry in slot_list/proc_map.
-        !   d_map: array containing populations of donor slots which we try and redistribute
+        !   d_slot_pop: array containing populations of donor slots which we try and redistribute
         !       to receiver processors. This is a reduced version of slot_list
         !       containing only slots corresponding to donor processors.
 
         integer, intent (in) :: donors(:)
         integer(lint), intent(in) :: slot_list(0:)
         integer, intent (in) :: proc_map(0:)
-        integer(lint), intent(out) :: d_map(:)
-        integer, intent(out) :: d_index(:)
+        integer(lint), intent(out) :: d_slot_pop(:)
+        integer, intent(out) :: d_slot_index(:)
 
         integer :: i, j, ndonor
 
@@ -402,11 +401,11 @@ contains
 
         do i = 1, size(donors)
             do j = 0, size(slot_list) - 1
-                ! Putting appropriate blocks of slots in d_map.
+                ! Putting appropriate blocks of slots in d_slot_pop.
                 if (proc_map(j) == donors(i)) then
-                    d_map(ndonor) = slot_list(j)
+                    d_slot_pop(ndonor) = slot_list(j)
                     ! Index is important as well.
-                    d_index(ndonor) = j
+                    d_slot_index(ndonor) = j
                     ndonor = ndonor + 1
                 end if
             end do
