@@ -1,4 +1,4 @@
-Module energy_evaluation
+module energy_evaluation
 
 ! This module contains procedure for evaluating and estimating the energy of
 ! a system based upon the population dynamics of an FCIQMC calculation.
@@ -8,6 +8,9 @@ use const
 implicit none
 
 contains
+
+    ! [todo] - Update the types in the update energy procedures (especially in the MPI calls)
+    ! [todo] - when merging with the real coefficients work.  Sorry, this is going to be a horrible conflict.
 
     subroutine update_energy_estimators(ntot_particles_old)
 
@@ -102,6 +105,7 @@ contains
             call MPI_IRecv(ir_sum(i*(sampling_size+7)+1:(i+1)*(sampling_size+7)), sampling_size+7, MPI_REAL8, &
                            i, 789, MPI_COMM_WORLD, req_ir_r(i), ierr)
         end do
+        ! [review] - JSS: Waitall only blocks on the *current* processor, correct?
         call MPI_Waitall(nprocs, req_ir_r, stat_ir_r, ierr)
         call MPI_Waitall(nprocs, req_ir_s, stat_ir_s, ierr)
 

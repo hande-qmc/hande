@@ -51,8 +51,12 @@ contains
         integer :: nspawned, ndeath, non_block_spawn(2)
         type(excit) :: connection
         real(p) :: hmatel
+        ! [review] - JSS: ir (and similarly named quantities) are really badly named.
+        ! [review] - JSS: This is my fault but ir really isn't meaningful.
+        ! [review] - JSS: Could it (and similarly named quantities) be given a better name?
         real(dp) :: ir(sampling_size+7)
         integer :: send_counts(0:nprocs-1)
+        ! [review] - JSS: derived type for the non-blocking energy evaluation variables?
         integer :: req_data_s(0:nprocs-1), req_ir_s(0:nprocs-1)
 
         logical :: soft_exit
@@ -71,6 +75,7 @@ contains
         if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
         ! For non-blocking communications we need to initially send zero walkers
         ! to all processors.
+        ! [review] - JSS: explain why.  (Essentially so you don't have to special case the receive later on...)
         if (non_blocking_comm) then
             send_counts = 0
             call non_blocking_send(qmc_spawn, send_counts, req_data_s)
@@ -158,6 +163,7 @@ contains
             call receive_spawned_walkers(received_list, req_data_s)
             call annihilate_wrapper_received_list(received_list, initiator_approximation)
             call annihilate_main_list_wrapper(sys, initiator_approximation, 0, received_list)
+            ! [review] - JSS: is this call necessary as we don't actually use the energy estimators after this point...
             call update_energy_estimators_recv(req_ir_s, nparticles_old)
         end if
 
@@ -211,6 +217,8 @@ contains
         type(det_info), intent(inout) :: cdet
         integer, intent(inout) :: ndeath
 
+        ! [todo] - Check types with Nick's real coefficient work (which will probably be
+        ! [todo] - merged before this).
         real(p), target :: tmp_data(sampling_size)
         type(excit) :: connection
         real(p) :: hmatel
@@ -225,6 +233,8 @@ contains
             ! Need to generate spawned walker data to perform evolution.
             tmp_data(1) = sc0_ptr(sys, cdet%f) - H00
             cdet%data => tmp_data
+
+            ! [todo] - Population encoding and decoding when merged with the real coefficient work.
 
             call decoder_ptr(sys, cdet%f, cdet)
 

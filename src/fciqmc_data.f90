@@ -455,7 +455,8 @@ contains
         !    2 for the timestep algorithm).
         ! In (optional):
         !    non_block_spawn: number of spawned particles during MC cycle.
-        !    For use with non-blocking communications.
+        !    For use with non-blocking communications.  Used instead of qmc_spawn
+        !    to determine the number of successful spawning events if present.
 
         use parallel, only: nprocs
 

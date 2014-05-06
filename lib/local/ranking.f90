@@ -76,6 +76,7 @@ contains
 
     end subroutine insertion_rank_rp
 
+    ! [review] - JSS: as in load balancing branch, tolerance is not needed here.
     pure subroutine insertion_rank_int(arr, rank, tolerance)
 
         ! Rank an int array in increasing order using the insertion sort

@@ -247,7 +247,7 @@ contains
 
         integer :: i
 
-        do i = 1, ubound(spawn_arr,dim=1)
+        do i = 3, ubound(spawn_arr,dim=1)
             call annihilate_wrapper_spawn_t_single(spawn_arr(i), tinitiator)
         end do
 
@@ -324,6 +324,7 @@ contains
 
         ! Here we annihilate among the whole list.
         if (spawn%head(thread_id,0) > 0) then
+            ! [review] - JSS: code duplication with annihilate_wrapper_spawned_list.
             call qsort(spawn%sdata, spawn%head(thread_id, 0), spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
@@ -359,6 +360,8 @@ contains
         integer :: i
         integer, parameter :: thread_id = 0
 
+        ! [review] - JSS: I don't think this is compatible with the changes to spawn_t%head and spawn_t%head_start.
+        ! [review] - JSS: See corresponding changes in comm_spawn_t.
         do i = 0, nprocs-1
             send_disp(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i)
         end do
@@ -556,6 +559,7 @@ contains
         integer :: stat_data_s(MPI_STATUS_SIZE, nprocs)
 
 
+        ! [todo] - JSS: update the MPI types before merging in with real coefficients work.
         start = 1
         do i = 0, nprocs-1
             ! Probe incoming messages. We receive the messages as they arrive
@@ -615,6 +619,8 @@ contains
         integer :: i, start_point, end_point
         integer(i0), pointer :: tmp_data(:,:)
         integer :: ierr
+
+        ! [todo] - JSS: update the MPI types before merging in with real coefficients work.
 
         ! We want to copy the spawned walker list to another store for communication.
         ! This is to avoid any potential accesses of the send buffer. Potentially need
