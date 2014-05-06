@@ -111,7 +111,7 @@ contains
         use spawn_data, only: spawn_t
         use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
                                nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
-                               load_balancing_tag, load_tag_done, perc_imbalance, load_attempts,  &
+                               load_balancing_tag, load_tag_done, percent_imbal, load_attempts,  &
                                write_load_info
         use ranking, only: insertion_rank_lint
         use checking, only: check_allocate, check_deallocate
@@ -127,7 +127,7 @@ contains
 
         integer :: ierr
         integer(lint) :: pop_av
-        integer ::  d_siz, r_siz, d_map_size
+        integer :: d_map_size
         integer(lint) :: up_thresh, low_thresh
 
         slot_list = 0
@@ -146,15 +146,12 @@ contains
 
         ! [review] - JSS: don't need real(...) as an integer*real will return a real.
         ! [reply] - FM: ok.
-        up_thresh = pop_av + int(pop_av*perc_imbalance)
-        low_thresh = pop_av - int(pop_av*perc_imbalance)
+        up_thresh = pop_av + int(pop_av*percent_imbal)
+        low_thresh = pop_av - int(pop_av*percent_imbal)
 
         ! Find donor/receiver processors.
         call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, proc_map, receivers, donors, d_map_size)
-        ! Number of processors we can donate from.
-        d_siz = size(donors)
-        ! Number of processors we can donate to.
-        r_siz = size(receivers)
+
         ! Smaller list of donor slot populations.
         allocate(d_map(d_map_size), stat=ierr)
         call check_allocate('d_map', d_map_size, ierr)
@@ -236,16 +233,14 @@ contains
 
         use parallel, only: nprocs
         use fciqmc_data, only: nparticles_proc, load_tag_initial, &
-                               load_tag_doing, perc_imbalance
+                               load_tag_doing, percent_imbal
 
         integer(lint), intent(in) :: average_pop
         integer, intent(out) :: dummy_tag
 
         integer :: i, upper_threshold
-        integer(lint) :: procs_pop(nprocs)
 
-        upper_threshold = average_pop + int(average_pop*perc_imbalance)
-        procs_pop(:nprocs) = nparticles_proc(1,:nprocs)
+        upper_threshold = average_pop + int(average_pop*percent_imbal)
 
         ! [review] - JSS: What about if there's a processor below the lower threshold?
         ! [review] - JSS: Shouldn't we do load balancing then?
@@ -254,7 +249,7 @@ contains
         ! [reply] - FM: current implementation could necessarily take this into
         ! [reply] - FM: account without some modifications. So we always rely on some
         ! [reply] - FM: processors having a population above the threshold.
-        if (any(procs_pop > upper_threshold)) then
+        if (any(nparticles_proc(1,:nprocs) > upper_threshold)) then
             dummy_tag = load_tag_doing
         else
             dummy_tag = load_tag_initial

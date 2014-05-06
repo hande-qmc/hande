@@ -483,8 +483,8 @@ contains
                 call readi(load_balancing_slots)
             case('LOAD_BALANCING_POP')
                 call readli(load_balancing_pop)
-            case('PERC_IMBALANCE')
-                call readf(perc_imbalance)
+            case('PERCENT_IMBAL')
+                call readf(percent_imbal)
             case('MAX_LOAD_ATTEMPTS')
                 call readi(max_load_attempts)
             case('WRITE_LOAD_INFO')
@@ -631,7 +631,7 @@ contains
             if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
             if (load_balancing_slots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
             if (load_balancing_pop < 0) call stop_all(this, 'Load balancing population must be positive.')
-            if (perc_imbalance < 0 .or. perc_imbalance > 1.0) &
+            if (percent_imbal < 0 .or. percent_imbal > 1.0) &
                 call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
             if (max_load_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
         end if
@@ -906,7 +906,7 @@ contains
         call mpi_bcast(doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_balancing_slots, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_balancing_pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
-        call mpi_bcast(perc_imbalance, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(percent_imbal, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(max_load_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_load_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

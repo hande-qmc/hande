@@ -452,12 +452,12 @@ integer :: load_balancing_slots = 20
 ! Default = 1000.
 integer(lint) :: load_balancing_pop = 1000
 ! Percentage load imbalance we aim to achieve when performing load balancing.
-! i.e. min_pop = (1-perc_imbalance)*av_pop, max_pop = (1+perc_imbalance)*av_pop.
+! i.e. min_pop = (1-percent_imbal)*av_pop, max_pop = (1+percent_imbal)*av_pop.
 ! Default = 0.05
 ! [review] - JSS: perc->percent please!  I find perc a bit of a mental hiccup (I couldn't
 ! [review] - JSS: immediately guess what it was short for...)
 ! [reply] - FM: Ok.
-real(p) :: perc_imbalance = 0.05
+real(p) :: percent_imbal = 0.05
 ! Maximum number of load balancing attempts.
 ! Default = 2.
 integer :: max_load_attempts = 2
