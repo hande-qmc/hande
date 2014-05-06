@@ -560,7 +560,7 @@ contains
         !    comment: if true, then prefix the line with a #.
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
-        use calc, only: dmqmc_full_r2, dmqmc_rdm_r2
+        use calc, only: dmqmc_full_r2, dmqmc_rdm_r2, non_blocking_comm
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
@@ -569,7 +569,13 @@ contains
         logical :: comment
         integer :: mc_cycles, i, j
 
-        mc_cycles = ireport*ncycles
+        ! For non-blocking communications we print out the nth report loop
+        ! after the (n+1)st iteration. Adjust mc_cycles accordingly
+        if (.not. non_blocking_comm) then
+            mc_cycles = ireport*ncycles
+        else
+            mc_cycles = (ireport-1)*ncycles
+        end if
 
         if (comment) then
             write (6,'(1X,"#",3X)', advance='no')

@@ -416,11 +416,7 @@ contains
             ! [review] - JSS: also, should probably set D0_population from D0_population_cycle, given the code
             ! [review] - JSS: for non-blocking and without MPI...
             ! [reply] - FM: This would remove the if statement below I gather.
-            if (parent) then
-                D0_population = D0_population*10
-            else
-                D0_population = 0
-            end if
+            D0_population = D0_population_cycle*ncycles
             call local_energy_estimators(ir)
             call update_energy_estimators_send(ir, req_ir_s)
         else
