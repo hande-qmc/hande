@@ -31,6 +31,7 @@ contains
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use qmc_common, only: initialise_proc_map
+        use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
 
@@ -46,9 +47,8 @@ contains
         ! [review] - JSS: shouldn't this be something like
         ! if (nprocs == 1 .oro. .not. doing_load_balancing) load_balancing_slots = 1
         ! [review] - JSS: in order to maintain current behaviour without load balancing?
-#ifndef PARALLEL
-        load_balancing_slots = 1
-#endif
+        ! [reply] - FM: You're right.
+        if (nprocs == 1 .or. .not. doing_load_balancing) load_balancing_slots = 1
         call initialise_proc_map(load_balancing_slots, proc_map)
 
         ! Initialise data
