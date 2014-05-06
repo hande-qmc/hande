@@ -101,6 +101,7 @@ contains
         ! [review] - JSS: load_tag is now set to a different constant in the enumerator rather than 1...
         ! [reply] - FM: Good addition.
         ! [review] - JSS: Please change the comment!  I guess load_balancing_tag is set to load_tag_done?
+        ! [reply] - FM: Oh, sorry.
         ! 3. Set load_tag to be other than one to prevent another call this report loop
 
         ! In/Out:
@@ -143,6 +144,7 @@ contains
         ! [reply] - FM: I deleted this array (87b450a2ad89 I think), forgot to
         ! [reply] - FM: remove this line.
         ! [review] - JSS: still to do...
+        ! [reply] - FM: Sorry.
         ! Find population per processor, store in procs_pop.
         pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
 
@@ -253,6 +255,15 @@ contains
         ! [reply] - FM: processors having a population above the threshold.
         ! [reply] - JSS: How hard would this be?  Where does the current implementation assume there's something above the
         ! [reply] - JSS: threshold?  In redistribute_slots?
+        ! [reply] - FM: The current implementation finds donor processors (ones with a population above the threshold)
+        ! [reply] - FM: and also receiver processors (population below the threshold) and tries to donate between them.
+        ! [reply] - FM: If we only have a processor below the threshold and none above it then no load balancing could
+        ! [reply] - FM: currently take place, as we can't donate any slots. Unless I'm missing something?
+        ! [reply] - FM: Maybe the donor definition is too rigid and we should try to include all slots which when subtracted
+        ! [reply] - FM: from the total population on a given processor leaves that processor's population within the thresholds?
+        ! [reply] - FM: With preference given to slots which are from processors with a population above the threshold?
+        ! [reply] - FM: Perhaps that would then allow for checking if a processor is below the threshold?
+
         if (any(nparticles_proc(1,:nprocs) > upper_threshold)) then
             dummy_tag = load_tag_doing
         else
@@ -289,6 +300,7 @@ contains
         !   [reply] - FM: So, slot_list(d_index(i)) = d_map(i), is probably more straightforward, but we use d_index more to find entries in proc_map.
         !   [reply] - FM: d_rank contains the indices which correspond to the ranked (lowest to highest) entries in d_map. Need the index for d_index etc.
         !   [reply] - JSS: This makes more sense.  Turn your reply into a set of comments and that will be fine, I think.
+        !   [reply] - FM: I think I've done this, I'll rename them soon.
         !   [review] - JSS: ending sentence on a /?
         !   [review] - FM: "/" is close to ".".
         !   d_map: array containing populations of donor slots which we try and redistribute
