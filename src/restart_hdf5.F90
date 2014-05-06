@@ -42,6 +42,7 @@ module restart_hdf5
     !            populations           # population(s) on each determinant
     !            data                  # data associated with each determinant
     !            total population      # total population for each particle type.
+    !            processor map         # processor map used for load balancing
     !      state/
     !            shift                 # shift (energy offset/population control)
     !            ncycles               # number of Monte Carlo cycles performed
@@ -119,6 +120,7 @@ module restart_hdf5
                                dshift = 'shift',                    &
                                dncycles = 'ncycles',                &
                                dtot_pop = 'total population',       &
+                               dproc_map = 'processor map',         &
                                dref = 'reference determinant',      &
                                dref_pop = 'reference population @ t-1', &
                                dhsref = 'Hilbert space reference determinant'
@@ -209,7 +211,7 @@ module restart_hdf5
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data, &
                                    shift, f0, hs_f0, tot_walkers,               &
-                                   D0_population_cycle
+                                   D0_population_cycle, proc_map
             use calc, only: calc_type
 
             type(restart_info_t), intent(in) :: ri
@@ -282,6 +284,7 @@ module restart_hdf5
 
                 call hdf5_write(subgroup_id, ddata, kinds, shape(walker_data(:,:tot_walkers)), &
                                  walker_data(:,:tot_walkers))
+                call hdf5_write(subgroup_id, dproc_map, kinds, shape(proc_map), proc_map)
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
@@ -341,7 +344,8 @@ module restart_hdf5
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data,  &
                                    shift, tot_nparticles, f0, hs_f0,             &
-                                   D0_population, mc_cycles_done, tot_walkers
+                                   D0_population, mc_cycles_done, tot_walkers,   &
+                                   proc_map
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
 
@@ -437,6 +441,8 @@ module restart_hdf5
                 call hdf5_read(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
 
                 call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
+
+                call hdf5_read(subgroup_id, dproc_map, kinds, shape(proc_map), proc_map)
 
                 call h5gclose_f(subgroup_id, ierr)
 
