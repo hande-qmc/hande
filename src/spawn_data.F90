@@ -325,6 +325,14 @@ contains
         ! Here we annihilate among the whole list.
         if (spawn%head(thread_id,0) > 0) then
             ! [review] - JSS: code duplication with annihilate_wrapper_spawned_list.
+            ! [reply] - FM: I think there's an issue with how I have currently
+            ! [reply] - FM: implemented the annihilation.
+            ! [reply] - FM: Currently the received list is compressed before it
+            ! [reply] - FM: is sent. This would mean that OpenMP couldn't be
+            ! [reply] - FM: used to evolve the received list. Could send the
+            ! [reply] - FM: uncompressed list, evolve and then compress
+            ! [reply] - FM: during annihilation. Would mean changing around
+            ! [reply] - FM: these two subroutines a bit. But yes, code duplication will fix.
             call qsort(spawn%sdata, spawn%head(thread_id, 0), spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
