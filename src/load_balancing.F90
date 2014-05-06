@@ -100,6 +100,7 @@ contains
         !   that they can be moved to their new processor.
         ! [review] - JSS: load_tag is now set to a different constant in the enumerator rather than 1...
         ! [reply] - FM: Good addition.
+        ! [review] - JSS: Please change the comment!  I guess load_balancing_tag is set to load_tag_done?
         ! 3. Set load_tag to be other than one to prevent another call this report loop
 
         ! In/Out:
@@ -141,6 +142,7 @@ contains
         ! [review] - JSS: procs_pop?
         ! [reply] - FM: I deleted this array (87b450a2ad89 I think), forgot to
         ! [reply] - FM: remove this line.
+        ! [review] - JSS: still to do...
         ! Find population per processor, store in procs_pop.
         pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
 
@@ -249,6 +251,8 @@ contains
         ! [reply] - FM: current implementation could necessarily take this into
         ! [reply] - FM: account without some modifications. So we always rely on some
         ! [reply] - FM: processors having a population above the threshold.
+        ! [reply] - JSS: How hard would this be?  Where does the current implementation assume there's something above the
+        ! [reply] - JSS: threshold?  In redistribute_slots?
         if (any(nparticles_proc(1,:nprocs) > upper_threshold)) then
             dummy_tag = load_tag_doing
         else
@@ -277,11 +281,14 @@ contains
         !   [reply] - FM: d_map(i) contains the population of a slot we can
         !   [reply] - FM: donate from a donor processor to a receiver processor
         !   [reply] - FM: perhaps d_pop is a better name?
+        !   [reply] - JSS: How about donor_slot_pop or d_slot_pop?
         !   [reply] - FM: d_index(i) contains the index of the slot in proc_map
+        !   [reply] - JSS: donor_slot_index or d_slot_index?
         !   [reply] - FM: (technically slot_list as proc_map contains processor ids,
         !   [reply] - FM: slot list contains the corresponding populations of the slots) to which the ith entry in d_map corresponds.
         !   [reply] - FM: So, slot_list(d_index(i)) = d_map(i), is probably more straightforward, but we use d_index more to find entries in proc_map.
         !   [reply] - FM: d_rank contains the indices which correspond to the ranked (lowest to highest) entries in d_map. Need the index for d_index etc.
+        !   [reply] - JSS: This makes more sense.  Turn your reply into a set of comments and that will be fine, I think.
         !   [review] - JSS: ending sentence on a /?
         !   [review] - FM: "/" is close to ".".
         !   d_map: array containing populations of donor slots which we try and redistribute
@@ -327,6 +334,7 @@ contains
                 ! [review] - JSS: 'adding subtracting' doesn't make sense.
                 ! [reply] - FM: meant adding or subtracting.
                 ! [reply] - FM: I'm not sure this comment adds anything. Delete it?
+                ! [reply] - JSS: sure.
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (donor_pop .ge. low_thresh .and. new_pop .le. up_thresh)  then
                     ! Changing processor population.

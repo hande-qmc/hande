@@ -43,6 +43,9 @@ contains
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(nbasis, ms_in, sys)
+        ! [review] - JSS: shouldn't this be something like
+        ! if (nprocs == 1 .oro. .not. doing_load_balancing) load_balancing_slots = 1
+        ! [review] - JSS: in order to maintain current behaviour without load balancing?
 #ifndef PARALLEL
         load_balancing_slots = 1
 #endif
