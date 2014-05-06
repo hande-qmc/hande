@@ -80,7 +80,7 @@ contains
     ! [reply] - FM: I'm actually not sure I need this anymore, the dependency
     ! [reply] - FM: was removed a while ago. It might come in use in the future.
     ! [reply] - FM: What do you think?
-    pure subroutine insertion_rank_int(arr, rank, tolerance)
+    pure subroutine insertion_rank_int(arr, rank)
 
         ! Rank an int array in increasing order using the insertion sort
         ! algorithm.
@@ -111,18 +111,11 @@ contains
         !    NOTE: rank must have at least the dimensions of arr on input.
 
         integer, intent(in) :: arr(:)
-        real(p), intent(in), optional :: tolerance
         integer, intent(inout) :: rank(:) ! inout to avoid automatic deallocation
                                           ! of an allocatable array on entry
 
         integer :: i, j, tmp
         real(p) :: tol
-
-        if (present(tolerance)) then
-            tol = tolerance
-        else
-            tol = 0.0_p
-        end if
 
         forall (i=1:size(arr)) rank(i) = i
 
@@ -130,7 +123,7 @@ contains
             j = i - 1
             tmp = rank(i)
             do while ( j >= 1 )
-                if (arr(rank(j)) - arr(tmp) < tol) exit
+                if (arr(rank(j)) - arr(tmp) < 0) exit
                 rank(j+1) = rank(j)
                 j = j - 1
             end do
