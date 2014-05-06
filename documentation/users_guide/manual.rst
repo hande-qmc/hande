@@ -1240,6 +1240,50 @@ the result but can have a significant impact on performance.
     sub-matrices, where :math:`n` is the block size, which are the distributed
     over the processors in a cyclic fashion.  Applicable only to FCI
     calculations.
+**doing_load_balancing**
+    Attempt to dynamically modify the hashing of determinants to processors
+    so as to get a more even distribution of walkers across processors.
+    See top-level comments in load_balancing.F90 for details.
+**load_balancing_slots**
+    Integer.
+
+    Default: 20.
+
+    Set the number of slots the walker list hash range is divided into.
+    proc_map then contains N_p*load_balancing_slots number of slots.
+    Setting this to too large a value will affect performance but could
+    potentially result in a better distribution of walkers.
+**load_balancing_pop**
+    Long integer.
+
+    Default 1000.
+
+    Attempt to perform load balancing after the total number of walkers
+    across processors is greater than load_balancing_pop. This is a
+    system dependent variable and should be set so that the population
+    is roughly stable at this value.
+**percent_imbal**
+    Real.
+
+    Default 0.05.
+
+    Desired percentage imbalance between the most/least populated processor
+    and the average population. So, min_pop ~ (1-percent_imbal)*av_pop and
+    max_pop ~ (1+percent_imbal)*av_pop.
+**max_load_attempts**
+    Integer.
+
+    Default 2.
+
+    Load balancing will be attempted once per report loop until max_load_attempts
+    is reached.
+**write_load_info**
+    Default false.
+
+    Write out the population of the most and least heavily populated processor
+    before and after load balancing is carried out. Also print out the
+    minimum slot population on the most populated processor which will
+    indicate if load balancing is possible.
 
 Calculation options: folded spectrum options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
