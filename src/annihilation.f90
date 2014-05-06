@@ -36,6 +36,7 @@ contains
         call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
 
         ! [review] - JSS: call annihilate_main_list_wrapper in order to remove duplicated code?
+        ! [reply] - FM: Yes.
         if (qmc_spawn%head(thread_id,0) > 0) then
             ! Have spawned walkers on this processor.
 
@@ -101,6 +102,7 @@ contains
         ! [review] - JSS: However, it would greatly aid someone not so familiar
         ! [review] - JSS: with this approach if there were comments which indicated
         ! [review] - JSS: where (and when) psips that are being annihilated came from.
+        ! [reply] - FM: Will do, it is a bit disjointed.
 
         ! Perform annihilation inside received list.
         call annihilate_wrapper_received_list(received_list, tinitiator)
@@ -182,6 +184,7 @@ contains
         !       list.
         ! In (optional):
         !    [review] - JSS: specify default value (ie 1).
+        !    [review] - FM: ok.
         !    lower_bound: starting point we annihiliate from in spawn_t object.
 
         use basis, only: total_basis_length
@@ -199,6 +202,7 @@ contains
         nannihilate = 0
         if (present(lower_bound)) then
             ! [review] - JSS: counterintuitive to start from lower_bound+1 rather than lower_bound, given the interface comments.
+            ! [review] - FM: Now that you mention it it is. Will change.
             spawn_start = lower_bound + 1
         else
             spawn_start = 1
@@ -238,6 +242,8 @@ contains
     subroutine annihilate_main_list_initiator(spawn, lower_bound)
 
         ! [review] - JSS: as in annihilate_main_list for lower_bound.
+        ! [reply] - FM: Do you mean add a comment to say we are annihilating
+        ! [reply] - FM: taking a lower bound into account?
 
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.

@@ -106,6 +106,8 @@ contains
                            i, 789, MPI_COMM_WORLD, req_ir_r(i), ierr)
         end do
         ! [review] - JSS: Waitall only blocks on the *current* processor, correct?
+        ! [reply] - FM: Correct, perhaps I should add a comment to allay
+        ! [reply] - FM: any fears?
         call MPI_Waitall(nprocs, req_ir_r, stat_ir_r, ierr)
         call MPI_Waitall(nprocs, req_ir_s, stat_ir_s, ierr)
 

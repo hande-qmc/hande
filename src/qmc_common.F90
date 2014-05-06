@@ -352,6 +352,7 @@ contains
 
     ! [review] - JSS: It seems spawn_elsewhere, ir and req_ir_s are often sent together.
     ! [review] - JSS: Is it worth creating a derived type to package them conveniently together?
+    ! [review] - FM: Probably, I'll look into it.
     subroutine initial_fciqmc_status(sys, spawn_elsewhere, ir, req_ir_s)
 
         ! Calculate the projected energy based upon the initial walker
@@ -362,6 +363,7 @@ contains
         !    sys: system being studied.
         ! In (optional):
         ! [review] - JSS: is this necessary?  It's only passed in as 0 as far as I can see...
+        ! [reply] - FM: Not in this subroutine no. It's necessary for calculating the total population during a report loop.
         !    spawn_elsewhere: number of walkers spawned from current processor
         !       to all other processors except current one.
         ! Out (Optional):
@@ -411,8 +413,12 @@ contains
         if (present(ir)) then
             ! [review] - JSS: why is D0_population being overwritten here?  Why *10?  Is that
             ! [review] - JSS: to account for averaging over the report loop (which might not be 10 iterations long)?
+            ! [reply] - FM: We need to print out the initial report loop quantities at t = 0.
+            ! [reply] - FM: But we don't receive them until t = 1. To reuse the code for non-blocking report loops
+            ! [reply] - FM: I need to multiply by ncycles (not 10!)
             ! [review] - JSS: also, should probably set D0_population from D0_population_cycle, given the code
             ! [review] - JSS: for non-blocking and without MPI...
+            ! [reply] - FM: This would remove the if statement below I gather.
             if (parent) then
                 D0_population = D0_population*10
             else

@@ -362,6 +362,7 @@ contains
 
         ! [review] - JSS: I don't think this is compatible with the changes to spawn_t%head and spawn_t%head_start.
         ! [review] - JSS: See corresponding changes in comm_spawn_t.
+        ! [reply] - FM: You're right, I forgot about this during the merge.
         do i = 0, nprocs-1
             send_disp(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i)
         end do

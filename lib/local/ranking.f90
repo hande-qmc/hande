@@ -77,6 +77,9 @@ contains
     end subroutine insertion_rank_rp
 
     ! [review] - JSS: as in load balancing branch, tolerance is not needed here.
+    ! [reply] - FM: I'm actually not sure I need this anymore, the dependency
+    ! [reply] - FM: was removed a while ago. It might come in use in the future.
+    ! [reply] - FM: What do you think?
     pure subroutine insertion_rank_int(arr, rank, tolerance)
 
         ! Rank an int array in increasing order using the insertion sort
