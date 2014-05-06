@@ -359,7 +359,7 @@ contains
         !    non_block_spawn: number of spawned particles on current processor
         !      during current MC cycle.
 
-        use parallel, only: nprocs, iproc
+        use parallel, only: nprocs, iproc, nthreads
 
         type(spawn_t), intent(in) :: spawn
         integer, intent(out) :: send_disp(0:)
@@ -371,8 +371,10 @@ contains
         ! [review] - JSS: I don't think this is compatible with the changes to spawn_t%head and spawn_t%head_start.
         ! [review] - JSS: See corresponding changes in comm_spawn_t.
         ! [reply] - FM: You're right, I forgot about this during the merge.
+        ! [reply] - FM: So everywhere I assumed spawn%head_start(thread_id,i) =
+        ! [reply] - FM: start of spawned list I need to modify with a + nthreads - 1 correct?
         do i = 0, nprocs-1
-            send_disp(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i)
+            send_disp(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i) + nthreads - 1
         end do
         ! Need to copy the number of walkers we've spawned during current time
         ! step for estimating spawning rate.

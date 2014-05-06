@@ -101,7 +101,7 @@ contains
         ! list which needs to be annihilated with the main list on this processor.
         call annihilate_wrapper_spawned_list(qmc_spawn, tinitiator)
         ! Annihilate portion of spawned list with main list.
-        call annihilate_main_list_wrapper(sys, tinitiator, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+1)
+        call annihilate_main_list_wrapper(sys, tinitiator, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+nthreads)
         ! Communicate walkers spawned onto other processors during this
         ! evolution step to their new processors.
         call non_blocking_send(qmc_spawn, send_counts, req_data_s)
