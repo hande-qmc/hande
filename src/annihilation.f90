@@ -37,29 +37,8 @@ contains
 
         ! [review] - JSS: call annihilate_main_list_wrapper in order to remove duplicated code?
         ! [reply] - FM: Yes.
-        if (qmc_spawn%head(thread_id,0) > 0) then
-            ! Have spawned walkers on this processor.
 
-            if (tinitiator) then
-                call annihilate_main_list_initiator(qmc_spawn)
-            else
-                call annihilate_main_list(qmc_spawn)
-            end if
-
-            ! Remove determinants with zero walkers on them from the main
-            ! walker list.
-            call remove_unoccupied_dets()
-
-            ! Insert new walkers into main walker list.
-            call insert_new_walkers(sys, qmc_spawn)
-
-        else
-
-            ! No spawned walkers so we only have to check to see if death has
-            ! killed the entire population on a determinant.
-            call remove_unoccupied_dets()
-
-        end if
+        call annihilate_main_list_wrapper(sys, tinitiator, qmc_spawn)
 
     end subroutine direct_annihilation
 
@@ -104,26 +83,32 @@ contains
         ! [review] - JSS: where (and when) psips that are being annihilated came from.
         ! [reply] - FM: Will do, it is a bit disjointed.
 
-        ! Perform annihilation inside received list.
+        ! Perform annihilation inside received list. This involves annihilating
+        ! walkers which were spawned onto this processor from other processors
+        ! (not including the current processor) from  the previous iteration.
+        ! They have since been evolved so they can be annihilated with the main list.
+        ! First annihilate within the received_list.
         call annihilate_wrapper_received_list(received_list, tinitiator)
-        ! Annihilate received list with main list.
-        call annihilate_main_list_wrapper(sys, tinitiator, 0, received_list)
+        ! Annihilate with main list.
+        call annihilate_main_list_wrapper(sys, tinitiator, received_list)
 
-        ! Need to calculate how many walkers we are going to send elsewhere as spawn%head
-        ! changes meaning upon annihilation.
+        ! Need to calculate how many walkers we are going to send to all other
+        ! processors. Need to do it now as spawn%head changes meaning upon annihilation.
         call calculate_displacements(qmc_spawn, send_counts, non_block_spawn)
 
-        ! Perform annihilation within the spawned walker list. We also locate, compress and sort
-        ! section of spawned list which needs to be annihilated with main list on this processor.
+        ! Perform annihilation within the spawned walker list.
+        ! This involves locating, compressing and sorting the section of the spawned
+        ! list which needs to be annihilated with the main list on this processor.
         call annihilate_wrapper_spawned_list(qmc_spawn, tinitiator)
         ! Annihilate portion of spawned list with main list.
-        call annihilate_main_list_wrapper(sys, tinitiator, qmc_spawn%head_start(thread_id, iproc), qmc_spawn)
-        ! Communicate walkers.
+        call annihilate_main_list_wrapper(sys, tinitiator, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+1)
+        ! Communicate walkers spawned onto other processors during this
+        ! evolution step to their new processors.
         call non_blocking_send(qmc_spawn, send_counts, req_data_s)
 
     end subroutine direct_annihilation_non_blocking
 
-    subroutine annihilate_main_list_wrapper(sys, tinitiator, lower_bound, spawn)
+    subroutine annihilate_main_list_wrapper(sys, tinitiator, spawn, lower_bound)
 
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process during non-blocking
@@ -132,23 +117,31 @@ contains
         ! In:
         !    sys: system being studied.
         !    tinitiator: true if the initiator approximation is being used.
-        !    lower_bound: starting point we annihiliate from in spawn_t object.
         ! In/Out:
         !    spawn: spawn_t object containing spawned particles. For non-blocking
         !       communications a subsection of the spawned walker list will be annihilated
         !       with the main list, otherwise the entire list will be annihilated and merged.
+        ! In (optional):
+        !     lower_bound: starting point we annihiliate from in spawn_t object.
 
         use system, only: sys_t
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: tinitiator
-        integer, intent(in) :: lower_bound
+        integer, optional, intent(in) :: lower_bound
         type(spawn_t), intent(inout) :: spawn
 
         integer, parameter :: thread_id = 0
+        integer :: spawn_start
 
-        if (spawn%head(thread_id,0) > lower_bound) then
+        if (present(lower_bound)) then
+            spawn_start = lower_bound
+        else
+            spawn_start = 1
+        end if
+
+        if (spawn%head(thread_id,0) >= spawn_start) then
             ! Have spawned walkers on this processor.
 
             if (tinitiator) then
@@ -186,6 +179,7 @@ contains
         !    [review] - JSS: specify default value (ie 1).
         !    [review] - FM: ok.
         !    lower_bound: starting point we annihiliate from in spawn_t object.
+        !       Default: 1.
 
         use basis, only: total_basis_length
         use search, only: binary_search
@@ -203,7 +197,7 @@ contains
         if (present(lower_bound)) then
             ! [review] - JSS: counterintuitive to start from lower_bound+1 rather than lower_bound, given the interface comments.
             ! [review] - FM: Now that you mention it it is. Will change.
-            spawn_start = lower_bound + 1
+            spawn_start = lower_bound
         else
             spawn_start = 1
         end if
@@ -246,7 +240,7 @@ contains
         ! [reply] - FM: taking a lower bound into account?
 
         ! Annihilate particles in the main walker list with those in the spawned
-        ! walker list.
+        ! walker list starting from lower bound in spawn.
 
         ! This version is for the initiator algorithm, where we also need to
         ! discard spawned walkers which are on previously unoccupied determinants
@@ -270,7 +264,7 @@ contains
 
         nannihilate = 0
         if (present(lower_bound)) then
-            spawn_start = lower_bound + 1
+            spawn_start = lower_bound
         else
             spawn_start = 1
         end if
@@ -420,8 +414,8 @@ contains
         ! search through an ever-decreasing number of elements.
 
         if (present(lower_bound)) then
-            spawn_start = lower_bound + 1
-            disp = lower_bound
+            spawn_start = lower_bound
+            disp = lower_bound - 1
         else
             spawn_start = 1
             disp = 0

@@ -166,7 +166,7 @@ contains
             ! Need to receive walkers sent from final iteration and merge into main list.
             call receive_spawned_walkers(received_list, req_data_s)
             call annihilate_wrapper_received_list(received_list, initiator_approximation)
-            call annihilate_main_list_wrapper(sys, initiator_approximation, 0, received_list)
+            call annihilate_main_list_wrapper(sys, initiator_approximation, received_list)
             ! [review] - JSS: is this call necessary as we don't actually use the energy estimators after this point...
             ! [reply] - FM: Not entirely sure, I wanted to ensure the final send of information was received so that
             ! [reply] - FM: all the mpi wraps up nicely. Also, might be necessary for restart functionality, which I haven't thought about yet.
