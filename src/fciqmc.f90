@@ -91,7 +91,7 @@ contains
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
         if (non_blocking_comm) then
-            call initial_fciqmc_status(sys, 0, ir, req_ir_s)
+            call initial_fciqmc_status(sys, ir, req_ir_s)
         else
             call initial_fciqmc_status(sys)
         end if

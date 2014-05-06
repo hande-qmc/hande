@@ -353,7 +353,7 @@ contains
     ! [review] - JSS: It seems spawn_elsewhere, ir and req_ir_s are often sent together.
     ! [review] - JSS: Is it worth creating a derived type to package them conveniently together?
     ! [review] - FM: Probably, I'll look into it.
-    subroutine initial_fciqmc_status(sys, spawn_elsewhere, ir, req_ir_s)
+    subroutine initial_fciqmc_status(sys, ir, req_ir_s)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -364,8 +364,6 @@ contains
         ! In (optional):
         ! [review] - JSS: is this necessary?  It's only passed in as 0 as far as I can see...
         ! [reply] - FM: Not in this subroutine no. It's necessary for calculating the total population during a report loop.
-        !    spawn_elsewhere: number of walkers spawned from current processor
-        !       to all other processors except current one.
         ! Out (Optional):
         !    ir: array containing local quantities, such as initial walker population.
         !    req_ir_s: array of requests for non_blocking_send.
@@ -379,7 +377,6 @@ contains
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
 
         type(sys_t), intent(in) :: sys
-        integer, optional, intent(in) :: spawn_elsewhere
         real(dp), optional, intent(out) :: ir(:)
         integer, optional, intent(out) :: req_ir_s(:)
 
@@ -424,7 +421,7 @@ contains
             else
                 D0_population = 0
             end if
-            call local_energy_estimators(ir, spawn_elsewhere)
+            call local_energy_estimators(ir)
             call update_energy_estimators_send(ir, req_ir_s)
         else
             call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
