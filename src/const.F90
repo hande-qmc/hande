@@ -5,7 +5,6 @@ module const
 #include "cdefs.h"
 
 use, intrinsic :: iso_c_binding, only: c_int32_t, c_int64_t
-use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
 
 implicit none
 
