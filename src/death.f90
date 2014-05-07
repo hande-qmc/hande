@@ -42,6 +42,8 @@ contains
         ! [reply] - NSB: I could create a copy, scale it down by real_factor and work with this,
         ! [reply] - NSB: but it would have to be scaled back up in order to perform the stochastic
         ! [reply] - NSB: rounding in this routine anyway.
+        ! [reply] - JSS: I realised that just after finishing the review! A quick comment that the
+        ! [reply] - JSS: fraction of death is independent of the scaling, perhaps??
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
 

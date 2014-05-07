@@ -279,6 +279,8 @@ contains
         ! [reply] - NSB: approach. So I think you would have to loop through sdata forwards
         ! [reply] - NSB: to avoid this? I decided it would be better just to create this new
         ! [reply] - NSB: function. But happy to move it to insert_new_walkers if you prefer.
+        ! [reply] - JSS: Sounds complicated.  Leave as it is for now (perhaps with a comment
+        ! [reply] - JSS: for future optimisation?).  We should only be looping over a small number anyway.
         do i = 1, qmc_spawn%head(thread_id,0)
 
             ! spawned_population holds the spawned population in its encoded

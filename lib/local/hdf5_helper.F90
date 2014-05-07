@@ -63,6 +63,9 @@ module hdf5_helper
             ! [reply] - NSB: so I had to remove the parameter statement and set h5_int_4 in a
             ! [reply] - NSB: routine like this one, so in the end I decided it wasn't worth it and
             ! [reply] - NSB: have changed it back.
+            ! [reply] - JSS: Sorry, I meant the first argument should be a parameter (as you now do)
+            ! [reply] - JSS: rather than doing h5kind_to_type in a parameter declaration, which isn't
+            ! [reply] - JSS: possible (not least because it can only be doing after HDF5 library has been opened).
             kinds%i32 = h5kind_to_type(int_4, H5_INTEGER_KIND)
             kinds%i64 = h5kind_to_type(int_8, H5_INTEGER_KIND)
             kinds%p = h5kind_to_type(p, H5_REAL_KIND)
