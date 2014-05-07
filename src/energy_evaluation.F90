@@ -31,59 +31,52 @@ contains
 
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
-        real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7)
+        real(dp) :: rep_loop_loc(sampling_size+7), rep_loop_sum(sampling_size+7)
         integer :: ierr
 
-        call local_energy_estimators(ir)
+        call local_energy_estimators(rep_loop_loc)
 
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
 #ifdef PARALLEL
-        call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(rep_loop_loc, rep_loop_sum, size(rep_loop_loc), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
-        ir_sum = ir
+        rep_loop_sum = rep_loop_loc
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(ir_sum, ntot_particles_old)
+        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old)
 
     end subroutine update_energy_estimators
 
-    subroutine update_energy_estimators_send(ir, req_ir_s)
+    subroutine update_energy_estimators_send(rep_comm)
 
         ! Send report loop quantities to other processors.
-        ! These won't be received until after the next full evolution of main
-        ! list.
+        ! These won't be received until the next report loop.
 
         ! In/Out:
-        !    ir: array containing report loop quantities.
-        !    req_ir_s: array of requests for non-blocking communication.
+        !     rep_comm: nb_rep_t object containing report loop information.
 
-        use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
-                               proj_energy, shift, vary_shift, vary_shift_from,                &
-                               vary_shift_from_proje, D0_population, fold_line
-        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
-        use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
-
+        use calc, only: nb_rep_t
         use parallel
 
-        real(dp), intent(inout) :: ir(:)
-        integer, intent(inout) :: req_ir_s(0:)
+        type(nb_rep_t), intent(inout) :: rep_comm
 
         integer :: i, ierr
 
         do i = 0, nprocs-1
-           call MPI_ISend(ir, size(ir), MPI_REAL8, i, 789, MPI_COMM_WORLD, req_ir_s(i), ierr)
+           call MPI_ISend(rep_comm%rep_info, size(rep_comm%rep_info), MPI_REAL8, &
+                          i, 789, MPI_COMM_WORLD, rep_comm%request(i), ierr)
         end do
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(req_ir_s, ntot_particles_old)
+    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old)
 
         ! Receive report loop quantities from all other processors and reduce.
 
         ! In/Out:
-        !    req_ir_s: array of requests initialised during non-blocking send of
+        !    rep_request_s: array of requests initialised during non-blocking send of
         !        information.
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -93,46 +86,46 @@ contains
         use fciqmc_data, only: sampling_size
         use parallel
 
-        integer, intent(inout) :: req_ir_s(:)
+        integer, intent(inout) :: rep_request_s(:)
         integer(lint), intent(inout) :: ntot_particles_old(:)
 
-        real(dp) :: ir_local(sampling_size+7), ir_sum(nprocs*(sampling_size+7))
-        integer :: req_ir_r(0:nprocs-1)
+        real(dp) :: rep_info_sum(sampling_size+7), rep_loop_reduce(nprocs*(sampling_size+7))
+        integer :: rep_request_r(0:nprocs-1)
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs)
         integer :: i, ierr
 
         do i = 0, nprocs-1
-            call MPI_IRecv(ir_sum(i*(sampling_size+7)+1:(i+1)*(sampling_size+7)), sampling_size+7, MPI_REAL8, &
-                           i, 789, MPI_COMM_WORLD, req_ir_r(i), ierr)
+            call MPI_IRecv(rep_loop_reduce(i*(sampling_size+7)+1:(i+1)*(sampling_size+7)), sampling_size+7, MPI_REAL8, &
+                           i, 789, MPI_COMM_WORLD, rep_request_r(i), ierr)
         end do
         ! [review] - JSS: Waitall only blocks on the *current* processor, correct?
         ! [reply] - FM: Correct, perhaps I should add a comment to allay
         ! [reply] - FM: any fears?
-        call MPI_Waitall(nprocs, req_ir_r, stat_ir_r, ierr)
-        call MPI_Waitall(nprocs, req_ir_s, stat_ir_s, ierr)
+        call MPI_Waitall(nprocs, rep_request_r, stat_ir_r, ierr)
+        call MPI_Waitall(nprocs, rep_request_s, stat_ir_s, ierr)
 
         ! Reduce quantities across processors.
-        ir_local(1:sampling_size) = sum(ir_sum(1:size(ir_sum):sampling_size+7))
-        ir_local(sampling_size+1) = sum(ir_sum(sampling_size+1:size(ir_sum):sampling_size+7))
-        ir_local(sampling_size+2) = sum(ir_sum(sampling_size+2:size(ir_sum):sampling_size+7))
-        ir_local(sampling_size+3) = sum(ir_sum(sampling_size+3:size(ir_sum):sampling_size+7))
-        ir_local(sampling_size+4) = sum(ir_sum(sampling_size+4:size(ir_sum):sampling_size+7))
-        ir_local(sampling_size+5) = sum(ir_sum(sampling_size+5:size(ir_sum):sampling_size+7))
-        ir_local(sampling_size+6) = sum(ir_sum(sampling_size+6:size(ir_sum):sampling_size+7))
-        ir_local(sampling_size+7) = sum(ir_sum(sampling_size+7:size(ir_sum):sampling_size+7))
+        rep_info_sum(1:sampling_size) = sum(rep_loop_reduce(1:size(rep_loop_reduce):sampling_size+7))
+        rep_info_sum(sampling_size+1) = sum(rep_loop_reduce(sampling_size+1:size(rep_loop_reduce):sampling_size+7))
+        rep_info_sum(sampling_size+2) = sum(rep_loop_reduce(sampling_size+2:size(rep_loop_reduce):sampling_size+7))
+        rep_info_sum(sampling_size+3) = sum(rep_loop_reduce(sampling_size+3:size(rep_loop_reduce):sampling_size+7))
+        rep_info_sum(sampling_size+4) = sum(rep_loop_reduce(sampling_size+4:size(rep_loop_reduce):sampling_size+7))
+        rep_info_sum(sampling_size+5) = sum(rep_loop_reduce(sampling_size+5:size(rep_loop_reduce):sampling_size+7))
+        rep_info_sum(sampling_size+6) = sum(rep_loop_reduce(sampling_size+6:size(rep_loop_reduce):sampling_size+7))
+        rep_info_sum(sampling_size+7) = sum(rep_loop_reduce(sampling_size+7:size(rep_loop_reduce):sampling_size+7))
 
-        call communicated_energy_estimators(ir_local, ntot_particles_old)
+        call communicated_energy_estimators(rep_info_sum, ntot_particles_old)
 
     end subroutine update_energy_estimators_recv
 
-    subroutine local_energy_estimators(ir, spawn_elsewhere)
+    subroutine local_energy_estimators(rep_loop_loc, spawn_elsewhere)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
 
         ! Out:
-        !    ir: array containing local quantities required for energy
-        !    evaluation.
+        !    rep_loop_loc: array containing local quantities required for energy
+        !       evaluation.
         ! In (optional):
         !    spawn_elsewhere: number of walkers spawned from current processor
         !        not including those spawned to current processor.
@@ -142,39 +135,39 @@ contains
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
         use calc, only: doing_calc, hfs_fciqmc_calc
 
-        real(dp), intent(out) :: ir(:)
+        real(dp), intent(out) :: rep_loop_loc(:)
         integer, optional, intent(in) :: spawn_elsewhere
 
         ! Need to sum the number of particles and the projected energy over
         ! all processors.
         if (present(spawn_elsewhere)) then
-            ir(1:sampling_size) = nparticles + spawn_elsewhere
+            rep_loop_loc(1:sampling_size) = nparticles + spawn_elsewhere
         else
-            ir(1:sampling_size) = nparticles
+            rep_loop_loc(1:sampling_size) = nparticles
         end if
-        ir(sampling_size+1) = proj_energy
-        ir(sampling_size+2) = D0_population
-        ir(sampling_size+3) = rspawn
+        rep_loop_loc(sampling_size+1) = proj_energy
+        rep_loop_loc(sampling_size+2) = D0_population
+        rep_loop_loc(sampling_size+3) = rspawn
 
         if (doing_calc(hfs_fciqmc_calc)) then
             ! HFS calculations also need to know \tilde{N} = \sum_i sign(N_j^(H)) N_j^(HF),
             ! where N_j^(H) is the population of Hamiltonian walkers on j and
             ! N_j^(HF) the population of Hellmann-Feynman walkers on j.
-            ir(sampling_size+4) = calculate_hf_signed_pop()
-            ir(sampling_size+5) = proj_hf_O_hpsip
-            ir(sampling_size+6) = proj_hf_H_hfpsip
-            ir(sampling_size+7) = D0_hf_population
+            rep_loop_loc(sampling_size+4) = calculate_hf_signed_pop()
+            rep_loop_loc(sampling_size+5) = proj_hf_O_hpsip
+            rep_loop_loc(sampling_size+6) = proj_hf_H_hfpsip
+            rep_loop_loc(sampling_size+7) = D0_hf_population
         end if
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(ir_sum, ntot_particles_old)
+    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old)
 
         ! Update report loop quantites with information received from other
         ! processors.
 
         ! In:
-        !    ir_sum: array containing quantites required for energy
+        !    rep_loop_sum: array containing quantites required for energy
         !        evaluation.
         ! In/Out:
         !    ntot_particles_old: total number (across all processors) of
@@ -189,20 +182,20 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
         use parallel, only: nprocs, iproc
 
-        real(dp), intent(in) :: ir_sum(:)
+        real(dp), intent(in) :: rep_loop_sum(:)
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
 
         integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
 
-        ntot_particles = nint(ir_sum(1:sampling_size), lint)
-        proj_energy = ir_sum(sampling_size+1)
-        D0_population = ir_sum(sampling_size+2)
-        rspawn = ir_sum(sampling_size+3)
+        ntot_particles = nint(rep_loop_sum(1:sampling_size), lint)
+        proj_energy = rep_loop_sum(sampling_size+1)
+        D0_population = rep_loop_sum(sampling_size+2)
+        rspawn = rep_loop_sum(sampling_size+3)
         if (doing_calc(hfs_fciqmc_calc)) then
-            new_hf_signed_pop = nint(ir_sum(sampling_size+4), lint)
-            proj_hf_O_hpsip = ir_sum(sampling_size+5)
-            proj_hf_H_hfpsip = ir_sum(sampling_size+6)
-            D0_hf_population = ir_sum(sampling_size+7)
+            new_hf_signed_pop = nint(rep_loop_sum(sampling_size+4), lint)
+            proj_hf_O_hpsip = rep_loop_sum(sampling_size+5)
+            proj_hf_H_hfpsip = rep_loop_sum(sampling_size+6)
+            D0_hf_population = rep_loop_sum(sampling_size+7)
         end if
 
         if (vary_shift) then

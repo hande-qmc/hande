@@ -26,7 +26,8 @@ contains
                                 annihilate_main_list_wrapper
         use basis, only: basis_length, nbasis
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
-        use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm
+        use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
+                        nb_rep_t
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
         use spawning, only: create_spawned_particle_initiator
@@ -48,19 +49,18 @@ contains
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
 
-        integer :: nspawned, ndeath, non_block_spawn(2)
+        integer :: nspawned, ndeath
         type(excit) :: connection
         real(p) :: hmatel
         ! [review] - JSS: ir (and similarly named quantities) are really badly named.
         ! [review] - JSS: This is my fault but ir really isn't meaningful.
         ! [review] - JSS: Could it (and similarly named quantities) be given a better name?
         ! [reply] - FM: report_quant, report_vals, report_info or report_loop_info?
-        real(dp) :: ir(sampling_size+7)
         integer :: send_counts(0:nprocs-1)
         ! [review] - JSS: derived type for the non-blocking energy evaluation variables?
         ! [reply] - FM: I thought about this, hopefully there aren't any weird
         ! [reply] - FM : mpi exceptions. Will investigate.
-        integer :: req_data_s(0:nprocs-1), req_ir_s(0:nprocs-1)
+        integer :: req_data_s(0:nprocs-1)
 
         logical :: soft_exit
 
@@ -92,7 +92,7 @@ contains
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
         if (non_blocking_comm) then
-            call initial_fciqmc_status(sys, ir, req_ir_s)
+            call initial_fciqmc_status(sys, report_comm)
         else
             call initial_fciqmc_status(sys)
         end if
@@ -146,8 +146,8 @@ contains
                 if (non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
-                    call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_data_s, non_block_spawn)
-                    call end_mc_cycle(ndeath, nattempts, non_block_spawn)
+                    call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_data_s, report_comm%nb_spawn)
+                    call end_mc_cycle(ndeath, nattempts, report_comm%nb_spawn)
                 else
                     call direct_annihilation(sys, initiator_approximation)
                     call end_mc_cycle(ndeath, nattempts)
@@ -157,7 +157,7 @@ contains
 
             update_tau = bloom_stats%nwarnings_curr > 0
 
-            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit, non_block_spawn(2), ir, req_ir_s)
+            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit, report_comm)
 
             if (soft_exit) exit
 
@@ -171,7 +171,7 @@ contains
             ! [review] - JSS: is this call necessary as we don't actually use the energy estimators after this point...
             ! [reply] - FM: Not entirely sure, I wanted to ensure the final send of information was received so that
             ! [reply] - FM: all the mpi wraps up nicely. Also, might be necessary for restart functionality, which I haven't thought about yet.
-            call update_energy_estimators_recv(req_ir_s, nparticles_old)
+            call update_energy_estimators_recv(report_comm%request, nparticles_old)
         end if
 
         if (parent) then

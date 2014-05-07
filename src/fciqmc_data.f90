@@ -6,6 +6,7 @@ module fciqmc_data
 use const
 use spawn_data, only: spawn_t
 use hash_table, only: hash_table_t
+use calc, only: nb_rep_t
 implicit none
 
 !--- Input data: FCIQMC ---
@@ -436,6 +437,12 @@ real(p) :: P__=0.05, Po_=0.475, P_o=0.475
 ! The split generation normalisations
 real(p) :: X__=0, Xo_=0, X_o=0
 
+!--- Non blocking data ---
+
+! Type for storing report loop information when using non-blocking
+! communications.
+type(nb_rep_t) :: report_comm
+
 contains
 
     !--- Statistics. ---
@@ -664,6 +671,7 @@ contains
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
+        use calc, only: dealloc_nb_rep_t
 
         integer :: ierr
 
@@ -701,6 +709,7 @@ contains
         end if
         call dealloc_spawn_t(qmc_spawn)
         call dealloc_spawn_t(received_list)
+        call dealloc_nb_rep_t(report_comm)
 
     end subroutine end_fciqmc
 

@@ -353,7 +353,7 @@ contains
     ! [review] - JSS: It seems spawn_elsewhere, ir and req_ir_s are often sent together.
     ! [review] - JSS: Is it worth creating a derived type to package them conveniently together?
     ! [review] - FM: Probably, I'll look into it.
-    subroutine initial_fciqmc_status(sys, ir, req_ir_s)
+    subroutine initial_fciqmc_status(sys, rep_comm)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -365,20 +365,18 @@ contains
         ! [review] - JSS: is this necessary?  It's only passed in as 0 as far as I can see...
         ! [reply] - FM: Not in this subroutine no. It's necessary for calculating the total population during a report loop.
         ! Out (Optional):
-        !    ir: array containing local quantities, such as initial walker population.
-        !    req_ir_s: array of requests for non_blocking_send.
+        !    rep_comm: nb_rep_t object containg report loop information.
 
         use determinants, only: det_info, alloc_det_info, dealloc_det_info, decode_det
         use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         use system, only: sys_t
-        use calc, only: non_blocking_comm
+        use calc, only: non_blocking_comm, nb_rep_t
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
 
         type(sys_t), intent(in) :: sys
-        real(dp), optional, intent(out) :: ir(:)
-        integer, optional, intent(out) :: req_ir_s(:)
+        type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         integer :: idet
         integer(lint) :: ntot_particles(sampling_size)
@@ -407,7 +405,7 @@ contains
         call dealloc_det_info(cdet)
 
 #ifdef PARALLEL
-        if (present(ir)) then
+        if (present(rep_comm)) then
             ! [review] - JSS: why is D0_population being overwritten here?  Why *10?  Is that
             ! [review] - JSS: to account for averaging over the report loop (which might not be 10 iterations long)?
             ! [reply] - FM: We need to print out the initial report loop quantities at t = 0.
@@ -417,8 +415,8 @@ contains
             ! [review] - JSS: for non-blocking and without MPI...
             ! [reply] - FM: This would remove the if statement below I gather.
             D0_population = D0_population_cycle*ncycles
-            call local_energy_estimators(ir)
-            call update_energy_estimators_send(ir, req_ir_s)
+            call local_energy_estimators(rep_comm%rep_info)
+            call update_energy_estimators_send(rep_comm)
         else
             call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
             proj_energy = proj_energy_sum
@@ -513,7 +511,7 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(ireport, update_tau, ntot_particles, report_time, soft_exit, spawn_elsewhere, ir, req_ir_s)
+    subroutine end_report_loop(ireport, update_tau, ntot_particles, report_time, soft_exit, rep_comm)
 
         ! In:
         !    ireport: index of current report loop.
@@ -531,31 +529,28 @@ contains
         ! Out:
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
-        ! In (optional):
-        !    spawn_elsewhere: number of walkers spawned from current processor
-        !        to other processors not including the current processor.
-        ! Out (optional):
-        !    ir: array containing local report loop quantities.
-        !    req_ir_s: array of requests for non-blocking send.
+        ! In/Out (optional):
+        !    rep_comm: nb_rep_t object containing report loop info. Used for
+        !        non-blocking communications where we receive report information
+        !        from previous iteration and communicate the current iterations
+        !        estimators.
 
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send
         use interact, only: fciqmc_interact
         use parallel, only: parent
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
-        use calc, only: non_blocking_comm
+        use calc, only: non_blocking_comm, nb_rep_t
 
         integer, intent(in) :: ireport
         logical, intent(in) :: update_tau
         integer(lint), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
-        integer, optional, intent(in) :: spawn_elsewhere
-        real(dp), optional, intent(out) :: ir(:)
-        integer, optional, intent(inout) :: req_ir_s(:)
+        type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
-        real(dp) :: ir_copy(sampling_size+7)
+        real(dp) :: rep_info_copy(sampling_size+7)
 
         if (.not. non_blocking_comm) then
             ! Update the energy estimators (shift & projected energy).
@@ -564,12 +559,12 @@ contains
            ! Save current report loop quantitites.
            ! Can't overwrite the send buffer before message completion
            ! so copy information somewhere else.
-           call local_energy_estimators(ir_copy, spawn_elsewhere)
+           call local_energy_estimators(rep_info_copy, rep_comm%nb_spawn(2))
            ! Receive previous iterations report loop quantities.
-           call update_energy_estimators_recv(req_ir_s, ntot_particles)
+           call update_energy_estimators_recv(rep_comm%request, ntot_particles)
            ! Send current report loop quantities.
-           ir = ir_copy
-           call update_energy_estimators_send(ir, req_ir_s)
+           rep_comm%rep_info = rep_info_copy
+           call update_energy_estimators_send(rep_comm)
         end if
 
         call cpu_time(curr_time)

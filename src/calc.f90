@@ -174,6 +174,28 @@ integer, parameter :: dmqmc_correlation = 2**3
 integer, parameter :: dmqmc_rdm_r2 = 2**4
 integer, parameter :: dmqmc_full_r2 = 2**5
 
+! Combine information required for non-blocking report loop quantities
+! into one type for convenience.
+type nb_rep_t
+    ! Array to store report loop estimators such as projected energy
+    ! etc.
+    ! This array must not be deallocated, copied or inspected in any
+    ! way in between report loop communication.
+    real(dp), allocatable :: rep_info(:)
+    ! Array whose entries will contain:
+    ! 1. The total number of spawned walkers in a given report loop
+    !    which is to be used for calculating the spawning rate.
+    ! 2. The number of walkers spawned from a given processor
+    !    to all other processors except the current one, which
+    !    is used for calculating the total number of walkers for a give
+    !    report loop.
+    integer :: nb_spawn(2)
+    ! Array of requests used for non blocking communications.
+    ! This array must not be deallocated, copied or inspected in any
+    ! way in between report loop communication. request(nprocs)
+    integer, allocatable :: request(:)
+end type nb_rep_t
+
 contains
 
     subroutine init_calc_defaults()
@@ -236,5 +258,55 @@ contains
         doing = iand(calc_param, dmqmc_calc_type) /= 0
 
     end function doing_dmqmc_calc
+
+    subroutine alloc_nb_rep_t(ntypes, report_loop)
+
+        ! Allocate nb_rep_t object.
+
+        ! In:
+        !    ntypes:
+        !       number of types of walkers sampled (see sampling_size).
+        ! Out:
+        !    report_loop: initialies object for storing and communicating
+        !        report loop quantities for non-blocking communications.
+
+        use parallel, only: nprocs
+        use checking, only: check_allocate
+
+        integer, intent(in) :: ntypes
+        type(nb_rep_t), intent(out) :: report_loop
+
+        integer :: ierr
+
+        allocate(report_loop%rep_info(ntypes+7), stat=ierr)
+        call check_allocate('report_loop%rep_info', size(report_loop%rep_info), ierr)
+
+        report_loop%nb_spawn = 0
+
+        allocate(report_loop%request(0:nprocs-1), stat=ierr)
+        call check_allocate('report_loop%request', size(report_loop%request), ierr)
+
+    end subroutine alloc_nb_rep_t
+
+    subroutine dealloc_nb_rep_t(rep_comm)
+
+        ! Deallocate nb_rep_t object.
+
+        ! In/Out:
+        !    rep_comm: nb_rep_t object to be deallocated.
+
+        use checking, only: check_deallocate
+
+        type(nb_rep_t), intent(inout) :: rep_comm
+
+        integer :: ierr
+
+        deallocate(rep_comm%rep_info, stat=ierr)
+        call check_deallocate('rep_comm%rep_info', ierr)
+
+        deallocate(rep_comm%request, stat=ierr)
+        call check_deallocate('rep_comm%request', ierr)
+
+    end subroutine dealloc_nb_rep_t
 
 end module calc
