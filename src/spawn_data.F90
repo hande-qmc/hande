@@ -247,7 +247,7 @@ contains
 
         integer :: i
 
-        do i = 3, ubound(spawn_arr,dim=1)
+        do i = 1, ubound(spawn_arr,dim=1)
             call annihilate_wrapper_spawn_t_single(spawn_arr(i), tinitiator)
         end do
 
