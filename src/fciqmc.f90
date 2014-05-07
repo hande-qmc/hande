@@ -77,7 +77,8 @@ contains
         ! be able to manipulate the bit string to create excited states.
         if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
         ! For non-blocking communications we need to initially send zero walkers
-        ! to all processors.
+        ! to all processors this is so we don't have to deal with a special case
+        ! in the receive step later on.
         ! [review] - JSS: explain why.  (Essentially so you don't have to special case the receive later on...)
         ! [reply] - FM: OK.
         if (non_blocking_comm) then
