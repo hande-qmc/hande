@@ -197,6 +197,7 @@ contains
         if (present(lower_bound)) then
             ! [review] - JSS: counterintuitive to start from lower_bound+1 rather than lower_bound, given the interface comments.
             ! [review] - FM: Now that you mention it it is. Will change.
+            ! [reply] - JSS: Doesn't this change the results now you start from lower_bound rather than lower_bound+1?
             spawn_start = lower_bound
         else
             spawn_start = 1
@@ -238,6 +239,7 @@ contains
         ! [review] - JSS: as in annihilate_main_list for lower_bound.
         ! [reply] - FM: Do you mean add a comment to say we are annihilating
         ! [reply] - FM: taking a lower bound into account?
+        ! [reply] - JSS: I meant starting from lower_bound rather than lower_bound+1.
 
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list starting from lower bound in spawn.
@@ -264,6 +266,7 @@ contains
 
         nannihilate = 0
         if (present(lower_bound)) then
+            ! [reply] - JSS: Doesn't this change the results now you start from lower_bound rather than lower_bound+1?
             spawn_start = lower_bound
         else
             spawn_start = 1

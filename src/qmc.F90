@@ -213,6 +213,7 @@ contains
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, 7, qmc_spawn)
         ! [review] - FM: Should these be wrapped in an if (non_blocking_comm) statement?
+        ! [reply] - JSS: Yes, good spot.  Similarly the matching deallocate calls.
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, 7, received_list)
 

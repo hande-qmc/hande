@@ -333,6 +333,7 @@ contains
             ! [reply] - FM: uncompressed list, evolve and then compress
             ! [reply] - FM: during annihilation. Would mean changing around
             ! [reply] - FM: these two subroutines a bit. But yes, code duplication will fix.
+            ! [reply] - JSS: ok.  I actually meant the just bits inside the if..endif blocks, but fine.
             call qsort(spawn%sdata, spawn%head(thread_id, 0), spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
@@ -373,6 +374,7 @@ contains
         ! [reply] - FM: You're right, I forgot about this during the merge.
         ! [reply] - FM: So everywhere I assumed spawn%head_start(thread_id,i) =
         ! [reply] - FM: start of spawned list I need to modify with a + nthreads - 1 correct?
+        ! [reply] - JSS: Yes.  Sorry...
         do i = 0, nprocs-1
             send_disp(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i) + nthreads - 1
         end do

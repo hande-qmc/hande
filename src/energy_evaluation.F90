@@ -101,6 +101,7 @@ contains
         ! [review] - JSS: Waitall only blocks on the *current* processor, correct?
         ! [reply] - FM: Correct, perhaps I should add a comment to allay
         ! [reply] - FM: any fears?
+        ! [reply] - JSS: Nah.  The reader should actually just look it up in the MPI_Waitall manpage...
         call MPI_Waitall(nprocs, rep_request_r, stat_ir_r, ierr)
         call MPI_Waitall(nprocs, rep_request_s, stat_ir_s, ierr)
 

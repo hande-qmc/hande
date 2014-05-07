@@ -60,6 +60,7 @@ contains
         ! [review] - JSS: derived type for the non-blocking energy evaluation variables?
         ! [reply] - FM: I thought about this, hopefully there aren't any weird
         ! [reply] - FM : mpi exceptions. Will investigate.
+        ! [reply] - JSS: The simplest thing is to do MPI calls on the components of the derived type, to avoid pain with MPI interfaces.
         integer :: req_data_s(0:nprocs-1)
 
         logical :: soft_exit
@@ -171,6 +172,7 @@ contains
             ! [review] - JSS: is this call necessary as we don't actually use the energy estimators after this point...
             ! [reply] - FM: Not entirely sure, I wanted to ensure the final send of information was received so that
             ! [reply] - FM: all the mpi wraps up nicely. Also, might be necessary for restart functionality, which I haven't thought about yet.
+            ! [reply] - JSS: You're right.
             call update_energy_estimators_recv(report_comm%request, nparticles_old)
         end if
 
