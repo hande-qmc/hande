@@ -37,7 +37,7 @@ contains
         use utils, only: rng_init_info
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_received_list
+        use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
         use energy_evaluation, only: update_energy_estimators_recv
 
         type(sys_t), intent(in) :: sys

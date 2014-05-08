@@ -674,7 +674,7 @@ contains
 
         use annihilation, only: annihilate_main_list_wrapper
         use spawn_data, only: spawn_t, non_blocking_send, receive_spawned_walkers, &
-                              annihilate_wrapper_received_list
+                              annihilate_wrapper_non_blocking_spawn
         use energy_evaluation, only: update_energy_estimators_recv
         use system, only: sys_t
         use parallel, only: parent
@@ -694,7 +694,7 @@ contains
 
         ! Need to receive walkers sent from final iteration and merge into main list.
         call receive_spawned_walkers(spawn, request_s)
-        call annihilate_wrapper_received_list(spawn, tinitiator)
+        call annihilate_wrapper_non_blocking_spawn(spawn, tinitiator)
         call annihilate_main_list_wrapper(sys, tinitiator, spawn)
         ! Receive final send of report loop quantities.
         call update_energy_estimators_recv(request_rep, ntot_particles)

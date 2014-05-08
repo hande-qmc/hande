@@ -253,40 +253,54 @@ contains
 
     end subroutine annihilate_wrapper_spawn_t_arr
 
-    subroutine annihilate_wrapper_spawned_list(spawn, tinitiator)
+    subroutine annihilate_wrapper_non_blocking_spawn(spawn, tinitiator, proc)
 
-        ! Helper procedure for annihiliating within a portion of a spawn_t object.
-        ! For non-blocking communications only particles spawned into chunk of
-        ! spawned list corresponding to current processor are annihilated with main
-        ! list.
+        ! Helper procedure for performing annihilation within the two spawned
+        ! lists required for non blocking communications.
 
         ! In:
         !    tinitiator: true if the initiator approximation is being used.
         ! In/Out:
         !    spawn: spawn_t object containing spawned particles.
-        !       On output subsection of spawn_t object which contains information
-        !       of walkers spawned onto current processor is compressed so that
-        !       each determinant appears at most once.
+        !        On output subsection of spawn_t object which contains information
+        !        of walkers spawned onto current processor is compressed so that
+        !        each determinant appears at most once.
+        ! In (optional):
+        !    proc: if present only annihilate section of spawned list relating
+        !        to proc. Also if proc is present we are annihilating the
+        !        actual spawned list rather than the received list so need to
+        !        compress across threads. Otherwise we annihilate the entirety
+        !        of the received list, but don't compress as it already has
+        !        been.
 
         use parallel, only: nthreads, iproc
         use sort, only: qsort
 
         type(spawn_t), intent(inout) :: spawn
         logical, intent(in) :: tinitiator
+        integer, optional, intent(in) :: proc
 
         integer, parameter :: thread_id = 0
-        integer :: start, endp
+        integer :: start, endp, spawn_zero
 
-        ! Compress the sucessful spawning events from each thread so the spawned list
-        ! contains no gaps.
-        if (nthreads > 1) call compress_threaded_spawn_t(spawn)
+        if (present(proc)) then
+            ! Compress the sucessful spawning events from each thread so the spawned list
+            ! contains no gaps.
+            if (nthreads > 1) call compress_threaded_spawn_t(spawn)
+            ! Annihilate within spawned list between start and endp.
+            ! spawn_zero is the index before the first entry in the spawned
+            ! walker list.
+            spawn_zero = spawn%head_start(thread_id, proc) + nthreads - 1
+            start = spawn_zero + 1
+            endp = spawn%head(thread_id, proc)
+        else
+            spawn_zero = 0
+            start = 1
+            endp = spawn%head(thread_id, 0)
+        end if
 
-        ! Want to perform annihilation on spawn%sdata(:,start:endp).
-        start = spawn%head_start(thread_id, iproc)
-        endp = spawn%head(thread_id, iproc)
-        if (endp > start) then
-            start = start + 1
-            call qsort(spawn%sdata(:,start:endp), endp-start+1, spawn%bit_str_len)
+        if (endp > spawn_zero) then
+            call qsort(spawn%sdata(:,start:endp), endp-spawn_zero, spawn%bit_str_len)
             ! Annihilate within spawned walkers list.
             ! Compress the remaining spawned walkers list.
             if (tinitiator) then
@@ -296,55 +310,7 @@ contains
             end if
         end if
 
-    end subroutine annihilate_wrapper_spawned_list
-
-    subroutine annihilate_wrapper_received_list(spawn, tinitiator)
-
-        ! Helper procedure for preparing list of walkers spawned onto
-        ! current processor from last iteration for annihilation with the main list.
-        ! This is slightly different from the annihilation of the spawned
-        ! list, as walkers here have already undergone compression and the whole
-        ! list needs to be sorted and annihilated.
-
-        ! In:
-        !    tinitiator: true if the initiator approximation is being used.
-        ! In/Out:
-        !    spawn: spawn_t object containing spawned particles.
-        !       On output spawn_t object will have undergone annihilation within
-        !       the list itself and will have been sorted for annihilation with
-        !       main list.
-
-        use parallel, only: iproc
-        use sort, only: qsort
-
-        logical, intent(in) :: tinitiator
-        type(spawn_t), intent(inout) :: spawn
-
-        integer, parameter :: thread_id = 0
-
-        ! Here we annihilate among the whole list.
-        if (spawn%head(thread_id,0) > 0) then
-            ! [review] - JSS: code duplication with annihilate_wrapper_spawned_list.
-            ! [reply] - FM: I think there's an issue with how I have currently
-            ! [reply] - FM: implemented the annihilation.
-            ! [reply] - FM: Currently the received list is compressed before it
-            ! [reply] - FM: is sent. This would mean that OpenMP couldn't be
-            ! [reply] - FM: used to evolve the received list. Could send the
-            ! [reply] - FM: uncompressed list, evolve and then compress
-            ! [reply] - FM: during annihilation. Would mean changing around
-            ! [reply] - FM: these two subroutines a bit. But yes, code duplication will fix.
-            ! [reply] - JSS: ok.  I actually meant the just bits inside the if..endif blocks, but fine.
-            call qsort(spawn%sdata, spawn%head(thread_id, 0), spawn%bit_str_len)
-            ! Annihilate within spawned walkers list.
-            ! Compress the remaining spawned walkers list.
-            if (tinitiator) then
-                call annihilate_spawn_t_initiator(spawn)
-            else
-                call annihilate_spawn_t(spawn)
-            end if
-        end if
-
-    end subroutine annihilate_wrapper_received_list
+    end subroutine annihilate_wrapper_non_blocking_spawn
 
     subroutine calculate_displacements(spawn, send_disp, non_block_spawn)
 

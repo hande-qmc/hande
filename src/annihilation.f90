@@ -64,8 +64,8 @@ contains
         !       during current MC cycle.
 
         use parallel, only: nthreads, nprocs, iproc
-        use spawn_data, only: annihilate_wrapper_spawned_list, calculate_displacements, &
-                              non_blocking_send, annihilate_wrapper_received_list
+        use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
+                              non_blocking_send
         use sort, only: qsort
         use system, only: sys_t
 
@@ -88,7 +88,7 @@ contains
         ! (not including the current processor) from  the previous iteration.
         ! They have since been evolved so they can be annihilated with the main list.
         ! First annihilate within the received_list.
-        call annihilate_wrapper_received_list(received_list, tinitiator)
+        call annihilate_wrapper_non_blocking_spawn(received_list, tinitiator)
         ! Annihilate with main list.
         call annihilate_main_list_wrapper(sys, tinitiator, received_list)
 
@@ -99,7 +99,7 @@ contains
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
         ! list which needs to be annihilated with the main list on this processor.
-        call annihilate_wrapper_spawned_list(qmc_spawn, tinitiator)
+        call annihilate_wrapper_non_blocking_spawn(qmc_spawn, tinitiator, iproc)
         ! Annihilate portion of spawned list with main list.
         call annihilate_main_list_wrapper(sys, tinitiator, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+nthreads)
         ! Communicate walkers spawned onto other processors during this
