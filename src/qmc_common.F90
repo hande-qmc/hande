@@ -647,4 +647,59 @@ contains
 
     end subroutine send_tau
 
+    subroutine end_non_blocking_comm(sys, tinitiator, ireport, spawn, request_s, request_rep, report_time, ntot_particles)
+
+        ! Subroutine dealing with the last iteration when using non-blocking communications.
+
+        ! Need to deal with:
+        ! 1. Final send of walkers from time step T_final.
+        ! 2. Final send of report loop quantites.
+
+        ! In:
+        !    sys: system being studied.
+        !    tinitiator: true if the initiator approximation is being used.
+        !    ireport: index of current report loop.
+        ! In/Out:
+        !    spawn: spawn_t object containing spawned walkers from final
+        !        iteration.
+        !    request_s: array of requests for completing this final send of
+        !        walkers.
+        !    request_rep: array of requests for completing communication of
+        !        report loop quantitites.
+        !    report_time: time at the start of the current report loop.  Returns
+        !        the current time (ie the time for the start of the next report
+        !        loop.
+        !    ntot_particles: total number of particles in main walker list.
+
+
+        use annihilation, only: annihilate_main_list_wrapper
+        use spawn_data, only: spawn_t, non_blocking_send, receive_spawned_walkers, &
+                              annihilate_wrapper_received_list
+        use energy_evaluation, only: update_energy_estimators_recv
+        use system, only: sys_t
+        use parallel, only: parent
+
+
+        type(sys_t), intent(in) :: sys
+        logical, intent(in) :: tinitiator
+        integer, intent(in) :: ireport
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(inout) :: request_s(:), request_rep(:)
+        real, intent(inout) :: report_time
+        integer(lint), intent(inout) :: ntot_particles(sampling_size)
+
+        real :: curr_time
+
+        call cpu_time(curr_time)
+
+        ! Need to receive walkers sent from final iteration and merge into main list.
+        call receive_spawned_walkers(spawn, request_s)
+        call annihilate_wrapper_received_list(spawn, tinitiator)
+        call annihilate_main_list_wrapper(sys, tinitiator, spawn)
+        ! Receive final send of report loop quantities.
+        call update_energy_estimators_recv(request_rep, ntot_particles)
+        if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
+
+    end subroutine end_non_blocking_comm
+
 end module qmc_common

@@ -22,8 +22,7 @@ contains
 
         use parallel
 
-        use annihilation, only: direct_annihilation, direct_annihilation_non_blocking,    &
-                                annihilate_main_list_wrapper
+        use annihilation, only: direct_annihilation, direct_annihilation_non_blocking
         use basis, only: basis_length, nbasis
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
@@ -77,15 +76,6 @@ contains
         ! Folded spectrum *needs* the bit strings to be allocated as it needs
         ! be able to manipulate the bit string to create excited states.
         if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
-        ! For non-blocking communications we need to initially send zero walkers
-        ! to all processors this is so we don't have to deal with a special case
-        ! in the receive step later on.
-        ! [review] - JSS: explain why.  (Essentially so you don't have to special case the receive later on...)
-        ! [reply] - FM: OK.
-        if (non_blocking_comm) then
-            send_counts = 0
-            call non_blocking_send(qmc_spawn, send_counts, req_data_s)
-        end if
 
         ! from restart
         nparticles_old = tot_nparticles
@@ -93,6 +83,11 @@ contains
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
         if (non_blocking_comm) then
+            ! For non-blocking communications we need to initially send zero walkers
+            ! to all processors this is so we don't have to deal with a special case
+            ! in the receive step later on.
+            send_counts = 0
+            call non_blocking_send(qmc_spawn, send_counts, req_data_s)
             call initial_fciqmc_status(sys, report_comm)
         else
             call initial_fciqmc_status(sys)
@@ -164,17 +159,8 @@ contains
 
         end do
 
-        if (non_blocking_comm) then
-            ! Need to receive walkers sent from final iteration and merge into main list.
-            call receive_spawned_walkers(received_list, req_data_s)
-            call annihilate_wrapper_received_list(received_list, initiator_approximation)
-            call annihilate_main_list_wrapper(sys, initiator_approximation, received_list)
-            ! [review] - JSS: is this call necessary as we don't actually use the energy estimators after this point...
-            ! [reply] - FM: Not entirely sure, I wanted to ensure the final send of information was received so that
-            ! [reply] - FM: all the mpi wraps up nicely. Also, might be necessary for restart functionality, which I haven't thought about yet.
-            ! [reply] - JSS: You're right.
-            call update_energy_estimators_recv(report_comm%request, nparticles_old)
-        end if
+        if (non_blocking_comm) call end_non_blocking_comm(sys, initiator_approximation, ireport, received_list, &
+                                                          req_data_s, report_comm%request, t1, nparticles_old)
 
         if (parent) then
             call write_fciqmc_final(ireport)
