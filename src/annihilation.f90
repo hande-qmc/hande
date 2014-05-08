@@ -198,6 +198,10 @@ contains
             ! [review] - JSS: counterintuitive to start from lower_bound+1 rather than lower_bound, given the interface comments.
             ! [review] - FM: Now that you mention it it is. Will change.
             ! [reply] - JSS: Doesn't this change the results now you start from lower_bound rather than lower_bound+1?
+            ! [reply] - FM: Yes, but I changed what I pass in as lower_bound, which is only necessary for qmc_spawn.
+            ! [reply] - FM: Formerly it was lower_bound = qmc_spawn%head_start() and lower_bound + 1, now I pass in
+            ! [reply] - FM: qmc_spawn%head_start() + 1 or qmc_spawn%head_start + nthreads - 1 + 1 to take everything into account.
+            ! [reply] - FM: also needed to change disp to disp = lower_bound - 1 accordingly.
             spawn_start = lower_bound
         else
             spawn_start = 1

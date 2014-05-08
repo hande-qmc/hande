@@ -82,6 +82,7 @@ contains
     ! [reply] - FM: What do you think?
     ! [reply] - JSS: It's only in insertion_rank_rp because of you shouldn't test floating numbers for equality, which is
     ! [reply] - JSS: well-defined for integers.
+    ! [reply] - FM: I meant should I keep this routine as I don't use it anymore. It may come in use in the future?
     pure subroutine insertion_rank_int(arr, rank)
 
         ! Rank an int array in increasing order using the insertion sort

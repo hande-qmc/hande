@@ -671,7 +671,7 @@ contains
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
-        use calc, only: dealloc_nb_rep_t
+        use calc, only: non_blocking_comm, dealloc_nb_rep_t
 
         integer :: ierr
 
@@ -707,9 +707,12 @@ contains
             deallocate(estimator_numerators, stat=ierr)
             call check_deallocate('estimator_numerators', ierr)
         end if
+        if (non_blocking_comm) then
+            call dealloc_spawn_t(received_list)
+            call dealloc_nb_rep_t(report_comm)
+        end if
+
         call dealloc_spawn_t(qmc_spawn)
-        call dealloc_spawn_t(received_list)
-        call dealloc_nb_rep_t(report_comm)
 
     end subroutine end_fciqmc
 
