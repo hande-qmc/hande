@@ -51,16 +51,7 @@ contains
         integer :: nspawned, ndeath
         type(excit) :: connection
         real(p) :: hmatel
-        ! [review] - JSS: ir (and similarly named quantities) are really badly named.
-        ! [review] - JSS: This is my fault but ir really isn't meaningful.
-        ! [review] - JSS: Could it (and similarly named quantities) be given a better name?
-        ! [reply] - FM: report_quant, report_vals, report_info or report_loop_info?
-        integer :: send_counts(0:nprocs-1)
-        ! [review] - JSS: derived type for the non-blocking energy evaluation variables?
-        ! [reply] - FM: I thought about this, hopefully there aren't any weird
-        ! [reply] - FM : mpi exceptions. Will investigate.
-        ! [reply] - JSS: The simplest thing is to do MPI calls on the components of the derived type, to avoid pain with MPI interfaces.
-        integer :: req_data_s(0:nprocs-1)
+        integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
 
         logical :: soft_exit
 

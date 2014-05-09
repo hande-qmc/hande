@@ -35,9 +35,6 @@ contains
 
         call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
 
-        ! [review] - JSS: call annihilate_main_list_wrapper in order to remove duplicated code?
-        ! [reply] - FM: Yes.
-
         call annihilate_main_list_wrapper(sys, tinitiator, qmc_spawn)
 
     end subroutine direct_annihilation
@@ -76,12 +73,6 @@ contains
         integer, intent(out) :: non_block_spawn(:)
 
         integer, parameter :: thread_id = 0
-
-        ! [review] - JSS: looks good and I think I understand what's going on.
-        ! [review] - JSS: However, it would greatly aid someone not so familiar
-        ! [review] - JSS: with this approach if there were comments which indicated
-        ! [review] - JSS: where (and when) psips that are being annihilated came from.
-        ! [reply] - FM: Will do, it is a bit disjointed.
 
         ! Perform annihilation inside received list. This involves annihilating
         ! walkers which were spawned onto this processor from other processors
@@ -176,8 +167,6 @@ contains
         !    spawn: spawn_t obeject containing spawned particles to be annihilated with main
         !       list.
         ! In (optional):
-        !    [review] - JSS: specify default value (ie 1).
-        !    [review] - FM: ok.
         !    lower_bound: starting point we annihiliate from in spawn_t object.
         !       Default: 1.
 
@@ -195,13 +184,6 @@ contains
 
         nannihilate = 0
         if (present(lower_bound)) then
-            ! [review] - JSS: counterintuitive to start from lower_bound+1 rather than lower_bound, given the interface comments.
-            ! [review] - FM: Now that you mention it it is. Will change.
-            ! [reply] - JSS: Doesn't this change the results now you start from lower_bound rather than lower_bound+1?
-            ! [reply] - FM: Yes, but I changed what I pass in as lower_bound, which is only necessary for qmc_spawn.
-            ! [reply] - FM: Formerly it was lower_bound = qmc_spawn%head_start() and lower_bound + 1, now I pass in
-            ! [reply] - FM: qmc_spawn%head_start() + 1 or qmc_spawn%head_start + nthreads - 1 + 1 to take everything into account.
-            ! [reply] - FM: also needed to change disp to disp = lower_bound - 1 accordingly.
             spawn_start = lower_bound
         else
             spawn_start = 1
@@ -240,11 +222,6 @@ contains
 
     subroutine annihilate_main_list_initiator(spawn, lower_bound)
 
-        ! [review] - JSS: as in annihilate_main_list for lower_bound.
-        ! [reply] - FM: Do you mean add a comment to say we are annihilating
-        ! [reply] - FM: taking a lower bound into account?
-        ! [reply] - JSS: I meant starting from lower_bound rather than lower_bound+1.
-
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list starting from lower bound in spawn.
 
@@ -270,7 +247,6 @@ contains
 
         nannihilate = 0
         if (present(lower_bound)) then
-            ! [reply] - JSS: Doesn't this change the results now you start from lower_bound rather than lower_bound+1?
             spawn_start = lower_bound
         else
             spawn_start = 1

@@ -76,13 +76,6 @@ contains
 
     end subroutine insertion_rank_rp
 
-    ! [review] - JSS: as in load balancing branch, tolerance is not needed here.
-    ! [reply] - FM: I'm actually not sure I need this anymore, the dependency
-    ! [reply] - FM: was removed a while ago. It might come in use in the future.
-    ! [reply] - FM: What do you think?
-    ! [reply] - JSS: It's only in insertion_rank_rp because of you shouldn't test floating numbers for equality, which is
-    ! [reply] - JSS: well-defined for integers.
-    ! [reply] - FM: I meant should I keep this routine as I don't use it anymore. It may come in use in the future?
     pure subroutine insertion_rank_int(arr, rank)
 
         ! Rank an int array in increasing order using the insertion sort

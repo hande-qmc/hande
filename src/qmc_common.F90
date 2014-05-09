@@ -350,9 +350,6 @@ contains
 
 ! --- Output routines ---
 
-    ! [review] - JSS: It seems spawn_elsewhere, ir and req_ir_s are often sent together.
-    ! [review] - JSS: Is it worth creating a derived type to package them conveniently together?
-    ! [review] - FM: Probably, I'll look into it.
     subroutine initial_fciqmc_status(sys, rep_comm)
 
         ! Calculate the projected energy based upon the initial walker
@@ -362,8 +359,6 @@ contains
         ! In:
         !    sys: system being studied.
         ! In (optional):
-        ! [review] - JSS: is this necessary?  It's only passed in as 0 as far as I can see...
-        ! [reply] - FM: Not in this subroutine no. It's necessary for calculating the total population during a report loop.
         ! Out (Optional):
         !    rep_comm: nb_rep_t object containg report loop information.
 
@@ -406,14 +401,6 @@ contains
 
 #ifdef PARALLEL
         if (present(rep_comm)) then
-            ! [review] - JSS: why is D0_population being overwritten here?  Why *10?  Is that
-            ! [review] - JSS: to account for averaging over the report loop (which might not be 10 iterations long)?
-            ! [reply] - FM: We need to print out the initial report loop quantities at t = 0.
-            ! [reply] - FM: But we don't receive them until t = 1. To reuse the code for non-blocking report loops
-            ! [reply] - FM: I need to multiply by ncycles (not 10!)
-            ! [review] - JSS: also, should probably set D0_population from D0_population_cycle, given the code
-            ! [review] - JSS: for non-blocking and without MPI...
-            ! [reply] - FM: This would remove the if statement below I gather.
             D0_population = D0_population_cycle*ncycles
             call local_energy_estimators(rep_comm%rep_info)
             call update_energy_estimators_send(rep_comm)

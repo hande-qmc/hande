@@ -335,12 +335,6 @@ contains
         integer :: i
         integer, parameter :: thread_id = 0
 
-        ! [review] - JSS: I don't think this is compatible with the changes to spawn_t%head and spawn_t%head_start.
-        ! [review] - JSS: See corresponding changes in comm_spawn_t.
-        ! [reply] - FM: You're right, I forgot about this during the merge.
-        ! [reply] - FM: So everywhere I assumed spawn%head_start(thread_id,i) =
-        ! [reply] - FM: start of spawned list I need to modify with a + nthreads - 1 correct?
-        ! [reply] - JSS: Yes.  Sorry...
         do i = 0, nprocs-1
             send_disp(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i) + nthreads - 1
         end do

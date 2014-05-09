@@ -98,10 +98,6 @@ contains
             call MPI_IRecv(rep_loop_reduce(i*(sampling_size+7)+1:(i+1)*(sampling_size+7)), sampling_size+7, MPI_REAL8, &
                            i, 789, MPI_COMM_WORLD, rep_request_r(i), ierr)
         end do
-        ! [review] - JSS: Waitall only blocks on the *current* processor, correct?
-        ! [reply] - FM: Correct, perhaps I should add a comment to allay
-        ! [reply] - FM: any fears?
-        ! [reply] - JSS: Nah.  The reader should actually just look it up in the MPI_Waitall manpage...
         call MPI_Waitall(nprocs, rep_request_r, stat_ir_r, ierr)
         call MPI_Waitall(nprocs, rep_request_s, stat_ir_s, ierr)
 
