@@ -60,7 +60,7 @@ contains
         ! If phi1, phi2, phi3, phi4 all of the same spin, then < phi1 phi2 || phi3 phi4 > is zero
         ! as the Coulomb and exchange integrals will exactly cancel.
 
-        if (.not.s12 .and. s12.eqv.s34 .and.  momentum_conserved(phi1, phi2, phi3, phi4)) then
+        if (.not.s12 .and. (s12.eqv.s34) .and.  momentum_conserved(phi1, phi2, phi3, phi4)) then
             ! phi1, phi2 are of opposite spins and so are phi3 and phi4 and
             ! crystal momentum is conserved.
             ! Either the Coulomb integral or the exchange integral is
