@@ -336,17 +336,6 @@ contains
                                         .or. sys%system == read_in    &
                                       )
 
-                if (sl%triangular_lattice) then
-                    ! Triangular lattice, only in 2d. Each site has 6 bonds, but each bond is
-                    ! connected to 2 sites, so we divide by 2 to avoid counting twice. So there
-                    ! are 6*nsites/2 = 3*nsites bonds in total.
-                    sh%nbonds = 3*sl%nsites
-                else
-                    ! For a simple rectangular lattice, each site has 2*ndim bonds, so there are
-                    ! (ndim*nsites) bonds in total.
-                    sh%nbonds = sl%ndim*sl%nsites
-                end if
-
                 sys%hubbard%coulomb_k = sys%hubbard%u/sl%nsites
 
                 select case(sys%system)

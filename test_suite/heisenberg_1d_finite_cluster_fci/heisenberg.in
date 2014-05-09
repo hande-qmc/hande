@@ -1,0 +1,10 @@
+heisenberg
+
+lattice
+8
+finite_cluster
+ms 0
+
+J -1
+
+fci

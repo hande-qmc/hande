@@ -233,6 +233,13 @@ contains
             connected_sites(0,i) = v
         end do
 
+        select case(sys%system)
+        case (heisenberg)
+            ! This is the number of bonds for an arbitrary lattice
+            ! with periodic or fixed end boundary conditions.
+            sys%heisenberg%nbonds = sum(connected_sites(0,:))/2
+        end select
+
     end subroutine init_real_space
 
     subroutine end_real_space()
