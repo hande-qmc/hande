@@ -169,14 +169,14 @@ contains
         call reduce_slots(donors, slot_list, proc_map, d_slot_index, d_slot_pop)
         call insertion_rank_lint(d_slot_pop, d_slot_rank)
 
-        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(1))
+        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(d_slot_rank(1)))
 
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(d_slot_pop, d_slot_index, d_slot_rank, donors, receivers, up_thresh, &
                                 low_thresh, proc_map, nparticles_proc(1,:nprocs))
         load_attempts = load_attempts + 1
 
-        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(1))
+        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(d_slot_rank(1)))
 
         ! [review] - JSS: Please explicitly deallocate allocated memory.
         ! [reply] - FM: will do.
@@ -207,12 +207,15 @@ contains
         !       donor processor. Only really has meaning before load balancing
         !       takes place.
 
+        use parallel, only: nprocs
+
         integer(lint), intent(in) :: nparticles_proc(:,:), min_slot
 
         write (6, '(1X, "#",2X,"Load balancing info:")')
-        write (6, '(1X, "# ",1X,a18,2X,a18,2X,a12)') 'Max # of particles', "Min # of particles", "Min slot pop"
-        write (6, '(1X, "#",1X,3(es17.10,3X))') maxval(real(nparticles_proc(1,:))), &
-            minval(real(nparticles_proc(1,:))), real(min_slot)
+        write (6, '(1X, "# ",1X,a18,2X,a18,2X,a22,2X,a12)') "Max # of particles", "Min # of particles", &
+                  "Average # of particles", "Min slot pop"
+        write (6, '(1X, "#",1X,3(es17.10,3X),4X,es17.10)') maxval(real(nparticles_proc(1,:))), &
+                  minval(real(nparticles_proc(1,:))), real(sum(nparticles_proc(1,:))/nprocs), real(min_slot)
         ! [review] - JSS: could we also print out this information after the load balancing, so we know how good it's been?
         ! [reply] - FM: yes, it would require modifying nparticles_proc in
         ! [reply] - FM: redistribute slots, but that's not much of an issue. I could make
