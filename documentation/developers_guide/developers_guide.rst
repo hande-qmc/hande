@@ -277,6 +277,9 @@ How to add a new test
 
 #.  Ensure the test suite passes with the master on your system.
 #.  Now checkout the branch you're working on where you'd like to add the test.
+#.  Rebuild HANDE so that the HANDE binary prints out the SHA1 hash of the current
+    commit.  Make sure that there are no uncommitted changes to the source directory so
+    that the benchmarks can be reproduced at a later date using the same binary.
 #.  Inside test_suite create a new directory with a sensible name describing your test
     and change to it.
 #.  Place the input files for your test in the directory.  You can have multiple input
