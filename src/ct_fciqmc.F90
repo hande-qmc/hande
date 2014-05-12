@@ -136,12 +136,12 @@ contains
                             ! If death then kill the walker immediately and move
                             ! onto the next one.
                             if (connection%nexcit == 0 .and. &
-                                       walker_population(1,idet)*nspawned < 0.0_p) then
+                                       int(walker_population(1,idet),int_p)*nspawn < 0_int_p) then
                                 tmp_pop = tmp_pop + nspawned
                                 ! abs(nspawned) guaranteed to be 1
-                                nparticles(1) = nparticles(1) - 1
+                                nparticles(1) = nparticles(1) - 1.0_dp
                                 ! The walker is dead---no need to continue spawning to barrier.
-                                ndeath = ndeath + 1
+                                ndeath = ndeath + 1_int_p
                                 exit
                             end if
 
@@ -199,10 +199,10 @@ contains
 
                                 ! Handle walker death
                                 if(connection%nexcit == 0 .and. &
-                                        qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))*nspawned < 0_int_p) then
+                                        int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))*nspawned,int_p) < 0_int_p) then
                                     qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) = &
-                                            qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) + nspawned
-                                    ndeath = ndeath + 1
+                                            qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) + int(nspawned,int_s)
+                                    ndeath = ndeath + 1_int_p
                                     exit ! The walker is dead - do not continue
                                 end if
 
