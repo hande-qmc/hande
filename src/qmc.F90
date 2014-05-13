@@ -44,10 +44,6 @@ contains
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(nbasis, ms_in, sys)
-        ! [review] - JSS: shouldn't this be something like
-        ! if (nprocs == 1 .oro. .not. doing_load_balancing) load_balancing_slots = 1
-        ! [review] - JSS: in order to maintain current behaviour without load balancing?
-        ! [reply] - FM: You're right.
         if (nprocs == 1 .or. .not. doing_load_balancing) load_balancing_slots = 1
         call initialise_proc_map(load_balancing_slots, proc_map)
 
@@ -199,10 +195,6 @@ contains
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
         allocate(walker_data(sampling_size+info_size,walker_length), stat=ierr)
         call check_allocate('walker_data', size(walker_data), ierr)
-        ! [review] - JSS: please check but nprocs is set to 1 if compiled without MPI.
-        ! [review] - JSS: remove conditional compilation code.
-        ! [reply] - FM: nprocs is set to 1, will remove.
-        ! [review] - JSS: you should be able to use this bit even without MPI.
         allocate(nparticles_proc(sampling_size, nprocs), stat=ierr)
         call check_allocate('nparticles_proc', nprocs*sampling_size, ierr)
 

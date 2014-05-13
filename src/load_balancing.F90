@@ -76,11 +76,6 @@ module load_balancing
 !    should probably be performed at the start of a calculation if the population
 !    is held constant.
 
-! [review] - JSS: I'm trying to be better about top-level comments (compare ccmc.f90 to fciqmc.f90).
-! [review] - JSS: Perhaps a general outline of the load balancing scheme could be placed here?
-! [review] - JSS: A (shorter?) version of the notes I made would be fine.
-! [reply] - FM: I'll probably insert a shortened version of your notes.
-
 use const , only: lint
 
 implicit none
@@ -98,12 +93,6 @@ contains
         ! 2. Once proc_map is modified so that its entries contain the new locations
         !   of of donor slots, we then add these determinants to spawned walker list so
         !   that they can be moved to their new processor.
-        ! [review] - JSS: load_tag is now set to a different constant in the enumerator rather than 1...
-        ! [reply] - FM: Good addition.
-        ! [review] - JSS: Please change the comment!  I guess load_balancing_tag is set to load_tag_done?
-        ! [reply] - FM: Oh, sorry.
-        ! [reply] - FM: Actually, the tag isn't modified here, it's modified in redistribute_load_balancing_dets.
-        ! [reply] - FM: I'll amend the comments there.
 
         ! In/Out:
         ! proc_map: array which maps determinants to processors
@@ -140,15 +129,9 @@ contains
         ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, size(proc_map), MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
-        ! [review] - JSS: procs_pop?
-        ! [reply] - FM: I deleted this array (87b450a2ad89 I think), forgot to
-        ! [reply] - FM: remove this line.
-        ! [review] - JSS: still to do...
-        ! [reply] - FM: Sorry.
+
         pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
 
-        ! [review] - JSS: don't need real(...) as an integer*real will return a real.
-        ! [reply] - FM: ok.
         up_thresh = pop_av + int(pop_av*percent_imbal)
         low_thresh = pop_av - int(pop_av*percent_imbal)
 
@@ -178,8 +161,6 @@ contains
 
         if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(d_slot_rank(1)))
 
-        ! [review] - JSS: Please explicitly deallocate allocated memory.
-        ! [reply] - FM: will do.
         deallocate(donors, stat=ierr)
         call check_deallocate('donors', ierr)
         deallocate(receivers, stat=ierr)
@@ -216,14 +197,6 @@ contains
                   "Average # of particles", "Min slot pop"
         write (6, '(1X, "#",1X,3(es17.10,3X),4X,es17.10)') maxval(real(nparticles_proc(1,:))), &
                   minval(real(nparticles_proc(1,:))), real(sum(nparticles_proc(1,:))/nprocs), real(min_slot)
-        ! [review] - JSS: could we also print out this information after the load balancing, so we know how good it's been?
-        ! [reply] - FM: yes, it would require modifying nparticles_proc in
-        ! [reply] - FM: redistribute slots, but that's not much of an issue. I could make
-        ! [reply] - FM: this a subroutine as it's being called twice, but min_slot is fairly meaningless at
-        ! [reply] - FM: that point. (It's use is seing if no load balancing can take place
-        ! [reply] - FM: because the minimum number of transfered walkers would move the
-        ! [reply] - FM: donor processor past the threshold).
-        ! [reply] - FM: Actually I think I was doing the modification to nparticles_proc anyway..
 
     end subroutine write_load_balancing_info
 
@@ -248,24 +221,6 @@ contains
 
         upper_threshold = average_pop + int(average_pop*percent_imbal)
 
-        ! [review] - JSS: What about if there's a processor below the lower threshold?
-        ! [review] - JSS: Shouldn't we do load balancing then?
-        ! [review] - FM: You're right, hadn't considered that.
-        ! [reply] - FM: Actually, this might change things, I don't think the
-        ! [reply] - FM: current implementation could necessarily take this into
-        ! [reply] - FM: account without some modifications. So we always rely on some
-        ! [reply] - FM: processors having a population above the threshold.
-        ! [reply] - JSS: How hard would this be?  Where does the current implementation assume there's something above the
-        ! [reply] - JSS: threshold?  In redistribute_slots?
-        ! [reply] - FM: The current implementation finds donor processors (ones with a population above the threshold)
-        ! [reply] - FM: and also receiver processors (population below the threshold) and tries to donate between them.
-        ! [reply] - FM: If we only have a processor below the threshold and none above it then no load balancing could
-        ! [reply] - FM: currently take place, as we can't donate any slots. Unless I'm missing something?
-        ! [reply] - FM: Maybe the donor definition is too rigid and we should try to include all slots which when subtracted
-        ! [reply] - FM: from the total population on a given processor leaves that processor's population within the thresholds?
-        ! [reply] - FM: With preference given to slots which are from processors with a population above the threshold?
-        ! [reply] - FM: Perhaps that would then allow for checking if a processor is below the threshold?
-
         if (any(nparticles_proc(1,:nprocs) > upper_threshold)) then
             dummy_tag = load_tag_doing
         else
@@ -278,33 +233,11 @@ contains
 
         ! Attempt to modify entries in proc_map to get a more even population distribution across processors.
 
-        ! [review] - JSS: Please delete/change if you don't agree with the comment!
-        ! [reply] - FM: I think it's true and gives some basis for why we're
-        ! [reply] - FM: doing what we're doing.
-        ! Working out the optimal distribution of slots is an NP-hard problem so we instead just
-        ! use simple heuristics.
-
         ! Slots from d_slot_pop are currently donated in increasing slot population.
         ! This is carried out while the donor processor's population is above a specified threshold
         ! or the receiver processor's population is below a certain threshold.
 
         ! In:
-        !   [review] - JSS: I don't understant what d_* arrays hold.  Perhaps examples would aid the reader?
-        !   [review] - JSS: e.g. d_slot_pop(i) = ....
-        !   [reply] - FM: d_slot_pop(i) contains the population of a slot we can
-        !   [reply] - FM: donate from a donor processor to a receiver processor
-        !   [reply] - FM: perhaps d_pop is a better name?
-        !   [reply] - JSS: How about donor_slot_pop or d_slot_pop?
-        !   [reply] - FM: d_slot_index(i) contains the index of the slot in proc_map
-        !   [reply] - JSS: donor_slot_index or d_slot_index?
-        !   [reply] - FM: (technically slot_list as proc_map contains processor ids,
-        !   [reply] - FM: slot list contains the corresponding populations of the slots) to which the ith entry in d_slot_pop corresponds.
-        !   [reply] - FM: So, slot_list(d_slot_index(i)) = d_slot_pop(i), is probably more straightforward, but we use d_slot_index more to find entries in proc_map.
-        !   [reply] - FM: d_slot_rank contains the indices which correspond to the ranked (lowest to highest) entries in d_slot_pop. Need the index for d_slot_index etc.
-        !   [reply] - JSS: This makes more sense.  Turn your reply into a set of comments and that will be fine, I think.
-        !   [reply] - FM: I think I've done this, I'll rename them soon.
-        !   [review] - JSS: ending sentence on a /?
-        !   [review] - FM: "/" is close to ".".
         !   d_slot_pop: array containing populations of donor slots which we try and redistribute
         !       to receiver processors. This is a reduced version of slot_list containing
         !       only slots corresponding to donor processors.
@@ -345,10 +278,6 @@ contains
                 new_pop = d_slot_pop(pos) + procs_pop(receivers(j))
                 ! Modify donor population.
                 donor_pop = procs_pop(proc_map(d_slot_index(pos))) - d_slot_pop(pos)
-                ! [review] - JSS: 'adding subtracting' doesn't make sense.
-                ! [reply] - FM: meant adding or subtracting.
-                ! [reply] - FM: I'm not sure this comment adds anything. Delete it?
-                ! [reply] - JSS: sure.
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (donor_pop .ge. low_thresh .and. new_pop .le. up_thresh)  then
                     ! Changing processor population.
@@ -391,16 +320,7 @@ contains
 
         integer :: i, j, ndonor
 
-        ! [review] - JSS: much easier to read if you use i/j/k for loop indices and use longer variable
-        ! [review] - JSS: names for other quantities.
-        ! [reply] - FM: OK.
         ndonor = 1
-
-        ! [review] - JSS: it would be helpful to note that proc_map and slot_list are arrays of size nslots*nprocs and hence you're
-        ! [review] - JSS: listing all slots which can be moved (if I understand what you're doing correctly!).
-        ! [reply] - FM: yes, I'm finding the slots in proc map which correspond to the donor processors and storing both the number of
-        ! [reply] - FM: walkers in each of these slots and the associated index in the proc_map array.
-        ! [reply] - FM: I'll write comments to this effect at the beginning of this subroutine.
 
         do i = 1, size(donors)
             do j = 0, size(slot_list) - 1
@@ -452,10 +372,6 @@ contains
         allocate(tmp_don(0:nprocs-1), stat=ierr)
         call check_allocate('tmp_don', nprocs, ierr)
 
-        ! [review] - JSS: initialise to 0 and then you don't have to use k-1 etc later.
-        ! [review] - JSS: much easier to read if you use i/j/k for loop indices and use longer variable
-        ! [review] - JSS: names for other quantities (e.g. nlow and nhigh or nrecv and ndonor).
-        ! [reply] - FM: Will do.
         ndonor = 0
         nrecv = 0
 
@@ -499,8 +415,6 @@ contains
             end do
         end do
 
-        ! [review] - JSS: Please explicitly deallocate allocated memory.
-        ! [reply] - FM: will do.
         deallocate(rec_sort, stat=ierr)
         call check_deallocate('rec_sort', ierr)
         deallocate(tmp_rec, stat=ierr)
