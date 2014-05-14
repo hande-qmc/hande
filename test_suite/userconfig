@@ -8,4 +8,3 @@ extract_program = ../tools/extract.py
 [user]
 diff = vimdiff
 benchmark = cb1fb05
-

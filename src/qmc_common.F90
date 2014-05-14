@@ -32,7 +32,7 @@ contains
         use errors, only: stop_all
 
         integer, parameter :: particle_type = 1
-        integer :: i, fmax(basis_length), max_pop, D0_proc
+        integer :: i, fmax(basis_length), max_pop, D0_proc, slot
 #ifdef PARALLEL
         integer :: in_data(2), out_data(2), ierr
 #endif
@@ -62,8 +62,8 @@ contains
 
 #ifdef PARALLEL
 
-        D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                            qmc_spawn%move_freq, nprocs)
+        call assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                            qmc_spawn%move_freq, nprocs, D0_proc, slot)
 
         if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle)) then
             in_data = (/ max_pop, iproc /)
@@ -348,6 +348,87 @@ contains
 
     end subroutine load_balancing_report
 
+    subroutine redistribute_load_balancing_dets
+
+        ! If doing load balancing we need to send slots of determinants to their new processors
+        ! before annihilation takes place. Currently doesn't check if any slots will actually be sent.
+
+        if (load_balancing_tag == load_tag_doing) then
+            call redistribute_particles(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
+            ! Modify load_balancing_tag so that there are no further attempts at
+            ! load balancing this report loop.
+            load_balancing_tag = load_tag_done
+        end if
+
+    end subroutine redistribute_load_balancing_dets
+
+    subroutine redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
+
+        ! [todo] JSS: - update comments to be more general than just for CCMC.
+
+        ! Due to the cooperative spawning (ie from multiple excitors at once) in
+        ! CCMC, we need to give each excitor the chance to be on the same
+        ! processor with all combinations of excitors, unlike in FCIQMC where
+        ! the spawning events are independent.  We satisfy this by periodically
+        ! moving an excitor to a different processor (MPI rank).
+
+        ! WARNING: if the number of processors is large or the system small,
+        ! this introduces a bias as load balancing prevents all possible
+        ! clusters from being on the same processor at the same time.
+
+        ! In:
+        !    walker_dets: list of occupied excitors on the current processor.
+        !    total_walkers: number of occupied excitors on the current processor.
+        ! In/Out:
+        !    nparticles: number of excips on the current processor.
+        !    walker_populations: Population on occupied excitors.  On output the
+        !        populations of excitors which are sent to other processors are
+        !        set to zero.
+        !    spawn: spawn_t object.  On output particles which need to be sent
+        !        to another processor have been added to the correct position in
+        !        the spawned store.
+
+        use basis, only: basis_length
+        use const, only: i0, lint
+        use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor, add_spawned_particles
+        use parallel, only: iproc, nprocs
+
+        integer(i0), intent(in) :: walker_dets(:,:)
+        integer, intent(inout) :: walker_populations(:,:)
+        integer, intent(inout) :: tot_walkers
+        integer(lint), intent(inout) :: nparticles(:)
+        type(spawn_t), intent(inout) :: spawn
+
+        integer :: iexcitor, pproc, slot
+
+        !$omp parallel do default(none) &
+        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs) &
+        !$omp private(pproc)
+        do iexcitor = 1, tot_walkers
+            !  - set hash_shift and move_freq
+            call assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
+                                              spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot)
+            if (pproc /= iproc) then
+                ! Need to move.
+                ! Add to spawned array so it will be sent to the correct
+                ! processor during annihilation.
+                ! NOTE: for initiator calculations we need to keep this
+                ! population no matter what.  This relies upon the
+                ! (undocumented) 'feature' that a flag of 0 indicates the parent
+                ! was an initiator...
+                call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
+                ! Update population on the sending processor.
+                nparticles = nparticles - abs(walker_populations(:,iexcitor))
+                ! Zero population here.  Will be pruned on this determinant
+                ! automatically during annihilation (which will also update tot_walkers).
+                walker_populations(:,iexcitor) = 0
+            end if
+        end do
+        !$omp end parallel do
+
+    end subroutine redistribute_particles
+
 ! --- Output routines ---
 
     subroutine initial_fciqmc_status(sys, rep_comm)
@@ -458,6 +539,7 @@ contains
         !        cycle.  Reset to 0 on output.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc
+        use load_balancing, only: do_load_balancing
 
         integer(lint), intent(in), optional :: min_attempts
         integer(lint), intent(out) :: nattempts
@@ -493,6 +575,10 @@ contains
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
+
+        if(doing_load_balancing .and. load_balancing_tag == load_tag_doing) then
+            call do_load_balancing(proc_map)
+        end if
 
     end subroutine init_mc_cycle
 
@@ -688,5 +774,31 @@ contains
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 
     end subroutine end_non_blocking_comm
+
+    subroutine initialise_proc_map(load_balancing_slots, proc_map_d)
+
+        ! Determinants are assigned to processors using proc_map(0:load_balancing_slots*nprocs-1) which
+        ! is initialised so that its entries cyclically contain processors 0,..,nprocs-1
+
+        ! In:
+        !    load_balancing_slots: number of "slots" we subdivide interval by on each processor
+        ! Out:
+        !    proc_map_d: will become proc_map upon allocation.
+
+        use parallel, only : nprocs
+
+        integer, intent(in) :: load_balancing_slots
+        integer , allocatable, intent(out) :: proc_map_d(:)
+        integer :: i, p_map_size
+
+        p_map_size = load_balancing_slots*nprocs
+
+        allocate(proc_map(0:p_map_size-1))
+
+        do i = 0, p_map_size - 1
+            proc_map_d(i) = modulo(i, nprocs)
+        end do
+
+    end subroutine initialise_proc_map
 
 end module qmc_common

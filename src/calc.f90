@@ -278,7 +278,7 @@ contains
 
         integer :: ierr
 
-        allocate(report_loop%rep_info(ntypes+7), stat=ierr)
+        allocate(report_loop%rep_info(ntypes*nprocs+7), stat=ierr)
         call check_allocate('report_loop%rep_info', size(report_loop%rep_info), ierr)
 
         report_loop%nb_spawn = 0

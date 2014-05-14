@@ -136,6 +136,7 @@ contains
                     call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_data_s, report_comm%nb_spawn)
                     call end_mc_cycle(ndeath, nattempts, report_comm%nb_spawn)
                 else
+                    call redistribute_load_balancing_dets
                     call direct_annihilation(sys, initiator_approximation)
                     call end_mc_cycle(ndeath, nattempts)
                 end if

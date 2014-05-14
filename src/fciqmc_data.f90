@@ -112,6 +112,9 @@ integer :: tot_walkers
 integer(lint), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
 integer(lint), allocatable, target :: tot_nparticles(:) ! (sampling_size)
+! Total number of particles on all determinants for each processor
+! [todo] - JSS: check type with Nick when merging due to the reals work.
+integer(lint), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -443,6 +446,46 @@ real(p) :: X__=0, Xo_=0, X_o=0
 ! communications.
 type(nb_rep_t) :: report_comm
 
+!--- Input data: Load Balancing ---
+
+! Are we doing load balancing? Default false
+logical :: doing_load_balancing = .false.
+! Number of slots walker lists are initially subdivided into for proc_map
+! Default = 20. This reverts to 1 when run in serial.
+integer :: load_balancing_slots = 20
+! Population which must be reached before load balancing is attempted.
+! Default = 1000.
+integer(lint) :: load_balancing_pop = 1000
+! Percentage load imbalance we aim to achieve when performing load balancing.
+! i.e. min_pop = (1-percent_imbal)*av_pop, max_pop = (1+percent_imbal)*av_pop.
+! Default = 0.05
+real(p) :: percent_imbal = 0.05
+! Maximum number of load balancing attempts.
+! Default = 2.
+integer :: max_load_attempts = 2
+! Write load balancing information every time load balancing is attempted.
+logical :: write_load_info = .false.
+
+!--- Load Balancing Data ---
+
+! Array which maps particles to processors. If attempting load balancing then
+! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
+! map particles to processors using modular arithmetic. Otherwise it's entries are
+! 0,1,..,nprocs-1.
+integer, allocatable :: proc_map(:)
+! load_tag_initial: default status, no load balancing is required.
+! load_tag_doing: an imbalanced processor was detected, load balancing should procede.
+! load_tag_done: completed load balancing for this report loop.
+enum, bind(c)
+    enumerator :: load_tag_initial
+    enumerator :: load_tag_doing
+    enumerator :: load_tag_done
+end enum
+! Tag to check which stage of load balancing we are at.
+integer :: load_balancing_tag = load_tag_initial
+! Current number of load balancing attempts.
+integer :: load_attempts = 0
+
 contains
 
     !--- Statistics. ---
@@ -711,7 +754,14 @@ contains
             call dealloc_spawn_t(received_list)
             call dealloc_nb_rep_t(report_comm)
         end if
-
+        if (allocated(proc_map)) then
+            deallocate(proc_map, stat=ierr)
+            call check_deallocate('proc_map', ierr)
+        end if
+        if (allocated(nparticles_proc)) then
+            deallocate(nparticles_proc, stat=ierr)
+            call check_deallocate('nparticles_proc', ierr)
+        end if
         call dealloc_spawn_t(qmc_spawn)
 
     end subroutine end_fciqmc
