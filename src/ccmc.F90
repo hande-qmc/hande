@@ -595,7 +595,7 @@ contains
             cluster%excitation_level = 0
             cluster%amplitude = normalisation
             cluster%cluster_to_det_sign = 1
-            if (cluster%amplitude <= initiator_population) then
+            if (abs(cluster%amplitude) <= initiator_population) then
                 ! Something has gone seriously wrong and the CC
                 ! approximation is (most likely) not suitably for this system.
                 ! Let the user be an idiot if they want to be...
@@ -639,7 +639,9 @@ contains
                     call collapse_cluster(walker_dets(:,pos), walker_population(1,pos), cdet%f, cluster_population, allowed)
                     if (.not.allowed) exit
                 end if
-                if (walker_population(1,pos) <= initiator_population) cdet%initiator_flag = 1
+                ! If the excitor's population is below the initiator threshold, we remove the
+                ! initiator status for the cluster
+                if (abs(walker_population(1,pos)) <= initiator_population) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = pop/tot_pop.
                 cluster%pselect = (cluster%pselect*abs(walker_population(1,pos)))/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
@@ -796,7 +798,7 @@ contains
         use determinants, only: det_info
         use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn
         use excitations, only: excit, get_excitation_level
-        use proc_pointers, only: sc0_ptr
+        use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
@@ -838,7 +840,8 @@ contains
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
-            call create_spawned_particle_truncated(cdet, null_excit, nkill, 1, qmc_spawn)
+!            cdet%initiator_flag=0  !All death is allowed
+            call create_spawned_particle_ptr(cdet, null_excit, nkill, 1, qmc_spawn)
         end if
 
     end subroutine stochastic_ccmc_death
