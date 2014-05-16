@@ -62,16 +62,6 @@ integer(i0), allocatable :: lattice_mask(:)
 ! upon bit strings.
 logical :: separate_strings = .false.
 
-!--- Info for FCI calculations ---
-
-! Only used in FCI calculations, where we can be certain that we have fewer
-! determinants than 2**31-1 (ie no overflow).
-! Whilst it's set (and frequently overflows) in FCIQMC calculations, we never
-! actually use it then.  See the estimate_hilbert_space option to obtain an
-! estimate estimate (or, in real-space systems, exact to a certain precision)
-! for the size of the Hilbert space for a given symmetry which avoids overflows.
-integer :: tot_ndets
-
 ! --- FCIQMC info ---
 
 ! A handy type for containing a lot of information about a determinant.
@@ -115,7 +105,7 @@ contains
         ! integer list of orbitals to bit strings and vice versa.
 
         use checking, only: check_allocate
-        use utils, only: binom_i
+        use utils, only: binom_r
         use utils, only: get_free_unit, int_fmt
         use calc, only: doing_calc, exact_diag, lanczos_diag, doing_calc, &
                         dmqmc_calc, ras, ras1, ras3, ras1_min, truncation_level
@@ -125,8 +115,9 @@ contains
 
         integer :: i, j, k, bit_pos, bit_element, ierr, site_index
         character(4) :: fmt1(5)
+        integer(lint) :: tot_ndets
 
-        tot_ndets = binom_i(nbasis, sys%nel)
+        tot_ndets = nint(binom_r(nbasis, sys%nel), lint)
 
         ! See note in basis.
         if (separate_strings) then
@@ -144,7 +135,8 @@ contains
         end if
 
         if (parent) then
-            fmt1 = int_fmt((/sys%nel, nbasis, tot_ndets, i0_length, basis_length/), padding=1)
+            fmt1 = int_fmt((/sys%nel, nbasis, 0, i0_length, basis_length/), padding=1)
+            fmt1(3) = int_fmt(tot_ndets, padding=1)
             if (sys%system == heisenberg) then
                 write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', sys%nel
             else

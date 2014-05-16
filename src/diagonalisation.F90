@@ -23,7 +23,7 @@ contains
         use errors
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
         use determinant_enumeration, only: enumerate_determinants, ndets, sym_space_size
-        use determinants, only: tot_ndets, spin_orb_list
+        use determinants, only: spin_orb_list
         use fciqmc_data, only: occ_list0
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
@@ -45,8 +45,9 @@ contains
         end type soln
 
         integer :: ms, ms_min, ms_max, ierr, nlanczos, nexact, nfound, i, ind, state, isym, isym_min, isym_max
+        integer :: tot_ndets
 
-        type(soln), allocatable :: lanczos_solns(:), exact_solns(:)
+        type(soln), allocatable :: lanczos_solns(:), exact_solns(:), solns_tmp(:)
 
         ! For communication with Lanczos and exact diagonalisers.
         real(dp), allocatable :: lanczos_eigv(:)
@@ -141,12 +142,8 @@ contains
         end if
 
         if (doing_calc(lanczos_diag)) then
-            allocate(lanczos_solns(nlanczos_eigv*(sys%nel/2+1)*nbasis/2), stat=ierr)
-            call check_allocate('lanczos_solns',nlanczos_eigv*(sys%nel/2+1)*nbasis/2,ierr)
-        end if
-        if (doing_calc(exact_diag)) then
-            allocate(exact_solns(tot_ndets), stat=ierr)
-            call check_allocate('exact_solns',tot_ndets,ierr)
+            allocate(lanczos_solns(nlanczos_eigv*(abs(isym_max-isym_min)/2+1)*(abs(ms_max-ms_min)+1)), stat=ierr)
+            call check_allocate('lanczos_solns', size(lanczos_solns), ierr)
         end if
 
         ! Number of lanczos and exact solutions found.
@@ -163,6 +160,19 @@ contains
                 call enumerate_determinants(sys, .true., spin_flip, occ_list0=occ_list0)
             else
                 call enumerate_determinants(sys, .true., spin_flip)
+            end if
+
+            if (doing_calc(exact_diag)) then
+                ! Allocate only enough space for the eigenstates we actually
+                ! solve for, rather than allocating for the entire Hilbert
+                ! space.  This allows us to do full diagonalisation on small
+                ! subblocks even when the entire Hilbert space is enormous.
+                allocate(solns_tmp(nexact+sum(sym_space_size(isym_min:isym_max))), stat=ierr)
+                call check_allocate('exact_solns',size(solns_tmp),ierr)
+                if (allocated(exact_solns)) then
+                    solns_tmp(:size(exact_solns)) = exact_solns
+                end if
+                call move_alloc(solns_tmp, exact_solns)
             end if
 
             ! Diagonalise each symmetry block in turn.
@@ -223,6 +233,14 @@ contains
                         ! if running in parallel.
                         if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(sys, distribute_cols)
                         call lanczos_diagonalisation(sys, nfound, lanczos_eigv)
+                        if (nlanczos+nfound > size(lanczos_solns)) then
+                            ! We have found more solutions than we asked for.
+                            ! Allocate more space...
+                            allocate(solns_tmp(size(lanczos_solns)+2*nlanczos_eigv), stat=ierr)
+                            call check_allocate('lanczos_solns', size(solns_tmp), ierr)
+                            solns_tmp(1:nlanczos) = lanczos_solns(1:nlanczos)
+                            call move_alloc(solns_tmp, lanczos_solns)
+                        end if
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%energy = lanczos_eigv(:nfound)
                         lanczos_solns(nlanczos+1:nlanczos+nfound)%ms = ms
                         nlanczos = nlanczos + nfound
