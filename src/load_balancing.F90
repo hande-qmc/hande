@@ -86,7 +86,7 @@ contains
 
         ! Main subroutine in module, carries out load balancing as follows:
         ! 1. If doing load balancing then:
-        !   * Find processors which have above/below average population
+        !   * Find processors which have above/below average population.
         !   * For processors with above average populations enter slots from slot_list
         !     into smaller array which is then ranked according to population.
         !   * Attempt to move these slots to processors with below average population.
@@ -103,7 +103,7 @@ contains
         use spawn_data, only: spawn_t
         use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
                                nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
-                               percent_imbal, load_attempts, write_load_info
+                               percent_imbal, load_attempts, write_load_info, load_balancing_tag
         use ranking, only: insertion_rank_lint
         use checking, only: check_allocate, check_deallocate
 
@@ -116,7 +116,7 @@ contains
         integer, allocatable :: d_slot_rank(:), d_slot_index(:)
         integer(lint), allocatable :: d_slot_pop(:)
 
-        integer :: ierr
+        integer :: i, ierr
         integer(lint) :: pop_av
         integer :: d_slot_pop_size
         integer(lint) :: up_thresh, low_thresh
@@ -129,8 +129,29 @@ contains
         ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, size(proc_map), MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
-
+        ! Whether load balancing is required or not is decided based on the
+        ! populations across processors during the report loop. For non-blocking
+        ! communications the report loop populations relate to the previous
+        ! report loop's populations due to the staggered nature how the report
+        ! loop is dealt with. This shouldn't be an issue as an imblanace should
+        ! persist between report loops, but best to base redistribution on
+        ! current populations, so update these here. When not using non-blocking
+        ! comms then the population before this evalutation should be the same
+        ! as those after.
+        ! Note: these populations are calculated from the main list and do not
+        ! include walkers in the received list which have not been introduced
+        ! yet.
+        forall (i=1:nprocs) nparticles_proc(1,i) = sum(slot_list, MASK=proc_map==i-1)
         pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
+
+        ! As stated above we only initially determine when to do load balancing
+        ! based on the previous report loop's populations. This means that the
+        ! first report loop after the first load balancing attempt won't have
+        ! taken this first load balancing into account. As a result the decision
+        ! to attempt load balancing will be a bad one, so we potentially need to
+        ! exit the subroutine now.
+        call check_imbalance(nparticles_proc, pop_av, load_balancing_tag)
+        if (.not. load_balancing_tag) return
 
         up_thresh = pop_av + int(pop_av*percent_imbal)
         low_thresh = pop_av - int(pop_av*percent_imbal)
@@ -200,20 +221,21 @@ contains
 
     end subroutine write_load_balancing_info
 
-    subroutine check_imbalance(average_pop, load_tag)
+    subroutine check_imbalance(nparticles_proc, average_pop, load_tag)
 
         ! Check if there is at least one imbalanced processor.
 
         ! In:
-        !    averag_pop: average population across all processors
+        !    nparticles_proc: population of walkers across all processors.
+        !    average_pop: average population across all processors.
         ! Out:
         !    load_tag: set to .true. if load balancing is required
         !        else set to .false..
 
         use parallel, only: nprocs
-        use fciqmc_data, only: nparticles_proc, percent_imbal
+        use fciqmc_data, only: percent_imbal
 
-        integer(lint), intent(in) :: average_pop
+        integer(lint), intent(in) :: nparticles_proc(:,:), average_pop
         logical, intent(out) :: load_tag
 
         integer :: i, upper_threshold

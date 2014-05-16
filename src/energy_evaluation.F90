@@ -190,7 +190,7 @@ contains
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
-        use parallel, only: nprocs, iproc
+        use parallel, only: nprocs
 
         real(dp), intent(in) :: rep_loop_sum(:)
         integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
@@ -216,7 +216,7 @@ contains
         if(doing_load_balancing .and. ntot_particles(1) > load_balancing_pop .and. load_attempts < max_load_attempts) then
             pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
             ! Check if there is at least one processor with load imbalance.
-            call check_imbalance(pop_av, load_balancing_tag)
+            call check_imbalance(nparticles_proc, pop_av, load_balancing_tag)
         end if
 
         if (vary_shift) then

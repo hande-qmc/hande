@@ -203,12 +203,12 @@ contains
                                tot_walkers, walker_length, write_fciqmc_report_header,               &
                                write_fciqmc_final, nparticles, ccmc_move_freq
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
-                              init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle
+                              init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
+                              redistribute_particles
         use proc_pointers
         use search, only: binary_search
         use spawning, only: assign_particle_processor
         use system, only: sys_t
-        use qmc_common, only: redistribute_particles
 
         type(sys_t), intent(in) :: sys
 

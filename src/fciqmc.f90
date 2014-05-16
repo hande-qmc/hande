@@ -22,7 +22,8 @@ contains
 
         use parallel
 
-        use annihilation, only: direct_annihilation, direct_annihilation_non_blocking
+        use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
+                                direct_annihilation_spawned_list
         use basis, only: basis_length, nbasis
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
@@ -133,11 +134,15 @@ contains
                 if (non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
-                    call direct_annihilation_non_blocking(sys, initiator_approximation, send_counts, req_data_s, report_comm%nb_spawn)
+                    call direct_annihilation_received_list(sys, initiator_approximation)
+                    ! Need to add walkers which have potentially moved processor to the spawned walker list.
+                    if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, walker_population, tot_walkers, &
+                                                                                    nparticles, qmc_spawn, load_balancing_tag)
+                    call direct_annihilation_spawned_list(sys, initiator_approximation, send_counts, req_data_s, report_comm%nb_spawn)
                     call end_mc_cycle(ndeath, nattempts, report_comm%nb_spawn)
                 else
                     if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, walker_population, tot_walkers, &
-                                                                                        nparticles, qmc_spawn, load_balancing_tag)
+                                                                                    nparticles, qmc_spawn, load_balancing_tag)
                     call direct_annihilation(sys, initiator_approximation)
                     call end_mc_cycle(ndeath, nattempts)
                 end if

@@ -763,43 +763,6 @@ contains
 
 ! --- Load balancing routines ---
 
-    subroutine redistribute_load_balancing_dets(walker_dets, walker_populations, tot_walkers, nparticles, spawn, load_tag)
-
-        ! When doing load balancing we need to redistribute chosen sections of
-        ! main list to be sent to their new processors. This is a wrapper which
-        ! takes care of this and resets the load balancing tag so that no
-        ! further load balancing is attempted this report loop. Currently don't
-        ! check if anything will actually be sent.
-
-        ! In:
-        !    walker_dets: list of occupied excitors on the current processor.
-        !    total_walkers: number of occupied excitors on the current processor.
-        ! In/Out:
-        !    nparticles: number of excips on the current processor.
-        !    walker_populations: Population on occupied excitors.  On output the
-        !        populations of excitors which are sent to other processors are
-        !        set to zero.
-        !    spawn: spawn_t object.  On output particles which need to be sent
-        !        to another processor have been added to the correct position in
-        !        the spawned store.
-        !    load_tag: load_t object. On input this has load_tag%doing = .true.
-        !        On output flags will be reset so that load_tag%required =
-        !        .false.
-
-        integer(i0), intent(in) :: walker_dets(:,:)
-        integer, intent(inout) :: walker_populations(:,:)
-        integer, intent(inout) :: tot_walkers
-        integer(lint), intent(inout) :: nparticles(:)
-        type(spawn_t), intent(inout) :: spawn
-        logical, intent(inout) :: load_tag
-
-        if (load_tag) then
-            call redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
-            load_tag = .false.
-        end if
-
-    end subroutine redistribute_load_balancing_dets
-
     subroutine initialise_proc_map(load_balancing_slots, proc_map_d)
 
         ! Determinants are assigned to processors using proc_map(0:load_balancing_slots*nprocs-1) which
@@ -825,5 +788,44 @@ contains
         end do
 
     end subroutine initialise_proc_map
+
+    subroutine redistribute_load_balancing_dets(walker_dets, walker_populations, tot_walkers, nparticles, spawn, load_tag)
+
+        ! When doing load balancing we need to redistribute chosen sections of
+        ! main list to be sent to their new processors. This is a wrapper which
+        ! takes care of this and resets the load balancing tag so that no
+        ! further load balancing is attempted this report loop. Currently don't
+        ! check if anything will actually be sent.
+
+        ! In:
+        !    walker_dets: list of occupied excitors on the current processor.
+        !    total_walkers: number of occupied excitors on the current processor.
+        ! In/Out:
+        !    nparticles: number of excips on the current processor.
+        !    walker_populations: Population on occupied excitors.  On output the
+        !        populations of excitors which are sent to other processors are
+        !        set to zero.
+        !    spawn: spawn_t object.  On output particles which need to be sent
+        !        to another processor have been added to the correct position in
+        !        the spawned store.
+        !    load_tag: load_t object. On input this has load_tag%doing = .true.
+        !        On output flags will be reset so that load_tag%required =
+        !        .false.
+
+        use spawn_data, only: spawn_t
+
+        integer(i0), intent(in) :: walker_dets(:,:)
+        integer, intent(inout) :: walker_populations(:,:)
+        integer, intent(inout) :: tot_walkers
+        integer(lint), intent(inout) :: nparticles(:)
+        type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: load_tag
+
+        if (load_tag) then
+            call redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
+            load_tag = .false.
+        end if
+
+    end subroutine redistribute_load_balancing_dets
 
 end module qmc_common

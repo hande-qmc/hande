@@ -39,7 +39,55 @@ contains
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_non_blocking(sys, tinitiator, send_counts, req_data_s, non_block_spawn)
+    subroutine direct_annihilation_received_list(sys, tinitiator)
+
+        ! Annihilation algorithm for non-blocking communications.
+        ! Spawned walkers are added to the main list, by which new walkers are
+        ! introduced to the main list and existing walkers can have their
+        ! populations either enhanced or diminished.
+
+        ! If doing load balancing as well the annihilation procedure changes a
+        ! bit. If load balancing has been decided upon then proc_map will have been
+        ! updated by now. This means any walkers spawned during the current iteration
+        ! will have been added to the modified section of the spawned walker array.
+        ! To take care of annihilation we first merge the received list into the
+        ! main list and then redistribute sections of the main list according
+        ! the the updated proc map, as in normal load balancing.
+        ! These walkers will be added to the spawned list and then communicated,
+        ! using non-blocking comms instead of the normal MPI_AlltoAll. So they
+        ! will need to be evolved upon receipt, as is the case for nomal
+        ! non-blocking communications.
+
+        ! This is a wrapper around various utility functions which perform the
+        ! different parts of the annihilation process.
+
+        ! In:
+        !    sys: system being studied.
+        !    tinitiator: true if the initiator approximation is being used.
+
+        use parallel, only: nthreads, nprocs, iproc
+        use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
+                              non_blocking_send
+        use sort, only: qsort
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        logical, intent(in) :: tinitiator
+
+        integer, parameter :: thread_id = 0
+
+        ! Perform annihilation inside received list. This involves annihilating
+        ! walkers which were spawned onto this processor from other processors
+        ! (not including the current processor) from  the previous iteration.
+        ! They have since been evolved so they can be annihilated with the main list.
+        ! First annihilate within the received_list.
+        call annihilate_wrapper_non_blocking_spawn(received_list, tinitiator)
+        ! Annihilate with main list.
+        call annihilate_main_list_wrapper(sys, tinitiator, received_list)
+
+    end subroutine direct_annihilation_received_list
+
+    subroutine direct_annihilation_spawned_list(sys, tinitiator, send_counts, req_data_s, non_block_spawn)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -74,15 +122,6 @@ contains
 
         integer, parameter :: thread_id = 0
 
-        ! Perform annihilation inside received list. This involves annihilating
-        ! walkers which were spawned onto this processor from other processors
-        ! (not including the current processor) from  the previous iteration.
-        ! They have since been evolved so they can be annihilated with the main list.
-        ! First annihilate within the received_list.
-        call annihilate_wrapper_non_blocking_spawn(received_list, tinitiator)
-        ! Annihilate with main list.
-        call annihilate_main_list_wrapper(sys, tinitiator, received_list)
-
         ! Need to calculate how many walkers we are going to send to all other
         ! processors. Need to do it now as spawn%head changes meaning upon annihilation.
         call calculate_displacements(qmc_spawn, send_counts, non_block_spawn)
@@ -97,7 +136,7 @@ contains
         ! evolution step to their new processors.
         call non_blocking_send(qmc_spawn, send_counts, req_data_s)
 
-    end subroutine direct_annihilation_non_blocking
+    end subroutine direct_annihilation_spawned_list
 
     subroutine annihilate_main_list_wrapper(sys, tinitiator, spawn, lower_bound)
 
