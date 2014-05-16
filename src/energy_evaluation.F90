@@ -186,8 +186,7 @@ contains
                                proj_energy, shift, vary_shift, vary_shift_from,                &
                                vary_shift_from_proje, D0_population, fold_line,                &
                                nparticles_proc, load_balancing_pop, load_attempts,             &
-                               max_load_attempts, doing_load_balancing,                        &
-                               load_balancing_tag
+                               max_load_attempts, load_balancing_tag, doing_load_balancing
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum

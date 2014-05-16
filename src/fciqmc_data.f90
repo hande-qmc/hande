@@ -473,16 +473,10 @@ logical :: write_load_info = .false.
 ! map particles to processors using modular arithmetic. Otherwise it's entries are
 ! 0,1,..,nprocs-1.
 integer, allocatable :: proc_map(:)
-! load_tag_initial: default status, no load balancing is required.
-! load_tag_doing: an imbalanced processor was detected, load balancing should procede.
-! load_tag_done: completed load balancing for this report loop.
-enum, bind(c)
-    enumerator :: load_tag_initial
-    enumerator :: load_tag_doing
-    enumerator :: load_tag_done
-end enum
-! Tag to check which stage of load balancing we are at.
-integer :: load_balancing_tag = load_tag_initial
+! Tag to check which stage if load balancing is required. This is reset to false
+! once redistribution of determinants has taken place to ensure load balancing
+! occurs once during a report loop.
+logical :: load_balancing_tag = .false.
 ! Current number of load balancing attempts.
 integer :: load_attempts = 0
 

@@ -200,31 +200,30 @@ contains
 
     end subroutine write_load_balancing_info
 
-    subroutine check_imbalance(average_pop, dummy_tag)
+    subroutine check_imbalance(average_pop, load_tag)
 
         ! Check if there is at least one imbalanced processor.
 
         ! In:
         !    averag_pop: average population across all processors
         ! Out:
-        !    dummy_tag: set to load_tag_doing if one processor has population above the average
-        !         else set to load_tag_initial i.e. we don't need to do load_balancing.
+        !    load_tag: set to .true. if load balancing is required
+        !        else set to .false..
 
         use parallel, only: nprocs
-        use fciqmc_data, only: nparticles_proc, load_tag_initial, &
-                               load_tag_doing, percent_imbal
+        use fciqmc_data, only: nparticles_proc, percent_imbal
 
         integer(lint), intent(in) :: average_pop
-        integer, intent(out) :: dummy_tag
+        logical, intent(out) :: load_tag
 
         integer :: i, upper_threshold
 
         upper_threshold = average_pop + int(average_pop*percent_imbal)
 
         if (any(nparticles_proc(1,:nprocs) > upper_threshold)) then
-            dummy_tag = load_tag_doing
+            load_tag = .true.
         else
-            dummy_tag = load_tag_initial
+            load_tag = .false.
         end if
 
     end subroutine check_imbalance
