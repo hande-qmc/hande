@@ -39,7 +39,7 @@ contains
         !       this symmetry index.  Ignored if less than sym0 or greater than
         !       sym_max.
 
-        use const, only: i0, p
+        use const, only: i0, p, depsilon
         use checking, only: check_allocate
         use errors, only: stop_all
 
@@ -124,7 +124,7 @@ contains
                                             do iel = 1, sys%nel
                                                 sp_eigv_sum = sp_eigv_sum + basis_fns(tmp_occ_list(iel))%sp_eigv
                                             end do
-                                            if (sp_eigv_sum < eigv_sum) then
+                                            if (sp_eigv_sum+depsilon < eigv_sum) then
                                                 curr_occ_list = tmp_occ_list
                                                 eigv_sum = sp_eigv_sum
                                             end if
@@ -154,7 +154,7 @@ contains
                                                             sp_eigv_sum = sp_eigv_sum + &
                                                                 basis_fns(tmp_occ_list(iel))%sp_eigv
                                                         end do
-                                                        if (sp_eigv_sum < eigv_sum) then
+                                                        if (sp_eigv_sum+depsilon < eigv_sum) then
                                                             curr_occ_list = tmp_occ_list
                                                             eigv_sum = sp_eigv_sum
                                                         end if
