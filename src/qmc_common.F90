@@ -597,7 +597,7 @@ contains
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send
         use interact, only: fciqmc_interact
-        use parallel, only: parent
+        use parallel, only: parent, nprocs
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
         use calc, only: non_blocking_comm, nb_rep_t
 
@@ -609,7 +609,7 @@ contains
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
-        real(dp) :: rep_info_copy(sampling_size+7)
+        real(dp) :: rep_info_copy(nprocs*sampling_size+7)
 
         if (.not. non_blocking_comm) then
             ! Update the energy estimators (shift & projected energy).
