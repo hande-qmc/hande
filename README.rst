@@ -68,5 +68,9 @@ For code contributions, please try to follow the following points:
 Acknowledgments
 ---------------
 
-Will Vigor pointed out and wrote an early implementation of the algorithm to detect the
-optimal reblock length.  Comments and suggestions from the HANDE development team.
+Will Vigor (Imperial College London) pointed out and wrote an early implementation of
+the algorithm to detect the optimal reblock length.
+
+Tom Poole (Imperial College London) contributed code to handle weighted averages.
+
+The HANDE FCIQMC/CCMC development team made several helpful comments and suggestions.
