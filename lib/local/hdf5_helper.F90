@@ -55,7 +55,7 @@ module hdf5_helper
 
     contains
 
-        ! === Helper procedures: initialisation ===
+        ! === Helper procedures: initialisation, properties ===
 
         subroutine hdf5_kinds_init(kinds)
 
@@ -70,6 +70,44 @@ module hdf5_helper
             kinds%lint = h5kind_to_type(lint, H5_INTEGER_KIND)
 
         end subroutine hdf5_kinds_init
+
+        subroutine dataset_array_plist(arr_rank, arr_dim, plist_id, chunk_size, compress_lvl)
+
+            ! Create a properties list for an array data set.
+
+            ! In:
+            !    arr_rank: rank of array.
+            !    arr_dim: size of array along each dimension.
+            !    chunk_size (optional): size of chunks to stored when using a chunked
+            !        layout.  Default: 1000.
+            !    compress_lvl: compression level (1-9).  Default: 6.
+            ! Out:
+            !    plist_id: properties list.  If the array has more than chunk_size entries, chunking and compression are enabled.
+
+            use hdf5, only: hsize_t, h5pcreate_f, h5pset_chunk_f, h5pset_deflate_f, H5P_DATASET_CREATE_F
+
+            integer(hid_t), intent(in) :: arr_rank
+            integer(hsize_t), intent(in) :: arr_dim(:)
+            integer(hid_t), intent(out) :: plist_id
+            integer, intent(in), optional :: chunk_size, compress_lvl
+
+            integer :: ierr
+            integer :: chunk_size_loc
+            integer :: compress_lvl_loc
+
+            chunk_size_loc = 1000
+            compress_lvl_loc = 6
+            if (present(chunk_size)) chunk_size_loc = chunk_size
+            if (present(compress_lvl)) compress_lvl_loc = compress_lvl
+
+            call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, ierr)
+
+            if (product(arr_dim) > chunk_size_loc) then
+                call h5pset_chunk_f(plist_id, arr_rank, arr_dim, ierr)
+                call h5pset_deflate_f(plist_id, compress_lvl_loc, ierr)
+            end if
+
+        end subroutine dataset_array_plist
 
         ! === Helper procedures: writing ===
 
@@ -355,10 +393,11 @@ module hdf5_helper
             type(c_ptr), intent(in) :: arr_ptr
 
             integer :: ierr
-            integer(hid_t) :: dspace_id, dset_id
+            integer(hid_t) :: dspace_id, dset_id, plist_id
 
             call h5screate_simple_f(arr_rank, arr_dim, dspace_id, ierr)
-            call h5dcreate_f(id, dset, dtype, dspace_id, dset_id, ierr)
+            call dataset_array_plist(arr_rank, arr_dim, plist_id)
+            call h5dcreate_f(id, dset, dtype, dspace_id, dset_id, ierr, dcpl_id=plist_id)
 
             call h5dwrite_f(dset_id, dtype, arr_ptr, ierr)
 
