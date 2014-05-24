@@ -79,7 +79,7 @@ module hdf5_helper
             !    arr_rank: rank of array.
             !    arr_dim: size of array along each dimension.
             !    chunk_size (optional): size of chunks to stored when using a chunked
-            !        layout.  Default: 1000.
+            !        layout.  We currently chunk solely only the last dimension.  Default: 100000.
             !    compress_lvl: compression level (1-9).  Default: 6.
             ! Out:
             !    plist_id: properties list.  If the array has more than chunk_size entries, chunking and compression are enabled.
@@ -94,8 +94,9 @@ module hdf5_helper
             integer :: ierr
             integer :: chunk_size_loc
             integer :: compress_lvl_loc
+            integer(hsize_t) :: chunk_dim(arr_rank)
 
-            chunk_size_loc = 1000
+            chunk_size_loc = 100000
             compress_lvl_loc = 6
             if (present(chunk_size)) chunk_size_loc = chunk_size
             if (present(compress_lvl)) compress_lvl_loc = compress_lvl
@@ -103,7 +104,9 @@ module hdf5_helper
             call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, ierr)
 
             if (product(arr_dim) > chunk_size_loc) then
-                call h5pset_chunk_f(plist_id, arr_rank, arr_dim, ierr)
+                chunk_dim(1:arr_rank-1) = arr_dim(1:arr_rank-1)
+                chunk_dim(arr_rank) = chunk_size_loc / product(chunk_dim(1:arr_rank-1))
+                call h5pset_chunk_f(plist_id, arr_rank, chunk_dim, ierr)
                 call h5pset_deflate_f(plist_id, compress_lvl_loc, ierr)
             end if
 
