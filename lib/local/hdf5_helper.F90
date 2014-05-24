@@ -401,6 +401,7 @@ module hdf5_helper
 
             call h5dwrite_f(dset_id, dtype, arr_ptr, ierr)
 
+            call h5pclose_f(plist_id, ierr)
             call h5dclose_f(dset_id, ierr)
             call h5sclose_f(dspace_id, ierr)
 
