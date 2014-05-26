@@ -248,8 +248,8 @@ endif
 # Files to be pre-processed then compiled.
 $(DEST)/%.o: %.F
 ifdef CPP
-	$(CPP) $(CPPFLAGS) $< $(@:.o=.f90)
-	$(FC) -c $(FFLAGS) $(@:.o=.f90) -o $@ $(F90_MOD_FLAG)$(DEST)
+	$(CPP) $(CPPFLAGS) $< $(@:.o=.f)
+	$(FC) -c $(FFLAGS) $(@:.o=.f) -o $@ $(F90_MOD_FLAG)$(DEST)
 else
 	$(FC) $(CPPFLAGS) -c $(FFLAGS) $< -o $@ $(F90_MOD_FLAG)$(DEST)
 endif
