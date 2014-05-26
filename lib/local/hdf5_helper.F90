@@ -80,11 +80,19 @@ module hdf5_helper
             !    arr_dim: size of array along each dimension.
             !    chunk_size (optional): size of chunks to stored when using a chunked
             !        layout.  We currently chunk solely only the last dimension.  Default: 100000.
-! [review] - AJWT: What do the levels mean?  Is larger more compressed?  Why 6 as a default?
             !    compress_lvl (optional): compression level (1-9).  Default: 6.
+            !        The levels are those used by gzip (see man page) where 1 is fastest
+            !        with the worst compression ratio and 9 is the slowest but
+            !        gives (usually) the best compression ratio.  6 is the same default
+            !        used by gzip.
             ! Out:
-            !    plist_id: properties list.  If the array has more than chunk_size entries, chunking and compression are enabled.
-! [review] - AJWT: NB This properties list should be closed after use with h5pclose_f
+            !    plist_id: properties list.  If the array has more than chunk_size entries,
+            !        chunking and compression are enabled.  Currently we use the default
+            !        compression (gzip) though other compression filters (usually via
+            !        third-party plugins) are available.
+
+            ! NOTE: the properties list should be closed after use with h5pclose_f in order
+            ! to avoid a HDF5 resource leak.
 
             use hdf5, only: hsize_t, h5pcreate_f, h5pset_chunk_f, h5pset_deflate_f, H5P_DATASET_CREATE_F
 
