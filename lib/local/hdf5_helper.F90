@@ -80,9 +80,11 @@ module hdf5_helper
             !    arr_dim: size of array along each dimension.
             !    chunk_size (optional): size of chunks to stored when using a chunked
             !        layout.  We currently chunk solely only the last dimension.  Default: 100000.
-            !    compress_lvl: compression level (1-9).  Default: 6.
+! [review] - AJWT: What do the levels mean?  Is larger more compressed?  Why 6 as a default?
+            !    compress_lvl (optional): compression level (1-9).  Default: 6.
             ! Out:
             !    plist_id: properties list.  If the array has more than chunk_size entries, chunking and compression are enabled.
+! [review] - AJWT: NB This properties list should be closed after use with h5pclose_f
 
             use hdf5, only: hsize_t, h5pcreate_f, h5pset_chunk_f, h5pset_deflate_f, H5P_DATASET_CREATE_F
 
@@ -101,11 +103,13 @@ module hdf5_helper
             if (present(chunk_size)) chunk_size_loc = chunk_size
             if (present(compress_lvl)) compress_lvl_loc = compress_lvl
 
+! [review] - AJWT: Should we be checking this error flag?
             call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, ierr)
 
             if (product(arr_dim) > chunk_size_loc) then
                 chunk_dim(1:arr_rank-1) = arr_dim(1:arr_rank-1)
                 chunk_dim(arr_rank) = chunk_size_loc / product(chunk_dim(1:arr_rank-1))
+! [review] - AJWT: Should we be checking these error flags?
                 call h5pset_chunk_f(plist_id, arr_rank, chunk_dim, ierr)
                 call h5pset_deflate_f(plist_id, compress_lvl_loc, ierr)
             end if
@@ -398,6 +402,7 @@ module hdf5_helper
             integer :: ierr
             integer(hid_t) :: dspace_id, dset_id, plist_id
 
+! [review] - AJWT: Should we be checking these error flags?
             call h5screate_simple_f(arr_rank, arr_dim, dspace_id, ierr)
             call dataset_array_plist(arr_rank, arr_dim, plist_id)
             call h5dcreate_f(id, dset, dtype, dspace_id, dset_id, ierr, dcpl_id=plist_id)
