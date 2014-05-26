@@ -7,6 +7,8 @@ module hdf5_helper
     ! as the speed loss should be minimal and the gain in ease of coding quite
     ! nice...
 
+    ! [todo] - Check error flags returned by HDF5 procedures.
+
 #include "../../src/cdefs.h"
 
     use hdf5, only: hid_t
@@ -111,13 +113,11 @@ module hdf5_helper
             if (present(chunk_size)) chunk_size_loc = chunk_size
             if (present(compress_lvl)) compress_lvl_loc = compress_lvl
 
-! [review] - AJWT: Should we be checking this error flag?
             call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, ierr)
 
             if (product(arr_dim) > chunk_size_loc) then
                 chunk_dim(1:arr_rank-1) = arr_dim(1:arr_rank-1)
                 chunk_dim(arr_rank) = chunk_size_loc / product(chunk_dim(1:arr_rank-1))
-! [review] - AJWT: Should we be checking these error flags?
                 call h5pset_chunk_f(plist_id, arr_rank, chunk_dim, ierr)
                 call h5pset_deflate_f(plist_id, compress_lvl_loc, ierr)
             end if
@@ -410,7 +410,6 @@ module hdf5_helper
             integer :: ierr
             integer(hid_t) :: dspace_id, dset_id, plist_id
 
-! [review] - AJWT: Should we be checking these error flags?
             call h5screate_simple_f(arr_rank, arr_dim, dspace_id, ierr)
             call dataset_array_plist(arr_rank, arr_dim, plist_id)
             call h5dcreate_f(id, dset, dtype, dspace_id, dset_id, ierr, dcpl_id=plist_id)
