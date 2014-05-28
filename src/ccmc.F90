@@ -543,16 +543,15 @@ contains
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
         ! where
-        !   n_sel   is the number of cluster selections made (by this
-        !           processor);
+        !   n_sel   is the number of cluster selections made;
         !   p_size  is the probability of choosing a cluster of that size;
         !   p_clust is the probability of choosing a specific cluster given
         !           the choice of size.
 
         ! Each processor does nattempts, so the selection probability
-        ! is nattempts*nprocs as there are nprocs processors
-        !  NB within a processor those nattempts can be split amongst OpenMP threads
-        !     though that doesn't affect this probability
+        ! is nattempts*nprocs as there are nprocs processors.
+        ! NB within a processor those nattempts can be split amongst OpenMP
+        ! threads though that doesn't affect this probability.
         cluster%pselect = nattempts*nprocs
 
         ! Select the cluster size, i.e. the number of excitors in a cluster.
