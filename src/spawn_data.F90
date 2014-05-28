@@ -54,8 +54,13 @@ type spawn_t
     integer, allocatable :: head(:,:)  ! (0:nthreads-1,0:nprocs-1)
     ! head_start(j,i)+nthreads gives the position in sdata of the first spawned
     ! particle created by thread j to be sent to processor i.
-    ! (Note that the first thing the particle creation routines do is add nthread to the
-    ! appropriate element of head to find the next empty slot to spawn into.)
+    ! (Note:
+    !       1) the first thing the particle creation routines do is add nthread to
+    !          the appropriate element of head to find the next empty slot to spawn
+    !          into.)
+    !       2) head_start(nthreads-1,i) gives the index before the first element of
+    !          a particle to be sent to processor i.
+    ! )
     integer, allocatable :: head_start(:,:) ! (0:nthreads-1,0:nprocs-1)
     ! seed for hash routine used to determine which processor a given bit string
     ! should be sent to.
@@ -364,7 +369,7 @@ contains
 
         ! Find out how many particles we are going to send and receive.
         forall (i=0:nprocs-1)
-            send_counts(i) = spawn%head(thread_id,i) - spawn%head_start(thread_id,i) + nthreads - 1
+            send_counts(i) = spawn%head(thread_id,i) - spawn%head_start(nthreads-1,i)
         end forall
 
         call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
