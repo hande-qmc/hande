@@ -527,6 +527,7 @@ contains
         use utils, only: factorial
         use search, only: binary_search
         use sort, only: insert_sort
+        use parallel, only: nprocs
 
         integer(lint), intent(in) :: nattempts
         integer, intent(in) :: D0_pos, normalisation
@@ -548,7 +549,11 @@ contains
         !   p_clust is the probability of choosing a specific cluster given
         !           the choice of size.
 
-        cluster%pselect = nattempts
+        ! Each processor does nattempts, so the selection probability
+        ! is nattempts*nprocs as there are nprocs processors
+        !  NB within a processor those nattempts can be split amongst OpenMP threads
+        !     though that doesn't affect this probability
+        cluster%pselect = nattempts*nprocs
 
         ! Select the cluster size, i.e. the number of excitors in a cluster.
         ! For a given truncation_level, only clusters containing at most
@@ -595,6 +600,7 @@ contains
             cluster%excitation_level = 0
             cluster%amplitude = normalisation
             cluster%cluster_to_det_sign = 1
+            cluster%pselect = cluster%pselect
             if (abs(cluster%amplitude) <= initiator_population) then
                 ! Something has gone seriously wrong and the CC
                 ! approximation is (most likely) not suitably for this system.
@@ -643,7 +649,8 @@ contains
                 ! initiator status for the cluster
                 if (abs(walker_population(1,pos)) <= initiator_population) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = pop/tot_pop.
-                cluster%pselect = (cluster%pselect*abs(walker_population(1,pos)))/tot_excip_pop
+                ! This is divided by nprocs as each excitor spends its time moving between nprocs processors
+                cluster%pselect = (cluster%pselect*abs(walker_population(1,pos))/nprocs)/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
                 prev_pos = pos
             end do
