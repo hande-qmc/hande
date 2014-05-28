@@ -219,7 +219,7 @@ contains
         type(excit) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
         type(dSFMT_t), allocatable :: rng(:)
-        real(p) :: junk
+        real(p) :: junk, bloom_threshold
 
         logical :: soft_exit
 
@@ -368,6 +368,8 @@ contains
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
 
+                bloom_threshold = ceiling(max(nattempts, tot_walkers)*bloom_stats%prop)
+
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
                 ! OpenMP chunk size determined completely empirically from a single
@@ -401,8 +403,9 @@ contains
 
                         if (nspawned /= 0) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
-                            if (abs(nspawned) > ceiling(bloom_stats%prop*tot_walkers)) &
+                            if (abs(nspawned) > bloom_threshold) then
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
+                            end if
                         end if
 
                         ! Does the cluster collapsed onto D0 produce
