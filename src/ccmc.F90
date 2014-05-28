@@ -261,7 +261,7 @@ contains
         call check_allocate('cluster', size(cluster), ierr)
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
-            call dSFMT_init(seed+(iproc*nthreads)+i, 50000, rng(i))
+            call dSFMT_init(seed+iproc+i*nprocs, 50000, rng(i))
             ! ...and allocate det_info components...
             call alloc_det_info(sys, cdet(i))
             ! ...and cluster_t components
