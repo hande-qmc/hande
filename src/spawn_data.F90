@@ -395,7 +395,7 @@ contains
         send_counts = send_counts*spawn%element_len
         receive_counts = receive_counts*spawn%element_len
         ! displacement is the number of elements in the preceding processor blocks.
-        send_displacements = (spawn%head_start(thread_id,:nprocs-1)+nthreads-1)*spawn%element_len
+        send_displacements = spawn%head_start(nthreads-1,:)*spawn%element_len
         receive_displacements = receive_displacements*spawn%element_len
 
         call MPI_AlltoAllv(spawn%sdata, send_counts, send_displacements, mpi_det_integer, &
