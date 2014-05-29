@@ -2,16 +2,20 @@
 
 import numpy
 import pandas as pd
+import os
 import re
 import sys
+import tempfile
 
-def extract_data_sets(filenames):
+def extract_data_sets(filenames, temp_file=True):
     '''Extract QMC data tables from multiple HANDE calculations.
 
 Parameters
 ----------
 filenames : list of strings
     names of files containing HANDE QMC calculation output.
+temp_file : bool
+    passed to extract_data.
 
 Returns
 -------
@@ -31,13 +35,13 @@ See Also
     data = []
     metadata = []
     for filename in filenames:
-        (calc_metadata, calc_data) = extract_data(filename, offset)
+        (calc_metadata, calc_data) = extract_data(filename, offset, temp_file)
         data.append(calc_data)
         metadata.append(calc_metadata)
         offset += data[-1].index.levshape[0]
     return (pd.concat(metadata).unstack(level=0), pd.concat(data))
 
-def extract_data(filename, offset=0):
+def extract_data(filename, offset=0, temp_file=True):
     '''Extract QMC data table from a HANDE calculation.
 
 .. note::
@@ -52,6 +56,11 @@ filename : string
     name of file containing the HANDE QMC calculation output.
 offset : int
     first index for the calculation level label in data (default: 0).
+temp_file : bool
+    if True convert data tables in large files (ie those over 8MB) to CSV format
+    before parsing.  This is much faster and has lower memory usage as it allows
+    pandas' C parser to be used.  This requires a temporary file to be created
+    in TMPDIR (default: /tmp).
 
 Returns
 -------
@@ -138,23 +147,30 @@ data : :class:`pandas.DataFrame`
             break
         else:
             skip_footer += 1
-    f.close()
 
-    # Read table --- only read the first N columns, where N is the number of
-    # column names found.
-    data = pd.io.parsers.read_table(filename, sep='\s+', delim_whitespace=True,
-               skiprows=start_line, skipfooter=skip_footer, names=column_names,
-               comment='#')
+    if float(os.path.getsize(filename))/1024 < 8000 or not temp_file:
+        # Read table --- only read the first N columns, where N is the number of
+        # column names found.
+        data = pd.io.parsers.read_table(filename, sep='\s+', delim_whitespace=True,
+                   skiprows=start_line, skipfooter=skip_footer, names=column_names,
+                   comment='#')
+        # Remove comment lines and convert all columns to numeric data.
+        # Lines starting with a comment have been set to NaN in the iterations
+        # column.
+        try:
+            data.dropna(subset=['iterations'], inplace=True)
+        except TypeError:
+            # Be slightly less efficient if using pandas version < 0.13.
+            data = data.dropna(subset=['iterations'])
+        data.reset_index(drop=True, inplace=True)
+    else:
+        # Work around pandas slow and very memory-hungry pure-python parser by
+        # converting the data table into CSV format (and stripping out comments whilst we're at it)
+        # and reading that in.
+        tmp_csv = _convert_to_csv(filename, start_line)
+        data = pd.io.parsers.read_csv(tmp_csv, names=column_names)
+        os.remove(tmp_csv)
 
-    # Remove comment lines and convert all columns to numeric data.
-    # Lines starting with a comment have been set to NaN in the iterations
-    # column.
-    try:
-        data.dropna(subset=['iterations'], inplace=True)
-    except TypeError:
-        # Be slightly less efficient if using pandas version < 0.13.
-        data = data.dropna(subset=['iterations'])
-    data.reset_index(drop=True, inplace=True)
     data = data.convert_objects(convert_numeric=True, copy=False)
 
     unique_iterations = data['iterations'].unique()
@@ -218,3 +234,42 @@ last_lines : list
     lines = f.readlines()
     f.close()
     return lines
+
+def _convert_to_csv(filename, start_line, comment='#'):
+    '''Convert the HANDE data table in a file to CSV format.
+
+Parameters
+----------
+filename : string
+    name of HANDE output file.
+start_line : int
+    line number at which the QMC data table starts.
+comment : string
+    Single character which indicates a comment line if its the first
+    non-whitespace character in a line.
+
+.. note::
+
+    We assume the table finishes at the first blank line after start_line.
+
+Returns
+-------
+temp_file_name : string
+    name of the CSV temporary file.
+'''
+    tmp = tempfile.NamedTemporaryFile(delete=False, mode='w')
+    nlines = 0
+    f = open(filename)
+    for line in f:
+        nlines += 1
+        if nlines >= start_line:
+            csv_line = ','.join(line.strip().split())
+            if not csv_line:
+                # blank line => end of data table.
+                break
+            elif not csv_line.startswith(comment):
+                tmp.write(csv_line+'\n')
+    f.close()
+    tmp.close()
+
+    return tmp.name
