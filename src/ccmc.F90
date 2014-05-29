@@ -1123,11 +1123,15 @@ contains
         integer(lint), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
 
+        integer(lint) :: nsent(size(nparticles))
+
         integer :: iexcitor, pproc
 
+        nsent = 0
+
         !$omp parallel do default(none) &
-        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs, nparticles) &
-        !$omp private(pproc)
+        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs) &
+        !$omp private(pproc) reduction(+:nsent)
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
             pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
@@ -1142,13 +1146,15 @@ contains
                 ! was an initiator...
                 call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
                 ! Update population on the sending processor.
-                nparticles = nparticles - abs(walker_populations(:,iexcitor))
+                nsent = nsent + abs(walker_populations(:,iexcitor))
                 ! Zero population here.  Will be pruned on this determinant
                 ! automatically during annihilation (which will also update tot_walkers).
                 walker_populations(:,iexcitor) = 0
             end if
         end do
         !$omp end parallel do
+
+        nparticles = nparticles - nsent
 
     end subroutine redistribute_excips
 
