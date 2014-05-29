@@ -539,6 +539,7 @@ contains
         use calc
         use hfs_data
         use system
+        use parallel, only: parent
 
         ! Procedures to be pointed to.
         use death, only: stochastic_death
@@ -674,8 +675,10 @@ contains
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
             else
-                write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
-                write (6,'(1X,"WARNING: If this upsets you, please send patches (or bribe James with beer).",/)')
+                if (parent) then
+                    write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
+                    write (6,'(1X,"WARNING: If this upsets you, please send patches (or bribe James with beer).",/)')
+                end if
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
             end if
