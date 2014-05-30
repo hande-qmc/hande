@@ -557,14 +557,14 @@ contains
         mc_cycles = ireport*ncycles
 
         if (comment) then
-            write (6,'(1X,"#",3X)', advance='no')
+            write (6,'(1X,"#",1X)', advance='no')
         else
-            write (6,'(5X)', advance='no')
+            write (6,'(3X)', advance='no')
         end if
 
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
-            write (6,'(i8,2X,es17.10,i10)',advance = 'no') &
+            write (6,'(i10,2X,es17.10,i10)',advance = 'no') &
                                              (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
@@ -594,14 +594,14 @@ contains
             end if
             write (6, '(2X,i11)', advance='no') ntot_particles(1)
         else if (doing_calc(hfs_fciqmc_calc)) then
-            write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
+            write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
                                              D0_hf_population, &
                                              ntot_particles
         else
-            write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,i11)', advance='no') &
+            write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,i11)', advance='no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              ntot_particles
