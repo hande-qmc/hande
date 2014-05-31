@@ -973,7 +973,6 @@ The following options are valid for FCIQMC calculations.
     Furthermore, the current implementation does not allow restart files
     produced with one value of DET_SIZE to be used with binaries produced with
     a different value of DET_SIZE.  However, this is not checked!
-
 **uniform_combination**
 
     For the Heisenberg model only. If this keyword is specified then instead of using a
@@ -998,7 +997,6 @@ The following options are valid for FCIQMC calculations.
     trial function has a large overlap with this transformed ground state.
     
     This can only be used for bipartite lattices.
-    
 **neel_singlet_estimator**
 
     For the Heisenberg model only. If this keyword is specified then instead of using a single
@@ -1009,7 +1007,6 @@ The following options are valid for FCIQMC calculations.
     in heisenberg_estimator.F90.
     
     This can only be used for bipartite lattices.
-    
 **neel_singlet_guiding**
 
     For the Heisenberg model only. If this keyword is specified then the Neel singlet state is used
@@ -1042,26 +1039,21 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
    Integer.
 
    For the first *N* beta loops, the shift as a function of beta is stored. It is then averaged, and
-   this average shift profile is used in all future beta loops. When using the average_beta.py script
-   in the tools subdirectory, one can use the -a option to ignore the first *N* loops from the data
-   analysis. Using the same shift profile for all beta loops *may* improve the quality of the sampling
-   and remove some potential biases.
+   this average shift profile is used in all future beta loops. Using a constant shift profile for
+   all beta loops will remove shift biases. Note that large fluctuations in the population may
+   occur on many beta loops when using this option.
 **dmqmc_energy**
    Calculate the thermal expectation value of the Hamiltonian operator.
 
-   This value will be output at every beta value on each loop.
+   This value will be calculated from the first iteration of each report loop.
 **dmqmc_energy_squared**
    Calculate the thermal expectation value of the Hamiltonian squared operator.
 
-   This value will be output at every beta value on each loop.
-
-   Note, the heat capacity can be calculated after a calculation by running average_beta.py
-   in the tools folder, with the option --with-heat_capacity. This requires that both
-   the energy and the energy squared were calculated in the DMQMC run.
+   This value will be calculated from the first iteration of each report loop.
 **dmqmc_staggered_magnetisation**
    Calculate the thermal expectation value of the staggered magnetisation operator.
 
-   This value will be output at every beta value on each loop.
+   This value will be calculated from the first iteration of each report loop.
 
    This option is only available for bipartite lattices.
 **dmqmc_correlation_function** *site_1* *site_2*
@@ -1074,7 +1066,7 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 
    	\hat{C}_{ij} = S_{xi}S_{xj} + S_{yi}S_{yj} + S_{zi}S_{zj}.
 
-   This value will be output at every beta value on each loop.
+   This value will be calculated from the first iteration of each report loop.
 
    Note: the correlation function can only be calculated for one pair of spins in a single simulation.
 **truncate_space** *truncation_level*
@@ -1097,7 +1089,7 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     i to a different excitation level j, the spawning probability will be altered by a factor
     1/w_{ij}. Also, w_{ji} = 1/w_{ij}. This can be used to help keep psips near the diagonal elements
     and hence improve the quality of sampling when calculating estimators, which typically depend upon
-    psips on the diagonal and first few excitation levels. This is particularly useful for larger
+    psips on the diagonal and first one or two excitation levels. This is particularly useful for larger
     lattices where typically no psips will reside on the diagonal elements when the ground state is
     reached.
 
@@ -1106,16 +1098,17 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     improved quality of sampling.
 
     The value *number_weights* must equal the number of weights which have been specified.
-    The weights w_{01}-w_{n-1,n} should be input on the lines directly after "weighted_sampling",
+    The weights w_{01}-w_{n-1,n} should be input on the lines directly after **dmqmc_weighted_sampling**,
     and can be input over as many lines as required.
 **dmqmc_vary_weights** *N*
     Integer.
 
-    If this option is specified then the importance sampling procedure outlined under "weighted
-    sampling" is applied with weights which are introduced gradually. The weights w_{01}...w_{n-1,n}
-    are increased, from 1 initially, by a factor of w^{1/N} at the end of each Monte Carlo cycle,
-    so that after N cycles the weights will have reached the full values specified. They are then
-    held constant until the end of the beta loop, at which point they are reset to 1.
+    If this option is specified then the importance sampling procedure used with the
+    dmqmc_weighted_sampling is applied with weights which are introduced gradually. The weights
+    w_{01}...w_{n-1,n} are altered, from 1 initially, by a factor of w^{1/N} at the end of each
+    Monte Carlo cycle, so that after N cycles the weights will have reached the values
+    specified. They are then held constant until the end of the beta loop, at which point they are
+    reset to 1.
 
     This helps psips to diffuse more appropriately initially.
 **dmqmc_find_weights**
@@ -1125,7 +1118,7 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     beta values). The algorithm should be run for several beta loops until the weights settle down to a
     roughly constant value.
 
-    This option should be used with the "start_averaging" option, to specify when the ground state
+    This option should be used with **start_averaging**, to specify when the ground state
     has been reached.
 
     Warning: This feature is found to be unsuccessful for some larger lattices (for example, 6x6x6).
@@ -1146,36 +1139,31 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 **start_averaging** *N*
     Integer.
 
-    If this option is specified then averaging of the reduced density matrix only begins at Monte
+    If this option is specified then averaging of the ground-state reduced density matrix only begins at Monte
     Carlo cycle *N*. Hence, when only ground state properties are desired, the cycle at which the ground
     state is deemed to have been reached should be decided, and averaging should be started from this point.
-    Thus, this feature should be used when calculating values which depend on the ground state reduced
-    density matrix.
+    Thus, this feature should be used when calculating values which depend on the ground-state reduced
+    density matrix (using **ground_state_rdm**).
 
-    Futhermore, this option should also used when using the "dmqmc_find_weights" option, again, to specify when
-    the ground state is reached.
+    Futhermore, this option should also used when using **dmqmc_find_weights**, again, to specify
+    when the ground state is reached.
 **concurrence**
     At the end of each beta loop, the unnormalised concurrence and the trace of the reduced density matrix
     are output. The concurrence can then be calculated by running the average_entropy.py script in the tools
     subdirectory.
 
-    This uses the reduced desity matrix which has been calculated over the beta loop. To calculate the ground
-    state concurrence, the user must set the "start averaging" value to equal the Monte Carlo cycle at which
+    This uses the reduced density matrix which has been calculated over the beta loop. To calculate the ground-
+    state concurrence, the user must use **start_averaging** to specify the Monte Carlo cycle at which
     the ground state is reached. The ability to calculate the concurrence at every beta value is not implemented.
 **von_neumann_entropy**
     At the end of each beta loop, the unnormalised von Neumann entropy and the trace of the reduced density matrix
     are output. The von Neumann entropy can then be calculated by running the average_entropy.py script in the tools
     subdirectory.
 
-    Warning: This calculation involves an exact diagonalisation of the reduced density matrix. Hence, if the
-    reduced density matrix is too large, the program may crash.
-
-    This uses the reduced desity matrix which has been calculated over the beta loop. To calculate the ground
-    state von Neumann entropy, the user must set the "start averaging" value to equal the Monte Carlo cycle at which
+    This uses the reduced density matrix which has been calculated over the beta loop. To calculate the ground-
+    state concurrence, the user must use **start_averaging** to specify the Monte Carlo cycle at which
     the ground state is reached. The ability to calculate the von Neumann entropy at every beta value is not
     implemented.
-
-    Note, the average_entropy.py script does not currently calculate the von Neumann entropy correctly.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
