@@ -100,17 +100,17 @@ type sys_heisenberg_t
     ! ^^^^^^^^^^ ^^^^^
 
     ! Coupling constant J.
-    real(p) :: J = 1
+    real(p) :: J = 1.0_p
     ! External magnetic field h, in the z direction (the z direction is defined
     ! the same direction as the external field).
-    real(p) :: magnetic_field = 0
+    real(p) :: magnetic_field = 0.0_p
     ! Staggered magnetisation operator.
     ! staggered_magnetic_field gives the constant of proportionality:
     ! \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j -
     !                      staggered_magnetic_field \sum_{i}(-1)^{\zeta(i)}\sigma_{i,z}
     ! where \zeta(i) gives \pm 1 depending upon which sublattice site i is on.
     ! NOTE: applicable only to bipartite lattices.
-    real(p) :: staggered_magnetic_field = 0
+    real(p) :: staggered_magnetic_field = 0.0_p
     ! Number of bonds in the crystal cell.
     integer :: nbonds
 
