@@ -66,7 +66,7 @@ contains
             bit_element = bit_lookup(2,excitation%from_orb(1))
 
             if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
-                 hmatel = -2.0_p*sys%heisenberg%J
+                 hmatel = -0.5_p*sys%heisenberg%J
                  proj_energy_sum = proj_energy_sum + hmatel*pop
              end if
         end if
@@ -144,11 +144,11 @@ contains
         ! Deduce the number of 0-1 bonds where the 1's are on the second sublattice:
         ! The total number of 0-1 bonds, n(0-1), can be found from the diagonal
         ! element of the current basis function:
-        ! hmatel = -J*(nbonds - 2*n(0-1))
+        ! hmatel = -J*(nbonds - 2*n(0-1))/4
         ! This means we can avoid calculating n(0-1) again, which is expensive.
         ! We know the number of 0-1 bonds where the 1 (the spin up) is on sublattice 1,
         ! so can then deduce the number where the 1 is on sublattice 2.
-        lattice_2_up = ((sys%heisenberg%nbonds) + nint(cdet%data(1)/sys%heisenberg%J))/2 - lattice_1_up
+        lattice_2_up = ((sys%heisenberg%nbonds) + nint(4.0_p*cdet%data(1)/sys%heisenberg%J))/2 - lattice_1_up
 
         ! There are three contributions to add to the projected energy from
         ! the current basis function. Consider the Neel singlet state:
@@ -173,14 +173,14 @@ contains
         ! one extra spin. So we can have either of the two amplitudes, neel_singlet_amp(n-1)
         ! or neel_singlet_amp(n+1) respectively. We just need to know how many of each type
         ! of 0-1 bonds there are. But we have these already - they are stored as lattice_1_up
-        ! and lattice_2_up. Finally note that the matrix element is -2*J, and we can put
+        ! and lattice_2_up. Finally note that the matrix element is -J/2, and we can put
         ! this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        hmatel = hmatel - (2 * sys%heisenberg%J * lattice_1_up * neel_singlet_amp(n-1))
+        hmatel = hmatel - (0.5_p*sys%heisenberg%J * lattice_1_up * neel_singlet_amp(n-1))
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        hmatel = hmatel - (2 * sys%heisenberg%J * lattice_2_up * neel_singlet_amp(n+1))
+        hmatel = hmatel - (0.5_p*sys%heisenberg%J * lattice_2_up * neel_singlet_amp(n+1))
 
         hmatel = hmatel * importance_sampling_factor
         proj_energy_sum = proj_energy_sum + hmatel * pop
