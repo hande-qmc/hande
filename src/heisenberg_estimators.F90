@@ -73,57 +73,6 @@ contains
 
     end subroutine update_proj_energy_heisenberg_basic
 
-    pure subroutine update_proj_energy_heisenberg_positive(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
-
-        ! Add the contribution of the current basis function to the
-        ! projected energy.
-        ! This uses the trial function
-        ! |psi> = \sum_{i} |D_i>
-        ! Meaning that every single basis function has a weight of one in
-        ! the sum. A unitary transformation is applied to H when using this
-        ! estimator, so that all components of the true ground state
-        ! are positive, and hence we get a good overlap.
-        ! This procedure is for the Heisenberg model only.
-
-        ! In:
-        !    sys: system being studied.
-        !    f0: reference basis function (unused, for interface compatibility only).
-        !    cdet: info on the current determinant (cdet) that we will spawn
-        !        from.  Only the bit string and data fields need to be set.
-        !    pop: population on current determinant.
-        ! In/Out:
-        !    D0_pop_sum: running total of the population on the trial function.
-        !    proj_energy_sum: running total of \sum_i <D_i|H|psi> N_i.
-        ! Out:
-        !    excitation: excitation connecting the spin product to the trial wavefunction.
-        !       As each spin product is in the trial wavefunction, this is
-        !       simply null, but included for interface compatibility.
-        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
-        !       spin product and the trial wavefunction.
-
-        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
-        ! proj_energy_sum are zero before the first call.
-
-        use determinants, only: det_info
-        use excitations, only: excit
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f0(:)
-        type(det_info), intent(in) :: cdet
-        real(p), intent(in) :: pop
-        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
-        real(p), intent(out) :: hmatel
-
-        excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
-        hmatel = sys%heisenberg%J*sys%heisenberg%nbonds+2*cdet%data(1)
-        proj_energy_sum = proj_energy_sum + hmatel*pop
-
-        D0_pop_sum = D0_pop_sum + pop
-
-    end subroutine update_proj_energy_heisenberg_positive
-
     pure subroutine update_proj_energy_heisenberg_neel_singlet(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current basis fucntion to the
