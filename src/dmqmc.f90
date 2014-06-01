@@ -140,6 +140,8 @@ contains
                                     if (nspawned /= 0) then
                                         call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
                                                                             ireplica, qmc_spawn)
+                                        if (abs(nspawned) >= bloom_stats%n_bloom) &
+                                            call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
 
                                     ! Now attempt to spawn from the second end.
@@ -149,6 +151,8 @@ contains
                                     if (nspawned /= 0) then
                                         call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
                                                                             ireplica, qmc_spawn)
+                                        if (abs(nspawned) >= bloom_stats%n_bloom) &
+                                            call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
                                 end do
                             end if
