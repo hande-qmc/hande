@@ -40,7 +40,7 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
-        integer(lint) :: tot_nparticles_old(sampling_size)
+        integer(lint) :: tot_nparticles_old(sampling_size), init_tot_nparticles
         integer(lint) :: nattempts
         integer :: nel_temp
         type(det_info) :: cdet1, cdet2
@@ -74,6 +74,7 @@ contains
         nreport = nreport+1
                             
         if (all_sym_sectors) nel_temp = sys%nel
+        init_tot_nparticles = nint(D0_population)
 
         do beta_cycle = 1, beta_loops
 
@@ -81,7 +82,7 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, tot_nparticles_old)
+            call create_initial_density_matrix(rng, sys, init_tot_nparticles, tot_nparticles)
 
             do ireport = 1, nreport
 

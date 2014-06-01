@@ -418,7 +418,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, nparticles_tot)
+    subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -430,33 +430,37 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    target_nparticles_tot: The total number of psips to attempt to
+        !        generate across all processes.
         ! Out:
         !    nparticles_tot: The total number of psips in the generated density
-        !        matrix.
+        !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
         use calc, only: initiator_approximation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, D0_population, all_sym_sectors
+        use fciqmc_data, only: sampling_size, all_sym_sectors
         use parallel
         use system, only: sys_t, heisenberg
         use utils, only: binom_r
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        integer(lint), intent(in) :: target_nparticles_tot
         integer(lint), intent(out) :: nparticles_tot(sampling_size)
         integer(lint) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
-        integer :: npsips, npsips_this_proc
+        integer :: npsips
+        integer(lint) :: npsips_this_proc
         real(dp) :: total_size, sector_size
         real(dp) :: r, prob
 
-        npsips_this_proc = nint(D0_population)/nprocs
+        npsips_this_proc = target_nparticles_tot/nprocs
         ! If the initial number of psips does not split evenly between all
         ! processors, add the leftover psips to the first processors in order.
-        if (nint(D0_population)-(nprocs*int(D0_population/nprocs)) > iproc) &
-              npsips_this_proc = npsips_this_proc + 1
+        if (target_nparticles_tot-(nprocs*npsips_this_proc) > iproc) &
+              npsips_this_proc = npsips_this_proc + 1_lint
 
         nparticles_temp = 0_lint
 
@@ -484,10 +488,8 @@ contains
                         call random_distribution_heisenberg(rng, nel, npsips, ireplica)
                     end do
                 else
-                    ! This process will always create excatly D0_population
-                    ! psips.
-                    nparticles_tot = nint(D0_population, lint)
-
+                    ! This process will always create excatly the target number
+                    ! of psips.
                     call random_distribution_heisenberg(rng, sys%nel, npsips_this_proc, ireplica)
                 end if
             case default
@@ -495,19 +497,18 @@ contains
             end select
         end do
 
-#ifdef PARALLEL
+
+        ! Finally, count the total number of particles across all processes.
         if (all_sym_sectors) then
-            ! Finally, count the total number of particles across all processes.
 #ifdef PARALLEL
             call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_INTEGER8, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
             nparticles_tot = nparticles_temp
 #endif
+        else
+            nparticles_tot = target_nparticles_tot
         end if
-#else
-        nparticles_tot = nparticles_temp
-#endif
 
         call direct_annihilation(sys, initiator_approximation)
 
@@ -538,13 +539,15 @@ contains
         use system
 
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(in) :: spins_up, npsips, ireplica
+        integer, intent(in) :: spins_up
+        integer(lint), intent(in) :: npsips
+        integer, intent(in) :: ireplica
         integer :: i, rand_basis, bits_set
         integer :: bit_element, bit_position
         integer(i0) :: f(basis_length)
         real(dp) :: rand_num
 
-        do i = 1, npsips
+        do i = 1, int(npsips)
 
             ! Start with all spins down.
             f = 0_i0
