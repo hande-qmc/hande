@@ -647,10 +647,12 @@ contains
 
         if (all_sym_sectors) then
             if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_sym_sectors option can only be used in&
-                                                                DMQMC calculations.')
+                                                                   & DMQMC calculations.')
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
                     call stop_all(this, 'The use_all_sym_sectors option cannot be used with magnetic fields.')
+            if (calc_ground_rdm) call stop_all(this, 'The use_all_sym_sectors and ground_state_rdm options cannot be&
+                                                      & used together.')
         end if
 
         if (dump_restart_file_shift) then
