@@ -422,6 +422,11 @@ contains
         rspawn = 0.0_p
         D0_population = 0.0_p
 
+        ! DMQMC-specific...
+        if (calculate_excit_distribution) excit_distribution = 0.0_p
+        trace = 0.0_p
+        estimator_numerators = 0.0_p
+
     end subroutine init_report_loop
 
     subroutine init_mc_cycle(nattempts, ndeath)
@@ -435,7 +440,7 @@ contains
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
 
-        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
 
         integer(lint), intent(out) :: nattempts
         integer, intent(out) :: ndeath
@@ -463,6 +468,10 @@ contains
             ! ccmc: number of excitor clusters we'll randomly generate and
             ! attempt to spawn from.
             nattempts = nparticles(1)
+        else if (doing_calc(dmqmc_calc)) then
+            ! Each particle and each end gets to attempt to spawn onto a
+            ! connected determinant and a chance to die/clone.
+            nattempts = 4*nparticles(1)*sampling_size
         else
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
@@ -473,18 +482,19 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(ireport, update_tau, ntot_particles, report_time, soft_exit)
+    subroutine end_report_loop(ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators)
 
         ! In:
         !    ireport: index of current report loop.
         !    update_tau: true if the processor thinks the timestep should be rescaled.
         !             Only used if not in variable shift mode and if tau_search is being
         !             used.
+        !    update_estimators (optional): update the (FCIQMC/CCMC) energy estimators.  Default: true.
         ! In/Out:
         !    ntot_particles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
-        !        next report loop.
+        !        next report loop if update_estimators is true.
         !    report_time: time at the start of the current report loop.  Returns
         !        the current time (ie the time for the start of the next report
         !        loop.
@@ -499,14 +509,18 @@ contains
 
         integer, intent(in) :: ireport
         logical, intent(in) :: update_tau
+        logical, optional, intent(in) :: update_estimators
         integer(lint), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
 
         real :: curr_time
+        logical :: update
 
         ! Update the energy estimators (shift & projected energy).
-        call update_energy_estimators(ntot_particles)
+        update = .true.
+        if (present(update_estimators)) update = update_estimators
+        if (update) call update_energy_estimators(ntot_particles)
 
         call cpu_time(curr_time)
 

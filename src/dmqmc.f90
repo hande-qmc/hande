@@ -23,6 +23,7 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use bit_utils, only: count_set_bits
+        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_estimators
         use dmqmc_procedures
@@ -49,6 +50,7 @@ contains
         logical :: soft_exit
         real :: t1, t2
         type(dSFMT_t) :: rng
+        type(bloom_stats_t) :: bloom_stats
 
         ! Allocate det_info components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -82,24 +84,15 @@ contains
             call create_initial_density_matrix(rng, sys, tot_nparticles_old)
 
             do ireport = 1, nreport
-                ! Zero report cycle quantities.
-                rspawn = 0.0_p
-                trace = 0.0_p
-                estimator_numerators = 0.0_p
+
+                call init_report_loop(bloom_stats)
                 tot_nparticles_old = tot_nparticles
-                if (calculate_excit_distribution) excit_distribution = 0.0_p
 
                 do icycle = 1, ncycles
-                    qmc_spawn%head = qmc_spawn%head_start
+
+                    call init_mc_cycle(nattempts, ndeath)
+
                     iteration = (ireport-1)*ncycles + icycle
-
-                    ! Number of spawning attempts that will be made. Each
-                    ! particle and each end gets to attempt to spawn onto a
-                    ! connected determinant and a chance to die/clone.
-                    nattempts = 4*nparticles(1)*sampling_size
-
-                    ! Reset death counter.
-                    ndeath = 0
 
                     do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -126,6 +119,9 @@ contains
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
                         ! updates the trace separately.
+                        ! Note DMQMC averages over multiple loops over
+                        ! temperature/imaginary time so only get data from one
+                        ! temperature value per ncycles.
                         if (icycle == 1) call update_dmqmc_estimators(sys, idet, iteration)
 
                         do ireplica = 1, sampling_size
@@ -177,14 +173,12 @@ contains
                         sys%nvirt = sys%lattice%nsites - sys%nel
                     end if
 
-                    ! Add the spawning rate (for the processor) to the running
-                    ! total.
-                    rspawn = rspawn + spawning_rate(ndeath, nattempts)
-
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
                     call direct_annihilation(sys, initiator_approximation)
+
+                    call end_mc_cycle(ndeath, nattempts)
 
                     ! If doing importance sampling *and* varying the weights of
                     ! the trial function, call a routine to update these weights
@@ -203,21 +197,10 @@ contains
 
                 call update_shift_dmqmc(tot_nparticles, tot_nparticles_old, ireport)
 
-                call cpu_time(t2)
+                ! Forcibly disable update_tau as need to average over multiple loops over beta
+                ! and hence want to use the same timestep throughout.
+                call end_report_loop(ireport, .false., tot_nparticles_old, t1, soft_exit, .false.)
 
-                ! t1 was the time at the previous iteration, t2 the current
-                ! time. t2-t1 is thus the time taken by this report loop.
-                if (parent) call write_fciqmc_report(ireport, tot_nparticles, t2-t1, .false.)
-
-                ! Write restart file if required.
-                if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                    call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, tot_nparticles)
-
-                ! cpu_time outputs an elapsed time, so update the reference
-                ! timer.
-                t1 = t2
-
-                call fciqmc_interact(soft_exit)
                 if (soft_exit) exit
 
             end do
@@ -266,6 +249,8 @@ contains
     end subroutine do_dmqmc
 
     subroutine init_dmqmc_beta_loop(rng, beta_cycle)
+
+        ! Initialise/reset DMQMC data for a new run over the temperature range.
 
         ! In/Out:
         !    rng: random number generator.
