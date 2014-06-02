@@ -424,8 +424,8 @@ contains
 
         ! DMQMC-specific...
         if (calculate_excit_distribution) excit_distribution = 0.0_p
-        trace = 0.0_p
-        estimator_numerators = 0.0_p
+        if (allocated(trace)) trace = 0.0_p
+        if (allocated(estimator_numerators)) estimator_numerators = 0.0_p
 
     end subroutine init_report_loop
 
