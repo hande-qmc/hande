@@ -647,10 +647,12 @@ contains
 
         if (all_sym_sectors) then
             if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_sym_sectors option can only be used in&
-                                                                DMQMC calculations.')
+                                                                   & DMQMC calculations.')
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
                     call stop_all(this, 'The use_all_sym_sectors option cannot be used with magnetic fields.')
+            if (calc_ground_rdm) call stop_all(this, 'The use_all_sym_sectors and ground_state_rdm options cannot be&
+                                                      & used together.')
         end if
 
         if (dump_restart_file_shift) then
@@ -660,6 +662,10 @@ contains
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
                  call stop_all(this, 'The ids of the restart files could be the same')
         end if   
+        if (dmqmc_vary_weights .and. (.not. dmqmc_weighted_sampling)) then
+            call stop_all(this, 'The dmqmc_vary_weights option can only be used together with the dmqmc_weighted_sampling option.')
+        end if
+
         if (parent) write (6,'(/,1X,13("-"),/)')
 
     end subroutine check_input

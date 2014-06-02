@@ -728,7 +728,7 @@ The following options are valid for FCIQMC calculations.
     large a timestep, on the other hand, leads to a rapid particle growth which
     takes a long time to stabilise, even once the shift begins to vary, and
     coarse population dynamics.
-**update_tau**
+**tau_search**
     Update the **tau** automatically by scaling it by 0.95 if a bloom event is
     detected.  A bloom event is defined as one which spawns more than three
     particles in a single spawning event in FCIQMC and one which spawns more than 5% of
@@ -738,6 +738,8 @@ The following options are valid for FCIQMC calculations.
 
         This is an experimental option and feedback on required flexibility or
         alternative approaches is most welcome.
+
+        **tau_search** is currently ignored in DMQMC calculations.
 
 **initial_shift** *initial_shift*
     Real.
@@ -973,9 +975,7 @@ The following options are valid for FCIQMC calculations.
     Furthermore, the current implementation does not allow restart files
     produced with one value of DET_SIZE to be used with binaries produced with
     a different value of DET_SIZE.  However, this is not checked!
-
 **uniform_combination**
-
     For the Heisenberg model only. If this keyword is specified then instead of using a
     single reference detereminant to calculate the projected energy, a linear combination
     of all basis functions with amplitudes 1 is used:
@@ -998,9 +998,7 @@ The following options are valid for FCIQMC calculations.
     trial function has a large overlap with this transformed ground state.
     
     This can only be used for bipartite lattices.
-    
 **neel_singlet_estimator**
-
     For the Heisenberg model only. If this keyword is specified then instead of using a single
     reference detereminant to calculate the projected energy, the Neel singlet state is used.
     This is a state :math:`|NS> = \sum_{i} a_i * |D_i>` where the amplitudes a_i are defined in the
@@ -1009,9 +1007,7 @@ The following options are valid for FCIQMC calculations.
     in heisenberg_estimator.F90.
     
     This can only be used for bipartite lattices.
-    
 **neel_singlet_guiding**
-
     For the Heisenberg model only. If this keyword is specified then the Neel singlet state is used
     as a guiding state for importance sampling. This means that the the matrix elements of the
     Hamiltonian, H_ij are replaced by new components
@@ -1032,51 +1028,56 @@ configuration of a Density Matrix Quantum Monte Carlo (DMQMC) calculation
 Note: The DMQMC features have only been coded and tested for the Heisenberg model.
 
 **beta_loops**
-   Integer.
+    Integer.
 
-   Default: 100.
+    Default: 100.
 
-   Set the number of beta loops. This is the number of times that the complete range of beta values
-   will be looped over before the simulation finishes.
+    Set the number of beta loops. This is the number of times that the complete range of beta values
+    will be looped over before the simulation finishes.
 **dmqmc_average_shift** *N*
-   Integer.
+    Integer.
 
-   For the first *N* beta loops, the shift as a function of beta is stored. It is then averaged, and
-   this average shift profile is used in all future beta loops. When using the average_beta.py script
-   in the tools subdirectory, one can use the -a option to ignore the first *N* loops from the data
-   analysis. Using the same shift profile for all beta loops *may* improve the quality of the sampling
-   and remove some potential biases.
+    For the first *N* beta loops, the shift as a function of beta is stored. It is then averaged, and
+    this average shift profile is used in all future beta loops. Using a constant shift profile for
+    all beta loops will remove shift biases. Note that large fluctuations in the population may
+    occur on many beta loops when using this option.
 **dmqmc_energy**
-   Calculate the thermal expectation value of the Hamiltonian operator.
+    Calculate the thermal expectation value of the Hamiltonian operator.
 
-   This value will be output at every beta value on each loop.
+    This value will be calculated from the first iteration of each report loop.
 **dmqmc_energy_squared**
-   Calculate the thermal expectation value of the Hamiltonian squared operator.
+    Calculate the thermal expectation value of the Hamiltonian squared operator.
 
-   This value will be output at every beta value on each loop.
-
-   Note, the heat capacity can be calculated after a calculation by running average_beta.py
-   in the tools folder, with the option --with-heat_capacity. This requires that both
-   the energy and the energy squared were calculated in the DMQMC run.
+    This value will be calculated from the first iteration of each report loop.
 **dmqmc_staggered_magnetisation**
-   Calculate the thermal expectation value of the staggered magnetisation operator.
+    Calculate the thermal expectation value of the staggered magnetisation operator.
 
-   This value will be output at every beta value on each loop.
+    This value will be calculated from the first iteration of each report loop.
 
-   This option is only available for bipartite lattices.
+    This option is only available for bipartite lattices.
 **dmqmc_correlation_function** *site_1* *site_2*
-   Integers.
+    Integers.
 
-   Calculate the spin-spin correlation function between the two lattice sites *site_1* and
-   *site_2*, defined as the thermal expectation value of the following operator:
+    Calculate the spin-spin correlation function between the two lattice sites *site_1* and
+    *site_2*, defined as the thermal expectation value of the following operator:
 
-   .. math::
+    .. math::
 
-   	\hat{C}_{ij} = S_{xi}S_{xj} + S_{yi}S_{yj} + S_{zi}S_{zj}.
+    	\hat{C}_{ij} = S_{xi}S_{xj} + S_{yi}S_{yj} + S_{zi}S_{zj}.
 
-   This value will be output at every beta value on each loop.
+    This value will be calculated from the first iteration of each report loop.
 
-   Note: the correlation function can only be calculated for one pair of spins in a single simulation.
+    Note: the correlation function can only be calculated for one pair of spins in a single simulation.
+**dmqmc_full_renyi_2**
+    Calculate the Renyi-2 entropy of the entire system.
+
+    This option must only be used when the **replica_tricks** option is also used.
+
+    The quantity output in the column 'Full S2' is the instantaneous estimate of
+    :math:`\sum_{ij}\rho_{ij}^2`. The traces of the two replicas are in the columns
+    named 'Trace' and 'Trace 2'. The finite_temp_analysis.py script in the tools
+    directory can then be used to obtain a final temperature-dependent estimate of
+    the Renyi-2 entropy from these quantities.
 **truncate_space** *truncation_level*
     Integer.
 
@@ -1087,6 +1088,9 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     of the algorithm in some situations.
 **output_excitation_distribution**
     Output the fraction of psips on each excitation level.
+**use_all_sym_sectors**
+    Run a DMQMC calculation in all symmetry sectors simultaneously. Psips will be
+    distributed across all symmetry sectors for the initial density matrix.
 **dmqmc_weighted_sampling** *number_weights* Integer.
                             *w_{01} w_{12} ... w_{n-1,n}* Real list.
 
@@ -1097,7 +1101,7 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     i to a different excitation level j, the spawning probability will be altered by a factor
     1/w_{ij}. Also, w_{ji} = 1/w_{ij}. This can be used to help keep psips near the diagonal elements
     and hence improve the quality of sampling when calculating estimators, which typically depend upon
-    psips on the diagonal and first few excitation levels. This is particularly useful for larger
+    psips on the diagonal and first one or two excitation levels. This is particularly useful for larger
     lattices where typically no psips will reside on the diagonal elements when the ground state is
     reached.
 
@@ -1106,16 +1110,17 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     improved quality of sampling.
 
     The value *number_weights* must equal the number of weights which have been specified.
-    The weights w_{01}-w_{n-1,n} should be input on the lines directly after "weighted_sampling",
+    The weights w_{01}-w_{n-1,n} should be input on the lines directly after **dmqmc_weighted_sampling**,
     and can be input over as many lines as required.
 **dmqmc_vary_weights** *N*
     Integer.
 
-    If this option is specified then the importance sampling procedure outlined under "weighted
-    sampling" is applied with weights which are introduced gradually. The weights w_{01}...w_{n-1,n}
-    are increased, from 1 initially, by a factor of w^{1/N} at the end of each Monte Carlo cycle,
-    so that after N cycles the weights will have reached the full values specified. They are then
-    held constant until the end of the beta loop, at which point they are reset to 1.
+    If this option is specified then the importance sampling procedure used with the
+    dmqmc_weighted_sampling is applied with weights which are introduced gradually. The weights
+    w_{01}...w_{n-1,n} are altered, from 1 initially, by a factor of w^{1/N} at the end of each
+    Monte Carlo cycle, so that after N cycles the weights will have reached the values
+    specified. They are then held constant until the end of the beta loop, at which point they are
+    reset to 1.
 
     This helps psips to diffuse more appropriately initially.
 **dmqmc_find_weights**
@@ -1125,7 +1130,7 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     beta values). The algorithm should be run for several beta loops until the weights settle down to a
     roughly constant value.
 
-    This option should be used with the "start_averaging" option, to specify when the ground state
+    This option should be used with **start_averaging**, to specify when the ground state
     has been reached.
 
     Warning: This feature is found to be unsuccessful for some larger lattices (for example, 6x6x6).
@@ -1134,48 +1139,84 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 
     The weights are output at the end of each beta loop, in a form which can be copied directly into
     the input file.
-**reduced_density_matrix** *site_1 site_2 ... site_n*
-    Integer list.
+**reduced_density_matrix** *nrdm* Integer.
+                           *site_1 site_2 ... site_n* Integer list.
 
-    Calculate the reduced density matrix (RDM) for the lattice sites specified. Quantities based on the
-    RDM may then be calculated.
+    Option to specify which reduced density matrices (RDMs) to obtain results for.
+    
+    *nrdm* specifies the number of RDMs which will be calculated. Then, on the next *nrdm* lines,
+    a list of the sites making up the subsystem(s) to study should be given.
 
-    Note, currently the RDM can only be calculated for sublattices which have half or less than half
-    of the total number of lattices sites. Inputting a larger number of sites will cause the program
-    to crash.
+    With this option, one of the two options **ground_state_rdm** or **instantaneous_rdm** should
+    also be used. Both options cannot be used together. Only one RDM may be considered (*nrdm*
+    must be equal to 1) when using the **ground_state_rdm** option. Moreover, when using the
+    **ground_state_rdm** option, the subsystem specified should be at most half the size of the
+    system (which will always be sufficient for ground-state calculations).
+**ground_state_rdm**
+    For the subsystem specified with the **reduced_density_matrix** option, only accumulate the
+    RDM when the ground state is reached. This is specified by the user using the
+    **start_averaging** option. For each beta loop, the RDM will be averaged from this first
+    iterations until the end of the beta loop. Results will then be output before the next loop
+    is started.
+**instantaneous_rdm**
+    For the subsystem(s) specified with the **reduced_density_matrix** option, calculate the RDM(s)
+    from the instantaneous psip distribution. This is done on the first iteration of every
+    report loop.
+
+    Results will only be output if using an option which makes use of these instantaneous RDM
+    estimates, for example, **renyi_entropy_2**.
+**output_rdm**
+    Only available with the **ground_state_rdm** option.
+
+    At the end of each beta loop, output the ground-state RDM accumulated to a file. This
+    file will contain the RDM trace on the first line, followed by all RDM elements above and
+    including the diagonal (labelled by their index).
 **start_averaging** *N*
     Integer.
 
-    If this option is specified then averaging of the reduced density matrix only begins at Monte
+    If this option is specified then averaging of the ground-state reduced density matrix only begins at Monte
     Carlo cycle *N*. Hence, when only ground state properties are desired, the cycle at which the ground
     state is deemed to have been reached should be decided, and averaging should be started from this point.
-    Thus, this feature should be used when calculating values which depend on the ground state reduced
-    density matrix.
+    Thus, this feature should be used when calculating values which depend on the ground-state reduced
+    density matrix (using **ground_state_rdm**).
 
-    Futhermore, this option should also used when using the "dmqmc_find_weights" option, again, to specify when
-    the ground state is reached.
+    Futhermore, this option should also used when using **dmqmc_find_weights**, again, to specify
+    when the ground state is reached.
+**renyi_entropy_2**
+    For all the subsystems specified with the **reduced_density_matrix** option, calculate the
+    Renyi-2 entropy.
+
+    The quantity output in the 'RDM(n) S2' columns is the instantaneous estimate of
+    :math:`\sum_{ij}(\rho^n_{ij})^2`, where :math:`\rho^n` is the reduced density
+    matrix for the nth subsystem specified by the user. The traces of the two replicas
+    are in the columns named 'RDM(n) Trace 1' and 'RDM(n) Trace 2'. The finite_temp_analysis.py
+    script in the tools directory can then be used to obtain a final temperature-dependent
+    estimate of the Renyi-2 entropy from these quantities.
+
+    This option cannot be used with **ground_state_rdm**.
 **concurrence**
     At the end of each beta loop, the unnormalised concurrence and the trace of the reduced density matrix
     are output. The concurrence can then be calculated by running the average_entropy.py script in the tools
     subdirectory.
 
-    This uses the reduced desity matrix which has been calculated over the beta loop. To calculate the ground
-    state concurrence, the user must set the "start averaging" value to equal the Monte Carlo cycle at which
-    the ground state is reached. The ability to calculate the concurrence at every beta value is not implemented.
+    This option should be used with the **ground_state_rdm** option. Temperature-dependent concurrence is
+    not implemented in HANDE.
 **von_neumann_entropy**
     At the end of each beta loop, the unnormalised von Neumann entropy and the trace of the reduced density matrix
     are output. The von Neumann entropy can then be calculated by running the average_entropy.py script in the tools
     subdirectory.
 
-    Warning: This calculation involves an exact diagonalisation of the reduced density matrix. Hence, if the
-    reduced density matrix is too large, the program may crash.
+    This option should be used with the **ground_state_rdm** option. Temperature-dependent von Neumann entropy
+    is not implemented in HANDE.
+**exact_rdm_eigenvalues**
+    When performing an **exact** calculaton, using this option will cause the eigenvalues of the RDM specified
+    with the **reduced_density_matrix** option to be calculated and output.
 
-    This uses the reduced desity matrix which has been calculated over the beta loop. To calculate the ground
-    state von Neumann entropy, the user must set the "start averaging" value to equal the Monte Carlo cycle at which
-    the ground state is reached. The ability to calculate the von Neumann entropy at every beta value is not
-    implemented.
+    Note that the **ground_state_rdm** option must also be used. RDM eigenvalues can only be calculated for
+    one subsystem in one simulation.
 
-    Note, the average_entropy.py script does not currently calculate the von Neumann entropy correctly.
+    The **use_all_sym_sectors** option is not implemented with **exact** calculations, and so cannot be used
+    here.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

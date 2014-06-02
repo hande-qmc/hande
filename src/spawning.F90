@@ -948,7 +948,8 @@ contains
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
         call create_excited_det(f1, connection, f_new)
-        f_new_tot = 0
+
+        f_new_tot = 0_i0
         if (spawning_end==1) then
             f_new_tot(:basis_length) = f_new
             f_new_tot((basis_length+1):(total_basis_length)) = f2
@@ -1033,7 +1034,7 @@ contains
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
         call create_excited_det(f1, connection, f_new)
-        f_new_tot = 0
+        f_new_tot = 0_i0
 
         ! Test to see whether the new determinant resides in the upper
         ! triangle of the density matrix. If so keep bit string ends
@@ -1135,7 +1136,7 @@ contains
 
         if (get_excitation_level(f2, f_new) <= truncation_level) then
 
-            f_new_tot = 0
+            f_new_tot = 0_i0
             ! Test to see whether the new determinant resides in the upper
             ! triangle of the density matrix. If so keep bit string ends
             ! as they are. If not then swap bitstring ends so that the
@@ -1180,9 +1181,9 @@ contains
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
-        ! A spawned walker is only created on (f1', f2) if f1' and f2 do not differ by
-        ! more than truncation_level basis functions, where f1' is obtained by
-        ! applying the connection to f1.
+        ! A spawned walker is only created on (f1', f2) if f1' and f2 do not
+        ! differ by more than truncation_level basis functions, where f1' is
+        ! obtained by applying the connection to f1.
 
         ! In:
         !    f1: bitstring corresponding to the end which is currently
@@ -1231,7 +1232,7 @@ contains
 
         if (get_excitation_level(f2, f_new) <= truncation_level) then
 
-            f_new_tot = 0
+            f_new_tot = 0_i0
             if (spawning_end==1) then
                 f_new_tot(:basis_length) = f_new
                 f_new_tot((basis_length+1):(total_basis_length)) = f2
@@ -1277,7 +1278,8 @@ contains
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    rdm_spawn: rdm_spawn_t object to which the spanwed particle will be added.
+        !    rdm_spawn: rdm_spawn_t object to which the spanwed particle
+        !    will be added.
 
         use bit_utils, only: operator(.bitstrgt.)
         use dmqmc_procedures, only: rdms
@@ -1297,7 +1299,7 @@ contains
         integer :: nspawn, rdm_bl
 
         integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_basis_length)
-        integer(i0) :: f_temp1(rdms(irdm)%rdm_basis_length), f_temp2(rdms(irdm)%rdm_basis_length)
+        integer(i0) :: f1(rdms(irdm)%rdm_basis_length), f2(rdms(irdm)%rdm_basis_length)
 
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
@@ -1316,25 +1318,21 @@ contains
         integer :: err_code
 
         rdm_bl = rdms(irdm)%rdm_basis_length
-        ! nspawn will be doubles for diagonal elements.
         nspawn = nspawn_in
 
-        ! To enforce that the rdm is symmetric, add this psip to both \rho_{ij} and
-        ! \rho_{ji}. These will lead to an rdm with a trace twice what it would have
-        ! been, but this is not a problem.
-        f_new_tot = 0
+        f_new_tot = 0_i0
+        f1 = rdms(irdm)%end1
+        f2 = rdms(irdm)%end2
 
-        f_temp1 = rdms(irdm)%end1
-        f_temp2 = rdms(irdm)%end2
-
-        if (f_temp1 .bitstrgt. f_temp2) then
+        ! Symmetry is enforced on the RDM in the following.
+        if (f1 .bitstrgt. f2) then
             ! If below the diagonal, swap the bitstrings so that the spawning occurs above it.
-            f_new_tot(:rdm_bl) = f_temp2
-            f_new_tot(rdm_bl+1:2*rdm_bl) = f_temp1
+            f_new_tot(:rdm_bl) = f2
+            f_new_tot(rdm_bl+1:2*rdm_bl) = f1
         else
-            f_new_tot(:rdm_bl) = f_temp1
-            f_new_tot(rdm_bl+1:2*rdm_bl) = f_temp2
-            if (all(f_temp1 == f_temp2)) then
+            f_new_tot(:rdm_bl) = f1
+            f_new_tot(rdm_bl+1:2*rdm_bl) = f2
+            if (all(f1 == f2)) then
                 ! Because off-diagonal elements have been doubled (elements above the diagonal taking
                 ! contributions from both below and above it), we must double the diagonal elements too.
                 nspawn = nspawn*2
@@ -1366,8 +1364,7 @@ contains
                     call stop_all('create_spawned_particle_rdm','Error in assigning hash &
                                   &table entry.')
                 end if
-                ! Fix hash table to point to the head of the spawn data
-                ! for this thread/processor.
+                ! Fix hash table to point to the head of the spawn data for this thread/processor.
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
                 ! spawn%head_start(0,1) holds the number of slots in the spawning array per processor.
