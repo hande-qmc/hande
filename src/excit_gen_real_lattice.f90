@@ -195,7 +195,7 @@ contains
 
         ! 3. find the connecting matrix element.
         ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
-        hmatel = -0.5_p*sys%heisenberg%J
+        hmatel = -sys%heisenberg%J/2
 
     end subroutine gen_excit_heisenberg
 
@@ -278,7 +278,7 @@ contains
 
             ! 3. find the connecting matrix element.
             ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
-            hmatel = -0.5_p*sys%heisenberg%J
+            hmatel = -sys%heisenberg%J/2
 
         end if
 

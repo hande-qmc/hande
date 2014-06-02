@@ -280,7 +280,7 @@ contains
            bit_element = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
                  estimator_numerators(energy_index) = estimator_numerators(energy_index) - &
-                                   (sys%heisenberg%J*walker_pop/2.0_p)
+                                   (sys%heisenberg%J*walker_pop/2)
        end if
 
    end subroutine dmqmc_energy_heisenberg
@@ -317,7 +317,7 @@ contains
        real(p) :: sum_H1_H2, J_coupling_squared
 
        sum_H1_H2 = 0
-       J_coupling_squared = sys%heisenberg%J**2/16.0_p
+       J_coupling_squared = sys%heisenberg%J**2/16
 
        if (excitation%nexcit == 0) then
            ! If there are 0 excitations then either nothing happens twice, or we
@@ -328,7 +328,7 @@ contains
 
            sum_H1_H2 = (walker_data(1,idet)+H00)**2
            associate(sh=>sys%heisenberg)
-               sum_H1_H2 = sum_H1_H2 + 2.0_p*J_coupling_squared*sh%nbonds + 0.5_p*sh%J*(walker_data(1,idet)+H00)
+               sum_H1_H2 = sum_H1_H2 + 2*J_coupling_squared*sh%nbonds + sh%J*(walker_data(1,idet)+H00)/2
            end associate
 
        else if (excitation%nexcit == 1) then

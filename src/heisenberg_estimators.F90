@@ -66,7 +66,7 @@ contains
             bit_element = bit_lookup(2,excitation%from_orb(1))
 
             if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
-                 hmatel = -0.5_p*sys%heisenberg%J
+                 hmatel = -sys%heisenberg%J/2
                  proj_energy_sum = proj_energy_sum + hmatel*pop
              end if
         end if
@@ -148,7 +148,7 @@ contains
         ! This means we can avoid calculating n(0-1) again, which is expensive.
         ! We know the number of 0-1 bonds where the 1 (the spin up) is on sublattice 1,
         ! so can then deduce the number where the 1 is on sublattice 2.
-        lattice_2_up = ((sys%heisenberg%nbonds) + nint(4.0_p*cdet%data(1)/sys%heisenberg%J))/2 - lattice_1_up
+        lattice_2_up = ((sys%heisenberg%nbonds) + nint(4*cdet%data(1)/sys%heisenberg%J))/2 - lattice_1_up
 
         ! There are three contributions to add to the projected energy from
         ! the current basis function. Consider the Neel singlet state:
@@ -177,10 +177,10 @@ contains
         ! this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        hmatel = hmatel - (0.5_p*sys%heisenberg%J * lattice_1_up * neel_singlet_amp(n-1))
+        hmatel = hmatel - (sys%heisenberg%J * lattice_1_up * neel_singlet_amp(n-1))/2
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        hmatel = hmatel - (0.5_p*sys%heisenberg%J * lattice_2_up * neel_singlet_amp(n+1))
+        hmatel = hmatel - (sys%heisenberg%J * lattice_2_up * neel_singlet_amp(n+1))/2
 
         hmatel = hmatel * importance_sampling_factor
         proj_energy_sum = proj_energy_sum + hmatel * pop
