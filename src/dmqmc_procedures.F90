@@ -451,8 +451,7 @@ contains
         integer(lint), intent(out) :: nparticles_tot(sampling_size)
         integer(lint) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
-        integer :: npsips
-        integer(lint) :: npsips_this_proc
+        integer(lint) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
         real(dp) :: r, prob
 
@@ -476,13 +475,13 @@ contains
                         ! The size of this symmetry sector alone.
                         sector_size = binom_r(sys%lattice%nsites, nel)
                         prob = real(npsips_this_proc,dp)*sector_size/total_size
-                        npsips = floor(prob)
+                        npsips = floor(prob, lint)
                         ! If there are a non-integer number of psips to be
                         ! spawned in this sector then add an extra psip with the
                         ! required probability.
                         prob = prob - npsips
                         r = get_rand_close_open(rng)
-                        if (r < prob) npsips = npsips + 1
+                        if (r < prob) npsips = npsips + 1_lint
 
                         nparticles_temp(ireplica) = nparticles_temp(ireplica) + int(npsips, lint)
                         call random_distribution_heisenberg(rng, nel, npsips, ireplica)
@@ -496,7 +495,6 @@ contains
                 call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
             end select
         end do
-
 
         ! Finally, count the total number of particles across all processes.
         if (all_sym_sectors) then
@@ -542,12 +540,13 @@ contains
         integer, intent(in) :: spins_up
         integer(lint), intent(in) :: npsips
         integer, intent(in) :: ireplica
-        integer :: i, rand_basis, bits_set
+        integer(lint) :: i
+        integer :: rand_basis, bits_set
         integer :: bit_element, bit_position
         integer(i0) :: f(basis_length)
         real(dp) :: rand_num
 
-        do i = 1, int(npsips)
+        do i = 1, npsips
 
             ! Start with all spins down.
             f = 0_i0
