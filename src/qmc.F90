@@ -635,7 +635,7 @@ contains
             end select
 
             ! Set whether the applied staggered magnetisation is non-zero.
-            if (abs(sys%heisenberg%staggered_magnetic_field) > 0.0_p) then
+            if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon) then
                 sc0_ptr => diagonal_element_heisenberg_staggered
             else
                 sc0_ptr => diagonal_element_heisenberg

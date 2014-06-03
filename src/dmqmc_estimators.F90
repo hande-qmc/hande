@@ -295,7 +295,7 @@ contains
            bit_element = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
                  estimator_numerators(energy_index) = estimator_numerators(energy_index) - &
-                                   (2.0*sys%heisenberg%J*walker_pop)
+                                   (sys%heisenberg%J*walker_pop/2)
        end if
 
    end subroutine dmqmc_energy_heisenberg
@@ -332,19 +332,19 @@ contains
        real(p) :: sum_H1_H2, J_coupling_squared
 
        sum_H1_H2 = 0.0_p
-       J_coupling_squared = sys%heisenberg%J**2
+       J_coupling_squared = sys%heisenberg%J**2/16
 
        if (excitation%nexcit == 0) then
            ! If there are 0 excitations then either nothing happens twice, or we
            ! flip the same pair of spins twice. The Hamiltonian element for doing
            ! nothing is just the diagonal element. For each possible pairs of
-           ! spins which can be flipped, there is a mtarix element of -2*J, so
+           ! spins which can be flipped, there is a mtarix element of -J/2, so
            ! we just need to count the number of such pairs, which can be found 
            ! simply from the diagonal element.
 
            sum_H1_H2 = (walker_data(1,idet)+H00)**2
            associate(sh=>sys%heisenberg)
-               sum_H1_H2 = sum_H1_H2 + 2.0*J_coupling_squared*sh%nbonds + 2.0*sh%J*(walker_data(1,idet)+H00)
+               sum_H1_H2 = sum_H1_H2 + 2*J_coupling_squared*sh%nbonds + sh%J*(walker_data(1,idet)+H00)/2
            end associate
 
        else if (excitation%nexcit == 1) then
@@ -367,7 +367,7 @@ contains
 
            if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0_i0) then
                ! Contribution for next-nearest neighbors.
-               sum_H1_H2 = 4.0*J_coupling_squared*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
+               sum_H1_H2 = 4.0_p*J_coupling_squared*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
            end if
            ! Contributions for nearest neighbors.
            ! Note, for certain lattices, such as the triangular lattice, two
@@ -376,7 +376,7 @@ contains
            bit_position1 = bit_lookup(1,excitation%from_orb(1))
            bit_element1 = bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
-                   sum_H1_H2 = sum_H1_H2 - 4.0*sys%heisenberg%J*(walker_data(1,idet)+H00)
+                   sum_H1_H2 = sum_H1_H2 - sys%heisenberg%J*(walker_data(1,idet)+H00)
 
        else if (excitation%nexcit == 2) then
            ! If there are two excitations (4 spins flipped) then, once again,

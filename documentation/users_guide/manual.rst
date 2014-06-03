@@ -374,8 +374,29 @@ These options select the type of system to use.
 **heisenberg**
     Run the Heisenberg model.
     This is for a lattice of spin 1/2 particles with or without periodic
-    boundary conditions imposed. The coupling constant is denoted by J (see
-    below).
+    boundary conditions imposed. The model definition in HANDE is
+
+    .. math::
+
+        \hat{H} = -J \sum_{\langle i,j \rangle} \hat{\boldsymbol{S}}_i \cdot \hat{\boldsymbol{S}}_j
+
+    It is also possible to add a magnetic field term,
+
+    .. math::
+
+        \hat{H} = -J \sum_{\langle i,j \rangle} \hat{\boldsymbol{S}}_i \cdot \hat{\boldsymbol{S}}_j - h_z \sum_i \hat{S}_{iz},
+
+    or a staggered magnetic field term,
+
+    .. math::
+
+        \hat{H} = -J \sum_{\langle i,j \rangle} \hat{\boldsymbol{S}}_i \cdot \hat{\boldsymbol{S}}_j - h_z' \sum_i \hat{S}_{iz}^{\xi},
+
+    where :math:`h_z` and :math:`h_z'` denote the magnetic field strength and
+    staggered magnetic field strength, respectively, and :math:`\xi`
+    is equal to +1 for sites on sublattice 1 and is equal to -1 for sites on
+    sublattice 2. :math:`h_z` and :math:`h_z'` are set using the
+    **magnetic_field** and **staggered_magnetic_field** options.
     
     Warning: for efficiency reasons it is assumed that the smallest dimension
     lattice vector is greater than 2 if periodic boundary conditions are used.
@@ -439,15 +460,12 @@ These options describe the system which is to be investigated.
     
     Default: 1.
     
-    Set the coupling constant for the Heisenbeg model, where the Hamiltonian is defined as:
+    Set the coupling constant for the Heisenberg model, as defined by
 
     .. math::
 
-        \hat{H} = -J \sum_{i,j} \sigma_i \sigma_j - h_z\sum_{i}\sigma_{i}^{z} - k_z\sum_{i}(-1)^{\zeta(i)}\sigma_{i,z}
+        \hat{H} = -J \sum_{\langle i,j \rangle} \hat{\boldsymbol{S}}_i \cdot \hat{\boldsymbol{S}}_j
 
-    where :math:`h_z` is the constant external magetic field, :math:`k_z` the
-    staggered external magnetic field and :math:`\zeta(i)` gives :math:`\pm1`
-    depending upon which sublattice contains site :math:`i`.
 **magnetic_field** *h_z*
     Real.
     
@@ -456,14 +474,32 @@ These options describe the system which is to be investigated.
     Set the uniform external field for the Heisenberg model. The z direction is
     defined to be in the same direction as the external field. The spins in the
     basis functions point in this direction.
+
+    The Hamiltonian for the simulation will be
+
+    .. math::
+
+        \hat{H} = -J \sum_{\langle i,j \rangle} \hat{\boldsymbol{S}}_i \cdot \hat{\boldsymbol{S}}_j - h_z \sum_i \hat{S}_{iz},
+
+    where :math:`h_z` is equal to *h_z*.
 **staggered_magnetic_field** *hs_z*
     Real.
 
     Default: 0.
 
-    Set the staggered magnetic field for the Heisenberg field.  Only valid for
-    bipartite lattices.  Currently only one of **magnetic_field** and
-    **staggered_magnetic_field** can be non-zero.
+    Set a staggered magnetic field for the Heisenberg model.
+
+    The Hamiltonian for the simulation will be
+
+    .. math::
+
+        \hat{H} = -J \sum_{\langle i,j \rangle} \hat{\boldsymbol{S}}_i \cdot \hat{\boldsymbol{S}}_j - h_z' \sum_i \hat{S}_{iz}^{\xi},
+
+    where :math:`h_z'` is equal to *hs_z* and where :math:`\xi` is equal to +1 for
+    sites on sublattice 1 and is equal to -1 for sites on sublattice 2.
+
+    Only valid for bipartite lattices.  Currently only one of **magnetic_field**
+    and **staggered_magnetic_field** can be non-zero.
 **twist** *t1 [t2 [t3]]*
     Real.
 

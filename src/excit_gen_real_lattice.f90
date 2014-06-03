@@ -194,8 +194,8 @@ contains
         pgen = calc_pgen_real(sys, cdet%occ_list, cdet%f, nvirt_avail)
 
         ! 3. find the connecting matrix element.
-        ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-        hmatel = -2.0_p*sys%heisenberg%J
+        ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
+        hmatel = -sys%heisenberg%J/2
 
     end subroutine gen_excit_heisenberg
 
@@ -277,8 +277,8 @@ contains
             pgen = 1.0_dp/(sys%nel*connected_sites(0,i))
 
             ! 3. find the connecting matrix element.
-            ! Non-zero off-diagonal elements are always -2J for Heisenebrg model
-            hmatel = -2.0_p*sys%heisenberg%J
+            ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
+            hmatel = -sys%heisenberg%J/2
 
         end if
 
