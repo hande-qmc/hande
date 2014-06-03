@@ -4,8 +4,8 @@ lattice
 11
 ms 1
 
-J 1
-magnetic_field 0.1
+J 4
+magnetic_field 0.2
 
 fci
 
