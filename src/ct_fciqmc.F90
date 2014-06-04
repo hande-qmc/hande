@@ -136,7 +136,7 @@ contains
                             ! If death then kill the walker immediately and move
                             ! onto the next one.
                             if (connection%nexcit == 0 .and. &
-                                       int(walker_population(1,idet),int_p)*nspawn < 0_int_p) then
+                                       int(walker_population(1,idet),int_p)*nspawned < 0_int_p) then
                                 tmp_pop = tmp_pop + nspawned
                                 ! abs(nspawned) guaranteed to be 1
                                 nparticles(1) = nparticles(1) - 1.0_dp
