@@ -1,7 +1,7 @@
 module calc
 
 use const
-use csr, only: csrpsy_t
+use csr, only: csrp_t
 use parallel, only: blacs_info
 
 implicit none
@@ -56,7 +56,7 @@ real(p), allocatable :: hamil(:,:) ! (ndets, ndets)
 ! usually better to run on a single node than distribute the Hamiltonian matrix.
 ! Of course, perhaps one day a kind soul will implement a parallel sparse matrix
 ! storage format.
-type(csrpsy_t) :: hamil_csr
+type(csrp_t) :: hamil_csr
 ! Use sparse matrix rather than dense matrix?
 logical :: use_sparse_hamil = .false.
 

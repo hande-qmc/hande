@@ -4,7 +4,9 @@ module csr
 ! This is not intended to be a complete implementation, but rather only include
 ! procedures as required in HANDE.
 
-! Parallelisation (beyond perhaps OpenMP) is beyond the current scope.
+! Parallelisation (beyond perhaps OpenMP) is beyond the current scope and not
+! all procedures have threading so they can be called from regions already
+! parallelised using MPI and/or OpenMP.
 
 ! We use the abbreviations nrow and nnz to stand for the number of rows of and
 ! the number of non-zero elements of a matrix, respectively.
@@ -13,38 +15,41 @@ use const, only: p
 
 implicit none
 
-! Symmetric real(p) matrix
-type csrpsy_t
+! real(p) matrix
+type csrp_t
     ! non-zero elements of upper *or* lower triangle of matrix.
-    ! WARNING: it is assumed that the programmer only stores one-half of the
-    ! symmetric matrix.
     real(p), allocatable :: mat(:) ! (nnz)
     ! Column index of values stored in mat.
     ! If M_{ij} is stored in mat(k), then col_ind(k) = j.
     integer, allocatable :: col_ind(:) ! (nnz)
     ! row_ptr(i) gives the location in mat of the first non-zero element in row
-    ! i, i.e. if val(k) = M_{ij}, then row_ptr(i) <= k < row_ptr(i).  By
+    ! i, i.e. if mat(k) = M_{ij}, then row_ptr(i) <= k < row_ptr(i+1).  By
     ! convention, row_ptr(nrow+1) = nnz+1.
     integer, allocatable :: row_ptr(:) ! (nrow+1)
-end type csrpsy_t
+    ! WARNING: if the matrix is symmetric, it is assumed that the programmer
+    ! only stores the uppper *or* lower triangle of the matrix.
+    logical :: symmetric = .false.
+end type csrp_t
 
 contains
 
-    subroutine init_csrpsy(spm, nrow, nnz)
+    subroutine init_csrp(spm, nrow, nnz, symmetric)
 
         ! Initialise a real(p) sparse symmetrix matrix in csr format.
 
         ! In:
         !    nrow: number of rows/columns in matrix.
         !    nnz: number of non-zero elements in upper/lower triangle of matrix.
+        !    symmetric: (optional, default: false).
         ! Out:
-        !    spm: csrpsy_t object with components correctly allocated and
+        !    spm: csrp_t object with components correctly allocated and
         !         row_ptr(nrow+1) set to nnz+1.
 
         use checking, only: check_allocate
 
-        type(csrpsy_t), intent(out) :: spm
+        type(csrp_t), intent(out) :: spm
         integer, intent(in) :: nrow, nnz
+        logical, intent(in), optional :: symmetric
 
         integer :: ierr
 
@@ -56,19 +61,20 @@ contains
         call check_allocate('spm%row_ptr', nrow+1, ierr)
         spm%row_ptr(nrow+1) = nnz+1
 
-    end subroutine init_csrpsy
+        if (present(symmetric)) spm%symmetric = symmetric
 
-    subroutine end_csrpsy(spm)
+    end subroutine init_csrp
 
-        ! Deallocate components of a real(p) sparse symmetric matrix in csr
-        ! format.
+    subroutine end_csrp(spm)
+
+        ! Deallocate components of a real(p) sparse matrix in csr format.
 
         ! In/Out:
-        !    spm: csrpsy_t object with all components deallocated on exit.
+        !    spm: csrp_t object with all components deallocated on exit.
 
         use checking, only: check_deallocate
 
-        type(csrpsy_t), intent(inout) :: spm
+        type(csrp_t), intent(inout) :: spm
 
         integer :: ierr
 
@@ -79,12 +85,12 @@ contains
         deallocate(spm%row_ptr, stat=ierr)
         call check_deallocate('spm%row_ptr', ierr)
 
-    end subroutine end_csrpsy
+    end subroutine end_csrp
 
     subroutine csrpsymv(spm, x, y)
 
-        ! Calculate y = m*x, where m is a sparse matrix and x and y are dense
-        ! vectors.
+        ! Calculate y = m*x, where m is a sparse symmetric matrix and x and
+        ! y are dense vectors.
 
         ! In:
         !   spm: sparse symmetric matrix (real(p) in csr format.  See
@@ -96,12 +102,19 @@ contains
         !      least the number of rows in spm, with all additional elements set to
         !      0.
 
-        type(csrpsy_t), intent(in) :: spm
+        ! WARNING: if the matrix is symmetric, it is assumed that the programmer
+        ! only stores the uppper *or* lower triangle of the matrix.
+
+        use errors, only: stop_all
+
+        type(csrp_t), intent(in) :: spm
         real(p), intent(in) :: x(:)
         real(p), intent(out) :: y(:)
 
         integer :: irow, icol, iz
         real(p) :: rowx
+
+        if (.not.spm%symmetric) call stop_all('csrpsymv', 'Spare matrix not symmetric.')
         
         y = 0.0_p
         ! Avoid overhead of creating thread pool.
