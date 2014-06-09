@@ -173,14 +173,14 @@ contains
         call reduce_slots(donors, slot_list, proc_map, d_slot_index, d_slot_pop)
         call insertion_rank_lint(d_slot_pop, d_slot_rank)
 
-        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(d_slot_rank(1)))
+        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop)
 
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(d_slot_pop, d_slot_index, d_slot_rank, donors, receivers, up_thresh, &
                                 low_thresh, proc_map, nparticles_proc(1,:nprocs))
         load_attempts = load_attempts + 1
 
-        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop(d_slot_rank(1)))
+        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop)
 
         deallocate(donors, stat=ierr)
         call check_deallocate('donors', ierr)
@@ -195,7 +195,7 @@ contains
 
     end subroutine do_load_balancing
 
-    subroutine write_load_balancing_info(nparticles_proc, min_slot)
+    subroutine write_load_balancing_info(nparticles_proc, d_slot_pop)
 
         ! Write out information about the most and least heavily populated
         ! processor. Also write out the smallest available slot we can donate,
@@ -204,20 +204,19 @@ contains
 
         ! In:
         !    nparticles_proc: array containing population of walkers on each
-        !       processor
-        !    min_slot: smallest slot of walkers which can be donated from a
-        !       donor processor. Only really has meaning before load balancing
-        !       takes place.
+        !       processor.
+        !    d_slot_pop: populations of donor slots contained in proc_map.
 
         use parallel, only: nprocs
 
-        integer(lint), intent(in) :: nparticles_proc(:,:), min_slot
+        integer(lint), intent(in) :: nparticles_proc(:,:), d_slot_pop(:)
 
         write (6, '(1X, "#",2X,"Load balancing info:")')
-        write (6, '(1X, "# ",1X,a18,2X,a18,2X,a22,2X,a12)') "Max # of particles", "Min # of particles", &
-                  "Average # of particles", "Min slot pop"
-        write (6, '(1X, "#",1X,3(es17.10,3X),4X,es17.10)') maxval(real(nparticles_proc(1,:))), &
-                  minval(real(nparticles_proc(1,:))), real(sum(nparticles_proc(1,:))/nprocs), real(min_slot)
+        write (6, '(1X, "# ",1X,a18,2X,a18,2X,a22,2X,a12,9X,a12)') "Max # of particles", "Min # of particles", &
+                  "Average # of particles", "Max slot pop", "Min slot pop"
+        write (6, '(1X, "#",1X,3(es17.10,3X),4X,es17.10,4X,es17.10)') maxval(real(nparticles_proc(1,:))), &
+                  minval(real(nparticles_proc(1,:))), real(sum(nparticles_proc(1,:))/nprocs), &
+                  real(maxval(d_slot_pop)), real(minval(d_slot_pop))
 
     end subroutine write_load_balancing_info
 
