@@ -171,6 +171,13 @@ Notes
 -----
 Rounding is handled with Python's `round` function, which handles rounding numbers at the midpoint in a range (eg 5 if round to the nearest 10) in a slightly odd way.  As we're normally dealing with noisy data and rounding to remove more than just one significant figure, this is unlikely to impact us.
 '''
+    if numpy.isinf(val):
+        return '%s' % (val,)
+    if numpy.isinf(err):
+        return '%s(%s)' % (val, err)
+    if abs(err) < numpy.finfo(float(err)).eps:
+        return '%s(0)' % (val,)
+
     # Sig figs of accuracy is:
     sig_figs = lambda x: -int(numpy.floor(numpy.log10(x)))
 
