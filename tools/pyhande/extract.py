@@ -98,19 +98,29 @@ data : :class:`pandas.DataFrame`
     md_float = 'tau ref_energy psingle pdouble init_pop'.split()
     for (k,v) in md_regex.items():
         md_regex[k] = re.compile(v, re.IGNORECASE)
+    input_regex = re.compile('Input options')
+    underline_regex = re.compile('----+')
 
     # Read metadata and figure out how the start line of the data table.
     f = open(filename, 'r')
     start_line = 0
     metadata = pd.Series(index=md_regex.keys(), name='metadata')
+    metadata['input'] = []
     unseen_calc = True
     have_git_hash_next = False
+    have_input = 0
     for line in f:
         start_line += 1
         # extract metadata.
         if have_git_hash_next:
              metadata['git_hash'] = line.split()[0]
              have_git_hash_next = False
+        if have_input <= 3:
+            if have_input == 2 and line.strip():
+                metadata['input'].append(line.strip())
+            if input_regex.search(line) or \
+                    (have_input > 0 and underline_regex.search(line)):
+                have_input += 1
         for (k,v) in md_regex.items():
             if v.search(line):
                 # Special cases for unusual formats...
