@@ -151,9 +151,9 @@ data : :class:`pandas.DataFrame`
     if float(os.path.getsize(filename))/1024 < 8000 or not temp_file:
         # Read table --- only read the first N columns, where N is the number of
         # column names found.
-        data = pd.io.parsers.read_table(filename, sep='\s+', delim_whitespace=True,
-                   skiprows=start_line, skipfooter=skip_footer, names=column_names,
-                   comment='#')
+        data = pd.io.parsers.read_table(filename, sep='\s+', engine='python',
+                   skiprows=start_line, skipfooter=skip_footer,
+                   names=column_names, comment='#')
         # Remove comment lines and convert all columns to numeric data.
         # Lines starting with a comment have been set to NaN in the iterations
         # column.
