@@ -20,7 +20,7 @@ before_install:
   - "sh -e /etc/init.d/xvfb start"
 
 install:
-  - conda create --yes -n env_name python=$TRAVIS_PYTHON_VERSION nose pip numpy matplotlib pandas
+  - conda create --yes -n env_name python=$TRAVIS_PYTHON_VERSION nose pip numpy matplotlib pandas coverage
   - source activate env_name
   - python setup.py install
 
