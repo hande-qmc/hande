@@ -64,6 +64,10 @@ size from the blocking analysis:
     reblock = pd.concat([reblock, proje], axis=1)
 
     # Summary (including pretty printing of estimates).
+    # [review] - JSS: bit ugly (and exceeds 80 characters recommended by PEP8).
+    # [review] - JSS: how about instead doing the standard call to
+    # [review] - JSS: qmc_summary followed by another to add the psips info
+    # [review] - JSS: if extract_psips is True?
     if extract_psips:
         (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, keys=('Shift', 
                             '\sum H_0j N_j', 'N_0', 'Proj. Energy', '# H psips'))

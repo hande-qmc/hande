@@ -77,6 +77,10 @@ no_opt : list of strings
     list of columns for which no optimal block size was found.
 '''
 
+    # [review] - JSS: add optional arg summary_tuple=None and then
+    # [review] - JSS: set (opt_data, no_opt) = summary_tuple if not None
+    # [review] - JSS: and = ([], []) otherwise, where summary_tuple is
+    # [review] - JSS: obtained from a previous call?
     opt_data = []
     no_opt = []
     for col in keys:
