@@ -7,7 +7,7 @@ import pyblock
 import pyhande.extract
 import pyhande.analysis
 
-def std_analysis(datafiles, start=0, select_function=None):
+def std_analysis(datafiles, start=0, select_function=None, extract_psips=False):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -16,6 +16,8 @@ datafiles : list of strings
     names of files containing HANDE QMC calculation output.
 start : int
     iteration from which the 
+extract_psips: Boolean
+    extract the mean number of psips
 
 Returns
 -------
@@ -52,14 +54,21 @@ size from the blocking analysis:
         indx = data['iterations'] > start
     else:
         indx = select_function(data)
-    mc_data = data.ix[indx, ['Shift', '\sum H_0j N_j', 'N_0']]
+    to_block = ['Shift', '\sum H_0j N_j', 'N_0']
+    if extract_psips:
+        to_block.append('# H psips')
+    mc_data = data.ix[indx, to_block]
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
     
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
     reblock = pd.concat([reblock, proje], axis=1)
 
     # Summary (including pretty printing of estimates).
-    (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock)
+    if extract_psips:
+        (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, keys=('Shift', 
+                            '\sum H_0j N_j', 'N_0', 'Proj. Energy', '# H psips'))
+    else:
+        (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock)
     estimates = []
     for (name, row) in opt_block.iterrows():
         estimates.append(
