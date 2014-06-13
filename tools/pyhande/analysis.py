@@ -58,7 +58,7 @@ See also
     return proje
 
 def qmc_summary(data, keys=('Shift', '\sum H_0j N_j', 'N_0',
-                            'Proj. Energy')):
+                            'Proj. Energy'), summary_tuple=None):
     '''Summarise a reblocked data set by the optimal block.
 
 Parameters
@@ -68,6 +68,9 @@ data : :class:`pandas.DataFrame`
 keys : list of strings
     columns (by top-level index) of the data table to inspect.  Each top-level
     column must contain an optimal block column.
+summary_tuple :  (:class:`pandas.DataFrame`, list of strings)
+    Optionally append summary data to this tuple. Allows repeated calling of 
+    this function.
 
 Returns
 -------
@@ -77,12 +80,10 @@ no_opt : list of strings
     list of columns for which no optimal block size was found.
 '''
 
-    # [review] - JSS: add optional arg summary_tuple=None and then
-    # [review] - JSS: set (opt_data, no_opt) = summary_tuple if not None
-    # [review] - JSS: and = ([], []) otherwise, where summary_tuple is
-    # [review] - JSS: obtained from a previous call?
     opt_data = []
     no_opt = []
+    if summary_tuple != None:
+        (old_opt_data, no_opt) = summary_tuple
     for col in keys:
         if col in data:
             summary = pyblock.pd_utils.reblock_summary(data.ix[:, col])
@@ -92,4 +93,6 @@ no_opt : list of strings
                 summary.index = [col]
             opt_data.append(summary)
     opt_data = pd.concat(opt_data)
+    if summary_tuple != None:
+        opt_data = opt_data.append(old_opt_data)
     return (opt_data, no_opt)
