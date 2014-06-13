@@ -23,7 +23,7 @@ Installation
 ------------
 
 `pyblock` can be used simply by adding to `$PYTHONPATH`.  Alternatively, it can be
-installed using distutils: 
+installed using distutils:
 
 ::
 
@@ -43,7 +43,7 @@ License
 
 Modified BSD license; see LICENSE for more details.
 
-Please cite `pyblock, James Spencer, http://github.com/jsspencer/pyblock` if used to
+Please cite ``pyblock, James Spencer, http://github.com/jsspencer/pyblock`` if used to
 analyse data for an academic publication.
 
 Author
@@ -51,8 +51,26 @@ Author
 
 James Spencer, Imperial College London
 
+Contributing
+------------
+
+Contributions are extremely welcome, either by raising an issue or contributing code.
+For code contributions, please try to follow the following points:
+
+#. Divide commits into logical units (e.g. don't mix feature development with
+   refactoring).
+#. Ensure all existing tests pass.
+#. Create tests for new functionality.  I aim for complete test coverage.
+   (Currently the only function not tested is one that creates plots.)
+#. Write nice git commit messages (see `Tim Pope's advice <http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html>`_.)
+#. Send a pull request!
+
 Acknowledgments
 ---------------
 
-Will Vigor pointed out and wrote an early implementation of the algorithm to detect the
-optimal reblock length.  Comments and suggestions from the HANDE development team.
+Will Vigor (Imperial College London) pointed out and wrote an early implementation of
+the algorithm to detect the optimal reblock length.
+
+Tom Poole (Imperial College London) contributed code to handle weighted averages.
+
+The HANDE FCIQMC/CCMC development team made several helpful comments and suggestions.

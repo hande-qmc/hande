@@ -51,6 +51,12 @@ class ErrorFmtTests(unittest.TestCase):
         self.assertEqual(pyblock.error.pretty_fmt_err(1.2345, 0.01), '1.23(1)')
     def test2(self):
         self.assertEqual(pyblock.error.pretty_fmt_err(12331, 40), '12330(40)')
+    def test3(self):
+        self.assertEqual(pyblock.error.pretty_fmt_err(float('inf'), 100), str(float('inf')))
+    def test4(self):
+        self.assertEqual(pyblock.error.pretty_fmt_err(100.01, float('inf')), '100.01(%s)' % (float('inf')))
+    def test5(self):
+        self.assertEqual(pyblock.error.pretty_fmt_err(100.01, 0.0), '100.01(0)')
 
 def main():
     unittest.main()

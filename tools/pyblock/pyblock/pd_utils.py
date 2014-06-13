@@ -11,7 +11,7 @@ import matplotlib.tight_layout as mpl_tl
 import pandas as pd
 import pyblock.blocking
 
-def reblock(data, axis=0):
+def reblock(data, axis=0, weights=None):
     '''Blocking analysis of correlated data.
 
 Parameters
@@ -20,10 +20,13 @@ data : :class:`pandas.Series` or :class:`pandas.DataFrame`
     Data to be blocked.  See ``axis`` for order.
 axis : int
     If non-zero, variables in data are in rows with the columns
-    corresponding to the observation values.  Blocking is the performed along
+    corresponding to the observation values.  Blocking is then performed along
     the rows.  Otherwise each column is a variable, the observations are in the
     columns and blocking is performed down the columns.  Only used if data is
     a :class:`pandas.DataFrame`.
+weights : :class:`pandas.Series` or :class:`pandas.DataFrame`
+    A 1D weighting of the data to be reblocked. For multidimensional data an
+    identical weighting is applied to the data for each variable.
 
 Returns
 -------
@@ -57,7 +60,17 @@ See also
         else:
             columns = data.columns.values
 
-    block_stats = pyblock.blocking.reblock(data.values, rowvar=axis)
+    if weights is not None:
+        if isinstance(weights, pd.DataFrame):
+            if numpy.min(weights.shape) > 1:
+                raise RuntimeError("cannot handle multidimensional weights")
+            weights = numpy.array(weights.unstack())
+        else:
+            weights = weights.values
+
+    block_stats = pyblock.blocking.reblock(data.values,
+                                           rowvar=axis,
+                                           weights=weights)
     data_size = data.shape[axis]
     optimal_blocks = pyblock.blocking.find_optimal_block(data_size, block_stats)
 

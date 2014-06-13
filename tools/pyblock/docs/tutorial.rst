@@ -114,6 +114,11 @@ from the same simulation). In that case, different optimal reblock
 iterations might be found for each data set. The only assumption is that
 the original data sets are of the same length.
 
+It is aslo possible to reblock weighted data sets. If the
+`pyblock.blocking <pyblock.blocking.html>`__ routine is supplied with
+an array of weights in addition to the data, the weighted variance and
+standard error of each data set are calculated.
+
 pandas integration
 ------------------
 
@@ -493,4 +498,4 @@ the arrow on the plot.
 propogation functions for combining multiple noisy data sets and can
 handle multiple data sets at once (contained either within a ``numpy``
 array using `pyblock.blocking <pyblock.blocking.html>`__ or within a
-``pandas.DataFrame``.
+``pandas.DataFrame``).
