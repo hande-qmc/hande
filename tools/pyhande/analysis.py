@@ -80,10 +80,10 @@ no_opt : list of strings
     list of columns for which no optimal block size was found.
 '''
 
-    opt_data = []
-    no_opt = []
-    if summary_tuple != None:
-        (old_opt_data, no_opt) = summary_tuple
+    if summary_tuple:
+        (opt_data, no_opt) = ([summary_tuple[0]], summary_tuple[1])
+    else:
+        (opt_data, no_opt) = ([], [])
     for col in keys:
         if col in data:
             summary = pyblock.pd_utils.reblock_summary(data.ix[:, col])
@@ -93,6 +93,4 @@ no_opt : list of strings
                 summary.index = [col]
             opt_data.append(summary)
     opt_data = pd.concat(opt_data)
-    if summary_tuple != None:
-        opt_data = opt_data.append(old_opt_data)
     return (opt_data, no_opt)
