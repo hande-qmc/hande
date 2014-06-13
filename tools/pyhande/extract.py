@@ -75,7 +75,7 @@ data : :class:`pandas.DataFrame`
 
     md_regex = dict(
         UUID = '^ Calculation UUID:',
-        calc = '^ *(fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc) *$',
+        calc_type = '^ *(fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc) *$',
         sym = r'\bsym\b +\d+',
         ms = 'ms +-*\d+',
         nel = 'nel|electrons',
@@ -126,7 +126,7 @@ data : :class:`pandas.DataFrame`
                 # Special cases for unusual formats...
                 if k == 'ref':
                     metadata[k] = v.split(line)[-1].strip()
-                elif k == 'calc' and unseen_calc:
+                elif k == 'calc_type' and unseen_calc:
                     unseen_calc = False
                     metadata[k] = line.split()[0]
                 elif k == 'seed':
