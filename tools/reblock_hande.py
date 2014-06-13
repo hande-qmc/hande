@@ -107,12 +107,15 @@ reblock_plot : string
                       'is saved.  Use \'-\' to show plot interactively.  '
                       'Default: off.')
     parser.add_option('-q', '--quiet', dest='verbose', action='store_const',
-                      const=0, default=1, help='')
+                      const=0, default=1,
+                      help='Output only the final summary table.  '
+                      'Overrides --verbose.')
     parser.add_option('-s', '--start', type='int', dest='start_iteration',
                       default=0, help='Iteration number from which to gather '
                            'statistics.  Default: %default.')
-    parser.add_option('-v', '--verbose', dest='verbose', action='store_const',
-                      const=2, help='')
+    parser.add_option('-v', '--verbose', dest='verbose', action='count',
+                      default=1, help='Increase verbosity of the output.  Can '
+                      'be specified multiple times.')
 
     (options, filenames) = parser.parse_args(args)
 
