@@ -78,7 +78,7 @@ data : :class:`pandas.DataFrame`
         calc = '^ *(fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc) *$',
         sym = r'\bsym\b +\d+',
         ms = 'ms +-*\d+',
-        nel = 'nel',
+        nel = 'nel|electrons',
         nbasis = 'Number of basis functions:',
         truncation = 'truncation_level',
         tau = 'tau',
