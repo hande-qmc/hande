@@ -135,6 +135,9 @@ data : :class:`pandas.DataFrame`
                     have_git_hash_next = True
                 else:
                     val = line.split()[-1]
+                    if val[-1] == '.':
+                        # Remove trailing full-stops.
+                        val = val[:-1]
                     if k in md_int:
                         metadata[k] = int(val)
                     elif k in md_float:
