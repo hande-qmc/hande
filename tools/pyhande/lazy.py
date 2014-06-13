@@ -15,9 +15,9 @@ Parameters
 datafiles : list of strings
     names of files containing HANDE QMC calculation output.
 start : int
-    iteration from which the 
-extract_psips: Boolean
-    extract the mean number of psips
+    iteration from which the blocking analysis is performed.
+extract_psips : bool
+    also extract the mean number of psips from the calculation.
 
 Returns
 -------
