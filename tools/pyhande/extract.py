@@ -116,7 +116,8 @@ data : :class:`pandas.DataFrame`
              metadata['git_hash'] = line.split()[0]
              have_git_hash_next = False
         if have_input <= 3:
-            if have_input == 2 and line.strip():
+            if have_input == 2 and line.strip() and \
+                    not underline_regex.search(line):
                 metadata['input'].append(line.strip())
             if input_regex.search(line) or \
                     (have_input > 0 and underline_regex.search(line)):
