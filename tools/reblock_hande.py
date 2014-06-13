@@ -61,8 +61,19 @@ opt_block: :class:`pandas.DataFrame`
     info = pyhande.lazy.std_analysis(files, start_iteration)
 
     if verbose >= 2:
-        print(info.metadata.to_string(na_rep='n/a'))
-        print('')
+
+        col_name = info.metadata.columns.name
+        for (calc_name, calc) in info.metadata.iteritems():
+            calc_local = calc.copy()
+            calc_input = calc_local.pop('input')
+            # Add the calc index to the series and make it come first.
+            indx = calc_local.index.copy().insert(0, col_name)
+            calc_local = calc_local.reindex(indx)
+            calc_local[col_name] = calc_name
+            print(calc_local.to_string(na_rep='n/a'))
+            if verbose >= 3:
+                print('\nFull input options:\n\n%s' % ('\n'.join(calc_input)))
+            print('')
     if verbose >= 1:
         print(info.reblock.to_string(float_format=float_fmt, line_width=80))
         print('')
