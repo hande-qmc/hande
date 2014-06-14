@@ -130,14 +130,14 @@ contains
         fmt1 = int_fmt(nprocs,1)
         fmt2 = int_fmt(nthreads,1)
         if (nprocs == 1) then
-            write (6,'(1X,"Running on"'//fmt1//'" processor.")') nprocs
+            write (6,'(1X,"Number of MPI processes running on:"'//fmt1//')') nprocs
             if (nthreads == 1) then
                 write (6,'(1X,"Running with"'//fmt2//'" thread.",/)') nthreads
             else
                 write (6,'(1X,"Running with"'//fmt2//'" threads.",/)') nthreads
             end if
         else
-            write (6,'(1X,"Running on"'//fmt1//'" MPI processes.")') nprocs
+            write (6,'(1X,"Number of MPI processes running on:"'//fmt1//')') nprocs
             if (nthreads == 1) then
                 write (6,'(1X,"Running with"'//fmt2//'" thread per MPI process.",/)') nthreads
             else
