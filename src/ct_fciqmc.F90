@@ -191,27 +191,27 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(rng, sys, cdet, K_ii, &
-                                          int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)), int_p), &
-                                          R, nspawned, connection)
+                            associate(parent_sgn => qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)))
 
-                            if (nspawned /= 0_int_p) then
+                                call ct_spawn(rng, sys, cdet, K_ii, int(parent_sgn, int_p), R, nspawned, connection)
 
-                                ! Handle walker death
-                                if(connection%nexcit == 0 .and. &
-                                        int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))*nspawned,int_p) < 0_int_p) then
-                                    qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) = &
-                                            qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) + int(nspawned,int_s)
-                                    ndeath = ndeath + 1_int_p
-                                    exit ! The walker is dead - do not continue
+                                if (nspawned /= 0_int_p) then
+
+                                    ! Handle walker death
+                                    if(connection%nexcit == 0 .and. int(parent_sgn*nspawned,int_p) < 0_int_p) then
+                                        parent_sgn = parent_sgn + int(nspawned,int_s)
+                                        ndeath = ndeath + 1_int_p
+                                        exit ! The walker is dead - do not continue
+                                    end if
+
+                                    ! Add a walker to the end of the spawned walker list in the
+                                    ! appropriate block - this will increment the appropriate
+                                    ! spawning heads for the processors which were spawned on
+                                    call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
+
                                 end if
-
-                                ! Add a walker to the end of the spawned walker list in the
-                                ! appropriate block - this will increment the appropriate
-                                ! spawning heads for the processors which were spawned on
-                                call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
-
-                            end if
+                            
+                            end associate
 
                         end do
 

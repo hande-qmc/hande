@@ -150,7 +150,8 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                                         gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
 
@@ -170,7 +171,8 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(2,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(2,idet), &
+                                         gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
 

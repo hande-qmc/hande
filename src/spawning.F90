@@ -229,7 +229,8 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, &
+                                                           gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 

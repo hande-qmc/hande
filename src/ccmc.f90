@@ -346,7 +346,8 @@ contains
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
+                        call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
+                                          gen_excit_ptr, nspawned, connection)
 
                         if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
