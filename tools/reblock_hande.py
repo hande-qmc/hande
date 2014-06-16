@@ -65,11 +65,14 @@ opt_block: :class:`pandas.DataFrame`
         col_name = info.metadata.columns.name
         for (calc_name, calc) in info.metadata.iteritems():
             calc_local = calc.copy()
-            calc_input = calc_local.pop('input')
+            # problems with pop on pandas 0.13?  It seems to return a list...
+            calc_input = calc_local['input']
+            calc_local = calc_local.drop('input')
             # Add the calc index to the series and make it come first.
-            indx = calc_local.index.copy().insert(0, col_name)
-            calc_local = calc_local.reindex(indx)
             calc_local[col_name] = calc_name
+            indx = calc_local.index.copy()
+            indx = indx.delete(indx.get_loc(col_name)).insert(0, col_name)
+            calc_local = calc_local.reindex(indx)
             print(calc_local.to_string(na_rep='n/a'))
             if verbose >= 3:
                 print('\nFull input options:\n\n%s' % ('\n'.join(calc_input)))
