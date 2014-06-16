@@ -61,7 +61,7 @@ ALL_DATA_ELEMENTS = [
         DataElement('final_proj_E','^ final proj. energy =', -1),
         DataElement('E0+final_shift','^ E0 \+ shift =', -1, verbose=True),
         DataElement('hilbert_space_size','^ Monte-Carlo estimate of size of space is:', -1),
-        DataElement('nprocs','^ Number of MPI processors running on:', -1, parallel=True),
+        DataElement('nprocs','^ Number of MPI processes running on:', -1, parallel=True),
         DataElement('wall_time','^ Wall time \(seconds\):', -1, parallel=True),
         DataElement('max_pop', '^ Max \# of particles on a processor:', -1, parallel=True),
         DataElement('min_pop', '^ Min \# of particles on a processor:', -1, parallel=True),
