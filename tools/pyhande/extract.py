@@ -92,7 +92,8 @@ data : :class:`pandas.DataFrame`
         git_hash = 'VCS BASE repository version:',
         target = 'varyshift_target',
         shift_damping = 'shift_damping',
-        mc_cycles = 'mc_cycles'
+        mc_cycles = 'mc_cycles',
+        hilbert_space = 'Monte-Carlo estimate of size of space is:',
     )
     md_int = 'sym ms nel nbasis truncation seed bit_length'.split()
     md_float = 'tau ref_energy psingle pdouble init_pop'.split()
@@ -134,6 +135,8 @@ data : :class:`pandas.DataFrame`
                     metadata[k] = int(float(line.split()[-1]))
                 elif k == 'git_hash':
                     have_git_hash_next = True
+                elif k == 'hilbert_space':
+                    metadata[k] = float(line.split()[-3])
                 else:
                     val = line.split()[-1]
                     if val[-1] == '.':
