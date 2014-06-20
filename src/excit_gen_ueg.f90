@@ -205,7 +205,6 @@ contains
         use bit_utils, only: count_set_bits
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use ueg_system, only: ueg_ternary_conserve, ueg_basis_index
         use utils, only: tri_ind
 
         type(dSFMT_t), intent(inout) :: rng
