@@ -158,6 +158,8 @@ contains
                    ! restricting the range of a such that there must be at least one b
                    ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! ueg_basis_max,
                    ! thus providing lower and upper bounds for a).
+! [review] - AJWT: This is certainly significatly better algorithmically.  Might
+! [review] - AJWT:   it use OpenMP if we really need it to be faster?
                    do a = 1, nbasis-1, 2 ! only bother with alpha orbitals
                        kija = [k1, k2, k3] - basis_fns(a)%l
                        if (real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
