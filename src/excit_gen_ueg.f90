@@ -205,7 +205,6 @@ contains
         use bit_utils, only: count_set_bits
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use ueg_system, only: ueg_ternary_conserve, ueg_basis_index
         use utils, only: tri_ind
 
         type(dSFMT_t), intent(inout) :: rng
@@ -362,21 +361,17 @@ contains
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
-        integer :: fac, shift, ij_ind, ibp, ibe, n, ind, kb(sys%lattice%ndim)
+        integer :: fac, shift, ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
         integer(i0) :: poss_a(basis_length)
 
         ! Let's just check there are possible a,b first!
-        if (j>i) then
-            ij_ind = tri_ind((j+1)/2, (i+1)/2)
-        else
-            ij_ind = tri_ind((i+1)/2, (j+1)/2)
-        end if
-
         ! Adjust for spin.  Allow a to be up (without bias) if possible.
+        k3(1:sys%lattice%ndim) = ij_k
+        k3(sys%lattice%ndim+1:) = 0
         if (ij_spin == -2) then
-            poss_a = iand(not(f), ishft(ueg_ternary_conserve(1:,ij_ind),1))
+            poss_a = iand(not(f), ishft(ueg_ternary_conserve(1:,k3(1),k3(2),k3(3)),1))
         else
-            poss_a = iand(not(f), ueg_ternary_conserve(1:,ij_ind))
+            poss_a = iand(not(f), ueg_ternary_conserve(1:,k3(1),k3(2),k3(3)))
         end if
         max_na = sum(count_set_bits(poss_a))
 

@@ -37,17 +37,19 @@ integer :: ueg_basis_max
 ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and
 ! k_a, k_b is uniquely defined.  Further, once we've chosen k_i and k_j and if
 ! we require k_b to exist in the basis, then only certain values of k_a are
-! permitted.  ueg_ternary_conserve(0,i,j) gives how many k_a are permitted for
-! a given k_i and k_j and ueg_ternary_conserve(1,i,j) gives a bit string with
-! only bytes set corresponding to permitted k_a values.  Note only basis
-! functions corresponding to *alpha* orbitals are set.  Finally, we use
-! tri_ind((j+1)/2,(i+1)/2), j>=i, to store only the lower triangular section of
-! the array and only store it for one set of spin functions.
-! (j+1)/2 gives the same value for the indices of both alpha and beta basis
-! functions of the same wavevector.
-! TODO: reduce this to minimum memory required (several k_i+k_j will have the
-! same value!).
-integer(i0), allocatable :: ueg_ternary_conserve(:,:) ! (0:basis_length,nbasis/2*(nbasis/2+1)/2)
+! permitted.  ueg_ternary_conserve(0,k1,k2,k3) gives how many k_a are permitted
+! for k_i+k_j = (k1,k2,k3) and ueg_ternary_conserve(1:,k1,k2,k3) gives a bit
+! string with only bytes set corresponding to permitted k_a values.  Note only
+! basis functions corresponding to *alpha* orbitals are set.
+! For systems with dimensionality lower than 3, the higher ki values are set to
+! 0, i.e. dimensions:
+! (0:basis_length,-N:N,0,0) (1D)
+! (0:basis_length,-N:N,-N:N,0) (2D)
+! (0:basis_length,-N:N,-N:N,-N:N) (3D)
+! NOTE: this contains values of k_i+k_j which cannot be formed by the basis with
+! the energy cutoff.  Memory can be saved by not using a cubic array for
+! k_i+k_j...
+integer(i0), allocatable :: ueg_ternary_conserve(:,:,:,:)
 
 abstract interface
 
@@ -115,6 +117,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: ierr, i, j, a, ind, N_kx, k_min(sys%lattice%ndim), bit_pos, bit_el, k(sys%lattice%ndim)
+        integer :: k1, k2, k3, kija(3)
 
         ueg_basis_max = ceiling(sqrt(2*sys%ueg%ecutoff))
 
@@ -142,24 +145,35 @@ contains
         ! Now fill in the values for permitted k_a in an excitation
         ! k_i,k_j->k_a,k_b, given a choice of k_i ad k_j and requiring k_b is in
         ! the basis.
-        allocate(ueg_ternary_conserve(0:basis_length, nbasis/2*(nbasis/2+1)/2), stat=ierr)
+
+        k = 0
+        k(1:sys%lattice%ndim) = 2*ueg_basis_max
+        allocate(ueg_ternary_conserve(0:basis_length, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
         call check_allocate('ueg_ternary_conserve', size(ueg_ternary_conserve), ierr)
         ueg_ternary_conserve = 0_i0
-        do i = 2, nbasis, 2
-            do j = i, nbasis, 2
-                ind = tri_ind(j/2,i/2)
-                do a = 1, nbasis-1, 2 ! only alpha orbitals
-                    k = basis_fns(i)%l + basis_fns(j)%l - basis_fns(a)%l
-                    if (real(dot_product(k,k),p)/2 - sys%ueg%ecutoff < 1.e-8) then
-                        ! There exists an allowed b in the basis!
-                        ueg_ternary_conserve(0,ind) = ueg_ternary_conserve(0,ind) + 1
-                        bit_pos = bit_lookup(1, a)
-                        bit_el = bit_lookup(2, a)
-                        ueg_ternary_conserve(bit_el,ind) = ibset(ueg_ternary_conserve(bit_el,ind), bit_pos)
-                    end if
-                end do
+        !$omp parallel do default(none) shared(k,sys,ueg_ternary_conserve,bit_lookup,nbasis,basis_fns) &
+        !$omp private(k1,k2,k3,a,kija,bit_pos,bit_el)
+        do k3 = -k(3), k(3)
+            do k2 = -k(2), k(2)
+               do k1 = -k(1), k(1)
+                   ! If this is still slow, we can improve matters by
+                   ! restricting the range of a such that there must be at least one b
+                   ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! ueg_basis_max,
+                   ! thus providing lower and upper bounds for a).
+                   do a = 1, nbasis-1, 2 ! only bother with alpha orbitals
+                       kija = [k1, k2, k3] - basis_fns(a)%l
+                       if (real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
+                           ! There exists an allowed b in the basis!
+                           ueg_ternary_conserve(0,k1,k2,k3) = ueg_ternary_conserve(0,k1,k2,k3) + 1
+                           bit_pos = bit_lookup(1, a)
+                           bit_el = bit_lookup(2, a)
+                           ueg_ternary_conserve(bit_el,k1,k2,k3) = ibset(ueg_ternary_conserve(bit_el,k1,k2,k3), bit_pos)
+                       end if
+                   end do
+               end do
             end do
         end do
+        !$omp end parallel do
 
     end subroutine init_ueg_indexing
 
