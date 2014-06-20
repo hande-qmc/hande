@@ -151,6 +151,8 @@ contains
         allocate(ueg_ternary_conserve(0:basis_length, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
         call check_allocate('ueg_ternary_conserve', size(ueg_ternary_conserve), ierr)
         ueg_ternary_conserve = 0_i0
+        !$omp parallel do default(none) shared(k,sys,ueg_ternary_conserve,bit_lookup,nbasis,basis_fns) &
+        !$omp private(k1,k2,k3,a,kija,bit_pos,bit_el)
         do k3 = -k(3), k(3)
             do k2 = -k(2), k(2)
                do k1 = -k(1), k(1)
@@ -158,8 +160,6 @@ contains
                    ! restricting the range of a such that there must be at least one b
                    ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! ueg_basis_max,
                    ! thus providing lower and upper bounds for a).
-! [review] - AJWT: This is certainly significatly better algorithmically.  Might
-! [review] - AJWT:   it use OpenMP if we really need it to be faster?
                    do a = 1, nbasis-1, 2 ! only bother with alpha orbitals
                        kija = [k1, k2, k3] - basis_fns(a)%l
                        if (real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
@@ -173,6 +173,7 @@ contains
                end do
             end do
         end do
+        !$omp end parallel do
 
     end subroutine init_ueg_indexing
 
