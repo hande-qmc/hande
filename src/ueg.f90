@@ -109,12 +109,14 @@ contains
         use basis, only: basis_fns, nbasis, bit_lookup, basis_length
         use system, only: sys_t
 
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use utils, only: tri_ind
 
         type(sys_t), intent(in) :: sys
 
         integer :: ierr, i, j, a, ind, N_kx, k_min(sys%lattice%ndim), bit_pos, bit_el, k(sys%lattice%ndim)
+        integer :: k1, k2, k3, kija(3)
+        integer(i0), allocatable :: ueg_ternary_conserve_sum(:,:,:,:)
 
         ueg_basis_max = ceiling(sqrt(2*sys%ueg%ecutoff))
 
@@ -142,24 +144,46 @@ contains
         ! Now fill in the values for permitted k_a in an excitation
         ! k_i,k_j->k_a,k_b, given a choice of k_i ad k_j and requiring k_b is in
         ! the basis.
+
+        k = 0
+        k(1:sys%lattice%ndim) = 2*ueg_basis_max
+        allocate(ueg_ternary_conserve_sum(0:basis_length, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
+        call check_allocate('ueg_ternary_conserve_sum', size(ueg_ternary_conserve_sum), ierr)
+        ueg_ternary_conserve_sum = 0_i0
+        do k3 = -k(3), k(3)
+            do k2 = -k(2), k(2)
+               do k1 = -k(1), k(1)
+                   ! If this is still slow, we can improve matters by
+                   ! restricting the range of a such that there must be at least one b
+                   ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! ueg_basis_max,
+                   ! thus providing lower and upper bounds for a).
+                   do a = 1, nbasis-1, 2 ! only bother with alpha orbitals
+                       kija = [k1, k2, k3] - basis_fns(a)%l
+                       if (real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
+                           ! There exists an allowed b in the basis!
+                           ueg_ternary_conserve_sum(0,k1,k2,k3) = ueg_ternary_conserve_sum(0,k1,k2,k3) + 1
+                           bit_pos = bit_lookup(1, a)
+                           bit_el = bit_lookup(2, a)
+                           ueg_ternary_conserve_sum(bit_el,k1,k2,k3) = ibset(ueg_ternary_conserve_sum(bit_el,k1,k2,k3), bit_pos)
+                       end if
+                   end do
+               end do
+            end do
+        end do
+
         allocate(ueg_ternary_conserve(0:basis_length, nbasis/2*(nbasis/2+1)/2), stat=ierr)
         call check_allocate('ueg_ternary_conserve', size(ueg_ternary_conserve), ierr)
         ueg_ternary_conserve = 0_i0
         do i = 2, nbasis, 2
             do j = i, nbasis, 2
                 ind = tri_ind(j/2,i/2)
-                do a = 1, nbasis-1, 2 ! only alpha orbitals
-                    k = basis_fns(i)%l + basis_fns(j)%l - basis_fns(a)%l
-                    if (real(dot_product(k,k),p)/2 - sys%ueg%ecutoff < 1.e-8) then
-                        ! There exists an allowed b in the basis!
-                        ueg_ternary_conserve(0,ind) = ueg_ternary_conserve(0,ind) + 1
-                        bit_pos = bit_lookup(1, a)
-                        bit_el = bit_lookup(2, a)
-                        ueg_ternary_conserve(bit_el,ind) = ibset(ueg_ternary_conserve(bit_el,ind), bit_pos)
-                    end if
-                end do
+                k(1:sys%lattice%ndim) = basis_fns(i)%l + basis_fns(j)%l
+                ueg_ternary_conserve(:, ind) = ueg_ternary_conserve_sum(:, k(1), k(2), k(3))
             end do
         end do
+
+        deallocate(ueg_ternary_conserve_sum, stat=ierr)
+        call check_deallocate('ueg_ternary_conserve_sum', ierr)
 
     end subroutine init_ueg_indexing
 
