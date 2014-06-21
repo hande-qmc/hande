@@ -28,11 +28,13 @@ contains
         use folded_spectrum_utils, only: init_folded_spectrum
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
+        use semi_stoch, only: semi_stoch_t
 
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
 
+        type(semi_stoch_t) :: qmc_determ
         real(dp) :: hub_matel
         type(sys_t) :: sys_bak
 
@@ -44,7 +46,7 @@ contains
         call set_spin_polarisation(nbasis, ms_in, sys)
 
         ! Initialise data
-        call init_qmc(sys)
+        call init_qmc(sys, qmc_determ)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
@@ -63,7 +65,7 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) then
                 call do_hfs_fciqmc(sys)
             else
-                call do_fciqmc(sys)
+                call do_fciqmc(sys, qmc_determ)
             end if
         end if
 
@@ -74,7 +76,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys)
+    subroutine init_qmc(sys, determ)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -99,7 +101,7 @@ contains
         use reference_determinant, only: set_reference_det
         use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
-        use semi_stoch, only: qmc_determ, init_semi_stochastic
+        use semi_stoch, only: semi_stoch_t, init_semi_stochastic
         use spawn_data, only: alloc_spawn_t
         use system
         use symmetry, only: symmetry_orb_list
@@ -108,6 +110,7 @@ contains
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
         type(sys_t), intent(in) :: sys
+        type(semi_stoch_t), intent(inout) :: determ
 
         integer :: ierr
         integer :: i, j, D0_inv_proc, ipos, occ_list0_inv(sys%nel)
@@ -456,7 +459,7 @@ contains
             call init_dmqmc(sys)
         end if
 
-        call init_semi_stochastic(0, 0, sys, qmc_determ)
+        call init_semi_stochastic(0, 0, sys, determ)
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='

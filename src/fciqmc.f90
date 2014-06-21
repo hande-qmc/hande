@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys)
+    subroutine do_fciqmc(sys, determ)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -33,12 +33,14 @@ contains
         use folded_spectrum_utils, only: cdet_excit
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
+        use semi_stoch, only: semi_stoch_t, check_if_determ
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
         type(sys_t), intent(in) :: sys
+        type(semi_stoch_t), intent(inout) :: determ
 
-        integer :: idet, ireport, icycle, iparticle
+        integer :: idet, ireport, icycle, iparticle, ideterm
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
@@ -51,6 +53,7 @@ contains
         real(dp) :: real_population
 
         logical :: soft_exit
+        logical :: determ_parent, determ_child
 
         real :: t1
 
@@ -80,6 +83,7 @@ contains
             do icycle = 1, ncycles
 
                 call init_mc_cycle(nattempts, ndeath)
+                ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -90,6 +94,14 @@ contains
 
                     ! Extract the real sign from the encoded sign.
                     real_population = real(walker_population(1,idet),dp)/real_factor
+
+                    if (determ%flags(idet) == 1) then
+                        ideterm = ideterm + 1
+                        determ%vector(ideterm) = real_population
+                        determ_parent = .true.
+                    else
+                        determ_parent = .false.
+                    end if
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
@@ -110,6 +122,12 @@ contains
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
+                            if (determ_parent) then
+                                determ_child = check_if_determ(determ%hash_table, determ%dets, cdet%f)
+                                ! If the spawning is both from and to the
+                                ! deterministic space, cancel it.
+                                if (determ_parent .and. determ_child) cycle
+                            end if
                             call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
                         end if
 
@@ -119,7 +137,11 @@ contains
                     ! [review] - JSS: shouldn't real_population be passed through to death?
                     ! [reply] - NSB: See reply in death.f90 - could do but I think its more
                     ! [reply] - natural and cleaner to do it this way.
-                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
+                    ! Only call the death step if the determinant is not in the
+                    ! deterministic space. The death step is performed in the
+                    ! deterministic projection for these states.
+                    if (.not. determ_parent) call death_ptr(rng, walker_data(1,idet), shift(1), &
+                                                            walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 

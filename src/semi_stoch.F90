@@ -49,8 +49,6 @@ type semi_stoch_t
     integer, allocatable :: flags(:)
 end type semi_stoch_t
 
-type(semi_stoch_t) :: qmc_determ
-
 contains
 
     subroutine init_semi_stochastic(determ_type, determ_target_size, sys, determ)
@@ -164,7 +162,7 @@ contains
             do i = 2, ht%nhash
                 ht%hash_ptr(i) = ht%hash_ptr(i-1) + nclash(i)
             end do
-            ht%hash_ptr(ht%nhash+1) = determ%tot_size
+            ht%hash_ptr(ht%nhash+1) = determ%tot_size + 1
 
             ! Now loop over all states again and this time fill in the hash table.
             nclash = 0
@@ -290,5 +288,28 @@ contains
         end do
 
     end subroutine add_determ_dets_to_walker_dets
+
+    function check_if_determ(ht, dets, f) result(is_determ)
+
+        use basis, only: total_basis_length
+        use hashing, only: murmurhash_bit_string
+
+        type(determ_hash_t), intent(in) :: ht
+        integer(i0), intent(in) :: dets(:,:)
+        integer(i0), intent(in) :: f(total_basis_length)
+        integer :: iz, hash
+        logical :: is_determ
+
+        is_determ = .false.
+
+        hash = modulo(murmurhash_bit_string(f, total_basis_length, ht%seed), ht%nhash) + 1
+        do iz = ht%hash_ptr(hash), ht%hash_ptr(hash+1)-1
+            if (all(f == dets(:,ht%ind(iz)))) then
+                is_determ = .true.
+                return
+            end if
+        end do
+
+    end function check_if_determ
 
 end module semi_stoch
