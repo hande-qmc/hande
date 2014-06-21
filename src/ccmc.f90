@@ -326,7 +326,7 @@ contains
                 !$omp do schedule(dynamic,200) private(nspawned, connection, junk) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
-                    call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, int(tot_abs_pop), max_cluster_size, &
+                    call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
                                         cdet(it), cluster(it))
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
@@ -346,7 +346,8 @@ contains
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection)
+                        call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
+                                          gen_excit_ptr, nspawned, connection)
 
                         if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
@@ -483,7 +484,8 @@ contains
         type(cluster_t), intent(inout) :: cluster
 
         real(p) :: rand, psize, cluster_population
-        integer :: i, pos, prev_pos, pop(max_size), excitor_sgn
+        integer :: i, pos, prev_pos, excitor_sgn
+        integer(int_p) :: pop(max_size)
         logical :: hit, allowed
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
@@ -560,7 +562,7 @@ contains
             ! searching of the cumulative population list.
             do i = 1, cluster%nexcitors
                 ! Select a position in the excitors list.
-                pop(i) = int(get_rand_close_open(rng)*tot_excip_pop) + 1 ! TODO: adjust for parallel
+                pop(i) = int(get_rand_close_open(rng)*tot_excip_pop, int_p) + 1 ! TODO: adjust for parallel
             end do
             call insert_sort(pop(:cluster%nexcitors))
             prev_pos = 1

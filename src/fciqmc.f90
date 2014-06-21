@@ -105,7 +105,8 @@ contains
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                                         gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then

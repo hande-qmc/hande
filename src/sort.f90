@@ -13,7 +13,8 @@ end interface qsort
 
 ! Insertion sort...
 interface insert_sort
-    module procedure insert_sort_int
+    module procedure insert_sort_int_32
+    module procedure insert_sort_int_64
 end interface insert_sort
 
 contains
@@ -175,14 +176,16 @@ contains
 
 !--- In-place insertion sort.  ---
 
-    pure subroutine insert_sort_int(list)
+    pure subroutine insert_sort_int_32(list)
 
         ! Sort in-place an integer list by the insertion sort algorithm.
 
         ! In/Out:
         !    list: list of integers.  List is sorted on output.
 
-        integer, intent(inout) :: list(:)
+        use const, only: int_4
+
+        integer(int_4), intent(inout) :: list(:)
         real :: tmp
         integer :: i, j
 
@@ -199,6 +202,34 @@ contains
             list(j+1) = tmp
         end do
 
-    end subroutine insert_sort_int
+    end subroutine insert_sort_int_32
+
+    pure subroutine insert_sort_int_64(list)
+
+        ! Sort in-place an integer list by the insertion sort algorithm.
+
+        ! In/Out:
+        !    list: list of integers.  List is sorted on output.
+
+        use const, only: int_8
+
+        integer(int_8), intent(inout) :: list(:)
+        real :: tmp
+        integer :: i, j
+
+        ! Based on http://rosettacode.org/wiki/Sorting_algorithms/Insertion_sort#Fortran.
+        ! Essentially a direct translation of the pseudo-code for the algorithm.
+
+        do i = 2, ubound(list,dim=1)
+            j = i - 1
+            tmp = list(i)
+            do while (j>=1 .and. list(j)>tmp)
+                list(j+1) = list(j)
+                j = j - 1
+            end do
+            list(j+1) = tmp
+        end do
+
+    end subroutine insert_sort_int_64
 
 end module sort
