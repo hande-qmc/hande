@@ -9,7 +9,7 @@ ifciqmc
 real_amplitudes
 spawn_cutoff 0.01
 
-spawned_walker_length 100
+spawned_walker_length 500
 walker_length 10
 nreports 250
 mc_cycles 10
