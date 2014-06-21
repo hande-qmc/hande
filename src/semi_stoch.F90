@@ -43,6 +43,10 @@ type semi_stoch_t
     ! Temporary space used for storing determinants during the creation of the
     ! deterministic space (before it is known how big the space is).
     integer(i0), allocatable :: temp_dets(:,:)
+    ! Deterministic flags of states in the main list. If determ_flags(i) is
+    ! equal to 1 then the corresponding state in position i of the main list is
+    ! a deterministic state, else it is not.
+    integer, allocatable :: flags(:)
 end type semi_stoch_t
 
 type(semi_stoch_t) :: qmc_determ
@@ -70,9 +74,12 @@ contains
         integer :: i, ierr
 
         ! Create the temporary space for enumerating the deterinistic space and
-        ! also the arrays to hold the space sizes and displacements.
+        ! also the arrays to hold deterministic flags and space sizes and
+        ! displacements.
         allocate(determ%temp_dets(total_basis_length, walker_length), stat=ierr)
         call check_allocate('determ%temp_dets', size(determ%temp_dets), ierr)
+        allocate(determ%flags(walker_length), stat=ierr)
+        call check_allocate('determ%flags', walker_length, ierr)
         allocate(determ%sizes(0:nprocs-1), stat=ierr)
         call check_allocate('determ%sizes', nprocs, ierr)
         allocate(determ%displs(0:nprocs-1), stat=ierr)
@@ -111,7 +118,7 @@ contains
 
         call create_determ_hamil(sys, determ)
 
-        call add_determ_dets_to_walker_dets(determ)
+        call add_determ_dets_to_walker_dets(sys, determ)
 
         ! We don't need this temporary space anymore.
         deallocate(determ%temp_dets, stat=ierr)
@@ -221,9 +228,66 @@ contains
 
     end subroutine create_determ_hamil
 
-    subroutine add_determ_dets_to_walker_dets(determ)
+    subroutine add_determ_dets_to_walker_dets(sys, determ)
 
+        use basis, only: basis_length
+        use calc, only: dmqmc_calc, hfs_fciqmc_calc, trial_function
+        use calc, only: neel_singlet, doing_calc
+        use fciqmc_data, only: walker_dets, walker_population, walker_data
+        use fciqmc_data, only: sampling_size, H00, tot_walkers, replica_tricks
+        use heisenberg_estimators, only: neel_singlet_data
+        use hfs_data, only: O00
+        use parallel, only: iproc
+        use proc_pointers, only: sc0_ptr, op0_ptr
+        use search, only: binary_search
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
         type(semi_stoch_t), intent(inout) :: determ
+
+        integer :: i, j, k, istart, iend, pos
+        logical :: hit
+
+        determ%flags = 0
+
+        istart = 1
+        iend = tot_walkers
+        do i = 1, determ%sizes(iproc)
+            call binary_search(walker_dets, determ%temp_dets(:,i), istart, iend, hit, pos)
+            if (hit) then
+                ! This deterministic state is already in walker_dets. We simply
+                ! need to set the deterministic flag.
+                determ%flags(pos) = 1
+            else
+                ! This deterministic state is not in walker_dets. Move all
+                ! determinants with index pos or greater down one and insert
+                ! this determinant with an initial sign or zero.
+                walker_dets(:,pos:tot_walkers) = walker_dets(:,pos+1:tot_walkers+1)
+                walker_population(:,pos:tot_walkers) = walker_population(:,pos+1:tot_walkers+1)
+                walker_data(:,pos:tot_walkers) = walker_data(:,pos+1:tot_walkers+1)
+
+                walker_dets(:,pos) = determ%temp_dets(:,i)
+                walker_population(:,pos) = 0_int_p
+                if (.not. doing_calc(dmqmc_calc)) walker_data(1,pos) = sc0_ptr(sys, determ%temp_dets(:,i)) - H00
+                if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = &
+                    neel_singlet_data(walker_dets(:,pos))
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
+                    walker_data(2,pos) = op0_ptr(sys, walker_dets(:,pos)) - O00
+                else if (doing_calc(dmqmc_calc)) then
+                    ! Set the energy to be the average of the two induvidual energies.
+                    walker_data(1,pos) = (walker_data(1,pos) + &
+                        sc0_ptr(sys, walker_dets((basis_length+1):(2*basis_length),pos)) - H00)/2
+                    if (replica_tricks) then
+                        walker_data(2:sampling_size,pos) = walker_data(1,pos)
+                    end if
+                end if
+
+                tot_walkers = tot_walkers + 1
+            end if
+            istart = pos + 1
+            iend = tot_walkers
+        end do
 
     end subroutine add_determ_dets_to_walker_dets
 
