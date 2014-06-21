@@ -59,6 +59,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: walker_length
         use parallel
+        use sort, only: qsort
         use system, only: sys_t
 
         integer, intent(in) :: determ_type
@@ -98,6 +99,8 @@ contains
         call check_allocate('determ%vector', determ%sizes(iproc), ierr)
         determ%vector = 0.0_p
 
+        call qsort(determ%temp_dets, determ%sizes(iproc)) 
+
         ! Array to hold all deterministic states from all processes.
         allocate(determ%dets(total_basis_length, determ%tot_size), stat=ierr)
         call check_allocate('determ%dets', size(determ%dets), ierr)
@@ -107,6 +110,8 @@ contains
         call create_determ_hash_table(determ)
 
         call create_determ_hamil(sys, determ)
+
+        call add_determ_dets_to_walker_dets(determ)
 
         ! We don't need this temporary space anymore.
         deallocate(determ%temp_dets, stat=ierr)
@@ -215,5 +220,11 @@ contains
         end associate
 
     end subroutine create_determ_hamil
+
+    subroutine add_determ_dets_to_walker_dets(determ)
+
+        type(semi_stoch_t), intent(inout) :: determ
+
+    end subroutine add_determ_dets_to_walker_dets
 
 end module semi_stoch
