@@ -20,7 +20,6 @@ contains
         !         run if needed.
 
         use calc
-
         use basis, only: nbasis
         use ccmc, only: do_ccmc
         use ct_fciqmc, only: do_ct_fciqmc
@@ -29,6 +28,7 @@ contains
         use folded_spectrum_utils, only: init_folded_spectrum
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
+
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
@@ -99,6 +99,7 @@ contains
         use reference_determinant, only: set_reference_det
         use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
+        use semi_stoch, only: qmc_determ, init_semi_stochastic
         use spawn_data, only: alloc_spawn_t
         use system
         use symmetry, only: symmetry_orb_list
@@ -454,6 +455,8 @@ contains
         if (doing_calc(dmqmc_calc)) then
             call init_dmqmc(sys)
         end if
+
+        call init_semi_stochastic(0, 0, qmc_determ)
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
