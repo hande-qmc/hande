@@ -182,4 +182,35 @@ contains
 
     end subroutine csrpsymv_general
 
+    subroutine csrpsymv_row(spm, x, y_irow, irow)
+
+        ! Calculate a single value in the vector y = m*x, where m is a sparse
+        ! matrix and x and y are dense vectors.
+
+        ! In:
+        !   spm: sparse matrix (real(p) in csr format. See module-level notes
+        !        about storage format.
+        !   x: dense vector.  Number of elements must be at least the number of
+        !      columns in spm.
+        !   irow: The index of the row of the Hamiltonian to multiply with.
+        ! Out:
+        !   y_irow: Holds \sum_j m_{irow,j}*x_j on exit.
+
+        use errors, only: stop_all
+
+        type(csrp_t), intent(in) :: spm
+        real(p), intent(in) :: x(:)
+        real(p), intent(out) :: y_irow
+        integer, intent(in) :: irow
+
+        integer :: icol, iz
+
+        y_irow = 0.0_p
+        do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
+            icol = spm%col_ind(iz)
+            y_irow = y_irow + spm%mat(iz)*x(icol)
+        end do
+
+    end subroutine csrpsymv_row
+
 end module csr
