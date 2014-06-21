@@ -456,7 +456,7 @@ contains
             call init_dmqmc(sys)
         end if
 
-        call init_semi_stochastic(0, 0, qmc_determ)
+        call init_semi_stochastic(0, 0, sys, qmc_determ)
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='

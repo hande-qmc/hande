@@ -49,7 +49,7 @@ type(semi_stoch_t) :: qmc_determ
 
 contains
 
-    subroutine init_semi_stochastic(determ_type, determ_target_size, determ)
+    subroutine init_semi_stochastic(determ_type, determ_target_size, sys, determ)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -59,9 +59,11 @@ contains
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: walker_length
         use parallel
+        use system, only: sys_t
 
         integer, intent(in) :: determ_type
         integer, intent(in) :: determ_target_size
+        type(sys_t), intent(in) :: sys
         type(semi_stoch_t), intent(inout) :: determ
 
         integer :: i, ierr
@@ -104,6 +106,8 @@ contains
 
         call create_determ_hash_table(determ)
 
+        call create_determ_hamil(sys, determ)
+
         ! We don't need this temporary space anymore.
         deallocate(determ%temp_dets, stat=ierr)
         call check_deallocate('determ%temp_dets', ierr)
@@ -116,7 +120,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use hashing, only: murmurhash_bit_string
 
-        type(semi_stoch_t) :: determ
+        type(semi_stoch_t), intent(inout) :: determ
 
         integer :: i, iz, hash, ierr
         integer, allocatable :: nclash(:)
@@ -129,7 +133,7 @@ contains
 
             allocate(ht%ind(determ%tot_size), stat=ierr) 
             call check_allocate('determ%hash_table%ind', determ%tot_size, ierr)
-            allocate(ht%hash_ptr(ht%nhash), stat=ierr) 
+            allocate(ht%hash_ptr(ht%nhash+1), stat=ierr) 
             call check_allocate('determ%hash_table%hash_ptr', ht%nhash, ierr)
 
             ! Array to count the number of deterministic states with each hash value.
@@ -148,6 +152,7 @@ contains
             do i = 2, ht%nhash
                 ht%hash_ptr(i) = ht%hash_ptr(i-1) + nclash(i)
             end do
+            ht%hash_ptr(ht%nhash+1) = determ%tot_size
 
             ! Now loop over all states again and this time fill in the hash table.
             nclash = 0
@@ -164,5 +169,51 @@ contains
         end associate
 
     end subroutine create_determ_hash_table
+
+    subroutine create_determ_hamil(sys, determ)
+
+        use checking, only: check_allocate
+        use csr, only: init_csrp
+        use hamiltonian, only: get_hmatel
+        use parallel, only: iproc
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(semi_stoch_t), intent(inout) :: determ
+
+        integer :: i, j, nnz, imode, ierr
+        real(p) :: hmatel
+
+        associate(hamil => determ%hamil)
+
+            ! For imode = 1 count the number of non-zero elements, for imode = 2 store them.
+            do imode = 1, 2
+                ! Over all deterministic states on all processes (all rows).
+                do i = 1, determ%tot_size
+                    ! Over all deterministic states on this process (all columns).
+                    do j = 1, determ%sizes(iproc)
+                        hmatel = get_hmatel(sys, determ%dets(:,i), determ%temp_dets(:,j))
+                        if (abs(hmatel) > depsilon) then
+                            nnz = nnz + 1
+                            if (imode == 2) then
+                                hamil%mat(nnz) = hmatel
+                                hamil%col_ind(nnz) = j
+                                if (hamil%row_ptr(i) == 0) hamil%row_ptr(i) = nnz
+                            end if
+                        end if
+                    end do
+                end do
+
+                ! Allocate the CSR type components.
+                if (imode == 1) then
+                    call init_csrp(hamil, determ%tot_size, nnz)
+                    hamil%row_ptr = 0
+                end if
+
+            end do
+
+        end associate
+
+    end subroutine create_determ_hamil
 
 end module semi_stoch

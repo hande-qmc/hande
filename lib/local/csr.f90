@@ -40,7 +40,7 @@ contains
         ! Initialise a real(p) sparse symmetrix matrix in csr format.
 
         ! In:
-        !    nrow: number of rows/columns in matrix.
+        !    nrow: number of rows in matrix.
         !    nnz: number of non-zero elements in upper/lower triangle of matrix.
         !    symmetric: (optional, default: false).
         ! Out:
