@@ -17,7 +17,9 @@ implicit none
 
 ! real(p) matrix
 type csrp_t
+    ! For matrices which will use the symmetric routines, this stores the
     ! non-zero elements of upper *or* lower triangle of matrix.
+    ! For general matrices, all of the non-zero elements are stored.
     real(p), allocatable :: mat(:) ! (nnz)
     ! Column index of values stored in mat.
     ! If M_{ij} is stored in mat(k), then col_ind(k) = j.
@@ -87,7 +89,7 @@ contains
 
     end subroutine end_csrp
 
-    subroutine csrpsymv(spm, x, y)
+    subroutine csrpsymv_symmetric(spm, x, y)
 
         ! Calculate y = m*x, where m is a sparse symmetric matrix and x and
         ! y are dense vectors.
@@ -114,7 +116,7 @@ contains
         integer :: irow, icol, iz
         real(p) :: rowx
 
-        if (.not.spm%symmetric) call stop_all('csrpsymv', 'Spare matrix not symmetric.')
+        if (.not.spm%symmetric) call stop_all('csrpsymv', 'Sparse matrix not symmetric.')
         
         y = 0.0_p
         ! Avoid overhead of creating thread pool.
@@ -141,6 +143,43 @@ contains
         end do
         !$omp end parallel
 
-    end subroutine csrpsymv
+    end subroutine csrpsymv_symmetric
+
+    subroutine csrpsymv_general(spm, x, y)
+
+        ! Calculate y = m*x, where m is a sparse matrix and x and y are dense
+        ! vectors.
+
+        ! In:
+        !   spm: sparse matrix (real(p) in csr format. See module-level notes
+        !        about storage format.
+        !   x: dense vector.  Number of elements must be at least the number of
+        !      columns in spm.
+        ! Out:
+        !   y: dense vector.  Holds m*x on exit..  Number of elements must be at
+        !      least the number of rows in spm, with all additional elements set to
+        !      0.
+
+        use errors, only: stop_all
+
+        type(csrp_t), intent(in) :: spm
+        real(p), intent(in) :: x(:)
+        real(p), intent(out) :: y(:)
+
+        integer :: irow, icol, iz
+
+        ! This routine should not be used for symmetric matrices where only the
+        ! upper or lower halves of the matrix are stored.
+        if (spm%symmetric) call stop_all('csrpsymv', 'Sparse matrix is symmetric.')
+        
+        y = 0.0_p
+        do irow = 1, size(spm%row_ptr)-1
+            do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
+                icol = spm%col_ind(iz)
+                y(irow) = y(irow) + spm%mat(iz)*x(icol)
+            end do
+        end do
+
+    end subroutine csrpsymv_general
 
 end module csr
