@@ -231,6 +231,11 @@ contains
 
     subroutine add_determ_dets_to_walker_dets(sys, determ)
 
+        ! Also set the deterministic flags of any deterministic states already
+        ! in walker_dets, and add deterministic data to walker_populations and
+        ! walker_data. All deterministic states not already in walker_dets are
+        ! set to have an initial sign of zero.
+
         use basis, only: basis_length
         use calc, only: dmqmc_calc, hfs_fciqmc_calc, trial_function
         use calc, only: neel_singlet, doing_calc
@@ -294,6 +299,8 @@ contains
 
     function check_if_determ(ht, dets, f) result(is_determ)
 
+        ! If f is a deterministic state, return is_determ as true.
+
         use basis, only: total_basis_length
         use hashing, only: murmurhash_bit_string
 
@@ -306,6 +313,7 @@ contains
         is_determ = .false.
 
         hash = modulo(murmurhash_bit_string(f, total_basis_length, ht%seed), ht%nhash) + 1
+        ! Search the region of the hash table corresponding to this hash value.
         do iz = ht%hash_ptr(hash), ht%hash_ptr(hash+1)-1
             if (all(f == dets(:,ht%ind(iz)))) then
                 is_determ = .true.
@@ -316,6 +324,10 @@ contains
     end function check_if_determ
 
     subroutine determ_projection(rng, spawn, determ)
+
+        ! Apply the deterministic part of the FCIQMC projector to the
+        ! amplitudes in the deterministic space. The corresponding spawned
+        ! amplitudes are then added to the spawning array.
 
         use csr, only: csrp_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -339,21 +351,32 @@ contains
         row = 0
 
         do proc = 0, nprocs-1
+            ! To avoid an if statement which could be called a very large number
+            ! of times, separate out states on this processor from those not.
             if (proc == iproc) then
                 do i = 1, determ%sizes(proc)
                     row = row + 1
+                    ! Perform the projetion.
                     call csrp_row(determ%hamil, determ%vector, out_vec, row)
+                    ! For states on this processor (proc == iproc), add the
+                    ! contribution from the shift.
                     out_vec = out_vec + shift(1)*determ%vector(i)
+                    ! Multiply by the timestep, and also by real_factor, to
+                    ! allow the amplitude to be encoded as an integer.
                     out_vec = out_vec*tau*real_factor
+                    ! Stochastically round up or down, to encode as an integer.
                     nspawn = int(out_vec, int_p)
                     if (out_vec - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+                    ! Upate the spawning slot...
                     spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
+                    ! ...and finally add the state to the spawning array.
                     spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
                     spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,row), int_s)
                     spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
                 end do
             else
                 do i = 1, determ%sizes(proc)
+                    ! The same as above, but without the shift contribution.
                     row = row + 1
                     call csrp_row(determ%hamil, determ%vector, out_vec, row)
                     out_vec = out_vec*tau*real_factor

@@ -147,7 +147,7 @@ contains
 
                 call determ_projection(rng, qmc_spawn, determ)
 
-                call direct_annihilation(sys, rng, initiator_approximation)
+                call direct_annihilation(sys, rng, initiator_approximation, determ%flags)
 
                 call end_mc_cycle(ndeath, nattempts)
 

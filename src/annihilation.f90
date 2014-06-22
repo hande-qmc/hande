@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, tinitiator)
+    subroutine direct_annihilation(sys, rng, tinitiator, determ_flags)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -22,16 +22,18 @@ contains
         !    tinitiator: true if the initiator approximation is being used.
         ! In/Out:
         !    rng: random number generator.
+        !    determ_flags: A list of flags specifying whether determinants in
+        !        walker_dets are deterministic or not.
 
         use parallel, only: nthreads, nprocs
         use spawn_data, only: annihilate_wrapper_spawn_t
-        use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         logical, intent(in) :: tinitiator
+        integer, intent(inout), optional :: determ_flags(:)
 
         integer, parameter :: thread_id = 0
 
@@ -48,20 +50,20 @@ contains
 
             ! Remove determinants with zero walkers on them from the main
             ! walker list.
-            call remove_unoccupied_dets(rng)
+            call remove_unoccupied_dets(rng, determ_flags)
 
             ! Remove low-population spawned walkers by stochastically
             ! rounding their population up to one or down to zero.
             if (real_amplitudes) call round_low_population_spawns(rng)
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers(sys)
+            call insert_new_walkers(sys, determ_flags)
 
         else
 
             ! No spawned walkers so we only have to check to see if death has
             ! killed the entire population on a determinant.
-            call remove_unoccupied_dets(rng)
+            call remove_unoccupied_dets(rng, determ_flags)
 
         end if
 
@@ -204,40 +206,51 @@ contains
 
     end subroutine annihilate_main_list_initiator
 
-    subroutine remove_unoccupied_dets(rng)
+    subroutine remove_unoccupied_dets(rng, determ_flags)
 
         ! Remove any determinants with 0 population.
         ! This can be done in a more efficient manner by doing it only when
         ! necessary...
         ! Also, before doing this, stochastically round up or down any
         ! populations which are less than one.
+        ! The above steps are not performed for deterministic states which are
+        ! kept in walker_dets whatever their sign.
 
         ! In/Out:
         !    rng: random number generator.
+        !    determ_flags: A list of flags specifying whether determinants in
+        !        walker_dets are deterministic or not.
 
         use basis, only: total_basis_length
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_common, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(inout), optional :: determ_flags(:)
 
         integer :: nzero, i, k, itype
         real(dp) :: r
+        logical :: determ_det
 
         nzero = 0
         do i = 1, tot_walkers
 
+            determ_det = .false.
+            if (present(determ_flags)) determ_det = determ_flags(i) == 1
+
             ! Stochastically round the walker populations up or down to
             ! real_factor (which is equal to 1 in the decoded representation).
-            call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
+            ! This is not done for deterministic states.
+            if (determ_det) call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
 
-            if (all(walker_population(:,i) == 0_int_p)) then
+            if (all(walker_population(:,i) == 0_int_p) .and. (.not. determ_det)) then
                 nzero = nzero + 1
             else if (nzero > 0) then
                 k = i - nzero
                 walker_dets(:,k) = walker_dets(:,i)
                 walker_population(:,k) = walker_population(:,i)
                 walker_data(:,k) = walker_data(:,i)
+                determ_flags(k) = determ_flags(i)
             end if
         end do
         tot_walkers = tot_walkers - nzero
@@ -252,6 +265,12 @@ contains
         ! expectation value of the amplitudes on all determinants are the same
         ! as before, but will prevent many low-weight walkers remaining in the
         ! simulation.
+
+        ! Note that all deterministic states are always kept in the main list.
+        ! The walkers in the spawned list at this point only contain states
+        ! not in the main list, so cannot contain any deterministic states.
+        ! Therefore, as an optimisation, we don't need to check if determinants
+        ! are deterministic or not before any rounding.
 
         ! In/Out:
         !    rng: random number generator.
@@ -310,7 +329,7 @@ contains
 
     end subroutine round_low_population_spawns
 
-    subroutine insert_new_walkers(sys)
+    subroutine insert_new_walkers(sys, determ_flags)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -318,6 +337,8 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    determ_flags: A list of flags specifying whether determinants in
+        !        walker_dets are deterministic or not.
 
         use basis, only: basis_length, total_basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
@@ -330,6 +351,7 @@ contains
         use heisenberg_estimators, only: neel_singlet_data
 
         type(sys_t), intent(in) :: sys
+        integer, intent(inout), optional :: determ_flags(:)
 
         integer :: i, istart, iend, j, k, pos
         integer(int_p) :: spawned_population(sampling_size)
@@ -368,6 +390,7 @@ contains
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(:,k) = walker_population(:,j)
                 walker_data(:,k) = walker_data(:,j)
+                if (present(determ_flags)) determ_flags(k) = determ_flags(i)
             end do
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
