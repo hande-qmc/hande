@@ -792,6 +792,8 @@ contains
                                      dmqmc_correlation_function_heisenberg
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
+            case(ueg)
+                if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_ueg
             end select
 
         end if
