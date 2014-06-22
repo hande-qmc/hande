@@ -241,7 +241,7 @@ contains
             ! Stochastically round the walker populations up or down to
             ! real_factor (which is equal to 1 in the decoded representation).
             ! This is not done for deterministic states.
-            if (determ_det) call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
+            if (.not. determ_det) call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
 
             if (all(walker_population(:,i) == 0_int_p) .and. (.not. determ_det)) then
                 nzero = nzero + 1
