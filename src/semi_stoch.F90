@@ -90,7 +90,7 @@ contains
         ! Code to be added here to generate deterministic space.
         
         ! Let each process hold the number of deterministic states on each process.
-        call mpi_allgather(determ%sizes(iproc), 1, mpi_integer, determ%sizes, nprocs, mpi_integer, MPI_COMM_WORLD)
+        call mpi_allgather(determ%sizes(iproc), 1, mpi_integer, determ%sizes, 1, mpi_integer, MPI_COMM_WORLD, ierr)
         determ%tot_size = sum(determ%sizes)
 
         ! Displacements used for MPI communication.
@@ -110,7 +110,7 @@ contains
         allocate(determ%dets(total_basis_length, determ%tot_size), stat=ierr)
         call check_allocate('determ%dets', size(determ%dets), ierr)
         call mpi_allgatherv(determ%temp_dets(:,1:determ%sizes(iproc)), determ%sizes(iproc), mpi_det_integer, &
-                            determ%dets, determ%tot_size, determ%displs, mpi_det_integer, MPI_COMM_WORLD)
+                            determ%dets, determ%sizes, determ%displs, mpi_det_integer, MPI_COMM_WORLD, ierr)
 
         call create_determ_hash_table(determ)
 
