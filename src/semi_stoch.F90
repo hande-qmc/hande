@@ -184,6 +184,7 @@ contains
 
         use checking, only: check_allocate
         use csr, only: init_csrp
+        use fciqmc_data, only: H00
         use hamiltonian, only: get_hmatel
         use parallel, only: iproc
         use system, only: sys_t
@@ -193,6 +194,7 @@ contains
 
         integer :: i, j, nnz, imode, ierr
         real(p) :: hmatel
+        logical :: diag_elem
 
         associate(hamil => determ%hamil)
 
@@ -203,6 +205,9 @@ contains
                     ! Over all deterministic states on this process (all columns).
                     do j = 1, determ%sizes(iproc)
                         hmatel = get_hmatel(sys, determ%dets(:,i), determ%temp_dets(:,j))
+                        ! Take the Hartree-Fock energy off the diagonal elements.
+                        diag_elem = i == j + determ%displs(iproc)
+                        if (diag_elem) hmatel = hmatel - H00
                         if (abs(hmatel) > depsilon) then
                             nnz = nnz + 1
                             if (imode == 2) then
@@ -213,13 +218,11 @@ contains
                         end if
                     end do
                 end do
-
                 ! Allocate the CSR type components.
                 if (imode == 1) then
                     call init_csrp(hamil, determ%tot_size, nnz)
                     hamil%row_ptr = 0
                 end if
-
             end do
 
         end associate
@@ -311,5 +314,59 @@ contains
         end do
 
     end function check_if_determ
+
+    subroutine determ_projection(rng, spawn, determ)
+
+        use csr, only: csrp_row
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use fciqmc_data, only: shift, tau, real_factor
+        use parallel, only: nprocs, iproc, nthreads
+        use spawn_data, only: spawn_t
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: spawn
+        type(semi_stoch_t), intent(in) :: determ
+        integer :: i, proc, row
+        real(p) :: out_vec
+        integer(int_p) :: nspawn
+#ifndef _OPENMP
+        integer, parameter :: thread_id = 0
+#else
+        integer :: thread_id
+        thread_id = omp_get_thread_num()
+#endif
+
+        row = 0
+
+        do proc = 0, nprocs-1
+            if (proc == iproc) then
+                do i = 1, determ%sizes(proc)
+                    row = row + 1
+                    call csrp_row(determ%hamil, determ%vector, out_vec, row)
+                    out_vec = out_vec + shift(1)*determ%vector(i)
+                    out_vec = out_vec*tau*real_factor
+                    nspawn = int(out_vec, int_p)
+                    if (out_vec - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+                    spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
+                    spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
+                    spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,row), int_s)
+                    spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
+                end do
+            else
+                do i = 1, determ%sizes(proc)
+                    row = row + 1
+                    call csrp_row(determ%hamil, determ%vector, out_vec, row)
+                    out_vec = out_vec*tau*real_factor
+                    nspawn = int(out_vec, int_p)
+                    if (out_vec - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+                    spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
+                    spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
+                    spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,row), int_s)
+                    spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
+                end do
+            end if
+        end do
+
+    end subroutine determ_projection
 
 end module semi_stoch

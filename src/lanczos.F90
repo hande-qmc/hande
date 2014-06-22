@@ -164,7 +164,7 @@ contains
             ! Out:
             !    yout: the array to store results of the multiplication.
 
-            use csr, only: csrpsymv_symmetric
+            use csr, only: csrp_symmetric
             use parallel, only: nprocs
 
             use calc, only: hamil, hamil_csr, use_sparse_hamil, proc_blacs_info
@@ -205,13 +205,13 @@ contains
                         ! This could be improved by multiplying the sparse
                         ! hamiltonian matrix by the dense xin matrix, rather than
                         ! doing one vector at a time.
-                        call csrpsymv_symmetric(hamil_csr, xin_p(:,i), yout_p(:,i))
+                        call csrp_symmetric(hamil_csr, xin_p(:,i), yout_p(:,i))
                     else
                         call ssymv('U', nrow, 1.0_p, hamil, nrow, xin_p(:,i), 1, 0.0_p, yout_p(:,i), 1)
                     end if
 #else
                     if (sparse) then
-                        call csrpsymv_symmetric(hamil_csr, xin(:,i), yout(:,i))
+                        call csrp_symmetric(hamil_csr, xin(:,i), yout(:,i))
                     else
                         call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
                     end if

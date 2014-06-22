@@ -89,7 +89,7 @@ contains
 
     end subroutine end_csrp
 
-    subroutine csrpsymv_symmetric(spm, x, y)
+    subroutine csrp_symmetric(spm, x, y)
 
         ! Calculate y = m*x, where m is a sparse symmetric matrix and x and
         ! y are dense vectors.
@@ -143,9 +143,9 @@ contains
         end do
         !$omp end parallel
 
-    end subroutine csrpsymv_symmetric
+    end subroutine csrp_symmetric
 
-    subroutine csrpsymv_general(spm, x, y)
+    subroutine csrp_general(spm, x, y)
 
         ! Calculate y = m*x, where m is a sparse matrix and x and y are dense
         ! vectors.
@@ -180,9 +180,9 @@ contains
             end do
         end do
 
-    end subroutine csrpsymv_general
+    end subroutine csrp_general
 
-    subroutine csrpsymv_row(spm, x, y_irow, irow)
+    subroutine csrp_row(spm, x, y_irow, irow)
 
         ! Calculate a single value in the vector y = m*x, where m is a sparse
         ! matrix and x and y are dense vectors.
@@ -211,6 +211,6 @@ contains
             y_irow = y_irow + spm%mat(iz)*x(icol)
         end do
 
-    end subroutine csrpsymv_row
+    end subroutine csrp_row
 
 end module csr

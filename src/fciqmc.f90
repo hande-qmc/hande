@@ -33,7 +33,7 @@ contains
         use folded_spectrum_utils, only: cdet_excit
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
-        use semi_stoch, only: semi_stoch_t, check_if_determ
+        use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
@@ -144,6 +144,8 @@ contains
                                                             walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
+
+                call determ_projection(rng, qmc_spawn, determ)
 
                 call direct_annihilation(sys, rng, initiator_approximation)
 
