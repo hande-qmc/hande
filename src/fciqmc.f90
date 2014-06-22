@@ -95,7 +95,7 @@ contains
                     ! Extract the real sign from the encoded sign.
                     real_population = real(walker_population(1,idet),dp)/real_factor
 
-                    if (determ%flags(idet) == 1) then
+                    if (determ%flags(idet) == 0) then
                         ideterm = ideterm + 1
                         determ%vector(ideterm) = real_population
                         determ_parent = .true.
@@ -110,7 +110,7 @@ contains
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
-                    call set_parent_flag_ptr(real_population, cdet%f, cdet%initiator_flag)
+                    call set_parent_flag_ptr(real_population, cdet%f, determ%flags(idet), cdet%initiator_flag)
 
                     nattempts_current_det = decide_nattempts(rng, real_population)
 

@@ -44,7 +44,7 @@ type semi_stoch_t
     ! deterministic space (before it is known how big the space is).
     integer(i0), allocatable :: temp_dets(:,:)
     ! Deterministic flags of states in the main list. If determ_flags(i) is
-    ! equal to 1 then the corresponding state in position i of the main list is
+    ! equal to 0 then the corresponding state in position i of the main list is
     ! a deterministic state, else it is not.
     integer, allocatable :: flags(:)
 end type semi_stoch_t
@@ -254,7 +254,7 @@ contains
         integer :: i, j, k, istart, iend, pos
         logical :: hit
 
-        determ%flags = 0
+        determ%flags = 1
 
         istart = 1
         iend = tot_walkers
@@ -263,7 +263,7 @@ contains
             if (hit) then
                 ! This deterministic state is already in walker_dets. We simply
                 ! need to set the deterministic flag.
-                determ%flags(pos) = 1
+                determ%flags(pos) = 0
             else
                 ! This deterministic state is not in walker_dets. Move all
                 ! determinants with index pos or greater down one and insert
@@ -373,6 +373,9 @@ contains
                     spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
                     spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,row), int_s)
                     spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
+                    ! Spawning has occurred from a deterministic state, an
+                    ! initiator by definition.
+                    spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
                 end do
             else
                 do i = 1, determ%sizes(proc)
@@ -386,6 +389,7 @@ contains
                     spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
                     spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,row), int_s)
                     spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
+                    spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
                 end do
             end if
         end do

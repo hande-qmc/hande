@@ -236,7 +236,7 @@ contains
         do i = 1, tot_walkers
 
             determ_det = .false.
-            if (present(determ_flags)) determ_det = determ_flags(i) == 1
+            if (present(determ_flags)) determ_det = determ_flags(i) == 0
 
             ! Stochastically round the walker populations up or down to
             ! real_factor (which is equal to 1 in the decoded representation).

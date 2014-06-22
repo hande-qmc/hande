@@ -94,12 +94,13 @@ abstract interface
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(basis_length)
     end function i_sc0
-    subroutine i_set_parent_flag(pop, f, flag)
+    subroutine i_set_parent_flag(pop, f, determ_flag, flag)
         use basis, only: basis_length
         import :: i0, p
         implicit none
         real(p), intent(in) :: pop
         integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: determ_flag
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
     subroutine i_create_spawned_particle(d, connection, nspawned, particle_indx, spawn)
