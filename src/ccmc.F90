@@ -63,7 +63,7 @@ module ccmc
 ! CCMC papers but this definition is not convenient for computation.  See
 ! comments in collapse_cluster and convert_excitor_to_determinant.
 !
-! We can only handle uniquely defined excitors, i.e. we consider t_{ij}^{ab}, 
+! We can only handle uniquely defined excitors, i.e. we consider t_{ij}^{ab},
 ! t_{ji}^{ba}, t_{ji}^{ab} and t_{ij}^{ba} to be one entity.  This is fine as
 ! t_{ij}^{ab} a_{ij}^{ab} = t_{ji}^{ba} a_{ji}^{ba} = -t_{ji}^{ab} = -t_{ij}^{ba}.
 ! As a consequence, we must be very careful with the above expansion in (5).  We
@@ -134,7 +134,7 @@ module ccmc
 ! all particles (psips) on the determinants and allow them to spawn and die.  As
 ! the CC wavefunction ansatz involves an exponentiation, we must consider
 ! combinations of excitors and hence combinations of excips.  The stochastic
-
+! sampling of the wavefunction is achieved by selecting random clusters;
 ! hopefully the comments in select_cluster provide suitable illumination.
 !
 ! The other main difference (and certainly the hardest to get right) is that the
@@ -208,7 +208,7 @@ contains
         use search, only: binary_search
         use spawning, only: assign_particle_processor
         use system, only: sys_t
-        
+
         type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
@@ -796,7 +796,7 @@ contains
         !    sys: system being studied.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
-        !    cluster: 
+        !    cluster: information about the cluster which forms the excitor.
         !    amplitude: amplitude of cluster.
         !    pcluster: Overall probabilites of selecting this cluster, ie
         !        n_sel.p_s.p_clust.
@@ -1093,12 +1093,12 @@ contains
         ! CCMC, we need to give each excitor the chance to be on the same
         ! processor with all combinations of excitors, unlike in FCIQMC where
         ! the spawning events are independent.  We satisfy this by periodically
-        ! moving an excitor to a different processor (MPI rank). 
+        ! moving an excitor to a different processor (MPI rank).
 
         ! WARNING: if the number of processors is large or the system small,
         ! this introduces a bias as load balancing prevents all possible
         ! clusters from being on the same processor at the same time.
- 
+
         ! In:
         !    walker_dets: list of occupied excitors on the current processor.
         !    total_walkers: number of occupied excitors on the current processor.
