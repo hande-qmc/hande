@@ -23,27 +23,24 @@ contains
         !    loc_shift: The value of the shift to be used in the death step.
         ! In/Out:
         !    rng: random number generator.
-        !    population: number of particles on determinant D_i.
+        !    population: (unscaled) number of particles on determinant D_i.
         !    tot_population: total number of particles.
         ! Out:
-        !    ndeath: running total of number of particles died/cloned.
+        !    ndeath: running total of (unscaled) number of particles died/cloned.
 
-        ! Note that population and tot_population refer to a single 'type' of
-        ! population, i.e. either a set of Hamiltonian walkers or a set of
-        ! Hellmann--Feynman walkers.
+        ! Note:
+
+        ! * population and tot_population refer to a single 'type' of
+        !   population, e.g. either a set of Hamiltonian walkers or a set of
+        !   Hellmann--Feynman walkers.
+        ! * the population and ndeath should be unscaled (ie not divided by
+        !   real_factor) so to avoid a scaling and unscaling step.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         real(p), intent(in) :: Kii
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
-        ! [review] - JSS: shouldn't population be real as well (ie scaled by encoding_factor)?
-        ! [reply] - NSB: I don't think so, population just points to walker_population(1,idet).
-        ! [reply] - NSB: I could create a copy, scale it down by real_factor and work with this,
-        ! [reply] - NSB: but it would have to be scaled back up in order to perform the stochastic
-        ! [reply] - NSB: rounding in this routine anyway.
-        ! [reply] - JSS: I realised that just after finishing the review! A quick comment that the
-        ! [reply] - JSS: fraction of death is independent of the scaling, perhaps??
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
 
