@@ -38,6 +38,8 @@ override_core_option = True
 [ueg_n14_rs1_e3_hilbert_space]
 [ueg_n4_rs2_e1_fci]
 
+[Ne-RHF-cc-pVDZ_ccmc]
+
 # Form job categories.
 [categories]
 
