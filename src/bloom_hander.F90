@@ -133,14 +133,13 @@ module bloom_handler
 #endif
 
             if(bloom_stats%nwarnings > 0 .and. parent) then
-                write (6,'()')
                 write (6, '(1X, "Blooming events occured: a more efficent calulation may be possible &
                     with a smaller timestep.")')
                 write (6, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nwarnings,1)//')'), &
                     bloom_stats%nwarnings
                 write (6, '(1X, "Maxium number of excips spawned in a blooming event:",&
                     '//int_fmt(bloom_stats%max_bloom,1)//')'), bloom_stats%max_bloom
-                write (6, '(1X, "Mean number of excips spawned in a blooming event:", f11.2)'),&
+                write (6, '(1X, "Mean number of excips spawned in a blooming event:", f11.2, /)'),&
                     bloom_stats%tot_bloom/bloom_stats%nwarnings
             end if
 
