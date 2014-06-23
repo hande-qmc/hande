@@ -52,10 +52,6 @@ real(p) :: initiator_population = 3.0_p
 
 ! True if allowing non-integer values for psip populations.
 logical :: real_amplitudes = .false.
-! [review] - JSS: would (e.g.) real_shift and real_factor be better (ie more specific) names?
-! [reply] - NSB: Yes, although I avoided real_shift because I thought people might assume that
-! [reply] - NSB: it is something to do with the population control shift, so will use
-! [reply] - NSB: real_bit_shift.
 ! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
 ! encoded as integers by multiplying them by 2**(real_bit_shift).
 integer :: real_bit_shift

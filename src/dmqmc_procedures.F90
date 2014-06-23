@@ -698,13 +698,6 @@ contains
             new_population_target = abs(real(walker_population(:,idet),dp))/weight_altering_factors(excit_level)
             new_population = int(new_population_target, int_p)
 
-            ! [review] - JSS: why does the target need to be an integer?
-            ! [reply] - NSB: I'm not too sure what you mean - the target is a real. That's what we would
-            ! [reply] - NSB: use if doing it deterministically. But because we store the populations
-            ! [reply] - NSB: encoded as integers with a finite resolution, then we have to convert
-            ! [reply] - NSB: it to an integer in the encoded form and round it up or down with the
-            ! [reply] - NSB: correct probability. Its identical to a death or cloning step.
-            ! [reply] - JSS: sorry, think this was a reading error...
             ! If new_population_target is not an integer, round it up or down
             ! with an unbiased probability. Do this for each replica.
             do ireplica = 1, sampling_size

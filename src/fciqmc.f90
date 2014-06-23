@@ -116,9 +116,6 @@ contains
                     end do
 
                     ! Clone or die.
-                    ! [review] - JSS: shouldn't real_population be passed through to death?
-                    ! [reply] - NSB: See reply in death.f90 - could do but I think its more
-                    ! [reply] - natural and cleaner to do it this way.
                     call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do

@@ -293,10 +293,7 @@ contains
                 ! a cycle, the running total of D0_population is incorrect (by
                 ! a factor of the number of times it was selected).
                 call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
-                ! [review] - JSS: D0_normalisation will need to be real for CCMC with real excips.
-                ! [reply] - NSB: I just set it to this for now so that it will compile, to be
-                ! [reply] - NSB: fixed when reals are implemented for CCMC (similarly in a few
-                ! [reply] - NSB: other places).
+                ! [note] - D0_normalisation will need to be real for CCMC with real excips.
                 D0_normalisation = int(walker_population(1,D0_pos))
 
                 ! Note that 'death' in CCMC creates particles in the spawned
@@ -312,9 +309,6 @@ contains
                 max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
 
                 ! Find cumulative population...
-                ! [review] - JSS: DANGER.  walker_population is a large array so this causes
-                ! [review] - JSS: a temporary array to be created, which is slow and costly
-                ! [review] - JSS: in memory.  We should adapt cumulative_population instead...
                 call cumulative_population(walker_population, tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
 
                 ! Allow one spawning & death attempt for each excip on the
@@ -356,8 +350,7 @@ contains
                         ! Prints nice warning messages/accumulate stats if a particle bloom occurs.
                         if (abs(nspawned) > ceiling(bloom_stats%prop*(tot_abs_pop + D0_normalisation))) then
                             !$omp critical (accumulate_bloom)
-                            ! [review] - JSS: should adapt bloom_handler (probably post-merge)
-                            ! [review] - JSS: to handle real psips/excips.
+                            ! [todo] - adapt bloom_handler to handle real psips/excips.
                             call accumulate_bloom_stats(bloom_stats, int(nspawned))
                             !$omp end critical (accumulate_bloom)
                         end if

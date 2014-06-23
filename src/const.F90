@@ -60,8 +60,7 @@ integer, parameter :: i0_length = bit_size(0_i0)
 ! (Bit indexing in fortran ranges from 0 to bit_size-1.)
 integer, parameter :: i0_end = i0_length - 1
 
-! [review] - JSS: Not sure about the names (4 and 8 aren't necessarily correct)
-! [review] - JSS: nor the duplication with lint.  Something to fix post-merge?
+! [todo] - combine with lint.
 ! 4-byte integer.
 integer, parameter :: int_4 = selected_int_kind(6)
 ! 8-byte integer.

@@ -269,18 +269,8 @@ contains
         real_factor_s = int(real_factor, int_s)
 
         nremoved = 0
-        ! [review] - JSS: combine with (a version of) insert_new_walkers?
-        ! [reply] - NSB: I did this originally but had problems because it loops through
-        ! [reply] - NSB: sdata backwards. It is only able to do this because it already knows
-        ! [reply] - NSB: how many new determinants are to be added, and hence how many
-        ! [reply] - NSB: slots to move the end determinants down by ('k = j + i').
-        ! [reply] - NSB: But now some determinants may be removed and hence not
-        ! [reply] - NSB: added to the main list. Hence there would be gaps with this
-        ! [reply] - NSB: approach. So I think you would have to loop through sdata forwards
-        ! [reply] - NSB: to avoid this? I decided it would be better just to create this new
-        ! [reply] - NSB: function. But happy to move it to insert_new_walkers if you prefer.
-        ! [reply] - JSS: Sounds complicated.  Leave as it is for now (perhaps with a comment
-        ! [reply] - JSS: for future optimisation?).  We should only be looping over a small number anyway.
+        ! [note] - It might be more efficient to combine this with insert_new_walkers.
+        ! [note] - The number of particles to insert should be small by this point though...
         do i = 1, qmc_spawn%head(thread_id,0)
 
             ! spawned_population holds the spawned population in its encoded
