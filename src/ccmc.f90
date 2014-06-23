@@ -755,7 +755,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
 
         real(p) :: pdeath, KiiAi
-        integer :: nkill
+        integer(int_p) :: nkill
         type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         ! Spawning onto the same excitor so no change in sign due to
@@ -769,7 +769,7 @@ contains
         pdeath = tau*abs(KiiAi)/cluster%pselect
 
         ! Number that will definitely die
-        nkill = int(pdeath)
+        nkill = int(pdeath,int_p)
 
         ! Stochastic death...
         pdeath = pdeath - nkill
@@ -786,8 +786,7 @@ contains
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
-            ! [review] - JSS: better just to declare nkill to be integer(int_p).
-            call create_spawned_particle_truncated(cdet, null_excit, int(nkill, int_p), 1, qmc_spawn)
+            call create_spawned_particle_truncated(cdet, null_excit, nkill, 1, qmc_spawn)
         end if
 
     end subroutine stochastic_ccmc_death
