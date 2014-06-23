@@ -530,17 +530,17 @@ contains
                 end do
             end if
 
-            write (6, '(2X,a11,3X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
+            write (6, '(3X,a11,8X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
 
         else
             write (6,'(1X,a13,3(2X,a17))', advance='no') &
                      "# iterations ", "Shift            ", "\sum H_0j N_j    ", "N_0              "
             if (doing_calc(hfs_fciqmc_calc)) then
-                write (6,'(4(2X,a17),3X,a11,2X,a10)', advance='no') &
-                    "H.F. Shift       ","\sum O_0j N_j    ","\sum H_0j N'_j   ","N'_0              ", &
-                    "# H psips","# HF psips"
+                write (6,'(6(2X,a17))', advance='no') &
+                    "H.F. Shift       ","\sum O_0j N_j    ","\sum H_0j N'_j   ","N'_0             ", &
+                    "# H psips        ","# HF psips       "
             else
-                write (6,'(3X,a11)', advance='no') "# H psips"
+                write (6,'(4X,a9,8X)', advance='no') "# H psips"
             end if
             write (6,'(2X,a8,2X,a4)') "R_spawn ",  "time"
         end if
@@ -604,20 +604,19 @@ contains
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
-            ! [review] - JSS: why only output the integer part of the number of particles?
-            write (6, '(2X,i11)', advance='no') int(ntot_particles(1))
+            write (6, '(2X,es17.10)', advance='no') ntot_particles(1)
         else if (doing_calc(hfs_fciqmc_calc)) then
-            write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
+            write (6,'(i8,2X,6(es17.10,2X),es17.10,4X,es17.10,X,es17.10)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
-                                             int(D0_hf_population), &
-                                             int(ntot_particles)
+                                             D0_hf_population, &
+                                             ntot_particles
         else
-            write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,i11)', advance='no') &
+            write (6,'(i8,2X,2(es17.10,2X),es17.10,4X,es17.10)', advance='no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
-                                             int(ntot_particles)
+                                             ntot_particles
         end if
         write (6,'(2X,f7.4,2X,f6.3)') rspawn, elapsed_time/ncycles
 
