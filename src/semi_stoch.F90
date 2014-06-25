@@ -51,7 +51,7 @@ end type semi_stoch_t
 
 contains
 
-    subroutine init_semi_stochastic(determ_type, determ_target_size, sys, determ)
+    subroutine init_semi_stochastic(sys, spawn, determ, determ_type, determ_target_size)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -62,12 +62,16 @@ contains
         use fciqmc_data, only: walker_length
         use parallel
         use sort, only: qsort
+        use spawn_data, only: spawn_t
         use system, only: sys_t
 
+        use fciqmc_data, only: walker_dets, walker_population, walker_data, tot_walkers
+
+        type(sys_t), intent(in) :: sys
+        type(spawn_t), intent(in) :: spawn
+        type(semi_stoch_t), intent(inout) :: determ
         integer, intent(in) :: determ_type
         integer, intent(in) :: determ_target_size
-        type(sys_t), intent(in) :: sys
-        type(semi_stoch_t), intent(inout) :: determ
 
         integer :: i, ierr
 
@@ -87,8 +91,13 @@ contains
         determ%sizes = 0
         determ%displs = 0
 
-        ! Code to be added here to generate deterministic space.
-        
+        ! If determ_type does not take one of the below values then an empty
+        ! deterministic space will be used. This is the default behaviour
+        ! (determ_type = 0).
+        if (determ_type == 1) then
+            call create_restart_space(determ, spawn, determ_target_size)
+        end if
+
         ! Let each process hold the number of deterministic states on each process.
         call mpi_allgather(determ%sizes(iproc), 1, mpi_integer, determ%sizes, 1, mpi_integer, MPI_COMM_WORLD, ierr)
         determ%tot_size = sum(determ%sizes)
@@ -160,7 +169,7 @@ contains
             ! Fill in the hash_ptr array (see comments in the determ_hash_t type).
             ht%hash_ptr(1) = 1
             do i = 2, ht%nhash
-                ht%hash_ptr(i) = ht%hash_ptr(i-1) + nclash(i)
+                ht%hash_ptr(i) = ht%hash_ptr(i-1) + nclash(i-1)
             end do
             ht%hash_ptr(ht%nhash+1) = determ%tot_size + 1
 
@@ -168,7 +177,7 @@ contains
             nclash = 0
             do i = 1, determ%tot_size
                 hash = modulo(murmurhash_bit_string(determ%dets(:,i), total_basis_length, ht%seed), ht%nhash) + 1
-                iz = ht%hash_ptr(i) + nclash(hash)
+                iz = ht%hash_ptr(hash) + nclash(hash)
                 ht%ind(iz) = i
                 nclash(hash) = nclash(hash) + 1
             end do
@@ -200,6 +209,7 @@ contains
 
             ! For imode = 1 count the number of non-zero elements, for imode = 2 store them.
             do imode = 1, 2
+                nnz = 0
                 ! Over all deterministic states on all processes (all rows).
                 do i = 1, determ%tot_size
                     ! Over all deterministic states on this process (all columns).
@@ -217,11 +227,14 @@ contains
                             end if
                         end if
                     end do
+                    if (imode == 2) then
+                        if (hamil%row_ptr(i) == 0) hamil%row_ptr(i) = nnz + 1
+                    end if
                 end do
                 ! Allocate the CSR type components.
                 if (imode == 1) then
                     call init_csrp(hamil, determ%tot_size, nnz)
-                    hamil%row_ptr = 0
+                    hamil%row_ptr(1:determ%tot_size) = 0
                 end if
             end do
 
@@ -329,6 +342,7 @@ contains
         ! amplitudes in the deterministic space. The corresponding spawned
         ! amplitudes are then added to the spawning array.
 
+        use calc, only: initiator_approximation
         use csr, only: csrp_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: shift, tau, real_factor
@@ -339,7 +353,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
         integer :: i, proc, row
-        real(p) :: out_vec
+        real(p) :: out_vec, sgn
         integer(int_p) :: nspawn
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
@@ -360,13 +374,15 @@ contains
                     call csrp_row(determ%hamil, determ%vector, out_vec, row)
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
-                    out_vec = out_vec + shift(1)*determ%vector(i)
+                    out_vec = -out_vec + shift(1)*determ%vector(i)
                     ! Multiply by the timestep, and also by real_factor, to
                     ! allow the amplitude to be encoded as an integer.
                     out_vec = out_vec*tau*real_factor
+                    sgn = sign(1.0_p, out_vec)
                     ! Stochastically round up or down, to encode as an integer.
-                    nspawn = int(out_vec, int_p)
-                    if (out_vec - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+                    nspawn = int(abs(out_vec), int_p)
+                    if (abs(out_vec) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+                    nspawn = nspawn*nint(sgn, int_p)
                     ! Upate the spawning slot...
                     spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
                     ! ...and finally add the state to the spawning array.
@@ -375,25 +391,253 @@ contains
                     spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
                     ! Spawning has occurred from a deterministic state, an
                     ! initiator by definition.
-                    spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
+                    if (initiator_approximation) spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
                 end do
             else
                 do i = 1, determ%sizes(proc)
                     ! The same as above, but without the shift contribution.
                     row = row + 1
                     call csrp_row(determ%hamil, determ%vector, out_vec, row)
-                    out_vec = out_vec*tau*real_factor
-                    nspawn = int(out_vec, int_p)
-                    if (out_vec - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+                    out_vec = -out_vec*tau*real_factor
+                    sgn = sign(1.0_p, out_vec)
+                    nspawn = int(abs(out_vec), int_p)
+                    if (abs(out_vec) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+                    nspawn = nspawn*nint(sgn, int_p)
                     spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
                     spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
                     spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,row), int_s)
                     spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
-                    spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
+                    if (initiator_approximation) spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
                 end do
             end if
         end do
 
     end subroutine determ_projection
+
+    subroutine add_det_to_determ_space(determ, spawn, f, check_proc)
+
+        use basis, only: total_basis_length
+        use hashing, only: murmurhash_bit_string
+        use parallel, only: iproc, nprocs
+        use spawn_data, only: spawn_t
+
+        type(semi_stoch_t), intent(inout) :: determ
+        type(spawn_t), intent(in) :: spawn
+        integer(i0), intent(in) :: f(total_basis_length)
+        logical, intent(in) :: check_proc
+
+        integer :: proc
+
+        ! If check_proc is true then make sure that the determinant does belong
+        ! to this processor. If it doesn't, don't add it and return.
+        if (check_proc) then
+            proc = modulo(murmurhash_bit_string(f, total_basis_length, spawn%hash_seed), nprocs)
+            if (proc /= iproc) return
+        end if
+
+        determ%sizes(iproc) = determ%sizes(iproc) + 1
+
+        determ%temp_dets(:, determ%sizes(iproc)) = f
+
+    end subroutine add_det_to_determ_space
+
+    subroutine create_restart_space(determ, spawn, target_size)
+
+        ! Find the most highly populated determinants in walker_dets and use
+        ! these to define the deterministic space. When using this routine
+        ! the restart option should have been used, although it is not required.
+
+        use basis, only: total_basis_length
+        use checking, only: check_allocate, check_deallocate
+        use fciqmc_data, only: tot_walkers, walker_dets, walker_population
+        use parallel
+        use spawn_data, only: spawn_t
+
+        type(semi_stoch_t), intent(inout) :: determ
+        type(spawn_t), intent(in) :: spawn
+        integer, intent(in) :: target_size
+
+        integer :: ndets, ndets_tot, determ_size
+        integer :: all_ndets(0:nprocs-1), displs(0:nprocs)
+        integer(i0), allocatable :: determ_dets(:,:)
+        integer(int_p), allocatable :: determ_pops(:), all_determ_pops(:)
+        integer, allocatable :: indices(:)
+        integer :: i, ind_local, ierr
+        logical :: on_this_proc
+
+        ! If there are less determinants on this processor than the target
+        ! number, then obviously we need to consider a smaller number.
+        ndets = min(target_size, tot_walkers)
+
+        call mpi_allgather(ndets, 1, mpi_integer, all_ndets, 1, mpi_integer, MPI_COMM_WORLD, ierr)
+        ndets_tot = sum(all_ndets)
+
+        ! Displacements used for MPI communication.
+        displs(0) = 0
+        do i = 1, nprocs-1
+            displs(i) = displs(i-1) + all_ndets(i-1)
+        end do
+        displs(nprocs) = ndets_tot
+
+        determ_size = target_size
+        ! If there are fewer determinants on all processors than the target
+        ! number then we will have to use a smaller deterministic space than
+        ! requested.
+        if (target_size > ndets_tot) determ_size = ndets_tot
+
+        allocate(determ_dets(total_basis_length, ndets), stat=ierr)
+        call check_allocate('determ_dets', total_basis_length*ndets, ierr)
+        allocate(determ_pops(ndets), stat=ierr)
+        call check_allocate('determ_pops', ndets, ierr)
+        allocate(all_determ_pops(ndets_tot), stat=ierr)
+        call check_allocate('all_determ_pops', ndets_tot, ierr)
+        allocate(indices(determ_size), stat=ierr)
+        call check_allocate('indices', determ_size, ierr)
+
+        ! In determ_dets and determ_pops, return the determinants and
+        ! populations of the most populated determinants on this processor.
+        call find_most_populated_dets(walker_dets, walker_population, tot_walkers, determ_dets, determ_pops, ndets)
+
+        ! Create a joined list, all_determ_pops, of the most populated
+        ! determinants from each processor.
+        call mpi_allgatherv(determ_pops, ndets, mpi_pop_integer, all_determ_pops, all_ndets, &
+                            displs(0:nprocs-1), mpi_pop_integer, MPI_COMM_WORLD, ierr)
+
+        ! In the array indices return a list of indices of the determ_size
+        ! populations in all_determ_pops which are largest.
+        call find_indices_of_most_populated_dets(all_determ_pops, determ_size, indices)
+
+        do i = 1, determ_size
+            ! In determ_pops populations corresponding to determinants on
+            ! processor 0 are all stored first, then processor 1, etc...
+            ! We can use this to find which processor a particular determinant
+            ! belongs to.
+            on_this_proc = indices(i) > displs(iproc) .and. indices(i) < displs(iproc+1) + 1
+            if (on_this_proc) then
+                ! Find the index of this determinant in determ_dets, which only
+                ! contains determinants on this processor.
+                ind_local = indices(i) - displs(iproc)
+                call add_det_to_determ_space(determ, spawn, determ_dets(:,ind_local), .false.)
+            end if
+        end do
+
+        deallocate(determ_dets, stat=ierr)
+        call check_deallocate('determ_dets', ierr)
+        deallocate(determ_pops, stat=ierr)
+        call check_deallocate('determ_pops', ierr)
+        deallocate(all_determ_pops, stat=ierr)
+        call check_deallocate('all_determ_pops', ierr)
+        deallocate(indices, stat=ierr)
+        call check_deallocate('indices', ierr)
+
+    end subroutine create_restart_space
+
+    subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, dets_out, pops_out, ndets_out)
+
+        ! On output dets_out and pops_out hold the determinants and populations
+        ! corresponding to the ndets_out most populated determinants, as
+        ! specified by dets_in and pops_in.
+
+        ! NOTE: It is assumed that size(dets_in,2) >= size(dets_out,2) and
+        ! similarly for pops_in and pops_out.
+
+        integer(i0), intent(in) :: dets_in(:,:) 
+        integer(int_p), intent(in) :: pops_in(:,:)
+        integer, intent(in) :: ndets_in, ndets_out
+        integer(i0), intent(out) :: dets_out(:,:)
+        integer(int_p), intent(out) :: pops_out(:)
+
+        integer :: i, j, min_ind
+        integer(int_p) :: min_pop
+
+        ! To start with add the first ndets_out determinants to the list.
+        dets_out(:,1:ndets_out) = dets_in(:,1:ndets_out)
+        pops_out(1) = sum(abs(pops_in(:,1)))
+        min_pop = pops_out(1)
+        min_ind = 1
+        do i = 2, ndets_out
+            pops_out(i) = sum(abs(pops_in(:,i)))
+            if (pops_out(i) < min_pop) then
+                min_pop = pops_out(i)
+                min_ind = i
+            end if
+        end do
+
+        ! Now loop over all remaining determinants and see if any have a larger
+        ! amplitude than those in the list already.
+        do i = ndets_out+1, ndets_in
+            if (sum(abs(pops_in(:,i))) > min_pop) then
+                ! Add this determinant to the list in the position of the
+                ! previous smallest population.
+                dets_out(:,min_ind) = dets_in(:,i)
+                pops_out(min_ind) = sum(abs(pops_in(:,i)))
+                ! Now find the position and value of the new smallest
+                ! population.
+                min_pop = pops_out(1)
+                min_ind = 1
+                do j = 2, ndets_out
+                    if (pops_out(j) < min_pop) then
+                        min_pop = pops_out(j)
+                        min_ind = j
+                    end if
+                end do
+            end if
+        end do
+
+    end subroutine find_most_populated_dets
+
+    subroutine find_indices_of_most_populated_dets(pops, npops_in, indices, nind_out)
+
+        ! On output indices will store the indices of the nind_out largest
+        ! populations in pops.
+
+        ! NOTE 1: It is assumed that the populations in pops are all
+        ! non-negative. The absolute values of populations are not taken in
+        ! this routine.
+
+        ! NOTE 2: It is assumed that npops_in >= nind_out. It is up to the
+        ! programmer to ensure this is true and there will likely be errors if
+        ! it isn't.
+
+        integer(int_p), intent(in) :: pops(:)
+        integer, intent(in) :: npops_in
+        integer, intent(out) :: indices(:)
+        integer, intent(in) :: nind_out
+
+        integer :: i, j, min_ind
+        integer(int_p) :: min_pop
+
+        ! To start with just choose the first nind_out populations.
+        indices(1) = 1
+        min_pop = pops(1)
+        min_ind = 1
+        do i = 2, nind_out
+            indices(i) = i
+            if (pops(i) < min_pop) then
+                min_pop = pops(i)
+                min_ind = i
+            end if
+        end do
+
+        ! Now loop over all remaining populations and see if any are larger
+        ! than those already in the list.
+        do i = nind_out+1, npops_in
+            if (pops(i) > min_pop) then
+                ! Replace the old smallest index with this new index.
+                indices(min_ind) = i
+                ! Now find the position and value of the new smallest
+                ! population.
+                min_pop = pops(indices(1))
+                min_ind = 1
+                do j = 2, nind_out
+                    if (pops(indices(j)) < min_pop) then
+                        min_pop = pops(indices(j))
+                        min_ind = j
+                    end if
+                end do
+            end if
+        end do
+
+    end subroutine find_indices_of_most_populated_dets
 
 end module semi_stoch

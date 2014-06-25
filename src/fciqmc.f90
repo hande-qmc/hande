@@ -26,7 +26,7 @@ contains
         use basis, only: basis_length, nbasis
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use excitations, only: excit
+        use excitations, only: excit, create_excited_det
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
         use ifciqmc, only: set_parent_flag
@@ -46,6 +46,7 @@ contains
         type(det_info) :: cdet
         type(dSFMT_t) :: rng
 
+        integer(i0) :: f_child(basis_length)
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det
         type(excit) :: connection
@@ -123,11 +124,16 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             if (determ_parent) then
-                                determ_child = check_if_determ(determ%hash_table, determ%dets, cdet%f)
+                                ! Note: f_child needs to be calculated here but is
+                                ! also calculated in create_spawned_particle.
+                                ! This probably needs optimising.
+                                call create_excited_det(cdet%f, connection, f_child)
+                                determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.
                                 if (determ_parent .and. determ_child) cycle
                             end if
+
                             call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
                         end if
 

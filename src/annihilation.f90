@@ -390,7 +390,7 @@ contains
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(:,k) = walker_population(:,j)
                 walker_data(:,k) = walker_data(:,j)
-                if (present(determ_flags)) determ_flags(k) = determ_flags(i)
+                if (present(determ_flags)) determ_flags(k) = determ_flags(j)
             end do
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
@@ -404,6 +404,10 @@ contains
             walker_dets(:,k) = int(qmc_spawn%sdata(:total_basis_length,i), i0)
             nparticles = nparticles + abs(real_population)
             walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
+            ! A deterministic state can never leave the main list so cannot be
+            ! in the spawned list at this point. So set the flag to specify
+            ! that this state is not deterministic.
+            if (present(determ_flags)) determ_flags(k) = 1
             if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
             if (doing_calc(hfs_fciqmc_calc)) then
                 ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.

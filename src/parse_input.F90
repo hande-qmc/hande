@@ -221,7 +221,12 @@ contains
             case('SPAWN_CUTOFF')
                 call getf(spawn_cutoff)
 
-            ! DMQMC expectation values to be calculated
+            ! Deterministic spaces.
+            case('SEMI_STOCH_RESTART')
+                determ_type = 1
+                call readi(determ_target_size)
+
+            ! DMQMC expectation values to be calculated.
             case('DMQMC_FULL_RENYI_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_full_r2
             case('DMQMC_ENERGY')
@@ -703,6 +708,8 @@ contains
         end if
         call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(determ_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)

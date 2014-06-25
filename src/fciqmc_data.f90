@@ -65,6 +65,10 @@ integer(int_p) :: real_factor
 ! the spawned list.
 real(p) :: spawn_cutoff
 
+! Semi-stochhastic
+integer :: determ_type = 0
+integer :: determ_target_size = 0
+
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless
