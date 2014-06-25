@@ -505,7 +505,7 @@ contains
 
         ! In the array indices return a list of indices of the determ_size
         ! populations in all_determ_pops which are largest.
-        call find_indices_of_most_populated_dets(all_determ_pops, determ_size, indices)
+        call find_indices_of_most_populated_dets(all_determ_pops, ndets_tot, indices, determ_size)
 
         do i = 1, determ_size
             ! In determ_pops populations corresponding to determinants on
