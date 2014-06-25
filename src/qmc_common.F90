@@ -87,7 +87,7 @@ contains
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. all(fmax /= f0)) then
+        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. any(fmax /= f0)) then
             updated = .true.
             f0 = fmax
             H00 = H00_max
