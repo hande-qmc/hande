@@ -10,8 +10,7 @@
 [hubbard_k_tilted_2d_mchilbert]
 
 [hubbard_k_nontilted_2d_sfciqmc]
-processors = -1
-override_core_option = True
+max_nprocs = 1
 
 [hubbard_real_1d_fciqmc]
 [hubbard_real_1d_fciqmc_finite_cluster]
@@ -40,6 +39,15 @@ override_core_option = True
 
 [Ne-RHF-cc-pVDZ_ccmc]
 
+[mpi/np2/*/]
+nprocs = 2
+min_nprocs = 2
+max_nprocs = 2
+[mpi/np4/*/]
+nprocs = 4
+min_nprocs = 4
+max_nprocs = 4
+
 # Form job categories.
 [categories]
 
@@ -58,3 +66,5 @@ ifciqmc = hubbard_k_1d_ifciqmc hubbard_k_1d_ifciqmc_cas hubbard_k_nontilted_2d_i
 fciqmc_all = hubbard_k_nontilted_2d_sfciqmc fciqmc ifciqmc
 
 hilbert = hubbard_k_tilted_2d_mchilbert ueg_n14_rs1_e3_hilbert_space
+
+_default_ = hubbard_k hubbard_real heisenberg fciqmc_all fci lanczos hilbert
