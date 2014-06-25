@@ -61,11 +61,11 @@ contains
 
 #ifdef PARALLEL
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle)) then
+        if (all(fmax == f0)) then
+            ! Max population on this processor is already the reference.  Don't change.
+            in_data = (/ 0, iproc /)
+        else if (abs(max_pop) > ref_det_factor*abs(D0_population)) then
             in_data = (/ max_pop, iproc /)
-        else if (iproc == D0_proc) then
-            ! Ensure that D0_proc has the correct (average) population.
-            in_data = (/ nint(D0_population_cycle), iproc /)
         else
             ! No det with sufficient population to become reference det on this
             ! processor.
@@ -74,7 +74,7 @@ contains
 
         call mpi_allreduce(in_data, out_data, 1, MPI_2INTEGER, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
-        if (out_data(1) /= nint(D0_population_cycle) .and. all(fmax /= f0)) then
+        if (out_data(1) /= 0) then
             max_pop = out_data(1)
             updated = .true.
             D0_proc = out_data(2)
@@ -87,7 +87,7 @@ contains
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population_cycle) .and. all(fmax /= f0)) then
+        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. any(fmax /= f0)) then
             updated = .true.
             f0 = fmax
             H00 = H00_max
@@ -116,7 +116,7 @@ contains
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(size(occ_list0), f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population_cycle
+                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
