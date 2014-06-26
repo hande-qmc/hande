@@ -62,6 +62,7 @@ integer(int_p) :: real_factor
 real(p) :: spawn_cutoff
 
 ! Semi-stochhastic
+! [review] - JSS: what do determ_type amd determ_target_size mean?  What values can they take?
 integer :: determ_type = 0
 integer :: determ_target_size = 0
 

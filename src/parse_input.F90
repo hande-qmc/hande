@@ -223,6 +223,7 @@ contains
 
             ! Deterministic spaces.
             case('SEMI_STOCH_RESTART')
+                ! [review] - JSS: should select_ref_det be forbidden if semi_stoch_restart is also true?  I suspect so...
                 determ_type = 1
                 call readi(determ_target_size)
 

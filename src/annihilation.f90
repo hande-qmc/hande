@@ -242,6 +242,8 @@ contains
             ! Stochastically round the walker populations up to real_factor
             ! (which is equal to 1 in the decoded representation) or down to
             ! zero. This is not done for deterministic states.
+            ! [review] - JSS: should we only call stochastic_round (as an opimisation) if real_population?
+            ! [review] - JSS: (similarly throughout annihilation).  Only just noticed this...
             if (.not. determ_det) then
                 old_pop = walker_population(:,i)
                 call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)

@@ -123,6 +123,7 @@ contains
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
+                            ! [review] - JSS: will compiler switch the loop and branch ordering?  Perhaps...
                             if (determ_parent) then
                                 ! Note: f_child needs to be calculated here but is
                                 ! also calculated in create_spawned_particle.
@@ -145,6 +146,7 @@ contains
 
                 end do
 
+                ! [review] - JSS: clearer to the reader if only called if semi-stochastic is in use.
                 call determ_projection(rng, qmc_spawn, determ)
 
                 call direct_annihilation(sys, rng, initiator_approximation, determ%flags)

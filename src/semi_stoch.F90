@@ -3,6 +3,14 @@ module semi_stoch
 ! Code relating to the semi-stochastic algorithm. This includes initialisation
 ! code and also routines used throughout the simulation.
 
+! [review] - JSS: in keeping with efforts in ccmc.F90, perhaps a short summary of the
+! method?
+
+! [review] - JSS: I think the most confusing thing (perhaps because I reviewed the code in two
+! [review] - JSS: blocks which were separated by weeks) is how the deterministic vector and
+! [review] - JSS: stochastic vector are combined (e.g. in energy evaluation, annihilation,
+! [review] - JSS: spawning from the stochastic space into the deterministic space, etc.)
+
 use const
 use csr, only: csrp_t
 
@@ -13,14 +21,18 @@ implicit none
 type determ_hash_t
     ! Seed used in the MurmurHash function, to calculate hash values.
     integer :: seed
+    ! [review] - JSS: the size of the hash table (ignoring collisions)?
     ! The number of unique hash values used, from 1 to nhash.
     integer :: nhash
+    ! [review] - JSS: the size of ind appears to be not part of determ_hash_t, right?
+    ! [review] - JSS: 'dets' array == semi_stoch_t%dets?
     ! The indicies of the determinants in the dets array.
     integer, allocatable :: ind(:)
     ! hash_ptr(i) stores the index of the first index in the array ind which
     ! corresponds to a determinant with hash value i.
     ! This is similar to what is done int he CSR sparse matrix type (see
     ! csr.f90).
+    ! [review] - JSS: can we have an example of how to look up a determinant?
     integer, allocatable :: hash_ptr(:)
 end type determ_hash_t
 
@@ -29,11 +41,15 @@ type semi_stoch_t
     integer :: tot_size
     ! sizes(i) holds the number of deterministic states belonging to process i.
     integer, allocatable :: sizes(:) ! (0:nproc-1)
+    ! [review] - JSS: given this only happens in the initialisation, does it really need to be in the main type?
     ! displs(i)+1 holds the index of the first deterministic state belonging
     ! to process i in the dets array. This is used in MPI communication.
     integer, allocatable :: displs(:) ! (0:nproc-1)
     ! The Hamiltonian in the deterministic space, stored in a sparse CSR form.
+    ! [review] - JSS: H_{ij} is in hamil if both i,j are in the deterministic
+    ! [review] - JSS: space, right?
     type(csrp_t) :: hamil
+    ! [review] - JSS: so this is instead of using walker_population, right?  Or in addition to?
     ! This array is used to store the values of amplitudes of deterministic
     ! states throughout a QMC calculation.
     real(p), allocatable :: vector(:) ! determ_sizes(iproc)
@@ -43,6 +59,8 @@ type semi_stoch_t
     ! A hash table which allows the index of a determinant in dets to be found.
     ! This is done by calculating the hash value of the given determinant.
     type(determ_hash_t) :: hash_table
+    ! [review] - JSS: should a temporary object really be kept in semi_stoch_t?  Might
+    ! [review] - JSS: be better to pass it around as necessary... 
     ! Temporary space used for storing determinants during the creation of the
     ! deterministic space (before it is known how big the space is).
     integer(i0), allocatable :: temp_dets(:,:)
@@ -53,6 +71,8 @@ type semi_stoch_t
 end type semi_stoch_t
 
 contains
+
+    ! [review] - JSS: mark procedures as pure where possible.
 
     subroutine init_semi_stochastic(sys, spawn, determ, determ_type, determ_target_size)
 
@@ -181,7 +201,10 @@ contains
 
     subroutine create_determ_hash_table(determ, print_info)
 
+        ! Create the hash table for the deterministic space.
+
         ! In/Out:
+        !    [review] - what should determ hold on input and what does it hold on output?
         !    determ: Deterministic space being used.
         ! In:
         !    print_info: Should we print information to the screen?
@@ -253,6 +276,7 @@ contains
     subroutine create_determ_hamil(sys, determ, print_info)
 
         ! In/Out:
+        !    [review] - what should determ hold on input and what does it hold on output?
         !    determ: Deterministic space being used.
         ! In:
         !    sys: system being studied
@@ -340,7 +364,7 @@ contains
 
     end subroutine create_determ_hamil
 
-    subroutine add_determ_dets_to_walker_dets(sys, determ)
+    subroutine add_determ_dets_to_walker_detsdd_determ_dets_to_walker_dets(sys, determ)
 
         ! Also set the deterministic flags of any deterministic states already
         ! in walker_dets, and add deterministic data to walker_populations and
@@ -383,7 +407,9 @@ contains
             else
                 ! This deterministic state is not in walker_dets. Move all
                 ! determinants with index pos or greater down one and insert
+                ! [review] - JSS: typo?  'or zero' -> 'of zero'?
                 ! this determinant with an initial sign or zero.
+                ! [review] - JSS: this looks like it's repeated from insert_new_walkers?  Should we abstract it?
                 walker_dets(:,pos:tot_walkers) = walker_dets(:,pos+1:tot_walkers+1)
                 walker_population(:,pos:tot_walkers) = walker_population(:,pos+1:tot_walkers+1)
                 walker_data(:,pos:tot_walkers) = walker_data(:,pos+1:tot_walkers+1)
@@ -487,9 +513,12 @@ contains
                     row = row + 1
                     ! Perform the projetion.
                     call csrp_row(determ%hamil, determ%vector, out_vec, row)
+                    ! [review] - JSS: why shift only on this processor?
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
                     out_vec = -out_vec + shift(1)*determ%vector(i)
+                    ! [review] - JSS: use an internal subroutine for the rest of the code in the do loop to avoid repetition?
+                    ! [review] - JSS: compiler will then inline it.
                     ! Multiply by the timestep, and also by real_factor, to
                     ! allow the amplitude to be encoded as an integer.
                     out_vec = out_vec*tau*real_factor
@@ -499,6 +528,8 @@ contains
                     if (abs(out_vec) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
                     nspawn = nspawn*nint(sgn, int_p)
                     ! Upate the spawning slot...
+                    ! [review] - JSS: there should be a procedure in spawning on master
+                    ! [review] - JSS: which does exactly this.  Change to use that post-merge.
                     spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
                     ! ...and finally add the state to the spawning array.
                     spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
@@ -555,6 +586,7 @@ contains
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
             proc = modulo(murmurhash_bit_string(f, total_basis_length, spawn%hash_seed), nprocs)
+            ! [review] - JSS: safer/easier to read if never have multiple return points.
             if (proc /= iproc) return
         end if
 
@@ -572,6 +604,7 @@ contains
 
         ! In/Out:
         !    determ: Deterministic space being used.
+        !    [review] - JSS: what changes in determ?
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    target_size: Size of deterministic space to use if possible. If
@@ -692,6 +725,7 @@ contains
         !    dets_out: List of most populated determinants.
         !    pops_out: Populations corresponding to the determinants in dets_out.
 
+        ! [review] - JSS: unclear why these are 2D arrays, nor the bounds.
         integer(i0), intent(in) :: dets_in(:,:) 
         integer(int_p), intent(in) :: pops_in(:,:)
         integer, intent(in) :: ndets_in, ndets_out
@@ -742,10 +776,13 @@ contains
         ! On output indices will store the indices of the nind_out largest
         ! populations in pops.
 
+        ! [review] - JSS: why this restriction?
         ! NOTE 1: It is assumed that the populations in pops are all
         ! non-negative. The absolute values of populations are not taken in
         ! this routine.
 
+        ! [review] - JSS: given that this is not called in a tight loop, we can afford
+        ! [review] - JSS: to provide a little safety to the programmer...
         ! NOTE 2: It is assumed that npops_in >= nind_out. It is up to the
         ! programmer to ensure this is true and there will likely be errors if
         ! it isn't.
