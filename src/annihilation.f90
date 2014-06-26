@@ -222,6 +222,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
 
         integer :: nzero, i, k, itype
+        integer(int_p) :: old_pop(sampling_size)
         real(dp) :: r
 
         nzero = 0
@@ -229,7 +230,9 @@ contains
 
             ! Stochastically round the walker populations up or down to
             ! real_factor (which is equal to 1 in the decoded representation).
+            old_pop = walker_population(:,i)
             call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
+            nparticles = nparticles + real(abs(walker_population(:,i)) - abs(old_pop),dp)/real_factor
 
             if (all(walker_population(:,i) == 0_int_p)) then
                 nzero = nzero + 1
