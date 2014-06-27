@@ -530,7 +530,7 @@ contains
                 end do
             end if
 
-            write (6, '(3X,a11,8X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
+            write (6, '(3X,a11,7X,a7,3X,a4)') '# particles', 'R_spawn', 'time'
 
         else
             write (6,'(1X,a13,3(2X,a17))', advance='no') &
@@ -542,7 +542,7 @@ contains
             else
                 write (6,'(4X,a9,8X)', advance='no') "# H psips"
             end if
-            write (6,'(2X,a8,2X,a4)') "R_spawn ",  "time"
+            write (6,'(1X,a7,3X,a4)') "R_spawn",  "time"
         end if
 
     end subroutine write_fciqmc_report_header
