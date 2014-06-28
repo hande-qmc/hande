@@ -42,7 +42,8 @@ contains
         integer :: i, fmax(basis_length)
         integer(int_p) :: max_pop
 #ifdef PARALLEL
-        integer(int_p) :: in_data(2), out_data(2), ierr
+        integer(int_p) :: in_data(2), out_data(2)
+        integer :: ierr
 #endif
         real(p) :: H00_max, H00_old
         logical :: updated
