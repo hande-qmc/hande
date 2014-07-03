@@ -254,33 +254,37 @@ contains
         ! Alpha electrons.
         f = 0_i0
         iel = 0
-        do
-            ! generate random number 1,3,5,...
-            a = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
-            a_pos = bit_lookup(1,a)
-            a_el = bit_lookup(2,a)
-            if (.not.btest(f(a_el), a_pos)) then
-                ! found unoccupied alpha orbital.
-                f(a_el) = ibset(f(a_el), a_pos)
-                iel = iel + 1
-                occ_list(iel) = a
-                if (iel == sys%nalpha) exit
-            end if
-        end do
+        if (sys%nalpha > 0) then
+            do
+                ! generate random number 1,3,5,...
+                a = 2*int(get_rand_close_open(rng)*(nbasis/2))+1
+                a_pos = bit_lookup(1,a)
+                a_el = bit_lookup(2,a)
+                if (.not.btest(f(a_el), a_pos)) then
+                    ! found unoccupied alpha orbital.
+                    f(a_el) = ibset(f(a_el), a_pos)
+                    iel = iel + 1
+                    occ_list(iel) = a
+                    if (iel == sys%nalpha) exit
+                end if
+            end do
+        end if
         ! Beta electrons.
-        do
-            ! generate random number 2,4,6,...
-            b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
-            b_pos = bit_lookup(1,b)
-            b_el = bit_lookup(2,b)
-            if (.not.btest(f(b_el), b_pos)) then
-                ! FOUND Unoccupied beta orbital.
-                f(b_el) = ibset(f(b_el), b_pos)
-                iel = iel + 1
-                occ_list(iel) = b
-                if (iel == sys%nel) exit
-            end if
-        end do
+        if (sys%nbeta > 0) then
+            do
+                ! generate random number 2,4,6,...
+                b = 2*int(get_rand_close_open(rng)*(nbasis/2))+2
+                b_pos = bit_lookup(1,b)
+                b_el = bit_lookup(2,b)
+                if (.not.btest(f(b_el), b_pos)) then
+                    ! FOUND Unoccupied beta orbital.
+                    f(b_el) = ibset(f(b_el), b_pos)
+                    iel = iel + 1
+                    occ_list(iel) = b
+                    if (iel == sys%nel) exit
+                end if
+            end do
+        end if
 
     end subroutine gen_random_det_full_space
 
