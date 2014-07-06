@@ -613,7 +613,7 @@ contains
         ! As a result the MPI_Waitall, which is required to ensure message completion, is called in the receive
         ! subroutine to prevent blocking at this point.
         do i = 0, nprocs-1
-            start_point = spawn%head_start(thread_id, i) + 1
+            start_point = spawn%head_start(thread_id, i) + nthreads
             end_point = start_point + send_counts(i)/spawn%element_len - 1
             call MPI_ISend(spawn%sdata_recvd(:,start_point:end_point), send_counts(i), mpi_det_integer, i, &
                            i, MPI_COMM_WORLD, req_data_s(i), ierr)
