@@ -136,7 +136,7 @@ data : :class:`pandas.DataFrame`
                 elif k == 'git_hash':
                     have_git_hash_next = True
                 elif k == 'hilbert_space':
-                    metadata[k] = float(line.split()[-3])
+                    metadata[k] = float(line.split()[7])
                 else:
                     val = line.split()[-1]
                     if val[-1] == '.':
