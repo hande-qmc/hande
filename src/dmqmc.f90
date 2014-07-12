@@ -40,11 +40,12 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
-        integer(lint) :: tot_nparticles_old(sampling_size), init_tot_nparticles
+        integer(lint) :: init_tot_nparticles
+        real(dp) :: tot_nparticles_old(sampling_size), real_population
         integer(lint) :: nattempts
-        integer :: nel_temp
+        integer :: nel_temp, nattempts_current_det
         type(det_info) :: cdet1, cdet2
-        integer :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath
         type(excit) :: connection
         integer :: spawning_end
         logical :: soft_exit
@@ -74,7 +75,7 @@ contains
         nreport = nreport+1
                             
         if (all_sym_sectors) nel_temp = sys%nel
-        init_tot_nparticles = nint(D0_population)
+        init_tot_nparticles = nint(D0_population, lint)
 
         do beta_cycle = 1, beta_loops
 
@@ -117,6 +118,9 @@ contains
                         call decoder_ptr(sys, cdet1%f, cdet1)
                         call decoder_ptr(sys, cdet2%f, cdet2)
 
+                        ! Extract the real sign from the encoded sign.
+                        real_population = real(walker_population(1,idet),dp)/real_factor
+
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
                         ! updates the trace separately.
@@ -131,25 +135,26 @@ contains
                             ! one det in this symmetry sector, so don't attempt
                             ! to spawn.
                             if (.not. (sys%nel == 0 .or. sys%nel == sys%lattice%nsites)) then
-                                do iparticle = 1, abs(walker_population(ireplica,idet))
+                                nattempts_current_det = decide_nattempts(rng, real_population)
+                                do iparticle = 1, nattempts_current_det
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, cdet1, walker_population(ireplica,idet), &
-                                                     gen_excit_ptr, nspawned, connection)
+                                    call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet1, &
+                                                     walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
-                                    if (nspawned /= 0) then
-                                        call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, spawning_end, &
-                                                                            ireplica, qmc_spawn)
+                                    if (nspawned /= 0_int_p) then
+                                        call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, &
+                                                                            spawning_end, ireplica, qmc_spawn)
                                         if (abs(nspawned) >= bloom_stats%n_bloom) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
 
                                     ! Now attempt to spawn from the second end.
                                     spawning_end = 2
-                                    call spawner_ptr(rng, sys, cdet2, walker_population(ireplica,idet), &
-                                                     gen_excit_ptr, nspawned, connection)
-                                    if (nspawned /= 0) then
+                                    call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet2, &
+                                                     walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                    if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
                                                                             ireplica, qmc_spawn)
                                         if (abs(nspawned) >= bloom_stats%n_bloom) &
@@ -181,7 +186,7 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, initiator_approximation)
+                    call direct_annihilation(sys, rng, initiator_approximation)
 
                     call end_mc_cycle(ndeath, nattempts)
 
@@ -278,7 +283,7 @@ contains
         ! Set all quantities back to their starting values.
         tot_walkers = 0
         shift = initial_shift
-        nparticles = 0_lint
+        nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
         if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
         if (dmqmc_find_weights) excit_distribution = 0.0_p

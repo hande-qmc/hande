@@ -89,8 +89,8 @@ contains
         allocate(qmc_spawn%sdata(1,ndets), stat=ierr)
         call check_allocate('qmc_spawn%sdata',ndets,ierr)
         ! Zero these.
-        walker_population = 0
-        qmc_spawn%sdata = 0
+        walker_population = 0_int_p
+        qmc_spawn%sdata = 0_int_s
 
         allocate(shift(1), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
@@ -148,7 +148,7 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         integer :: ireport, icycle, iwalker, ipart
-        integer(lint) :: nparticles, nparticles_old
+        real(dp) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
         type(dSFMT_t) :: rng
@@ -156,7 +156,7 @@ contains
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
-        nparticles = sum(abs(walker_population(1,:)))
+        nparticles = real(sum(abs(walker_population(1,:))),dp)
         nparticles_old = nparticles
 
         call write_fciqmc_report_header()
@@ -173,11 +173,9 @@ contains
             do icycle = 1, ncycles
 
                 ! Zero spawning arrays.
-                qmc_spawn%sdata = 0
+                qmc_spawn%sdata = 0_int_s
 
                 ! Number of spawning attempts that will be made.
-                ! convert to integer from integer(lint).  should only be doing
-                ! very small calculations with this algothim!
                 nattempts = int(nparticles)
 
                 ! Consider all walkers.
@@ -207,7 +205,7 @@ contains
             end do
 
             ! Update the shift
-            nparticles = sum(abs(walker_population(1,:)))
+            nparticles = real(sum(abs(walker_population(1,:))),dp)
             if (vary_shift) then
                 call update_shift(shift(1), nparticles_old, nparticles, ncycles)
             end if
@@ -261,7 +259,8 @@ contains
         integer, intent(in) :: iwalker
         type(dSFMT_t), intent(inout) :: rng
 
-        integer :: j, nspawn
+        integer :: j
+        integer(int_s) :: nspawn
         real(p) :: rate
         real(p) :: r
 
@@ -279,10 +278,10 @@ contains
             ! As K_ij = H_ij for off-diagonal elements, we can just use the
             ! stored Hamiltonian matrix directly.
             rate = abs(Tau*hamil(iwalker,j))
-            nspawn = int(rate)
+            nspawn = int(rate, int_s)
             rate = rate - nspawn
             r = get_rand_close_open(rng)
-            if (rate > r) nspawn = nspawn + 1
+            if (rate > r) nspawn = nspawn + 1_int_s
 
             ! Create particles.
             if (hamil(iwalker,j) > 0.0_p) then
@@ -371,7 +370,7 @@ contains
         ! determinants for both the main and spawned lists so it just amounts to
         ! adding the two arrays together,
 
-        walker_population = walker_population + qmc_spawn%sdata
+        walker_population = walker_population + int(qmc_spawn%sdata, int_p)
 
     end subroutine simple_annihilation
 

@@ -3,7 +3,7 @@ module spawn_data
 ! Generic structures for storing and manipulating spawned particles (ie
 ! psips/excips in FCIQMC/CCMC/DMQMC calculations).
 
-use const, only: p, dp, i0
+use const, only: p, dp, int_s, int_p
 use, intrinsic :: iso_c_binding, only: c_int
 
 implicit none
@@ -31,9 +31,16 @@ type spawn_t
     integer :: flag_indx
     ! Total number of elements in each spawned object/element (ie len(sdata(:,1)). 
     integer :: element_len
+    ! The minimum allowed population of a spawning event. Any events with
+    ! with populations below this threshold should be stochastically rounded
+    ! up to it or down to zero.
+    ! During creation of a spawn_t instance, cutoff is multiplied by
+    ! 2^(real_bit_shift) and rounded up to nearest integer, and then stored in
+    ! this format.
+    integer(int_p) :: cutoff
     ! Not actually allocated but actually points to an internal store for
     ! efficient communication.
-    integer(i0), pointer :: sdata(:,:)
+    integer(int_s), pointer :: sdata(:,:)
     ! When creating spawned particles, a particle residing on one processor can
     ! create a particle which needs to reside on any other processor.  To make
     ! the communication easy, we assign different sections of sdata to particles
@@ -58,8 +65,8 @@ type spawn_t
     ! Time spent doing MPI communication.
     real(dp) :: comm_time = 0.0_dp
     ! Private storage arrays for communication.
-    integer(i0), pointer, private :: sdata_recvd(:,:)
-    integer(i0), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
+    integer(int_s), pointer, private :: sdata_recvd(:,:)
+    integer(int_s), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
 end type spawn_t
 
 interface annihilate_wrapper_spawn_t
@@ -71,7 +78,7 @@ contains
 
 !--- Initialisation/finalisation ---
 
-    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, hash_seed, spawn)
+    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, cutoff, bit_shift, hash_seed, spawn)
 
         ! Allocate and initialise a spawn_t object.
 
@@ -81,6 +88,8 @@ contains
         !    flag: whether or not to append an element for storing flags (ie
         !       additional information in bit string format) for the data stored
         !       for each entry.
+        !    cutoff: The size of the minimum spawning event allowed.
+        !    bit_shift: The number of bits to shift the cutoff by when encoding it.
         ! Out:
         !    spawn: initialised object for storing, communicating and
         !       annihilation spawned particles.
@@ -88,7 +97,8 @@ contains
         use parallel, only: nthreads, nprocs
         use checking, only: check_allocate
 
-        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed
+        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift
+        real(p) :: cutoff
         logical, intent(in) :: flag
         type(spawn_t), intent(out) :: spawn
 
@@ -106,6 +116,11 @@ contains
         spawn%array_len = array_len
         spawn%hash_seed = hash_seed
         spawn%comm_time = 0.0_dp
+        ! Convert the spawning cutoff to the encoded representation for walker
+        ! populations (see comments for walker_population) and round up to
+        ! nearest integer. (It may not be possible to use the exact cutoff
+        ! requested. This will be the case if rounding is required).
+        spawn%cutoff = ceiling(cutoff*(2_int_p**int(bit_shift,int_p)), int_p)
 
         allocate(spawn%store1(spawn%element_len, spawn%array_len), stat=ierr)
         call check_allocate('spawn%store1', size(spawn%store1), ierr)
@@ -325,7 +340,7 @@ contains
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
         integer :: i, ierr
-        integer(i0), pointer :: tmp_data(:,:)
+        integer(int_s), pointer :: tmp_data(:,:)
 
         real(dp) :: t1
         ! Must be compressed by now, if using threads.
@@ -372,15 +387,15 @@ contains
 
         ! Send data.
         ! Each element contains element_len integers (of type
-        ! i0/mpi_det_integer) so we need to change the counts and
+        ! int_s/mpi_sdata_integer) so we need to change the counts and
         ! displacements accordingly:
         send_counts = send_counts*spawn%element_len
         receive_counts = receive_counts*spawn%element_len
         send_displacements = spawn%head_start(thread_id,:nprocs-1)*spawn%element_len
         receive_displacements = receive_displacements*spawn%element_len
 
-        call MPI_AlltoAllv(spawn%sdata, send_counts, send_displacements, mpi_det_integer, &
-                           spawn%sdata_recvd, receive_counts, receive_displacements, mpi_det_integer, &
+        call MPI_AlltoAllv(spawn%sdata, send_counts, send_displacements, mpi_sdata_integer, &
+                           spawn%sdata_recvd, receive_counts, receive_displacements, mpi_sdata_integer, &
                            MPI_COMM_WORLD, ierr)
 
         spawn%comm_time = spawn%comm_time + MPI_WTIME() - t1
@@ -447,12 +462,12 @@ contains
             if (islot == spawn%head(thread_id,0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0)) islot = islot + 1
+            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0_int_s)) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0)) islot = islot - 1
+        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0_int_s)) islot = islot - 1
 
         ! update spawn%head(thread_id,0)
         spawn%head(thread_id,0) = islot
@@ -482,7 +497,7 @@ contains
 
         integer :: islot, ipart, k, pop_sign
         integer, allocatable :: events(:)
-        integer(i0), allocatable :: initiator_pop(:)
+        integer(int_s), allocatable :: initiator_pop(:)
         integer, parameter :: thread_id = 0
         logical :: new_slot
 
@@ -498,13 +513,13 @@ contains
             ! Set the current free slot to be the next unique spawned location.
             spawn%sdata(:,islot) = spawn%sdata(:,k)
             do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                if (spawn%sdata(spawn%flag_indx,k) == 0) then
+                if (spawn%sdata(spawn%flag_indx,k) == 0_int_s) then
                     ! from an initiator
                     initiator_pop(ipart) = spawn%sdata(ipart,k)
                     events(ipart) = 0
                 else
                     initiator_pop(ipart) = 0
-                    events(ipart) = sign(1_i0,spawn%sdata(ipart,k))
+                    events(ipart) = sign(1_int_s,spawn%sdata(ipart,k))
                 end if
             end do
             compress: do
@@ -533,10 +548,10 @@ contains
                     !   initiators and the two sets have opposite sign, the flag
                     !   is determined by number of coherent events from
                     !   non-initiator parents.
-                    spawn%sdata(spawn%flag_indx,islot) = 0
+                    spawn%sdata(spawn%flag_indx,islot) = 0_int_s
                     do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                        if (initiator_pop(ipart) /= 0 .and.  &
-                                sign(1_i0,spawn%sdata(ipart,islot)) == sign(1_i0,initiator_pop(ipart)) ) then
+                        if (initiator_pop(ipart) /= 0_int_s .and.  &
+                                sign(1_int_s,spawn%sdata(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
                             ! Keep all.  We should still annihilate psips of
                             ! opposite sign from non-initiator events(spawn%bit_str_len+1).
                         else if (abs(events(spawn%bit_str_len+1)) > 1) then
@@ -552,11 +567,11 @@ contains
                 else
                     ! Accumulate the population on this determinant, how much of the population came
                     ! from an initiator and the sign of the event.
-                    if (spawn%sdata(spawn%flag_indx,k) == 0) then
+                    if (spawn%sdata(spawn%flag_indx,k) == 0_int_s) then
                         initiator_pop = initiator_pop + spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,k)
                     else
                         do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                            if (spawn%sdata(ipart,k) < 0) then
+                            if (spawn%sdata(ipart,k) < 0_int_s) then
                                 events(ipart) = events(ipart) - 1
                             else
                                 events(ipart) = events(ipart) + 1
@@ -572,12 +587,12 @@ contains
             if (islot == spawn%head(thread_id,0) .or. k > spawn%head(thread_id,0)) exit self_annihilate
             ! go to the next slot if the current determinant wasn't completed
             ! annihilated.
-            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0)) islot = islot + 1
+            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0_int_s)) islot = islot + 1
         end do self_annihilate
 
         ! We didn't check if the population on the last determinant is
         ! completely annihilated or not.
-        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0)) islot = islot - 1
+        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0_int_s)) islot = islot - 1
 
         ! update spawn%head(thread_id,0)
         spawn%head(thread_id,0) = islot

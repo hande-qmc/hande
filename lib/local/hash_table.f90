@@ -57,14 +57,14 @@ module hash_table
         integer, allocatable :: table(:,:) ! (0:entries, 0:nslots-1)
 
         ! data_label(:,i) is the i-th (unique) data item being stored.
-        integer(i0), pointer :: data_label(:,:) => null() ! (:,nentries*nslots)
+        integer(int_s), pointer :: data_label(:,:) => null() ! (:,nentries*nslots)
         ! Using an internal array for data label (ie allocation) or pointing to
         ! an external array?
         logical, private :: extern_data_label = .false.
 
         ! payload(:,i) is the 'payload' or information associated with
         ! the i-th data item in data_label.
-        integer, pointer :: payload(:,:) => null() ! (:,nentries*nslots)
+        integer(int_p), pointer :: payload(:,:) => null() ! (:,nentries*nslots)
         ! Using an internal array for payload (ie allocation) or pointing to
         ! an external array?
         logical, private :: extern_payload = .false.
@@ -139,8 +139,8 @@ module hash_table
             use checking, only: check_allocate
 
             integer, intent(in) :: nslots, nentries, data_len, payload_len, max_free_reqd, seed
-            integer(i0), intent(in), optional, target :: data_label(:,:)
-            integer, intent(in), optional, target :: payload(:,:)
+            integer(int_s), intent(in), optional, target :: data_label(:,:)
+            integer(int_p), intent(in), optional, target :: payload(:,:)
             type(hash_table_t), intent(out) :: ht
 
             integer :: ierr
@@ -409,7 +409,9 @@ module hash_table
                 ! If data_label points to an external array, then the first
                 ! dimension might exceed ht%data_len.  We do, however, assume
                 ! the user has only passed in an array of size ht%data_len...
-                if (all(ht%data_label(:ht%data_len,pos%indx) == label)) then
+                ! Note that int_s must be at least the size of i0, if not larger.
+                ! If the same, the int(...) conversion will be optimised away.
+                if (all(ht%data_label(:ht%data_len,pos%indx) == int(label,int_s))) then
                     pos%ientry = i
                     hit = .true.
                     exit
@@ -439,7 +441,7 @@ module hash_table
 
             type(hash_table_t), intent(inout) :: ht
             integer(i0), intent(in) :: labels(:,:)
-            integer(i0), intent(in) :: payload(:,:)
+            integer(int_p), intent(in) :: payload(:,:)
             integer, intent(out) :: err_code
 
             type(hash_table_pos_t) :: pos
@@ -464,6 +466,6 @@ module hash_table
 
 !--- Hash table manipulation utilities ---
 
-! TODO: expand/resize ht%table.
+! TODO: expand/resize ht%table
 
 end module hash_table

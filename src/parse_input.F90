@@ -117,13 +117,13 @@ contains
                 end do
             case('2D')
                 if (sys%lattice%ndim > 0) then
-                    call warning('read_input','Dimension already set; ignoring keyword '//w)
+                    if (parent) call warning('read_input','Dimension already set; ignoring keyword '//w)
                 else
                     sys%lattice%ndim = 2
                 end if
             case('3D')
                 if (sys%lattice%ndim > 0) then
-                    call warning('read_input','Dimension already set; ignoring keyword '//w)
+                    if (parent) call warning('read_input','Dimension already set; ignoring keyword '//w)
                 else
                     sys%lattice%ndim = 3
                 end if
@@ -216,6 +216,11 @@ contains
 
             case('REPLICA_TRICKS')
                 replica_tricks = .true.
+
+            case('REAL_AMPLITUDES')
+                real_amplitudes = .true.
+            case('SPAWN_CUTOFF')
+                call getf(spawn_cutoff)
 
             ! DMQMC expectation values to be calculated
             case('DMQMC_FULL_RENYI_2')
@@ -365,7 +370,7 @@ contains
             case('DMQMC_AVERAGE_SHIFT')
                 call readi(average_shift_until)
             case('VARYSHIFT_TARGET')
-                call readli(target_particles)
+                call readf(target_particles)
             case('INIT_POP')
                 call readf(D0_population)
             case('REFERENCE_DET')
@@ -443,7 +448,7 @@ contains
                 call readi(initiator_cas(1))
                 call readi(initiator_cas(2))
             case('INITIATOR_POPULATION')
-                call readi(initiator_population)
+                call readf(initiator_population)
 
             ! Calculation options: operators sampled using Hellmann--Feynman.
             case('OPERATOR')
@@ -530,7 +535,7 @@ contains
         if (sys%system == read_in) then
 
             if (analyse_fci_wfn /= 0 .and. sys%read_in%dipole_int_file == '') then
-                call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
+                if (parent) call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
                              &integrals file.  Turning analyse_fci_wfn option off...')
                 analyse_fci_wfn = 0
             end if
@@ -563,7 +568,7 @@ contains
                                                          &guiding function is only avaliable when using the Neel singlet state &
                                                          &as an energy estimator.')
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) then
-                    call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
+                    if (parent) call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
                                           & This is not a bipartite lattice. Changing options so that it will not be calculated.')
                     dmqmc_calc_type = dmqmc_calc_type - dmqmc_staggered_magnetisation
                 end if
@@ -576,8 +581,20 @@ contains
 
         end if
 
+        if (real_amplitudes) then
+            if (doing_calc(ccmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc) .or. &
+               doing_calc(folded_spectrum)) then
+                call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
+            end if
+            if (bit_size(0_int_p) == 32 .and. parent) then
+                call warning(this,'You are using 32-bit walker populations with real amplitudes. The maximum &
+                             &population size on a given determinant is 2^20=1048576. Errors will occur if this is &
+                             &exceeded. Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
+            end if
+        end if
+
         if (init_spin_inv_D0 .and. ms_in /= 0) then
-            call warning(this, 'Flipping the reference state will give &
+            if (parent) call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
             init_spin_inv_D0 = .false.
         end if
@@ -586,7 +603,7 @@ contains
                &sites for the correlation function option.')
 
           if (dmqmc_find_weights .and. calculate_excit_distribution) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
-              &_DISTRIBUTION options should cannot be used together.')
+              &_DISTRIBUTION options cannot be used together.')
 
         ! Calculation specific checking.
         if (doing_calc(lanczos_diag)) then
@@ -594,7 +611,7 @@ contains
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
 
-        if ((.not.doing_calc(dmqmc_calc)) .and. dmqmc_calc_type /= 0) call warning('check_input',&
+        if (.not.doing_calc(dmqmc_calc) .and. dmqmc_calc_type /= 0 .and. parent) call warning('check_input',&
                'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
@@ -715,6 +732,8 @@ contains
             end if
             call mpi_bcast(sys%lattice%lattice, sys%lattice%ndim*sys%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
+        call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
@@ -876,7 +895,7 @@ contains
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_population, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(initiator_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)

@@ -145,8 +145,8 @@ contains
         use fciqmc_data, only: shift, shift_profile, average_shift_until, ncycles
         use fciqmc_data, only: target_particles, vary_shift, nreport
 
-        integer(lint), intent(in) :: loc_tot_nparticles(:)
-        integer(lint), intent(in) :: loc_tot_nparticles_old(:)
+        real(dp), intent(in) :: loc_tot_nparticles(:)
+        real(dp), intent(in) :: loc_tot_nparticles_old(:)
         integer, intent(in) :: ireport
         integer :: ireplica
 
@@ -189,7 +189,7 @@ contains
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
        use fciqmc_data, only: calculate_excit_distribution, excit_distribution
-       use fciqmc_data, only: sampling_size, dmqmc_accumulated_probs_old
+       use fciqmc_data, only: sampling_size, dmqmc_accumulated_probs_old, real_factor
        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
        use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
        use system, only: sys_t
@@ -210,10 +210,11 @@ contains
        ! excitation levels correctly.
 
        ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet).
-       unweighted_walker_pop = walker_population(:,idet)*dmqmc_accumulated_probs(excitation%nexcit)
+       unweighted_walker_pop = real(walker_population(:,idet),dp)*dmqmc_accumulated_probs(excitation%nexcit)/&
+                                real_factor
 
        ! If diagonal element, add to the trace.
-       if (excitation%nexcit == 0) trace = trace + walker_population(:,idet)
+       if (excitation%nexcit == 0) trace = trace + real(walker_population(:,idet),p)/real_factor
 
        ! The following only use the populations with ireplica = 1, so only call
        ! them if the determinant is occupied in the first replica.
@@ -234,10 +235,10 @@ contains
                    &(sys, idet, excitation, unweighted_walker_pop(1))
            ! Excitation distribution.
            if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
-                   excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
+                   excit_distribution(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
            ! Excitation distribtuion for calculating importance sampling weights.
            if (dmqmc_find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
-                   excit_distribution(excitation%nexcit) + abs(walker_population(1,idet))
+                   excit_distribution(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
        end if
 
        ! Full Renyi entropy (S_2).
@@ -655,11 +656,11 @@ contains
        use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
        use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, nrdms
        use fciqmc_data, only: start_averaging, rdm_spawn, dmqmc_accumulated_probs
-       use fciqmc_data, only: nsym_vec
+       use fciqmc_data, only: nsym_vec, real_factor
        use spawning, only: create_spawned_particle_rdm
 
        integer, intent(in) :: idet, iteration
-       integer, intent(in) :: walker_pop(sampling_size)
+       integer(int_p), intent(in) :: walker_pop(sampling_size)
        type(excit), intent(in) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
        integer :: irdm, isym, ireplica
@@ -696,7 +697,8 @@ contains
                        ! so add one.
                        rdms(irdm)%end1 = rdms(irdm)%end1 + 1
                        rdms(irdm)%end2 = rdms(irdm)%end2 + 1
-                       unweighted_walker_pop = walker_population(:,idet)*dmqmc_accumulated_probs(excitation%nexcit)
+                       unweighted_walker_pop = real(walker_population(:,idet),p)*&
+                                                dmqmc_accumulated_probs(excitation%nexcit)/real_factor
                        ! Note, when storing the entire RDM (as done here), the
                        ! maximum value of rdms(i)%rdm_basis_length is 1, so we
                        ! only consider this one element here.
@@ -1005,8 +1007,8 @@ contains
             ! Loop over the total population of RDM psips on this processor.
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
 
-                excit_level = get_excitation_level(rdm_lists(irdm)%sdata(1:rdm_bl,i),&
-                    rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i))
+                excit_level = get_excitation_level(int(rdm_lists(irdm)%sdata(1:rdm_bl,i), i0), &
+                    int(rdm_lists(irdm)%sdata(rdm_bl+1:2*rdm_bl,i), i0) )
 
                 ! Renormalise the psip populations to correct for the importance
                 ! sampling procedure used.

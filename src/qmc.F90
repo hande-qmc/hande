@@ -210,8 +210,27 @@ contains
             call check_allocate('spawn_times',spawned_walker_length,ierr)
         end if
 
+        ! Set the real encoding shift, depending on whether 32 or 64-bit integers
+        ! are being used.
+        if (real_amplitudes) then
+            if (bit_size(0_int_p) == 64) then
+                ! Allow a maximum population of 2^32, and a minimum fractional
+                ! part of 2^-31.
+                real_bit_shift = 31
+            else if (bit_size(0_int_p) == 32) then
+                ! Allow a maximum population of 2^20, and a minimum fractional
+                ! part of 2^-11.
+                real_bit_shift = 11
+            end if
+        else
+            ! Allow no fractional part for walker populations.
+            real_bit_shift = 0
+        end if
+        ! Store 2**real_bit_shift for ease.
+        real_factor = 2_int_p**(int(real_bit_shift, int_p))
+
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
-                         spawned_walker_length, 7, qmc_spawn)
+                         spawned_walker_length, spawn_cutoff, real_bit_shift, 7, qmc_spawn)
 
         allocate(f0(basis_length), stat=ierr)
         call check_allocate('f0',basis_length,ierr)
@@ -278,9 +297,9 @@ contains
             if (.not.doing_calc(dmqmc_calc)) then
                 tot_walkers = 1
                 ! Zero all populations...
-                walker_population(:,tot_walkers) = 0
+                walker_population(:,tot_walkers) = 0_int_p
                 ! Set initial population of Hamiltonian walkers.
-                walker_population(1,tot_walkers) = nint(D0_population)
+                walker_population(1,tot_walkers) = nint(D0_population)*real_factor
                 ! Set the bitstring of this psip to be that of the
                 ! reference state.
                 walker_dets(:,tot_walkers) = f0
@@ -354,9 +373,9 @@ contains
                 if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
                     tot_walkers = tot_walkers + 1
                     ! Zero all populations for this determinant.
-                    walker_population(:,tot_walkers) = 0
+                    walker_population(:,tot_walkers) = 0_int_p
                     ! Set the population for this basis function.
-                    walker_population(1,tot_walkers) = nint(D0_population)
+                    walker_population(1,tot_walkers) = nint(D0_population)*real_factor
                     walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                     select case(sys%system)
                     case(heisenberg)
@@ -383,10 +402,10 @@ contains
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
-        forall (i=1:sampling_size) nparticles(i) = sum(abs(walker_population(i,:tot_walkers)))
+        forall (i=1:sampling_size) nparticles(i) = sum(abs( real(walker_population(i,:tot_walkers),dp)/real_factor))
         ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
-        call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
         tot_nparticles = nparticles
 #endif
@@ -463,7 +482,7 @@ contains
                 if (doing_calc(fciqmc_calc)) &
                     write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
                     'CAS space of initiator determinants:',initiator_CAS
-                write (6,'(1X,a66,'//int_fmt(initiator_population,1)//',/)') &
+                write (6,'(1X,a66,f3.1,/)') &
                     'Population for a determinant outside CAS space to be an initiator:', initiator_population
             end if
             write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
@@ -575,7 +594,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         ! 0. In general, use the default spawning routine.
-        spawner_ptr => spawn
+        spawner_ptr => spawn_standard
 
         ! 1. Set system-specific procedure pointers.
         !     * projected energy estimator

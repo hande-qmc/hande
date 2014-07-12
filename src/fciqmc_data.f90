@@ -34,7 +34,7 @@ integer :: walker_length
 integer :: spawned_walker_length
 
 ! Number of particles before which varyshift mode is turned on.
-integer(lint) :: target_particles = 10000
+real(dp) :: target_particles = 10000.0_dp
 
 ! Don't bother renormalising generation probabilities; instead allow forbidden
 ! excitations to be generated and then rejected.
@@ -51,7 +51,18 @@ real(p) :: pattempt_single = -1, pattempt_double = -1
 integer :: initiator_cas(2) = (/ 0,0 /)
 
 ! Population above which a determinant is an initiator.
-integer :: initiator_population = 3
+real(p) :: initiator_population = 3.0_p
+
+! True if allowing non-integer values for psip populations.
+logical :: real_amplitudes = .false.
+! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
+! encoded as integers by multiplying them by 2**(real_bit_shift).
+integer :: real_bit_shift
+! real_factor = 2**(real_bit_shift)
+integer(int_p) :: real_factor
+! The minimum amplitude of a spawning event which can be added to
+! the spawned list.
+real(p) :: spawn_cutoff
 
 !--- Energy data ---
 
@@ -102,9 +113,9 @@ integer :: tot_walkers
 ! Updated during death and annihilation and merging.
 ! The first element is the number of normal (Hamiltonian) particles.
 ! Subsequent elements are the number of Hellmann--Feynamnn particles.
-integer(lint), allocatable :: nparticles(:) ! (sampling_size)
+real(dp), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
-integer(lint), allocatable, target :: tot_nparticles(:) ! (sampling_size)
+real(dp), allocatable, target :: tot_nparticles(:) ! (sampling_size)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -116,7 +127,17 @@ integer :: info_size
 ! a) determinants
 integer(i0), allocatable, target :: walker_dets(:,:) ! (basis_length, walker_length)
 ! b) walker population
-integer, allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
+! NOTE:
+!   When using the real_amplitudes option, walker_population stores encoded
+!   representations of the true walker populations. To convert
+!   walker_population(:,i) to the actual population on determinant i, one must
+!   take real(walker_population(:,i),dp)/real_factor. Thus, the resolution
+!   in the true walker populations is 1/real_factor. This is how
+!   non-integers populations are implemented. When not using the real_amplitudes
+!   option, real_factor will be equal to 1, allowing only integer
+!   populations. In general, when one sees that a integer is of kind int_p, it
+!   should be understood that it stores a population in its encoded form.
+integer(int_p), allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
 ! c) Walker information.  This contains:
 ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
 !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
@@ -195,7 +216,7 @@ integer :: number_dmqmc_estimators = 0
 ! used in calculating all thermal estimators. This quantity stores
 ! the this value, Tr(\rho), where rho is the density matrix which
 ! the DMQMC algorithm calculates stochastically.
-integer(i0), allocatable :: trace(:) ! (sampling_size)
+real(p), allocatable :: trace(:) ! (sampling_size)
 
 ! estimator_numerators stores all the numerators for the estimators in DMQMC
 ! which the user has asked to be calculated. These are, for a general
@@ -392,6 +413,8 @@ integer :: select_ref_det_every_nreports = huge(1)
 ! determinant.
 real(p) :: ref_det_factor = 1.50_p
 
+real(dp) :: annihilation_comms_time = 0.0_dp
+
 !--- Simple FCIQMC ---
 
 ! Data used *only* in the simple_fciqmc algorithm.
@@ -451,17 +474,19 @@ contains
         use parallel, only: nprocs
 
         real(p) :: rate
-        integer, intent(in) :: ndeath
+        integer(int_p), intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
+        real(dp) :: ndeath_real
         integer :: nspawn
 
         nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
+        ndeath_real = real(ndeath,dp)/real_factor
         ! The total spawning rate is
-        !   (nspawn + ndeath) / nattempts
+        !   (nspawn + ndeath_real) / nattempts
         ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different
         ! determinant and one to clone/die).
         if (nattempts > 0) then
-            rate = real(nspawn+ndeath,p)/nattempts
+            rate = (nspawn+ndeath_real)/nattempts
         else
             ! Can't have done anything.
             rate = 0.0_p
@@ -481,11 +506,11 @@ contains
         integer :: i, j
 
         if (doing_calc(dmqmc_calc)) then
-           write (6,'(1X,a12,3X,a13,8X,a5)', advance = 'no') &
+           write (6,'(1X,a12,3X,a13,15X,a5)', advance = 'no') &
            '# iterations','Instant shift','Trace'
 
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(6X,a7,14X,a7)', advance = 'no') 'Trace 2','Full S2'
+                write (6, '(13X,a7,14X,a7)', advance = 'no') 'Trace 2','Full S2'
             end if
             if (doing_dmqmc_calc(dmqmc_energy)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H_{ji}'
@@ -518,19 +543,19 @@ contains
                 end do
             end if
 
-            write (6, '(2X,a11,3X,a7,2X,a4)') '# particles', 'R_spawn', 'time'
+            write (6, '(3X,a11,7X,a7,3X,a4)') '# particles', 'R_spawn', 'time'
 
         else
             write (6,'(1X,a13,3(2X,a17))', advance='no') &
                      "# iterations ", "Shift            ", "\sum H_0j N_j    ", "N_0              "
             if (doing_calc(hfs_fciqmc_calc)) then
-                write (6,'(4(2X,a17),3X,a11,2X,a10)', advance='no') &
-                    "H.F. Shift       ","\sum O_0j N_j    ","\sum H_0j N'_j   ","N'_0              ", &
-                    "# H psips","# HF psips"
+                write (6,'(6(2X,a17))', advance='no') &
+                    "H.F. Shift       ","\sum O_0j N_j    ","\sum H_0j N'_j   ","N'_0             ", &
+                    "# H psips        ","# HF psips       "
             else
-                write (6,'(3X,a11)', advance='no') "# H psips"
+                write (6,'(4X,a9,8X)', advance='no') "# H psips"
             end if
-            write (6,'(2X,a8,2X,a4)') "R_spawn ",  "time"
+            write (6,'(1X,a7,3X,a4)') "R_spawn",  "time"
         end if
 
     end subroutine write_fciqmc_report_header
@@ -549,7 +574,7 @@ contains
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
-        integer(lint), intent(in) :: ntot_particles(:)
+        real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical :: comment
         integer :: mc_cycles, i, j
@@ -564,12 +589,12 @@ contains
 
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
-            write (6,'(i10,2X,es17.10,i10)',advance = 'no') &
-                                             (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
+            write (6,'(i10,2X,es17.10,es17.10)',advance = 'no') &
+                (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write(6, '(3X,i10)',advance = 'no') trace(2)
+                write(6, '(3X,es17.10)',advance = 'no') trace(2)
             end if
             do i = 1, number_dmqmc_estimators
                 write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
@@ -592,16 +617,16 @@ contains
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
-            write (6, '(2X,i11)', advance='no') ntot_particles(1)
+            write (6, '(2X,es17.10)', advance='no') ntot_particles(1)
         else if (doing_calc(hfs_fciqmc_calc)) then
-            write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,i11,X,i11)', advance = 'no') &
+            write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,X,es17.10)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
                                              D0_hf_population, &
                                              ntot_particles
         else
-            write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,i11)', advance='no') &
+            write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,es17.10)', advance='no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
                                              proj_energy, D0_population, &
                                              ntot_particles

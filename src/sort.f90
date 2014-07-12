@@ -1,6 +1,6 @@
 module sort
 
-use const, only: i0, p
+use const, only: int_s, p
 
 private
 public :: qsort
@@ -8,28 +8,29 @@ public :: insert_sort
 
 ! Quicksort...
 interface qsort
-    module procedure qsort_i0_list
+    module procedure qsort_int_s_list
 end interface qsort
 
 ! Insertion sort...
 interface insert_sort
-    module procedure insert_sort_int
+    module procedure insert_sort_int_32
+    module procedure insert_sort_int_64
 end interface insert_sort
 
 contains
 
 !--- In-place quicksort.  Uses the sample code in Numerical Recipies as a base.  ---
 
-    pure subroutine qsort_i0_list(list, head, nsort)
+    pure subroutine qsort_int_s_list(list, head, nsort)
 
-        ! Sort a 2D array of i0 integers.
+        ! Sort a 2D array of int_s integers.
 
         ! list(:,i) is regarded as greater than list(:,j) if the first
         ! non-identical element between list(:,i) and list(:,j) is greater in
         ! list(:,i).
 
         ! In/Out:
-        !    list: 2D array of i0 integers.  Sorted on output.
+        !    list: 2D array of int_s integers.  Sorted on output.
         ! In:
         !    head (optional): sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
@@ -41,7 +42,7 @@ contains
 
         use bit_utils, only: operator(.bitstrgt.)
 
-        integer(i0), intent(inout) :: list(:,:)
+        integer(int_s), intent(inout) :: list(:,:)
         integer, intent(in), optional :: head, nsort
 
         ! Threshold.  When a sublist gets to this length, switch to using
@@ -52,7 +53,7 @@ contains
         integer, parameter :: stack_max = 50
 
         integer :: pivot, lo, hi, i, j, ns
-        integer(i0) :: tmp(ubound(list,dim=1))
+        integer(int_s) :: tmp(ubound(list,dim=1))
 
         ! Stack.  This is the auxilliary memory required by quicksort.
         integer :: stack(2,stack_max), nstack
@@ -143,7 +144,7 @@ contains
                 ! With a stack_max of 50, we can sort arrays of length
                 ! 1125899906842624.  It is safe to say this will never be
                 ! exceeded, and so this test can be skipped.
-!                if (nstack > stack_max) call stop_all('qsort_i0_list', "parameter stack_max too small")
+!                if (nstack > stack_max) call stop_all('qsort_int_s_list', "parameter stack_max too small")
 
                 if (hi - i + 1 >= j - lo) then
                     stack(2,nstack) = hi
@@ -162,8 +163,8 @@ contains
 
         pure subroutine swap_sublist(s1,s2)
 
-            integer(i0), intent(inout) :: s1(:), s2(:)
-            integer(i0) :: tmp(ubound(s1,dim=1))
+            integer(int_s), intent(inout) :: s1(:), s2(:)
+            integer(int_s) :: tmp(ubound(s1,dim=1))
 
             tmp = s1
             s1 = s2
@@ -171,18 +172,20 @@ contains
 
         end subroutine swap_sublist
 
-    end subroutine qsort_i0_list
+    end subroutine qsort_int_s_list
 
 !--- In-place insertion sort.  ---
 
-    pure subroutine insert_sort_int(list)
+    pure subroutine insert_sort_int_32(list)
 
         ! Sort in-place an integer list by the insertion sort algorithm.
 
         ! In/Out:
         !    list: list of integers.  List is sorted on output.
 
-        integer, intent(inout) :: list(:)
+        use const, only: int_4
+
+        integer(int_4), intent(inout) :: list(:)
         real :: tmp
         integer :: i, j
 
@@ -199,6 +202,34 @@ contains
             list(j+1) = tmp
         end do
 
-    end subroutine insert_sort_int
+    end subroutine insert_sort_int_32
+
+    pure subroutine insert_sort_int_64(list)
+
+        ! Sort in-place an integer list by the insertion sort algorithm.
+
+        ! In/Out:
+        !    list: list of integers.  List is sorted on output.
+
+        use const, only: int_8
+
+        integer(int_8), intent(inout) :: list(:)
+        real :: tmp
+        integer :: i, j
+
+        ! Based on http://rosettacode.org/wiki/Sorting_algorithms/Insertion_sort#Fortran.
+        ! Essentially a direct translation of the pseudo-code for the algorithm.
+
+        do i = 2, ubound(list,dim=1)
+            j = i - 1
+            tmp = list(i)
+            do while (j>=1 .and. list(j)>tmp)
+                list(j+1) = list(j)
+                j = j - 1
+            end do
+            list(j+1) = tmp
+        end do
+
+    end subroutine insert_sort_int_64
 
 end module sort

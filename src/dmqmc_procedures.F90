@@ -213,7 +213,7 @@ contains
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
-        use fciqmc_data, only: replica_tricks, renyi_2, sampling_size
+        use fciqmc_data, only: replica_tricks, renyi_2, sampling_size, real_bit_shift, spawn_cutoff
         use fciqmc_data, only: spawned_rdm_length, rdm_spawn
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
@@ -285,7 +285,8 @@ contains
                 ! Note the initiator approximation is not implemented for
                 ! density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
-                                 spawned_rdm_length, 27, rdm_spawn(i)%spawn)
+                                     spawned_rdm_length, spawn_cutoff, real_bit_shift, &
+                                     27, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  This should
                 ! give an ok performance... We will only use the first
                 ! 2*rdm_basis_length elements for the hash, even though
@@ -448,8 +449,8 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         integer(lint), intent(in) :: target_nparticles_tot
-        integer(lint), intent(out) :: nparticles_tot(sampling_size)
-        integer(lint) :: nparticles_temp(sampling_size)
+        real(dp), intent(out) :: nparticles_tot(sampling_size)
+        real(dp) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
         integer(lint) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
@@ -461,7 +462,7 @@ contains
         if (target_nparticles_tot-(nprocs*npsips_this_proc) > iproc) &
               npsips_this_proc = npsips_this_proc + 1_lint
 
-        nparticles_temp = 0_lint
+        nparticles_temp = 0.0_dp
 
         do ireplica = 1, sampling_size
             select case(sys%system)
@@ -483,7 +484,7 @@ contains
                         r = get_rand_close_open(rng)
                         if (r < prob) npsips = npsips + 1_lint
 
-                        nparticles_temp(ireplica) = nparticles_temp(ireplica) + int(npsips, lint)
+                        nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, dp)
                         call random_distribution_heisenberg(rng, nel, npsips, ireplica)
                     end do
                 else
@@ -492,14 +493,14 @@ contains
                     call random_distribution_heisenberg(rng, sys%nel, npsips_this_proc, ireplica)
                 end if
             case default
-                call stop_all('init_proc_pointers','DMQMC not implemented for this system.')
+                call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
             end select
         end do
 
         ! Finally, count the total number of particles across all processes.
         if (all_sym_sectors) then
 #ifdef PARALLEL
-            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_INTEGER8, MPI_SUM, &
+            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_REAL8, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
             nparticles_tot = nparticles_temp
@@ -508,7 +509,7 @@ contains
             nparticles_tot = target_nparticles_tot
         end if
 
-        call direct_annihilation(sys, initiator_approximation)
+        call direct_annihilation(sys, rng, initiator_approximation)
 
     end subroutine create_initial_density_matrix
 
@@ -533,6 +534,7 @@ contains
         use basis, only: nbasis, basis_length, bit_lookup
         use calc, only: ms_in
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use fciqmc_data, only: real_factor
         use parallel
         use system
 
@@ -571,7 +573,7 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_diagonal_density_matrix_particle(f,1,ireplica)
+            call create_diagonal_density_matrix_particle(f,real_factor,ireplica)
 
         end do
 
@@ -598,7 +600,8 @@ contains
         use errors, only: stop_all
 
         integer(i0), intent(in) :: f(basis_length)
-        integer, intent(in) :: nspawn, particle_type
+        integer(int_p), intent(in) :: nspawn
+        integer ::particle_type
         integer(i0) :: f_new(total_basis_length)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
@@ -627,11 +630,11 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0
+        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
         ! indices 1 to total_basis_length store the bitstring.
-        qmc_spawn%sdata(:(total_basis_length),qmc_spawn%head(0,iproc_spawn)) = f_new
+        qmc_spawn%sdata(:(total_basis_length),qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
         ! The final index stores the number of psips created.
-        qmc_spawn%sdata((total_basis_length)+particle_type,qmc_spawn%head(0,iproc_spawn)) = nspawn
+        qmc_spawn%sdata((total_basis_length)+particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_diagonal_density_matrix_particle
 
@@ -695,13 +698,14 @@ contains
         use excitations, only: get_excitation_level
         use fciqmc_data, only: dmqmc_accumulated_probs, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
-        use fciqmc_data, only: nparticles, sampling_size
+        use fciqmc_data, only: nparticles, sampling_size, real_factor
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer :: idet, ireplica, excit_level, nspawn, sign_factor, old_population
-        real(p) :: new_factor
-        real(dp) :: rand_num, prob
+        integer :: idet, ireplica, excit_level, nspawn, sign_factor
+        real(dp) :: new_population_target(sampling_size)
+        integer(int_p) :: old_population(sampling_size), new_population(sampling_size)
+        real(dp) :: r, pextra
 
         ! Alter weights for the next iteration.
         dmqmc_accumulated_probs = real(dmqmc_accumulated_probs,dp)*weight_altering_factors
@@ -714,38 +718,42 @@ contains
         ! appropriate probability.
         do idet = 1, tot_walkers
 
-            excit_level = get_excitation_level(walker_dets(1:basis_length,idet),&
+            excit_level = get_excitation_level(walker_dets(1:basis_length,idet), &
                     walker_dets(basis_length+1:total_basis_length,idet))
 
+            old_population = abs(walker_population(:,idet))
+
+            ! The new population that we are aiming for. If this is not an
+            ! integer then we will have to round up or down to an integer with
+            ! an unbiased probability.
+            new_population_target = abs(real(walker_population(:,idet),dp))/weight_altering_factors(excit_level)
+            new_population = int(new_population_target, int_p)
+
+            ! If new_population_target is not an integer, round it up or down
+            ! with an unbiased probability. Do this for each replica.
             do ireplica = 1, sampling_size
-                old_population = abs(walker_population(ireplica,idet))
-                rand_num = get_rand_close_open(rng)
-                ! If weight_altering_factors(excit_level) > 1, need to kill 
-                ! psips.
-                ! If weight_altering_factors(excit_level) < 1, need to create
-                ! psips.
-                prob = abs(1.0_dp - weight_altering_factors(excit_level)**(-1))*old_population
-                nspawn = int(prob)
-                prob = prob - nspawn
-                if (rand_num < prob) nspawn = nspawn + 1
-                if (weight_altering_factors(excit_level) > 1.0_dp) then
-                    sign_factor = -1
-                else
-                    sign_factor = +1
+
+                pextra = new_population_target(ireplica) - new_population(ireplica)
+
+                if (pextra > depsilon) then
+                    r = get_rand_close_open(rng)
+                    if (r < pextra) new_population(ireplica) = new_population(ireplica) + 1_int_p
                 end if
-                nspawn = sign(nspawn,walker_population(ireplica,idet)*sign_factor)
-                ! Update the population on this determinant.
-                walker_population(ireplica,idet) = walker_population(ireplica,idet) + nspawn
-                ! Update the total number of walkers.
-                nparticles(ireplica) = nparticles(ireplica) - old_population + &
-                        abs(walker_population(ireplica,idet))
+
+                ! Finally, update the walker population.
+                walker_population(ireplica,idet) = sign(new_population(ireplica), walker_population(ireplica,idet))
+
             end do
+
+            ! Update the total number of walkers.
+            nparticles = nparticles + real(new_population - old_population, dp)/real_factor
+
         end do
 
         ! Call the annihilation routine to update the main walker list, as some
         ! sites will have become unoccupied and so need removing from the
         ! simulation.
-        call remove_unoccupied_dets()
+        call remove_unoccupied_dets(rng)
 
     end subroutine update_sampling_weights
 

@@ -23,26 +23,30 @@ contains
         !    loc_shift: The value of the shift to be used in the death step.
         ! In/Out:
         !    rng: random number generator.
-        !    population: number of particles on determinant D_i.
+        !    population: (unscaled) number of particles on determinant D_i.
         !    tot_population: total number of particles.
         ! Out:
-        !    ndeath: running total of number of particles died/cloned.
+        !    ndeath: running total of (unscaled) number of particles died/cloned.
 
-        ! Note that population and tot_population refer to a single 'type' of
-        ! population, i.e. either a set of Hamiltonian walkers or a set of
-        ! Hellmann--Feynman walkers.
+        ! Note:
+
+        ! * population and tot_population refer to a single 'type' of
+        !   population, e.g. either a set of Hamiltonian walkers or a set of
+        !   Hellmann--Feynman walkers.
+        ! * the population and ndeath should be unscaled (ie not divided by
+        !   real_factor) so to avoid a scaling and unscaling step.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         real(p), intent(in) :: Kii
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
-        integer, intent(inout) :: population, ndeath
-        integer(lint), intent(inout) :: tot_population
+        integer(int_p), intent(inout) :: population, ndeath
+        real(dp), intent(inout) :: tot_population
 
         real(p) :: pd
         real(dp) :: r
-        integer :: kill, old_population
+        integer(int_p) :: kill, old_population
 
         ! Optimisation: the number of particles on a given determinant can die
         ! stochastically...
@@ -67,7 +71,7 @@ contains
         pd = pd*abs(population)
 
         ! Number that definitely die...
-        kill = int(pd)
+        kill = int(pd, int_p)
 
         ! In addition, stochastic death (bad luck! ;-))
         pd = pd - kill ! Remaining chance...
@@ -92,7 +96,8 @@ contains
         else
             population = population - kill
         end if
-        tot_population = tot_population - abs(old_population) + abs(population)
+        tot_population = tot_population + &
+            real(abs(population) - abs(old_population),dp)/real_factor
         ndeath = ndeath + abs(kill)
 
     end subroutine stochastic_death
@@ -123,8 +128,8 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: Oii
-        integer, intent(in) :: hamiltonian_pop
-        integer, intent(out) :: ncloned
+        integer(int_p), intent(in) :: hamiltonian_pop
+        integer(int_p), intent(out) :: ncloned
 
         real(p) :: pd, matel
         real(dp) :: r
@@ -137,7 +142,7 @@ contains
         pd = tau*abs(matel*hamiltonian_pop)
 
         ! Number that are definitely cloned...
-        ncloned = int(pd)
+        ncloned = int(pd, int_p)
 
         ! In addition, stochastic cloning.
         pd = pd - ncloned

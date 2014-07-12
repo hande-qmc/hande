@@ -6,6 +6,14 @@ use fciqmc_data
 
 implicit none
 
+public
+private :: stochastic_round_int_32, stochastic_round_int_64
+
+interface stochastic_round
+    module procedure stochastic_round_int_32
+    module procedure stochastic_round_int_64
+end interface stochastic_round
+
 contains
 
 ! --- Utility routines ---
@@ -31,9 +39,11 @@ contains
         use errors, only: stop_all
 
         integer, parameter :: particle_type = 1
-        integer :: i, fmax(basis_length), max_pop
+        integer :: i, fmax(basis_length)
+        integer(int_p) :: max_pop
 #ifdef PARALLEL
-        integer :: in_data(2), out_data(2), ierr
+        integer(int_p) :: in_data(2), out_data(2)
+        integer :: ierr
 #endif
         real(p) :: H00_max, H00_old
         logical :: updated
@@ -42,7 +52,7 @@ contains
 
         updated = .false.
         ! Find determinant with largest population.
-        max_pop = 0
+        max_pop = 0_int_p
         do i = 1, tot_walkers
             if (abs(walker_population(particle_type,i)) > abs(max_pop)) then
                 max_pop = walker_population(particle_type,i)
@@ -63,16 +73,16 @@ contains
 
         if (all(fmax == f0)) then
             ! Max population on this processor is already the reference.  Don't change.
-            in_data = (/ 0, iproc /)
+            in_data = (/ 0_int_p, int(iproc,int_p) /)
         else if (abs(max_pop) > ref_det_factor*abs(D0_population)) then
-            in_data = (/ max_pop, iproc /)
+            in_data = (/ max_pop, int(iproc,int_p) /)
         else
             ! No det with sufficient population to become reference det on this
             ! processor.
-            in_data = (/ 0, iproc /)
+            in_data = (/ 0_int_p, int(iproc, int_p) /)
         end if
 
-        call mpi_allreduce(in_data, out_data, 1, MPI_2INTEGER, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(in_data, out_data, 2, mpi_pop_integer, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
         if (out_data(1) /= 0) then
             max_pop = out_data(1)
@@ -262,8 +272,9 @@ contains
         use fciqmc_data, only: D0_proc
         use parallel, only: iproc
 
-        integer, intent(in) :: pops(:,:), nactive, d0_pos
-        integer, intent(out) :: cumulative_pops(:), tot_pop
+        integer(int_p), intent(in) :: pops(:,:)
+        integer, intent(in) :: nactive, d0_pos
+        integer(int_p), intent(out) :: cumulative_pops(:), tot_pop
 
         integer :: i
 
@@ -292,17 +303,118 @@ contains
 
     end subroutine cumulative_population
 
+    function decide_nattempts(rng, population) result(nattempts)
+
+        ! Decide how many spawning attempts should be made from a determinant
+        ! with the input population. If this population is not an integer, it
+        ! must be stochastically rounded up or down in an unbiased manner.
+
+        ! In:
+        !    rng: random number generator.
+        !    int_population: population of determinant, in its shifted integer
+        !    form.
+
+        use const, only: depsilon
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+        real(dp), intent(in) :: population
+        real(dp) :: r, pextra
+        integer :: nattempts
+
+        nattempts = abs(int(population))
+        pextra = abs(population) - nattempts
+        ! If there is no probability of generating an extra attempt, then
+        ! don't bother using an extra random number.
+        if (abs(pextra) > depsilon) then
+            if (pextra > get_rand_close_open(rng)) nattempts = nattempts + 1
+        end if
+
+    end function decide_nattempts
+
+    subroutine stochastic_round_int_32(rng, population, cutoff, ntypes)
+
+        ! For any values in population less than cutoff, round up to cutoff or
+        ! down to zero. This is done such that the expectation value of the
+        ! resulting populations is equal to the input values.
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    population: populations to be stochastically rounded.
+        !    cutoff: the value to round up to.
+        !    
+
+        use const, only: int_4
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+        integer(int_4), intent(inout) :: population(:)
+        integer(int_4), intent(in) :: cutoff
+        integer, intent(in) :: ntypes
+        integer :: itype
+        real(p) :: r
+
+        do itype = 1, ntypes
+            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_4) then
+                r = get_rand_close_open(rng)*cutoff
+                if (abs(population(itype)) > r) then
+                    population(itype) = sign(cutoff, population(itype))
+                else
+                    population(itype) = 0_int_4
+                end if
+            end if
+        end do
+
+    end subroutine stochastic_round_int_32
+
+    subroutine stochastic_round_int_64(rng, population, cutoff, ntypes)
+
+        ! For any values in population less than cutoff, round up to cutoff or
+        ! down to zero. This is done such that the expectation value of the
+        ! resulting populations is equal to the input values.
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    population: populations to be stochastically rounded.
+        !    cutoff: the value to round up to.
+        !    
+
+        use const, only: int_8
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+        integer(int_8), intent(inout) :: population(:)
+        integer(int_8), intent(in) :: cutoff
+        integer, intent(in) :: ntypes
+        integer :: itype
+        real(p) :: r
+
+        do itype = 1, ntypes
+            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_8) then
+                r = get_rand_close_open(rng)*cutoff
+                if (abs(population(itype)) > r) then
+                    population(itype) = sign(cutoff, population(itype))
+                else
+                    population(itype) = 0_int_8
+                end if
+            end if
+        end do
+
+    end subroutine stochastic_round_int_64
+
     subroutine load_balancing_report()
 
         ! Print out a load-balancing report when run in parallel showing how
         ! determinants and walkers/particles are distributed over the processors.
 
 #ifdef PARALLEL
-        use annihilation, only: annihilation_comms_time
         use parallel
         use utils, only: int_fmt
 
-        integer(lint) :: load_data(sampling_size, nprocs)
+        real(dp) :: load_data(sampling_size, nprocs)
+        integer(lint) :: load_data_lint(nprocs)
         integer :: i, ierr
         real(dp) :: comms(nprocs)
         character(4) :: lfmt
@@ -312,24 +424,23 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, sampling_size, mpi_integer8, load_data, sampling_size, &
-                            mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, sampling_size, mpi_real8, load_data, sampling_size, &
+                            mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 do i = 1, sampling_size
                     if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
-                    lfmt = int_fmt(maxval(load_data(i,:)),0)
-                    write (6,'(1X,"Min # of particles on a processor:",6X,'//lfmt//')') minval(load_data(i,:))
-                    write (6,'(1X,"Max # of particles on a processor:",6X,'//lfmt//')') maxval(load_data(i,:))
+                    write (6,'(1X,"Min # of particles on a processor:",6X,es12.6)') minval(load_data(i,:))
+                    write (6,'(1X,"Max # of particles on a processor:",6X,es12.6)') maxval(load_data(i,:))
                     write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer8, load_data(1,:), 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(tot_walkers, 1, mpi_integer8, load_data_lint, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                lfmt = int_fmt(maxval(load_data(1,:)),0)
-                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data(1,:))
-                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data(1,:))
-                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data(1,:)), p)/nprocs
+                lfmt = int_fmt(maxval(load_data_lint),0)
+                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_lint)
+                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_lint)
+                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_lint), p)/nprocs
                 write (6,'()')
                 write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s.")') minval(comms)
                 write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s.")') maxval(comms)
@@ -360,9 +471,10 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer :: idet
-        integer(lint) :: ntot_particles(sampling_size)
+        real(dp) :: ntot_particles(sampling_size)
+        real(dp) :: real_population(sampling_size)
         type(det_info) :: cdet
-        real(p):: hmatel
+        real(p) :: hmatel
         type(excit) :: D0_excit
 #ifdef PARALLEL
         integer :: ierr
@@ -378,9 +490,10 @@ contains
             cdet%f = walker_dets(:,idet)
             call decode_det(cdet%f, cdet%occ_list)
             cdet%data => walker_data(:,idet)
+            real_population = real(walker_population(:,idet),dp)/real_factor
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
-            call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
+            call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &
                                         D0_population_cycle, proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info(cdet)
@@ -388,7 +501,7 @@ contains
 #ifdef PARALLEL
         call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         proj_energy = proj_energy_sum
-        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
         call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
         ! TODO: HFS, DMQMC quantities
 #else
@@ -443,14 +556,14 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
 
         integer(lint), intent(out) :: nattempts
-        integer, intent(out) :: ndeath
+        integer(int_p), intent(out) :: ndeath
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
         qmc_spawn%head = qmc_spawn%head_start
 
         ! Reset death counter
-        ndeath = 0
+        ndeath = 0_int_p
 
         ! Reset accumulation of the reference population over the MC cycle.
         ! Reset accumulation of the projected estimator over MC cycle.
@@ -471,11 +584,11 @@ contains
         else if (doing_calc(dmqmc_calc)) then
             ! Each particle and each end gets to attempt to spawn onto a
             ! connected determinant and a chance to die/clone.
-            nattempts = 4*nparticles(1)*sampling_size
+            nattempts = nint(4*nparticles(1)*sampling_size)
         else
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
-            nattempts = 2*nparticles(1)
+            nattempts = nint(2*nparticles(1))
         end if
 
     end subroutine init_mc_cycle
@@ -510,7 +623,7 @@ contains
         integer, intent(in) :: ireport
         logical, intent(in) :: update_tau
         logical, optional, intent(in) :: update_estimators
-        integer(lint), intent(inout) :: ntot_particles(sampling_size)
+        real(dp), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
 
@@ -553,7 +666,7 @@ contains
         !    ndeath: number of particle deaths in the cycle.
         !    nattempts: number of attempted spawning events in the cycle.
 
-        integer, intent(in) :: ndeath
+        integer(int_p), intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
 
         ! Add the spawning rate (for the processor) to the running

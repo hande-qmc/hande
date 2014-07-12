@@ -1,6 +1,6 @@
 module proc_pointers
 
-use const, only: i0, p, dp, lint
+use const, only: i0, p, dp, lint, int_p
 use determinants, only: det_info
 use excitations, only: excit
 
@@ -77,13 +77,13 @@ abstract interface
     end subroutine i_gen_excit_finalise
     subroutine i_death(rng, mat, loc_shift, pop, tot_pop, ndeath)
         use dSFMT_interface, only: dSFMT_t
-        import :: p, lint
+        import :: p, dp, int_p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: mat
         real(p), intent(in) :: loc_shift
-        integer, intent(inout) :: pop, ndeath
-        integer(lint), intent(inout) :: tot_pop
+        integer(int_p), intent(inout) :: pop, ndeath
+        real(dp), intent(inout) :: tot_pop
     end subroutine i_death
     pure function i_sc0(sys, f) result(hmatel)
         use basis, only: basis_length
@@ -96,30 +96,32 @@ abstract interface
     end function i_sc0
     subroutine i_set_parent_flag(pop, f, flag)
         use basis, only: basis_length
-        import :: i0
+        import :: i0, p
         implicit none
-        integer, intent(in) :: pop
+        real(p), intent(in) :: pop
         integer(i0), intent(in) :: f(basis_length)
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
     subroutine i_create_spawned_particle(d, connection, nspawned, particle_indx, spawn)
         use spawn_data, only: spawn_t
-        import :: excit, det_info
+        import :: excit, det_info, int_p
         implicit none
         type(det_info), intent(in) :: d
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawned, particle_indx
+        integer(int_p), intent(in) :: nspawned
+        integer, intent(in) :: particle_indx
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
     subroutine i_create_spawned_particle_dm(f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
         use basis, only: basis_length
         use spawn_data, only: spawn_t
-        import :: excit, i0
+        import :: excit, i0, int_p
         implicit none
         integer(i0), intent(in) :: f1(basis_length)
         integer(i0), intent(in) :: f2(basis_length)
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawned, spawning_end, particle_indx
+        integer(int_p), intent(in) :: nspawned
+        integer, intent(in) :: spawning_end, particle_indx
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
     subroutine i_trial_fn(sys, cdet, connection, hmatel)
@@ -172,17 +174,19 @@ end type gen_excit_ptr_t
 type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
-    subroutine i_spawner(rng, sys, d, parent_sign, gen_excit_ptr, nspawned, connection)
+    subroutine i_spawner(rng, sys, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, nspawned, connection)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        import :: det_info, excit, gen_excit_ptr_t
+        import :: det_info, excit, gen_excit_ptr_t, int_p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: d
-        integer, intent(in) :: parent_sign
+        integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        integer, intent(out) :: nspawned
+        integer(int_p), intent(out) :: nspawned
         type(excit), intent(out) :: connection
     end subroutine i_spawner
 end interface

@@ -30,10 +30,11 @@ contains
 
         use parallel
 
-        integer(lint), intent(inout) :: ntot_particles_old(sampling_size)
+        real(dp), intent(inout) :: ntot_particles_old(sampling_size)
 
         real(dp) :: ir(sampling_size+7), ir_sum(sampling_size+7)
-        integer(lint) :: ntot_particles(sampling_size), new_hf_signed_pop
+        real(dp) :: new_hf_signed_pop
+        real(dp) :: ntot_particles(sampling_size)
         integer :: ierr
 
         ! Need to sum the number of particles and the projected energy over
@@ -62,12 +63,12 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        ntot_particles = nint(ir_sum(1:sampling_size), lint)
+        ntot_particles = ir_sum(1:sampling_size)
         proj_energy = ir_sum(sampling_size+1)
         D0_population = ir_sum(sampling_size+2)
         rspawn = ir_sum(sampling_size+3)
         if (doing_calc(hfs_fciqmc_calc)) then
-            new_hf_signed_pop = nint(ir_sum(sampling_size+4), lint)
+            new_hf_signed_pop = ir_sum(sampling_size+4)
             proj_hf_O_hpsip = ir_sum(sampling_size+5)
             proj_hf_H_hfpsip = ir_sum(sampling_size+6)
             D0_hf_population = ir_sum(sampling_size+7)
@@ -131,12 +132,12 @@ contains
         use fciqmc_data, only: shift, tau, shift_damping, dmqmc_factor
 
         real(p), intent(inout) :: loc_shift
-        integer(lint), intent(in) :: nparticles_old, nparticles
+        real(dp), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - log(real(nparticles,p)/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
+        loc_shift = loc_shift - log(nparticles/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
 
     end subroutine update_shift
 
@@ -157,7 +158,7 @@ contains
         use fciqmc_data, only: tau, shift_damping
         use hfs_data, only: hf_shift
 
-        integer(lint), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
+        real(dp), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
 
         ! Given the definition of the shift, S, \tilde{S} \equiv \frac{dS}{d\alpha}|_{\alpha=0}.
@@ -171,7 +172,7 @@ contains
 
         hf_shift = hf_shift - &
                  (shift_damping/(tau*nupdate_steps)) &
-                 *(real(nhf_particles,p)/nparticles - real(nhf_particles_old,p)/nparticles_old)
+                 *(nhf_particles/nparticles - nhf_particles_old/nparticles_old)
 
     end subroutine update_hf_shift
 
@@ -183,25 +184,28 @@ contains
         ! \beta and \tilde{N}_j(\beta) is the Hellmann-Feynman population on
         ! j at imaginary time \beta.
 
-        use fciqmc_data, only: walker_population, tot_walkers
+        use fciqmc_data, only: walker_population, tot_walkers, real_factor, sampling_size
         use hfs_data, only: alpha0
 
-        integer(lint) :: hf_signed_pop
+        real(dp) :: hf_signed_pop
+        real(dp) :: real_population(sampling_size)
 
         integer :: i
 
-        hf_signed_pop = 0_lint
+        hf_signed_pop = 0.0_dp
         do i = 1, tot_walkers
-            if (walker_population(1,i) == 0) then
+            real_population = real(abs(walker_population(:,i)),dp)/real_factor
+            if (walker_population(1,i) == 0_int_p) then
                 if (alpha0 < 0) then
                     ! letting alpha->0_-
-                    hf_signed_pop = hf_signed_pop - abs(walker_population(2,i))
+                    hf_signed_pop = hf_signed_pop - real_population(2)
                 else
                     ! letting alpha->0_+
-                    hf_signed_pop = hf_signed_pop + abs(walker_population(2,i))
+                    hf_signed_pop = hf_signed_pop + real_population(2)
                 end if
             else
-                hf_signed_pop = hf_signed_pop + sign(1, walker_population(1,i))*walker_population(2,i)
+                hf_signed_pop = hf_signed_pop + sign(1.0_dp, real_population(1))*&
+                                                 real_population(2)
             end if
         end do
 

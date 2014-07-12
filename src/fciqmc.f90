@@ -40,14 +40,17 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle
-        integer(lint) :: nattempts, nparticles_old(sampling_size)
+        integer(lint) :: nattempts
+        real(dp) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
 
-        integer :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath
+        integer :: nattempts_current_det
         type(excit) :: connection
         real(p) :: hmatel
+        real(dp) :: real_population
 
         logical :: soft_exit
 
@@ -89,22 +92,28 @@ contains
 
                     call decoder_ptr(sys, cdet%f, cdet)
 
+                    ! Extract the real sign from the encoded sign.
+                    real_population = real(walker_population(1,idet),dp)/real_factor
+
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), D0_population_cycle, &
+                    call update_proj_energy_ptr(sys, f0, cdet, real_population, D0_population_cycle, &
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
-                    call set_parent_flag_ptr(walker_population(1,idet), cdet%f, cdet%initiator_flag)
+                    call set_parent_flag_ptr(real_population, cdet%f, cdet%initiator_flag)
 
-                    do iparticle = 1, abs(walker_population(1,idet))
+                    nattempts_current_det = decide_nattempts(rng, real_population)
+
+                    do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, cdet, walker_population(1,idet), gen_excit_ptr, nspawned, connection)
+                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                                         gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0) then
+                        if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
                             if (abs(nspawned) >= bloom_stats%n_bloom) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -117,7 +126,7 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, initiator_approximation)
+                call direct_annihilation(sys, rng, initiator_approximation)
 
                 call end_mc_cycle(ndeath, nattempts)
 

@@ -31,7 +31,7 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_standard(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -42,6 +42,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -50,8 +55,8 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -63,10 +68,12 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
+        integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        integer, intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, hmatel
@@ -75,11 +82,11 @@ contains
         call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
-    end subroutine spawn
+    end subroutine spawn_standard
 
-    subroutine spawn_importance_sampling(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -94,6 +101,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -102,8 +114,8 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -115,10 +127,12 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
+        integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        integer, intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, hmatel
@@ -130,11 +144,11 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -156,6 +170,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -167,8 +186,8 @@ contains
         !        element and gen_excit_ptr%finalise must fill in the rest of the
         !        information about the excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -181,10 +200,12 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
+        integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        integer, intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, abs_hmatel, hmatel
@@ -194,9 +215,9 @@ contains
         call gen_excit_ptr%init(rng, sys, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = nspawn_from_prob(rng, tau*abs_hmatel/pgen)
+        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs_hmatel/pgen)
 
-        if (nspawn /= 0) then
+        if (nspawn /= 0_int_p) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
             call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
@@ -208,7 +229,8 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, &
+                                                           gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -227,6 +249,11 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -238,8 +265,8 @@ contains
         !        element and gen_excit_ptr%finalise must fill in the rest of the
         !        information about the excitation.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -252,10 +279,12 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
+        integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        integer, intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         real(p) :: pgen, tilde_hmatel, hmatel
@@ -268,9 +297,9 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, tilde_hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = nspawn_from_prob(rng, tau*abs(tilde_hmatel)/pgen)
+        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs(tilde_hmatel)/pgen)
 
-        if (nspawn /= 0) then
+        if (nspawn /= 0_int_p) then
 
             ! 4. Complete excitation and find sign of connecting matrix element.
             ! *NOTE*: this returns the original matrix element and *not* the
@@ -286,7 +315,7 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(rng, sys, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_null(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -296,14 +325,19 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from (or not, in this case!).
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
         ! Out:
-        !    nspawn: number of particles spawned.  0 indicates the spawning
-        !        attempt was unsuccessful.
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -315,29 +349,36 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         type(det_info), intent(in) :: cdet
-        integer, intent(in) :: parent_sign
+        integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        integer, intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
 
         ! Just some null operations to avoid -Wall -Werror causing errors.
         connection%nexcit = huge(0)
 
         ! Return nspawn = 0 as we don't want to do any spawning.
-        nspawn = 0
+        nspawn = 0_int_p
 
     end subroutine spawn_null
 
 !--- Attempt spawning based upon random excitation ---
 
-    function nspawn_from_prob(rng, probability) result(number_spawned)
+    function nspawn_from_prob(rng, spawn_cutoff, real_factor, probability) result(nspawn)
 
         ! Generate the number spawned from a probability. If probability is greater than
         ! zero, then number spawned = int(probability) + stochastic{0,1}
         ! where the latter half of the RHS is a stochastic spawning from the remainder
         !
         ! In:
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    probability: the spawning probability
         ! In/Out:
         !    rng: random number generator.
@@ -350,18 +391,41 @@ contains
         implicit none
         real(p), intent(in) :: probability
         type(dSFMT_t), intent(inout) :: rng
-        integer             :: number_spawned
-        real(p)             :: psuccess, pstochastic
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
+        integer(int_s) :: nspawn
+        real(p) :: pspawn
 
-        ! Generate random number
-        psuccess = get_rand_close_open(rng)
+        ! 'Encode' the spawning probability by multiplying by 2^(real_bit_shift).
+        ! We then stochastically round this probability either up or down to
+        ! the nearest integers. This allows a resolution of 2^(-real_spawning)
+        ! when we later divide this factor back out. (See comments for
+        ! walker_population).
+        pspawn = probability*real_factor
 
-        ! Multiple offspring
-        number_spawned = int(probability)
+        if (abs(pspawn) < spawn_cutoff) then
 
-        ! Stochastic offspring
-        pstochastic = probability - number_spawned
-        if (pstochastic > psuccess) number_spawned = number_spawned + 1
+            ! If the spawning amplitude is below the minimum spawning event
+            ! allowed, stochastically round it either down to zero or up
+            ! to the cutoff.
+            if (pspawn > get_rand_close_open(rng)*spawn_cutoff) then
+                nspawn = spawn_cutoff
+            else
+                nspawn = 0_int_p
+            end if
+
+        else
+
+            ! Need to take into account the possibilty of a spawning attempt
+            ! producing multiple offspring...
+            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
+            ! then spawn a particle with probability pspawn-floor(pspawn).
+            nspawn = int(pspawn, int_p)
+            pspawn = pspawn - nspawn
+
+            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+
+        end if
 
     end function nspawn_from_prob
 
@@ -382,8 +446,8 @@ contains
         !    walkers produced by this spawning attempt.
 
         real(p), intent(in) :: hmatel
-        integer, intent(in) :: parent_sign
-        integer, intent(inout) :: nspawn
+        integer(int_p), intent(in) :: parent_sign
+        integer(int_p), intent(inout) :: nspawn
 
         ! If H_ij is positive, then the spawned walker is of opposite
         ! sign to the parent, otherwise the spawned walkers if of the same
@@ -396,9 +460,14 @@ contains
 
     end subroutine set_child_sign
 
-    function attempt_to_spawn(rng, hmatel, pgen, parent_sign) result(nspawn)
+    function attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign) result(nspawn)
 
         ! In:
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    hmatel: Hamiltonian matrix element connecting a determinant and an
         !    excitation of that determinant.
         !    pgen: probability of generating the excitation.
@@ -413,34 +482,51 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: tau
 
-        integer :: nspawn
+        integer(int_p) :: nspawn
 
         real(p), intent(in) :: pgen, hmatel
-        integer, intent(in) :: parent_sign
+        integer(int_p), intent(in) :: parent_sign
         type(dSFMT_t), intent(inout) :: rng
-
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
         real(p) :: pspawn
 
-        ! Essentially combines nspawn_from_prob and set_child_sign into one
-        ! convenient routine...
-
-        ! 1. Calculate probability spawning is successful.
+        ! Calculate probability spawning is successful.
         pspawn = tau*abs(hmatel)/pgen
 
-        ! 2. Attempt spawning.
+        ! 'Encode' the spawning probability by multiplying by 2^(real_bit_shift).
+        ! We then stochastically round this probability either up or down to
+        ! the nearest integers. This allows a resolution of 2^(-real_spawning)
+        ! when we later divide this factor back out. (See comments for
+        ! walker_population).
+        pspawn = pspawn*real_factor
 
-        ! Need to take into account the possibilty of a spawning attempt
-        ! producing multiple offspring...
-        ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
-        ! then spawn a particle with probability pspawn-floor(pspawn).
-        nspawn = int(pspawn)
-        pspawn = pspawn - nspawn
+        if (pspawn < spawn_cutoff) then
 
-        if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
+            ! If the spawning amplitude is below the minimum spawning event
+            ! allowed, stochastically round it either down to zero or up
+            ! to the cutoff.
+            if (pspawn > get_rand_close_open(rng)*spawn_cutoff) then
+                nspawn = spawn_cutoff
+            else
+                nspawn = 0_int_p
+            end if
+
+        else
+
+            ! Need to take into account the possibilty of a spawning attempt
+            ! producing multiple offspring...
+            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
+            ! then spawn a particle with probability pspawn-floor(pspawn).
+            nspawn = int(pspawn, int_p)
+            pspawn = pspawn - nspawn
+
+            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+
+        end if
 
         if (nspawn > 0) then
-
-            ! 3. If H_ij is positive, then the spawned walker is of opposite
+            ! If H_ij is positive, then the spawned walker is of opposite
             ! sign to the parent, otherwise the spawned walkers if of the same
             ! sign as the parent.
             if (hmatel > 0.0_p) then
@@ -448,7 +534,6 @@ contains
             else
                 nspawn = sign(nspawn, parent_sign)
             end if
-
         end if
 
     end function attempt_to_spawn
@@ -469,7 +554,7 @@ contains
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -482,7 +567,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
 
@@ -516,9 +601,9 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_spawned_particle
 
@@ -536,7 +621,7 @@ contains
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -549,7 +634,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
 
@@ -582,13 +667,13 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
         ! initiator_flag: flag indicating the staturs of the parent determinant.
         !     initiator_flag = 0 indicates the parent is an initiator.
         !     initiator_flag = 1 indicates the parent is not an initiator.
-        spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
+        spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(cdet%initiator_flag, int_s)
 
     end subroutine create_spawned_particle_initiator
 
@@ -608,7 +693,7 @@ contains
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -623,7 +708,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
 
@@ -659,9 +744,9 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
         end if
 
@@ -683,7 +768,7 @@ contains
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -698,7 +783,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
 
@@ -734,13 +819,13 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
             ! initiator_flag: flag indicating the staturs of the parent determinant.
             !     initiator_flag = 0 indicates the parent is an initiator.
             !     initiator_flag = 1 indicates the parent is not an initiator.
-            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
+            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(cdet%initiator_flag, int_s)
 
         end if
 
@@ -762,7 +847,7 @@ contains
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -777,7 +862,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
 
@@ -813,9 +898,9 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
         end if
 
@@ -837,7 +922,7 @@ contains
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use hashing
         use parallel, only: iproc, nprocs, nthreads
@@ -852,7 +937,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
 
@@ -888,13 +973,13 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
             ! initiator_flag: flag indicating the staturs of the parent determinant.
             !     initiator_flag = 0 indicates the parent is an initiator.
             !     initiator_flag = 1 indicates the parent is not an initiator.
-            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = cdet%initiator_flag
+            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(cdet%initiator_flag, int_s)
 
         end if
 
@@ -919,7 +1004,7 @@ contains
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use basis, only: basis_length, total_basis_length
         use errors, only: stop_all
@@ -929,7 +1014,7 @@ contains
         use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
@@ -976,9 +1061,9 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new_tot, int_s)
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_spawned_particle_density_matrix
 
@@ -1003,7 +1088,7 @@ contains
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use determinants, only: det_compare
         use basis, only: basis_length, total_basis_length
@@ -1015,7 +1100,7 @@ contains
         use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
@@ -1067,9 +1152,9 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new_tot, int_s)
+        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_spawned_particle_half_density_matrix
 
@@ -1102,7 +1187,7 @@ contains
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use basis, only: basis_length, total_basis_length
         use determinants, only: det_compare
@@ -1114,7 +1199,7 @@ contains
         use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
@@ -1168,9 +1253,9 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
-            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new_tot, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
         end if
 
@@ -1199,7 +1284,7 @@ contains
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
         !    particle_type: the index of particle type to be created.
         ! In/Out:
-        !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    spawn: spawn_t object to which the spawned particle will be added.
 
         use basis, only: basis_length, total_basis_length
         use calc, only: truncation_level
@@ -1210,7 +1295,7 @@ contains
         use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
@@ -1259,9 +1344,9 @@ contains
 
             ! Set info in spawning array.
             ! Zero it as not all fields are set.
-            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0
-            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = f_new_tot
-            spawn%sdata(total_basis_length+particle_type,spawn%head(thread_id,iproc_spawn)) = nspawn
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new_tot, int_s)
+            spawn%sdata(total_basis_length+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
 
         end if
 
@@ -1290,13 +1375,13 @@ contains
         use hash_table, only: hash_table_pos_t, lookup_hash_table_entry
         use hash_table, only: assign_hash_table_entry
         use utils, only: int_fmt
-                              
 
         integer, intent(in) :: irdm
-        integer, intent(in) :: nspawn_in
+        integer(int_p), intent(in) :: nspawn_in
         integer, intent(in) :: particle_type
         type(rdm_spawn_t), intent(inout) :: rdm_spawn
-        integer :: nspawn, rdm_bl
+        integer(int_p) :: nspawn
+        integer :: rdm_bl
 
         integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_basis_length)
         integer(i0) :: f1(rdms(irdm)%rdm_basis_length), f2(rdms(irdm)%rdm_basis_length)
@@ -1354,7 +1439,7 @@ contains
             if (hit) then
                 associate(indx => ht%table(pos%ientry,pos%islot))
                     ! Direct annihilation/cancellation in spawning array.
-                    spawn%sdata(bsl+particle_type,indx) = spawn%sdata(bsl+particle_type,indx) + nspawn
+                    spawn%sdata(bsl+particle_type,indx) = spawn%sdata(bsl+particle_type,indx) + int(nspawn, int_s)
                 end associate
             else
                 ! Move to the next position in the spawning array.
@@ -1375,9 +1460,9 @@ contains
                 associate(indx => ht%table(pos%ientry,pos%islot))
                     ! Set info in spawning array.
                     ! Zero it as not all fields are set.
-                    spawn%sdata(:,indx) = 0
-                    spawn%sdata(:bsl,indx) = f_new_tot
-                    spawn%sdata(bsl+particle_type,indx) = nspawn
+                    spawn%sdata(:,indx) = 0_int_s
+                    spawn%sdata(:bsl,indx) = int(f_new_tot, int_s)
+                    spawn%sdata(bsl+particle_type,indx) = int(nspawn, int_s)
                 end associate
             end if
 

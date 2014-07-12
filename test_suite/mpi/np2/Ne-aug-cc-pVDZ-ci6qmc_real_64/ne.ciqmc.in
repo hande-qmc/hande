@@ -1,0 +1,22 @@
+( CISDTQ5 correlation energy (from PSI4) is -0.21312385921149257 )
+read INTDUMP
+nel 10
+cas 8 22
+ms 0
+sym 0
+
+fciqmc
+real_amplitudes
+spawn_cutoff 0.01
+seed 18
+truncation_level 5
+
+varyshift_target 50000
+
+tau 0.002
+
+nreports 1200
+mc_cycles 10
+
+walker_length 50000
+spawned_walker_length 50000

@@ -38,9 +38,12 @@ contains
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
-        integer :: nspawned, ndeath, ireport, idet
-        integer(lint) :: nattempts, nparticles_old(sampling_size)
-        integer :: iparticle, tmp_pop, max_nexcitations, ierr, proc_id
+        integer(int_p) :: nspawned, ndeath
+        integer :: ireport, idet
+        integer(lint) :: nattempts
+        real(dp) :: nparticles_old(sampling_size)
+        integer :: iparticle, max_nexcitations, ierr, proc_id
+        integer(int_p) :: tmp_pop
         integer, allocatable :: current_pos(:,:) ! (nthreads, 0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
@@ -127,7 +130,7 @@ contains
                         call ct_spawn(rng, sys, cdet, walker_data(1,idet), walker_population(1,idet), &
                                       R, nspawned, connection)
 
-                        if (nspawned /= 0) then
+                        if (nspawned /= 0_int_p) then
 
                             ! If the spawned walker and the parent (all the
                             ! walkers on a particular det. have the same sgn due
@@ -135,12 +138,12 @@ contains
                             ! If death then kill the walker immediately and move
                             ! onto the next one.
                             if (connection%nexcit == 0 .and. &
-                                       walker_population(1,idet)*nspawned < 0.0_p) then
+                                       int(walker_population(1,idet),int_p)*nspawned < 0_int_p) then
                                 tmp_pop = tmp_pop + nspawned
                                 ! abs(nspawned) guaranteed to be 1
-                                nparticles(1) = nparticles(1) - 1
+                                nparticles(1) = nparticles(1) - 1.0_dp
                                 ! The walker is dead---no need to continue spawning to barrier.
-                                ndeath = ndeath + 1
+                                ndeath = ndeath + 1_int_p
                                 exit
                             end if
 
@@ -176,7 +179,7 @@ contains
                         ! processor proc_id.  Need to advance them to the barrier.
 
                         ! decode the spawned walker bitstring
-                        cdet%f = qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id))
+                        cdet%f = int(qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id)), i0)
                         K_ii = sc0_ptr(sys, cdet%f) - H00
                         call decoder_ptr(sys, cdet%f,cdet)
 
@@ -190,26 +193,27 @@ contains
 
                             if ( time > t_barrier ) exit
 
-                            call ct_spawn(rng, sys, cdet, K_ii, int(qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))), &
-                                          R, nspawned, connection)
+                            associate(parent_sgn => qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)))
 
-                            if (nspawned /= 0) then
+                                call ct_spawn(rng, sys, cdet, K_ii, int(parent_sgn, int_p), R, nspawned, connection)
 
-                                ! Handle walker death
-                                if(connection%nexcit == 0 .and. &
-                                        qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id))*nspawned < 0) then
-                                    qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) = &
-                                            qmc_spawn%sdata(spawned_pop,current_pos(thread_id,proc_id)) + nspawned
-                                    ndeath = ndeath + 1
-                                    exit ! The walker is dead - do not continue
+                                if (nspawned /= 0_int_p) then
+
+                                    ! Handle walker death
+                                    if(connection%nexcit == 0 .and. int(parent_sgn*nspawned,int_p) < 0_int_p) then
+                                        parent_sgn = parent_sgn + int(nspawned,int_s)
+                                        ndeath = ndeath + 1_int_p
+                                        exit ! The walker is dead - do not continue
+                                    end if
+
+                                    ! Add a walker to the end of the spawned walker list in the
+                                    ! appropriate block - this will increment the appropriate
+                                    ! spawning heads for the processors which were spawned on
+                                    call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
+
                                 end if
-
-                                ! Add a walker to the end of the spawned walker list in the
-                                ! appropriate block - this will increment the appropriate
-                                ! spawning heads for the processors which were spawned on
-                                call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
-
-                            end if
+                            
+                            end associate
 
                         end do
 
@@ -225,9 +229,9 @@ contains
 
             end do
 
-            call end_mc_cycle(ndeath, nattempts)
+            call end_mc_cycle(int(ndeath, int_p), nattempts)
 
-            call direct_annihilation(sys, initiator_approximation)
+            call direct_annihilation(sys, rng, initiator_approximation)
 
             call end_report_loop(ireport, .false., nparticles_old, t1, soft_exit)
 
@@ -290,9 +294,9 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info), intent(in) :: cdet
         real(p), intent(in) :: K_ii, R
-        integer, intent(in) :: parent_sgn
+        integer(int_p), intent(in) :: parent_sgn
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(out) :: nspawned
+        integer(int_p), intent(out) :: nspawned
         type(excit), intent(out) :: connection
 
         real(p) :: rand, K_ij
@@ -332,11 +336,11 @@ contains
         end if
 
         if (K_ij == 0.0_p) then
-            nspawned = 0
+            nspawned = 0_int_p
         else if (K_ij < 0.0_p) then    ! child is same sign as parent
-            nspawned = sign(1,parent_sgn)
+            nspawned = sign(1_int_p,parent_sgn)
         else
-            nspawned = -sign(1,parent_sgn)
+            nspawned = -sign(1_int_p,parent_sgn)
         end if
 
     end subroutine ct_spawn
@@ -370,7 +374,7 @@ contains
 
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
-        integer, intent(in) :: nspawn
+        integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         real(p), intent(in) :: spawn_time
 
@@ -397,9 +401,9 @@ contains
 
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
-        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0
-        qmc_spawn%sdata(:basis_length,qmc_spawn%head(0,iproc_spawn)) = f_new
-        qmc_spawn%sdata(particle_type,qmc_spawn%head(0,iproc_spawn)) = nspawn
+        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
+        qmc_spawn%sdata(:basis_length,qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
+        qmc_spawn%sdata(particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
         spawn_times(qmc_spawn%head(0,iproc_spawn)) = spawn_time
 
     end subroutine create_spawned_particle_ct

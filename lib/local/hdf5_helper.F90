@@ -21,36 +21,28 @@ module hdf5_helper
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
     ! hdf5_init_kinds.
     type hdf5_kinds_t
-        integer(hid_t) :: i0
-        integer(hid_t) :: lint
+        integer(hid_t) :: i32
+        integer(hid_t) :: i64
         integer(hid_t) :: p
     end type hdf5_kinds_t
 
     interface hdf5_write
         module procedure write_string
         module procedure write_integer
-        module procedure write_array_1d_int_lint
-        module procedure write_array_2d_int
-#if DET_SIZE != 64
-        module procedure write_array_1d_int_i0
-#endif
-#if DET_SIZE != 32
-        module procedure write_array_2d_int_i0
-#endif
+        module procedure write_array_1d_int_32
+        module procedure write_array_1d_int_64
+        module procedure write_array_2d_int_32
+        module procedure write_array_2d_int_64
         module procedure write_array_1d_real_p
         module procedure write_array_2d_real_p
     end interface hdf5_write
 
     interface hdf5_read
         module procedure read_integer
-        module procedure read_array_1d_int_lint
-        module procedure read_array_2d_int
-#if DET_SIZE != 64
-        module procedure read_array_1d_int_i0
-#endif
-#if DET_SIZE != 32
-        module procedure read_array_2d_int_i0
-#endif
+        module procedure read_array_1d_int_32
+        module procedure read_array_1d_int_64
+        module procedure read_array_2d_int_32
+        module procedure read_array_2d_int_64
         module procedure read_array_1d_real_p
         module procedure read_array_2d_real_p
     end interface hdf5_read
@@ -61,15 +53,15 @@ module hdf5_helper
 
         subroutine hdf5_kinds_init(kinds)
 
-            use const, only: i0, lint, p
+            use const, only: int_4, int_8, p
             use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
 
             type(hdf5_kinds_t), intent(out) :: kinds
 
             ! Convert our non-standard kinds to something HDF5 understands.
-            kinds%i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
+            kinds%i32 = h5kind_to_type(int_4, H5_INTEGER_KIND)
+            kinds%i64 = h5kind_to_type(int_8, H5_INTEGER_KIND)
             kinds%p = h5kind_to_type(p, H5_REAL_KIND)
-            kinds%lint = h5kind_to_type(lint, H5_INTEGER_KIND)
 
         end subroutine hdf5_kinds_init
 
@@ -143,7 +135,6 @@ module hdf5_helper
             integer(hid_t) :: type_id, dspace_id, dset_id
             integer :: ierr
 
-
             ! Set up fortran string type of *this* length...
             call h5tcopy_f(H5T_FORTRAN_S1, type_id, ierr)
             call h5tset_size_f(type_id, len(string, SIZE_T), ierr)
@@ -191,72 +182,9 @@ module hdf5_helper
         ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
         ! types and array dimensions as needed!
 
-        subroutine write_array_1d_int_lint(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_1d_int_32(id, dset, kinds, arr_shape, arr)
 
-            ! Write out 1D integer(lint) array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: lint
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(hdf5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            integer(lint), intent(in), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%lint, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
-
-        end subroutine write_array_1d_int_lint
-
-        subroutine write_array_2d_int(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 2D integer array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T, H5T_NATIVE_INTEGER
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(hdf5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            integer, intent(in), target :: arr(arr_shape(1), arr_shape(2))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, H5T_NATIVE_INTEGER, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
-
-        end subroutine write_array_2d_int
-
-! 1D array version for i0 needed if i0 is not the same as lint...
-#if DET_SIZE != 64
-        subroutine write_array_1d_int_i0(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 1D integer(i0) array to an HDF5 file.
+            ! Write out 1D 32-bit integer array to an HDF5 file.
 
             ! In:
             !    id: file or group HD5 identifier.
@@ -268,7 +196,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: i0
+            use const, only: int_4
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -276,21 +204,18 @@ module hdf5_helper
             integer, intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
-            integer(i0), intent(in), target :: arr(arr_shape(1))
+            integer(int_4), intent(in), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
 
-        end subroutine write_array_1d_int_i0
-#endif
+        end subroutine write_array_1d_int_32
 
-! 1D array version for i0 needed if i0 is not the same as standard integer (which we assume to be 32 bits)...
-#if DET_SIZE != 32
-        subroutine write_array_2d_int_i0(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_1d_int_64(id, dset, kinds, arr_shape, arr)
 
-            ! Write out 2D integer(i0) array to an HDF5 file.
+            ! Write out 1D 64-bit integer array to an HDF5 file.
 
             ! In:
             !    id: file or group HD5 identifier.
@@ -302,7 +227,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: i0
+            use const, only: int_8
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -310,15 +235,76 @@ module hdf5_helper
             integer, intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
-            integer(i0), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            integer(int_8), intent(in), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
 
-        end subroutine write_array_2d_int_i0
-#endif
+        end subroutine write_array_1d_int_64
+
+        subroutine write_array_2d_int_32(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 2D 32-bit integer array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: int_4
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            integer(int_4), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+
+        end subroutine write_array_2d_int_32
+
+        subroutine write_array_2d_int_64(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 2D 64-bit integer array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: int_8
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            integer(int_8), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+
+        end subroutine write_array_2d_int_64
 
         subroutine write_array_1d_real_p(id, dset, kinds, arr_shape, arr)
 
@@ -452,70 +438,9 @@ module hdf5_helper
         ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
         ! types and array dimensions as needed!
 
-        subroutine read_array_1d_int_lint(id, dset, kinds, arr_shape, arr)
+        subroutine read_array_1d_int_32(id, dset, kinds, arr_shape, arr)
 
-            ! Read in 1D integer(lint) array from an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
-            ! Out:
-            !    arr: array to be read.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: lint
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(hdf5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            integer(lint), intent(out), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%lint, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
-
-        end subroutine read_array_1d_int_lint
-
-        subroutine read_array_2d_int(id, dset, kinds, arr_shape, arr)
-
-            ! Read in 2D integer array from an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
-            ! Out:
-            !    arr: array to be read.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T, H5T_NATIVE_INTEGER
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(hdf5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            integer, intent(out), target :: arr(arr_shape(1), arr_shape(2))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, H5T_NATIVE_INTEGER, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
-
-        end subroutine read_array_2d_int
-
-! 1D array version for i0 needed if i0 is not the same as lint...
-#if DET_SIZE != 64
-        subroutine read_array_1d_int_i0(id, dset, kinds, arr_shape, arr)
-
-            ! Read in 1D integer(i0) array from an HDF5 file.
+            ! Read in 1D 32-bit integer array from an HDF5 file.
 
             ! In:
             !    id: file or group HD5 identifier.
@@ -528,27 +453,24 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: i0
+            use const, only: int_4
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
             integer, intent(in) :: arr_shape(:)
-            integer(i0), intent(in), target :: arr(arr_shape(1))
+            integer(int_4), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call read_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
 
-        end subroutine read_array_1d_int_i0
-#endif
+        end subroutine read_array_1d_int_32
 
-! 1D array version for i0 needed if i0 is not the same as standard integer (which we assume to be 32 bits)...
-#if DET_SIZE != 32
-        subroutine read_array_2d_int_i0(id, dset, kinds, arr_shape, arr)
+        subroutine read_array_1d_int_64(id, dset, kinds, arr_shape, arr)
 
-            ! Read in 2D integer(i0) array from an HDF5 file.
+            ! Read in 1D 64-bit integer array from an HDF5 file.
 
             ! In:
             !    id: file or group HD5 identifier.
@@ -561,23 +483,80 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: i0
+            use const, only: int_8
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
             integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            integer(i0), intent(out), target :: arr(arr_shape(1), arr_shape(2))
+            integer(int_8), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i0, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call read_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
 
-        end subroutine read_array_2d_int_i0
-#endif
+        end subroutine read_array_1d_int_64
+
+        subroutine read_array_2d_int_32(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 2D 32-bit integer array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: int_4
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            integer(int_4), intent(out), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call read_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+
+        end subroutine read_array_2d_int_32
+
+        subroutine read_array_2d_int_64(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 2D 64-bit integer array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: int_8
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            integer(int_8), intent(out), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call read_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+
+        end subroutine read_array_2d_int_64
 
         subroutine read_array_1d_real_p(id, dset, kinds, arr_shape, arr)
 

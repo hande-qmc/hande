@@ -1,0 +1,22 @@
+hubbard_k
+
+lattice
+4
+electrons 4
+
+ifciqmc
+
+real_amplitudes
+spawn_cutoff 0.01
+
+spawned_walker_length 500
+walker_length 10
+nreports 250
+mc_cycles 10
+
+tau 0.02
+varyshift_target 100
+
+ms 0
+sym 4
+seed 7
