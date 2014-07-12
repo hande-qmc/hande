@@ -117,13 +117,13 @@ contains
                 end do
             case('2D')
                 if (sys%lattice%ndim > 0) then
-                    call warning('read_input','Dimension already set; ignoring keyword '//w)
+                    if (parent) call warning('read_input','Dimension already set; ignoring keyword '//w)
                 else
                     sys%lattice%ndim = 2
                 end if
             case('3D')
                 if (sys%lattice%ndim > 0) then
-                    call warning('read_input','Dimension already set; ignoring keyword '//w)
+                    if (parent) call warning('read_input','Dimension already set; ignoring keyword '//w)
                 else
                     sys%lattice%ndim = 3
                 end if
@@ -522,7 +522,7 @@ contains
         if (sys%system == read_in) then
 
             if (analyse_fci_wfn /= 0 .and. sys%read_in%dipole_int_file == '') then
-                call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
+                if (parent) call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
                              &integrals file.  Turning analyse_fci_wfn option off...')
                 analyse_fci_wfn = 0
             end if
@@ -555,7 +555,7 @@ contains
                                                          &guiding function is only avaliable when using the Neel singlet state &
                                                          &as an energy estimator.')
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) then
-                    call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
+                    if (parent) call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
                                           & This is not a bipartite lattice. Changing options so that it will not be calculated.')
                     dmqmc_calc_type = dmqmc_calc_type - dmqmc_staggered_magnetisation
                 end if
@@ -573,15 +573,15 @@ contains
                doing_calc(folded_spectrum)) then
                 call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
             end if
-            if (bit_size(0_int_p) == 32) then
-                call warning('init_qmc','You are using 32-bit walker populations with real amplitudes. The maximum &
+            if (bit_size(0_int_p) == 32 .and. parent) then
+                call warning(this,'You are using 32-bit walker populations with real amplitudes. The maximum &
                              &population size on a given determinant is 2^20=1048576. Errors will occur if this is &
                              &exceeded. Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
             end if
         end if
 
         if (init_spin_inv_D0 .and. ms_in /= 0) then
-            call warning(this, 'Flipping the reference state will give &
+            if (parent) call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
             init_spin_inv_D0 = .false.
         end if
@@ -598,7 +598,7 @@ contains
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
 
-        if ((.not.doing_calc(dmqmc_calc)) .and. dmqmc_calc_type /= 0) call warning('check_input',&
+        if (.not.doing_calc(dmqmc_calc) .and. dmqmc_calc_type /= 0 .and. parent) call warning('check_input',&
                'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
