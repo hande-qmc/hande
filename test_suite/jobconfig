@@ -39,6 +39,15 @@ override_core_option = True
 [ueg_n14_rs1_e3_hilbert_space]
 [ueg_n4_rs2_e1_fci]
 
+[mpi/np2/*/]
+nprocs = 2
+min_nprocs = 2
+max_nprocs = 2
+[mpi/np4/*/]
+nprocs = 4
+min_nprocs = 4
+max_nprocs = 4
+
 # Form job categories.
 [categories]
 
@@ -53,6 +62,9 @@ lanczos = hubbard_k_1d hubbard_k_nontilted_2d_lanczos hubbard_real_nontilted_2d 
 
 real_32 = CN-UHF-cc-pVDZ_real_32 hubbard_k_1d_ifciqmc_real_32
 real_64 = heisenberg_1d_neel_ref_fciqmc_real_64
+
+mpi_real_32 = mpi/*/*real_32
+mpi_real_64 = mpi/*/*real_64
 
 sfciqmc = hubbard_k_nontilted_2d_sfciqmc
 fciqmc = hubbard_real_1d_fciqmc hubbard_real_1d_fciqmc_finite_cluster hubbard_k_nontilted_2d_fciqmc heisenberg_1d_ferro_field_fciqmc heisenberg_1d_neel_ref_fciqmc heisenberg_2d_field_fciqmc heisenberg_2d_neel_guide_fciqmc heisenberg_2d_tri_fciqmc H2O-RHF-cc-pVTZ CN-UHF-cc-pVDZ CN-UHF-cc-pVDZ_real_32
