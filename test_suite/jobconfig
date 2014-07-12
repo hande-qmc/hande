@@ -37,6 +37,15 @@ override_core_option = True
 [ueg_n14_rs1_e3_hilbert_space]
 [ueg_n4_rs2_e1_fci]
 
+[mpi/np2/*/]
+nprocs = 2
+min_nprocs = 2
+max_nprocs = 2
+[mpi/np4/*/]
+nprocs = 4
+min_nprocs = 4
+max_nprocs = 4
+
 # Form job categories.
 [categories]
 
@@ -53,5 +62,7 @@ sfciqmc = hubbard_k_nontilted_2d_sfciqmc
 fciqmc = hubbard_real_1d_fciqmc hubbard_real_1d_fciqmc_finite_cluster hubbard_k_nontilted_2d_fciqmc heisenberg_1d_ferro_field_fciqmc heisenberg_1d_neel_ref_fciqmc heisenberg_2d_field_fciqmc heisenberg_2d_neel_guide_fciqmc heisenberg_2d_tri_fciqmc H2O-RHF-cc-pVTZ CN-UHF-cc-pVDZ H2-RHF-cc-pVTZ-Lz
 ifciqmc = hubbard_k_1d_ifciqmc hubbard_k_1d_ifciqmc_cas hubbard_k_nontilted_2d_ifciqmc Ne-RHF-aug-cc-pVDZ
 fciqmc_all = hubbard_k_nontilted_2d_sfciqmc fciqmc ifciqmc
+
+ccmc_mpi = mpi/*/*ccsdmc
 
 hilbert = hubbard_k_tilted_2d_mchilbert ueg_n14_rs1_e3_hilbert_space
