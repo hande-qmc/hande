@@ -289,8 +289,8 @@ contains
                     ! Over all deterministic states on this process (all columns).
                     do j = 1, determ%sizes(iproc)
                         hmatel = get_hmatel(sys, determ%dets(:,i), determ%temp_dets(:,j))
-                        ! Take the Hartree-Fock energy off the diagonal elements.
                         diag_elem = i == j + determ%displs(iproc)
+                        ! Take the Hartree-Fock energy off the diagonal elements.
                         if (diag_elem) hmatel = hmatel - H00
                         if (abs(hmatel) > depsilon) then
                             nnz = nnz + 1
