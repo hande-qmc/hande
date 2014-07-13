@@ -107,7 +107,9 @@ contains
         end if
 
         ! Let each process hold the number of deterministic states on each process.
+#ifdef PARALLEL
         call mpi_allgather(determ%sizes(iproc), 1, mpi_integer, determ%sizes, 1, mpi_integer, MPI_COMM_WORLD, ierr)
+#endif
         determ%tot_size = sum(determ%sizes)
 
         if (print_info .and. nprocs > 1) then
@@ -141,8 +143,14 @@ contains
             'Memory required per core to store deterministic dets (MB):', determ_dets_mem
         allocate(determ%dets(total_basis_length, determ%tot_size), stat=ierr)
         call check_allocate('determ%dets', size(determ%dets), ierr)
+
+        ! Join and store all deterministic states from all processes.
+#ifdef PARALLEL
         call mpi_allgatherv(determ%temp_dets(:,1:determ%sizes(iproc)), determ%sizes(iproc), mpi_det_integer, &
                             determ%dets, determ%sizes, determ%displs, mpi_det_integer, MPI_COMM_WORLD, ierr)
+#else
+        determ%dets = determ%temp_dets(:,1:determ%sizes(iproc))
+#endif
 
         call create_determ_hash_table(determ, print_info)
 
@@ -274,7 +282,7 @@ contains
                     end if
                 end do
 
-                ! Allocate the CSR type components.
+                ! Allocate the CSR type components and print information.
                 if (imode == 1) then
                     call cpu_time(t2)
                     if (print_info) then 
@@ -286,7 +294,12 @@ contains
                         mem_reqd = ((determ%tot_size+1)*4 + nnz*(4 + 8))/10**6
 #endif
                     end if
+
+#ifdef PARALLEL
                     call mpi_allreduce(mem_reqd, max_mem_reqd, 1, mpi_integer, MPI_MAX, MPI_COMM_WORLD, ierr)
+#else
+                    max_mem_reqd = mem_reqd
+#endif
                     if (print_info) then 
                         write(6,'(1X,a73,'//int_fmt(mem_reqd,1)//')') &
                             'Maximum memory required by a core for the deterministic Hamiltonian (MB):', mem_reqd
@@ -527,10 +540,14 @@ contains
         logical :: on_this_proc
 
         ! If there are less determinants on this processor than the target
-        ! number, then obviously we need to consider a smaller number.
+        ! number then obviously we need to consider a smaller number.
         ndets = min(target_size, tot_walkers)
 
+#ifdef PARALLEL
         call mpi_allgather(ndets, 1, mpi_integer, all_ndets, 1, mpi_integer, MPI_COMM_WORLD, ierr)
+#else
+        all_ndets = ndets
+#endif
         ndets_tot = sum(all_ndets)
 
         ! Displacements used for MPI communication.
@@ -561,8 +578,13 @@ contains
 
         ! Create a joined list, all_determ_pops, of the most populated
         ! determinants from each processor.
+#ifdef PARALLEL
         call mpi_allgatherv(determ_pops, ndets, mpi_pop_integer, all_determ_pops, all_ndets, &
                             displs(0:nprocs-1), mpi_pop_integer, MPI_COMM_WORLD, ierr)
+#else
+        ! In serial these arrays are of equal size.
+        all_determ_pops = determ_pops
+#endif
 
         ! In the array indices return a list of indices of the determ_size
         ! populations in all_determ_pops which are largest.
