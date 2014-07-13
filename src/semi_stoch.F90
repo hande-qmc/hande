@@ -64,8 +64,7 @@ contains
         use sort, only: qsort
         use spawn_data, only: spawn_t
         use system, only: sys_t
-
-        use fciqmc_data, only: walker_dets, walker_population, walker_data, tot_walkers
+        use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
         type(spawn_t), intent(in) :: spawn
@@ -73,7 +72,14 @@ contains
         integer, intent(in) :: determ_type
         integer, intent(in) :: determ_target_size
 
-        integer :: i, ierr
+        integer :: i, ierr, determ_dets_mem
+        logical :: print_info
+
+        ! Only print information if the parent processor and if we are using a
+        ! non-trivial deterministic space.
+        print_info = parent .and. determ_type /= 0
+
+        if (print_info) write(6,'(1X,a41)') 'Beginning semi-stochastic initialisation.'
 
         ! Create the temporary space for enumerating the deterinistic space and
         ! also the arrays to hold deterministic flags and space sizes and
@@ -91,6 +97,8 @@ contains
         determ%sizes = 0
         determ%displs = 0
 
+        if (print_info) write(6,'(1X,a29)') 'Creating deterministic space.'
+
         ! If determ_type does not take one of the below values then an empty
         ! deterministic space will be used. This is the default behaviour
         ! (determ_type = 0).
@@ -101,6 +109,17 @@ contains
         ! Let each process hold the number of deterministic states on each process.
         call mpi_allgather(determ%sizes(iproc), 1, mpi_integer, determ%sizes, 1, mpi_integer, MPI_COMM_WORLD, ierr)
         determ%tot_size = sum(determ%sizes)
+
+        if (print_info .and. nprocs > 1) then
+            write(6,'(1X,a44,'//int_fmt(minval(determ%sizes),1)//')') &
+                'Min deterministic space size on a processor:', minval(determ%sizes)
+            write(6,'(1X,a44,'//int_fmt(maxval(determ%sizes),1)//')') &
+                'Max deterministic space size on a processor:', maxval(determ%sizes)
+            write(6,'(1X,a49,'//int_fmt(determ%tot_size,1)//')') &
+                'Total deterministic space size on all processors:', determ%tot_size
+        else if (print_info) then
+            write(6,'(1X,a25,'//int_fmt(determ%tot_size,1)//')') 'Deterministic space size:', determ%tot_size
+        end if
 
         ! Displacements used for MPI communication.
         determ%displs(0) = 0
@@ -116,14 +135,18 @@ contains
         call qsort(determ%temp_dets, determ%sizes(iproc)) 
 
         ! Array to hold all deterministic states from all processes.
+        ! The memory required in MB.
+        determ_dets_mem = total_basis_length*determ%tot_size*i0_length/(8*10**6)
+        if (print_info) write(6,'(1X,a58,'//int_fmt(determ_dets_mem,1)//')') &
+            'Memory required per core to store deterministic dets (MB):', determ_dets_mem
         allocate(determ%dets(total_basis_length, determ%tot_size), stat=ierr)
         call check_allocate('determ%dets', size(determ%dets), ierr)
         call mpi_allgatherv(determ%temp_dets(:,1:determ%sizes(iproc)), determ%sizes(iproc), mpi_det_integer, &
                             determ%dets, determ%sizes, determ%displs, mpi_det_integer, MPI_COMM_WORLD, ierr)
 
-        call create_determ_hash_table(determ)
+        call create_determ_hash_table(determ, print_info)
 
-        call create_determ_hamil(sys, determ)
+        call create_determ_hamil(sys, determ, print_info)
 
         call add_determ_dets_to_walker_dets(sys, determ)
 
@@ -131,17 +154,21 @@ contains
         deallocate(determ%temp_dets, stat=ierr)
         call check_deallocate('determ%temp_dets', ierr)
 
+        if (print_info) write(6,'(1X,a40,/)') 'Semi-stochastic initialisation complete.'
+
     end subroutine init_semi_stochastic
 
-    subroutine create_determ_hash_table(determ)
+    subroutine create_determ_hash_table(determ, print_info)
 
         use basis, only: total_basis_length
         use checking, only: check_allocate, check_deallocate
         use hashing, only: murmurhash_bit_string
+        use utils, only: int_fmt
 
         type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(in) :: print_info
 
-        integer :: i, iz, hash, ierr
+        integer :: i, iz, hash, mem_reqd, ierr
         integer, allocatable :: nclash(:)
 
         associate(ht => determ%hash_table)
@@ -149,6 +176,14 @@ contains
             ht%seed = 37
             ! For now just let there be as many hash values as deterministic states.
             ht%nhash = determ%tot_size
+
+            if (print_info) then 
+                ! The memory required in MB.
+                ! Two lists with length ht%nhash taking 4 bytes for each element.
+                mem_reqd = 2*ht%nhash*4/10**6
+                write(6,'(1X,a50,'//int_fmt(mem_reqd,1)//')') &
+                    'Memory required per core to store hash table (MB):', mem_reqd
+            end if
 
             allocate(ht%ind(determ%tot_size), stat=ierr) 
             call check_allocate('determ%hash_table%ind', determ%tot_size, ierr)
@@ -189,26 +224,33 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(sys, determ)
+    subroutine create_determ_hamil(sys, determ, print_info)
 
         use checking, only: check_allocate
         use csr, only: init_csrp
         use fciqmc_data, only: H00
         use hamiltonian, only: get_hmatel
-        use parallel, only: iproc
+        use parallel
         use system, only: sys_t
+        use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
         type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(in) :: print_info
 
         integer :: i, j, nnz, imode, ierr
+        integer :: mem_reqd, max_mem_reqd
         real(p) :: hmatel
+        real :: t1, t2
         logical :: diag_elem
+
+        if (print_info) write(6,'(1X,a72)') 'Counting number of non-zero deterministic Hamiltonian elements to store.'
 
         associate(hamil => determ%hamil)
 
             ! For imode = 1 count the number of non-zero elements, for imode = 2 store them.
             do imode = 1, 2
+                if (imode == 1) call cpu_time(t1)
                 nnz = 0
                 ! Over all deterministic states on all processes (all rows).
                 do i = 1, determ%tot_size
@@ -231,8 +273,27 @@ contains
                         if (hamil%row_ptr(i) == 0) hamil%row_ptr(i) = nnz + 1
                     end if
                 end do
+
                 ! Allocate the CSR type components.
                 if (imode == 1) then
+                    call cpu_time(t2)
+                    if (print_info) then 
+                        write(6,'(1X,a39,1X,f10.2,a1)') 'Time taken to generate the Hamiltonian:', t2-t1, "s"
+                        ! The memory required in MB.
+#ifdef SINGLE_PRECISION
+                        mem_reqd = ((determ%tot_size+1)*4 + nnz*(4 + 4))/10**6
+#else
+                        mem_reqd = ((determ%tot_size+1)*4 + nnz*(4 + 8))/10**6
+#endif
+                    end if
+                    call mpi_allreduce(mem_reqd, max_mem_reqd, 1, mpi_integer, MPI_MAX, MPI_COMM_WORLD, ierr)
+                    if (print_info) then 
+                        write(6,'(1X,a73,'//int_fmt(mem_reqd,1)//')') &
+                            'Maximum memory required by a core for the deterministic Hamiltonian (MB):', mem_reqd
+                        write(6,'(1X,a52)') 'The Hamiltonian will now be recalculated and stored.'
+                    end if
+
+                    ! Allocate the CSR Hamiltonian arrays.
                     call init_csrp(hamil, determ%tot_size, nnz)
                     hamil%row_ptr(1:determ%tot_size) = 0
                 end if
