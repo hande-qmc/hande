@@ -75,10 +75,10 @@ data : :class:`pandas.DataFrame`
 
     md_regex = dict(
         UUID = '^ Calculation UUID:',
-        calc = '^ *(fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc) *$',
+        calc_type = '^ *(fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc) *$',
         sym = r'\bsym\b +\d+',
         ms = 'ms +-*\d+',
-        nel = 'nel',
+        nel = 'nel|electrons',
         nbasis = 'Number of basis functions:',
         truncation = 'truncation_level',
         tau = 'tau',
@@ -92,39 +92,56 @@ data : :class:`pandas.DataFrame`
         git_hash = 'VCS BASE repository version:',
         target = 'varyshift_target',
         shift_damping = 'shift_damping',
-        mc_cycles = 'mc_cycles'
+        mc_cycles = 'mc_cycles',
+        hilbert_space = 'Monte-Carlo estimate of size of space is:',
     )
     md_int = 'sym ms nel nbasis truncation seed bit_length'.split()
     md_float = 'tau ref_energy psingle pdouble init_pop'.split()
     for (k,v) in md_regex.items():
         md_regex[k] = re.compile(v, re.IGNORECASE)
+    input_regex = re.compile('Input options')
+    underline_regex = re.compile('----+')
 
     # Read metadata and figure out how the start line of the data table.
     f = open(filename, 'r')
     start_line = 0
     metadata = pd.Series(index=md_regex.keys(), name='metadata')
+    metadata['input'] = []
     unseen_calc = True
     have_git_hash_next = False
+    have_input = 0
     for line in f:
         start_line += 1
         # extract metadata.
         if have_git_hash_next:
              metadata['git_hash'] = line.split()[0]
              have_git_hash_next = False
+        if have_input <= 3:
+            if have_input == 2 and line.strip() and \
+                    not underline_regex.search(line):
+                metadata['input'].append(line.strip())
+            if input_regex.search(line) or \
+                    (have_input > 0 and underline_regex.search(line)):
+                have_input += 1
         for (k,v) in md_regex.items():
             if v.search(line):
                 # Special cases for unusual formats...
                 if k == 'ref':
                     metadata[k] = v.split(line)[-1].strip()
-                elif k == 'calc' and unseen_calc:
+                elif k == 'calc_type' and unseen_calc:
                     unseen_calc = False
                     metadata[k] = line.split()[0]
                 elif k == 'seed':
                     metadata[k] = int(float(line.split()[-1]))
                 elif k == 'git_hash':
                     have_git_hash_next = True
+                elif k == 'hilbert_space':
+                    metadata[k] = float(line.split()[7])
                 else:
                     val = line.split()[-1]
+                    if val[-1] == '.':
+                        # Remove trailing full-stops.
+                        val = val[:-1]
                     if k in md_int:
                         metadata[k] = int(val)
                     elif k in md_float:
@@ -151,9 +168,9 @@ data : :class:`pandas.DataFrame`
     if float(os.path.getsize(filename))/1024 < 8000 or not temp_file:
         # Read table --- only read the first N columns, where N is the number of
         # column names found.
-        data = pd.io.parsers.read_table(filename, sep='\s+', delim_whitespace=True,
-                   skiprows=start_line, skipfooter=skip_footer, names=column_names,
-                   comment='#')
+        data = pd.io.parsers.read_table(filename, sep='\s+', engine='python',
+                   skiprows=start_line, skipfooter=skip_footer,
+                   names=column_names, comment='#')
         # Remove comment lines and convert all columns to numeric data.
         # Lines starting with a comment have been set to NaN in the iterations
         # column.

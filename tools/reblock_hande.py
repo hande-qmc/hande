@@ -61,8 +61,22 @@ opt_block: :class:`pandas.DataFrame`
     info = pyhande.lazy.std_analysis(files, start_iteration)
 
     if verbose >= 2:
-        print(info.metadata.to_string(na_rep='n/a'))
-        print('')
+
+        col_name = info.metadata.columns.name
+        for (calc_name, calc) in info.metadata.iteritems():
+            calc_local = calc.copy()
+            # problems with pop on pandas 0.13?  It seems to return a list...
+            calc_input = calc_local['input']
+            calc_local = calc_local.drop('input')
+            # Add the calc index to the series and make it come first.
+            calc_local[col_name] = calc_name
+            indx = calc_local.index.copy()
+            indx = indx.delete(indx.get_loc(col_name)).insert(0, col_name)
+            calc_local = calc_local.reindex(indx)
+            print(calc_local.to_string(na_rep='n/a'))
+            if verbose >= 3:
+                print('\nFull input options:\n\n%s' % ('\n'.join(calc_input)))
+            print('')
     if verbose >= 1:
         print(info.reblock.to_string(float_format=float_fmt, line_width=80))
         print('')
@@ -107,12 +121,15 @@ reblock_plot : string
                       'is saved.  Use \'-\' to show plot interactively.  '
                       'Default: off.')
     parser.add_option('-q', '--quiet', dest='verbose', action='store_const',
-                      const=0, default=1, help='')
+                      const=0, default=1,
+                      help='Output only the final summary table.  '
+                      'Overrides --verbose.')
     parser.add_option('-s', '--start', type='int', dest='start_iteration',
                       default=0, help='Iteration number from which to gather '
                            'statistics.  Default: %default.')
-    parser.add_option('-v', '--verbose', dest='verbose', action='store_const',
-                      const=2, help='')
+    parser.add_option('-v', '--verbose', dest='verbose', action='count',
+                      default=1, help='Increase verbosity of the output.  Can '
+                      'be specified multiple times.')
 
     (options, filenames) = parser.parse_args(args)
 
