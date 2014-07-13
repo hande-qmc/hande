@@ -1,5 +1,8 @@
 module semi_stoch
 
+! Code relating to the semi-stochastic algorithm. This includes initialisation
+! code and also routines used throughout the simulation.
+
 use const
 use csr, only: csrp_t
 
@@ -56,6 +59,16 @@ contains
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
         ! deterministic space is determined by determ_type.
+
+        ! In/Out:
+        !    determ: Deterministic space being used.
+        ! In:
+        !    sys: system being studied
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    determ_type: Integer parameter specifying which type of
+        !        deterministic space to use.
+        !    determ_target_size: A size of deterministic space to aim for. This
+        !        is only necessary for particular deterministic spaces.
 
         use basis, only: total_basis_length
         use checking, only: check_allocate, check_deallocate
@@ -168,6 +181,11 @@ contains
 
     subroutine create_determ_hash_table(determ, print_info)
 
+        ! In/Out:
+        !    determ: Deterministic space being used.
+        ! In:
+        !    print_info: Should we print information to the screen?
+
         use basis, only: total_basis_length
         use checking, only: check_allocate, check_deallocate
         use hashing, only: murmurhash_bit_string
@@ -233,6 +251,12 @@ contains
     end subroutine create_determ_hash_table
 
     subroutine create_determ_hamil(sys, determ, print_info)
+
+        ! In/Out:
+        !    determ: Deterministic space being used.
+        ! In:
+        !    sys: system being studied
+        !    print_info: Should we print information to the screen?
 
         use checking, only: check_allocate
         use csr, only: init_csrp
@@ -323,6 +347,11 @@ contains
         ! walker_data. All deterministic states not already in walker_dets are
         ! set to have an initial sign of zero.
 
+        ! In/Out:
+        !    determ: Deterministic space being used.
+        ! In:
+        !    sys: system being studied
+
         use basis, only: basis_length
         use calc, only: dmqmc_calc, hfs_fciqmc_calc, trial_function
         use calc, only: neel_singlet, doing_calc
@@ -388,6 +417,11 @@ contains
 
         ! If f is a deterministic state, return is_determ as true.
 
+        ! In:
+        !    ht: Hash table used to index deterministic states.
+        !    dets: Array containing all deterministic states from all processors.
+        !    f: Determinant whose status is to be returned.
+
         use basis, only: total_basis_length
         use hashing, only: murmurhash_bit_string
 
@@ -415,6 +449,12 @@ contains
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
         ! amplitudes are then added to the spawning array.
+
+        ! In/Out:
+        !    rng: random number generator.
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        ! In:
+        !    determ: Deterministic space being used.
 
         use calc, only: initiator_approximation
         use csr, only: csrp_row
@@ -490,6 +530,14 @@ contains
 
     subroutine add_det_to_determ_space(determ, spawn, f, check_proc)
 
+        ! In/Out:
+        !    determ: Deterministic space being used.
+        ! In:
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    f: det to be added to the determ object.
+        !    check_proc: If true then first check if f belongs to this
+        !        processor. If not then don't add it.
+
         use basis, only: total_basis_length
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs
@@ -520,6 +568,14 @@ contains
         ! Find the most highly populated determinants in walker_dets and use
         ! these to define the deterministic space. When using this routine
         ! the restart option should have been used, although it is not required.
+
+        ! In/Out:
+        !    determ: Deterministic space being used.
+        ! In:
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    target_size: Size of deterministic space to use if possible. If
+        !        not then use the largest space possible (all determinants from
+        !        the restart file)).
 
         use basis, only: total_basis_length
         use checking, only: check_allocate, check_deallocate
@@ -624,6 +680,17 @@ contains
         ! NOTE: It is assumed that size(dets_in,2) >= size(dets_out,2) and
         ! similarly for pops_in and pops_out.
 
+        ! In:
+        !    dets_in: List of determinants to consider.
+        !    pops_in: Populations corresponding to the determinants in dets_in.
+        !    ndets_in: The number of determinants in dets_in to consider.
+        !    ndets_out: The number of determinants to keep when finding the
+        !        most populated determinants. Anything beyond ndets_out in
+        !        dets_out and pops_out may be garbage.
+        ! Out:
+        !    dets_out: List of most populated determinants.
+        !    pops_out: Populations corresponding to the determinants in dets_out.
+
         integer(i0), intent(in) :: dets_in(:,:) 
         integer(int_p), intent(in) :: pops_in(:,:)
         integer, intent(in) :: ndets_in, ndets_out
@@ -681,6 +748,15 @@ contains
         ! NOTE 2: It is assumed that npops_in >= nind_out. It is up to the
         ! programmer to ensure this is true and there will likely be errors if
         ! it isn't.
+
+        ! In:
+        !    pops: List of populations to be maximised.
+        !    npops_in: The number of populations in pops to consider.
+        !    nind_out: The number of indices to keep when finding the
+        !        most populated entries in pops. Anything beyond nind_out in
+        !        indices may be garbage.
+        ! Out:
+        !    indices: List of the indices of the largest values in pops.
 
         integer(int_p), intent(in) :: pops(:)
         integer, intent(in) :: npops_in
