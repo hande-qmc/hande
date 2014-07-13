@@ -395,6 +395,10 @@ contains
                 call readf(pattempt_single)
                 call readf(pattempt_double)
 
+            ! Calculation options: CCMC.
+            case('move_freq')
+                call readi(ccmc_move_freq)
+
             ! Calculation options: Folded spectrum.
             case('FOLD_LINE')
                 call readf(fold_line)
@@ -892,6 +896,8 @@ contains
         call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
+
+        call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)

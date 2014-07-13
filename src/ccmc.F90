@@ -63,7 +63,7 @@ module ccmc
 ! CCMC papers but this definition is not convenient for computation.  See
 ! comments in collapse_cluster and convert_excitor_to_determinant.
 !
-! We can only handle uniquely defined excitors, i.e. we consider t_{ij}^{ab}, 
+! We can only handle uniquely defined excitors, i.e. we consider t_{ij}^{ab},
 ! t_{ji}^{ba}, t_{ji}^{ab} and t_{ij}^{ba} to be one entity.  This is fine as
 ! t_{ij}^{ab} a_{ij}^{ab} = t_{ji}^{ba} a_{ji}^{ba} = -t_{ji}^{ab} = -t_{ij}^{ba}.
 ! As a consequence, we must be very careful with the above expansion in (5).  We
@@ -169,8 +169,6 @@ use const, only: i0, int_p, lint, p
 
 implicit none
 
-integer :: D0_normalisation
-
 contains
 
     subroutine do_ccmc(sys)
@@ -188,7 +186,6 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
         use utils, only: rng_init_info
-        ! TODO: parallelisation.
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
@@ -198,14 +195,20 @@ contains
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
         use ccmc_data, only: cluster_t
-        use determinants, only: det_info, alloc_det_info, dealloc_det_info
+        use determinants, only: det_info, alloc_det_info, dealloc_det_info, det_compare
         use excitations, only: excit, get_excitation_level
-        use fciqmc_data
-        use qmc_common
+        use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
+                               walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
+                               dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
+                               tot_walkers, walker_length, write_fciqmc_report_header,               &
+                               write_fciqmc_final, nparticles, ccmc_move_freq, real_factor
+        use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
+                              init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle
         use proc_pointers
         use search, only: binary_search
+        use spawning, only: assign_particle_processor
         use system, only: sys_t
-        
+
         type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
@@ -218,13 +221,14 @@ contains
         type(excit) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
         type(dSFMT_t), allocatable :: rng(:)
-        real(p) :: junk
+        real(p) :: junk, bloom_threshold
 
         logical :: soft_exit
 
         integer(int_p), allocatable :: cumulative_abs_pops(:)
-        integer :: D0_pos, max_cluster_size
+        integer :: D0_proc, D0_pos, max_cluster_size
         integer(int_p) :: tot_abs_pop
+        integer :: D0_normalisation
         logical :: hit
         type(bloom_stats_t) :: bloom_stats
 
@@ -260,7 +264,7 @@ contains
         call check_allocate('cluster', size(cluster), ierr)
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
-            call dSFMT_init(seed+(iproc*nthreads)+i, 50000, rng(i))
+            call dSFMT_init(seed+iproc+i*nprocs, 50000, rng(i))
             ! ...and allocate det_info components...
             call alloc_det_info(sys, cdet(i))
             ! ...and cluster_t components
@@ -282,11 +286,19 @@ contains
 
         nparticles_old = tot_nparticles
 
+        ! Initialise D0_pos to be somewhere (anywhere) in the list.
+        D0_pos = 1
+
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(sys)
         ! Initialise timer.
         call cpu_time(t1)
+
+        ! Initialise hash shift if restarting...
+        qmc_spawn%hash_shift = mc_cycles_done
+        ! Hard code how frequently (ie 2^10) a determinant can move.
+        qmc_spawn%move_freq = ccmc_move_freq
 
         do ireport = 1, nreport
 
@@ -294,28 +306,72 @@ contains
 
             do icycle = 1, ncycles
 
-                ! Population on reference determinant.
-                ! As we might select the reference determinant multiple times in
-                ! a cycle, the running total of D0_population is incorrect (by
-                ! a factor of the number of times it was selected).
-                call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
-                ! [note] - D0_normalisation will need to be real for CCMC with real excips.
-                D0_normalisation = int(walker_population(1,D0_pos))
+                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                                                   qmc_spawn%move_freq, nprocs)
+
+                ! Update the shift of the excitor locations to be the end of this
+                ! current iteration.
+                qmc_spawn%hash_shift = qmc_spawn%hash_shift + 1
+
+                if (iproc == D0_proc) then
+
+                    ! Population on reference determinant.
+                    ! As we might select the reference determinant multiple times in
+                    ! a cycle, the running total of D0_population is incorrect (by
+                    ! a factor of the number of times it was selected).
+                    if (D0_pos == -1) then
+                        ! D0 was just moved to this processor.  No idea where it might be...
+                        call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
+                    else
+                        select case(det_compare(f0, walker_dets(:,D0_pos), size(f0)))
+                        case(0)
+                            ! D0 hasn't moved.
+                            hit = .true.
+                        case(1)
+                            ! D0 < walker_dets(:,D0_pos) -- it has moved to earlier in
+                            ! the list and the old D0_pos is an upper bound.
+                            call binary_search(walker_dets, f0, 1, D0_pos, hit, D0_pos)
+                        case(-1)
+                            ! D0 > walker_dets(:,D0_pos) -- it has moved to later in
+                            ! the list and the old D0_pos is a lower bound.
+                            call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
+                        end select
+                    end if
+                    ! [note] - D0_normalisation will need to be real for CCMC with real excips.
+                    D0_normalisation = int(walker_population(1,D0_pos))
+
+                    ! Maximum possible cluster size that we can generate.
+                    ! Usually this is either the number of electrons or the
+                    ! truncation level + 2 but we must handle the case where we are
+                    ! growing the initial population from a single/small number of
+                    ! excitors.
+                    ! Can't include the reference in the cluster, so -1 from the
+                    ! total number of excitors.
+                    max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
+
+                else
+
+                    max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers)
+
+                    ! Can't find D0 on this processor.  (See how D0_pos is used
+                    ! in select_cluster.)
+                    D0_pos = -1
+
+                end if
+
+#ifdef PARALLEL
+                call mpi_bcast(D0_normalisation, 1, mpi_integer, D0_proc, MPI_COMM_WORLD, ierr)
+#endif
 
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(nattempts, ndeath)
-
-                ! Maximum possible cluster size that we can generate.
-                ! Usually this is either the number of electrons or the
-                ! truncation level + 2 but we must handle the case where we are
-                ! growing the initial population from a single/small number of
-                ! excitors.
-                max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
+                call init_mc_cycle(nattempts, ndeath, int(D0_normalisation,lint))
 
                 ! Find cumulative population...
-                call cumulative_population(walker_population, tot_walkers, D0_pos, cumulative_abs_pops, tot_abs_pop)
+                call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
+
+                bloom_threshold = ceiling(max(nattempts, tot_walkers)*bloom_stats%prop)
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
@@ -326,8 +382,8 @@ contains
                 !$omp do schedule(dynamic,200) private(nspawned, connection, junk) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
-                    call select_cluster(rng(it), nattempts, D0_pos, cumulative_abs_pops, tot_abs_pop, max_cluster_size, &
-                                        cdet(it), cluster(it))
+                    call select_cluster(rng(it), nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
+                                        tot_abs_pop, max_cluster_size, cdet(it), cluster(it))
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
 
@@ -351,9 +407,10 @@ contains
 
                         if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
-                            if (abs(nspawned) > ceiling(bloom_stats%prop*tot_walkers)) &
+                            if (abs(nspawned) > bloom_threshold) then
                                 ! [todo] - adapt bloom_handler to handle real psips/excips.
                                 call accumulate_bloom_stats(bloom_stats, int(nspawned))
+                            end if
                         end if
 
                         ! Does the cluster collapsed onto D0 produce
@@ -369,6 +426,12 @@ contains
                 !$omp end do
                 !$omp end parallel
 
+                ! Redistribute excips to new processors.
+                ! The spawned excips were sent to the correct processors with
+                ! the current hash shift, so it's just those in the main list
+                ! that we need to deal with.
+                if (nprocs > 1) call redistribute_excips(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
+
                 call direct_annihilation(sys, rng(it), initiator_approximation)
 
                 ! Ok, this is fairly non-obvious.
@@ -378,10 +441,12 @@ contains
                 ! Not doing so means that the quality of the sampling of the sum
                 ! (the space of which is constant) varies with population.  The
                 ! bias is small but noticeable in some systems.
-! JSS: Need to discuss with AJWT, but it looks like we should *not* normalise D0
-! as well as proj_energy_cycle.
-!                D0_population_cycle = D0_population_cycle/nattempts
-                proj_energy_cycle = proj_energy_cycle/nattempts
+                if (nattempts > 0) then
+! JSS TODO: Need to discuss with AJWT, but it looks like we should *not* normalise D0
+! as well as proj_energy_cycle.  Inconsistency between proj_energy and D0 accumulation?!
+!                    D0_population_cycle = D0_population_cycle/nattempts
+                    proj_energy_cycle = proj_energy_cycle/nattempts
+                end if
 
                 call end_mc_cycle(ndeath, nattempts)
 
@@ -422,7 +487,7 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(rng, nattempts, D0_pos, cumulative_excip_pop, tot_excip_pop, max_size, cdet, cluster)
+    subroutine select_cluster(rng, nattempts, normalisation, D0_pos, cumulative_excip_pop, tot_excip_pop, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -433,7 +498,10 @@ contains
         ! In:
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
-        !    D0_pos: position in the excip list of the reference.
+        !    normalisation: intermediate normalisation factor, N_0, where we use the
+        !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
+        !    D0_pos: position in the excip list of the reference.  Must be negative
+        !       if the reference is not on the processor.
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_population(1:i)).
         !    tot_excip_pop: total excip population.
@@ -467,9 +535,10 @@ contains
         use utils, only: factorial
         use search, only: binary_search
         use sort, only: insert_sort
+        use parallel, only: nprocs
 
         integer(lint), intent(in) :: nattempts
-        integer, intent(in) :: D0_pos
+        integer, intent(in) :: D0_pos, normalisation
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         integer :: max_size
         type(dSFMT_t), intent(inout) :: rng
@@ -484,13 +553,16 @@ contains
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
         ! where
-        !   n_sel   is the number of cluster selections made (by this
-        !           processor);
+        !   n_sel   is the number of cluster selections made;
         !   p_size  is the probability of choosing a cluster of that size;
         !   p_clust is the probability of choosing a specific cluster given
         !           the choice of size.
 
-        cluster%pselect = nattempts
+        ! Each processor does nattempts, so the selection probability
+        ! is nattempts*nprocs as there are nprocs processors.
+        ! NB within a processor those nattempts can be split amongst OpenMP
+        ! threads though that doesn't affect this probability.
+        cluster%pselect = nattempts*nprocs
 
         ! Select the cluster size, i.e. the number of excitors in a cluster.
         ! For a given truncation_level, only clusters containing at most
@@ -535,9 +607,10 @@ contains
             ! Must be the reference.
             cdet%f = f0
             cluster%excitation_level = 0
-            cluster%amplitude = D0_normalisation
+            cluster%amplitude = normalisation
             cluster%cluster_to_det_sign = 1
-            if (cluster%amplitude <= initiator_population) then
+            cluster%pselect = cluster%pselect
+            if (abs(cluster%amplitude) <= initiator_population) then
                 ! Something has gone seriously wrong and the CC
                 ! approximation is (most likely) not suitably for this system.
                 ! Let the user be an idiot if they want to be...
@@ -555,7 +628,7 @@ contains
             ! searching of the cumulative population list.
             do i = 1, cluster%nexcitors
                 ! Select a position in the excitors list.
-                pop(i) = int(get_rand_close_open(rng)*tot_excip_pop, int_p) + 1 ! TODO: adjust for parallel
+                pop(i) = int(get_rand_close_open(rng)*tot_excip_pop, int_p) + 1
             end do
             call insert_sort(pop(:cluster%nexcitors))
             prev_pos = 1
@@ -581,9 +654,12 @@ contains
                     call collapse_cluster(walker_dets(:,pos), int(walker_population(1,pos)), cdet%f, cluster_population, allowed)
                     if (.not.allowed) exit
                 end if
-                if (walker_population(1,pos) <= initiator_population) cdet%initiator_flag = 1
+                ! If the excitor's population is below the initiator threshold, we remove the
+                ! initiator status for the cluster
+                if (abs(walker_population(1,pos)) <= initiator_population) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = pop/tot_pop.
-                cluster%pselect = (cluster%pselect*abs(int(walker_population(1,pos))))/tot_excip_pop
+                ! This is divided by nprocs as each excitor spends its time moving between nprocs processors
+                cluster%pselect = (cluster%pselect*abs(walker_population(1,pos))/nprocs)/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
                 prev_pos = pos
             end do
@@ -609,7 +685,7 @@ contains
                 call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign)
 
                 ! Normalisation factor for cluster%amplitudes...
-                cluster%amplitude = cluster_population/(real(D0_normalisation,p)**(cluster%nexcitors-1))
+                cluster%amplitude = cluster_population/(real(normalisation,p)**(cluster%nexcitors-1))
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
@@ -672,6 +748,7 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
+        use parallel, only: iproc
 
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
@@ -733,7 +810,7 @@ contains
         !    sys: system being studied.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
-        !    cluster: 
+        !    cluster: information about the cluster which forms the excitor.
         !    amplitude: amplitude of cluster.
         !    pcluster: Overall probabilites of selecting this cluster, ie
         !        n_sel.p_s.p_clust.
@@ -744,7 +821,7 @@ contains
         use determinants, only: det_info
         use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn
         use excitations, only: excit, get_excitation_level
-        use proc_pointers, only: sc0_ptr
+        use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
@@ -786,7 +863,8 @@ contains
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
-            call create_spawned_particle_truncated(cdet, null_excit, nkill, 1, qmc_spawn)
+!            cdet%initiator_flag=0  !All death is allowed
+            call create_spawned_particle_ptr(cdet, null_excit, nkill, 1, qmc_spawn)
         end if
 
     end subroutine stochastic_ccmc_death
@@ -1022,5 +1100,76 @@ contains
         end do
 
     end subroutine convert_excitor_to_determinant
+
+    subroutine redistribute_excips(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
+
+        ! Due to the cooperative spawning (ie from multiple excitors at once) in
+        ! CCMC, we need to give each excitor the chance to be on the same
+        ! processor with all combinations of excitors, unlike in FCIQMC where
+        ! the spawning events are independent.  We satisfy this by periodically
+        ! moving an excitor to a different processor (MPI rank).
+
+        ! WARNING: if the number of processors is large or the system small,
+        ! this introduces a bias as load balancing prevents all possible
+        ! clusters from being on the same processor at the same time.
+
+        ! In:
+        !    walker_dets: list of occupied excitors on the current processor.
+        !    total_walkers: number of occupied excitors on the current processor.
+        ! In/Out:
+        !    nparticles: number of excips on the current processor.
+        !    walker_populations: Population on occupied excitors.  On output the
+        !        populations of excitors which are sent to other processors are
+        !        set to zero.
+        !    spawn: spawn_t object.  On output particles which need to be sent
+        !        to another processor have been added to the correct position in
+        !        the spawned store.
+
+        use basis, only: basis_length
+        use const, only: i0, dp
+        use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor, add_spawned_particles
+        use parallel, only: iproc, nprocs
+
+        integer(i0), intent(in) :: walker_dets(:,:)
+        integer, intent(inout) :: walker_populations(:,:)
+        integer, intent(inout) :: tot_walkers
+        real(dp), intent(inout) :: nparticles(:)
+        type(spawn_t), intent(inout) :: spawn
+
+        real(dp) :: nsent(size(nparticles))
+
+        integer :: iexcitor, pproc
+
+        nsent = 0.0_dp
+
+        !$omp parallel do default(none) &
+        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs) &
+        !$omp private(pproc) reduction(+:nsent)
+        do iexcitor = 1, tot_walkers
+            !  - set hash_shift and move_freq
+            pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
+                                              spawn%hash_shift, spawn%move_freq, nprocs)
+            if (pproc /= iproc) then
+                ! Need to move.
+                ! Add to spawned array so it will be sent to the correct
+                ! processor during annihilation.
+                ! NOTE: for initiator calculations we need to keep this
+                ! population no matter what.  This relies upon the
+                ! (undocumented) 'feature' that a flag of 0 indicates the parent
+                ! was an initiator...
+                call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
+                ! Update population on the sending processor.
+                nsent = nsent + abs(walker_populations(:,iexcitor))
+                ! Zero population here.  Will be pruned on this determinant
+                ! automatically during annihilation (which will also update tot_walkers).
+                walker_populations(:,iexcitor) = 0
+            end if
+        end do
+        !$omp end parallel do
+
+        nparticles = nparticles - nsent
+
+    end subroutine redistribute_excips
 
 end module ccmc

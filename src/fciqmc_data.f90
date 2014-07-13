@@ -64,6 +64,12 @@ integer(int_p) :: real_factor
 ! the spawned list.
 real(p) :: spawn_cutoff
 
+!--- Input data: CCMC ---
+
+! How frequently (in log_2) an excitor can be moved to a different processor.
+! See comments in spawn_t and assign_particle_processor.
+integer :: ccmc_move_freq = 5
+
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless
@@ -400,9 +406,6 @@ real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
 ! Energy of reference determinant.
 real(p) :: H00
-
-! Processor on which the reference determinant is kept.
-integer :: D0_proc
 
 ! How often do we change the reference determinant to the determinant with
 ! greatest population?

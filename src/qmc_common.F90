@@ -39,7 +39,7 @@ contains
         use errors, only: stop_all
 
         integer, parameter :: particle_type = 1
-        integer :: i, fmax(basis_length)
+        integer :: i, fmax(basis_length), D0_proc
         integer(int_p) :: max_pop
 #ifdef PARALLEL
         integer(int_p) :: in_data(2), out_data(2)
@@ -235,7 +235,7 @@ contains
 
     end subroutine find_single_double_prob
 
-    subroutine cumulative_population(pops, nactive, d0_pos, cumulative_pops, tot_pop)
+    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, cumulative_pops, tot_pop)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -253,12 +253,12 @@ contains
         !       minimum length of nactive.
         !    nactive: number of occupied determinants/excitors (ie pops(:,1:nactive)
         !       contains the population(s) on each currently "active"
-        !       determinat/excitor.
+        !       determinant/excitor.
         !    D0_pos: position in the pops list of the reference.  Only relevant if
         !       1<=D0_pos<=nactive and the processor holds the reference.
         ! Out:
         !    cumulative_pops: running total of excitor population, i.e.
-        !        cumulative_pops(i) = sum(pops(1:i)), excluding the
+        !        cumulative_pops(i) = sum(abs(pops(1:i))), excluding the
         !        population on the reference if appropriate.
         !    tot_pop: total population (possibly excluding the population on the
         !       reference).
@@ -269,11 +269,10 @@ contains
 
         ! WARNING: almost certainly not suitable for a parallel implementation.
 
-        use fciqmc_data, only: D0_proc
         use parallel, only: iproc
 
         integer(int_p), intent(in) :: pops(:,:)
-        integer, intent(in) :: nactive, d0_pos
+        integer, intent(in) :: nactive, D0_proc, D0_pos
         integer(int_p), intent(out) :: cumulative_pops(:), tot_pop
 
         integer :: i
@@ -299,7 +298,11 @@ contains
                 cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
             end do
         end if
-        tot_pop = cumulative_pops(nactive)
+        if (nactive > 0) then
+            tot_pop = cumulative_pops(nactive)
+        else
+            tot_pop = 0
+        end if
 
     end subroutine cumulative_population
 
@@ -542,11 +545,13 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(nattempts, ndeath)
+    subroutine init_mc_cycle(nattempts, ndeath, min_attempts)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
 
+        ! In:
+        !    min_attempts (optional): if present, set nattempts to be at least this value.
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
         !        processor) this cycle.
@@ -555,6 +560,7 @@ contains
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
 
+        integer(lint), intent(in), optional :: min_attempts
         integer(lint), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
 
@@ -590,6 +596,8 @@ contains
             ! determinant and a chance to die/clone.
             nattempts = nint(2*nparticles(1))
         end if
+
+        if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
     end subroutine init_mc_cycle
 

@@ -623,9 +623,9 @@ contains
         ! Move to the next position in the spawning array.
         qmc_spawn%head(0,iproc_spawn) = qmc_spawn%head(0,iproc_spawn) + 1
 
-        ! qmc_spawn%head_start(0,1) holds the number of slots in the spawning
-        ! array per processor.
-        if (qmc_spawn%head(0,iproc_spawn) - qmc_spawn%head_start(0,iproc_spawn) >= qmc_spawn%head_start(0,1)) &
+        ! qmc_spawn%head_start(nthreads-1,i) stores the last entry before the
+        ! start of the block of spawned particles to be sent to processor i.
+        if (qmc_spawn%head(0,iproc_spawn) - qmc_spawn%head_start(nthreads-1,iproc_spawn) >= qmc_spawn%block_size) &
             call stop_all('create_diagonal_density_matrix_particle', 'There is no space left in the spawning array.')
 
         ! Set info in spawning array.

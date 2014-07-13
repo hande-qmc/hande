@@ -26,7 +26,7 @@ module bloom_handler
 
         ! The proportion of the total number of particles which has to be spawned in one
         ! event to define a bloom.   Used (by convention) if mode = bloom_mode_fixedn.
-        real(p) :: prop = 0.05
+        real(p) :: prop = 0.05_p
 
         ! The absolute number of particles which has to be spawned in one event to define
         ! a bloom.   Used (by convention) if mode = bloom_mode_fractionn.
