@@ -377,9 +377,20 @@ contains
                 ! processor.
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
-                !$omp parallel private(it)
+                ! NOTE: we can't refer to procedure pointers in shared blocks so
+                ! can't use default(none).  I *strongly* recommend turning
+                ! default(none) on when making changes and ensure that the only
+                ! errors relate to the procedure pointers...
+                !$omp parallel &
+                ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
+                !$omp private(it, nspawned, connection, junk) &
+                !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
+                !$omp        max_cluster_size, cdet, cluster, truncation_level, &
+                !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
+                !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
+                !$omp        proj_energy, real_factor)
                 it = get_thread_id()
-                !$omp do schedule(dynamic,200) private(nspawned, connection, junk) reduction(+:D0_population_cycle,proj_energy)
+                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
                     call select_cluster(rng(it), nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
