@@ -273,6 +273,24 @@ contains
 
     end subroutine annihilate_wrapper_spawn_t_arr
 
+    pure function calc_events_spawn_t(spawn) result(nevents)
+
+        ! In:
+        !    spawn: spawn_t object containing spawned particles *before* any
+        !        communication/thread compression/etc.
+
+        ! Returns:
+        !     number of spawning events which occurred on the processor.
+
+        use parallel, only: nthreads
+
+        integer :: nevents
+        type(spawn_t), intent(in) :: spawn
+
+        nevents = sum(spawn%head - (spawn%head_start + nthreads - 1))
+
+    end function calc_events_spawn_t
+
 !--- Thread handling and communication ---
 
     elemental subroutine compress_threaded_spawn_t(spawn)

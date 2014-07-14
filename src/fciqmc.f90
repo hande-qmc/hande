@@ -47,7 +47,7 @@ contains
         type(bloom_stats_t) :: bloom_stats
 
         integer(int_p) :: nspawned, ndeath
-        integer :: nattempts_current_det
+        integer :: nattempts_current_det, nspawn_events
         type(excit) :: connection
         real(p) :: hmatel
         real(dp) :: real_population
@@ -126,9 +126,9 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, rng, initiator_approximation)
+                call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
 
-                call end_mc_cycle(ndeath, nattempts)
+                call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
             end do
 

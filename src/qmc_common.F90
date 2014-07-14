@@ -666,20 +666,22 @@ contains
 
     end subroutine end_report_loop
 
-    subroutine end_mc_cycle(ndeath, nattempts)
+    subroutine end_mc_cycle(nspawn_events, ndeath, nattempts)
 
         ! Execute common code at the end of a Monte Carlo cycle.
 
         ! In:
-        !    ndeath: number of particle deaths in the cycle.
+        !    nspawn_events: number of successful spawning events in the cycle.
+        !    ndeath: (unscaled) number of particle deaths in the cycle.
         !    nattempts: number of attempted spawning events in the cycle.
 
+        integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
 
         ! Add the spawning rate (for the processor) to the running
         ! total.
-        rspawn = rspawn + spawning_rate(ndeath, nattempts)
+        rspawn = rspawn + spawning_rate(nspawn_events, ndeath, nattempts)
 
         ! Accumulate population on reference and projected estimator.
         D0_population = D0_population + D0_population_cycle

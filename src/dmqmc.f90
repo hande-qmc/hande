@@ -47,7 +47,7 @@ contains
         type(det_info) :: cdet1, cdet2
         integer(int_p) :: nspawned, ndeath
         type(excit) :: connection
-        integer :: spawning_end
+        integer :: spawning_end, nspawn_events
         logical :: soft_exit
         real :: t1, t2
         type(dSFMT_t) :: rng
@@ -186,9 +186,9 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, initiator_approximation)
+                    call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
 
-                    call end_mc_cycle(ndeath, nattempts)
+                    call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
                     ! If doing importance sampling *and* varying the weights of
                     ! the trial function, call a routine to update these weights

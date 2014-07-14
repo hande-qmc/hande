@@ -460,36 +460,37 @@ contains
 
     !--- Statistics. ---
 
-    function spawning_rate(ndeath, nattempts) result(rate)
+    function spawning_rate(nspawn_events, ndeath, nattempts) result(rate)
 
         ! Calculate the rate of spawning on the current processor.
         ! In:
-        !    ndeath: number of particles that were killed/cloned during the MC
-        !    cycle.
+        !    nspawn_events: number of successful spawning events during the
+        !       MC cycle.
+        !    ndeath: (unscaled) number of particles that were killed/cloned
+        !       during the MC cycle.
         !    nattempts: The number of attempts to spawn made in order to
-        !    generate the current population of walkers in the spawned arrays.
-        !    Note that this is *not* the same as nparticles as nparticles is
-        !    updated during the Monte Carlo cycle as particles die.
-        !    It is, however, identical to the number of particles on the
-        !    processor at the beginning of the Monte Carlo cycle (multiplied by
-        !    2 for the timestep algorithm).
+        !       generate the current population of walkers in the spawned arrays.
 
         use parallel, only: nprocs
 
         real(p) :: rate
-        integer(int_p), intent(in) :: ndeath
+        integer(int_p), intent(in) :: nspawn_events, ndeath
         integer(lint), intent(in) :: nattempts
         real(dp) :: ndeath_real
-        integer :: nspawn
 
-        nspawn = sum(qmc_spawn%head(0,:nprocs-1) - qmc_spawn%head_start(0,:nprocs-1))
+        ! Death is not scaled if using real
         ndeath_real = real(ndeath,dp)/real_factor
         ! The total spawning rate is
-        !   (nspawn + ndeath_real) / nattempts
-        ! In the timestep algorithm each particle has 2 attempts (one to spawn on a different
-        ! determinant and one to clone/die).
+        !   (nspawn + ndeath) / nattempts
+        ! In, for example, the timestep algorithm each particle has 2 attempts
+        ! (one to spawn on a different determinant and one to clone/die).
+        ! ndeath is the number of particles that died, which hence equals the
+        ! number of successful death attempts (assuming the timestep is not so
+        ! large that death creates more than one particle).
+        ! By ignoring the number of particles spawned in a single event, we
+        ! hence are treating the death and spawning events on the same footing.
         if (nattempts > 0) then
-            rate = (nspawn+ndeath_real)/nattempts
+            rate = (nspawn_events + ndeath_real)/nattempts
         else
             ! Can't have done anything.
             rate = 0.0_p
