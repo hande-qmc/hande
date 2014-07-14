@@ -460,6 +460,7 @@ contains
         use csr, only: csrp_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: shift, tau, real_factor
+        use omp_lib
         use parallel, only: nprocs, iproc, nthreads
         use spawn_data, only: spawn_t
 
