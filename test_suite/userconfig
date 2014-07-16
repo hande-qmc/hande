@@ -1,5 +1,5 @@
 [hubbard]
-exe = ../bin/hande.x
+exe = ../bin/hande_mod_comm.x
 timing_output = cpu elapsed
 inputs_args = ('*.in', '')
 vcs = git
@@ -7,4 +7,5 @@ extract_program = ../tools/extract.py
 
 [user]
 diff = vimdiff
-benchmark = cb1fb05
+benchmark = 6d904b0
+
