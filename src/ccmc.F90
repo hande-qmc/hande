@@ -1132,7 +1132,7 @@ contains
         use parallel, only: iproc, nprocs
 
         integer(i0), intent(in) :: walker_dets(:,:)
-        integer, intent(inout) :: walker_populations(:,:)
+        integer(int_p), intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
         real(dp), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
@@ -1163,7 +1163,7 @@ contains
                 nsent = nsent + abs(walker_populations(:,iexcitor))
                 ! Zero population here.  Will be pruned on this determinant
                 ! automatically during annihilation (which will also update tot_walkers).
-                walker_populations(:,iexcitor) = 0
+                walker_populations(:,iexcitor) = 0_int_p
             end if
         end do
         !$omp end parallel do

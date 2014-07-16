@@ -614,7 +614,8 @@ contains
         use omp_lib
 
         integer(i0), intent(in) :: f_new(:)
-        integer, intent(in) :: nspawn, particle_type, iproc_spawn
+        integer(int_p), intent(in) :: nspawn
+        integer, intent(in) :: particle_type, iproc_spawn
         type(spawn_t), intent(inout) :: spawn
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
@@ -655,7 +656,8 @@ contains
         use omp_lib
 
         integer(i0), intent(in) :: f_new(:)
-        integer, intent(in) :: nspawn, particle_type, flag, iproc_spawn
+        integer(int_p), intent(in) :: nspawn
+        integer, intent(in) :: particle_type, flag, iproc_spawn
         type(spawn_t), intent(inout) :: spawn
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
@@ -694,7 +696,7 @@ contains
         use omp_lib
 
         integer(i0), intent(in) :: f_new(:)
-        integer, intent(in) :: nspawn(:) ! (spawn%ntypes)
+        integer(int_p), intent(in) :: nspawn(:) ! (spawn%ntypes)
         integer, intent(in) :: iproc_spawn
         type(spawn_t), intent(inout) :: spawn
 #ifndef _OPENMP
