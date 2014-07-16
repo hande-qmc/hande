@@ -1,5 +1,5 @@
 [hubbard]
-exe = ../bin/hande_mod_comm.x
+exe = ../bin/hande.x
 timing_output = cpu elapsed
 inputs_args = ('*.in', '')
 vcs = git
