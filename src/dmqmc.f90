@@ -46,6 +46,7 @@ contains
         integer :: nel_temp, nattempts_current_det
         type(det_info) :: cdet1, cdet2
         integer(int_p) :: nspawned, ndeath
+        real(p) :: real_nspawned
         type(excit) :: connection
         integer :: spawning_end
         logical :: soft_exit
@@ -146,8 +147,10 @@ contains
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, &
                                                                             spawning_end, ireplica, qmc_spawn)
-                                        if (abs(nspawned) >= bloom_stats%n_bloom) &
-                                            call accumulate_bloom_stats(bloom_stats, nspawned)
+
+                                        real_nspawned = real(nspawned,p)/real_factor
+                                        if (abs(real_nspawned) >= bloom_stats%n_bloom) &
+                                            call accumulate_bloom_stats(bloom_stats, real_nspawned)
                                     end if
 
                                     ! Now attempt to spawn from the second end.
@@ -157,8 +160,10 @@ contains
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
                                                                             ireplica, qmc_spawn)
-                                        if (abs(nspawned) >= bloom_stats%n_bloom) &
-                                            call accumulate_bloom_stats(bloom_stats, nspawned)
+
+                                        real_nspawned = real(nspawned,p)/real_factor
+                                        if (abs(real_nspawned) >= bloom_stats%n_bloom) &
+                                            call accumulate_bloom_stats(bloom_stats, real_nspawned)
                                     end if
                                 end do
                             end if

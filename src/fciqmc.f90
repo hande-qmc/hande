@@ -49,7 +49,7 @@ contains
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det
         type(excit) :: connection
-        real(p) :: hmatel
+        real(p) :: hmatel, real_nspawned
         real(dp) :: real_population
 
         logical :: soft_exit
@@ -115,8 +115,10 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
-                            if (abs(nspawned) >= bloom_stats%n_bloom) &
-                                call accumulate_bloom_stats(bloom_stats, nspawned)
+
+                            real_nspawned = real(nspawned,p)/real_factor
+                            if (abs(real_nspawned) >= bloom_stats%n_bloom) &
+                                call accumulate_bloom_stats(bloom_stats, real_nspawned)
                         end if
 
                     end do

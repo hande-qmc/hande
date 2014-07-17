@@ -41,9 +41,9 @@ module bloom_handler
         integer :: nwarnings_curr = 0
 
         ! The maximum number of excips spawned by a single bloom.
-        integer :: max_bloom = 0
+        real(p) :: max_bloom = 0.0_p
         ! The total number of excips spawned by all blooms.
-        real(p) :: tot_bloom = 0
+        real(p) :: tot_bloom = 0.0_p
 
     end type bloom_stats_t 
 
@@ -63,7 +63,7 @@ module bloom_handler
             use errors, only: stop_all
 
             type(bloom_stats_t), intent(inout) :: bloom_stats
-            integer, intent(in) :: nspawn
+            real(p), intent(in) :: nspawn
 
             ! Not thread safe (unless each thread has its own bloom_stats_t object, 
             ! but blooms should not be frequent!
@@ -81,12 +81,11 @@ module bloom_handler
                 select case(bloom_stats%mode)
                 case(bloom_mode_fixedn)
                     write (6,'(1X, "# WARNING more than", '//int_fmt(bloom_stats%n_bloom,1)//',&
-                        " particles spawned in a single event.  Spawned: ", '//int_fmt(nspawn,1)//')') &
+                        " particles spawned in a single event.  Spawned: ", f8.1)') &
                         bloom_stats%n_bloom, nspawn
                 case(bloom_mode_fractionn)
                     write (6,'(1X, "# WARNING more than", '//int_fmt(int(bloom_stats%prop*100))//',&
-                        " % of the total number of particles spawned in a single event.  # spawned: ", &
-                        '//int_fmt(nspawn,1)//')') &
+                        " % of the total number of particles spawned in a single event.  # spawned: ", f8.1)') &
                         int(bloom_stats%prop*100), nspawn
                 end select
                 write (6,'(1X,"# This warning only prints",'//int_fmt(bloom_stats%nverbose_warnings)//',& 
@@ -127,7 +126,7 @@ module bloom_handler
             call mpi_reduce(bloom_stats%tot_bloom, bloom_stats_sum%tot_bloom, 1, &
                             mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
             call mpi_reduce(bloom_stats%max_bloom, bloom_stats_sum%max_bloom, 1, &
-                            MPI_INTEGER, MPI_MAX, root, MPI_COMM_WORLD, ierr)
+                            MPI_preal, MPI_MAX, root, MPI_COMM_WORLD, ierr)
 #else
             bloom_stats_sum = bloom_stats
 #endif
@@ -137,8 +136,8 @@ module bloom_handler
                     with a smaller timestep.")')
                 write (6, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nwarnings,1)//')'), &
                     bloom_stats%nwarnings
-                write (6, '(1X, "Maxium number of excips spawned in a blooming event:",&
-                    '//int_fmt(bloom_stats%max_bloom,1)//')'), bloom_stats%max_bloom
+                write (6, '(1X, "Maxium number of excips spawned in a blooming event:",f11.2)'), &
+                    bloom_stats%max_bloom
                 write (6, '(1X, "Mean number of excips spawned in a blooming event:", f11.2, /)'),&
                     bloom_stats%tot_bloom/bloom_stats%nwarnings
             end if
