@@ -23,38 +23,6 @@ interface
         integer(c_int), intent(in) :: N
         integer(c_int), intent(in) :: seed
     end function MurmurHash2
-
-    ! FNV hashes are untested and might also need the c_ptr wrapper that
-    ! murmurhash uses.
-    function fnv1_hash(key, N) result(hash)
-        use const
-        use, intrinsic:: iso_c_binding
-        integer(c_i0) :: hash
-        type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-    end function fnv1_hash
-    function fnv1a_hash(key, N) result(hash)
-        use const
-        use, intrinsic:: iso_c_binding
-        integer(c_i0) :: hash
-        type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-    end function fnv1a_hash
-    function fnv1_hash32(key, N) result(hash)
-        use const
-        use, intrinsic:: iso_c_binding
-        integer(c_i0) :: hash
-        type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-    end function fnv1_hash32
-    function fnv1a_hash32(key, N) result(hash)
-        use const
-        use, intrinsic:: iso_c_binding
-        integer(c_i0) :: hash
-        type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-    end function fnv1a_hash32
-
 end interface
 
 contains
