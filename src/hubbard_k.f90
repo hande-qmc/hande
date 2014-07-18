@@ -8,29 +8,7 @@ implicit none
 
 contains
 
-    pure function get_one_e_int_k(phi1, phi2) result(one_e_int)
-
-        ! In:
-        !    phi1: index of a momentum-space basis function.
-        !    phi2: index of a momentum-space basis function.
-        ! Returns:
-        !    <phi1 | T | phi2> where T is the kinetic energy operator.
-
-        use basis
-
-        real(p) :: one_e_int
-        integer, intent(in) :: phi1, phi2
-
-        ! T is diagonal in the basis of momentum-space functions.
-        if (phi1 == phi2) then
-            one_e_int = basis_fns(phi1)%sp_eigv
-        else
-            one_e_int = 0.0_p
-        end if
-
-    end function get_one_e_int_k
-
-    elemental function get_two_e_int_k(sys, phi1, phi2, phi3, phi4) result(two_e_int)
+    elemental function get_two_e_int_hub_k(sys, phi1, phi2, phi3, phi4) result(two_e_int)
 
         ! In:
         !    sys: system being studied
@@ -74,7 +52,7 @@ contains
             two_e_int = 0.0_p
         end if
 
-    end function get_two_e_int_k
+    end function get_two_e_int_hub_k
 
     elemental function momentum_conserved(i, j, k, l) result(conserved)
 

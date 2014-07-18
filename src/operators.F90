@@ -133,7 +133,7 @@ contains
         !    excitation of it in the momemtum space formulation of the Hubbard
         !    model.
 
-        use hubbard_k, only: get_two_e_int_k
+        use hubbard_k, only: get_two_e_int_hub_k
         use system, only: sys_t
 
         use const, only: p, i0
@@ -146,7 +146,7 @@ contains
         ! This actual annihilation and creation operators of \hat{D} are
         ! identical to the off-diagonal operators of H.  Hence, we can use the
         ! same integrals and just scale accordingly...
-        occ = get_two_e_int_k(sys, i, j, a, b) / (sys%hubbard%u * sys%lattice%nsites)
+        occ = get_two_e_int_hub_k(sys, i, j, a, b) / (sys%hubbard%u * sys%lattice%nsites)
 
         if (perm) occ = -occ
 

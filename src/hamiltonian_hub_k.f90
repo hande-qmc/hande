@@ -146,7 +146,7 @@ contains
         !    determinant and a double excitation of it in the momemtum space
         !    formulation of the Hubbard model.
 
-        use hubbard_k, only: get_two_e_int_k
+        use hubbard_k, only: get_two_e_int_hub_k
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -154,7 +154,7 @@ contains
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        hmatel = get_two_e_int_k(sys, i, j, a, b)
+        hmatel = get_two_e_int_hub_k(sys, i, j, a, b)
 
         if (perm) hmatel = -hmatel
 

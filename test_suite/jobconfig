@@ -4,6 +4,8 @@
 [hubbard_k_nontilted_2d_lanczos]
 [hubbard_k_nontilted_2d_fciqmc]
 
+[chung_landau_1d_fci]
+
 [hubbard_k_1d_ifciqmc]
 [hubbard_k_1d_ifciqmc_real_32]
 [hubbard_k_1d_ifciqmc_cas]
@@ -60,7 +62,7 @@ hubbard_real = hubbard_real_nontilted_2d hubbard_real_rectangle_2d_lanczos
 
 heisenberg = heisenberg_1d_fci heisenberg_1d_finite_cluster_fci heisenberg_1d_ferro_field_fciqmc heisenberg_1d_neel_ref_fciqmc heisenberg_2d_field_fciqmc heisenberg_2d_neel_guide_fciqmc heisenberg_2d_tri_fciqmc heisenberg_2d_tri_lanczos
 
-fci =  hubbard_k_1d hubbard_k_nontilted_2d_fci hubbard_k_tilted_2d_fci hubbard_real_nontilted_2d heisenberg_1d_fci heisenberg_1d_fci H2O-RHF-sto-2g ueg_n4_rs2_e1_fci
+fci =  hubbard_k_1d hubbard_k_nontilted_2d_fci hubbard_k_tilted_2d_fci hubbard_real_nontilted_2d heisenberg_1d_fci heisenberg_1d_fci H2O-RHF-sto-2g ueg_n4_rs2_e1_fci chung_landau_1d_fci
 lanczos = hubbard_k_1d hubbard_k_nontilted_2d_lanczos hubbard_real_nontilted_2d hubbard_real_rectangle_2d_lanczos heisenberg_2d_tri_lanczos CN-UHF-sto-3g
 
 real_32 = CN-UHF-cc-pVDZ_real_32 hubbard_k_1d_ifciqmc_real_32
