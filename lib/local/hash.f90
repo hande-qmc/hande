@@ -9,19 +9,21 @@ use const
 implicit none
 
 interface
-    ! Interfaces to hashing algorithms written in C++.
-    !    key: array to be hashed.
-    !    N: length of array to be hashed.
-    !    seed: random(ish!) number to seed the hash (MurmurHash2 only).
-    ! Note that MurmurHash2 algorithms destroy N so it's recommended to use the
-    ! wrapper function below.
-    function MurmurHash2(key, N, seed) result(hash) bind(c)
+    ! Interfaces to hashing algorithms written in C.
+    function MurmurHash2(key, N, seed) result(hash) bind(c, name='MurmurHash2')
+        ! In:
+        !    key: data to be hashed.
+        !    seed: random(ish!) number to seed the hash.
+        ! In/Out:
+        !    N: number of bytes in data.
+        ! Returns:
+        !    32-bit hash of data.
         use, intrinsic:: iso_c_binding
         use const
         integer(c_i0) :: hash
         type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-        integer(c_int), intent(in) :: seed
+        integer(c_int), value :: N
+        integer(c_int), value :: seed
     end function MurmurHash2
 end interface
 
