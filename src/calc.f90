@@ -184,17 +184,17 @@ contains
 
         character(len=len(GLOBAL_UUID)+10) :: seed_data
         character(kind=c_char), target :: cseed_data(len(seed_data)+1)
-        type(c_ptr) :: cseed_ptr
+        type(c_ptr) :: cseed_data_ptr
         integer(c_int) :: n
 
         call date_and_time(time=seed_data(:10))
         seed_data(11:) = GLOBAL_UUID
 
         cseed_data = fstring_to_carray(seed_data)
-        cseed_ptr = c_loc(cseed_data)
-        n = size(cseed_data)-1
+        cseed_data_ptr = c_loc(cseed_data)
+        n = size(cseed_data)-1 ! Don't hash terminating null character.
 
-        seed = int(MurmurHash2(cseed_ptr, n, 12345_c_int))
+        seed = int(MurmurHash2(cseed_data_ptr, n, 12345_c_int))
 
     end subroutine init_calc_defaults
 
