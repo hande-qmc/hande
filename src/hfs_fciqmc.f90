@@ -61,7 +61,7 @@ contains
         real(dp) :: real_population(sampling_size)
         type(det_info) :: cdet
 
-        integer(int_p) :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath, nspawn_events
         type(excit) :: connection
         type(dSFMT_t) :: rng
         real(p) :: hmatel
@@ -217,11 +217,7 @@ contains
 
                 end do
 
-                ! Add the spawning rate (for the processor) to the running
-                ! total.
-                rspawn = rspawn + spawning_rate(ndeath, nattempts)
-
-                call direct_annihilation(sys, rng, initiator_approximation)
+                call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
 
             end do
 

@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, tinitiator)
+    subroutine direct_annihilation(sys, rng, tinitiator, nspawn_events)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -22,9 +22,13 @@ contains
         !    tinitiator: true if the initiator approximation is being used.
         ! In/Out:
         !    rng: random number generator.
+        ! Out:
+        !    nspawn_events (optional): number of successful spawning events on
+        !       the processor.
+
 
         use parallel, only: nthreads, nprocs
-        use spawn_data, only: annihilate_wrapper_spawn_t
+        use spawn_data, only: annihilate_wrapper_spawn_t, calc_events_spawn_t
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -32,8 +36,11 @@ contains
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         logical, intent(in) :: tinitiator
+        integer, optional :: nspawn_events
 
         integer, parameter :: thread_id = 0
+
+        if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(qmc_spawn)
 
         call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
 

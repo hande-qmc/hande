@@ -217,7 +217,7 @@ contains
         type(det_info), allocatable :: cdet(:)
 
         integer(int_p) :: nspawned, ndeath
-        integer :: ierr
+        integer :: nspawn_events, ierr
         type(excit) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
         type(dSFMT_t), allocatable :: rng(:)
@@ -443,7 +443,7 @@ contains
                 ! that we need to deal with.
                 if (nprocs > 1) call redistribute_excips(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
 
-                call direct_annihilation(sys, rng(it), initiator_approximation)
+                call direct_annihilation(sys, rng(it), initiator_approximation, nspawn_events)
 
                 ! Ok, this is fairly non-obvious.
                 ! Because we sample the projected estimator (and normalisation
@@ -459,7 +459,7 @@ contains
                     proj_energy_cycle = proj_energy_cycle/nattempts
                 end if
 
-                call end_mc_cycle(ndeath, nattempts)
+                call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
             end do
 

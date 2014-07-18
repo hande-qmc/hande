@@ -39,6 +39,7 @@ contains
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer(int_p) :: nspawned, ndeath
+        integer :: nspawn_events
         integer :: ireport, idet
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
@@ -229,9 +230,9 @@ contains
 
             end do
 
-            call end_mc_cycle(int(ndeath, int_p), nattempts)
+            call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
 
-            call direct_annihilation(sys, rng, initiator_approximation)
+            call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
             call end_report_loop(ireport, .false., nparticles_old, t1, soft_exit)
 
