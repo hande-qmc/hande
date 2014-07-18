@@ -46,11 +46,11 @@ contains
         integer, intent(in) :: N
         integer(c_int), intent(in) :: seed
         type(c_ptr) :: key
-        integer(c_int) :: tmp
+        integer(c_int) :: nbytes
 
-        ! MurmurHash2 destroys the size paramter, so create a copy.
-        ! The size parameter used in Murmurhash is the number of bytes...
-        tmp = 4*N
+        ! The size parameter used in Murmurhash is in bytes...
+        ! i0_length = 32 or 64...
+        nbytes = N*i0_length/8
 
         ! Unfortunately it seems c_loc is not required to be pure by the
         ! F2003 standards! :-(
