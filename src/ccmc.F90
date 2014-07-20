@@ -395,7 +395,7 @@ contains
                 do iattempt = 1, nattempts
 
                     call select_cluster(rng(it), nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
-                                        tot_abs_pop, max_cluster_size, cdet(it), cluster(it))
+                                        tot_abs_pop, 0, max_cluster_size, cdet(it), cluster(it))
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
 
@@ -499,7 +499,8 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(rng, nattempts, normalisation, D0_pos, cumulative_excip_pop, tot_excip_pop, max_size, cdet, cluster)
+    subroutine select_cluster(rng, nattempts, normalisation, D0_pos, cumulative_excip_pop, tot_excip_pop, &
+                              min_size, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -517,6 +518,8 @@ contains
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_population(1:i)).
         !    tot_excip_pop: total excip population.
+        !    min_size: the minimum size cluster to allow.
+        !    max_size: the maximum size cluster to allow.
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on
         ! the reference as excips on the reference cannot form a cluster.  Both
@@ -552,7 +555,7 @@ contains
         integer(lint), intent(in) :: nattempts
         integer, intent(in) :: D0_pos, normalisation
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
-        integer :: max_size
+        integer :: min_size, max_size
         type(dSFMT_t), intent(inout) :: rng
         type(det_info), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
@@ -583,14 +586,18 @@ contains
         ! Coupled Cluster Theory' (unpublished), each size, n_s, has probability
         ! p(n_s) = 1/2^(n_s+1), n_s=0,truncation_level and p(truncation_level+2)
         ! is such that \sum_{n_s=0}^{truncation_level+2} p(n_s) = 1.
+
+        ! This procedure is modified so that clusters of size min_size+n_s
+        ! has probability 1/2^(n_s+1), and the max_size picks up the remaining
+        ! probability from the series.
         rand = get_rand_close_open(rng)
         psize = 0.0_p
         cluster%nexcitors = -1
-        do i = 0, max_size-1
+        do i = 0, max_size-min_size-1
             psize = psize + 1.0_p/2**(i+1)
             if (rand < psize) then
                 ! Found size!
-                cluster%nexcitors = i
+                cluster%nexcitors = i+min_size
                 cluster%pselect = cluster%pselect/2**(i+1)
                 exit
             end if
@@ -611,8 +618,9 @@ contains
         cdet%initiator_flag = 0
 
         ! Assume cluster is allowed unless collapse_cluster finds out otherwise
-        ! when collapsing/combining excitors.
-        allowed = .true.
+        ! when collapsing/combining excitors or if it could never have been
+        ! valid
+        allowed = min_size <= max_size
 
         select case(cluster%nexcitors)
         case(0)
