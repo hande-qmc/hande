@@ -337,6 +337,7 @@ contains
                             call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
                         end select
                     end if
+                    if (.not.hit) call stop_all('do_ccmc', 'Cannot find reference!')
                     ! [note] - D0_normalisation will need to be real for CCMC with real excips.
                     D0_normalisation = int(walker_population(1,D0_pos))
 
@@ -347,11 +348,11 @@ contains
                     ! excitors.
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
-                    max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
+                    max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers-1)
 
                 else
 
-                    max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers)
+                    max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers)
 
                     ! Can't find D0 on this processor.  (See how D0_pos is used
                     ! in select_cluster.)
@@ -850,7 +851,7 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
-        ! TODO: optimise for the case where the cluster is either the reference
+        ! [todo] - optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
         KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
 
