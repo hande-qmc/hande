@@ -191,7 +191,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
-        use bloom_handler, only: bloom_stats_t, bloom_mode_fractionn, &
+        use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
         use ccmc_data, only: cluster_t
@@ -217,7 +217,6 @@ contains
         type(det_info), allocatable :: cdet(:)
 
         integer(int_p) :: nspawned, ndeath
-        real(p) :: real_nspawned
         integer :: ierr
         type(excit) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
@@ -237,7 +236,8 @@ contains
 
         logical :: update_tau
 
-        bloom_stats%mode = bloom_mode_fractionn
+        ! Initialise bloom_stats components to the following parameters.
+        call init_bloom_stats_t(bloom_mode_fractionn, 0.05_p, 3, 1, real_factor, bloom_stats)
 
         if (.not.truncate_space) then
             ! User did not specify a truncation level.
@@ -372,7 +372,7 @@ contains
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
 
-                bloom_threshold = ceiling(max(nattempts, tot_walkers)*bloom_stats%prop)
+                bloom_threshold = ceiling(max(nattempts, tot_walkers)*bloom_stats%prop*real(bloom_stats%encoding_factor,p))
 
                 ! Allow one spawning & death attempt for each excip on the
                 ! processor.
@@ -409,10 +409,8 @@ contains
                         if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
 
-                            real_nspawned = real(nspawned,p)/real_factor
-                            if (abs(real_nspawned) > bloom_threshold) then
-                                ! [todo] - adapt bloom_handler to handle real psips/excips.
-                                call accumulate_bloom_stats(bloom_stats, real_nspawned)
+                            if (abs(nspawned) > bloom_threshold) then
+                                call accumulate_bloom_stats(bloom_stats, nspawned)
                             end if
                         end if
 

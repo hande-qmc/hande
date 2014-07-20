@@ -23,7 +23,8 @@ contains
         use annihilation, only: direct_annihilation
         use basis, only: basis_length
         use bit_utils, only: count_set_bits
-        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats, write_bloom_report
+        use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
+                                 bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use dmqmc_estimators
         use dmqmc_procedures
@@ -46,7 +47,6 @@ contains
         integer :: nel_temp, nattempts_current_det
         type(det_info) :: cdet1, cdet2
         integer(int_p) :: nspawned, ndeath
-        real(p) :: real_nspawned
         type(excit) :: connection
         integer :: spawning_end
         logical :: soft_exit
@@ -58,6 +58,9 @@ contains
         ! which may be spawned from in the DMQMC algorithm.
         call alloc_det_info(sys, cdet1, .false.)
         call alloc_det_info(sys, cdet2, .false.)
+
+        ! Initialise bloom_stats components to the following parameters.
+        call init_bloom_stats_t(bloom_mode_fixedn, 0.05_p, 3, 1, real_factor, bloom_stats)
 
         ! Main DMQMC loop.
         if (parent) then
@@ -148,9 +151,8 @@ contains
                                         call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, &
                                                                             spawning_end, ireplica, qmc_spawn)
 
-                                        real_nspawned = real(nspawned,p)/real_factor
-                                        if (abs(real_nspawned) >= bloom_stats%n_bloom) &
-                                            call accumulate_bloom_stats(bloom_stats, real_nspawned)
+                                        if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
+                                            call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
 
                                     ! Now attempt to spawn from the second end.
@@ -161,9 +163,8 @@ contains
                                         call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
                                                                             ireplica, qmc_spawn)
 
-                                        real_nspawned = real(nspawned,p)/real_factor
-                                        if (abs(real_nspawned) >= bloom_stats%n_bloom) &
-                                            call accumulate_bloom_stats(bloom_stats, real_nspawned)
+                                        if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
+                                            call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
                                 end do
                             end if
@@ -245,6 +246,7 @@ contains
             write (6,'()')
         end if
 
+        call write_bloom_report(bloom_stats)
         call load_balancing_report()
 
         if (soft_exit) then

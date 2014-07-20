@@ -2,7 +2,7 @@ module bloom_handler
 
     ! Module for handling blooms (single spawning events which create multiple particles).
 
-    use const, only: p
+    use const, only: p, int_p
 
     implicit none
 
@@ -22,20 +22,27 @@ module bloom_handler
         ! Note the mode is for information only; the QMC routine is responsible for
         ! calling the bloom handler procedures when a bloom is detected (the definition of
         ! which is left to the QMC routine).
-        integer :: mode = bloom_mode_fixedn
+        integer :: mode
+
+        ! The factor by which the true populations are multiplied to create their
+        ! encoded representations. This is not equal to 1, for example, when using
+        ! real walker amplitudes.
+        integer(int_p) :: encoding_factor
 
         ! The proportion of the total number of particles which has to be spawned in one
         ! event to define a bloom.   Used (by convention) if mode = bloom_mode_fixedn.
-        real(p) :: prop = 0.05_p
+        real(p) :: prop
 
         ! The absolute number of particles which has to be spawned in one event to define
         ! a bloom.   Used (by convention) if mode = bloom_mode_fractionn.
-        integer :: n_bloom = 3
+        integer :: n_bloom
+        ! n_bloom in its encoded form, n_bloom*encoding_factor.
+        integer(int_p) :: n_bloom_encoded
 
         ! The number of blooms.
         integer :: nwarnings = 0
         ! The number of verbose warnings to print out (per processor, to avoid MPI comms).
-        integer :: nverbose_warnings = 1
+        integer :: nverbose_warnings
         ! The number of blooms in the current iteration (should be zeroed at the start of
         ! each iteration).
         integer :: nwarnings_curr = 0
@@ -49,6 +56,31 @@ module bloom_handler
 
     contains
 
+        subroutine init_bloom_stats_t(mode, prop, n_bloom, nverbose_warnings, encoding_factor, bloom_stats)
+
+            ! Initialise a bloom_stats_t object.
+            
+            ! In:
+            !    mode, prop, n_bloom, nverbose_warnings, encoding_factor: see
+            !        description of matching components in bloom_stats_t object.
+            ! Out:
+            !    bloom_stats: initialised object for QMC blooming stats.
+
+            integer, intent(in) :: mode, n_bloom, nverbose_warnings
+            real(p), intent(in) :: prop
+            integer(int_p), intent(in) :: encoding_factor
+            type(bloom_stats_t), intent(inout) :: bloom_stats
+
+            bloom_stats%mode = mode
+            bloom_stats%prop = prop
+            bloom_stats%n_bloom = n_bloom
+            bloom_stats%nverbose_warnings = nverbose_warnings
+            bloom_stats%encoding_factor = encoding_factor
+
+            bloom_stats%n_bloom_encoded = int(n_bloom, int_p)*encoding_factor
+
+        end subroutine init_bloom_stats_t
+
         subroutine accumulate_bloom_stats(bloom_stats, nspawn)
 
             ! Accumulate/print data about a blooming event.  Note that it left to the
@@ -57,17 +89,24 @@ module bloom_handler
             ! In/Out:
             !     bloom_stats: stats object to update with the blooming event.
             ! In:
-            !     nspawn: number of particles created in the blooming event.
+            !     nspawn: number of particles created in the blooming event, in
+            !         the 'encoded' representation whereby the true number of
+            !         spawns has been multiplied by bloom_stats%encoding_factor.
 
             use utils, only: int_fmt
             use errors, only: stop_all
 
             type(bloom_stats_t), intent(inout) :: bloom_stats
-            real(p), intent(in) :: nspawn
+            integer(int_p), intent(in) :: nspawn
+            real(p) :: true_nspawn
 
             ! Not thread safe (unless each thread has its own bloom_stats_t object, 
             ! but blooms should not be frequent!
             !$omp critical
+
+            ! Remove the encoding factor to create the true population, to be
+            ! printed to the user.
+            true_nspawn = real(nspawn,p)/bloom_stats%encoding_factor
 
             ! If the number of warnings exceeds the size of an integer then the
             ! population may have exploded.
@@ -82,11 +121,11 @@ module bloom_handler
                 case(bloom_mode_fixedn)
                     write (6,'(1X, "# WARNING more than", '//int_fmt(bloom_stats%n_bloom,1)//',&
                         " particles spawned in a single event.  Spawned: ", f8.1)') &
-                        bloom_stats%n_bloom, nspawn
+                        bloom_stats%n_bloom, true_nspawn
                 case(bloom_mode_fractionn)
                     write (6,'(1X, "# WARNING more than", '//int_fmt(int(bloom_stats%prop*100))//',&
                         " % of the total number of particles spawned in a single event.  # spawned: ", f8.1)') &
-                        int(bloom_stats%prop*100), nspawn
+                        int(bloom_stats%prop*100), true_nspawn
                 end select
                 write (6,'(1X,"# This warning only prints",'//int_fmt(bloom_stats%nverbose_warnings)//',& 
                     " time(s). You may wish to reduce the time step.")'), bloom_stats%nverbose_warnings
@@ -94,10 +133,10 @@ module bloom_handler
 
             bloom_stats%nwarnings = bloom_stats%nwarnings + 1
             bloom_stats%nwarnings_curr = bloom_stats%nwarnings_curr + 1
-            if(abs(nspawn) > bloom_stats%max_bloom) then
-                bloom_stats%max_bloom = abs(nspawn)
+            if(abs(true_nspawn) > bloom_stats%max_bloom) then
+                bloom_stats%max_bloom = abs(true_nspawn)
             end if
-            bloom_stats%tot_bloom = bloom_stats%tot_bloom + abs(nspawn)
+            bloom_stats%tot_bloom = bloom_stats%tot_bloom + abs(true_nspawn)
 
             !$omp end critical
 
@@ -138,7 +177,7 @@ module bloom_handler
                     bloom_stats%nwarnings
                 write (6, '(1X, "Maxium number of excips spawned in a blooming event:",f11.2)'), &
                     bloom_stats%max_bloom
-                write (6, '(1X, "Mean number of excips spawned in a blooming event:", f11.2, /)'),&
+                write (6, '(1X, "Mean number of excips spawned in a blooming event:", 2X, f11.2, /)'),&
                     bloom_stats%tot_bloom/bloom_stats%nwarnings
             end if
 
