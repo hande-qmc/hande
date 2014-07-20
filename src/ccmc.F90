@@ -616,19 +616,7 @@ contains
 
         select case(cluster%nexcitors)
         case(0)
-            ! Must be the reference.
-            cdet%f = f0
-            cluster%excitation_level = 0
-            cluster%amplitude = normalisation
-            cluster%cluster_to_det_sign = 1
-            cluster%pselect = cluster%pselect
-            if (abs(cluster%amplitude) <= initiator_population) then
-                ! Something has gone seriously wrong and the CC
-                ! approximation is (most likely) not suitably for this system.
-                ! Let the user be an idiot if they want to be...
-                cdet%initiator_flag = 1
-            end if
-            ! Only one cluster of this size to choose => p_clust = 1
+            call create_null_cluster(cluster%pselect, normalisation, cdet, cluster)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -707,6 +695,65 @@ contains
         end select
 
     end subroutine select_cluster
+
+    subroutine create_null_cluster(prob, D0_normalisation, cdet, cluster)
+
+        ! Create a cluster with no excitors in it, and set it to have
+        ! probability of generation prob.
+
+        ! In:
+        !    prob: The probability we set in it of having been generated
+        !    D0_normalisation:  The number of excips at the reference (which
+        !        will become the amplitude of this cluster)
+
+        ! In/Out:
+        !    cdet: information about the cluster of excitors applied to the
+        !        reference determinant.  This is a bare det_info variable on input
+        !        with only the relevant fields allocated.  On output the
+        !        appropriate (system-specific) fields have been filled by
+        !        decoding the bit string of the determinant formed from applying
+        !        the cluster to the reference determinant.
+        !    cluster:
+        !        Additional information about the cluster of excitors.  On
+        !        input this is a bare cluster_t variable with the excitors array
+        !        allocated to the maximum number of excitors in a cluster.  On
+        !        output all fields in cluster have been set.
+
+        use determinants, only: det_info
+        use ccmc_data, only: cluster_t
+        use fciqmc_data, only: f0, initiator_population
+
+        integer, intent(in) :: D0_normalisation
+        type(cluster_t), intent(inout) :: cluster
+        type(det_info), intent(inout) :: cdet
+        real(p), intent(in) :: prob
+
+        ! Note only one null cluster to choose => p_clust = 1.
+        cluster%pselect = prob
+
+        cluster%nexcitors = 0
+
+        ! Initiator approximation: no point using a CAS so just use the populations.
+        ! This is sufficiently quick that we'll just do it in all cases, even
+        ! when not using the initiator approximation.  This matches the approach
+        ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
+        ! (unpublished).
+        ! Surely the reference has an initiator population?
+        cdet%initiator_flag = 0
+
+        ! Must be the reference.
+        cdet%f = f0
+        cluster%excitation_level = 0
+        cluster%amplitude = D0_normalisation
+        cluster%cluster_to_det_sign = 1
+        if (cluster%amplitude <= initiator_population) then
+             ! Something has gone seriously wrong and the CC
+             ! approximation is (most likely) not suitably for this system.
+             ! Let the user be an idiot if they want to be...
+             cdet%initiator_flag = 1
+        end if
+
+    end subroutine create_null_cluster
 
     subroutine spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection)
 
