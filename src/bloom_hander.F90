@@ -27,7 +27,7 @@ module bloom_handler
         ! The factor by which the true populations are multiplied to create their
         ! encoded representations. This is not equal to 1, for example, when using
         ! real walker amplitudes.
-        integer(int_p) :: encoding_factor
+        integer(int_p) :: encoding_factor = 1_int_p
 
         ! The proportion of the total number of particles which has to be spawned in one
         ! event to define a bloom.   Used (by convention) if mode = bloom_mode_fixedn.
