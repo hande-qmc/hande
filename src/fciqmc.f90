@@ -24,7 +24,8 @@ contains
 
         use annihilation, only: direct_annihilation
         use basis, only: basis_length, nbasis
-        use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats, write_bloom_report
+        use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
+                                 bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
@@ -60,6 +61,9 @@ contains
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
+
+        ! Initialise bloom_stats components to the following parameters.
+        call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=real_factor)
 
         ! Allocate det_info components.
         call alloc_det_info(sys, cdet, .false.)
@@ -115,7 +119,8 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
-                            if (abs(nspawned) >= bloom_stats%n_bloom) &
+
+                            if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
                         end if
 
