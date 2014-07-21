@@ -217,6 +217,9 @@ contains
             case('REPLICA_TRICKS')
                 replica_tricks = .true.
 
+            case('CCMC_FULL_NC')
+                ccmc_full_nc = .true.
+
             case('REAL_AMPLITUDES')
                 real_amplitudes = .true.
             case('SPAWN_CUTOFF')
@@ -738,6 +741,7 @@ contains
         end if
         call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)

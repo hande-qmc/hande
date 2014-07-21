@@ -182,6 +182,7 @@ contains
         ! In:
         !    sys: system being studied.
 
+        use calc, only: ccmc_full_nc
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
@@ -235,9 +236,6 @@ contains
         real :: t1, t2
 
         logical :: update_tau
-        logical :: ccmc_full_nc ! TEMP: move to calc when implemented as an input option.
-
-        ccmc_full_nc = .false.
 
         bloom_stats%mode = bloom_mode_fractionn
 
