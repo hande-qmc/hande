@@ -195,7 +195,8 @@ contains
         do i = 2, ubound(list,dim=1)
             j = i - 1
             tmp = list(i)
-            do while (j>=1 .and. list(j)>tmp)
+            do while (j>=1)
+                if (list(j)<=tmp) exit ! Can't combine with while conditional as Fortran can evaluate boolean statements in any order.
                 list(j+1) = list(j)
                 j = j - 1
             end do
