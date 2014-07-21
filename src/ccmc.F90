@@ -237,7 +237,7 @@ contains
         logical :: update_tau
 
         ! Initialise bloom_stats components to the following parameters.
-        call init_bloom_stats_t(bloom_mode_fractionn, 0.05_p, 3, 1, real_factor, bloom_stats)
+        call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=real_factor)
 
         if (.not.truncate_space) then
             ! User did not specify a truncation level.

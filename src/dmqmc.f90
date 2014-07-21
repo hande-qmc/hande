@@ -60,7 +60,7 @@ contains
         call alloc_det_info(sys, cdet2, .false.)
 
         ! Initialise bloom_stats components to the following parameters.
-        call init_bloom_stats_t(bloom_mode_fixedn, 0.05_p, 3, 1, real_factor, bloom_stats)
+        call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=real_factor)
 
         ! Main DMQMC loop.
         if (parent) then

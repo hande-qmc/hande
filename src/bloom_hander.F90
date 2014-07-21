@@ -31,18 +31,18 @@ module bloom_handler
 
         ! The proportion of the total number of particles which has to be spawned in one
         ! event to define a bloom.   Used (by convention) if mode = bloom_mode_fixedn.
-        real(p) :: prop
+        real(p) :: prop = 0.05_p
 
         ! The absolute number of particles which has to be spawned in one event to define
         ! a bloom.   Used (by convention) if mode = bloom_mode_fractionn.
-        integer :: n_bloom
+        integer :: n_bloom = 3
         ! n_bloom in its encoded form, n_bloom*encoding_factor.
         integer(int_p) :: n_bloom_encoded
 
         ! The number of blooms.
         integer :: nwarnings = 0
         ! The number of verbose warnings to print out (per processor, to avoid MPI comms).
-        integer :: nverbose_warnings
+        integer :: nverbose_warnings = 1
         ! The number of blooms in the current iteration (should be zeroed at the start of
         ! each iteration).
         integer :: nwarnings_curr = 0
@@ -56,28 +56,34 @@ module bloom_handler
 
     contains
 
-        subroutine init_bloom_stats_t(mode, prop, n_bloom, nverbose_warnings, encoding_factor, bloom_stats)
+        subroutine init_bloom_stats_t(bloom_stats, mode, prop, n_bloom, nverbose_warnings, encoding_factor)
 
             ! Initialise a bloom_stats_t object.
-            
+
             ! In:
             !    mode, prop, n_bloom, nverbose_warnings, encoding_factor: see
             !        description of matching components in bloom_stats_t object.
             ! Out:
             !    bloom_stats: initialised object for QMC blooming stats.
 
-            integer, intent(in) :: mode, n_bloom, nverbose_warnings
-            real(p), intent(in) :: prop
-            integer(int_p), intent(in) :: encoding_factor
-            type(bloom_stats_t), intent(inout) :: bloom_stats
+            integer, intent(in) :: mode
+            integer, intent(in), optional :: n_bloom, nverbose_warnings
+            real(p), intent(in), optional :: prop
+            integer(int_p), intent(in), optional :: encoding_factor
+            type(bloom_stats_t), intent(out) :: bloom_stats
+
+            type(bloom_stats_t) :: bs_tmp
+
+            ! Initialise to default values.
+            bloom_stats = bs_tmp
 
             bloom_stats%mode = mode
-            bloom_stats%prop = prop
-            bloom_stats%n_bloom = n_bloom
-            bloom_stats%nverbose_warnings = nverbose_warnings
-            bloom_stats%encoding_factor = encoding_factor
+            if (present(prop)) bloom_stats%prop = prop
+            if (present(n_bloom)) bloom_stats%n_bloom = n_bloom
+            if (present(nverbose_warnings)) bloom_stats%nverbose_warnings = nverbose_warnings
+            if (present(encoding_factor)) bloom_stats%encoding_factor = encoding_factor
 
-            bloom_stats%n_bloom_encoded = int(n_bloom, int_p)*encoding_factor
+            bloom_stats%n_bloom_encoded = int(bloom_stats%n_bloom, int_p)*bloom_stats%encoding_factor
 
         end subroutine init_bloom_stats_t
 
