@@ -4,19 +4,19 @@ include_f = -I $(NETCDF_HOME)/include/
 
 
 [main]
-fc = mpif90
-cc = mpicc
-cxx = mpicxx
-ld = mpif90
+fc = ifort
+cc = icc
+cxx = icc
+ld = ifort
 cppflags = -DHAVE_SSE2 -DPARALLEL
 ldflags = -L $(HOME)/local/lib -L $(NETCDF_HOME)/lib -L ${MKL_HOME}/lib/64
-libs = -ltrlan_mpi  -mkl:cluster -lpthread -lm -cxxlib -lhdf5_fortran -lhdf5 -lz -luuid 
+libs = $(MPI_LIBS) -ltrlan_mpi -lmkl_intel_lp64 -lmkl_cdft_core -lmkl_scalapack_lp64 -lmkl_blacs_lp64 -lmkl_sequential -lmkl_core -lm -cxxlib -lhdf5_fortran -lhdf5 -lz -luuid -lifcore
 f90_module_flag = -module
 
 [opt]
-fflags = %(include_f)s -O3
+fflags = -I $(MPI_HOME)/include %(include_f)s -O3
 cxxflags = -O3
 
 [dbg]
-fflags = %(include_f)s -g -traceback -CB
+fflags = -I $(MPI_HOME)/include %(include_f)s -g -traceback -CB
 cxxflags = -g -traceback 
