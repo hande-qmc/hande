@@ -39,10 +39,10 @@ contains
         use, intrinsic:: iso_c_binding
         use const, only: i0, i0_length
 
-        integer(i0) :: hash
+        integer :: hash
         integer(i0), intent(in), target :: f(N)
         integer, intent(in) :: N
-        integer(c_int), intent(in) :: seed
+        integer(c_int32_t), intent(in) :: seed
         type(c_ptr) :: key
         integer(c_int) :: nbytes
 
