@@ -4,57 +4,24 @@ module hashing
 
 ! Warning: only working with i0 as a 32-bit or 64-bit integer.
 
-use const
-
 implicit none
 
 interface
-    ! Interfaces to hashing algorithms written in C++.
-    !    key: array to be hashed.
-    !    N: length of array to be hashed.
-    !    seed: random(ish!) number to seed the hash (MurmurHash2 only).
-    ! Note that MurmurHash2 algorithms destroy N so it's recommended to use the
-    ! wrapper function below.
-    function MurmurHash2(key, N, seed) result(hash) bind(c)
+    ! Interfaces to hashing algorithms written in C.
+    function MurmurHash2(key, N, seed) result(hash) bind(c, name='MurmurHash2')
+        ! In:
+        !    key: data to be hashed.
+        !    seed: random(ish!) number to seed the hash.
+        ! In/Out:
+        !    N: number of bytes in data.
+        ! Returns:
+        !    32-bit hash of data.
         use, intrinsic:: iso_c_binding
-        use const
-        integer(c_i0) :: hash
+        integer(c_int32_t) :: hash
         type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-        integer(c_int), intent(in) :: seed
+        integer(c_int), value :: N
+        integer(c_int32_t), value :: seed
     end function MurmurHash2
-
-    ! FNV hashes are untested and might also need the c_ptr wrapper that
-    ! murmurhash uses.
-    function fnv1_hash(key, N) result(hash)
-        use const
-        use, intrinsic:: iso_c_binding
-        integer(c_i0) :: hash
-        type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-    end function fnv1_hash
-    function fnv1a_hash(key, N) result(hash)
-        use const
-        use, intrinsic:: iso_c_binding
-        integer(c_i0) :: hash
-        type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-    end function fnv1a_hash
-    function fnv1_hash32(key, N) result(hash)
-        use const
-        use, intrinsic:: iso_c_binding
-        integer(c_i0) :: hash
-        type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-    end function fnv1_hash32
-    function fnv1a_hash32(key, N) result(hash)
-        use const
-        use, intrinsic:: iso_c_binding
-        integer(c_i0) :: hash
-        type(c_ptr), value :: key
-        integer(c_int), intent(in) :: N
-    end function fnv1a_hash32
-
 end interface
 
 contains
@@ -70,23 +37,24 @@ contains
         !    Hash of f using the MurmurHash2 algorithm.
 
         use, intrinsic:: iso_c_binding
+        use const, only: i0, i0_length
 
-        integer(i0) :: hash
+        integer :: hash
         integer(i0), intent(in), target :: f(N)
         integer, intent(in) :: N
-        integer(c_int), intent(in) :: seed
+        integer(c_int32_t), intent(in) :: seed
         type(c_ptr) :: key
-        integer(c_int) :: tmp
+        integer(c_int) :: nbytes
 
-        ! MurmurHash2 destroys the size paramter, so create a copy.
-        ! The size parameter used in Murmurhash is the number of bytes...
-        tmp = 4*N
+        ! The size parameter used in Murmurhash is in bytes...
+        ! i0_length = 32 or 64...
+        nbytes = N*i0_length/8
 
         ! Unfortunately it seems c_loc is not required to be pure by the
         ! F2003 standards! :-(
         key = c_loc(f(1))
 
-        hash = MurmurHash2(key, tmp, seed)
+        hash = MurmurHash2(key, nbytes, seed)
 
     end function murmurhash_bit_string
 
