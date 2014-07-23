@@ -1,6 +1,6 @@
 # Use intel/2013sp1 mpi/mpt-2.06 hdf5/1.8.11 git
 [DEFAULT]
-include_f = -I $(NETCDF_HOME)/include/
+include_f = -I $(NETCDF_HOME)/include/ -I $(MPI_HOME)/include
 
 
 [main]
@@ -14,9 +14,9 @@ libs = $(MPI_LIBS) -ltrlan_mpi -lmkl_intel_lp64 -lmkl_cdft_core -lmkl_scalapack_
 f90_module_flag = -module
 
 [opt]
-fflags = -I $(MPI_HOME)/include %(include_f)s -O3
+fflags = %(include_f)s -O3
 cxxflags = -O3
 
 [dbg]
-fflags = -I $(MPI_HOME)/include %(include_f)s -g -traceback -CB
+fflags = %(include_f)s -g -traceback -CB
 cxxflags = -g -traceback 
