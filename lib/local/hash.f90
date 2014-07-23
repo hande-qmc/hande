@@ -4,8 +4,6 @@ module hashing
 
 ! Warning: only working with i0 as a 32-bit or 64-bit integer.
 
-use const
-
 implicit none
 
 interface
@@ -19,11 +17,10 @@ interface
         ! Returns:
         !    32-bit hash of data.
         use, intrinsic:: iso_c_binding
-        use const
-        integer(c_i0) :: hash
+        integer(c_int32_t) :: hash
         type(c_ptr), value :: key
         integer(c_int), value :: N
-        integer(c_int), value :: seed
+        integer(c_int32_t), value :: seed
     end function MurmurHash2
 end interface
 
@@ -40,6 +37,7 @@ contains
         !    Hash of f using the MurmurHash2 algorithm.
 
         use, intrinsic:: iso_c_binding
+        use const, only: i0, i0_length
 
         integer(i0) :: hash
         integer(i0), intent(in), target :: f(N)
@@ -56,7 +54,7 @@ contains
         ! F2003 standards! :-(
         key = c_loc(f(1))
 
-        hash = MurmurHash2(key, tmp, seed)
+        hash = MurmurHash2(key, nbytes, seed)
 
     end function murmurhash_bit_string
 
