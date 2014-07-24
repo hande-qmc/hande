@@ -2,6 +2,7 @@
 
 import collections
 import pandas as pd
+import warnings
 
 import pyblock
 import pyhande.extract
@@ -16,6 +17,10 @@ datafiles : list of strings
     names of files containing HANDE QMC calculation output.
 start : int
     iteration from which the blocking analysis is performed.
+select_function : function 
+    function which returns a boolean mask for the iterations to include in the
+    analysis.  Not used if set to None (default).  Overrides ``start``.  See
+    below for examples.
 extract_psips : bool
     also extract the mean number of psips from the calculation.
 
@@ -44,7 +49,7 @@ size from the blocking analysis:
 
 >>> std_analysis(['hande.fciqmc.out'], 10000)
 >>> std_analysis(['hande.fciqmc.out'],
-...              select_function=lambda d: d['iterations] > 10000)
+...              select_function=lambda d: d['iterations'] > 10000)
 '''
 
     (metadata, data) = pyhande.extract.extract_data_sets(datafiles)
@@ -58,6 +63,11 @@ size from the blocking analysis:
     if extract_psips:
         to_block.append('# H psips')
     mc_data = data.ix[indx, to_block]
+
+    if mc_data['Shift'][1] == mc_data['Shift'][2]:
+        warnings.warn('The blocking analysis starts from before the shift '
+                     'begins to vary.')
+
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
     
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
