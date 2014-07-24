@@ -19,8 +19,8 @@ start : int
     iteration from which the blocking analysis is performed.
 select_function : function 
     function which returns a boolean mask for the iterations to include in the
-    analysis.  Not used if set to None (default) or if ``start`` is provided.
-    See below for examples.
+    analysis.  Not used if set to None (default).  Overrides ``start``.  See
+    below for examples.
 extract_psips : bool
     also extract the mean number of psips from the calculation.
 
