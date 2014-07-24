@@ -17,9 +17,10 @@ datafiles : list of strings
     names of files containing HANDE QMC calculation output.
 start : int
     iteration from which the blocking analysis is performed.
-select_function : lambda function 
-    function which determines which iterations to include in the analysis. See
-    examples. Not used if set to None (default).
+select_function : function 
+    function which returns a boolean mask for the iterations to include in the
+    analysis.  Not used if set to None (default) or if ``start`` is provided.
+    See below for examples.
 extract_psips : bool
     also extract the mean number of psips from the calculation.
 
