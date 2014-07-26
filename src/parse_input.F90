@@ -225,6 +225,7 @@ contains
             ! Deterministic spaces.
             case('SEMI_STOCH_RESTART')
                 ! [review] - JSS: should select_ref_det be forbidden if semi_stoch_restart is also true?  I suspect so...
+                ! [reply] - NSB: I don't think so. Why is this? The semi-stochastic code doesn't interfere with the reference.
                 determ_space_type = restart_determ_space
                 call readi(determ_target_size)
 
