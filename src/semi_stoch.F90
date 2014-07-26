@@ -83,7 +83,7 @@ contains
 
     ! [review] - JSS: mark procedures as pure where possible.
 
-    subroutine init_semi_stochastic(sys, spawn, determ, space_type, determ_target_size)
+    subroutine init_semi_stochastic(determ, sys, spawn, space_type, determ_target_size)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -108,9 +108,9 @@ contains
         use system, only: sys_t
         use utils, only: int_fmt
 
+        type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
         type(spawn_t), intent(in) :: spawn
-        type(semi_stoch_t), intent(inout) :: determ
         integer, intent(in) :: space_type
         integer, intent(in) :: determ_target_size
 
@@ -198,7 +198,7 @@ contains
 
         call create_determ_hash_table(determ, print_info)
 
-        call create_determ_hamil(sys, displs, dets_this_proc, determ, print_info)
+        call create_determ_hamil(determ, sys, displs, dets_this_proc, print_info)
 
         call add_determ_dets_to_walker_dets(determ, sys, dets_this_proc)
 
@@ -285,8 +285,11 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(sys, displs, dets_this_proc, determ, print_info)
+    subroutine create_determ_hamil(determ, sys, displs, dets_this_proc, print_info)
 
+        ! In/Out:
+        !    [review] - what should determ hold on input and what does it hold on output?
+        !    determ: Deterministic space being used.
         ! In:
         !    sys: system being studied
         !    displs: displs(i) holds the cumulative sum of the number of
@@ -294,9 +297,6 @@ contains
         !    dets_this_proc: The deterministic states belonging to this
         !        processor.
         !    print_info: Should we print information to the screen?
-        ! In/Out:
-        !    [review] - what should determ hold on input and what does it hold on output?
-        !    determ: Deterministic space being used.
 
         use checking, only: check_allocate
         use csr, only: init_csrp
@@ -306,10 +306,10 @@ contains
         use system, only: sys_t
         use utils, only: int_fmt
 
+        type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: displs(0:nprocs-1)
         integer(i0), intent(in) :: dets_this_proc(:,:)
-        type(semi_stoch_t), intent(inout) :: determ
         logical, intent(in) :: print_info
 
         integer :: i, j, nnz, imode, ierr
@@ -695,7 +695,7 @@ contains
 
         ! In determ_dets and determ_pops, return the determinants and
         ! populations of the most populated determinants on this processor.
-        call find_most_populated_dets(walker_dets, walker_population, tot_walkers, determ_dets, determ_pops, ndets)
+        call find_most_populated_dets(walker_dets, walker_population, tot_walkers, ndets, determ_dets, determ_pops)
 
         ! Create a joined list, all_determ_pops, of the most populated
         ! determinants from each processor.
@@ -709,7 +709,7 @@ contains
 
         ! In the array indices return a list of indices of the determ_size
         ! populations in all_determ_pops which are largest.
-        call find_indices_of_most_populated_dets(all_determ_pops, ndets_tot, indices, determ_size)
+        call find_indices_of_most_populated_dets(all_determ_pops, ndets_tot, determ_size, indices)
 
         do i = 1, determ_size
             ! In determ_pops populations corresponding to determinants on
@@ -736,7 +736,7 @@ contains
 
     end subroutine create_restart_space
 
-    subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, dets_out, pops_out, ndets_out)
+    subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, ndets_out, dets_out, pops_out)
 
         ! On output dets_out and pops_out hold the determinants and populations
         ! corresponding to the ndets_out most populated determinants, as
@@ -802,7 +802,7 @@ contains
 
     end subroutine find_most_populated_dets
 
-    subroutine find_indices_of_most_populated_dets(pops, npops_in, indices, nind_out)
+    subroutine find_indices_of_most_populated_dets(pops, npops_in, nind_out, indices)
 
         ! On output indices will store the indices of the nind_out largest
         ! populations in pops.
@@ -829,8 +829,8 @@ contains
 
         integer(int_p), intent(in) :: pops(:)
         integer, intent(in) :: npops_in
-        integer, intent(out) :: indices(:)
         integer, intent(in) :: nind_out
+        integer, intent(out) :: indices(:)
 
         integer :: i, j, min_ind
         integer(int_p) :: min_pop
