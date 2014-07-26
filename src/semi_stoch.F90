@@ -220,8 +220,9 @@ contains
         ! Create the hash table for the deterministic space.
 
         ! In/Out:
-        !    [review] - what should determ hold on input and what does it hold on output?
-        !    determ: Deterministic space being used.
+        !    determ: Deterministic space being used. On input, determ%tot_size
+        !        and determ%dets should be created and set. On output the
+        !        determ%hash_table object will be created.
         ! In:
         !    print_info: Should we print information to the screen?
 
@@ -293,7 +294,9 @@ contains
 
         ! In/Out:
         !    [review] - what should determ hold on input and what does it hold on output?
-        !    determ: Deterministic space being used.
+        !    determ: Deterministic space being used. On input, determ%sizes,
+        !        determ%tot_size and determ%dets should be created and set. On
+        !        output, determ%hamil will have been created.
         ! In:
         !    sys: system being studied
         !    displs: displs(i) holds the cumulative sum of the number of
@@ -400,15 +403,10 @@ contains
         !    dets_this_proc: The deterministic states belonging to this
         !        processor.
 
-        use basis, only: basis_length
-        use calc, only: dmqmc_calc, hfs_fciqmc_calc, trial_function
-        use calc, only: neel_singlet, doing_calc
+        use annihilation, only: insert_new_walker
         use fciqmc_data, only: walker_dets, walker_population, walker_data
-        use fciqmc_data, only: sampling_size, H00, tot_walkers, replica_tricks
-        use heisenberg_estimators, only: neel_singlet_data
-        use hfs_data, only: O00
+        use fciqmc_data, only: tot_walkers, sampling_size
         use parallel, only: iproc
-        use proc_pointers, only: sc0_ptr, op0_ptr
         use search, only: binary_search
         use system, only: sys_t
 
@@ -417,8 +415,10 @@ contains
         integer(i0), intent(in) :: dets_this_proc(:,:)
 
         integer :: i, j, k, istart, iend, pos
+        integer(int_p) :: zero_population(sampling_size)
         logical :: hit
 
+        zero_population = 0_int_p
         determ%flags = 1
 
         istart = 1
@@ -433,28 +433,15 @@ contains
                 ! This deterministic state is not in walker_dets. Move all
                 ! determinants with index pos or greater down one and insert
                 ! [review] - JSS: typo?  'or zero' -> 'of zero'?
-                ! this determinant with an initial sign or zero.
+                ! this determinant with an initial sign of zero.
                 ! [review] - JSS: this looks like it's repeated from insert_new_walkers?  Should we abstract it?
+                ! [reply] - NSB: Yes it is, I think that it a good idea. I've done this, see what you think!
                 walker_dets(:,pos:tot_walkers) = walker_dets(:,pos+1:tot_walkers+1)
                 walker_population(:,pos:tot_walkers) = walker_population(:,pos+1:tot_walkers+1)
                 walker_data(:,pos:tot_walkers) = walker_data(:,pos+1:tot_walkers+1)
 
-                walker_dets(:,pos) = dets_this_proc(:,i)
-                walker_population(:,pos) = 0_int_p
-                if (.not. doing_calc(dmqmc_calc)) walker_data(1,pos) = sc0_ptr(sys, dets_this_proc(:,i)) - H00
-                if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = &
-                    neel_singlet_data(walker_dets(:,pos))
-                if (doing_calc(hfs_fciqmc_calc)) then
-                    ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
-                    walker_data(2,pos) = op0_ptr(sys, walker_dets(:,pos)) - O00
-                else if (doing_calc(dmqmc_calc)) then
-                    ! Set the energy to be the average of the two induvidual energies.
-                    walker_data(1,pos) = (walker_data(1,pos) + &
-                        sc0_ptr(sys, walker_dets((basis_length+1):(2*basis_length),pos)) - H00)/2
-                    if (replica_tricks) then
-                        walker_data(2:sampling_size,pos) = walker_data(1,pos)
-                    end if
-                end if
+                ! Insert a determinant with population zero into the walker arrays.
+                call insert_new_walker(sys, pos, dets_this_proc(:,i), zero_population)
 
                 tot_walkers = tot_walkers + 1
             end if
@@ -616,12 +603,14 @@ contains
         if (check_proc) then
             proc = modulo(murmurhash_bit_string(f, total_basis_length, spawn%hash_seed), nprocs)
             ! [review] - JSS: safer/easier to read if never have multiple return points.
-            if (proc /= iproc) return
+        else
+            proc = iproc
         end if
 
-        determ_size_this_proc = determ_size_this_proc + 1
-
-        dets_this_proc(:, determ_size_this_proc) = f
+        if (proc == iproc) then
+            determ_size_this_proc = determ_size_this_proc + 1
+            dets_this_proc(:, determ_size_this_proc) = f
+        end if
 
     end subroutine add_det_to_determ_space
 
@@ -713,7 +702,7 @@ contains
 
         ! In the array indices return a list of indices of the determ_size
         ! populations in all_determ_pops which are largest.
-        call find_indices_of_most_populated_dets(all_determ_pops, ndets_tot, determ_size, indices)
+        call find_indices_of_most_populated_dets(ndets_tot, determ_size, all_determ_pops, indices)
 
         do i = 1, determ_size
             ! In determ_pops populations corresponding to determinants on
@@ -761,10 +750,17 @@ contains
         !    pops_out: Populations corresponding to the determinants in dets_out.
 
         ! [review] - JSS: unclear why these are 2D arrays, nor the bounds.
+        ! [reply] - NSB: OK, I don't want to force to the second dimension of pops_in and pops_out to
+        ! [reply] - NSB: be sampling_size as then this routine won't be pure (or I'll have to pass
+        ! [reply] - NSB: it in) which would be a shame... Unless you think it is worth it.
+        ! dets_in(:,i) holds determinant i.
         integer(i0), intent(in) :: dets_in(:,:) 
+        ! pops_in(j,i) holds the population of particle type j on determinant i.
         integer(int_p), intent(in) :: pops_in(:,:)
         integer, intent(in) :: ndets_in, ndets_out
+        ! dets_out(:,i) holds determinant i.
         integer(i0), intent(out) :: dets_out(:,:)
+        ! pops_in(j,i) holds the population of particle type j on determinant i.
         integer(int_p), intent(out) :: pops_out(:)
 
         integer :: i, j, min_ind
@@ -806,64 +802,71 @@ contains
 
     end subroutine find_most_populated_dets
 
-    pure subroutine find_indices_of_most_populated_dets(pops, npops_in, nind_out, indices)
+    pure subroutine find_indices_of_most_populated_dets(npops_in, nind_out, pops, indices)
 
         ! On output indices will store the indices of the nind_out largest
         ! populations in pops.
 
         ! [review] - JSS: why this restriction?
-        ! NOTE 1: It is assumed that the populations in pops are all
-        ! non-negative. The absolute values of populations are not taken in
-        ! this routine.
+        ! [reply] - NSB: Just for speed (this bit of the code can sometimes take
+        ! [reply] - while to run), but I've removed it now.
 
         ! [review] - JSS: given that this is not called in a tight loop, we can afford
         ! [review] - JSS: to provide a little safety to the programmer...
-        ! NOTE 2: It is assumed that npops_in >= nind_out. It is up to the
-        ! programmer to ensure this is true and there will likely be errors if
-        ! it isn't.
+        ! [reply] - NSB: I'm not sure the best way to give safety to the programmer
+        ! [reply] - NSB: in this case as it is an odd situation. Either printing a
+        ! [reply] - NSB: warning or returning all indices beyond npops_in as zero...
+        ! [reply] - NSB: I've done the latter for now, what do you think?
+        ! NOTE: If nind_out > npops_in then all indices beyond npops_in  will be
+        ! returned as zero.
 
         ! In:
-        !    pops: List of populations to be maximised.
         !    npops_in: The number of populations in pops to consider.
         !    nind_out: The number of indices to keep when finding the
-        !        most populated entries in pops. Anything beyond nind_out in
-        !        indices may be garbage.
+        !        most populated entries in pops.
+        !    pops: List of populations to be maximised.
         ! Out:
         !    indices: List of the indices of the largest values in pops.
 
-        integer(int_p), intent(in) :: pops(:)
         integer, intent(in) :: npops_in
         integer, intent(in) :: nind_out
-        integer, intent(out) :: indices(:)
+        integer(int_p), intent(in) :: pops(npops_in)
+        integer, intent(out) :: indices(nind_out)
 
         integer :: i, j, min_ind
         integer(int_p) :: min_pop
 
         ! To start with just choose the first nind_out populations.
         indices(1) = 1
-        min_pop = pops(1)
+        min_pop = abs(pops(1))
         min_ind = 1
-        do i = 2, nind_out
+        do i = 2, min(nind_out, npops_in)
             indices(i) = i
-            if (pops(i) < min_pop) then
-                min_pop = pops(i)
+            if (abs(pops(i)) < min_pop) then
+                min_pop = abs(pops(i))
                 min_ind = i
             end if
+        end do
+
+        ! If the number of requested indices is larger than the number of
+        ! populations provided then return all further indices as zero.
+        do i = npops_in+1, nind_out
+            indices(i) = 0
         end do
 
         ! Now loop over all remaining populations and see if any are larger
         ! than those already in the list.
         do i = nind_out+1, npops_in
-            if (pops(i) > min_pop) then
+            if (abs(pops(i)) > min_pop) then
                 ! Replace the old smallest index with this new index.
                 indices(min_ind) = i
                 ! Now find the position and value of the new smallest
                 ! population.
-                min_pop = pops(indices(1))
+                min_pop = abs(pops(indices(1)))
                 min_ind = 1
                 do j = 2, nind_out
-                    if (pops(indices(j)) < min_pop) then
-                        min_pop = pops(indices(j))
+                    if (abs(pops(indices(j))) < min_pop) then
+                        min_pop = abs(pops(indices(j)))
                         min_ind = j
                     end if
                 end do
