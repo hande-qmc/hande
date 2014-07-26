@@ -16,6 +16,9 @@ use csr, only: csrp_t
 
 implicit none
 
+integer, parameter :: empty_determ_space = 0
+integer, parameter :: restart_determ_space = 1
+
 ! Array to hold the indices of deterministic states in the dets array, accessed
 ! by calculating a hash value. This type is used by the semi_stoch_t type.
 type determ_hash_t
@@ -37,6 +40,9 @@ type determ_hash_t
 end type determ_hash_t
 
 type semi_stoch_t
+    ! Integer to specify which type of deterministic space is being used.
+    ! See the various determ_space parameters defined above.
+    integer :: space_type = empty_determ_space
     ! The total number of deterministic states on all processes.
     integer :: tot_size
     ! sizes(i) holds the number of deterministic states belonging to process i.
@@ -74,18 +80,18 @@ contains
 
     ! [review] - JSS: mark procedures as pure where possible.
 
-    subroutine init_semi_stochastic(sys, spawn, determ, determ_type, determ_target_size)
+    subroutine init_semi_stochastic(sys, spawn, determ, space_type, determ_target_size)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
-        ! deterministic space is determined by determ_type.
+        ! deterministic space is determined by space_type.
 
         ! In/Out:
         !    determ: Deterministic space being used.
         ! In:
         !    sys: system being studied
         !    spawn: spawn_t object to which deterministic spawning will occur.
-        !    determ_type: Integer parameter specifying which type of
+        !    space_type: Integer parameter specifying which type of
         !        deterministic space to use.
         !    determ_target_size: A size of deterministic space to aim for. This
         !        is only necessary for particular deterministic spaces.
@@ -102,7 +108,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
-        integer, intent(in) :: determ_type
+        integer, intent(in) :: space_type
         integer, intent(in) :: determ_target_size
 
         integer :: i, ierr, determ_dets_mem
@@ -110,7 +116,7 @@ contains
 
         ! Only print information if the parent processor and if we are using a
         ! non-trivial deterministic space.
-        print_info = parent .and. determ_type /= 0
+        print_info = parent .and. space_type /= empty_determ_space
 
         if (print_info) write(6,'(1X,a41)') 'Beginning semi-stochastic initialisation.'
 
@@ -129,13 +135,14 @@ contains
         determ%temp_dets = 0_i0
         determ%sizes = 0
         determ%displs = 0
+        determ%space_type = space_type
 
         if (print_info) write(6,'(1X,a29)') 'Creating deterministic space.'
 
-        ! If determ_type does not take one of the below values then an empty
+        ! If space_type does not take one of the below values then an empty
         ! deterministic space will be used. This is the default behaviour
-        ! (determ_type = 0).
-        if (determ_type == 1) then
+        ! (space_type = empty_determ_space).
+        if (space_type == restart_determ_space) then
             call create_restart_space(determ, spawn, determ_target_size)
         end if
 

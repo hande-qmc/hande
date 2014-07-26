@@ -15,6 +15,7 @@ use restart_hdf5, only: restart_info_global
 use hubbard_real, only: finite_cluster
 use hfs_data
 use dmqmc_procedures, only: rdms
+use semi_stoch
 
 implicit none
 
@@ -224,7 +225,7 @@ contains
             ! Deterministic spaces.
             case('SEMI_STOCH_RESTART')
                 ! [review] - JSS: should select_ref_det be forbidden if semi_stoch_restart is also true?  I suspect so...
-                determ_type = 1
+                determ_space_type = restart_determ_space
                 call readi(determ_target_size)
 
             ! DMQMC expectation values to be calculated.
@@ -709,7 +710,7 @@ contains
         end if
         call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(determ_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)

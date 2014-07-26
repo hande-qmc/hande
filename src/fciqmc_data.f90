@@ -63,7 +63,13 @@ real(p) :: spawn_cutoff
 
 ! Semi-stochhastic
 ! [review] - JSS: what do determ_type amd determ_target_size mean?  What values can they take?
-integer :: determ_type = 0
+! determ_space_type is used to tell the semi-stochastic initialisation routine
+! which type of deterministic space to use. See the 'determ-space' parameters
+! defined in semi_stoch.F90 for the various values it can take.
+integer :: determ_space_type = 0
+! Certain deterministic space types need a target size to be input to tell the
+! semi-stochastic initialisation routine how many states to try and include. In
+! such cases this variable should be set on input.
 integer :: determ_target_size = 0
 
 !--- Energy data ---

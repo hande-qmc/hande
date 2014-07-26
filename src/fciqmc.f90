@@ -19,6 +19,12 @@ contains
 
         ! In:
         !    sys: system being studied.
+        ! In/Out:
+        !    determ: Deterministic space being used. On input, all information
+        !        on the deterministic space is stored. Components which can be
+        !        updated during this routine are determ%vector, which holds the
+        !        amplitudes of deterministic states, and determ%flags, which
+        !        specifies which states in walker_dets are deterministic.
 
         use parallel
 
@@ -34,6 +40,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
+        use semi_stoch, only: empty_determ_space
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
@@ -54,7 +61,7 @@ contains
         real(dp) :: real_population
 
         logical :: soft_exit
-        logical :: determ_parent, determ_child
+        logical :: semi_stochastic, determ_parent, determ_child
 
         real :: t1
 
@@ -69,6 +76,9 @@ contains
 
         ! from restart
         nparticles_old = tot_nparticles
+
+        ! Are we using a non-empty semi-stochastic space?
+        semi_stochastic = .not. (determ%space_type == empty_determ_space)
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
@@ -96,6 +106,8 @@ contains
                     ! Extract the real sign from the encoded sign.
                     real_population = real(walker_population(1,idet),dp)/real_factor
 
+                    ! If this is a deterministic state then copy its population
+                    ! across to the determ%vector array.
                     if (determ%flags(idet) == 0) then
                         ideterm = ideterm + 1
                         determ%vector(ideterm) = real_population
@@ -124,6 +136,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             ! [review] - JSS: will compiler switch the loop and branch ordering?  Perhaps...
+                            ! [reply] - NSB: Is this something to worry about? Or is this referring to my comment below?
                             if (determ_parent) then
                                 ! Note: f_child needs to be calculated here but is
                                 ! also calculated in create_spawned_particle.
@@ -147,7 +160,12 @@ contains
                 end do
 
                 ! [review] - JSS: clearer to the reader if only called if semi-stochastic is in use.
-                call determ_projection(rng, qmc_spawn, determ)
+                ! [reply] - NSB: OK. I didn't add a global semi-stochastic logical, but have added a local
+                ! [reply] - NSB: one. I intended semi-stochastic always to be 'on' but agree this
+                ! [reply] - NSB: might be confusing. What do you think about this solution? Should we
+                ! [reply] - NSB: also add this if-statement for the above bits of new semi-stochastic code?
+                ! [reply] - NSB: I did want to avoid semi-stochastic if-statements everwhere.
+                if (semi_stochastic) call determ_projection(rng, qmc_spawn, determ)
 
                 call direct_annihilation(sys, rng, initiator_approximation, determ%flags)
 
