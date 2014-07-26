@@ -56,8 +56,11 @@ type semi_stoch_t
     ! [reply] - NSB: Agreed. I was expecting it to be used repeatedly in the code. I've removed it.
 
     ! The Hamiltonian in the deterministic space, stored in a sparse CSR form.
+    ! An Hamiltonian element, H_{ij}, is stored in hamil if and only if both
+    ! i and j are in the deterministic space.
     ! [review] - JSS: H_{ij} is in hamil if both i,j are in the deterministic
     ! [review] - JSS: space, right?
+    ! [reply] - NSB: Yes, only if both i and j are. I added this above.
     type(csrp_t) :: hamil
     ! [review] - JSS: so this is instead of using walker_population, right?  Or in addition to?
     ! This array is used to store the values of amplitudes of deterministic
@@ -82,6 +85,7 @@ end type semi_stoch_t
 contains
 
     ! [review] - JSS: mark procedures as pure where possible.
+    ! [reply] - NSB: Done. Only two, sadly.
 
     subroutine init_semi_stochastic(determ, sys, spawn, space_type, determ_target_size)
 
@@ -736,7 +740,7 @@ contains
 
     end subroutine create_restart_space
 
-    subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, ndets_out, dets_out, pops_out)
+    pure subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, ndets_out, dets_out, pops_out)
 
         ! On output dets_out and pops_out hold the determinants and populations
         ! corresponding to the ndets_out most populated determinants, as
@@ -802,7 +806,7 @@ contains
 
     end subroutine find_most_populated_dets
 
-    subroutine find_indices_of_most_populated_dets(pops, npops_in, nind_out, indices)
+    pure subroutine find_indices_of_most_populated_dets(pops, npops_in, nind_out, indices)
 
         ! On output indices will store the indices of the nind_out largest
         ! populations in pops.
