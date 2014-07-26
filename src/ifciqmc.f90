@@ -65,6 +65,7 @@ contains
     subroutine set_parent_flag(parent_population, f, determ_flag, parent_flag)
 
         ! [review] - JSS: adapt interface comments to include deterministic space.
+        ! [reply] - NSB: determ_flag is commented already (was this from before I added comments)?
         ! Test whether the parent determinant is an initiator.
         !
         ! In:
@@ -91,7 +92,11 @@ contains
             parent_flag = 0
         else if (determ_flag == 0) then
             ! [review] - JSS: is it sensible to have the flag the same value as the initiator flag?
+            ! [reply] - NSB: They are not always the same. A deterministic state is always an initiator
+            ! [reply] - NSB: but not all initiators are deterministic.
+
             ! [review] - JSS: is it possible to run semi-stochastic without the initiator approximation?
+            ! [reply] - NSB: Yes it is possible and useful to run semi-stochastic without initiator.
             ! Is a deterministic state.
             parent_flag = 0
         else
