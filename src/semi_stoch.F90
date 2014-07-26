@@ -20,20 +20,25 @@ integer, parameter :: empty_determ_space = 0
 integer, parameter :: restart_determ_space = 1
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
-! by calculating a hash value. This type is used by the semi_stoch_t type.
+! by calculating a hash value. This type is used by the semi_stoch_t type and
+! is intended only to be used by this object.
 type determ_hash_t
-    ! Seed used in the MurmurHash function, to calculate hash values.
+    ! Seed used in the MurmurHash function to calculate hash values.
     integer :: seed
     ! [review] - JSS: the size of the hash table (ignoring collisions)?
-    ! The number of unique hash values used, from 1 to nhash.
+    ! The size of the hash table (ignoring collisions).
     integer :: nhash
     ! [review] - JSS: the size of ind appears to be not part of determ_hash_t, right?
+    ! [reply] - NSB: No, this type is only supposed to be used by semi_stoch_t.
+    ! [reply] - NSB: Is this bad practice, do you think?
+
     ! [review] - JSS: 'dets' array == semi_stoch_t%dets?
-    ! The indicies of the determinants in the dets array.
-    integer, allocatable :: ind(:)
+    ! [reply] - NSB: Yes
+    ! The indicies of the determinants in the semi_stoch_t%dets array.
+    integer, allocatable :: ind(:) ! (semi_stoch_t%tot_size)
     ! hash_ptr(i) stores the index of the first index in the array ind which
     ! corresponds to a determinant with hash value i.
-    ! This is similar to what is done int he CSR sparse matrix type (see
+    ! This is similar to what is done in the CSR sparse matrix type (see
     ! csr.f90).
     ! [review] - JSS: can we have an example of how to look up a determinant?
     integer, allocatable :: hash_ptr(:)
@@ -48,9 +53,8 @@ type semi_stoch_t
     ! sizes(i) holds the number of deterministic states belonging to process i.
     integer, allocatable :: sizes(:) ! (0:nproc-1)
     ! [review] - JSS: given this only happens in the initialisation, does it really need to be in the main type?
-    ! displs(i)+1 holds the index of the first deterministic state belonging
-    ! to process i in the dets array. This is used in MPI communication.
-    integer, allocatable :: displs(:) ! (0:nproc-1)
+    ! [reply] - NSB: Agreed. I was expecting it to be used repeatedly in the code. I've removed it.
+
     ! The Hamiltonian in the deterministic space, stored in a sparse CSR form.
     ! [review] - JSS: H_{ij} is in hamil if both i,j are in the deterministic
     ! [review] - JSS: space, right?
@@ -67,9 +71,8 @@ type semi_stoch_t
     type(determ_hash_t) :: hash_table
     ! [review] - JSS: should a temporary object really be kept in semi_stoch_t?  Might
     ! [review] - JSS: be better to pass it around as necessary... 
-    ! Temporary space used for storing determinants during the creation of the
-    ! deterministic space (before it is known how big the space is).
-    integer(i0), allocatable :: temp_dets(:,:)
+    ! [reply] - Agreed and removed.
+
     ! Deterministic flags of states in the main list. If determ_flags(i) is
     ! equal to 0 then the corresponding state in position i of the main list is
     ! a deterministic state, else it is not.
@@ -112,6 +115,10 @@ contains
         integer, intent(in) :: determ_target_size
 
         integer :: i, ierr, determ_dets_mem
+        integer :: displs(0:nprocs-1)
+        ! dtes_this_proc will hold deterministic states on this processor only.
+        ! This is only needed during initialisation.
+        integer(i0), allocatable :: dets_this_proc(:,:)
         logical :: print_info
 
         ! Only print information if the parent processor and if we are using a
@@ -120,22 +127,19 @@ contains
 
         if (print_info) write(6,'(1X,a41)') 'Beginning semi-stochastic initialisation.'
 
-        ! Create the temporary space for enumerating the deterinistic space and
-        ! also the arrays to hold deterministic flags and space sizes and
-        ! displacements.
-        allocate(determ%temp_dets(total_basis_length, walker_length), stat=ierr)
-        call check_allocate('determ%temp_dets', size(determ%temp_dets), ierr)
         allocate(determ%flags(walker_length), stat=ierr)
         call check_allocate('determ%flags', walker_length, ierr)
         allocate(determ%sizes(0:nprocs-1), stat=ierr)
         call check_allocate('determ%sizes', nprocs, ierr)
-        allocate(determ%displs(0:nprocs-1), stat=ierr)
-        call check_allocate('determ%displs', nprocs, ierr)
 
-        determ%temp_dets = 0_i0
         determ%sizes = 0
-        determ%displs = 0
         determ%space_type = space_type
+
+        ! Create temporary space for enumerating the deterministic space
+        ! belonging to this processor only.
+        allocate(dets_this_proc(total_basis_length, walker_length), stat=ierr)
+        call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
+        dets_this_proc = 0_i0
 
         if (print_info) write(6,'(1X,a29)') 'Creating deterministic space.'
 
@@ -143,7 +147,7 @@ contains
         ! deterministic space will be used. This is the default behaviour
         ! (space_type = empty_determ_space).
         if (space_type == restart_determ_space) then
-            call create_restart_space(determ, spawn, determ_target_size)
+            call create_restart_space(dets_this_proc, spawn, determ_target_size, determ%sizes(iproc))
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -164,9 +168,9 @@ contains
         end if
 
         ! Displacements used for MPI communication.
-        determ%displs(0) = 0
+        displs(0) = 0
         do i = 1, nprocs-1
-            determ%displs(i) = determ%displs(i-1) + determ%sizes(i-1)
+            displs(i) = displs(i-1) + determ%sizes(i-1)
         end do
 
         ! Vector to hold deterministic amplitudes.
@@ -174,7 +178,7 @@ contains
         call check_allocate('determ%vector', determ%sizes(iproc), ierr)
         determ%vector = 0.0_p
 
-        call qsort(determ%temp_dets, determ%sizes(iproc)) 
+        call qsort(dets_this_proc, determ%sizes(iproc)) 
 
         ! Array to hold all deterministic states from all processes.
         ! The memory required in MB.
@@ -186,21 +190,22 @@ contains
 
         ! Join and store all deterministic states from all processes.
 #ifdef PARALLEL
-        call mpi_allgatherv(determ%temp_dets(:,1:determ%sizes(iproc)), determ%sizes(iproc), mpi_det_integer, &
-                            determ%dets, determ%sizes, determ%displs, mpi_det_integer, MPI_COMM_WORLD, ierr)
+        call mpi_allgatherv(dets_this_proc(:,1:determ%sizes(iproc)), determ%sizes(iproc), mpi_det_integer, &
+                            determ%dets, determ%sizes, displs, mpi_det_integer, MPI_COMM_WORLD, ierr)
 #else
-        determ%dets = determ%temp_dets(:,1:determ%sizes(iproc))
+        determ%dets = dets_this_proc(:,1:determ%sizes(iproc))
 #endif
 
         call create_determ_hash_table(determ, print_info)
 
-        call create_determ_hamil(sys, determ, print_info)
+        call create_determ_hamil(sys, displs, dets_this_proc, determ, print_info)
 
-        call add_determ_dets_to_walker_dets(sys, determ)
+        call add_determ_dets_to_walker_dets(determ, sys, dets_this_proc)
 
-        ! We don't need this temporary space anymore.
-        deallocate(determ%temp_dets, stat=ierr)
-        call check_deallocate('determ%temp_dets', ierr)
+        ! We don't need this temporary space anymore. All deterministic states
+        ! from all processors are stored in determ%dets.
+        deallocate(dets_this_proc, stat=ierr)
+        call check_deallocate('dets_this_proc', ierr)
 
         if (print_info) write(6,'(1X,a40,/)') 'Semi-stochastic initialisation complete.'
 
@@ -280,14 +285,18 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(sys, determ, print_info)
+    subroutine create_determ_hamil(sys, displs, dets_this_proc, determ, print_info)
 
+        ! In:
+        !    sys: system being studied
+        !    displs: displs(i) holds the cumulative sum of the number of
+        !        deterministic states belonging to processor numbers 0 to i-1.
+        !    dets_this_proc: The deterministic states belonging to this
+        !        processor.
+        !    print_info: Should we print information to the screen?
         ! In/Out:
         !    [review] - what should determ hold on input and what does it hold on output?
         !    determ: Deterministic space being used.
-        ! In:
-        !    sys: system being studied
-        !    print_info: Should we print information to the screen?
 
         use checking, only: check_allocate
         use csr, only: init_csrp
@@ -298,6 +307,8 @@ contains
         use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: displs(0:nprocs-1)
+        integer(i0), intent(in) :: dets_this_proc(:,:)
         type(semi_stoch_t), intent(inout) :: determ
         logical, intent(in) :: print_info
 
@@ -319,8 +330,8 @@ contains
                 do i = 1, determ%tot_size
                     ! Over all deterministic states on this process (all columns).
                     do j = 1, determ%sizes(iproc)
-                        hmatel = get_hmatel(sys, determ%dets(:,i), determ%temp_dets(:,j))
-                        diag_elem = i == j + determ%displs(iproc)
+                        hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
+                        diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
                         if (diag_elem) hmatel = hmatel - H00
                         if (abs(hmatel) > depsilon) then
@@ -371,7 +382,7 @@ contains
 
     end subroutine create_determ_hamil
 
-    subroutine add_determ_dets_to_walker_dets(sys, determ)
+    subroutine add_determ_dets_to_walker_dets(determ, sys, dets_this_proc)
 
         ! Also set the deterministic flags of any deterministic states already
         ! in walker_dets, and add deterministic data to walker_populations and
@@ -382,6 +393,8 @@ contains
         !    determ: Deterministic space being used.
         ! In:
         !    sys: system being studied
+        !    dets_this_proc: The deterministic states belonging to this
+        !        processor.
 
         use basis, only: basis_length
         use calc, only: dmqmc_calc, hfs_fciqmc_calc, trial_function
@@ -395,8 +408,9 @@ contains
         use search, only: binary_search
         use system, only: sys_t
 
-        type(sys_t), intent(in) :: sys
         type(semi_stoch_t), intent(inout) :: determ
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: dets_this_proc(:,:)
 
         integer :: i, j, k, istart, iend, pos
         logical :: hit
@@ -406,7 +420,7 @@ contains
         istart = 1
         iend = tot_walkers
         do i = 1, determ%sizes(iproc)
-            call binary_search(walker_dets, determ%temp_dets(:,i), istart, iend, hit, pos)
+            call binary_search(walker_dets, dets_this_proc(:,i), istart, iend, hit, pos)
             if (hit) then
                 ! This deterministic state is already in walker_dets. We simply
                 ! need to set the deterministic flag.
@@ -421,9 +435,9 @@ contains
                 walker_population(:,pos:tot_walkers) = walker_population(:,pos+1:tot_walkers+1)
                 walker_data(:,pos:tot_walkers) = walker_data(:,pos+1:tot_walkers+1)
 
-                walker_dets(:,pos) = determ%temp_dets(:,i)
+                walker_dets(:,pos) = dets_this_proc(:,i)
                 walker_population(:,pos) = 0_int_p
-                if (.not. doing_calc(dmqmc_calc)) walker_data(1,pos) = sc0_ptr(sys, determ%temp_dets(:,i)) - H00
+                if (.not. doing_calc(dmqmc_calc)) walker_data(1,pos) = sc0_ptr(sys, dets_this_proc(:,i)) - H00
                 if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = &
                     neel_singlet_data(walker_dets(:,pos))
                 if (doing_calc(hfs_fciqmc_calc)) then
@@ -567,10 +581,13 @@ contains
 
     end subroutine determ_projection
 
-    subroutine add_det_to_determ_space(determ, spawn, f, check_proc)
+    subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc)
 
         ! In/Out:
-        !    determ: Deterministic space being used.
+        !    determ_size_this_proc: Size of the deterministic space being
+        !        created on this processor only.
+        !    dets_this_proc: The deterministic states belonging to this
+        !        processor.
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    f: det to be added to the determ object.
@@ -582,7 +599,8 @@ contains
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
 
-        type(semi_stoch_t), intent(inout) :: determ
+        integer, intent(inout) :: determ_size_this_proc
+        integer(i0), intent(inout) :: dets_this_proc(:,:)
         type(spawn_t), intent(in) :: spawn
         integer(i0), intent(in) :: f(total_basis_length)
         logical, intent(in) :: check_proc
@@ -597,26 +615,29 @@ contains
             if (proc /= iproc) return
         end if
 
-        determ%sizes(iproc) = determ%sizes(iproc) + 1
+        determ_size_this_proc = determ_size_this_proc + 1
 
-        determ%temp_dets(:, determ%sizes(iproc)) = f
+        dets_this_proc(:, determ_size_this_proc) = f
 
     end subroutine add_det_to_determ_space
 
-    subroutine create_restart_space(determ, spawn, target_size)
+    subroutine create_restart_space(dets_this_proc, spawn, target_size, determ_size_this_proc)
 
         ! Find the most highly populated determinants in walker_dets and use
         ! these to define the deterministic space. When using this routine
         ! the restart option should have been used, although it is not required.
 
         ! In/Out:
-        !    determ: Deterministic space being used.
-        !    [review] - JSS: what changes in determ?
+        !    dets_this_proc: The deterministic states belonging to this
+        !        processor in the final created deterministic space.
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    target_size: Size of deterministic space to use if possible. If
         !        not then use the largest space possible (all determinants from
         !        the restart file)).
+        ! Out:
+        !    determ_size_this_proc: Size of the deterministic space created,
+        !        on this processor only.
 
         use basis, only: total_basis_length
         use checking, only: check_allocate, check_deallocate
@@ -624,12 +645,14 @@ contains
         use parallel
         use spawn_data, only: spawn_t
 
-        type(semi_stoch_t), intent(inout) :: determ
+        integer(i0), intent(inout) :: dets_this_proc(:,:)
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: target_size
+        integer, intent(out) :: determ_size_this_proc
 
         integer :: ndets, ndets_tot, determ_size
         integer :: all_ndets(0:nprocs-1), displs(0:nprocs)
+        ! Temporary arrays used for finding the desired deterministic space.
         integer(i0), allocatable :: determ_dets(:,:)
         integer(int_p), allocatable :: determ_pops(:), all_determ_pops(:)
         integer, allocatable :: indices(:)
@@ -640,6 +663,7 @@ contains
         ! number then obviously we need to consider a smaller number.
         ndets = min(target_size, tot_walkers)
 
+        ! all_ndets will hold the values of ndets from each processor.
 #ifdef PARALLEL
         call mpi_allgather(ndets, 1, mpi_integer, all_ndets, 1, mpi_integer, MPI_COMM_WORLD, ierr)
 #else
@@ -697,7 +721,7 @@ contains
                 ! Find the index of this determinant in determ_dets, which only
                 ! contains determinants on this processor.
                 ind_local = indices(i) - displs(iproc)
-                call add_det_to_determ_space(determ, spawn, determ_dets(:,ind_local), .false.)
+                call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, determ_dets(:,ind_local), .false.)
             end if
         end do
 
