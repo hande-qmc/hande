@@ -11,6 +11,77 @@ module semi_stoch
 ! [review] - JSS: stochastic vector are combined (e.g. in energy evaluation, annihilation,
 ! [review] - JSS: spawning from the stochastic space into the deterministic space, etc.)
 
+! Semi-stochastic
+! ===============
+!
+! The semi-stochastic algorithm (PRL 109, 230201) is an adaptation to the
+! FCIQMC algorithm whereby the FCIQMC projection is performed exactly within a
+! small region of the space. If this region is chosen so as to contain the
+! most dominant determinants in the ground state wave function then a
+! significant reduction in stochastic noise can be obtained.
+!
+! Split all the states in the FCI space into 'deterministic' states and
+! 'stochastic' states. Let D refer to the deterministic space as a whole and S
+! to the stochastic space as a whole. Then, in the semi-stochastic method we
+! write the full projection matrix as
+!
+! P = P_{DD} + P_{SD} + P_{DS} + P_{SS}.
+!
+! In normal FCIQMC all the elements of this matrix are sampled stochastically.
+! In the semi-stochastic algorithm, while P_{SD} (deterministic to stochastic
+! spawning), P_{DS} (stochastic to deterministic spawning) and P_{SS}
+! stochastic to stochastic spawning) are calculated stochastically, P_{DD} is
+! calculated exactly.
+!
+! Key implementation points
+! -------------------------
+!
+! Thus, in this semi-stochastic code, we generate a set of states which will be
+! designated 'deterministic states'. These are stored in semi_stocht%dets.
+! We then calculate and store the entire Hamiltonian between all pairs of
+! deterministic states (stored in a sparse format in semi_stocht%hamil). Note
+! that we store the Hamiltonian, not the projection operator 1 - \tau \hat{H},
+! but the latter is easily calculated from the former.
+!
+! Deterministic states still reside in the main walker arrays, walker_dets,
+! walker_populations and walker_data. However, we want to perform spawning from
+! deterministic to deterministic states exactly. Thus, whenever a stochastic
+! spawning event of this type is generated, it is cancelled. We still have to
+! attempt stochastic spawning from deterministic states because deterministic to
+! stochastic spawning *is* allowed, and must be treated using the excitation
+! generators as usual.
+!
+! Because all deterministic states are still stored in walker_dets, they do not
+! have to be treated differently for the most part. For example, energy
+! evaluation is performed exactly as it is without semi-stochastic.
+!
+! We store an array of flags (semi_stoch_t%flags) which specify whether or not
+! states in walker_dets belong to the deterministic space or not. The status
+! of newly spawned states in checked on-the-fly.
+!
+! To check if a newly spawned determinant belongs to the deterministic space
+! or not, we use a hash table look-up. This is possible because
+! semi_stocht%dets stores *all deterministic states on all processors*
+! (a spawned state can of course belong to any processor).
+!
+! Note that all deterministic states are stored in walker_dets only for that
+! one processor (just as for all other states). Deterministic states are never
+! removed from walker_dets, even if they have an amplitude of exactly zero
+! (which is very unlikely in practice). This simplifies the implemenation in
+! some places. No stochastic rounding is ever performed for the populations of
+! deterministic states.
+!
+! As we run through all states in the main algorithm, the populations on
+! deterministic states are copied across to a vector (semi_stoch_t%vector).
+! This vector is what is multiplied in the deterministic projection itself
+! (performed in determ_proj). The resulting 'spawns' from this deterministic
+! projection (which will create a 'spawning' on every state in the entire
+! deterministic space) will be added to the spawning array and enter the
+! annihilation routine just like any other spawning. The only difference is
+! that we don't want to stochastically round any deterministic spawnings to
+! zero, so we check that a spawn isn't in the deterministic space before this
+! rounding is performed.
+
 use const
 use csr, only: csrp_t
 
@@ -23,6 +94,9 @@ integer, parameter :: restart_determ_space = 1
 ! by calculating a hash value. This type is used by the semi_stoch_t type and
 ! is intended only to be used by this object.
 type determ_hash_t
+    ! For an example of how to use this type to see if a determinant is in the
+    ! deterministic space or not, see the routine check_if_determ.
+
     ! Seed used in the MurmurHash function to calculate hash values.
     integer :: seed
     ! [review] - JSS: the size of the hash table (ignoring collisions)?
@@ -40,8 +114,14 @@ type determ_hash_t
     ! corresponds to a determinant with hash value i.
     ! This is similar to what is done in the CSR sparse matrix type (see
     ! csr.f90).
+    ! Note that element nhash+1 is should be set equal to determ%tot_size+1.
+    ! This helps with avoiding out-of-bounds errors when using this object.
     ! [review] - JSS: can we have an example of how to look up a determinant?
-    integer, allocatable :: hash_ptr(:)
+    ! [reply] - NSB: I started to add this and then decided what I was writing is just copying
+    ! [reply] - NSB: what I think is quite clear in check_if_determ. I have therefore added
+    ! [reply] - NSB: a reference to thi routine. Let me know if you don't think that procedure
+    ! [reply] - NSB: is clear enough.
+    integer, allocatable :: hash_ptr(:) ! (nhash+1)
 end type determ_hash_t
 
 type semi_stoch_t
@@ -63,6 +143,8 @@ type semi_stoch_t
     ! [reply] - NSB: Yes, only if both i and j are. I added this above.
     type(csrp_t) :: hamil
     ! [review] - JSS: so this is instead of using walker_population, right?  Or in addition to?
+    ! [reply] - NSB: In addition to. I think it would complicate things a lot if we didn't
+    ! [reply] - NSB: store deterministic states and amplitudes in walker_dets and walker_populations.
     ! This array is used to store the values of amplitudes of deterministic
     ! states throughout a QMC calculation.
     real(p), allocatable :: vector(:) ! determ_sizes(iproc)

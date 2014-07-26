@@ -244,7 +244,11 @@ contains
             ! zero. This is not done for deterministic states.
             ! [review] - JSS: should we only call stochastic_round (as an opimisation) if real_population?
             ! [review] - JSS: (similarly throughout annihilation).  Only just noticed this...
-            if (.not. determ_det) then
+            ! [reply] - NSB: OK, although it is a deoptimisation if reals are being used! It is
+            ! [reply] - NSB: also using more global data. I haven't added an if-statement in the
+            ! [reply] - NSB: other place that stochastic_round is called, round_low_population_spawns,
+            ! [reply] - NSB: as this is only called for reals anyway.
+            if (real_amplitudes .and. (.not. determ_det)) then
                 old_pop = walker_population(:,i)
                 call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
                 nparticles = nparticles + real(abs(walker_population(:,i)) - abs(old_pop),dp)/real_factor
@@ -412,14 +416,6 @@ contains
 
     subroutine insert_new_walker(sys, pos, det, population)
 
-        use basis, only: basis_length, total_basis_length
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
-        use calc, only: trial_function, neel_singlet
-        use heisenberg_estimators, only: neel_singlet_data
-        use hfs_data, only: O00
-        use proc_pointers, only: sc0_ptr, op0_ptr
-        use system, only: sys_t
-
         ! Insert a new determinant, det, at position pos in walker_dets. Also
         ! insert a new population at position pos in walker_population and
         ! calculate and insert all new values of walker_data for the given
@@ -432,6 +428,14 @@ contains
         !        data.
         !    det: The determinant to insert into walker_dets.
         !    population: The population to insert into walker_population.
+
+        use basis, only: basis_length, total_basis_length
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
+        use calc, only: trial_function, neel_singlet
+        use heisenberg_estimators, only: neel_singlet_data
+        use hfs_data, only: O00
+        use proc_pointers, only: sc0_ptr, op0_ptr
+        use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: pos
