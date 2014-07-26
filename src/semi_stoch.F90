@@ -364,7 +364,7 @@ contains
 
     end subroutine create_determ_hamil
 
-    subroutine add_determ_dets_to_walker_detsdd_determ_dets_to_walker_dets(sys, determ)
+    subroutine add_determ_dets_to_walker_dets(sys, determ)
 
         ! Also set the deterministic flags of any deterministic states already
         ! in walker_dets, and add deterministic data to walker_populations and
@@ -483,7 +483,7 @@ contains
         !    determ: Deterministic space being used.
 
         use calc, only: initiator_approximation
-        use csr, only: csrp_row
+        use csr, only: csrpgemv_single_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: shift, tau, real_factor
         use omp_lib
@@ -512,7 +512,7 @@ contains
                 do i = 1, determ%sizes(proc)
                     row = row + 1
                     ! Perform the projetion.
-                    call csrp_row(determ%hamil, determ%vector, out_vec, row)
+                    call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     ! [review] - JSS: why shift only on this processor?
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
@@ -543,7 +543,7 @@ contains
                 do i = 1, determ%sizes(proc)
                     ! The same as above, but without the shift contribution.
                     row = row + 1
-                    call csrp_row(determ%hamil, determ%vector, out_vec, row)
+                    call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     out_vec = -out_vec*tau*real_factor
                     sgn = sign(1.0_p, out_vec)
                     nspawn = int(abs(out_vec), int_p)
