@@ -40,8 +40,16 @@ module semi_stoch
 ! designated 'deterministic states'. These are stored in semi_stocht%dets.
 ! We then calculate and store the entire Hamiltonian between all pairs of
 ! deterministic states (stored in a sparse format in semi_stocht%hamil). Note
-! that we store the Hamiltonian, not the projection operator 1 - \tau \hat{H},
-! but the latter is easily calculated from the former.
+! that we store the Hamiltonian, not the projection operator
+! (1 + \tau S) - \tau \hat{H}, but the latter is easily calculated from the
+! former.
+!
+! Only part of the deterministic Hamiltonian is stored on each processor.
+! Each processor will store all columns of the Hamiltonian corresponding to
+! deterministic states on that processor only (but the entire column is
+! stored). That is, if I is a deterministic state on this processor and J is a
+! deterministic state belonging to another processor, then H_{II} and H_{JI}
+! will be stored, but H_{IJ} and H_{JJ} will not.
 !
 ! Deterministic states still reside in the main walker arrays, walker_dets,
 ! walker_populations and walker_data. However, we want to perform spawning from
@@ -74,7 +82,7 @@ module semi_stoch
 ! As we run through all states in the main algorithm, the populations on
 ! deterministic states are copied across to a vector (semi_stoch_t%vector).
 ! This vector is what is multiplied in the deterministic projection itself
-! (performed in determ_proj). The resulting 'spawns' from this deterministic
+! (performed in determ_projection). The resulting 'spawns' of this deterministic
 ! projection (which will create a 'spawning' on every state in the entire
 ! deterministic space) will be added to the spawning array and enter the
 ! annihilation routine just like any other spawning. The only difference is
@@ -286,6 +294,9 @@ contains
 
         call create_determ_hamil(determ, sys, displs, dets_this_proc, print_info)
 
+        ! All deterministic states on this processor are always stored in
+        ! walker_dets, even if they have a population of zero, so they are
+        ! added in here.
         call add_determ_dets_to_walker_dets(determ, sys, dets_this_proc)
 
         ! We don't need this temporary space anymore. All deterministic states
@@ -588,14 +599,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
         integer :: i, proc, row
-        real(p) :: out_vec, sgn
-        integer(int_p) :: nspawn
-#ifndef _OPENMP
-        integer, parameter :: thread_id = 0
-#else
-        integer :: thread_id
-        thread_id = omp_get_thread_num()
-#endif
+        real(p) :: out_vec
 
         row = 0
 
@@ -608,49 +612,81 @@ contains
                     ! Perform the projetion.
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     ! [review] - JSS: why shift only on this processor?
+                    ! [reply] - NSB: Because the shift bit of the projection is \tau S * v, and on
+                    ! [reply] - NSB: this processor this is only applied to deterministic states
+                    ! [reply] - NSB: on this processor, so the result is only to create a
+                    ! [reply] - NSB: contribution for states on this processor.
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
                     out_vec = -out_vec + shift(1)*determ%vector(i)
                     ! [review] - JSS: use an internal subroutine for the rest of the code in the do loop to avoid repetition?
                     ! [review] - JSS: compiler will then inline it.
-                    ! Multiply by the timestep, and also by real_factor, to
-                    ! allow the amplitude to be encoded as an integer.
-                    out_vec = out_vec*tau*real_factor
-                    sgn = sign(1.0_p, out_vec)
-                    ! Stochastically round up or down, to encode as an integer.
-                    nspawn = int(abs(out_vec), int_p)
-                    if (abs(out_vec) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
-                    nspawn = nspawn*nint(sgn, int_p)
-                    ! Upate the spawning slot...
-                    ! [review] - JSS: there should be a procedure in spawning on master
-                    ! [review] - JSS: which does exactly this.  Change to use that post-merge.
-                    spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
-                    ! ...and finally add the state to the spawning array.
-                    spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
-                    spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,row), int_s)
-                    spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
-                    ! Spawning has occurred from a deterministic state, an
-                    ! initiator by definition.
-                    if (initiator_approximation) spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
+                    ! [reply] - NSB: Is this what you mean?
+                    out_vec = out_vec*tau
+                    call create_spawned_particle_determ(out_vec, row, proc)
                 end do
             else
                 do i = 1, determ%sizes(proc)
                     ! The same as above, but without the shift contribution.
                     row = row + 1
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
-                    out_vec = -out_vec*tau*real_factor
-                    sgn = sign(1.0_p, out_vec)
-                    nspawn = int(abs(out_vec), int_p)
-                    if (abs(out_vec) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1
-                    nspawn = nspawn*nint(sgn, int_p)
-                    spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
-                    spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
-                    spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,row), int_s)
-                    spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
-                    if (initiator_approximation) spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
+                    out_vec = -out_vec*tau
+                    call create_spawned_particle_determ(out_vec, row, proc)
                 end do
             end if
         end do
+
+        contains
+
+            subroutine create_spawned_particle_determ(target_nspawn, idet, proc)
+
+                ! Add a deterministic spawning to the spawning array. Before
+                ! this can be done, the target population must be encoded as an
+                ! integer using the reals encoding scheme.
+
+                ! In:
+                !    target_nspawn: The number of spawns we want to add to the
+                !        spawning array, before the integer encoding has
+                !        been performed.
+                !    idet: The index of the determinant to be added in the
+                !        determ%dets array.
+                !    proc: The processor to which the determinant to be added
+                !        belongs.
+
+                real(p), intent(in) :: target_nspawn
+                integer, intent(in) :: idet, proc
+
+                integer(int_p) :: nspawn
+                real(p) :: sgn, target_nspawn_scaled
+#ifndef _OPENMP
+                integer, parameter :: thread_id = 0
+#else
+                integer :: thread_id
+                thread_id = omp_get_thread_num()
+#endif
+
+                ! Multiply target_nspawn by real_factor to allow it to be
+                ! encoded as an integer.
+                target_nspawn_scaled = target_nspawn*real_factor
+                sgn = sign(1.0_p, target_nspawn)
+                ! Stochastically round up or down, to encode as an integer.
+                nspawn = int(abs(target_nspawn_scaled), int_p)
+                if (abs(target_nspawn_scaled) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+                nspawn = nspawn*nint(sgn, int_p)
+                ! Upate the spawning slot...
+                ! [review] - JSS: there should be a procedure in spawning on master
+                ! [review] - JSS: which does exactly this.  Change to use that post-merge.
+                ! [reply] - NSB: OK!
+                spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
+                ! ...and finally add the state to the spawning array.
+                spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
+                spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,idet), int_s)
+                spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
+                ! Spawning has occurred from a deterministic state, an
+                ! initiator by definition.
+                if (initiator_approximation) spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
+
+            end subroutine create_spawned_particle_determ
 
     end subroutine determ_projection
 
