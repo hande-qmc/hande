@@ -103,14 +103,15 @@ abstract interface
         integer, intent(in) :: determ_flag
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
-    subroutine i_create_spawned_particle(d, connection, nspawned, particle_indx, spawn)
+    subroutine i_create_spawned_particle(d, connection, nspawned, particle_indx, spawn, f)
         use spawn_data, only: spawn_t
-        import :: excit, det_info, int_p
+        import :: excit, det_info, int_p, i0
         implicit none
         type(det_info), intent(in) :: d
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: particle_indx
+        integer(i0), intent(in), optional, target :: f(:)
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
     subroutine i_create_spawned_particle_dm(f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)

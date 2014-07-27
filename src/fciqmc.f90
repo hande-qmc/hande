@@ -138,17 +138,17 @@ contains
                             ! [review] - JSS: will compiler switch the loop and branch ordering?  Perhaps...
                             ! [reply] - NSB: Is this something to worry about? Or is this referring to my comment below?
                             if (determ_parent) then
-                                ! Note: f_child needs to be calculated here but is
-                                ! also calculated in create_spawned_particle.
-                                ! This probably needs optimising.
                                 call create_excited_det(cdet%f, connection, f_child)
                                 determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.
-                                if (determ_parent .and. determ_child) cycle
+                                if (.not. (determ_parent .and. determ_child) ) then
+                                    call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn, f_child)
+                                end if
+                            else
+                                call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
                             end if
 
-                            call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
                         end if
 
                     end do
