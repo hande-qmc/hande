@@ -308,6 +308,64 @@ contains
 
     end subroutine init_semi_stochastic
 
+    subroutine dealloc_semi_stoch_t(determ)
+
+        ! In/Out:
+        !    determ: Deterministic space object to be deallocated.
+
+        use checking, only: check_deallocate
+        use csr, only: end_csrp
+
+        type(semi_stoch_t), intent(inout) :: determ
+        integer :: ierr
+
+        ! Reset the space type to an empty space, the default value, in case
+        ! this semi_stoch_t object is reused.
+        determ%space_type = empty_determ_space
+
+        if (allocated(determ%sizes)) then
+            deallocate(determ%sizes, stat=ierr)
+            call check_deallocate('determ%sizes', ierr)
+        end if
+        if (allocated(determ%vector)) then
+            deallocate(determ%vector, stat=ierr)
+            call check_deallocate('determ%vector', ierr)
+        end if
+        if (allocated(determ%dets)) then
+            deallocate(determ%dets, stat=ierr)
+            call check_deallocate('determ%dets', ierr)
+        end if
+        if (allocated(determ%flags)) then
+            deallocate(determ%flags, stat=ierr)
+            call check_deallocate('determ%flags', ierr)
+        end if
+
+        call dealloc_determ_hash_t(determ%hash_table)
+        call end_csrp(determ%hamil)
+
+    end subroutine dealloc_semi_stoch_t
+
+    subroutine dealloc_determ_hash_t(ht)
+
+        ! In/Out:
+        !    ht: Deterministic hash table to be deallocated.
+
+        use checking, only: check_deallocate
+
+        type(determ_hash_t), intent(inout) :: ht
+        integer :: ierr
+        
+        if (allocated(ht%ind)) then
+            deallocate(ht%ind, stat=ierr)
+            call check_deallocate('ht%ind', ierr)
+        end if
+        if (allocated(ht%hash_ptr)) then
+            deallocate(ht%hash_ptr, stat=ierr)
+            call check_deallocate('ht%hash_ptr', ierr)
+        end if
+
+    end subroutine dealloc_determ_hash_t
+
     subroutine create_determ_hash_table(determ, print_info)
 
         ! Create the hash table for the deterministic space.
