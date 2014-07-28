@@ -245,9 +245,9 @@ contains
             ! [review] - JSS: should we only call stochastic_round (as an opimisation) if real_population?
             ! [review] - JSS: (similarly throughout annihilation).  Only just noticed this...
             ! [reply] - NSB: OK, although it is a deoptimisation if reals are being used! It is
-            ! [reply] - NSB: also using more global data. I haven't added an if-statement in the
-            ! [reply] - NSB: other place that stochastic_round is called, round_low_population_spawns,
-            ! [reply] - NSB: as this is only called for reals anyway.
+            ! [reply] - NSB: also using more global data. 
+            ! [reply] - JSS: true but branch prediction should remove the overhead if using reals.
+            ! [reply] - JSS: (we should check if this was more that  a negligible part of the runtime cost).
             if (real_amplitudes .and. (.not. determ_det)) then
                 old_pop = walker_population(:,i)
                 call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)

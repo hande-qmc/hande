@@ -3,14 +3,6 @@ module semi_stoch
 ! Code relating to the semi-stochastic algorithm. This includes initialisation
 ! code and also routines used throughout the simulation.
 
-! [review] - JSS: in keeping with efforts in ccmc.F90, perhaps a short summary of the
-! method?
-
-! [review] - JSS: I think the most confusing thing (perhaps because I reviewed the code in two
-! [review] - JSS: blocks which were separated by weeks) is how the deterministic vector and
-! [review] - JSS: stochastic vector are combined (e.g. in energy evaluation, annihilation,
-! [review] - JSS: spawning from the stochastic space into the deterministic space, etc.)
-
 ! Semi-stochastic
 ! ===============
 !
@@ -31,7 +23,7 @@ module semi_stoch
 ! In the semi-stochastic algorithm, while P_{SD} (deterministic to stochastic
 ! spawning), P_{DS} (stochastic to deterministic spawning) and P_{SS}
 ! stochastic to stochastic spawning) are calculated stochastically, P_{DD} is
-! calculated exactly.
+! calculated exactly via matrix-vector multiplication.
 !
 ! Key implementation points
 ! -------------------------
@@ -65,7 +57,7 @@ module semi_stoch
 !
 ! We store an array of flags (semi_stoch_t%flags) which specify whether or not
 ! states in walker_dets belong to the deterministic space or not. The status
-! of newly spawned states in checked on-the-fly.
+! of newly spawned states is checked on-the-fly.
 !
 ! To check if a newly spawned determinant belongs to the deterministic space
 ! or not, we use a hash table look-up. This is possible because
@@ -95,8 +87,10 @@ use csr, only: csrp_t
 
 implicit none
 
-integer, parameter :: empty_determ_space = 0
-integer, parameter :: restart_determ_space = 1
+enum, bind(c)
+    enumerator :: empty_determ_space
+    enumerator :: restart_determ_space
+end enum
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
 ! by calculating a hash value. This type is used by the semi_stoch_t type and
@@ -107,28 +101,16 @@ type determ_hash_t
 
     ! Seed used in the MurmurHash function to calculate hash values.
     integer :: seed
-    ! [review] - JSS: the size of the hash table (ignoring collisions)?
     ! The size of the hash table (ignoring collisions).
     integer :: nhash
     ! [review] - JSS: the size of ind appears to be not part of determ_hash_t, right?
     ! [reply] - NSB: No, this type is only supposed to be used by semi_stoch_t.
     ! [reply] - NSB: Is this bad practice, do you think?
+    ! [reply] - JSS: On reflection, no.  One can always do size/lbound/ubound.
 
-    ! [review] - JSS: 'dets' array == semi_stoch_t%dets?
-    ! [reply] - NSB: Yes
     ! The indicies of the determinants in the semi_stoch_t%dets array.
-    integer, allocatable :: ind(:) ! (semi_stoch_t%tot_size)
-    ! hash_ptr(i) stores the index of the first index in the array ind which
-    ! corresponds to a determinant with hash value i.
-    ! This is similar to what is done in the CSR sparse matrix type (see
-    ! csr.f90).
     ! Note that element nhash+1 is should be set equal to determ%tot_size+1.
     ! This helps with avoiding out-of-bounds errors when using this object.
-    ! [review] - JSS: can we have an example of how to look up a determinant?
-    ! [reply] - NSB: I started to add this and then decided what I was writing is just copying
-    ! [reply] - NSB: what I think is quite clear in check_if_determ. I have therefore added
-    ! [reply] - NSB: a reference to thi routine. Let me know if you don't think that procedure
-    ! [reply] - NSB: is clear enough.
     integer, allocatable :: hash_ptr(:) ! (nhash+1)
 end type determ_hash_t
 
@@ -140,19 +122,11 @@ type semi_stoch_t
     integer :: tot_size
     ! sizes(i) holds the number of deterministic states belonging to process i.
     integer, allocatable :: sizes(:) ! (0:nproc-1)
-    ! [review] - JSS: given this only happens in the initialisation, does it really need to be in the main type?
-    ! [reply] - NSB: Agreed. I was expecting it to be used repeatedly in the code. I've removed it.
 
     ! The Hamiltonian in the deterministic space, stored in a sparse CSR form.
     ! An Hamiltonian element, H_{ij}, is stored in hamil if and only if both
     ! i and j are in the deterministic space.
-    ! [review] - JSS: H_{ij} is in hamil if both i,j are in the deterministic
-    ! [review] - JSS: space, right?
-    ! [reply] - NSB: Yes, only if both i and j are. I added this above.
     type(csrp_t) :: hamil
-    ! [review] - JSS: so this is instead of using walker_population, right?  Or in addition to?
-    ! [reply] - NSB: In addition to. I think it would complicate things a lot if we didn't
-    ! [reply] - NSB: store deterministic states and amplitudes in walker_dets and walker_populations.
     ! This array is used to store the values of amplitudes of deterministic
     ! states throughout a QMC calculation.
     real(p), allocatable :: vector(:) ! determ_sizes(iproc)
@@ -162,9 +136,6 @@ type semi_stoch_t
     ! A hash table which allows the index of a determinant in dets to be found.
     ! This is done by calculating the hash value of the given determinant.
     type(determ_hash_t) :: hash_table
-    ! [review] - JSS: should a temporary object really be kept in semi_stoch_t?  Might
-    ! [review] - JSS: be better to pass it around as necessary... 
-    ! [reply] - Agreed and removed.
 
     ! Deterministic flags of states in the main list. If determ_flags(i) is
     ! equal to 0 then the corresponding state in position i of the main list is
@@ -173,9 +144,6 @@ type semi_stoch_t
 end type semi_stoch_t
 
 contains
-
-    ! [review] - JSS: mark procedures as pure where possible.
-    ! [reply] - NSB: Done. Only two, sadly.
 
     subroutine init_semi_stochastic(determ, sys, spawn, space_type, determ_target_size)
 
@@ -445,7 +413,6 @@ contains
     subroutine create_determ_hamil(determ, sys, displs, dets_this_proc, print_info)
 
         ! In/Out:
-        !    [review] - what should determ hold on input and what does it hold on output?
         !    determ: Deterministic space being used. On input, determ%sizes,
         !        determ%tot_size and determ%dets should be created and set. On
         !        output, determ%hamil will have been created.
@@ -584,10 +551,7 @@ contains
             else
                 ! This deterministic state is not in walker_dets. Move all
                 ! determinants with index pos or greater down one and insert
-                ! [review] - JSS: typo?  'or zero' -> 'of zero'?
                 ! this determinant with an initial sign of zero.
-                ! [review] - JSS: this looks like it's repeated from insert_new_walkers?  Should we abstract it?
-                ! [reply] - NSB: Yes it is, I think that it a good idea. I've done this, see what you think!
                 walker_dets(:,pos:tot_walkers) = walker_dets(:,pos+1:tot_walkers+1)
                 walker_population(:,pos:tot_walkers) = walker_population(:,pos+1:tot_walkers+1)
                 walker_data(:,pos:tot_walkers) = walker_data(:,pos+1:tot_walkers+1)
@@ -670,17 +634,9 @@ contains
                     row = row + 1
                     ! Perform the projetion.
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
-                    ! [review] - JSS: why shift only on this processor?
-                    ! [reply] - NSB: Because the shift bit of the projection is \tau S * v, and on
-                    ! [reply] - NSB: this processor this is only applied to deterministic states
-                    ! [reply] - NSB: on this processor, so the result is only to create a
-                    ! [reply] - NSB: contribution for states on this processor.
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
                     out_vec = -out_vec + shift(1)*determ%vector(i)
-                    ! [review] - JSS: use an internal subroutine for the rest of the code in the do loop to avoid repetition?
-                    ! [review] - JSS: compiler will then inline it.
-                    ! [reply] - NSB: Is this what you mean?
                     out_vec = out_vec*tau
                     call create_spawned_particle_determ(out_vec, row, proc)
                 end do
@@ -733,9 +689,7 @@ contains
                 if (abs(target_nspawn_scaled) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
                 nspawn = nspawn*nint(sgn, int_p)
                 ! Upate the spawning slot...
-                ! [review] - JSS: there should be a procedure in spawning on master
-                ! [review] - JSS: which does exactly this.  Change to use that post-merge.
-                ! [reply] - NSB: OK!
+                ! [todo] - use updated procedure in spawning post-merge.
                 spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
                 ! ...and finally add the state to the spawning array.
                 spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
@@ -779,7 +733,6 @@ contains
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
             proc = modulo(murmurhash_bit_string(f, total_basis_length, spawn%hash_seed), nprocs)
-            ! [review] - JSS: safer/easier to read if never have multiple return points.
         else
             proc = iproc
         end if
@@ -926,10 +879,6 @@ contains
         !    dets_out: List of most populated determinants.
         !    pops_out: Populations corresponding to the determinants in dets_out.
 
-        ! [review] - JSS: unclear why these are 2D arrays, nor the bounds.
-        ! [reply] - NSB: OK, I don't want to force to the second dimension of pops_in and pops_out to
-        ! [reply] - NSB: be sampling_size as then this routine won't be pure (or I'll have to pass
-        ! [reply] - NSB: it in) which would be a shame... Unless you think it is worth it.
         ! dets_in(:,i) holds determinant i.
         integer(i0), intent(in) :: dets_in(:,:) 
         ! pops_in(j,i) holds the population of particle type j on determinant i.
@@ -984,16 +933,6 @@ contains
         ! On output indices will store the indices of the nind_out largest
         ! populations in pops.
 
-        ! [review] - JSS: why this restriction?
-        ! [reply] - NSB: Just for speed (this bit of the code can sometimes take
-        ! [reply] - while to run), but I've removed it now.
-
-        ! [review] - JSS: given that this is not called in a tight loop, we can afford
-        ! [review] - JSS: to provide a little safety to the programmer...
-        ! [reply] - NSB: I'm not sure the best way to give safety to the programmer
-        ! [reply] - NSB: in this case as it is an odd situation. Either printing a
-        ! [reply] - NSB: warning or returning all indices beyond npops_in as zero...
-        ! [reply] - NSB: I've done the latter for now, what do you think?
         ! NOTE: If nind_out > npops_in then all indices beyond npops_in  will be
         ! returned as zero.
 

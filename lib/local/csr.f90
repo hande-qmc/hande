@@ -89,10 +89,6 @@ contains
 
     end subroutine end_csrp
 
-    ! [review] - JSS: The name change (and similarly for the following routines) are not so helpful.
-    ! [review] - JSS: It is no longer clear that they involve matrix-vector multiplication.
-    ! [review] - JSS: It was using LAPACK abbreviations, SYMV == SYmmetric Matrix Vector.
-    ! [review] - JSS: Maybe this was only clear to me though...
     subroutine csrpsymv(spm, x, y)
 
         ! Calculate y = m*x, where m is a sparse symmetric matrix and x and
@@ -120,7 +116,6 @@ contains
         integer :: irow, icol, iz
         real(p) :: rowx
 
-        ! [review] - JSS: procedure name in stop_all should also be changed.
         if (.not.spm%symmetric) call stop_all('csrpsymv', 'Sparse matrix not symmetric.')
         
         y = 0.0_p
@@ -175,7 +170,6 @@ contains
 
         ! This routine should not be used for symmetric matrices where only the
         ! upper or lower halves of the matrix are stored.
-        ! [review] - JSS: procedure name in stop_all.
         if (spm%symmetric) call stop_all('csrpgemv', 'Sparse matrix is symmetric.')
         
         y = 0.0_p
@@ -188,10 +182,6 @@ contains
 
     end subroutine csrpgemv
 
-    ! [review] - JSS: I think it's easiest to parse if the argument list goes inputs,
-    ! [review] - JSS: outputs, optional inputs, optional outputs.  (Also matches rest of code...)
-    ! [review] - JSS: Sometimes it makes sense to group connected inputs and outputs together, but I still find it easier if inputs
-    ! [review] - JSS: come first within the group...perhaps I'm just picky though!
     subroutine csrpgemv_single_row(spm, x, irow, y_irow)
 
         ! Calculate a single value in the vector y = m*x, where m is a sparse

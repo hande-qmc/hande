@@ -61,8 +61,8 @@ integer(int_p) :: real_factor
 ! the spawned list.
 real(p) :: spawn_cutoff
 
-! Semi-stochhastic
-! [review] - JSS: what do determ_type amd determ_target_size mean?  What values can they take?
+!--- Semi-stochastic ---
+
 ! determ_space_type is used to tell the semi-stochastic initialisation routine
 ! which type of deterministic space to use. See the 'determ-space' parameters
 ! defined in semi_stoch.F90 for the various values it can take.

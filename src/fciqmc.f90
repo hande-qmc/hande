@@ -135,8 +135,6 @@ contains
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
-                            ! [review] - JSS: will compiler switch the loop and branch ordering?  Perhaps...
-                            ! [reply] - NSB: Is this something to worry about? Or is this referring to my comment below?
                             if (determ_parent) then
                                 call create_excited_det(cdet%f, connection, f_child)
                                 determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
@@ -159,12 +157,6 @@ contains
 
                 end do
 
-                ! [review] - JSS: clearer to the reader if only called if semi-stochastic is in use.
-                ! [reply] - NSB: OK. I didn't add a global semi-stochastic logical, but have added a local
-                ! [reply] - NSB: one. I intended semi-stochastic always to be 'on' but agree this
-                ! [reply] - NSB: might be confusing. What do you think about this solution? Should we
-                ! [reply] - NSB: also add this if-statement for the above bits of new semi-stochastic code?
-                ! [reply] - NSB: I did want to avoid semi-stochastic if-statements everwhere.
                 if (semi_stochastic) call determ_projection(rng, qmc_spawn, determ)
 
                 call direct_annihilation(sys, rng, initiator_approximation, determ%flags)
