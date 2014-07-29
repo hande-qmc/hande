@@ -284,8 +284,9 @@ contains
 
         ! Join and store all deterministic states from all processes.
 #ifdef PARALLEL
-        call mpi_allgatherv(dets_this_proc(:,1:determ%sizes(iproc)), determ%sizes(iproc), mpi_det_integer, &
-                            determ%dets, determ%sizes, displs, mpi_det_integer, MPI_COMM_WORLD, ierr)
+        call mpi_allgatherv(dets_this_proc(:,1:determ%sizes(iproc)), total_basis_length*determ%sizes(iproc), mpi_det_integer, &
+                            determ%dets, total_basis_length*determ%sizes, total_basis_length*displs, mpi_det_integer,         &
+                            MPI_COMM_WORLD, ierr)
 #else
         determ%dets = dets_this_proc(:,1:determ%sizes(iproc))
 #endif
