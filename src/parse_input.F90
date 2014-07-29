@@ -217,6 +217,7 @@ contains
             case('REPLICA_TRICKS')
                 replica_tricks = .true.
 
+! [review] - AJWT: This option hasn't been documented.
             case('CCMC_FULL_NC')
                 ccmc_full_nc = .true.
 

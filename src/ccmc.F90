@@ -377,9 +377,12 @@ contains
 
                 ! Two options for evolution:
 
+! [review] - AJWT: Modified this to actually be correct.
+
                 ! * Original CCMC algorithm
-                !       + Allow one spawning & death attempt for each excip on the
-                !         processor.
+                !       + The number of excips on this processor determines the number
+                !         of cluster generations, each of which can spawn and die.
+                !         non-composite clusters therefore are seldom selected.
                 ! * 'full non-composite' algorithm, where spawning and death are split into two tranches.
                 !       + non-composite clusters (i.e. consisting of a single excitor):
                 !         enumerate explicitly (this is just the list of excitors)
