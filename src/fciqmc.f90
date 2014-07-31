@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, determ)
+    subroutine do_fciqmc(sys)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -19,12 +19,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        ! In/Out:
-        !    determ: Deterministic space being used. On input, all information
-        !        on the deterministic space is stored. Components which can be
-        !        updated during this routine are determ%vector, which holds the
-        !        amplitudes of deterministic states, and determ%flags, which
-        !        specifies which states in walker_dets are deterministic.
 
         use parallel
 
@@ -40,18 +34,19 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
-        use semi_stoch, only: empty_determ_space
+        use semi_stoch, only: empty_determ_space, dealloc_semi_stoch_t, init_semi_stoch_t
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
         type(sys_t), intent(in) :: sys
-        type(semi_stoch_t), intent(inout) :: determ
+
+        type(det_info) :: cdet
+        type(dSFMT_t) :: rng
+        type(semi_stoch_t) :: determ
 
         integer :: idet, ireport, icycle, iparticle, ideterm
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
-        type(det_info) :: cdet
-        type(dSFMT_t) :: rng
 
         integer(i0) :: f_child(basis_length)
         integer(int_p) :: nspawned, ndeath
@@ -73,6 +68,8 @@ contains
         ! Folded spectrum *needs* the bit strings to be allocated as it needs
         ! be able to manipulate the bit string to create excited states.
         if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
+
+        call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size)
 
         ! from restart
         nparticles_old = tot_nparticles
@@ -188,6 +185,8 @@ contains
             call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
             if (parent) write (6,'()')
         end if
+
+        call dealloc_semi_stoch_t(determ)
 
         call dealloc_det_info(cdet, .false.)
         if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)

@@ -106,6 +106,11 @@ type determ_hash_t
     ! The indicies of the determinants in the semi_stoch_t%dets array.
     ! Note that element nhash+1 should be set equal to determ%tot_size+1.
     ! This helps with avoiding out-of-bounds errors when using this object.
+    integer, allocatable :: ind(:) ! (semi_stoch_t%tot_size)
+    ! hash_ptr(i) stores the index of the first index in the array ind which
+    ! corresponds to a determinant with hash value i.
+    ! This is similar to what is done in the CSR sparse matrix type (see
+    ! csr.f90).
     integer, allocatable :: hash_ptr(:) ! (nhash+1)
 end type determ_hash_t
 
@@ -140,7 +145,7 @@ end type semi_stoch_t
 
 contains
 
-    subroutine init_semi_stochastic(determ, sys, spawn, space_type, determ_target_size)
+    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, determ_target_size)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -270,7 +275,7 @@ contains
 
         if (print_info) write(6,'(1X,a40,/)') 'Semi-stochastic initialisation complete.'
 
-    end subroutine init_semi_stochastic
+    end subroutine init_semi_stoch_t
 
     subroutine dealloc_semi_stoch_t(determ)
 
