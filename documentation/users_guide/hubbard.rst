@@ -188,6 +188,18 @@ DET_SIZE
 
     Must be defined if using 64-bit integers as the determinant bit-strings
     with a 32-bit compiler for performing parallel FCIQMC calculations.
+POP_SIZE
+    Default: 32
+
+    This option is used to specify whether 32 or 64-bit integers are used to
+    store walker populations in HANDE. It is unlikely that 64-bit integers will
+    be needed when using the integer code but this option is more critical
+    when the **real_amplitudes** option is being used. When using the
+    **real_amplitudes** option with POP_SIZE=32, the largest walker amplitude
+    that can be stored is 2^20=1048576, while the smallest fractional part that
+    can be represented is 2^-11=0.00049. When using this option and POP_SIZE=64
+    the largest amplitude is 2^32=4.3x10^9 and the smallest fractional part
+    is 2^-31=4.66x10^-10.
 DISABLE_LANCZOS
     Default: not defined.
 
@@ -531,6 +543,39 @@ These options are only relevant for calculations on the uniform electron gas.
 **rs** *rs*
     Synonym for **density**.
 
+Algorithm options
+^^^^^^^^^^^^^^^^^
+
+The following are modes which can be used on top of some of the calculation
+types below. They are turned off by default.
+
+**real_amplitudes**
+    Allow walker amplitudes to have a non-zero fractional part.
+
+    This will often significantly reduce the stochastic noise in the various
+    Monte Carlo estimates. One should consider setting the pre-processor option
+    POP_SIZE=64 when using this option as this allows a greater range of
+    amplitudes to be encoded.
+
+    This option is only implemented with the **fciqmc** and **dmqmc** options
+    currently.
+**semi_stoch_high_pop** *space_size*
+    Perform a semi-stochastic calculation. The deterministic space is created
+    by choosing the *space_size* most populated determinants in the simulation.
+    If there are less than *space_size* determinants in the simulation then all
+    determinants will be used in the deterministic space.
+
+    If the **semi_stoch_iteration** option is used then this option will use
+    the walker configuration at the specified iteration, else the deterministic
+    space will be created using the determinants present before the start of
+    the first iteration. Therefore, one should only use this option in
+    conjuction with the **restart** option or with the **semi_stoch_iteration**
+    option.
+
+    This option is only implemented with the **fciqmc** method.
+**semi_stoch_iteration** *iter*
+    Turn the semi-stochastic algorithm on at iteration number *iter*.
+
 Calculation type
 ^^^^^^^^^^^^^^^^
 
@@ -579,8 +624,6 @@ Note that multiple calculations can be specified within a single input, but are 
     For the real space formulation of the Hubbard model and the Heisenberg
     model, the exact size of the space (at least to the first 8 significant
     figures) is found by simple combinatorics.
-
-
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
