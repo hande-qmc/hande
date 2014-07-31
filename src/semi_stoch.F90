@@ -109,7 +109,7 @@ type determ_hash_t
     ! [reply] - JSS: On reflection, no.  One can always do size/lbound/ubound.
 
     ! The indicies of the determinants in the semi_stoch_t%dets array.
-    ! Note that element nhash+1 is should be set equal to determ%tot_size+1.
+    ! Note that element nhash+1 should be set equal to determ%tot_size+1.
     ! This helps with avoiding out-of-bounds errors when using this object.
     integer, allocatable :: hash_ptr(:) ! (nhash+1)
 end type determ_hash_t

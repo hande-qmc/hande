@@ -140,7 +140,7 @@ contains
                                 determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.
-                                if (.not. (determ_parent .and. determ_child) ) then
+                                if (.not. determ_child) then
                                     call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn, f_child)
                                 end if
                             else
