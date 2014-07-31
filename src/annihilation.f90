@@ -242,12 +242,6 @@ contains
             ! Stochastically round the walker populations up to real_factor
             ! (which is equal to 1 in the decoded representation) or down to
             ! zero. This is not done for deterministic states.
-            ! [review] - JSS: should we only call stochastic_round (as an opimisation) if real_population?
-            ! [review] - JSS: (similarly throughout annihilation).  Only just noticed this...
-            ! [reply] - NSB: OK, although it is a deoptimisation if reals are being used! It is
-            ! [reply] - NSB: also using more global data. 
-            ! [reply] - JSS: true but branch prediction should remove the overhead if using reals.
-            ! [reply] - JSS: (we should check if this was more that  a negligible part of the runtime cost).
             if (real_amplitudes .and. (.not. determ_det)) then
                 old_pop = walker_population(:,i)
                 call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)

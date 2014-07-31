@@ -103,11 +103,6 @@ type determ_hash_t
     integer :: seed
     ! The size of the hash table (ignoring collisions).
     integer :: nhash
-    ! [review] - JSS: the size of ind appears to be not part of determ_hash_t, right?
-    ! [reply] - NSB: No, this type is only supposed to be used by semi_stoch_t.
-    ! [reply] - NSB: Is this bad practice, do you think?
-    ! [reply] - JSS: On reflection, no.  One can always do size/lbound/ubound.
-
     ! The indicies of the determinants in the semi_stoch_t%dets array.
     ! Note that element nhash+1 should be set equal to determ%tot_size+1.
     ! This helps with avoiding out-of-bounds errors when using this object.
