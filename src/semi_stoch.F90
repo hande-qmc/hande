@@ -89,7 +89,7 @@ implicit none
 
 enum, bind(c)
     enumerator :: empty_determ_space
-    enumerator :: restart_determ_space
+    enumerator :: high_pop_determ_space
 end enum
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
@@ -122,7 +122,6 @@ type semi_stoch_t
     integer :: tot_size
     ! sizes(i) holds the number of deterministic states belonging to process i.
     integer, allocatable :: sizes(:) ! (0:nproc-1)
-
     ! The Hamiltonian in the deterministic space, stored in a sparse CSR form.
     ! An Hamiltonian element, H_{ij}, is stored in hamil if and only if both
     ! i and j are in the deterministic space.
@@ -136,7 +135,6 @@ type semi_stoch_t
     ! A hash table which allows the index of a determinant in dets to be found.
     ! This is done by calculating the hash value of the given determinant.
     type(determ_hash_t) :: hash_table
-
     ! Deterministic flags of states in the main list. If determ_flags(i) is
     ! equal to 0 then the corresponding state in position i of the main list is
     ! a deterministic state, else it is not.
@@ -145,7 +143,7 @@ end type semi_stoch_t
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, determ_target_size)
+    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -158,7 +156,7 @@ contains
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    space_type: Integer parameter specifying which type of
         !        deterministic space to use.
-        !    determ_target_size: A size of deterministic space to aim for. This
+        !    target_size: A size of deterministic space to aim for. This
         !        is only necessary for particular deterministic spaces.
 
         use basis, only: total_basis_length
@@ -174,7 +172,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: space_type
-        integer, intent(in) :: determ_target_size
+        integer, intent(in) :: target_size
 
         integer :: i, ierr, determ_dets_mem
         integer :: displs(0:nprocs-1)
@@ -187,7 +185,7 @@ contains
         ! non-trivial deterministic space.
         print_info = parent .and. space_type /= empty_determ_space
 
-        if (print_info) write(6,'(1X,a41)') 'Beginning semi-stochastic initialisation.'
+        if (print_info) write(6,'(1X,a43)') '# Beginning semi-stochastic initialisation.'
 
         allocate(determ%flags(walker_length), stat=ierr)
         call check_allocate('determ%flags', walker_length, ierr)
@@ -203,13 +201,13 @@ contains
         call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
         dets_this_proc = 0_i0
 
-        if (print_info) write(6,'(1X,a29)') 'Creating deterministic space.'
+        if (print_info) write(6,'(1X,a31)') '# Creating deterministic space.'
 
         ! If space_type does not take one of the below values then an empty
         ! deterministic space will be used. This is the default behaviour
         ! (space_type = empty_determ_space).
-        if (space_type == restart_determ_space) then
-            call create_restart_space(dets_this_proc, spawn, determ_target_size, determ%sizes(iproc))
+        if (space_type == high_pop_determ_space) then
+            call create_high_pop_space(dets_this_proc, spawn, target_size, determ%sizes(iproc))
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -219,14 +217,14 @@ contains
         determ%tot_size = sum(determ%sizes)
 
         if (print_info .and. nprocs > 1) then
-            write(6,'(1X,a44,'//int_fmt(minval(determ%sizes),1)//')') &
-                'Min deterministic space size on a processor:', minval(determ%sizes)
-            write(6,'(1X,a44,'//int_fmt(maxval(determ%sizes),1)//')') &
-                'Max deterministic space size on a processor:', maxval(determ%sizes)
-            write(6,'(1X,a49,'//int_fmt(determ%tot_size,1)//')') &
-                'Total deterministic space size on all processors:', determ%tot_size
+            write(6,'(1X,a46,'//int_fmt(minval(determ%sizes),1)//')') &
+                '# Min deterministic space size on a processor:', minval(determ%sizes)
+            write(6,'(1X,a46,'//int_fmt(maxval(determ%sizes),1)//')') &
+                '# Max deterministic space size on a processor:', maxval(determ%sizes)
+            write(6,'(1X,a51,'//int_fmt(determ%tot_size,1)//')') &
+                '# Total deterministic space size on all processors:', determ%tot_size
         else if (print_info) then
-            write(6,'(1X,a25,'//int_fmt(determ%tot_size,1)//')') 'Deterministic space size:', determ%tot_size
+            write(6,'(1X,a27,'//int_fmt(determ%tot_size,1)//')') '# Deterministic space size:', determ%tot_size
         end if
 
         ! Displacements used for MPI communication.
@@ -245,8 +243,8 @@ contains
         ! Array to hold all deterministic states from all processes.
         ! The memory required in MB.
         determ_dets_mem = total_basis_length*determ%tot_size*i0_length/(8*10**6)
-        if (print_info) write(6,'(1X,a58,'//int_fmt(determ_dets_mem,1)//')') &
-            'Memory required per core to store deterministic dets (MB):', determ_dets_mem
+        if (print_info) write(6,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
+            '# Memory required per core to store deterministic dets (MB):', determ_dets_mem
         allocate(determ%dets(total_basis_length, determ%tot_size), stat=ierr)
         call check_allocate('determ%dets', size(determ%dets), ierr)
 
@@ -273,7 +271,7 @@ contains
         deallocate(dets_this_proc, stat=ierr)
         call check_deallocate('dets_this_proc', ierr)
 
-        if (print_info) write(6,'(1X,a40,/)') 'Semi-stochastic initialisation complete.'
+        if (print_info) write(6,'(1X,a42)') '# Semi-stochastic initialisation complete.'
 
     end subroutine init_semi_stoch_t
 
@@ -367,8 +365,8 @@ contains
                 ! The memory required in MB.
                 ! Two lists with length ht%nhash taking 4 bytes for each element.
                 mem_reqd = 2*ht%nhash*4/10**6
-                write(6,'(1X,a50,'//int_fmt(mem_reqd,1)//')') &
-                    'Memory required per core to store hash table (MB):', mem_reqd
+                write(6,'(1X,a52,'//int_fmt(mem_reqd,1)//')') &
+                    '# Memory required per core to store hash table (MB):', mem_reqd
             end if
 
             allocate(ht%ind(determ%tot_size), stat=ierr) 
@@ -444,7 +442,7 @@ contains
         real :: t1, t2
         logical :: diag_elem
 
-        if (print_info) write(6,'(1X,a72)') 'Counting number of non-zero deterministic Hamiltonian elements to store.'
+        if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
         associate(hamil => determ%hamil)
 
@@ -478,7 +476,7 @@ contains
                 if (imode == 1) then
                     call cpu_time(t2)
                     if (print_info) then 
-                        write(6,'(1X,a39,1X,f10.2,a1)') 'Time taken to generate the Hamiltonian:', t2-t1, "s"
+                        write(6,'(1X,a41,1X,f10.2,a1)') '# Time taken to generate the Hamiltonian:', t2-t1, "s"
                         ! The memory required in MB.
 #ifdef SINGLE_PRECISION
                         mem_reqd = ((determ%tot_size+1)*4 + nnz*(4 + 4))/10**6
@@ -493,9 +491,9 @@ contains
                     max_mem_reqd = mem_reqd
 #endif
                     if (print_info) then 
-                        write(6,'(1X,a73,'//int_fmt(mem_reqd,1)//')') &
-                            'Maximum memory required by a core for the deterministic Hamiltonian (MB):', mem_reqd
-                        write(6,'(1X,a52)') 'The Hamiltonian will now be recalculated and stored.'
+                        write(6,'(1X,a75,'//int_fmt(mem_reqd,1)//')') &
+                            '# Maximum memory required by a core for the deterministic Hamiltonian (MB):', mem_reqd
+                        write(6,'(1X,a54)') '# The Hamiltonian will now be recalculated and stored.'
                     end if
 
                     ! Allocate the CSR Hamiltonian arrays.
@@ -744,11 +742,10 @@ contains
 
     end subroutine add_det_to_determ_space
 
-    subroutine create_restart_space(dets_this_proc, spawn, target_size, determ_size_this_proc)
+    subroutine create_high_pop_space(dets_this_proc, spawn, target_size, determ_size_this_proc)
 
         ! Find the most highly populated determinants in walker_dets and use
-        ! these to define the deterministic space. When using this routine
-        ! the restart option should have been used, although it is not required.
+        ! these to define the deterministic space.
 
         ! In/Out:
         !    dets_this_proc: The deterministic states belonging to this
@@ -756,8 +753,8 @@ contains
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    target_size: Size of deterministic space to use if possible. If
-        !        not then use the largest space possible (all determinants from
-        !        the restart file)).
+        !        not then use the largest space possible (all determinants in
+        !        walker_dets).
         ! Out:
         !    determ_size_this_proc: Size of the deterministic space created,
         !        on this processor only.
@@ -857,7 +854,7 @@ contains
         deallocate(indices, stat=ierr)
         call check_deallocate('indices', ierr)
 
-    end subroutine create_restart_space
+    end subroutine create_high_pop_space
 
     pure subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, ndets_out, dets_out, pops_out)
 

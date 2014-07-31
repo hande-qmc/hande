@@ -45,6 +45,7 @@ contains
         type(semi_stoch_t) :: determ
 
         integer :: idet, ireport, icycle, iparticle, ideterm
+        integer :: iter
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
 
@@ -69,13 +70,20 @@ contains
         ! be able to manipulate the bit string to create excited states.
         if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
 
-        call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size)
-
-        ! from restart
-        nparticles_old = tot_nparticles
+        ! Create the semi_stoch_t object, determ.
+        ! If the user has asked to use semi-stochastic from the first iteration
+        ! then turn it on now. Otherwise, use an empty deterministic space.
+        if (semi_stoch_start_iter == 0) then
+            call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size)
+        else
+            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, target_size=0)
+        end if
 
         ! Are we using a non-empty semi-stochastic space?
         semi_stochastic = .not. (determ%space_type == empty_determ_space)
+
+        ! from restart
+        nparticles_old = tot_nparticles
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
@@ -89,6 +97,15 @@ contains
             call init_report_loop()
 
             do icycle = 1, ncycles
+
+                iter = mc_cycles_done + (ireport-1)*ncycles + icycle
+
+                ! Should we turn semi-stochastic on now?
+                if (iter == semi_stoch_start_iter) then
+                    call dealloc_semi_stoch_t(determ)
+                    call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size)
+                    semi_stochastic = .true.
+                end if
 
                 call init_mc_cycle(nattempts, ndeath)
                 ideterm = 0

@@ -63,6 +63,9 @@ real(p) :: spawn_cutoff
 
 !--- Semi-stochastic ---
 
+! The iteration on which to turn on the semi-stochastic algorithm using the
+! parameters deterministic space specified by determ_space_type.
+integer :: semi_stoch_start_iter = 0
 ! determ_space_type is used to tell the semi-stochastic initialisation routine
 ! which type of deterministic space to use. See the 'determ-space' parameters
 ! defined in semi_stoch.F90 for the various values it can take.
@@ -502,6 +505,8 @@ contains
         use utils, only: int_fmt
 
         integer :: i, j
+
+        write (6,'()')
 
         if (doing_calc(dmqmc_calc)) then
            write (6,'(1X,a12,3X,a13,15X,a5)', advance = 'no') &

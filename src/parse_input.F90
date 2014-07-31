@@ -222,9 +222,12 @@ contains
             case('SPAWN_CUTOFF')
                 call getf(spawn_cutoff)
 
+            ! Semi-stochastic options.
+            case('SEMI_STOCH_ITERATION')
+                call readi(semi_stoch_start_iter)
             ! Deterministic spaces.
-            case('SEMI_STOCH_RESTART')
-                determ_space_type = restart_determ_space
+            case('SEMI_STOCH_HIGH_POP')
+                determ_space_type = high_pop_determ_space
                 call readi(determ_target_size)
 
             ! DMQMC expectation values to be calculated.
@@ -569,6 +572,7 @@ contains
 
         end if
 
+        ! Real amplitude checks.
         if (real_amplitudes) then
             if (doing_calc(ccmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc) .or. &
                doing_calc(folded_spectrum)) then
@@ -580,6 +584,11 @@ contains
                              &exceeded. Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
             end if
         end if
+
+        ! Semi-stochastic checks.
+        if (semi_stoch_start_iter /= 0 .and. determ_space_type == empty_determ_space .and. parent) &
+            call warning('check_input','You have specified an iteration to turn semi-stochastic on but have not &
+                         &specified a deterministic space to use.')
 
         if (init_spin_inv_D0 .and. ms_in /= 0) then
             if (parent) call warning(this, 'Flipping the reference state will give &
@@ -709,6 +718,7 @@ contains
         end if
         call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
