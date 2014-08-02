@@ -47,7 +47,7 @@ contains
 
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(nbasis, ms_in, sys)
+        call set_spin_polarisation(basis_global%nbasis, ms_in, sys)
         if (allocated(occ_list0)) then
             call enumerate_determinants(sys, .true., .false., occ_list0=occ_list0)
         else
@@ -101,8 +101,8 @@ contains
         if (restart) then
             allocate(occ_list0(sys%nel), stat=ierr)
             call check_allocate('occ_list0',sys%nel,ierr)
-            allocate(f0(basis_length), stat=ierr)
-            call check_allocate('f0',basis_length,ierr)
+            allocate(f0(basis_global%basis_length), stat=ierr)
+            call check_allocate('f0',basis_global%basis_length,ierr)
         else
             ref_det = 1
             do i = 2, ndets
@@ -114,8 +114,8 @@ contains
             ! Reference det
             H00 = hamil(ref_det,ref_det)
             if (.not.allocated(f0)) then
-                allocate(f0(basis_length), stat=ierr)
-                call check_allocate('f0',basis_length,ierr)
+                allocate(f0(basis_global%basis_length), stat=ierr)
+                call check_allocate('f0',basis_global%basis_length,ierr)
             end if
             if (.not.allocated(occ_list0)) then
                 allocate(occ_list0(sys%nel), stat=ierr)

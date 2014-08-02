@@ -117,64 +117,65 @@ contains
         character(4) :: fmt1(5)
         integer(lint) :: tot_ndets
 
-        tot_ndets = nint(binom_r(nbasis, sys%nel), lint)
+        tot_ndets = nint(binom_r(basis_global%nbasis, sys%nel), lint)
 
         ! See note in basis.
         if (separate_strings) then
-            basis_length = 2*ceiling(real(nbasis)/(2*i0_length))
+            basis_global%basis_length = 2*ceiling(real(basis_global%nbasis)/(2*i0_length))
         else
-            basis_length = ceiling(real(nbasis)/i0_length)
+            basis_global%basis_length = ceiling(real(basis_global%nbasis)/i0_length)
         end if
 
         if(doing_calc(dmqmc_calc)) then
-            total_basis_length = 2*basis_length
+            basis_global%total_basis_length = 2*basis_global%basis_length
         else
-            total_basis_length = basis_length
+            basis_global%total_basis_length = basis_global%basis_length
         end if
 
         if (parent) then
-            fmt1 = int_fmt((/sys%nel, nbasis, 0, i0_length, basis_length/), padding=1)
+            fmt1 = int_fmt((/sys%nel, basis_global%nbasis, 0, i0_length, basis_global%basis_length/), padding=1)
             fmt1(3) = int_fmt(tot_ndets, padding=1)
             if (sys%system == heisenberg) then
                 write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', sys%nel
             else
                 write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', sys%nel
             end if
-            write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', nbasis
+            write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', basis_global%nbasis
             if (doing_calc(exact_diag+lanczos_diag)) &
                 write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
             write (6,'(/,1X,a61,'//fmt1(4)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
-            write (6,'(1X,a57,'//fmt1(5)//',/)') 'Number of integers used to store determinant bit-strings:', basis_length
+            write (6,'(1X,a57,'//fmt1(5)//',/)') &
+                'Number of integers used to store determinant bit-strings:', basis_global%basis_length
         end if
 
         ! Lookup arrays.
-        allocate(bit_lookup(2,nbasis), stat=ierr)
-        call check_allocate('bit_lookup',2*nbasis,ierr)
-        allocate(basis_lookup(0:i0_end,basis_length), stat=ierr)
-        call check_allocate('basis_lookup',i0_length*basis_length,ierr)
-        basis_lookup = 0
+        allocate(basis_global%bit_lookup(2,basis_global%nbasis), stat=ierr)
+        call check_allocate('basis_global%bit_lookup',2*basis_global%nbasis,ierr)
+        allocate(basis_global%basis_lookup(0:i0_end,basis_global%basis_length), stat=ierr)
+        call check_allocate('basis_global%basis_lookup',i0_length*basis_global%basis_length,ierr)
+        basis_global%basis_lookup = 0
 
         if (separate_strings) then
-            do i = 1, nbasis-1, 2
+            do i = 1, basis_global%nbasis-1, 2
                 ! find position of alpha orbital
                 bit_pos = mod((i+1)/2, i0_length) - 1
                 if (bit_pos == -1) bit_pos = i0_end
                 bit_element = ((i+1)/2+i0_end)/i0_length
-                bit_lookup(:,i) = (/ bit_pos, bit_element /)
-                basis_lookup(bit_pos, bit_element) = i
+                basis_global%bit_lookup(:,i) = (/ bit_pos, bit_element /)
+                basis_global%basis_lookup(bit_pos, bit_element) = i
                 ! corresponding beta orbital is in the same position in the
                 ! second half of the string.
-                bit_element = bit_element + basis_length/2
-                bit_lookup(:,i+1) = (/ bit_pos, bit_element /)
-                basis_lookup(bit_pos, bit_element) = i+1
+                bit_element = bit_element + basis_global%basis_length/2
+                basis_global%bit_lookup(:,i+1) = (/ bit_pos, bit_element /)
+                basis_global%basis_lookup(bit_pos, bit_element) = i+1
             end do
         else
-            do i = 1, nbasis
+            do i = 1, basis_global%nbasis
                 bit_pos = mod(i, i0_length) - 1
                 if (bit_pos == -1) bit_pos = i0_end
                 bit_element = (i+i0_end)/i0_length
-                bit_lookup(:,i) = (/ bit_pos, bit_element /)
-                basis_lookup(bit_pos, bit_element) = i
+                basis_global%bit_lookup(:,i) = (/ bit_pos, bit_element /)
+                basis_global%basis_lookup(bit_pos, bit_element) = i
             end do
         end if
 
@@ -195,16 +196,16 @@ contains
         ! the staggered magnetisation, we require lattice_mask. Here we find
         ! lattice_mask for a gerenal bipartite lattice.
         if (sys%system == heisenberg .and. sys%lattice%bipartite_lattice) then
-            allocate (lattice_mask(basis_length), stat=ierr)
-            call check_allocate('lattice_mask',basis_length,ierr)
+            allocate (lattice_mask(basis_global%basis_length), stat=ierr)
+            call check_allocate('lattice_mask',basis_global%basis_length,ierr)
             lattice_mask = 0_i0
             do k = 1,sys%lattice%lattice_size(3)
                 do j = 1,sys%lattice%lattice_size(2)
                     do i = 1,sys%lattice%lattice_size(1),2
                         site_index = (sys%lattice%lattice_size(2)*sys%lattice%lattice_size(1))*(k-1) + &
                                       sys%lattice%lattice_size(1)*(j-1) + mod(j+k,2) + i
-                        bit_pos = bit_lookup(1, site_index)
-                        bit_element = bit_lookup(2, site_index)
+                        bit_pos = basis_global%bit_lookup(1, site_index)
+                        bit_element = basis_global%bit_lookup(2, site_index)
                         lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
                     end do
                 end do
@@ -212,21 +213,21 @@ contains
         end if
 
         if (all(ras > 0)) then
-            allocate(ras1(basis_length), stat=ierr)
-            call check_allocate('ras1', basis_length, ierr)
-            allocate(ras3(basis_length), stat=ierr)
-            call check_allocate('ras3', basis_length, ierr)
+            allocate(ras1(basis_global%basis_length), stat=ierr)
+            call check_allocate('ras1', basis_global%basis_length, ierr)
+            allocate(ras3(basis_global%basis_length), stat=ierr)
+            call check_allocate('ras3', basis_global%basis_length, ierr)
             ras1 = 0
             ras3 = 0
             ras1_min = sys%nel - truncation_level
             do i = 1, 2*ras(1) ! RAS is in *spatial* orbitals.
-                bit_pos = bit_lookup(1,i)
-                bit_element = bit_lookup(2,i)
+                bit_pos = basis_global%bit_lookup(1,i)
+                bit_element = basis_global%bit_lookup(2,i)
                 ras1(bit_element) = ibset(ras1(bit_element), bit_pos)
             end do
-            do i = nbasis-2*ras(2)+1, nbasis
-                bit_pos = bit_lookup(1,i)
-                bit_element = bit_lookup(2,i)
+            do i = basis_global%nbasis-2*ras(2)+1, basis_global%nbasis
+                bit_pos = basis_global%bit_lookup(1,i)
+                bit_element = basis_global%bit_lookup(2,i)
                 ras3(bit_element) = ibset(ras3(bit_element), bit_pos)
             end do
         else
@@ -245,10 +246,10 @@ contains
 
         integer :: ierr
 
-        deallocate(bit_lookup, stat=ierr)
-        call check_deallocate('bit_lookup',ierr)
-        deallocate(basis_lookup, stat=ierr)
-        call check_deallocate('basis_lookup',ierr)
+        deallocate(basis_global%bit_lookup, stat=ierr)
+        call check_deallocate('basis_global%bit_lookup',ierr)
+        deallocate(basis_global%basis_lookup, stat=ierr)
+        call check_deallocate('basis_global%basis_lookup',ierr)
         if (allocated(lattice_mask)) then
             deallocate(lattice_mask, stat=ierr)
             call check_deallocate('lattice_mask',ierr)
@@ -296,10 +297,10 @@ contains
             alloc_f = .true.
         end if
         if (alloc_f) then
-            allocate(det_info_t%f(basis_length), stat=ierr)
-            call check_allocate('det_info_t%f',basis_length,ierr)
-            allocate(det_info_t%f2(basis_length), stat=ierr)
-            call check_allocate('det_info_t%f2',basis_length,ierr)
+            allocate(det_info_t%f(basis_global%basis_length), stat=ierr)
+            call check_allocate('det_info_t%f',basis_global%basis_length,ierr)
+            allocate(det_info_t%f2(basis_global%basis_length), stat=ierr)
+            call check_allocate('det_info_t%f2',basis_global%basis_length,ierr)
         end if
 
         ! Components for occupied basis functions...
@@ -384,14 +385,14 @@ contains
         !        function is occupied if the relevant bit is set.
 
         integer, intent(in) :: occ_list(:)
-        integer(i0), intent(out) :: bit_list(basis_length)
+        integer(i0), intent(out) :: bit_list(basis_global%basis_length)
         integer :: i, orb, bit_pos, bit_element
 
         bit_list = 0
         do i = 1, size(occ_list)
             orb = occ_list(i)
-            bit_pos = bit_lookup(1,orb)
-            bit_element = bit_lookup(2,orb)
+            bit_pos = basis_global%bit_lookup(1,orb)
+            bit_element = basis_global%bit_lookup(2,orb)
             bit_list(bit_element) = ibset(bit_list(bit_element), bit_pos)
         end do
 
@@ -411,15 +412,15 @@ contains
         !    occ_list(:): integer list of occupied orbitals in the Slater
         !        determinant. (min size: number of electrons.)
 
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         integer, intent(out) :: occ_list(:)
         integer :: i, j, iorb
 
         iorb = 1
-        outer: do i = 1, basis_length
+        outer: do i = 1, basis_global%basis_length
             do j = 0, i0_end
                 if (btest(f(i), j)) then
-                    occ_list(iorb) = basis_lookup(j, i)
+                    occ_list(iorb) = basis_global%basis_lookup(j, i)
                     if (iorb == size(occ_list)) exit outer
                     iorb = iorb + 1
                 end if
@@ -444,7 +445,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b
 
@@ -452,11 +453,11 @@ contains
         iunocc_a = 0
         iunocc_b = 0
 
-        do i = 1, basis_length
+        do i = 1, basis_global%basis_length
             do j = 0, i0_end
                 if (btest(f(i), j)) then
                     iocc = iocc + 1
-                    d%occ_list(iocc) = basis_lookup(j, i)
+                    d%occ_list(iocc) = basis_global%basis_lookup(j, i)
                 end if
                 if (iocc == sys%nel) exit
             end do
@@ -484,7 +485,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b
 
@@ -492,25 +493,25 @@ contains
         iunocc_a = 0
         iunocc_b = 0
 
-        do i = 1, basis_length
+        do i = 1, basis_global%basis_length
             do j = 0, i0_end
                 if (btest(f(i), j)) then
                     iocc = iocc + 1
-                    d%occ_list(iocc) = basis_lookup(j, i)
+                    d%occ_list(iocc) = basis_global%basis_lookup(j, i)
                 else
                     if (mod(j,2)==0) then
                         ! alpha state (even bit index, odd basis function index)
                         iunocc_a = iunocc_a + 1
-                        d%unocc_list_alpha(iunocc_a) = basis_lookup(j, i)
+                        d%unocc_list_alpha(iunocc_a) = basis_global%basis_lookup(j, i)
                     else
                         ! beta state (odd bit index, even basis function index)
                         iunocc_b = iunocc_b + 1
-                        d%unocc_list_beta(iunocc_b) = basis_lookup(j, i)
+                        d%unocc_list_beta(iunocc_b) = basis_global%basis_lookup(j, i)
                     end if
                 end if
                 ! Have we covered all basis functions?
                 ! This avoids examining any "padding" at the end of f.
-                if (iocc+iunocc_a+iunocc_b==nbasis) exit
+                if (iocc+iunocc_a+iunocc_b==basis_global%nbasis) exit
             end do
         end do
 
@@ -542,7 +543,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
 
@@ -553,7 +554,7 @@ contains
         iunocc_b = 0
         orb = 0
 
-        do i = 1, basis_length - 1
+        do i = 1, basis_global%basis_length - 1
             ! Manual unrolling allows us to avoid 2 mod statements
             ! and some branching.
             do j = 0, i0_end, 2
@@ -588,7 +589,7 @@ contains
         ! Treating the last element as a special case rather than having an if
         ! statement in the above loop results a speedup of the Hubbard k-space
         ! FCIQMC calculations of 1.5%.
-        last_basis_ind = nbasis - i0_length*(basis_length-1) - 1
+        last_basis_ind = basis_global%nbasis - i0_length*(basis_global%basis_length-1) - 1
         do j = 0, last_basis_ind, 2
             ! Test alpha orbital.
             orb = orb + 1
@@ -635,7 +636,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         type(det_info), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b, orb, ims, isym
 
@@ -645,12 +646,12 @@ contains
 
         d%symunocc = nbasis_sym_spin
 
-        do i = 1, basis_length
+        do i = 1, basis_global%basis_length
             do j = 0, i0_end
                 if (btest(f(i), j)) then
-                    orb = basis_lookup(j, i)
-                    ims = (basis_fns(orb)%ms+3)/2
-                    isym = basis_fns(orb)%sym
+                    orb = basis_global%basis_lookup(j, i)
+                    ims = (basis_global%basis_fns(orb)%ms+3)/2
+                    isym = basis_global%basis_fns(orb)%sym
                     iocc = iocc + 1
                     d%occ_list(iocc) = orb
                     d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
@@ -674,12 +675,12 @@ contains
         use bit_utils, only: count_set_bits
 
         integer :: Ms
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         integer(i0) :: a, b
         integer :: i
 
         Ms = 0
-        do i = 1, basis_length
+        do i = 1, basis_global%basis_length
             ! Find bit string of all alpha orbitals.
             a = iand(f(i), alpha_mask)
             ! Find bit string of all beta orbitals.
@@ -696,7 +697,7 @@ contains
         ! Returns:
         !    Ms: total spin of the determinant in units of electron spin (1/2).
 
-        use basis, only: basis_fns
+        use basis, only: basis_global
 
         integer :: ms
         integer, intent(in) :: orb_list(:)
@@ -705,7 +706,7 @@ contains
 
         ms = 0
         do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
-            ms = ms + basis_fns(orb_list(i))%Ms
+            ms = ms + basis_global%basis_fns(orb_list(i))%Ms
         end do
 
     end function spin_orb_list
@@ -723,13 +724,13 @@ contains
         !        determinant after the application of the spin inversion
         !        operator.
 
-        integer(i0) :: f_inv(basis_length)
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0) :: f_inv(basis_global%basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
 
         integer(i0) :: a,b
         integer :: i
 
-        do i = 1, basis_length
+        do i = 1, basis_global%basis_length
             ! Find bit string of all alpha orbitals.
             a = iand(f(i), alpha_mask)
             ! Find bit string of all beta orbitals.
@@ -794,7 +795,7 @@ contains
         use utils, only: int_fmt
 
         integer, intent(in) :: nel
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
         integer :: occ_list(nel), io, i
@@ -807,7 +808,7 @@ contains
         end if
 
         call decode_det(f, occ_list)
-        fmt1 = int_fmt(nbasis,1)
+        fmt1 = int_fmt(basis_global%nbasis,1)
 
         write (io,'("|")', advance='no')
         do i = 1, nel

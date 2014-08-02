@@ -138,7 +138,6 @@ contains
         use excitations, only: excit
         use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
         use excitations, only: create_excited_det, get_excitation
-        use basis, only: basis_length
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t, sc0_ptr

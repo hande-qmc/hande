@@ -21,7 +21,7 @@ contains
 
         use parallel
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length
+        use basis, only: basis_global
         use bit_utils, only: count_set_bits
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
@@ -104,10 +104,10 @@ contains
 
                         ! f points to the bitstring that is spawning, f2 to the
                         ! other bit string.
-                        cdet1%f => walker_dets(:basis_length,idet)
-                        cdet1%f2 => walker_dets((basis_length+1):(2*basis_length),idet)
-                        cdet2%f => walker_dets((basis_length+1):(2*basis_length),idet)
-                        cdet2%f2 => walker_dets(:basis_length,idet)
+                        cdet1%f => walker_dets(:basis_global%basis_length,idet)
+                        cdet1%f2 => walker_dets((basis_global%basis_length+1):(2*basis_global%basis_length),idet)
+                        cdet2%f => walker_dets((basis_global%basis_length+1):(2*basis_global%basis_length),idet)
+                        cdet2%f2 => walker_dets(:basis_global%basis_length,idet)
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.

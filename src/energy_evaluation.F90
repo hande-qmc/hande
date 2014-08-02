@@ -357,7 +357,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use basis, only: basis_fns
+        use basis, only: basis_global
         use determinants, only: det_info
         use excitations, only: excit, get_excitation
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
@@ -385,8 +385,8 @@ contains
             ! Have a determinant connected to the reference determinant by
             ! a single excitation: add to projected energy.
             ! Is excitation symmetry allowed?
-            if (basis_fns(excitation%from_orb(1))%Ms == basis_fns(excitation%to_orb(1))%Ms .and. &
-                    basis_fns(excitation%from_orb(1))%sym == basis_fns(excitation%to_orb(1))%sym) then
+            if (basis_global%basis_fns(excitation%from_orb(1))%Ms == basis_global%basis_fns(excitation%to_orb(1))%Ms .and. &
+                    basis_global%basis_fns(excitation%from_orb(1))%sym == basis_global%basis_fns(excitation%to_orb(1))%sym) then
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
                 proj_energy_sum = proj_energy_sum + hmatel*pop
@@ -395,8 +395,8 @@ contains
             ! Have a determinant connected to the reference determinant by
             ! a double excitation: add to projected energy.
             ! Is excitation symmetry allowed?
-            if (basis_fns(excitation%from_orb(1))%Ms+basis_fns(excitation%from_orb(2))%Ms == &
-                    basis_fns(excitation%to_orb(1))%Ms+basis_fns(excitation%to_orb(2))%Ms) then
+            if (basis_global%basis_fns(excitation%from_orb(1))%Ms+basis_global%basis_fns(excitation%from_orb(2))%Ms == &
+                    basis_global%basis_fns(excitation%to_orb(1))%Ms+basis_global%basis_fns(excitation%to_orb(2))%Ms) then
                 ij_sym = cross_product_pg_basis(excitation%from_orb(1), excitation%from_orb(2))
                 ab_sym = cross_product_pg_basis(excitation%to_orb(1), excitation%to_orb(2))
                 if (ij_sym == ab_sym) then
@@ -502,12 +502,11 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use basis, only: basis_length
         use excitations, only: excit
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation
@@ -558,12 +557,11 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use basis, only: basis_length
         use excitations, only: excit
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation
@@ -614,12 +612,12 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use basis, only: basis_length
+        use basis, only: basis_global
         use excitations, only: excit
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation
@@ -674,13 +672,12 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use basis, only: basis_length
         use excitations, only: excit
         use operators, only: one_body1_mol
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation

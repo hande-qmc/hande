@@ -114,7 +114,7 @@ contains
 
         use checking, only: check_allocate
 
-        use basis, only: basis_fns, nbasis
+        use basis, only: basis_global
         use system, only: sys_t
         use calc, only: sym_in
 
@@ -135,11 +135,11 @@ contains
         ! +1 comes from the fact that the basis_fn%sym gives the bit string
         ! representation.
 
-        maxsym = 2**ceiling(log(real(maxval(basis_fns(:)%sym)+1))/log(2.0))
+        maxsym = 2**ceiling(log(real(maxval(basis_global%basis_fns(:)%sym)+1))/log(2.0))
         
         if(sys%read_in%useLz) then
             ! This is the Max Lz value we find in the basis functions.
-            maxLz = maxval(basis_fns(:)%lz)
+            maxLz = maxval(basis_global%basis_fns(:)%lz)
         else
             maxLz = 0 ! Let's not use Lz.
         endif
@@ -199,18 +199,18 @@ contains
         nbasis_sym = 0
         nbasis_sym_spin = 0
 
-        do i = 1, nbasis
+        do i = 1, basis_global%nbasis
             ! Encode the Lz into the symmetry. We shift the lz into higher bits (by *maxsym)  and offset.
             if (maxLz>0) then
-                basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz*Lz_divisor+Lz_offset)
+                basis_global%basis_fns(i)%sym = basis_global%basis_fns(i)%sym + (basis_global%basis_fns(i)%lz*Lz_divisor+Lz_offset)
             endif
-            nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
-            basis_fns(i)%sym_index = nbasis_sym(basis_fns(i)%sym)
+            nbasis_sym(basis_global%basis_fns(i)%sym) = nbasis_sym(basis_global%basis_fns(i)%sym) + 1
+            basis_global%basis_fns(i)%sym_index = nbasis_sym(basis_global%basis_fns(i)%sym)
 
-            ims = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
+            ims = (basis_global%basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
 
-            nbasis_sym_spin(ims,basis_fns(i)%sym) = nbasis_sym_spin(ims,basis_fns(i)%sym) + 1
-            basis_fns(i)%sym_spin_index = nbasis_sym_spin(ims,basis_fns(i)%sym)
+            nbasis_sym_spin(ims,basis_global%basis_fns(i)%sym) = nbasis_sym_spin(ims,basis_global%basis_fns(i)%sym) + 1
+            basis_global%basis_fns(i)%sym_spin_index = nbasis_sym_spin(ims,basis_global%basis_fns(i)%sym)
 
         end do
 
@@ -218,10 +218,10 @@ contains
         call check_allocate('sym_spin_basis_fns', size(sym_spin_basis_fns), ierr)
         sym_spin_basis_fns = 0
 
-        do i = 1, nbasis
-            ims = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
-            ind = minloc(sym_spin_basis_fns(:,ims,basis_fns(i)%sym), dim=1) ! first non-zero element
-            sym_spin_basis_fns(ind, ims, basis_fns(i)%sym) = i
+        do i = 1, basis_global%nbasis
+            ims = (basis_global%basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
+            ind = minloc(sym_spin_basis_fns(:,ims,basis_global%basis_fns(i)%sym), dim=1) ! first non-zero element
+            sym_spin_basis_fns(ind, ims, basis_global%basis_fns(i)%sym) = i
         end do
 
     end subroutine init_pg_symmetry
@@ -258,7 +258,7 @@ contains
 
         use system, only: sys_t
         use parallel, only: parent
-        use basis, only: basis_fns
+        use basis, only: basis_global
         use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
@@ -271,7 +271,7 @@ contains
             write(6,'(1X,"Number of point group symmetries:",'//int_fmt(Lz_divisor,1)//')') Lz_divisor
             if(sys%read_in%useLz) then
                 ! This is the Max Lz value we find in the basis functions.
-                i = maxval(basis_fns(:)%lz)
+                i = maxval(basis_global%basis_fns(:)%lz)
                 write(6,'(1X,"Maximum Lz found:",'//int_fmt(i,1)//')') i
                 write(6,'(1X,"Lz offset (corresponds to Lz=0):",'//int_fmt(Lz_offset,1)//')') Lz_offset
             else
@@ -316,12 +316,12 @@ contains
         !    the irreducible representation spanned by the i-th spin-orbital
         !    which can also potentially include an Lz symmetry.
 
-        use basis, only: basis_fns
+        use basis, only: basis_global
 
         integer :: sym_ij
         integer, intent(in) :: i, j
 
-        sym_ij = cross_product_pg_sym(basis_fns(i)%sym, basis_fns(j)%sym)
+        sym_ij = cross_product_pg_sym(basis_global%basis_fns(i)%sym, basis_global%basis_fns(j)%sym)
 
     end function cross_product_pg_basis
 
@@ -423,7 +423,7 @@ contains
         !    symmetry index of list (i.e. direct product of the representations
         !    of all the orbitals in the list).
 
-        use basis, only: basis_fns
+        use basis, only: basis_global
 
         integer :: isym
         integer, intent(in) :: orb_list(:)
@@ -432,7 +432,7 @@ contains
 
         isym = gamma_sym
         do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
-            isym = cross_product_pg_sym(isym, basis_fns(orb_list(i))%sym)
+            isym = cross_product_pg_sym(isym, basis_global%basis_fns(orb_list(i))%sym)
         end do
 
     end function symmetry_orb_list_mol

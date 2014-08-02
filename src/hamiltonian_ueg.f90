@@ -22,13 +22,13 @@ contains
 
         ! Used in the UEG only.
 
-        use determinants, only: basis_length
+        use determinants, only: basis_global
         use excitations, only: excit, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
         type(excit) :: excitation
 
         ! Test to see if Hamiltonian matrix element is non-zero.
@@ -77,13 +77,13 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
-        use determinants, only: decode_det, basis_fns, basis_length
+        use determinants, only: decode_det, basis_global
         use ueg_system, only: exchange_int_ueg
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         integer :: occ_list(sys%nel)
 
         integer :: i, j
@@ -95,7 +95,7 @@ contains
 
         ! One electron operator: kinetic term
         do i = 1, sys%nel
-            hmatel = hmatel + basis_fns(occ_list(i))%sp_eigv
+            hmatel = hmatel + basis_global%basis_fns(occ_list(i))%sp_eigv
         end do
 
         ! Two electron operator: Coulomb term.
@@ -161,7 +161,7 @@ contains
         ! as it allows symmetry checking to be skipped in the integral
         ! calculation.
 
-        use basis, only: basis_fns
+        use basis, only: basis_global
         use ueg_system, only: coulomb_int_ueg
         use system, only: sys_t
 
@@ -172,8 +172,8 @@ contains
 
         hmatel = 0.0_p
 
-        if (basis_fns(i)%Ms == basis_fns(a)%Ms) hmatel = coulomb_int_ueg(sys, i, a)
-        if (basis_fns(i)%Ms == basis_fns(b)%Ms) hmatel = hmatel - coulomb_int_ueg(sys, i, b)
+        if (basis_global%basis_fns(i)%Ms == basis_global%basis_fns(a)%Ms) hmatel = coulomb_int_ueg(sys, i, a)
+        if (basis_global%basis_fns(i)%Ms == basis_global%basis_fns(b)%Ms) hmatel = hmatel - coulomb_int_ueg(sys, i, b)
 
         if (perm) hmatel = -hmatel
 

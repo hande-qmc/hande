@@ -78,7 +78,7 @@ contains
         ! In/Out:
         !    sys: system to be studied.  On output the symmetry components are set.
 
-        use basis, only: nbasis, bit_lookup, basis_lookup, basis_length, basis_fns, set_orb
+        use basis, only: basis_global, set_orb
         use calc, only: doing_dmqmc_calc, dmqmc_energy_squared
         use determinants, only: decode_det
         use system
@@ -103,22 +103,22 @@ contains
 
             t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
 
-            allocate(tmat(basis_length,nbasis), stat=ierr)
-            call check_allocate('tmat',basis_length*nbasis,ierr)
-            allocate(connected_orbs(basis_length,nbasis), stat=ierr)
-            call check_allocate('connected_orbs',basis_length*nbasis,ierr)
+            allocate(tmat(basis_global%basis_length,basis_global%nbasis), stat=ierr)
+            call check_allocate('tmat',basis_global%basis_length*basis_global%nbasis,ierr)
+            allocate(connected_orbs(basis_global%basis_length,basis_global%nbasis), stat=ierr)
+            call check_allocate('connected_orbs',basis_global%basis_length*basis_global%nbasis,ierr)
             allocate(sl%lvecs(sl%ndim,3**sl%ndim))
             call check_allocate('sl%lvecs',sl%ndim*(3**sl%ndim),ierr)
             if (sl%triangular_lattice) then
-                allocate(connected_sites(0:3*sl%ndim,nbasis), stat=ierr)
+                allocate(connected_sites(0:3*sl%ndim,basis_global%nbasis), stat=ierr)
                 call check_allocate('connected_sites', size(connected_sites), ierr)
             else
-                allocate(connected_sites(0:2*sl%ndim,nbasis), stat=ierr)
+                allocate(connected_sites(0:2*sl%ndim,basis_global%nbasis), stat=ierr)
                 call check_allocate('connected_sites', size(connected_sites), ierr)
             end if
             if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                allocate(next_nearest_orbs(nbasis,nbasis), stat=ierr)
-                call check_allocate('next_nearest_orbs',nbasis*nbasis,ierr)
+                allocate(next_nearest_orbs(basis_global%nbasis,basis_global%nbasis), stat=ierr)
+                call check_allocate('next_nearest_orbs',basis_global%nbasis*basis_global%nbasis,ierr)
             end if
 
             tmat = 0_i0
@@ -162,13 +162,13 @@ contains
 
             ! Construct how the sl%lattice is connected.
             diag_connection = .false. ! For sl%ndim /= 2.
-            do i = 1, nbasis-(isystem-1), isystem
-                do j = i, nbasis-(isystem-1), isystem
+            do i = 1, basis_global%nbasis-(isystem-1), isystem
+                do j = i, basis_global%nbasis-(isystem-1), isystem
                     ! Loop only over one spin: the other spin is identical so can be
                     ! filled in automatically.
                     ! All matrix elements between different spins are zero
                     ! Allow j=i in case i is its own periodic image.
-                    r = basis_fns(i)%l - basis_fns(j)%l
+                    r = basis_global%basis_fns(i)%l - basis_global%basis_fns(j)%l
                     do ivec = 1, 3**sl%ndim
                         ! For the triangular sl%lattice, there are extra diagonal bonds between pairs
                         ! of sites which obey this condition.
@@ -220,13 +220,13 @@ contains
 
         ! Decode connected_orbs to store list of connections.
         connected_sites = 0
-        do i = 1, nbasis
+        do i = 1, basis_global%nbasis
             v = 0
-            do ind = 1, basis_length
+            do ind = 1, basis_global%basis_length
                 do pos = 0, i0_end
                     if (btest(connected_orbs(ind,i), pos)) then
                         v = v + 1
-                        connected_sites(v, i) = basis_lookup(pos, ind)
+                        connected_sites(v, i) = basis_global%basis_lookup(pos, ind)
                     end if
                 end do
             end do
@@ -274,7 +274,7 @@ contains
         ! Returns:
         !    <phi1 | T | phi2> where T is the kinetic energy operator.
 
-        use basis, only: basis_fns, bit_lookup
+        use basis, only: basis_global
         use system, only: sys_t
 
         real(p) :: one_e_int
@@ -286,12 +286,12 @@ contains
 
         ! Need to check if i and j are on sites which are nearest neighbours
         ! either directly or due to periodic boundary conditions.
-        pos = bit_lookup(1,j)
-        ind = bit_lookup(2,j)
+        pos = basis_global%bit_lookup(1,j)
+        ind = basis_global%bit_lookup(2,j)
         ! Test if i <-> j.  If so there's a kinetic interaction.
         if (btest(tmat(ind,i),pos)) one_e_int = one_e_int - sys%hubbard%t
-        pos = bit_lookup(1,i)
-        ind = bit_lookup(2,i)
+        pos = basis_global%bit_lookup(1,i)
+        ind = basis_global%bit_lookup(2,i)
         ! Test if i <-> j.  If so there's a kinetic interaction.
         if (btest(tmat(ind,j),pos)) one_e_int = one_e_int - sys%hubbard%t
 
@@ -315,14 +315,14 @@ contains
 
         real(p) :: umatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         integer :: i
         integer(i0) :: b
 
         ! < D | U | D > = U*number of doubly occupied sites.
         if (separate_strings) then
             ! Just need to AND the alpha string with the beta string.
-            umatel = sum(count_set_bits(iand(f(:basis_length/2),f(basis_length/2+1:))))
+            umatel = sum(count_set_bits(iand(f(:basis_global%basis_length/2),f(basis_global%basis_length/2+1:))))
         else
             ! 1. Find the bit string representing the occupied beta orbitals.
             ! 2. Right shift it by one place.  The beta orbitals now line up with
@@ -333,7 +333,7 @@ contains
             !    orbitals occupied.
             ! 5. Hence < D | U | D >.
             umatel = 0.0_p
-            do i = 1, basis_length
+            do i = 1, basis_global%basis_length
                 b = iand(f(i), beta_mask)
                 umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
             end do
@@ -344,7 +344,7 @@ contains
 
     subroutine create_next_nearest_orbs()
 
-        use basis, only: basis_length, nbasis, bit_lookup, basis_fns
+        use basis, only: basis_global
         use parallel
 
         integer :: ibasis, jbasis, kbasis
@@ -352,14 +352,14 @@ contains
 
         next_nearest_orbs = 0_i0
 
-        do ibasis = 1, nbasis
-            do jbasis = 1, nbasis
-                bit_position = bit_lookup(1,jbasis)
-                bit_element = bit_lookup(2,jbasis)
+        do ibasis = 1, basis_global%nbasis
+            do jbasis = 1, basis_global%nbasis
+                bit_position = basis_global%bit_lookup(1,jbasis)
+                bit_element = basis_global%bit_lookup(2,jbasis)
                 if (btest(connected_orbs(bit_element,ibasis),bit_position)) then
-                    do kbasis = 1, nbasis
-                        bit_position = bit_lookup(1,kbasis)
-                        bit_element = bit_lookup(2,kbasis)
+                    do kbasis = 1, basis_global%nbasis
+                        bit_position = basis_global%bit_lookup(1,kbasis)
+                        bit_element = basis_global%bit_lookup(2,kbasis)
                         if (btest(connected_orbs(bit_element,jbasis),bit_position)) then
                             next_nearest_orbs(ibasis,kbasis) = next_nearest_orbs(ibasis,kbasis)+1
                         end if
@@ -471,7 +471,7 @@ contains
         !       sites) is mapped into the equivalent site inside the simulation
         !       cell.
 
-        use basis, only: basis_fns, nbasis
+        use basis, only: basis_global
 
         integer, intent(in) :: ndim, lvecs(ndim, 3**ndim)
         integer, intent(inout) :: r(ndim) 
@@ -481,11 +481,11 @@ contains
         do i = 1, 3**ndim
             ! Add all combinations of lattice vectors (stored in lvecs).
             v = r + lvecs(:,i)
-            do j = 1, nbasis
+            do j = 1, basis_global%nbasis
                 ! Loop over all basis functions and check if the shifted vector is
                 ! now the same as any of these vectors. If so, it is in the cell,
                 ! so keep it and return.
-                if (all(v == basis_fns(j)%l)) then
+                if (all(v == basis_global%basis_fns(j)%l)) then
                     r = v
                     return
                 end if

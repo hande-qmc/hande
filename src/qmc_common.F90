@@ -31,7 +31,7 @@ contains
         ! reference determinant for the Hamiltonian space should also be
         ! important (if not crucial!) in the H-F space.
 
-        use basis, only: basis_length
+        use basis, only: basis_global
         use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det, write_det
 
@@ -39,7 +39,7 @@ contains
         use errors, only: stop_all
 
         integer, parameter :: particle_type = 1
-        integer :: i, fmax(basis_length), D0_proc
+        integer :: i, fmax(basis_global%basis_length), D0_proc
         integer(int_p) :: max_pop
 #ifdef PARALLEL
         integer(int_p) :: in_data(2), out_data(2)
@@ -91,7 +91,7 @@ contains
             f0 = fmax
             H00 = H00_max
             ! Broadcast updated data
-            call mpi_bcast(f0, basis_length, mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(f0, basis_global%basis_length, mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
             call mpi_bcast(H00, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
         end if
 
@@ -153,7 +153,7 @@ contains
         !    pdouble: probability of attempting to spawn on a determinant
         !             connected to D by a double excitation.
 
-        use basis, only: basis_fns
+        use basis, only: basis_global
         use system
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, nbasis_sym_spin
 
@@ -178,8 +178,10 @@ contains
             virt_syms = nbasis_sym_spin
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_fns(occ_list(i))%ms+3)/2
-                virt_syms(ims1,basis_fns(occ_list(i))%sym) = virt_syms(ims1,basis_fns(occ_list(i))%sym) - 1
+                ims1 = (basis_global%basis_fns(occ_list(i))%ms+3)/2
+                associate(isym=>basis_global%basis_fns(occ_list(i))%sym)
+                    virt_syms(ims1,isym) = virt_syms(ims1,isym) - 1
+                end associate
             end do
 
             ! Count number of possible single excitations from the supplied
@@ -188,9 +190,9 @@ contains
             nsingles = 0
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_fns(occ_list(i))%ms+3)/2
+                ims1 = (basis_global%basis_fns(occ_list(i))%ms+3)/2
                 ! Can't excite into already occupied orbitals.
-                nsingles = nsingles + virt_syms(ims1,basis_fns(occ_list(i))%sym)
+                nsingles = nsingles + virt_syms(ims1,basis_global%basis_fns(occ_list(i))%sym)
             end do
 
             ! Count number of possible double excitations from the supplied
@@ -198,10 +200,10 @@ contains
             ndoubles = 0
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_fns(occ_list(i))%ms+3)/2
+                ims1 = (basis_global%basis_fns(occ_list(i))%ms+3)/2
                 do j = i+1, sys%nel
                     ! Convert -1->1 and 1->2 for spin index in arrays.
-                    ims2 = (basis_fns(occ_list(j))%ms+3)/2
+                    ims2 = (basis_global%basis_fns(occ_list(j))%ms+3)/2
                     do isyma = sys%sym0, sys%sym_max
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.

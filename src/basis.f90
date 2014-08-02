@@ -51,55 +51,61 @@ type basis_fn_t
     integer :: lz=0
 end type basis_fn_t
 
-! Store of information about the (spin) basis functions of the system.
-! The *odd* indices contain the alpha (spin up) functions.  This is in
-! contrast to the bit strings used to refer to determinants where the *even*
-! bits refer to alpha (spin up) functions.  This difference arises because
-! fortran numbers bits from 0...
-type(basis_fn_t), allocatable :: basis_fns(:) ! (nbasis)
+! Struct for holding information about the entire basis set of a system.
+type basis_t
+    ! Store of information about the (spin) basis functions of the system.
+    ! The *odd* indices contain the alpha (spin up) functions.  This is in
+    ! contrast to the bit strings used to refer to determinants where the *even*
+    ! bits refer to alpha (spin up) functions.  This difference arises because
+    ! fortran numbers bits from 0...
+    type(basis_fn_t), allocatable :: basis_fns(:) ! (nbasis)
 
-! number of basis functions.
-! For the Hubbard model is equal to twice the number of sites as there are
-! 2 spin orbitals per site, for the Heisenberg model to the number of sites,
-! for UEG equal to twice the number of k-points within the energy cutoff and for
-! read in (e.g. molecular) systems the number of single-particle states read in.
-integer :: nbasis
+    ! number of basis functions.
+    ! For the Hubbard model is equal to twice the number of sites as there are
+    ! 2 spin orbitals per site, for the Heisenberg model to the number of sites,
+    ! for UEG equal to twice the number of k-points within the energy cutoff and for
+    ! read in (e.g. molecular) systems the number of single-particle states read in.
+    integer :: nbasis
 
-! The determinants are stored as a bit string.  Each element of an array is
-! an integer of kind i0 (containing i0_length bits).
-! (The bit type has just been deleted from the forthcoming F2008 standard, so we
-! won't hold our breath until we can use bits directly......)
-! basis_length is the length of the byte array necessary to contain a bit for
-! each basis function, i.e. ceiling(nbasis/i0_length).
-! If separate_strings is true, then we actually store the alpha and beta
-! strings separately, and so basis_length is 2*ceiling(nbasis/(2*i0_length)).
-integer :: basis_length
+    ! The determinants are stored as a bit string.  Each element of an array is
+    ! an integer of kind i0 (containing i0_length bits).
+    ! (The bit type has just been deleted from the forthcoming F2008 standard, so we
+    ! won't hold our breath until we can use bits directly......)
+    ! basis_length is the length of the byte array necessary to contain a bit for
+    ! each basis function, i.e. ceiling(nbasis/i0_length).
+    ! If separate_strings is true, then we actually store the alpha and beta
+    ! strings separately, and so basis_length is 2*ceiling(nbasis/(2*i0_length)).
+    integer :: basis_length
 
-! DMQMC uses two determinants for each psip to refer to the two components
-! of the relevant matrix element. Hence, the bitstring which is stored in DMQMC has
-! 2*basis_length components. There are some procedures which required basis_length
-! when used for stahndard FCIQMC but 2*basis_length when used for DMQMC. It is
-! therefore useful to have a quantity which equal to 2*basis_length for DMQMC and
-! equal to basis_length for other methods. Then a procedure can use this quantity
-! and will work for both methods, making it general. This quantity is total_basis_length.
-! total_basis_length can then be used when we want to refer to *both* determinants
-! in DMQMC, and hence the entire bitstring.
-integer :: total_basis_length
+    ! DMQMC uses two determinants for each psip to refer to the two components
+    ! of the relevant matrix element. Hence, the bitstring which is stored in DMQMC has
+    ! 2*basis_length components. There are some procedures which required basis_length
+    ! when used for stahndard FCIQMC but 2*basis_length when used for DMQMC. It is
+    ! therefore useful to have a quantity which equal to 2*basis_length for DMQMC and
+    ! equal to basis_length for other methods. Then a procedure can use this quantity
+    ! and will work for both methods, making it general. This quantity is total_basis_length.
+    ! total_basis_length can then be used when we want to refer to *both* determinants
+    ! in DMQMC, and hence the entire bitstring.
+    integer :: total_basis_length
 
-! A determinant is stored in the array f(nbasis).  A basis function is occupied
-! in the determinant if the relevant bit is set.  The relevant bit is given by
-! bit_element, the element of the array which contains the bit corresponding to
-! the basis function, and bit_position, which contains the position of the bit
-! within the given element.  bit_lookup(:,i) gives the (/ bit_position,
-! bit_element /) of the i-th basis function.
-! Note fortran numbers bits starting from 0.
-integer, allocatable :: bit_lookup(:,:) ! (2, nbasis)
+    ! A determinant is stored in the array f(nbasis).  A basis function is occupied
+    ! in the determinant if the relevant bit is set.  The relevant bit is given by
+    ! bit_element, the element of the array which contains the bit corresponding to
+    ! the basis function, and bit_position, which contains the position of the bit
+    ! within the given element.  bit_lookup(:,i) gives the (/ bit_position,
+    ! bit_element /) of the i-th basis function.
+    ! Note fortran numbers bits starting from 0.
+    integer, allocatable :: bit_lookup(:,:) ! (2, nbasis)
 
-! The reverse lookup to bit_lookup.
-! basis_lookup(i,j) gives the basis function corresponding to
-! the i-th bit in the j-th element of a determinant array.
-integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, basis_length)
+    ! The reverse lookup to bit_lookup.
+    ! basis_lookup(i,j) gives the basis function corresponding to
+    ! the i-th bit in the j-th element of a determinant array.
+    integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, basis_length)
+end type basis_t
 
+! Temporary global object to aid removal of global state.
+type(basis_t) :: basis_global
+ 
 contains
 
     subroutine init_basis_fn(sys, b, l, sym, lz, ms)
@@ -489,15 +495,15 @@ contains
             ! the energy cutoff.
             ! Yes, I know this could be evaluated as one knows the 'volume'
             ! occupied by each wavevector, but I just cba.
-            nbasis = 2*ibasis
+            basis_global%nbasis = 2*ibasis
             nspatial = ibasis
-            sys%nvirt = nbasis - sys%nel
+            sys%nvirt = basis_global%nbasis - sys%nel
         case(hub_k, hub_real)
             ! sys%nvirt set in init_system
-            nbasis = 2*nspatial
+            basis_global%nbasis = 2*nspatial
         case(heisenberg, chung_landau)
             ! sys%nvirt set in init_system
-            nbasis = nspatial
+            basis_global%nbasis = nspatial
         end select
 
         allocate(basis_fns_ranking(nspatial), stat=ierr)
@@ -511,8 +517,8 @@ contains
             forall (i=1:sys%lattice%nsites) basis_fns_ranking(i) = i
         end select
 
-        allocate(basis_fns(nbasis), stat=ierr)
-        call check_allocate('basis_fns',nbasis,ierr)
+        allocate(basis_global%basis_fns(basis_global%nbasis), stat=ierr)
+        call check_allocate('basis_global%basis_fns',basis_global%nbasis,ierr)
 
         ! Form the list of sorted basis functions with both alpha and beta
         ! spins.
@@ -522,10 +528,10 @@ contains
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
             select case(sys%system)
             case(heisenberg, chung_landau)
-                call init_basis_fn(sys, basis_fns(i), l=basis_fn_p%l)
+                call init_basis_fn(sys, basis_global%basis_fns(i), l=basis_fn_p%l)
             case default
-                call init_basis_fn(sys, basis_fns(2*i-1), l=basis_fn_p%l, ms=basis_fn_p%ms)
-                call init_basis_fn(sys, basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
+                call init_basis_fn(sys, basis_global%basis_fns(2*i-1), l=basis_fn_p%l, ms=basis_fn_p%ms)
+                call init_basis_fn(sys, basis_global%basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
             end select
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
             call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
@@ -537,8 +543,8 @@ contains
 
         if (parent) then
             call write_basis_fn_header(sys)
-            do i = 1, nbasis
-                call write_basis_fn(sys, basis_fns(i), ind=i, new_line=.true.)
+            do i = 1, basis_global%nbasis
+                call write_basis_fn(sys, basis_global%basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'()')
         end if
@@ -561,7 +567,7 @@ contains
         logical :: spin_match
         integer, intent(in) :: i, j
 
-        spin_match = basis_fns(i)%ms == basis_fns(j)%ms
+        spin_match = basis_global%basis_fns(i)%ms == basis_global%basis_fns(j)%ms
 
     end function spin_symmetry
 
@@ -576,11 +582,11 @@ contains
         ! Note that f must be zerod before first using this procedure.
 
         integer, intent(in) :: iorb
-        integer(i0), intent(inout) :: f(basis_length)
+        integer(i0), intent(inout) :: f(basis_global%basis_length)
         integer :: pos, ind
 
-        pos = bit_lookup(1,iorb)
-        ind = bit_lookup(2,iorb)
+        pos = basis_global%bit_lookup(1,iorb)
+        ind = basis_global%bit_lookup(2,iorb)
         f(ind) = ibset(f(ind),pos)
 
     end subroutine set_orb
@@ -593,13 +599,13 @@ contains
 
         integer :: ierr, i
 
-        if (allocated(basis_fns)) then
-            do i = 1, nbasis
-                deallocate(basis_fns(i)%l, stat=ierr)
-                call check_deallocate('basis_fns(i',ierr)
+        if (allocated(basis_global%basis_fns)) then
+            do i = 1, basis_global%nbasis
+                deallocate(basis_global%basis_fns(i)%l, stat=ierr)
+                call check_deallocate('basis_global%basis_fns(i',ierr)
             end do
-            deallocate(basis_fns, stat=ierr)
-            call check_deallocate('basis_fns',ierr)
+            deallocate(basis_global%basis_fns, stat=ierr)
+            call check_deallocate('basis_global%basis_fns',ierr)
         end if
 
     end subroutine end_basis_fns

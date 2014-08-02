@@ -43,7 +43,7 @@ contains
         use checking, only: check_allocate
         use errors, only: stop_all
 
-        use basis, only: bit_lookup, basis_fns, nbasis, basis_length
+        use basis, only: basis_global
         use determinants, only: encode_det
         use real_lattice, only: connected_orbs
         use symmetry, only: symmetry_orb_list
@@ -56,7 +56,7 @@ contains
 
         integer :: i, j, ierr, spins_set, connections, iel, icore, jcore, ivirt, jvirt
         integer :: bit_element, bit_pos, tmp_occ_list(sys%nel), curr_occ_list(sys%nel), sym
-        integer(i0) :: f(basis_length)
+        integer(i0) :: f(basis_global%basis_length)
         real(p) :: eigv_sum, sp_eigv_sum
         logical :: set
 
@@ -112,17 +112,17 @@ contains
                             eigv_sum = huge(0.0_p)
                             do icore = 1, sys%nel
                                 i = occ_list(icore)
-                                do ivirt = 1, nbasis
+                                do ivirt = 1, basis_global%nbasis
                                     ! Ensure ivirt is not already in the
                                     ! determinant.
-                                    if (.not.btest(f(bit_lookup(2,ivirt)), bit_lookup(1,ivirt)) .and. &
-                                            basis_fns(i)%Ms == basis_fns(ivirt)%Ms) then
+                                    if (.not.btest(f(basis_global%bit_lookup(2,ivirt)), basis_global%bit_lookup(1,ivirt)) .and. &
+                                            basis_global%basis_fns(i)%Ms == basis_global%basis_fns(ivirt)%Ms) then
                                         tmp_occ_list = occ_list
                                         tmp_occ_list(icore) = ivirt
                                         if (symmetry_orb_list(sys, tmp_occ_list) == ref_sym) then
                                             sp_eigv_sum = 0.0_p
                                             do iel = 1, sys%nel
-                                                sp_eigv_sum = sp_eigv_sum + basis_fns(tmp_occ_list(iel))%sp_eigv
+                                                sp_eigv_sum = sp_eigv_sum + basis_global%basis_fns(tmp_occ_list(iel))%sp_eigv
                                             end do
                                             if (sp_eigv_sum+depsilon < eigv_sum) then
                                                 curr_occ_list = tmp_occ_list
@@ -135,36 +135,39 @@ contains
 
                             ! Consider double excitations of our current
                             ! reference determinant, conserving only spin.
-                            do icore = 1, sys%nel
-                                i = occ_list(icore)
-                                do jcore = icore+1, sys%nel
-                                    j = occ_list(jcore)
-                                    do ivirt = 1, nbasis
-                                        if (.not.btest(f(bit_lookup(2,ivirt)), bit_lookup(1,ivirt))) then
-                                            do jvirt = ivirt+1, nbasis
-                                                if (.not.btest(f(bit_lookup(2,jvirt)), bit_lookup(1,jvirt)) .and. &
-                                                        (basis_fns(i)%Ms + basis_fns(j)%Ms) == &
-                                                        (basis_fns(ivirt)%Ms + basis_fns(jvirt)%Ms) ) then
-                                                    tmp_occ_list = occ_list
-                                                    tmp_occ_list(icore) = ivirt
-                                                    tmp_occ_list(jcore) = jvirt
-                                                    if (symmetry_orb_list(sys, tmp_occ_list) == ref_sym) then
-                                                        sp_eigv_sum = 0.0_p
-                                                        do iel = 1, sys%nel
-                                                            sp_eigv_sum = sp_eigv_sum + &
-                                                                basis_fns(tmp_occ_list(iel))%sp_eigv
-                                                        end do
-                                                        if (sp_eigv_sum+depsilon < eigv_sum) then
-                                                            curr_occ_list = tmp_occ_list
-                                                            eigv_sum = sp_eigv_sum
+                            associate(bit_lookup=>basis_global%bit_lookup, nbasis=>basis_global%nbasis, &
+                                    basis_fns=>basis_global%basis_fns)
+                                do icore = 1, sys%nel
+                                    i = occ_list(icore)
+                                    do jcore = icore+1, sys%nel
+                                        j = occ_list(jcore)
+                                        do ivirt = 1, nbasis
+                                            if (.not.btest(f(bit_lookup(2,ivirt)), bit_lookup(1,ivirt))) then
+                                                do jvirt = ivirt+1, nbasis
+                                                    if (.not.btest(f(bit_lookup(2,jvirt)), bit_lookup(1,jvirt)) .and. &
+                                                            (basis_fns(i)%Ms + basis_fns(j)%Ms) == &
+                                                            (basis_fns(ivirt)%Ms + basis_fns(jvirt)%Ms) ) then
+                                                        tmp_occ_list = occ_list
+                                                        tmp_occ_list(icore) = ivirt
+                                                        tmp_occ_list(jcore) = jvirt
+                                                        if (symmetry_orb_list(sys, tmp_occ_list) == ref_sym) then
+                                                            sp_eigv_sum = 0.0_p
+                                                            do iel = 1, sys%nel
+                                                                sp_eigv_sum = sp_eigv_sum + &
+                                                                    basis_fns(tmp_occ_list(iel))%sp_eigv
+                                                            end do
+                                                            if (sp_eigv_sum+depsilon < eigv_sum) then
+                                                                curr_occ_list = tmp_occ_list
+                                                                eigv_sum = sp_eigv_sum
+                                                            end if
                                                         end if
                                                     end if
-                                                end if
-                                            end do
-                                        end if
+                                                end do
+                                            end if
+                                        end do
                                     end do
                                 end do
-                            end do
+                            end associate
 
                             occ_list = curr_occ_list
                             if (eigv_sum == huge(0.0_p)) then
@@ -208,8 +211,8 @@ contains
                     ! Loop over other sites to find orbitals which are not connected to
                     ! the other sites previously chosen.
                     do i=2,sys%lattice%nsites
-                        bit_pos = bit_lookup(1,i)
-                        bit_element = bit_lookup(2,i)
+                        bit_pos = basis_global%bit_lookup(1,i)
+                        bit_element = basis_global%bit_lookup(2,i)
                         connections = 0
                         ! Loop over all chosen sites to see if they neighbour this site.
                         do j=1,spins_set

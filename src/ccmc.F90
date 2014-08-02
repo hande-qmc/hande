@@ -190,7 +190,7 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length, nbasis
+        use basis, only: basis_global
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
@@ -307,7 +307,7 @@ contains
 
             do icycle = 1, ncycles
 
-                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                D0_proc = assign_particle_processor(f0, basis_global%basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
                                                    qmc_spawn%move_freq, nprocs)
 
                 ! Update the shift of the excitor locations to be the end of this
@@ -751,7 +751,7 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use basis, only: basis_length
+        use basis, only: basis_global
         use ccmc_data, only: cluster_t
         use determinants, only: det_info
         use dSFMT_interface, only: dSFMT_t
@@ -777,7 +777,7 @@ contains
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
         real(p) :: hmatel, pgen
-        integer(i0) :: fexcit(basis_length)
+        integer(i0) :: fexcit(basis_global%basis_length)
         integer :: excitor_sign, excitor_level
 
         ! 1. Generate random excitation.
@@ -904,23 +904,27 @@ contains
         ! ***WARNING***: if allowed is false then cluster_excitor and
         ! cluster_population are *not* updated.
 
-        use basis, only: basis_length, basis_lookup
+        use basis, only: basis_global
         use excitations, only: excit_mask
         use fciqmc_data, only: f0
 
         use bit_utils, only: count_set_bits
         use const, only: i0_end
 
-        integer(i0), intent(in) :: excitor(basis_length)
+        integer(i0), intent(in) :: excitor(basis_global%basis_length)
         integer, intent(in) :: excitor_population
-        integer(i0), intent(inout) :: cluster_excitor(basis_length)
+        integer(i0), intent(inout) :: cluster_excitor(basis_global%basis_length)
         real(p), intent(inout) :: cluster_population
         logical,  intent(out) :: allowed
 
         integer :: ibasis, ibit
-        integer(i0) :: excitor_excitation(basis_length), excitor_annihilation(basis_length), excitor_creation(basis_length)
-        integer(i0) :: cluster_excitation(basis_length), cluster_annihilation(basis_length), cluster_creation(basis_length)
-        integer(i0) :: permute_operators(basis_length)
+        integer(i0) :: excitor_excitation(basis_global%basis_length)
+        integer(i0) :: excitor_annihilation(basis_global%basis_length)
+        integer(i0) :: excitor_creation(basis_global%basis_length)
+        integer(i0) :: cluster_excitation(basis_global%basis_length)
+        integer(i0) :: cluster_annihilation(basis_global%basis_length)
+        integer(i0) :: cluster_creation(basis_global%basis_length)
+        integer(i0) :: permute_operators(basis_global%basis_length)
 
         ! Apply excitor to the cluster of excitors.
 
@@ -960,7 +964,7 @@ contains
             ! permute the creation and annihilation operators.  Each permutation
             ! incurs a sign change.
 
-            do ibasis = 1, basis_length
+            do ibasis = 1, basis_global%basis_length
                 do ibit = 0, i0_end
                     if (btest(excitor_excitation(ibasis),ibit)) then
                         if (btest(f0(ibasis),ibit)) then
@@ -974,7 +978,7 @@ contains
                             ! annihilation operators and the list of creation
                             ! operators.
                             ! First annihilation operators:
-                            permute_operators = iand(excit_mask(:,basis_lookup(ibit,ibasis)),cluster_annihilation)
+                            permute_operators = iand(excit_mask(:,basis_global%basis_lookup(ibit,ibasis)),cluster_annihilation)
                             ! Now add the creation operators:
                             permute_operators = ior(permute_operators,cluster_creation)
                         else
@@ -982,7 +986,7 @@ contains
                             cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
                             ! Need to swap it with every creation operator with
                             ! a lower index already in the cluster.
-                            permute_operators = iand(not(excit_mask(:,basis_lookup(ibit,ibasis))),cluster_creation)
+                            permute_operators = iand(not(excit_mask(:,basis_global%basis_lookup(ibit,ibasis))),cluster_creation)
                             permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
                         end if
                         if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
@@ -1054,15 +1058,15 @@ contains
         !    applying the cluster of excitors, a_i, to the reference
         !    determinant.
 
-        use basis, only: basis_length
+        use basis, only: basis_global
         use const, only: i0_end
         use fciqmc_data, only: f0
 
-        integer(i0), intent(in) :: excitor(basis_length)
+        integer(i0), intent(in) :: excitor(basis_global%basis_length)
         integer, intent(in) :: excitor_level
         integer, intent(inout) :: excitor_sign
 
-        integer(i0) :: excitation(basis_length)
+        integer(i0) :: excitation(basis_global%basis_length)
         integer :: ibasis, ibit, ncreation, nannihilation
 
         ! Bits involved in the excitation from the reference determinant.
@@ -1075,7 +1079,7 @@ contains
 
         ! Obtain sign change by (implicitly) constructing the determinant formed
         ! by applying the excitor to the reference determinant.
-        do ibasis = 1, basis_length
+        do ibasis = 1, basis_global%basis_length
             do ibit = 0, i0_end
                 if (btest(f0(ibasis),ibit)) then
                     ! Occupied orbital in reference.
@@ -1137,7 +1141,7 @@ contains
         !        to another processor have been added to the correct position in
         !        the spawned store.
 
-        use basis, only: basis_length
+        use basis, only: basis_global
         use const, only: i0, dp
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor, add_spawned_particles
@@ -1156,11 +1160,11 @@ contains
         nsent = 0.0_dp
 
         !$omp parallel do default(none) &
-        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_length, spawn, iproc, nprocs) &
+        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_global, spawn, iproc, nprocs) &
         !$omp private(pproc) reduction(+:nsent)
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
-            pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
+            pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_global%basis_length, spawn%hash_seed, &
                                               spawn%hash_shift, spawn%move_freq, nprocs)
             if (pproc /= iproc) then
                 ! Need to move.

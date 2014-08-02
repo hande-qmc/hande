@@ -29,7 +29,7 @@ contains
         !        read_in%Ecore components are set using information from the
         !        integral dump file.
 
-        use basis, only: basis_fn_t, nbasis, basis_fns, end_basis_fns, write_basis_fn, &
+        use basis, only: basis_fn_t, basis_global, end_basis_fns, write_basis_fn, &
                          write_basis_fn_header
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry
@@ -186,10 +186,10 @@ contains
         ! later on.
 
         if (sys%read_in%uhf) then
-            nbasis = norb
+            basis_global%nbasis = norb
             rhf_fac = 1
         else
-            nbasis = 2*norb
+            basis_global%nbasis = 2*norb
             rhf_fac = 2  ! need to double count some integrals.
         end if
 
@@ -200,14 +200,14 @@ contains
                 write (6,'(1X,"Number of active electrons in CAS:",'//int_fmt(sys%cas(1),1)//',".")') sys%cas(1)
                 call stop_all('read_in_integrals', 'CAS cannot have more active electrons than in the system.')
             end if
-            if (sys%cas(2) > (nbasis-(sys%nel-sys%cas(1)))/2) then
+            if (sys%cas(2) > (basis_global%nbasis-(sys%nel-sys%cas(1)))/2) then
                 ! The maximum number of active spin orbitals is nbasis - # core orbitals.
                 ! The number of core orbitals is nel-cas(1).
                 ! CAS(2) is in terms of spatial orbitals.
-                write (6,'(1X,"Number of spin-orbitals:",'//int_fmt(nbasis,1)//',".")') nbasis
+                write (6,'(1X,"Number of spin-orbitals:",'//int_fmt(basis_global%nbasis,1)//',".")') basis_global%nbasis
                 tmp = sys%nel-cas(1)
                 write (6,'(1X,"Number of core electrons:",'//int_fmt(tmp,1)//',".")') tmp
-                tmp = nbasis-(sys%nel-sys%cas(1))
+                tmp = basis_global%nbasis-(sys%nel-sys%cas(1))
                 write (6,'(1X,"Number of possible active spin-orbitals:",' &
                                //int_fmt(tmp,1)//',".")') tmp
                 tmp = sys%cas(2)*2
@@ -225,12 +225,12 @@ contains
 
         if (present(cas_info)) then
             if (any(cas_info < 1)) then
-                cas = (/ sys%nel, nbasis/2 /)
+                cas = (/ sys%nel, basis_global%nbasis/2 /)
             else
                 cas = cas_info
             end if
         else
-            cas = (/ sys%nel, nbasis/2 /)
+            cas = (/ sys%nel, basis_global%nbasis/2 /)
         end if
 
         ! Read in FCIDUMP file to get single-particle eigenvalues.
@@ -282,7 +282,7 @@ contains
             call insertion_rank_rp(sp_eigv(1::2), sp_eigv_rank(1::2), tolerance=depsilon)
             call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
             ! Interweave so the basis functions remain with alternating spins.
-            forall (i = 1:nbasis-1:2)
+            forall (i = 1:basis_global%nbasis-1:2)
                 sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
                 sp_eigv_rank(i+1) = 2*sp_eigv_rank(i+1)
             end forall
@@ -309,42 +309,42 @@ contains
         end do
 
         ! Set up basis functions, including those which are subsequently frozen.
-        allocate(all_basis_fns(nbasis), stat=ierr)
-        call check_allocate('all_basis_fns', nbasis, ierr)
+        allocate(all_basis_fns(basis_global%nbasis), stat=ierr)
+        call check_allocate('all_basis_fns', basis_global%nbasis, ierr)
         call init_basis_fns_read_in(norb, sys, orbsym, symlz,  sp_eigv, sp_eigv_rank(1:), all_basis_fns)
 
         ! From sys%CAS work out the start of the active basis functions, the number
         ! of active basis functions and the number of active electrons.
 
-        ! NOTE: this sets nbasis to be the number of spin orbitals in the active
+        ! NOTE: this sets basis_global%nbasis to be the number of spin orbitals in the active
         ! basis.
 
         active_basis_offset = sys%nel-cas(1) ! number of core *spin* orbitals
-        ! Note that nbasis is spin-orbitals whereas cas(2)=M is in spatial orbitals
+        ! Note that basis_global%nbasis is spin-orbitals whereas cas(2)=M is in spatial orbitals
         ! (as we use the conventional sys%CAS definition).
-        nbasis = min(nbasis, 2*cas(2))
+        basis_global%nbasis = min(basis_global%nbasis, 2*cas(2))
         sys%nel = sys%nel - ( sys%nel - cas(1) )
-        sys%nvirt = nbasis - sys%nel
+        sys%nvirt = basis_global%nbasis - sys%nel
         if (sys%read_in%uhf) then
-            norb =  nbasis
+            norb =  basis_global%nbasis
         else
-            norb = nbasis/2
+            norb = basis_global%nbasis/2
         end if
 
         ! Set up basis functions used in calculation.
-        allocate(basis_fns(nbasis), stat=ierr)
-        call check_allocate('basis_fns', nbasis, ierr)
+        allocate(basis_global%basis_fns(basis_global%nbasis), stat=ierr)
+        call check_allocate('basis_global%basis_fns', basis_global%nbasis, ierr)
         call init_basis_fns_read_in(norb, sys, orbsym,  symlz, sp_eigv, &
-                                    sp_eigv_rank(1+active_basis_offset/rhf_fac:), basis_fns)
+                                    sp_eigv_rank(1+active_basis_offset/rhf_fac:), basis_global%basis_fns)
 
         deallocate(sp_eigv, stat=ierr)
         call check_deallocate('sp_eigv', ierr)
 
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
-        if (minval(basis_fns(:)%sym) < 0) then
+        if (minval(basis_global%basis_fns(:)%sym) < 0) then
             if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
-            forall (i=1:nbasis) basis_fns(i)%sym = 0
+            forall (i=1:basis_global%nbasis) basis_global%basis_fns(i)%sym = 0
         end if
 
         ! Set up symmetry information.
@@ -416,11 +416,11 @@ contains
 
         if (parent) then
 
-            allocate(seen_iha((nbasis*(nbasis+1))/2), stat=ierr)
+            allocate(seen_iha((basis_global%nbasis*(basis_global%nbasis+1))/2), stat=ierr)
             call check_allocate('seen_iha', size(seen_ijij), ierr)
             allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
             call check_allocate('seen_ijij', size(seen_ijij), ierr)
-            allocate(seen_iaib(-active_basis_offset+1:0,(nbasis*(nbasis+1))/2), stat=ierr)
+            allocate(seen_iaib(-active_basis_offset+1:0,(basis_global%nbasis*(basis_global%nbasis+1))/2), stat=ierr)
             call check_allocate('seen_iaib', size(seen_iaib), ierr)
             seen_iha = .false.
             seen_ijij = 0
@@ -460,7 +460,7 @@ contains
                 aa = a - active_basis_offset
                 bb = b - active_basis_offset
 
-                if (max(ii,jj,aa,bb) <= nbasis) then
+                if (max(ii,jj,aa,bb) <= basis_global%nbasis) then
 
                     ! Have integrals involving only core or active orbitals.
                     if (i == 0 .and. j == 0 .and. a == 0 .and. b == 0) then
@@ -616,7 +616,7 @@ contains
         call broadcast_one_body_int(one_e_h_integrals, root)
         call broadcast_two_body_int(coulomb_integrals, root)
 
-        if (size(basis_fns) /= size(all_basis_fns) .and. parent) then
+        if (size(basis_global%basis_fns) /= size(all_basis_fns) .and. parent) then
             ! We froze some orbitals...
             ! Print out entire original basis.
             call write_basis_fn_header(sys)
@@ -636,8 +636,8 @@ contains
 
         if (parent) then
             call write_basis_fn_header(sys)
-            do i = 1, nbasis
-                call write_basis_fn(sys, basis_fns(i), ind=i, new_line=.true.)
+            do i = 1, basis_global%nbasis
+                call write_basis_fn(sys, basis_global%basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
         end if
@@ -754,7 +754,7 @@ contains
         !    core_term: contribution to <\Psi|O|\Psi> from the
         !         frozen core orbitals and the nucleii.
 
-        use basis, only: nbasis
+        use basis, only: basis_global
         use point_group_symmetry, only: cross_product_pg_basis
         use molecular_integrals, only: one_body, init_one_body_int_store,              &
                                        end_one_body_int_store, store_one_body_int_mol, &
@@ -867,7 +867,7 @@ contains
                     core_term = core_term + x
                 else if (ii < 1 .and. ii == aa) then
                     core_term = core_term + rhf_fac*x
-                else if (min(ii,aa) >= 1 .and. max(ii,aa) <= nbasis) then
+                else if (min(ii,aa) >= 1 .and. max(ii,aa) <= basis_global%nbasis) then
                     call store_one_body_int_mol(ii, aa, x, int_err > max_err_msg, store, ierr)
                     int_err = int_err + ierr
                 end if

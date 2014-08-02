@@ -19,7 +19,7 @@ contains
         !    sys: system being studied.  Unaltered on output.
 
         use checking, only: check_allocate, check_deallocate
-        use basis, only: nbasis
+        use basis, only: basis_global
         use errors
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
         use determinant_enumeration, only: enumerate_determinants, ndets, sym_space_size
@@ -85,13 +85,13 @@ contains
         ! to +n in steps of 2.
         if (ms_in == huge(1)) then
             if (sys%read_in%uhf) then
-                ms_min = -min(sys%nel, nbasis-sys%nel)
-                ms_max = min(sys%nel, nbasis-sys%nel)
+                ms_min = -min(sys%nel, basis_global%nbasis-sys%nel)
+                ms_max = min(sys%nel, basis_global%nbasis-sys%nel)
             else
                 ! The -ms blocks are degenerate with the +ms blocks so only need to
                 ! solve for ms >= 0.
                 ms_min = mod(sys%nel,2)
-                ms_max = min(sys%nel, nbasis-sys%nel)
+                ms_max = min(sys%nel, basis_global%nbasis-sys%nel)
             end if
         else
             ! ms was set in input
@@ -134,7 +134,7 @@ contains
                         &truncated CI calculations.')
                 end if
                 ! Create reference det based upon symmetry labels.
-                call set_spin_polarisation(nbasis, ms_min, sys)
+                call set_spin_polarisation(basis_global%nbasis, ms_min, sys)
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0', sys%nel, ierr)
                 call set_reference_det(sys, occ_list0, .true., isym_min)
@@ -155,7 +155,7 @@ contains
             if (parent) write (6,'(1X,a35,'//int_fmt(ms)//',/)') 'Considering determinants with spin:', ms
 
             ! Find and set information about the space.
-            call set_spin_polarisation(nbasis, ms, sys)
+            call set_spin_polarisation(basis_global%nbasis, ms, sys)
             if (allocated(occ_list0)) then
                 call enumerate_determinants(sys, .true., spin_flip, occ_list0=occ_list0)
             else
@@ -602,15 +602,15 @@ contains
 
     subroutine get_rdm_eigenvalues(rdm_eigenvalues)
 
-        use basis, only: basis_length
+        use basis, only: basis_global
         use checking, only: check_allocate, check_deallocate
         use determinant_enumeration, only: ndets, dets_list
         use dmqmc_procedures, only: decode_dm_bitstring, rdms
         use fciqmc_data, only: reduced_density_matrix
 
         real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))
-        integer(i0) :: f1(basis_length), f2(basis_length)
-        integer(i0) :: f3(2*basis_length)
+        integer(i0) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        integer(i0) :: f3(2*basis_global%basis_length)
         integer :: i, j, rdm_size, info, ierr, lwork
         integer(i0) :: end1, end2
         real(p), allocatable :: work(:)
@@ -627,8 +627,8 @@ contains
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
                     ! In f3, concatenate the two bitstrings.
-                    f3(1:basis_length) = dets_list(:,i)
-                    f3(basis_length+1:basis_length*2) = dets_list(:,j)
+                    f3(1:basis_global%basis_length) = dets_list(:,i)
+                    f3(basis_global%basis_length+1:basis_global%basis_length*2) = dets_list(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
                     call decode_dm_bitstring(f3,1,1)

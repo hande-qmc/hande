@@ -37,7 +37,6 @@ contains
         use parallel
 
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length
         use calc, only: seed, initiator_approximation
         use death, only: stochastic_hf_cloning
         use determinants, only:det_info, alloc_det_info, dealloc_det_info

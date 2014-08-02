@@ -29,14 +29,14 @@ contains
 
         ! Used in the Chung--Landau model only.
 
-        use determinants, only: basis_length
+        use basis, only: basis_global
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
         logical :: non_zero
         type(excit) :: excitation
 
@@ -87,14 +87,14 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Chung--Landau model.
 
-        use basis, only: bit_lookup
-        use determinants, only: decode_det, basis_length
+        use basis, only: basis_global
+        use determinants, only: decode_det
         use real_lattice, only: t_self_images, tmat, get_one_e_int_real
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         integer :: root_det(sys%nel)
         integer :: i, j, indi, indj, posi, posj
 
@@ -116,8 +116,8 @@ contains
         ! get_coulomb_matel_real) in 1D.
         do i = 1, sys%nel
             ! Connected to self-image?
-            posi = bit_lookup(1,root_det(i))
-            indi = bit_lookup(2,root_det(i))
+            posi = basis_global%bit_lookup(1,root_det(i))
+            indi = basis_global%bit_lookup(2,root_det(i))
             ! Diagonal term is non-zero if i is connected to its own periodic
             ! image.
             if (btest(tmat(indi, root_det(i)), posi)) then
@@ -129,8 +129,8 @@ contains
                     hmatel = hmatel + sys%hubbard%u
                 end if
                 ! i <-> j directly.
-                posj = bit_lookup(1,root_det(j))
-                indj = bit_lookup(2,root_det(j))
+                posj = basis_global%bit_lookup(1,root_det(j))
+                indj = basis_global%bit_lookup(2,root_det(j))
                 if (btest(tmat(indj, root_det(i)), posj)) then
                     hmatel = hmatel + sys%hubbard%u
                 end if

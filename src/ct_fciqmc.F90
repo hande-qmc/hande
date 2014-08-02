@@ -19,7 +19,7 @@ contains
         !       t (atomic/real-space orbitals).
 
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length
+        use basis, only: basis_global
         use bloom_handler, only: bloom_stats_t
         use calc, only: seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info
@@ -63,7 +63,7 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! index of spawning array which contains population
-        spawned_pop = basis_length + 1
+        spawned_pop = basis_global%basis_length + 1
 
         if (sys%system == hub_k) then
             associate(sl=>sys%lattice)
@@ -180,7 +180,7 @@ contains
                         ! processor proc_id.  Need to advance them to the barrier.
 
                         ! decode the spawned walker bitstring
-                        cdet%f = int(qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id)), i0)
+                        cdet%f = int(qmc_spawn%sdata(:basis_global%basis_length,current_pos(thread_id,proc_id)), i0)
                         K_ii = sc0_ptr(sys, cdet%f) - H00
                         call decoder_ptr(sys, cdet%f,cdet)
 
@@ -368,7 +368,7 @@ contains
         use hashing
         use parallel, only: iproc, nprocs
 
-        use basis, only: basis_length
+        use basis, only: basis_global
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
         use fciqmc_data, only: qmc_spawn
@@ -379,7 +379,7 @@ contains
         integer, intent(in) :: particle_type
         real(p), intent(in) :: spawn_time
 
-        integer(i0) :: f_new(basis_length)
+        integer(i0) :: f_new(basis_global%basis_length)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -394,7 +394,7 @@ contains
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length, qmc_spawn%hash_seed), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_global%basis_length, qmc_spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
@@ -403,7 +403,7 @@ contains
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
         qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
-        qmc_spawn%sdata(:basis_length,qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
+        qmc_spawn%sdata(:basis_global%basis_length,qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
         qmc_spawn%sdata(particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
         spawn_times(qmc_spawn%head(0,iproc_spawn)) = spawn_time
 

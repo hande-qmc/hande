@@ -111,7 +111,7 @@ contains
         use utils, only: binom_i, get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string, count_set_bits
 
-        use basis, only: basis_length
+        use basis, only: basis_global
         use calc, only: truncate_space, truncation_level, ras, ras1, ras3, ras1_min, ras3_max
         use excitations, only: get_excitation_level, in_ras
         use system
@@ -128,7 +128,7 @@ contains
         integer, allocatable :: nalpha_combinations(:)
         integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
         character(4) :: fmt1
-        integer(i0) :: f(basis_length)
+        integer(i0) :: f(basis_global%basis_length)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
         type(det_info) :: d0
@@ -154,8 +154,8 @@ contains
 
             ndets = sym_space_size(ref_sym)
 
-            allocate(dets_list(basis_length, ndets), stat=ierr)
-            call check_allocate('dets_list',basis_length*ndets,ierr)
+            allocate(dets_list(basis_global%basis_length, ndets), stat=ierr)
+            call check_allocate('dets_list',basis_global%basis_length*ndets,ierr)
         end if
 
         call alloc_det_info(sys, d0)
@@ -203,8 +203,8 @@ contains
             ! No matter what the excitation level of the beta string, all alpha
             ! combinations are allowed.
             allocate(nalpha_combinations(0:0), stat=ierr)
-            nbeta_combinations = binom_i(nbasis/2, sys%nbeta)
-            nalpha_combinations = binom_i(nbasis/2, sys%nalpha)
+            nbeta_combinations = binom_i(basis_global%nbasis/2, sys%nbeta)
+            nalpha_combinations = binom_i(basis_global%nbasis/2, sys%nalpha)
             truncation_level = sys%nel
         end if
         call check_allocate('nalpha_combinations',size(nalpha_combinations),ierr)
@@ -241,11 +241,11 @@ contains
             else
                 if (truncate_space) then
                     ! Need list of spin-down sites (ie 'unoccupied' bits).
-                    allocate(unocc(nbasis-sys%nel), stat=ierr)
+                    allocate(unocc(basis_global%nbasis-sys%nel), stat=ierr)
                     call check_allocate('unocc', size(unocc), ierr)
                     call decode_bit_string(d0%f(1), unocc)
                     do i = 1, ndets
-                        call next_string(i==1, .false., nbasis, sys%nel, d0%occ_list, &
+                        call next_string(i==1, .false., basis_global%nbasis, sys%nel, d0%occ_list, &
                                          unocc, truncation_level, force_full, comb(:,1),  &
                                          occ, excit_level_alpha)
                         call encode_det(occ, dets_list(:,i))
@@ -257,7 +257,7 @@ contains
                     ! No symmetry to check!
                     ! Assume that we're not attempting to do FCI for more than
                     ! a i0_length sites , which is quite large... ;-)
-                    if (nbasis > i0_length) then
+                    if (basis_global%nbasis > i0_length) then
                         call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
                     end if
                     dets_list(1,1) = first_perm(sys%nel)
@@ -291,7 +291,7 @@ contains
                 do i = 1, nbeta_combinations
 
                     ! Get beta orbitals.
-                    call next_string(i==1, .false., nbasis/2, sys%nbeta, d0%occ_list_beta, &
+                    call next_string(i==1, .false., basis_global%nbasis/2, sys%nbeta, d0%occ_list_beta, &
                                      d0%unocc_list_beta, truncation_level, force_full, comb(:,1),  &
                                      occ(1:sys%nbeta), excit_level_beta)
 
@@ -302,7 +302,7 @@ contains
                     if (sys%system == ueg) then
                         k_beta = 0
                         do iel = 1, sys%nbeta
-                            k_beta = k_beta + basis_fns(occ(iel))%l
+                            k_beta = k_beta + basis_global%basis_fns(occ(iel))%l
                         end do
                     else
                         sym_beta = symmetry_orb_list(sys, occ(1:sys%nbeta))
@@ -311,7 +311,7 @@ contains
                     do j = 1, nalpha_combinations(excit_level_beta)
 
                         ! Get alpha orbitals.
-                        call next_string(j==1, .true., nbasis/2, sys%nalpha, d0%occ_list_alpha, &
+                        call next_string(j==1, .true., basis_global%nbasis/2, sys%nalpha, d0%occ_list_alpha, &
                                          d0%unocc_list_alpha, truncation_level-excit_level_beta, force_full, &
                                          comb(:,2), occ(sys%nbeta+1:), excit_level_alpha)
 
@@ -319,7 +319,7 @@ contains
                         if (sys%system == ueg) then
                             k = k_beta
                             do iel = sys%nbeta+1, sys%nel
-                                k = k + basis_fns(occ(iel))%l
+                                k = k + basis_global%basis_fns(occ(iel))%l
                             end do
                             ! Symmetry label (convert from basis index).
                             sym = (ueg_basis_index(k,1)+1)/2

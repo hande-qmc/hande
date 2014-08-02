@@ -22,13 +22,13 @@ contains
 
         ! Used in the real space formulation of the Hubbard model only.
 
-        use determinants, only: basis_length
+        use determinants, only: basis_global
         use excitations, only: excit, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
         logical :: non_zero
         type(excit) :: excitation
 
@@ -86,13 +86,13 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in real space.
 
-        use determinants, only: decode_det, basis_length
+        use determinants, only: decode_det, basis_global
         use real_lattice, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         integer :: root_det(sys%nel)
         integer :: i
 
@@ -172,12 +172,12 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use determinants, only: basis_length
+        use determinants, only: basis_global
         use excitations, only: excit, find_excitation_permutation1
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 

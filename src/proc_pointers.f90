@@ -11,12 +11,12 @@ implicit none
 
 abstract interface
     pure subroutine i_decoder(sys,f,d)
-        use basis, only: basis_length
+        use basis, only: basis_global
         use system, only: sys_t
         import :: i0, det_info
         implicit none
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
         type(det_info), intent(inout) :: d
     end subroutine i_decoder
     pure subroutine i_update_proj_energy(sys, f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
@@ -33,12 +33,11 @@ abstract interface
     end subroutine i_update_proj_energy
     subroutine i_update_proj_hfs(sys, f, fpop, f_hfpop, fdata, excitation, hmatel,&
                                      D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)
-        use basis, only: basis_length
         use system, only: sys_t
         import :: i0, p, excit
         implicit none
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation
@@ -86,20 +85,19 @@ abstract interface
         real(dp), intent(inout) :: tot_pop
     end subroutine i_death
     pure function i_sc0(sys, f) result(hmatel)
-        use basis, only: basis_length
         use system, only: sys_t
+        use basis, only: basis_global
         import :: p, i0
         implicit none
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(basis_global%basis_length)
     end function i_sc0
     subroutine i_set_parent_flag(pop, f, determ_flag, flag)
-        use basis, only: basis_length
         import :: i0, p
         implicit none
         real(p), intent(in) :: pop
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: determ_flag
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
@@ -115,12 +113,12 @@ abstract interface
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
     subroutine i_create_spawned_particle_dm(f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
-        use basis, only: basis_length
+        use basis, only: basis_global
         use spawn_data, only: spawn_t
         import :: excit, i0, int_p
         implicit none
-        integer(i0), intent(in) :: f1(basis_length)
-        integer(i0), intent(in) :: f2(basis_length)
+        integer(i0), intent(in) :: f1(basis_global%basis_length)
+        integer(i0), intent(in) :: f2(basis_global%basis_length)
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: spawning_end, particle_indx
