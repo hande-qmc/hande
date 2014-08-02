@@ -7,7 +7,7 @@ use const, only: p, i0
 implicit none
 
 ! Define a spin orbital.
-type basis_fn
+type basis_fn_t
     ! Set of quantum numbers describing the basis function.
     ! l is used in two different contexts depending upon whether the orbitals
     ! are defined in momentum space or in real space.  Applies only to model
@@ -49,14 +49,14 @@ type basis_fn
     !     Store the Lz of the an orbital when reading in from an FCIDUMP
     !     This is later encoded in the symmetry information.
     integer :: lz=0
-end type basis_fn
+end type basis_fn_t
 
 ! Store of information about the (spin) basis functions of the system.
 ! The *odd* indices contain the alpha (spin up) functions.  This is in
 ! contrast to the bit strings used to refer to determinants where the *even*
 ! bits refer to alpha (spin up) functions.  This difference arises because
 ! fortran numbers bits from 0...
-type(basis_fn), allocatable :: basis_fns(:) ! (nbasis)
+type(basis_fn_t), allocatable :: basis_fns(:) ! (nbasis)
 
 ! number of basis functions.
 ! For the Hubbard model is equal to twice the number of sites as there are
@@ -110,7 +110,7 @@ contains
 
     subroutine init_basis_fn(sys, b, l, sym, lz, ms)
 
-        ! Initialise a variable of type basis_fn.
+        ! Initialise a variable of type basis_fn_t.
         ! In:
         !    sys: system being studied.
         !    l (optional): quantum numbers of the basis function.  Used only in
@@ -144,7 +144,7 @@ contains
         use system
 
         type(sys_t), intent(in) :: sys
-        type(basis_fn), intent(out) :: b
+        type(basis_fn_t), intent(out) :: b
         integer, intent(in), optional  :: l(sys%lattice%ndim)
         integer, intent(in), optional  :: sym, ms, lz
         integer :: ierr
@@ -265,7 +265,7 @@ contains
         !
         ! In:
         !    sys: system being studied.
-        !    b: basis_fn variable.
+        !    b: basis_fn_t variable.
         !    ind: index of basis function.  Only printed out if present and
         !        positive.
         !    iunit (optional): io unit to which the output is written.
@@ -281,7 +281,7 @@ contains
         use system
 
         type(sys_t), intent(in) :: sys
-        type(basis_fn), intent(in) :: b
+        type(basis_fn_t), intent(in) :: b
         integer, intent(in), optional :: ind
         integer, intent(in), optional :: iunit
         logical, intent(in), optional :: new_line
@@ -364,8 +364,8 @@ contains
 
         integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
         integer :: i, j, k, ibasis, ierr, nspatial
-        type(basis_fn), allocatable, target :: tmp_basis_fns(:)
-        type(basis_fn), pointer :: basis_fn_p
+        type(basis_fn_t), allocatable, target :: tmp_basis_fns(:)
+        type(basis_fn_t), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
 
         if (present(store_info)) then

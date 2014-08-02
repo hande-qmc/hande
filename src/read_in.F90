@@ -29,7 +29,7 @@ contains
         !        read_in%Ecore components are set using information from the
         !        integral dump file.
 
-        use basis, only: basis_fn, nbasis, basis_fns, end_basis_fns, write_basis_fn, &
+        use basis, only: basis_fn_t, nbasis, basis_fns, end_basis_fns, write_basis_fn, &
                          write_basis_fn_header
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry
@@ -57,7 +57,7 @@ contains
         integer :: norb, nelec, ms2, orbsym(1000), isym, syml(1000), symlz(1000)
 
         ! all basis functions, including inactive ones.
-        type(basis_fn), allocatable :: all_basis_fns(:)
+        type(basis_fn_t), allocatable :: all_basis_fns(:)
 
         ! Integrals
         integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb
@@ -684,10 +684,10 @@ contains
         ! In/Out:
         !    basis_arr: array of (spin) basis functions.  On entry it is
         !    allocated to (at least) the size of the basis.  On exit the
-        !    individual basis_fn elements have been initialised and symmetry and
+        !    individual basis_fn_t elements have been initialised and symmetry and
         !    spatial_index information assigned.
 
-        use basis, only: basis_fn, init_basis_fn
+        use basis, only: basis_fn_t, init_basis_fn
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -696,7 +696,7 @@ contains
         integer, intent(in) :: lz(:)
         real(p), intent(in) :: sp_eigv(:)
         integer, intent(in) :: sp_eigv_rank(:)
-        type(basis_fn), intent(inout) :: basis_arr(:)
+        type(basis_fn_t), intent(inout) :: basis_arr(:)
 
         integer :: i, rank
 
