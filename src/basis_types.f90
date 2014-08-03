@@ -102,4 +102,38 @@ module basis_types
         integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, basis_length)
     end type basis_t
 
+    contains
+
+        subroutine copy_basis_t(b1, b2)
+
+            ! Copy a basis_t object into a new basis_t object.
+
+            ! In:
+            !   b1: basis_t to be copied.
+            ! Out:
+            !   b2: destination basis_t.
+
+            use const, only: i0_end
+
+            type(basis_t), intent(in) :: b1
+            type(basis_t), intent(out) :: b2
+
+            integer :: i, n
+
+            b2%basis_length = b1%basis_length
+            b2%total_basis_length = b1%total_basis_length
+            b2%nbasis = b1%nbasis
+
+            allocate(b2%bit_lookup(2,b2%nbasis), source=b1%bit_lookup)
+            allocate(b2%basis_lookup(0:i0_end,b2%basis_length), source=b1%basis_lookup)
+            allocate(b2%basis_fns(b2%nbasis))
+
+            n = size(b1%basis_fns(1)%l)
+            do i = 1, b2%nbasis
+                allocate(b2%basis_fns(i)%l(n))
+                b2%basis_fns(i) = b1%basis_fns(i)
+            end do
+
+        end subroutine copy_basis_t
+
 end module basis_types
