@@ -17,6 +17,7 @@ module system
 ! coordinate system.
 
 use const
+use basis_types, only: basis_t
 
 implicit none
 
@@ -208,6 +209,11 @@ type sys_t
     ! Heisenberg model: number of antiparallel pairs of spins which can be
     ! flipped.  Used only in DMQMC.
     integer :: max_number_excitations
+
+    ! Basis set information
+    ! ^^^^^^^^^^^^^^^^^^^^^
+
+    type(basis_t) :: basis
 
     ! System-specific structure handles
     ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

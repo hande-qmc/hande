@@ -24,7 +24,8 @@ contains
         use report, only: environment_report, comm_global_uuid
         use parse_input, only: read_input, check_input, distribute_input
         use system
-        use basis, only: init_model_basis_fns
+        use basis, only: init_model_basis_fns, basis_global
+        use basis_types, only: copy_basis_t
         use determinants, only: init_determinants
         use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
@@ -72,6 +73,9 @@ contains
 
         call init_determinants(sys)
         call init_determinant_enumeration()
+
+        ! TEMPORARY: copy basis_global to sys%basis to aid migration from global data.
+        call copy_basis_t(basis_global, sys%basis)
 
         call init_excitations()
 
