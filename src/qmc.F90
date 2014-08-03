@@ -234,6 +234,10 @@ contains
         ! Store 2**real_bit_shift for ease.
         real_factor = 2_int_p**(int(real_bit_shift, int_p))
 
+        ! If not using real amplitudes then we always want spawn_cutoff to be
+        ! equal to 1.0, so overwrite the default.
+        if (.not. real_amplitudes) spawn_cutoff = 0.0_p
+
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, qmc_spawn)
 

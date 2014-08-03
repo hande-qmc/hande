@@ -559,6 +559,19 @@ types below. They are turned off by default.
 
     This option is only implemented with the **fciqmc** and **dmqmc** options
     currently.
+**spawn_cutoff** *cutoff*
+    Real.
+
+    Default when using **real_amplitudes**: 0.01.
+    Default otherwise: 0.0.
+
+    Set the minimum absolute value for the amplitude of a spawning event. If a
+    smaller spawn occurs then its amplitude will probabilistically be rounded up
+    to *cutoff* or down to zero in an unbiased manner.
+
+    This parameter is relevant when using the **real_amplitudes** option. When
+    not using the **real_amplitudes** option, all spawning occurs in multiples
+    of 1.
 **semi_stoch_high_pop** *space_size*
     Perform a semi-stochastic calculation. The deterministic space is created
     by choosing the *space_size* most populated determinants in the simulation.
@@ -573,6 +586,9 @@ types below. They are turned off by default.
     option.
 
     This option is only implemented with the **fciqmc** method.
+
+    If this option is used then the **real_amplitudes** option will be turned on
+    automatically.
 **semi_stoch_iteration** *iter*
     Turn the semi-stochastic algorithm on at iteration number *iter*.
 

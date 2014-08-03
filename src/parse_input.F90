@@ -225,6 +225,7 @@ contains
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
                 call readi(semi_stoch_start_iter)
+                real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
                 determ_space_type = high_pop_determ_space
