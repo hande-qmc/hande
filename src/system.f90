@@ -439,6 +439,10 @@ contains
         integer, intent(in) :: nbasis, Ms
         type(sys_t), intent(inout) :: sys
 
+        character(len=*), parameter :: proc_name = 'set_spin_polarisation'
+        character(len=*), parameter :: err_fmt = '("Required Ms not possible: ",i11, ".")'
+        character(len=40) :: err
+
         select case(sys%system)
 
         case(heisenberg)
@@ -446,6 +450,10 @@ contains
             ! Spin polarization is different (see comments in system) as the
             ! Heisenberg model is a collection of spins rather than electrons.
             ! See comments in init_system and at module-level.
+            if (abs(Ms) > sys%lattice%nsites) then
+                write (err, err_fmt) Ms
+                call stop_all(proc_name, err)
+            end if
             sys%nel = (sys%lattice%nsites + Ms)/2
             sys%nvirt = (sys%lattice%nsites - Ms)/2
             ! The Heisenberg model doesn't use these values, but they need to be
@@ -467,7 +475,10 @@ contains
         case default
 
             ! Find the number of determinants with the required spin.
-            if (abs(mod(Ms,2)) /= mod(sys%nel,2)) call stop_all('set_spin_polarisation','Required Ms not possible.')
+            if (abs(mod(Ms,2)) /= mod(sys%nel,2) .or. abs(Ms) > sys%nel) then
+                write (err, err_fmt) Ms
+                call stop_all(proc_name, err)
+            end if
 
             sys%nbeta = (sys%nel - Ms)/2
             sys%nalpha = (sys%nel + Ms)/2
