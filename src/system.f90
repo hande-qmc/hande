@@ -429,7 +429,8 @@ contains
 
         ! In:
         !    nbasis: number of single-particle basis functions.
-        !    Ms: spin of determinants that are being considered.
+        !    Ms: spin of determinants that are being considered.  Ignored for the
+        !       Chung--Landau model.
         ! In/Out:
         !    sys: initialised system object describing system. On output
         !       components related to spin-polarisation are set.
@@ -467,7 +468,7 @@ contains
         case(chung_landau)
 
             ! Spinless system.  Similarly for the Heisenberg model but treat all fermions as alpha electrons.
-            sys%nalpha = Ms
+            sys%nalpha = sys%nel
             sys%nvirt_alpha = sys%lattice%nsites - sys%nalpha
             sys%nbeta = 0
             sys%nvirt_beta = 0
