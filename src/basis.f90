@@ -399,15 +399,15 @@ contains
             ! the energy cutoff.
             ! Yes, I know this could be evaluated as one knows the 'volume'
             ! occupied by each wavevector, but I just cba.
-            basis_global%nbasis = 2*ibasis
+            sys%basis%nbasis = 2*ibasis
             nspatial = ibasis
-            sys%nvirt = basis_global%nbasis - sys%nel
+            sys%nvirt = sys%basis%nbasis - sys%nel
         case(hub_k, hub_real)
             ! sys%nvirt set in init_system
-            basis_global%nbasis = 2*nspatial
+            sys%basis%nbasis = 2*nspatial
         case(heisenberg, chung_landau)
             ! sys%nvirt set in init_system
-            basis_global%nbasis = nspatial
+            sys%basis%nbasis = nspatial
         end select
 
         allocate(basis_fns_ranking(nspatial), stat=ierr)
@@ -421,8 +421,8 @@ contains
             forall (i=1:sys%lattice%nsites) basis_fns_ranking(i) = i
         end select
 
-        allocate(basis_global%basis_fns(basis_global%nbasis), stat=ierr)
-        call check_allocate('basis_global%basis_fns',basis_global%nbasis,ierr)
+        allocate(sys%basis%basis_fns(sys%basis%nbasis), stat=ierr)
+        call check_allocate('sys%basis%basis_fns',sys%basis%nbasis,ierr)
 
         ! Form the list of sorted basis functions with both alpha and beta
         ! spins.
@@ -432,10 +432,10 @@ contains
             basis_fn_p => tmp_basis_fns(basis_fns_ranking(i))
             select case(sys%system)
             case(heisenberg, chung_landau)
-                call init_basis_fn(sys, basis_global%basis_fns(i), l=basis_fn_p%l)
+                call init_basis_fn(sys, sys%basis%basis_fns(i), l=basis_fn_p%l)
             case default
-                call init_basis_fn(sys, basis_global%basis_fns(2*i-1), l=basis_fn_p%l, ms=basis_fn_p%ms)
-                call init_basis_fn(sys, basis_global%basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
+                call init_basis_fn(sys, sys%basis%basis_fns(2*i-1), l=basis_fn_p%l, ms=basis_fn_p%ms)
+                call init_basis_fn(sys, sys%basis%basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
             end select
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
             call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
@@ -447,15 +447,15 @@ contains
 
         if (parent) then
             call write_basis_fn_header(sys)
-            do i = 1, basis_global%nbasis
-                call write_basis_fn(sys, basis_global%basis_fns(i), ind=i, new_line=.true.)
+            do i = 1, sys%basis%nbasis
+                call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'()')
         end if
 
         if (.not.t_store) then
             ! Should tidy up and deallocate everything we allocated.
-            call dealloc_basis_fn_t_array(basis_global%basis_fns)
+            call dealloc_basis_fn_t_array(sys%basis%basis_fns)
         end if
 
     end subroutine init_model_basis_fns

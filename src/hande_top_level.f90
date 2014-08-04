@@ -67,12 +67,12 @@ contains
         ! Initialise basis functions.
         if (sys%system == read_in) then
             call read_in_integrals(sys, cas_info=sys%cas)
-            ! TEMPORARY: copy sys%basis to basis_global to aid migration from global data.
-            call copy_basis_t(sys%basis, basis_global)
-            call dealloc_basis_t(sys%basis)
         else
             call init_model_basis_fns(sys)
         end if
+        ! TEMPORARY: copy sys%basis to basis_global to aid migration from global data.
+        call copy_basis_t(sys%basis, basis_global)
+        call dealloc_basis_t(sys%basis)
 
         call init_determinants(sys)
         call init_determinant_enumeration()
