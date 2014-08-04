@@ -28,7 +28,6 @@ contains
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, create_excited_det
-        use spawning, only: create_spawned_particle_initiator
         use qmc_common
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
@@ -162,12 +161,12 @@ contains
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
-                                    call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn, f_child)
+                                    call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
-                                call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
+                                call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
                             end if
                             if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)

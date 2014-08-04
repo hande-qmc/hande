@@ -417,7 +417,7 @@ contains
                                           gen_excit_ptr, nspawned, connection)
 
                         if (nspawned /= 0_int_p) then
-                            call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
+                            call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn)
 
                             if (abs(nspawned) > bloom_threshold) then
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -879,7 +879,7 @@ contains
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
 !            cdet%initiator_flag=0  !All death is allowed
-            call create_spawned_particle_ptr(cdet, null_excit, nkill, 1, qmc_spawn)
+            call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nkill, 1, qmc_spawn)
         end if
 
     end subroutine stochastic_ccmc_death

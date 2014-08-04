@@ -718,12 +718,13 @@ contains
 
     end subroutine add_spawned_particles
 
-    subroutine create_spawned_particle(cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -738,11 +739,12 @@ contains
 
         use parallel, only: nprocs
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
         use spawn_data, only: spawn_t
 
+        type(basis_t), intent(in) :: basis
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -750,30 +752,31 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis_global%basis_length)
+        integer(i0), target :: f_local(basis%basis_length)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(basis_global, cdet%f, connection, f_local)
+            call create_excited_det(basis, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
-        iproc_spawn = assign_particle_processor(f_new, basis_global%basis_length, spawn%hash_seed, &
+        iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
             spawn%hash_shift, spawn%move_freq, nprocs)
 
         call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -788,11 +791,12 @@ contains
 
         use parallel, only: nprocs
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
         use spawn_data, only: spawn_t
 
+        type(basis_t), intent(in) :: basis
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -800,25 +804,25 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis_global%basis_length)
+        integer(i0), target :: f_local(basis%basis_length)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(basis_global, cdet%f, connection, f_local)
+            call create_excited_det(basis, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
-        iproc_spawn = assign_particle_processor(f_new, basis_global%basis_length, spawn%hash_seed, &
+        iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
             spawn%hash_shift, spawn%move_freq, nprocs)
 
         call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
     end subroutine create_spawned_particle_initiator
 
-    subroutine create_spawned_particle_truncated(cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_truncated(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -826,6 +830,7 @@ contains
         ! TODO: comment
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -840,13 +845,14 @@ contains
 
         use parallel, only: nprocs
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use calc, only: truncation_level
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
 
+        type(basis_t), intent(in) :: basis
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -854,21 +860,21 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis_global%basis_length)
+        integer(i0), target :: f_local(basis%basis_length)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(basis_global, cdet%f, connection, f_local)
+            call create_excited_det(basis, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis_global%basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
@@ -877,7 +883,7 @@ contains
 
     end subroutine create_spawned_particle_truncated
 
-    subroutine create_spawned_particle_initiator_truncated(cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_truncated(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -885,6 +891,7 @@ contains
         ! TODO: comment
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -899,13 +906,14 @@ contains
 
         use parallel, only: nprocs
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use calc, only: truncation_level
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
 
+        type(basis_t), intent(in) :: basis
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -913,21 +921,21 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis_global%basis_length)
+        integer(i0), target :: f_local(basis%basis_length)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(basis_global, cdet%f, connection, f_local)
+            call create_excited_det(basis, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis_global%basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
@@ -936,7 +944,7 @@ contains
 
     end subroutine create_spawned_particle_initiator_truncated
 
-    subroutine create_spawned_particle_ras(cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_ras(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -944,6 +952,7 @@ contains
         ! TODO: comment
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -958,13 +967,14 @@ contains
 
         use parallel, only: nprocs
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
         use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
 
+        type(basis_t), intent(in) :: basis
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -972,21 +982,21 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis_global%basis_length)
+        integer(i0), target :: f_local(basis%basis_length)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(basis_global, cdet%f, connection, f_local)
+            call create_excited_det(basis, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis_global%basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
@@ -995,7 +1005,7 @@ contains
 
     end subroutine create_spawned_particle_ras
 
-    subroutine create_spawned_particle_initiator_ras(cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_ras(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1003,6 +1013,7 @@ contains
         ! TODO: comment
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -1017,13 +1028,14 @@ contains
 
         use parallel, only: nprocs
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
         use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
 
+        type(basis_t), intent(in) :: basis
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -1031,21 +1043,21 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis_global%basis_length)
+        integer(i0), target :: f_local(basis%basis_length)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(basis_global, cdet%f, connection, f_local)
+            call create_excited_det(basis, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis_global%basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
@@ -1054,12 +1066,13 @@ contains
 
     end subroutine create_spawned_particle_initiator_ras
 
-    subroutine create_spawned_particle_density_matrix(f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1075,21 +1088,22 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use errors, only: stop_all
         use excitations, only: excit, create_excited_det
         use parallel, only: nprocs, nthreads
         use spawn_data, only: spawn_t
 
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit), intent(in) :: connection
 
-        integer(i0) :: f_new(basis_global%basis_length)
-        integer(i0) :: f_new_tot(basis_global%total_basis_length)
+        integer(i0) :: f_new(basis%basis_length)
+        integer(i0) :: f_new_tot(basis%total_basis_length)
 
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
@@ -1098,18 +1112,18 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(basis_global, f1, connection, f_new)
+        call create_excited_det(basis, f1, connection, f_new)
 
         f_new_tot = 0_i0
         if (spawning_end==1) then
-            f_new_tot(:basis_global%basis_length) = f_new
-            f_new_tot((basis_global%basis_length+1):(basis_global%total_basis_length)) = f2
+            f_new_tot(:basis%basis_length) = f_new
+            f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f2
         else
-            f_new_tot(:basis_global%basis_length) = f2
-            f_new_tot((basis_global%basis_length+1):(basis_global%total_basis_length)) = f_new
+            f_new_tot(:basis%basis_length) = f2
+            f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f_new
         end if
 
-        iproc_spawn = assign_particle_processor(f_new_tot, basis_global%total_basis_length, spawn%hash_seed, &
+        iproc_spawn = assign_particle_processor(f_new_tot, basis%total_basis_length, spawn%hash_seed, &
                                                 spawn%hash_shift, spawn%move_freq, nprocs)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
@@ -1120,7 +1134,7 @@ contains
 
     end subroutine create_spawned_particle_density_matrix
 
-    subroutine create_spawned_particle_half_density_matrix(f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_half_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! If walker tries to spawn in the lower triangle of density matrix
@@ -1128,6 +1142,7 @@ contains
         ! two ends. The current position in the spawning array is updated.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1144,22 +1159,23 @@ contains
         !    spawn: spawn_t object to which the spawned particle will be added.
 
         use determinants, only: det_compare
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit, create_excited_det
         use parallel, only: nprocs, nthreads
         use spawn_data, only: spawn_t
 
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit), intent(in) :: connection
 
-        integer(i0) :: f_new(basis_global%basis_length)
-        integer(i0) :: f_new_tot(basis_global%total_basis_length)
+        integer(i0) :: f_new(basis%basis_length)
+        integer(i0) :: f_new_tot(basis%total_basis_length)
 
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
@@ -1168,7 +1184,7 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(basis_global, f1, connection, f_new)
+        call create_excited_det(basis, f1, connection, f_new)
         f_new_tot = 0_i0
 
         ! Test to see whether the new determinant resides in the upper
@@ -1176,15 +1192,15 @@ contains
         ! as they are. If not then swap bitstring ends so that the
         ! new psips are reflected into the upper triangle of the density
         ! matrix as they try to spawn.
-        if (det_compare(f_new, f2, basis_global%basis_length) == -1) then
-            f_new_tot(:basis_global%basis_length) = f_new
-            f_new_tot((basis_global%basis_length+1):(basis_global%total_basis_length)) = f2
+        if (det_compare(f_new, f2, basis%basis_length) == -1) then
+            f_new_tot(:basis%basis_length) = f_new
+            f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f2
         else
-            f_new_tot(:basis_global%basis_length) = f2
-            f_new_tot((basis_global%basis_length+1):(basis_global%total_basis_length)) = f_new
+            f_new_tot(:basis%basis_length) = f2
+            f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f_new
         end if
 
-        iproc_spawn = assign_particle_processor(f_new_tot, basis_global%total_basis_length, spawn%hash_seed, &
+        iproc_spawn = assign_particle_processor(f_new_tot, basis%total_basis_length, spawn%hash_seed, &
                                                 spawn%hash_shift, spawn%move_freq, nprocs)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
@@ -1195,7 +1211,7 @@ contains
 
     end subroutine create_spawned_particle_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_half_density_matrix(f1, f2, connection, nspawn, &
+    subroutine create_spawned_particle_truncated_half_density_matrix(basis, f1, f2, connection, nspawn, &
                                                                           spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
@@ -1211,6 +1227,7 @@ contains
         ! density matrix.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1226,7 +1243,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use determinants, only: det_compare
         use calc, only: truncation_level
         use errors, only: stop_all
@@ -1234,15 +1251,16 @@ contains
         use parallel, only: nprocs, nthreads
         use spawn_data, only: spawn_t
 
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit), intent(in) :: connection
 
-        integer(i0) :: f_new(basis_global%basis_length)
-        integer(i0) :: f_new_tot(basis_global%total_basis_length)
+        integer(i0) :: f_new(basis%basis_length)
+        integer(i0) :: f_new_tot(basis%total_basis_length)
 
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
@@ -1251,7 +1269,7 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(basis_global, f1, connection, f_new)
+        call create_excited_det(basis, f1, connection, f_new)
 
         if (get_excitation_level(f2, f_new) <= truncation_level) then
 
@@ -1261,15 +1279,15 @@ contains
             ! as they are. If not then swap bitstring ends so that the
             ! new psips are reflected into the upper triangle of the density
             ! matrix as they try to spawn.
-            if (det_compare(f_new, f2, basis_global%basis_length) == -1) then
-                f_new_tot(:basis_global%basis_length) = f_new
-                f_new_tot((basis_global%basis_length+1):(basis_global%total_basis_length)) = f2
+            if (det_compare(f_new, f2, basis%basis_length) == -1) then
+                f_new_tot(:basis%basis_length) = f_new
+                f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f2
             else
-                f_new_tot(:basis_global%basis_length) = f2
-                f_new_tot((basis_global%basis_length+1):(basis_global%total_basis_length)) = f_new
+                f_new_tot(:basis%basis_length) = f2
+                f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f_new
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, basis_global%total_basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new_tot, basis%total_basis_length, spawn%hash_seed, &
                                                     spawn%hash_shift, spawn%move_freq, nprocs)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
@@ -1282,7 +1300,8 @@ contains
 
     end subroutine create_spawned_particle_truncated_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_density_matrix(f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_truncated_density_matrix(basis, f1, f2, connection, &
+            nspawn, spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1292,6 +1311,7 @@ contains
         ! obtained by applying the connection to f1.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1307,22 +1327,23 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
         use spawn_data, only: spawn_t
 
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit), intent(in) :: connection
 
-        integer(i0) :: f_new(basis_global%basis_length)
-        integer(i0) :: f_new_tot(basis_global%total_basis_length)
+        integer(i0) :: f_new(basis%basis_length)
+        integer(i0) :: f_new_tot(basis%total_basis_length)
 
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
@@ -1331,20 +1352,20 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(basis_global, f1, connection, f_new)
+        call create_excited_det(basis, f1, connection, f_new)
 
         if (get_excitation_level(f2, f_new) <= truncation_level) then
 
             f_new_tot = 0_i0
             if (spawning_end==1) then
-                f_new_tot(:basis_global%basis_length) = f_new
-                f_new_tot((basis_global%basis_length+1):(basis_global%total_basis_length)) = f2
+                f_new_tot(:basis%basis_length) = f_new
+                f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f2
             else
-                f_new_tot(:basis_global%basis_length) = f2
-                f_new_tot((basis_global%basis_length+1):(basis_global%total_basis_length)) = f_new
+                f_new_tot(:basis%basis_length) = f2
+                f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f_new
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, basis_global%total_basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new_tot, basis%total_basis_length, spawn%hash_seed, &
                                                     spawn%hash_shift, spawn%move_freq, nprocs)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &

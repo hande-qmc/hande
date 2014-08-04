@@ -99,10 +99,12 @@ abstract interface
         integer, intent(in) :: determ_flag
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
-    subroutine i_create_spawned_particle(d, connection, nspawned, particle_indx, spawn, f)
+    subroutine i_create_spawned_particle(basis, d, connection, nspawned, particle_indx, spawn, f)
+        use basis_types, only: basis_t
         use spawn_data, only: spawn_t
         import :: excit, det_info, int_p, i0
         implicit none
+        type(basis_t), intent(in) :: basis
         type(det_info), intent(in) :: d
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
@@ -110,13 +112,14 @@ abstract interface
         integer(i0), intent(in), optional, target :: f(:)
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
-    subroutine i_create_spawned_particle_dm(f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
-        use basis, only: basis_global
+    subroutine i_create_spawned_particle_dm(basis, f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
         use spawn_data, only: spawn_t
+        use basis_types, only: basis_t
         import :: excit, i0, int_p
         implicit none
-        integer(i0), intent(in) :: f1(basis_global%basis_length)
-        integer(i0), intent(in) :: f2(basis_global%basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f1(basis%basis_length)
+        integer(i0), intent(in) :: f2(basis%basis_length)
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: spawning_end, particle_indx
