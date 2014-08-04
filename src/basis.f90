@@ -455,7 +455,7 @@ contains
 
         if (.not.t_store) then
             ! Should tidy up and deallocate everything we allocated.
-            call end_basis_fns()
+            call dealloc_basis_fn_t_array(basis_global%basis_fns)
         end if
 
     end subroutine init_model_basis_fns
@@ -498,24 +498,5 @@ contains
         f(ind) = ibset(f(ind),pos)
 
     end subroutine set_orb
-
-    subroutine end_basis_fns()
-
-        ! Clean up basis functions.
-
-        use checking, only: check_deallocate
-
-        integer :: ierr, i
-
-        if (allocated(basis_global%basis_fns)) then
-            do i = 1, basis_global%nbasis
-                if (allocated(basis_global%basis_fns(i)%l)) deallocate(basis_global%basis_fns(i)%l, stat=ierr)
-                call check_deallocate('basis_global%basis_fns(i',ierr)
-            end do
-            deallocate(basis_global%basis_fns, stat=ierr)
-            call check_deallocate('basis_global%basis_fns',ierr)
-        end if
-
-    end subroutine end_basis_fns
 
 end module basis

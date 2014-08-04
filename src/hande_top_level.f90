@@ -144,9 +144,9 @@ contains
         !     sys: main system object.  All allocatable components are
         !          deallocated on exit.
 
+        use basis_types, only: dealloc_basis_t
         use calc
         use system, only: sys_t, end_lattice_system
-        use basis, only: end_basis_fns
         use determinants, only: end_determinants
         use excitations, only: end_excitations
         use diagonalisation, only: end_hamil
@@ -168,7 +168,7 @@ contains
         !   end_ routines should surround every deallocate statement with a test
         !   that the array is allocated.
         call end_lattice_system(sys%lattice)
-        call end_basis_fns()
+        call dealloc_basis_t(sys%basis)
         call end_momentum_symmetry()
         call end_determinants()
         call end_excitations()

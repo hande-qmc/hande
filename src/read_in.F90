@@ -29,8 +29,8 @@ contains
         !        read_in%Ecore components are set using information from the
         !        integral dump file.
 
-        use basis, only: basis_fn_t, end_basis_fns, write_basis_fn, &
-                         write_basis_fn_header
+        use basis, only: write_basis_fn, write_basis_fn_header
+        use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry
         use system, only: sys_t
@@ -631,12 +631,7 @@ contains
                       //int_fmt(cas(1),0)//',",",'//int_fmt(cas(2),0)//',")",/)') cas
         end if
 
-        do i = 1, size(all_basis_fns)
-            deallocate(all_basis_fns(i)%l, stat=ierr)
-            call check_deallocate('all_basis_fns_element',ierr)
-        end do
-        deallocate(all_basis_fns, stat=ierr)
-        call check_deallocate('all_basis_fns',ierr)
+        call dealloc_basis_fn_t_array(all_basis_fns)
 
         if (parent) then
             call write_basis_fn_header(sys)
@@ -659,7 +654,7 @@ contains
 
         if (.not.t_store) then
             ! Should tidy up and deallocate everything we allocated.
-            call end_basis_fns()
+            call dealloc_basis_fn_t_array(sys%basis%basis_fns)
         end if
 
     end subroutine read_in_integrals

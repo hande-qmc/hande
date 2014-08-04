@@ -149,19 +149,44 @@ module basis_types
             ! In/Out:
             !    b: basis_t object to be deallocated.
 
+            use checking, only: check_deallocate
+
             type(basis_t), intent(inout) :: b
+            integer :: ierr
 
-            integer :: i
-
-            if (allocated(b%bit_lookup)) deallocate(b%bit_lookup)
-            if (allocated(b%basis_lookup)) deallocate(b%basis_lookup)
-            if (allocated(b%basis_fns)) then
-                do i = lbound(b%basis_fns, dim=1), ubound(b%basis_fns, dim=1)
-                    if (allocated(b%basis_fns(i)%l)) deallocate(b%basis_fns(i)%l)
-                end do
-                deallocate(b%basis_fns)
+            if (allocated(b%bit_lookup)) then
+                deallocate(b%bit_lookup, stat=ierr)
+                call check_deallocate('b%bit_lookup', ierr)
             end if
+            if (allocated(b%basis_lookup)) then
+                deallocate(b%basis_lookup, stat=ierr)
+                call check_deallocate('b%basis_lookup', ierr)
+            end if
+            call dealloc_basis_fn_t_array(b%basis_fns)
 
         end subroutine dealloc_basis_t
+
+        subroutine dealloc_basis_fn_t_array(basis_fns)
+
+            ! In/Out:
+            !    basis_fns: array of basis_fn_t to be deallocated.
+
+            use checking, only: check_deallocate
+
+            type(basis_fn_t), intent(inout), allocatable :: basis_fns(:)
+            integer :: i, ierr
+
+            if (allocated(basis_fns)) then
+                do i = lbound(basis_fns, dim=1), ubound(basis_fns, dim=1)
+                    if (allocated(basis_fns(i)%l)) then
+                        deallocate(basis_fns(i)%l, stat=ierr)
+                        call check_deallocate('basis_fns(i)%l', ierr)
+                    end if
+                end do
+                deallocate(basis_fns, stat=ierr)
+                call check_deallocate('basis_fns', ierr)
+            end if
+
+        end subroutine dealloc_basis_fn_t_array
 
 end module basis_types
