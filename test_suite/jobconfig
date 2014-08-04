@@ -72,7 +72,6 @@ real_64 = heisenberg_1d_neel_ref_fciqmc_real_64
 
 mpi_real_32 = mpi/*/*real_32
 mpi_real_64 = mpi/*/*real_64
-mpi_real_64 = mpi/np4/He2-aug-cc-pVDZ_real_64_SS
 
 semi_stochastic_real_32 = He2-aug-cc-pVDZ_real_32_SS hubbard_k_1d_ifciqmc_real_32_SS
 
