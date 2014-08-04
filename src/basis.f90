@@ -6,9 +6,6 @@ use const, only: p, i0
 use basis_types
 
 implicit none
-
-! Temporary global object to aid removal of global state.
-type(basis_t) :: basis_global
  
 contains
 
