@@ -29,31 +29,35 @@ integer(i0), allocatable :: excit_mask(:,:) ! (basis_length, nbasis)
 
 contains
 
-    subroutine init_excitations()
+    subroutine init_excitations(basis)
 
         ! Allocate and initialise data in excit_mask.
 
-        use basis, only: basis_global
+        ! In:
+        !    basis: information about the single-particle basis.
+
+        use basis_types, only: basis_t
         use checking, only: check_allocate
 
+        type(basis_t), intent(in) :: basis
         integer :: ibasis, jbasis, ipos, iel, jpos, jel, ierr
 
-        allocate(excit_mask(basis_global%basis_length, basis_global%nbasis), stat=ierr)
-        call check_allocate('excit_mask', basis_global%basis_length*basis_global%nbasis, ierr)
+        allocate(excit_mask(basis%basis_length, basis%nbasis), stat=ierr)
+        call check_allocate('excit_mask', size(excit_mask), ierr)
 
         excit_mask = 0_i0
 
-        do ibasis = 1, basis_global%nbasis
-            ipos = basis_global%bit_lookup(1, ibasis)
-            iel = basis_global%bit_lookup(2, ibasis)
+        do ibasis = 1, basis%nbasis
+            ipos = basis%bit_lookup(1, ibasis)
+            iel = basis%bit_lookup(2, ibasis)
             ! Set bits corresponding to all orbitals above ibasis.
             ! Sure, there are quicker (and probably more elegant) ways of doing
             ! this, but it's a one-off...
             ! Loop from jbasis=1 as separate_strings means that even if
             ! jbasis<ibasis, it can still come after ibasis in the bit string.
-            do jbasis = 1, basis_global%nbasis
-                jpos = basis_global%bit_lookup(1, jbasis)
-                jel = basis_global%bit_lookup(2, jbasis)
+            do jbasis = 1, basis%nbasis
+                jpos = basis%bit_lookup(1, jbasis)
+                jel = basis%bit_lookup(2, jbasis)
                 if ( (jel==iel .and. jpos > ipos) .or. jel>iel) &
                     excit_mask(jel, ibasis) = ibset(excit_mask(jel, ibasis), jpos)
             end do
@@ -242,14 +246,13 @@ contains
         !    excitation: excit type with the parity of the permutation also
         !        specified.
 
-        use basis, only: basis_global
         use bit_utils, only: count_set_bits
 
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(:)
         type(excit), intent(inout) :: excitation
 
         integer :: perm
-        integer(i0) :: ia(basis_global%basis_length)
+        integer(i0) :: ia(size(f))
 
         ! This is just a simplification of find_excitation_permutation2.  See
         ! the comments there (and ignore any that refer to j and b...).
@@ -279,14 +282,13 @@ contains
         !    excitation: excit type with the parity of the permutation also
         !        specified.
 
-        use basis, only: basis_global
         use bit_utils, only: count_set_bits
 
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(:)
         type(excit), intent(inout) :: excitation
 
         integer :: perm
-        integer(i0) :: ia(basis_global%basis_length), jb(basis_global%basis_length)
+        integer(i0) :: ia(size(f)), jb(size(f))
 
         ! Fast way of getting the parity of the permutation required to align
         ! two determinants given one determinant and the connecting exctitation.

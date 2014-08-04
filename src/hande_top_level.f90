@@ -80,7 +80,7 @@ contains
         ! TEMPORARY: copy basis_global to sys%basis to aid migration from global data.
         call copy_basis_t(basis_global, sys%basis)
 
-        call init_excitations()
+        call init_excitations(sys%basis)
 
         ! System specific.
         select case(sys%system)
