@@ -101,7 +101,7 @@ contains
         type(det_info), intent(inout) :: cdet_out
 
         ! Create the excited determinant bit string representation
-        call create_excited_det(cdet_in%f, connection, cdet_out%f)
+        call create_excited_det(sys%basis, cdet_in%f, connection, cdet_out%f)
 
         ! Decode the excited determinant bit string representation
         call decoder_ptr(sys, cdet_out%f,cdet_out)

@@ -388,7 +388,7 @@ contains
 #endif
 
         ! Create bit string of new determinant.
-        call create_excited_det(cdet%f, connection, f_new)
+        call create_excited_det(basis, cdet%f, connection, f_new)
 
 #ifdef PARALLEL
         ! (Extra credit for parallel calculations)

@@ -45,7 +45,7 @@ contains
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! We assume Ms is conserved (ie has already been checked for).
-        excitation = get_excitation(sys%nel, f1, f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1, f2)
 
         ! Matrix elements in this model are quite simple.
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >

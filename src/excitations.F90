@@ -78,10 +78,11 @@ contains
 
     end subroutine end_excitations
 
-    pure function get_excitation(nel, f1,f2) result(excitation)
+    pure function get_excitation(nel, basis, f1, f2) result(excitation)
 
         ! In:
         !    nel: number of electrons in system.
+        !    basis: information about the single-particle basis.
         !    f1(basis_length): bit string representation of the Slater
         !        determinant.
         !    f2(basis_length): bit string representation of the Slater
@@ -101,12 +102,12 @@ contains
         !        excitations.
 
         use bit_utils
-        use basis, only: basis_global
-        use system
+        use basis_types, only: basis_t
 
         type(excit) :: excitation
         integer, intent(in) :: nel
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
         integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift
         logical :: test_f1, test_f2
 
@@ -160,7 +161,7 @@ contains
 
             if (excitation%nexcit <= 2) then
 
-                do i = 1, basis_global%basis_length
+                do i = 1, basis%basis_length
                     ! Bonus optimisation: skip bit strings which aren't changed.
                     ! This modifies the algorithm above by skipping basis
                     ! functions which are already lined up.  Doing so is
@@ -180,14 +181,14 @@ contains
                             if (.not.test_f2) then
                                 ! occupied in f1 but not in f2
                                 iexcit1 = iexcit1 + 1
-                                excitation%from_orb(iexcit1) = basis_global%basis_lookup(j,i)
+                                excitation%from_orb(iexcit1) = basis%basis_lookup(j,i)
                                 perm = perm + (shift - iel1 + iexcit1)
                             end if
                         else
                             if (test_f2) then
                                 ! occupied in f1 but not in f2
                                 iexcit2 = iexcit2 + 1
-                                excitation%to_orb(iexcit2) = basis_global%basis_lookup(j,i)
+                                excitation%to_orb(iexcit2) = basis%basis_lookup(j,i)
                                 perm = perm + (shift - iel2 + iexcit2)
                             end if
                         end if
@@ -346,11 +347,13 @@ contains
 
     end subroutine find_excitation_permutation2
 
-    pure subroutine create_excited_det(f_in, connection, f_out)
+    pure subroutine create_excited_det(basis, f_in, connection, f_out)
 
         ! Generate a determinant from another determinant and the excitation
         ! information connecting the two determinants.
+
         ! In:
+        !    basis: information about the single-particle basis.
         !    f_in(basis_length): bit string representation of the reference
         !        Slater determinant.
         !    connection: excitation connecting f_in to f_out.  Note that
@@ -359,11 +362,12 @@ contains
         !    f_out(basis_length): bit string representation of the excited
         !        Slater determinant.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
 
-        integer(i0), intent(in) :: f_in(basis_global%basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f_in(basis%basis_length)
         type(excit), intent(in) :: connection
-        integer(i0), intent(out) :: f_out(basis_global%basis_length)
+        integer(i0), intent(out) :: f_out(basis%basis_length)
 
         integer :: i, orb, bit_pos, bit_element
 
@@ -373,13 +377,13 @@ contains
         do i = 1, connection%nexcit
             ! Clear i/j orbital.
             orb = connection%from_orb(i)
-            bit_pos = basis_global%bit_lookup(1,orb)
-            bit_element = basis_global%bit_lookup(2,orb)
+            bit_pos = basis%bit_lookup(1,orb)
+            bit_element = basis%bit_lookup(2,orb)
             f_out(bit_element) = ibclr(f_out(bit_element), bit_pos)
             ! Set a/b orbital.
             orb = connection%to_orb(i)
-            bit_pos = basis_global%bit_lookup(1,orb)
-            bit_element = basis_global%bit_lookup(2,orb)
+            bit_pos = basis%bit_lookup(1,orb)
+            bit_element = basis%bit_lookup(2,orb)
             f_out(bit_element) = ibset(f_out(bit_element), bit_pos)
         end do
 

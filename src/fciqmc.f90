@@ -157,7 +157,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             if (determ_parent) then
-                                call create_excited_det(cdet%f, connection, f_child)
+                                call create_excited_det(sys%basis, cdet%f, connection, f_child)
                                 determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.

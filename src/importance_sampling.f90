@@ -129,7 +129,7 @@ contains
 
         excit_level_old = get_excitation_level(cdet%f,cdet%f2)
 
-        call create_excited_det(cdet%f, connection, f_new)
+        call create_excited_det(sys%basis, cdet%f, connection, f_new)
 
         excit_level_new = get_excitation_level(f_new,cdet%f2)
 

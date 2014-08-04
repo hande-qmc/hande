@@ -39,7 +39,7 @@ contains
         !     The overall crystal momentum must be conserved (i.e. satisfy
         !     translational symmetry).  We assume this is also already checked.
 
-        excitation = get_excitation(sys%nel, f1,f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1,f2)
 
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         ! UEG (at least in the RHF basis of plane waves) has only double

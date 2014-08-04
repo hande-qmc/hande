@@ -52,7 +52,7 @@ contains
         integer :: bit_position, bit_element
 
         hmatel = 0.0_p
-        excitation = get_excitation(sys%nel, cdet%f, f0)
+        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.

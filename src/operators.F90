@@ -73,7 +73,7 @@ contains
         logical :: non_zero
         type(excit) :: excitation
 
-        excitation = get_excitation(sys%nel, f1,f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1,f2)
 
         select case(excitation%nexcit)
         case(0)
@@ -214,7 +214,7 @@ contains
         logical :: non_zero
         type(excit) :: excitation
 
-        excitation = get_excitation(sys%nel, f1,f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1,f2)
 
         select case(excitation%nexcit)
         case(0)

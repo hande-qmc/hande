@@ -36,7 +36,7 @@ contains
         hmatel = 0.0_p
 
         ! Test to see if matrix element is non-zero.
-        excitation = get_excitation(sys%nel, f1, f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1, f2)
 
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then

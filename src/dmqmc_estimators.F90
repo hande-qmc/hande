@@ -199,7 +199,7 @@ contains
        real(p) :: unweighted_walker_pop(sampling_size)
 
        ! Get excitation.
-       excitation = get_excitation(sys%nel, walker_dets(:sys%basis%basis_length,idet), &
+       excitation = get_excitation(sys%nel, sys%basis, walker_dets(:sys%basis%basis_length,idet), &
                         walker_dets((1+sys%basis%basis_length):sys%basis%total_basis_length,idet))
 
        ! When performing importance sampling the result is that certain

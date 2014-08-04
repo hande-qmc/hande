@@ -802,7 +802,7 @@ contains
             ! a change in sign to the sign of the progeny.
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
-            call create_excited_det(cdet%f, connection, fexcit)
+            call create_excited_det(sys%basis, cdet%f, connection, fexcit)
             excitor_level = get_excitation_level(f0, fexcit)
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign)
             if (excitor_sign < 0) nspawn = -nspawn

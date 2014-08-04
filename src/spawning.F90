@@ -757,7 +757,7 @@ contains
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(cdet%f, connection, f_local)
+            call create_excited_det(basis_global, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
@@ -807,7 +807,7 @@ contains
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(cdet%f, connection, f_local)
+            call create_excited_det(basis_global, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
@@ -861,7 +861,7 @@ contains
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(cdet%f, connection, f_local)
+            call create_excited_det(basis_global, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
@@ -920,7 +920,7 @@ contains
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(cdet%f, connection, f_local)
+            call create_excited_det(basis_global, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
@@ -979,7 +979,7 @@ contains
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(cdet%f, connection, f_local)
+            call create_excited_det(basis_global, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
@@ -1038,7 +1038,7 @@ contains
         if (present(fexcit)) then
             f_new => fexcit
         else
-            call create_excited_det(cdet%f, connection, f_local)
+            call create_excited_det(basis_global, cdet%f, connection, f_local)
             f_new => f_local
         end if
 
@@ -1098,7 +1098,7 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(f1, connection, f_new)
+        call create_excited_det(basis_global, f1, connection, f_new)
 
         f_new_tot = 0_i0
         if (spawning_end==1) then
@@ -1168,7 +1168,7 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(f1, connection, f_new)
+        call create_excited_det(basis_global, f1, connection, f_new)
         f_new_tot = 0_i0
 
         ! Test to see whether the new determinant resides in the upper
@@ -1251,7 +1251,7 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(f1, connection, f_new)
+        call create_excited_det(basis_global, f1, connection, f_new)
 
         if (get_excitation_level(f2, f_new) <= truncation_level) then
 
@@ -1331,7 +1331,7 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(f1, connection, f_new)
+        call create_excited_det(basis_global, f1, connection, f_new)
 
         if (get_excitation_level(f2, f_new) <= truncation_level) then
 

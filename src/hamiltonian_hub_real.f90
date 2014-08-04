@@ -37,7 +37,7 @@ contains
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! We assume Ms is conserved (ie has already been checked for).
-        excitation = get_excitation(sys%nel, f1, f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1, f2)
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then
             ! Space group symmetry not currently implemented.
