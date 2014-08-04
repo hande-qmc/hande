@@ -53,8 +53,12 @@ integer, parameter :: int_s = selected_int_kind(6)
 #endif
 
 ! Number of bits in an integer of type i0.
-! Note that pgi 10.3 has a bug are returns 32 if bit_size(int(0,i0)) is used.
+! Note that pgi 10.3 has a bug and returns 32 if bit_size(int(0,i0)) is used.
 integer, parameter :: i0_length = bit_size(0_i0)
+! Number of bits in an integer of type int_p.
+integer, parameter :: int_p_length = bit_size(0_int_p)
+! Number of bits in an integer of type int_s.
+integer, parameter :: int_s_length = bit_size(0_int_s)
 
 ! Index of the last bit in an integer of type i0.
 ! (Bit indexing in fortran ranges from 0 to bit_size-1.)

@@ -381,7 +381,7 @@ contains
         !        for descriptions of the different behaviours.
 
         use checking, only: check_allocate, check_deallocate
-        use csr, only: init_csrpsy, end_csrpsy
+        use csr, only: init_csrp, end_csrp
         use utils, only: get_free_unit
         use errors
         use parallel
@@ -409,7 +409,7 @@ contains
             deallocate(hamil, stat=ierr)
             call check_deallocate('hamil',ierr)
         end if
-        if (allocated(hamil_csr%mat)) call end_csrpsy(hamil_csr)
+        if (allocated(hamil_csr%mat)) call end_csrp(hamil_csr)
 
         if (present(distribute_mode)) then
             distribute = distribute_mode
@@ -509,7 +509,7 @@ contains
                     !$omp end parallel
                     if (imode == 1) then
                         write (6,'(1X,a50,i8/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
-                        call init_csrpsy(hamil_csr, ndets, nnz)
+                        call init_csrp(hamil_csr, ndets, nnz)
                         hamil_csr%row_ptr(1:ndets) = 0
                     else
                         ! Any element not set in row_ptr means that the

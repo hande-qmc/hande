@@ -15,6 +15,7 @@ use restart_hdf5, only: restart_info_global, restart_info_global_shift
 use real_lattice, only: finite_cluster
 use hfs_data
 use dmqmc_procedures, only: rdms
+use semi_stoch
 
 implicit none
 
@@ -222,7 +223,16 @@ contains
             case('SPAWN_CUTOFF')
                 call getf(spawn_cutoff)
 
-            ! DMQMC expectation values to be calculated
+            ! Semi-stochastic options.
+            case('SEMI_STOCH_ITERATION')
+                call readi(semi_stoch_start_iter)
+                real_amplitudes = .true.
+            ! Deterministic spaces.
+            case('SEMI_STOCH_HIGH_POP')
+                determ_space_type = high_pop_determ_space
+                call readi(determ_target_size)
+
+            ! DMQMC expectation values to be calculated.
             case('DMQMC_FULL_RENYI_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_full_r2
             case('DMQMC_ENERGY')
@@ -539,7 +549,7 @@ contains
         if (sys%system == read_in) then
 
             if (analyse_fci_wfn /= 0 .and. sys%read_in%dipole_int_file == '') then
-                if (parent) call warning('check_input', 'Cannot analyse FCI wavefunction without a dipole &
+                if (parent) call warning(this, 'Cannot analyse FCI wavefunction without a dipole &
                              &integrals file.  Turning analyse_fci_wfn option off...')
                 analyse_fci_wfn = 0
             end if
@@ -572,7 +582,7 @@ contains
                                                          &guiding function is only avaliable when using the Neel singlet state &
                                                          &as an energy estimator.')
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) then
-                    if (parent) call warning('check_input','Staggered magnetisation can only be calculated on a bipartite lattice.&
+                    if (parent) call warning(this,'Staggered magnetisation can only be calculated on a bipartite lattice.&
                                           & This is not a bipartite lattice. Changing options so that it will not be calculated.')
                     dmqmc_calc_type = dmqmc_calc_type - dmqmc_staggered_magnetisation
                 end if
@@ -585,6 +595,7 @@ contains
 
         end if
 
+        ! Real amplitude checks.
         if (real_amplitudes) then
             if (doing_calc(ccmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc) .or. &
                doing_calc(folded_spectrum)) then
@@ -596,6 +607,14 @@ contains
                              &exceeded. Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
             end if
         end if
+
+        ! Semi-stochastic checks.
+        if (semi_stoch_start_iter /= 0 .and. determ_space_type == empty_determ_space .and. parent) &
+            call warning(this,'You have specified an iteration to turn semi-stochastic on but have not &
+                         &specified a deterministic space to use.')
+        if (determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. &
+              doing_calc(hfs_fciqmc_calc) .or. doing_calc(folded_spectrum)) ) call stop_all(this, &
+            'Semi-stochastic is only implemented with the FCIQMC method.')
 
         if (init_spin_inv_D0 .and. ms_in /= 0) then
             if (parent) call warning(this, 'Flipping the reference state will give &
@@ -615,7 +634,7 @@ contains
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
 
-        if (.not.doing_calc(dmqmc_calc) .and. dmqmc_calc_type /= 0 .and. parent) call warning('check_input',&
+        if (.not.doing_calc(dmqmc_calc) .and. dmqmc_calc_type /= 0 .and. parent) call warning(this,&
                'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
@@ -646,9 +665,9 @@ contains
         ! we are doing a calculation in real-space. If we're not then
         ! unset finite cluster,tell the user and carry on
         if(sys%momentum_space) then
-            if (finite_cluster .and. parent) call warning('check_input','FINITE_CLUSTER keyword only valid for hubbard&
+            if (finite_cluster .and. parent) call warning(this,'FINITE_CLUSTER keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
-            if (separate_strings .and. parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
+            if (separate_strings .and. parent) call warning(this,'SEPARATE_STRINGS keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
             finite_cluster = .false.
             separate_strings = .false.
@@ -657,11 +676,11 @@ contains
         if (separate_strings) then
             if (sys%system.ne.hub_real) then
                 separate_strings = .false.
-                if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for hubbard&
+                if (parent) call warning(this,'SEPARATE_STRINGS keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
             else if (sys%lattice%ndim /= 1) then
                 separate_strings = .false.
-                if (parent) call warning('check_input','SEPARATE_STRINGS keyword only valid for 1D&
+                if (parent) call warning(this,'SEPARATE_STRINGS keyword only valid for 1D&
                                       & calculations in real-space: ignoring keyword')
             end if
         end if
@@ -738,6 +757,9 @@ contains
         end if
         call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)

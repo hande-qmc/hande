@@ -28,25 +28,31 @@ contains
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
-        use excitations, only: excit
+        use excitations, only: excit, create_excited_det
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
+        use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
+        use semi_stoch, only: empty_determ_space, dealloc_semi_stoch_t, init_semi_stoch_t
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
         type(sys_t), intent(in) :: sys
 
-        integer :: idet, ireport, icycle, iparticle
-        integer(lint) :: nattempts
-        real(dp) :: nparticles_old(sampling_size)
         type(det_info) :: cdet
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
+        type(semi_stoch_t) :: determ
 
+        integer :: idet, ireport, icycle, iparticle, ideterm
+        integer :: iter
+        integer(lint) :: nattempts
+        real(dp) :: nparticles_old(sampling_size)
+
+        integer(i0) :: f_child(basis_length)
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det, nspawn_events
         type(excit) :: connection
@@ -54,6 +60,7 @@ contains
         real(dp) :: real_population
 
         logical :: soft_exit
+        logical :: semi_stochastic, determ_parent, determ_child
 
         real :: t1
 
@@ -71,6 +78,18 @@ contains
         ! be able to manipulate the bit string to create excited states.
         if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
 
+        ! Create the semi_stoch_t object, determ.
+        ! If the user has asked to use semi-stochastic from the first iteration
+        ! then turn it on now. Otherwise, use an empty deterministic space.
+        if (semi_stoch_start_iter == 0) then
+            call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size)
+        else
+            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, target_size=0)
+        end if
+
+        ! Are we using a non-empty semi-stochastic space?
+        semi_stochastic = .not. (determ%space_type == empty_determ_space)
+
         ! from restart
         nparticles_old = tot_nparticles
 
@@ -87,7 +106,17 @@ contains
 
             do icycle = 1, ncycles
 
+                iter = mc_cycles_done + (ireport-1)*ncycles + icycle
+
+                ! Should we turn semi-stochastic on now?
+                if (iter == semi_stoch_start_iter) then
+                    call dealloc_semi_stoch_t(determ)
+                    call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size)
+                    semi_stochastic = .true.
+                end if
+
                 call init_mc_cycle(nattempts, ndeath)
+                ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -99,6 +128,16 @@ contains
                     ! Extract the real sign from the encoded sign.
                     real_population = real(walker_population(1,idet),dp)/real_factor
 
+                    ! If this is a deterministic state then copy its population
+                    ! across to the determ%vector array.
+                    if (determ%flags(idet) == 0) then
+                        ideterm = ideterm + 1
+                        determ%vector(ideterm) = real_population
+                        determ_parent = .true.
+                    else
+                        determ_parent = .false.
+                    end if
+
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
@@ -106,7 +145,7 @@ contains
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
-                    call set_parent_flag_ptr(real_population, cdet%f, cdet%initiator_flag)
+                    call set_parent_flag_ptr(real_population, cdet%f, determ%flags(idet), cdet%initiator_flag)
 
                     nattempts_current_det = decide_nattempts(rng, real_population)
 
@@ -118,8 +157,19 @@ contains
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
-                            call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
-
+                            if (determ_parent) then
+                                call create_excited_det(cdet%f, connection, f_child)
+                                determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
+                                ! If the spawning is both from and to the
+                                ! deterministic space, cancel it.
+                                if (.not. determ_child) then
+                                    call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn, f_child)
+                                else
+                                    nspawned = 0_int_p
+                                end if
+                            else
+                                call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
+                            end if
                             if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
                         end if
@@ -127,11 +177,17 @@ contains
                     end do
 
                     ! Clone or die.
-                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
+                    if (.not. determ_parent) call death_ptr(rng, walker_data(1,idet), shift(1), &
+                                                            walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
-                call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+                if (semi_stochastic) then
+                    call determ_projection(rng, qmc_spawn, determ)
+                    call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ%flags)
+                else
+                    call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+                end if
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
@@ -163,6 +219,8 @@ contains
             call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
             if (parent) write (6,'()')
         end if
+
+        call dealloc_semi_stoch_t(determ)
 
         call dealloc_det_info(cdet, .false.)
         if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)

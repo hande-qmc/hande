@@ -62,7 +62,24 @@ integer :: real_bit_shift
 integer(int_p) :: real_factor
 ! The minimum amplitude of a spawning event which can be added to
 ! the spawned list.
-real(p) :: spawn_cutoff
+! If real amplitudes are not used then the following default will be
+! overwritten by 0.0_p. In this case it will effectively not be used and all
+! spawnings events will be integers.
+real(p) :: spawn_cutoff = 0.01_p
+
+!--- Semi-stochastic ---
+
+! The iteration on which to turn on the semi-stochastic algorithm using the
+! parameters deterministic space specified by determ_space_type.
+integer :: semi_stoch_start_iter = 0
+! determ_space_type is used to tell the semi-stochastic initialisation routine
+! which type of deterministic space to use. See the 'determ-space' parameters
+! defined in semi_stoch.F90 for the various values it can take.
+integer :: determ_space_type = 0
+! Certain deterministic space types need a target size to be input to tell the
+! semi-stochastic initialisation routine how many states to try and include. In
+! such cases this variable should be set on input.
+integer :: determ_target_size = 0
 
 !--- Input data: CCMC ---
 
@@ -508,6 +525,8 @@ contains
         use utils, only: int_fmt
 
         integer :: i, j
+
+        write (6,'()')
 
         if (doing_calc(dmqmc_calc)) then
            write (6,'(1X,a12,3X,a13,15X,a5)', advance = 'no') &

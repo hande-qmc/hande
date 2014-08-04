@@ -20,7 +20,6 @@ contains
         !         run if needed.
 
         use calc
-
         use basis, only: nbasis
         use ccmc, only: do_ccmc
         use ct_fciqmc, only: do_ct_fciqmc
@@ -29,6 +28,7 @@ contains
         use folded_spectrum_utils, only: init_folded_spectrum
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
+
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
@@ -110,7 +110,8 @@ contains
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel)
-        integer :: step, size_main_walker, size_spawned_walker, nwalker_int, nwalker_real
+        integer :: step, size_main_walker, size_spawned_walker
+        integer :: nwalker_int, nwalker_int_p, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(basis_length)
         integer(lint) :: tmp_lint
@@ -127,25 +128,29 @@ contains
         end if
 
         ! Each determinant occupies basis_length kind=i0 integers,
-        ! sampling_size integers and sampling_size kind=p reals.
-        ! If the Neel singlet state is used as the reference state for the
-        ! projected estimator, then a further 2 reals are used per
+        ! sampling_size kind=int_p integers, sampling_size kind=p reals and one
+        ! integer. If the Neel singlet state is used as the reference state for
+        ! the projected estimator, then a further 2 reals are used per
         ! determinant.
         if (trial_function == neel_singlet) then
             info_size = 2
         else
             info_size = 0
         end if
-        nwalker_int = sampling_size
+        nwalker_int = 1
+        nwalker_int_p = sampling_size
         nwalker_real = sampling_size + info_size
 
         ! Thus the number of bits occupied by each determinant in the main
-        ! walker list is given by basis_length*i0_length+nwalker_int*32+nwalker_real*32
-        ! (*64 if double precision).  The number of bytes is simply 1/8 this.
+        ! walker list is given by basis_length*i0_length+nwalker_int*32+
+        ! nwalker_int_p*int_p_length+nwalker_real*32 (*64 if double precision).
+        ! The number of bytes is simply 1/8 this.
 #ifdef SINGLE_PRECISION
-        size_main_walker = total_basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*4
+        size_main_walker = total_basis_length*i0_length/8 + nwalker_int_p*int_p_length/8 + &
+                           nwalker_int*4 + nwalker_real*4
 #else
-        size_main_walker = total_basis_length*i0_length/8 + nwalker_int*4 + nwalker_real*8
+        size_main_walker = total_basis_length*i0_length/8 + nwalker_int_p*int_p_length/8 + &
+                           nwalker_int*4 + nwalker_real*8
 #endif
         if (walker_length < 0) then
             ! Given in MB.  Convert.  Note: important to avoid overflow in the
@@ -153,11 +158,11 @@ contains
             walker_length = int((-real(walker_length,p)*10**6)/size_main_walker)
         end if
 
-        ! Each spawned_walker occupies spawned_size kind=i0 integers.
+        ! Each spawned_walker occupies spawned_size kind=int_s integers.
         if (initiator_approximation) then
-            size_spawned_walker = (total_basis_length+sampling_size+1)*i0_length/8
+            size_spawned_walker = (total_basis_length+sampling_size+1)*int_s_length/8
         else
-            size_spawned_walker = (total_basis_length+sampling_size)*i0_length/8
+            size_spawned_walker = (total_basis_length+sampling_size)*int_s_length/8
         end if
         if (spawned_walker_length < 0) then
             ! Given in MB.  Convert.
@@ -228,6 +233,10 @@ contains
         end if
         ! Store 2**real_bit_shift for ease.
         real_factor = 2_int_p**(int(real_bit_shift, int_p))
+
+        ! If not using real amplitudes then we always want spawn_cutoff to be
+        ! equal to 1.0, so overwrite the default.
+        if (.not. real_amplitudes) spawn_cutoff = 0.0_p
 
         call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, qmc_spawn)

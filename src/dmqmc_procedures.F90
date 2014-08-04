@@ -270,7 +270,7 @@ contains
 
             ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
-                size_spawned_rdm = (rdms(i)%rdm_basis_length*2+sampling_size)*i0_length/8
+                size_spawned_rdm = (rdms(i)%rdm_basis_length*2+sampling_size)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_rdm_length < 0) then
                     ! Given in MB.  Convert.
@@ -282,16 +282,14 @@ contains
                                           (2*size_spawned_rdm + 21*nbytes_int))
                 end if
 
-                ! Note the initiator approximation is not implemented for
-                ! density matrix calculations.
+                ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
                                      spawned_rdm_length, spawn_cutoff, real_bit_shift, &
                                      27, rdm_spawn(i)%spawn)
-                ! Hard code hash table collision limit for now.  This should
-                ! give an ok performance... We will only use the first
-                ! 2*rdm_basis_length elements for the hash, even though
-                ! rdm_spawn%spawn%sdata is larger than that in the first
-                ! dimension...
+                ! Hard code hash table collision limit for now.  The length of
+                ! the table is three times as large as the spawning arrays and
+                ! each hash value can have 7 clashes. This was found to give
+                ! reasonable performance.
                 call alloc_hash_table(3*spawned_rdm_length, 7, rdms(i)%rdm_basis_length*2, &
                                      0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if

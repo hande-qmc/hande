@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, tinitiator, nspawn_events)
+    subroutine direct_annihilation(sys, rng, tinitiator, nspawn_events, determ_flags)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -22,14 +22,14 @@ contains
         !    tinitiator: true if the initiator approximation is being used.
         ! In/Out:
         !    rng: random number generator.
+        !    determ_flags: A list of flags specifying whether determinants in
+        !        walker_dets are deterministic or not.
         ! Out:
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
 
-
         use parallel, only: nthreads, nprocs
         use spawn_data, only: annihilate_wrapper_spawn_t, calc_events_spawn_t
-        use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
@@ -37,6 +37,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         logical, intent(in) :: tinitiator
         integer, optional :: nspawn_events
+        integer, intent(inout), optional :: determ_flags(:)
 
         integer, parameter :: thread_id = 0
 
@@ -55,20 +56,20 @@ contains
 
             ! Remove determinants with zero walkers on them from the main
             ! walker list.
-            call remove_unoccupied_dets(rng)
+            call remove_unoccupied_dets(rng, determ_flags)
 
             ! Remove low-population spawned walkers by stochastically
             ! rounding their population up to one or down to zero.
             if (real_amplitudes) call round_low_population_spawns(rng)
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers(sys)
+            call insert_new_walkers_wrapper(sys, determ_flags)
 
         else
 
             ! No spawned walkers so we only have to check to see if death has
             ! killed the entire population on a determinant.
-            call remove_unoccupied_dets(rng)
+            call remove_unoccupied_dets(rng, determ_flags)
 
         end if
 
@@ -211,43 +212,56 @@ contains
 
     end subroutine annihilate_main_list_initiator
 
-    subroutine remove_unoccupied_dets(rng)
+    subroutine remove_unoccupied_dets(rng, determ_flags)
 
         ! Remove any determinants with 0 population.
         ! This can be done in a more efficient manner by doing it only when
         ! necessary...
         ! Also, before doing this, stochastically round up or down any
         ! populations which are less than one.
+        ! The above steps are not performed for deterministic states which are
+        ! kept in walker_dets whatever their sign.
 
         ! In/Out:
         !    rng: random number generator.
+        !    determ_flags: A list of flags specifying whether determinants in
+        !        walker_dets are deterministic or not.
 
         use basis, only: total_basis_length
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_common, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(inout), optional :: determ_flags(:)
 
         integer :: nzero, i, k, itype
         integer(int_p) :: old_pop(sampling_size)
         real(dp) :: r
+        logical :: determ_det
 
         nzero = 0
         do i = 1, tot_walkers
 
-            ! Stochastically round the walker populations up or down to
-            ! real_factor (which is equal to 1 in the decoded representation).
-            old_pop = walker_population(:,i)
-            call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
-            nparticles = nparticles + real(abs(walker_population(:,i)) - abs(old_pop),dp)/real_factor
+            determ_det = .false.
+            if (present(determ_flags)) determ_det = determ_flags(i) == 0
 
-            if (all(walker_population(:,i) == 0_int_p)) then
+            ! Stochastically round the walker populations up to real_factor
+            ! (which is equal to 1 in the decoded representation) or down to
+            ! zero. This is not done for deterministic states.
+            if (real_amplitudes .and. (.not. determ_det)) then
+                old_pop = walker_population(:,i)
+                call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
+                nparticles = nparticles + real(abs(walker_population(:,i)) - abs(old_pop),dp)/real_factor
+            end if
+
+            if (all(walker_population(:,i) == 0_int_p) .and. (.not. determ_det)) then
                 nzero = nzero + 1
             else if (nzero > 0) then
                 k = i - nzero
                 walker_dets(:,k) = walker_dets(:,i)
                 walker_population(:,k) = walker_population(:,i)
                 walker_data(:,k) = walker_data(:,i)
+                if (present(determ_flags)) determ_flags(k) = determ_flags(i)
             end if
         end do
         tot_walkers = tot_walkers - nzero
@@ -262,6 +276,12 @@ contains
         ! expectation value of the amplitudes on all determinants are the same
         ! as before, but will prevent many low-weight walkers remaining in the
         ! simulation.
+
+        ! Note that all deterministic states are always kept in the main list.
+        ! The walkers in the spawned list at this point only contain states
+        ! not in the main list, so cannot contain any deterministic states.
+        ! Therefore, as an optimisation, we don't need to check if determinants
+        ! are deterministic or not before any rounding.
 
         ! In/Out:
         !    rng: random number generator.
@@ -279,7 +299,7 @@ contains
         real_factor_s = int(real_factor, int_s)
 
         nremoved = 0
-        ! [note] - It might be more efficient to combine this with insert_new_walkers.
+        ! [note] - It might be more efficient to combine this with insert_new_walkers_wrapper.
         ! [note] - The number of particles to insert should be small by this point though...
         do i = 1, qmc_spawn%head(thread_id,0)
 
@@ -310,7 +330,7 @@ contains
 
     end subroutine round_low_population_spawns
 
-    subroutine insert_new_walkers(sys)
+    subroutine insert_new_walkers_wrapper(sys, determ_flags)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -318,18 +338,15 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    determ_flags: A list of flags specifying whether determinants in
+        !        walker_dets are deterministic or not.
 
-        use basis, only: basis_length, total_basis_length
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
-        use determinants, only: decode_det
+        use basis, only: total_basis_length
         use search, only: binary_search
         use system, only: sys_t
-        use calc, only: trial_function, neel_singlet
-        use hfs_data, only: O00
-        use proc_pointers, only: sc0_ptr, op0_ptr
-        use heisenberg_estimators, only: neel_singlet_data
 
         type(sys_t), intent(in) :: sys
+        integer, intent(inout), optional :: determ_flags(:)
 
         integer :: i, istart, iend, j, k, pos
         integer(int_p) :: spawned_population(sampling_size)
@@ -368,30 +385,26 @@ contains
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(:,k) = walker_population(:,j)
                 walker_data(:,k) = walker_data(:,j)
+                if (present(determ_flags)) determ_flags(k) = determ_flags(j)
             end do
+
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
             k = pos + i - 1
-            ! The encoded walker sign.
+
+            ! The encoded spawned walker sign.
             associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i))
+                call insert_new_walker(sys, k, int(qmc_spawn%sdata(:total_basis_length,i), i0), int(spawned_population, int_p))
                 ! Extract the real sign from the encoded sign.
                 real_population = real(spawned_population,dp)/real_factor
-                walker_population(:,k) = int(spawned_population, int_p)
+                nparticles = nparticles + abs(real_population)
             end associate
-            walker_dets(:,k) = int(qmc_spawn%sdata(:total_basis_length,i), i0)
-            nparticles = nparticles + abs(real_population)
-            walker_data(1,k) = sc0_ptr(sys, walker_dets(:,k)) - H00
-            if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,k) = neel_singlet_data(walker_dets(:,k))
-            if (doing_calc(hfs_fciqmc_calc)) then
-                ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
-                walker_data(2,k) = op0_ptr(sys, walker_dets(:,k)) - O00
-            else if (doing_calc(dmqmc_calc)) then
-                ! Set the energy to be the average of the two induvidual energies.
-                walker_data(1,k) = (walker_data(1,k) + sc0_ptr(sys, walker_dets((basis_length+1):(2*basis_length),k)) - H00)/2
-                if (replica_tricks) then
-                    walker_data(2:sampling_size,k) = walker_data(1,k)
-                end if
-            end if
+
+            ! A deterministic state can never leave the main list so cannot be
+            ! in the spawned list at this point. So set the flag to specify
+            ! that this state is not deterministic.
+            if (present(determ_flags)) determ_flags(k) = 1
+
             ! Next walker will be inserted below this one.
             iend = pos - 1
         end do
@@ -399,6 +412,54 @@ contains
         ! Update tot_walkers
         tot_walkers = tot_walkers + qmc_spawn%head(thread_id,0)
 
-    end subroutine insert_new_walkers
+    end subroutine insert_new_walkers_wrapper
+
+    subroutine insert_new_walker(sys, pos, det, population)
+
+        ! Insert a new determinant, det, at position pos in walker_dets. Also
+        ! insert a new population at position pos in walker_population and
+        ! calculate and insert all new values of walker_data for the given
+        ! walker. Note that all data at position pos in these arrays will be
+        ! overwritten.
+
+        ! In:
+        !    sys: system being studied.
+        !    pos: The position in the walker arrays in which to insert the new
+        !        data.
+        !    det: The determinant to insert into walker_dets.
+        !    population: The population to insert into walker_population.
+
+        use basis, only: basis_length, total_basis_length
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
+        use calc, only: trial_function, neel_singlet
+        use heisenberg_estimators, only: neel_singlet_data
+        use hfs_data, only: O00
+        use proc_pointers, only: sc0_ptr, op0_ptr
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: pos
+        integer(i0), intent(in) :: det(total_basis_length)
+        integer(int_p), intent(in) :: population(sampling_size)
+
+        ! Insert the new determinant.
+        walker_dets(:,pos) = det
+        ! Insert the new population.
+        walker_population(:,pos) = population
+        ! Calculate and insert all new components of walker_data.
+        if (.not. doing_calc(dmqmc_calc)) walker_data(1,pos) = sc0_ptr(sys, det) - H00
+        if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = neel_singlet_data(det)
+        if (doing_calc(hfs_fciqmc_calc)) then
+            ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
+            walker_data(2,pos) = op0_ptr(sys, det) - O00
+        else if (doing_calc(dmqmc_calc)) then
+            ! Set the energy to be the average of the two induvidual energies.
+            walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((basis_length+1):(2*basis_length),pos)) - H00)/2
+            if (replica_tricks) then
+                walker_data(2:sampling_size,pos) = walker_data(1,pos)
+            end if
+        end if
+
+    end subroutine insert_new_walker
 
 end module annihilation

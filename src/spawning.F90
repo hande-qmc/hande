@@ -718,7 +718,7 @@ contains
 
     end subroutine add_spawned_particles
 
-    subroutine create_spawned_particle(cdet, connection, nspawn, particle_type, spawn)
+    subroutine create_spawned_particle(cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -727,10 +727,12 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
-        !        offspring.  Note that the perm field is not used.
+        !        offspring.  Note that the perm field is not used.  Ignored if fexcit is
+        !        given.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -745,13 +747,19 @@ contains
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0) :: f_new(basis_length)
+        integer(i0), target :: f_local(basis_length)
+        integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
-        ! Create bit string of new determinant.
-        call create_excited_det(cdet%f, connection, f_new)
+        if (present(fexcit)) then
+            f_new => fexcit
+        else
+            call create_excited_det(cdet%f, connection, f_local)
+            f_new => f_local
+        end if
 
         iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs)
 
@@ -759,7 +767,7 @@ contains
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(cdet, connection, nspawn, particle_type, spawn)
+    subroutine create_spawned_particle_initiator(cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -768,10 +776,12 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
-        !        offspring.  Note that the perm field is not used.
+        !        offspring.  Note that the perm field is not used.  Ignored if fexcit is
+        !        given.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -786,13 +796,19 @@ contains
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0) :: f_new(basis_length)
+        integer(i0), target :: f_local(basis_length)
+        integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
-        ! Create bit string of new determinant.
-        call create_excited_det(cdet%f, connection, f_new)
+        if (present(fexcit)) then
+            f_new => fexcit
+        else
+            call create_excited_det(cdet%f, connection, f_local)
+            f_new => f_local
+        end if
 
         iproc_spawn = assign_particle_processor(f_new, basis_length, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs)
 
@@ -800,7 +816,7 @@ contains
 
     end subroutine create_spawned_particle_initiator
 
-    subroutine create_spawned_particle_truncated(cdet, connection, nspawn, particle_type, spawn)
+    subroutine create_spawned_particle_truncated(cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -811,10 +827,12 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
-        !        offspring.  Note that the perm field is not used.
+        !        offspring.  Note that the perm field is not used.  Ignored if fexcit is
+        !        given.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -831,13 +849,19 @@ contains
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0) :: f_new(basis_length)
+        integer(i0), target :: f_local(basis_length)
+        integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
-        ! Create bit string of new determinant.
-        call create_excited_det(cdet%f, connection, f_new)
+        if (present(fexcit)) then
+            f_new => fexcit
+        else
+            call create_excited_det(cdet%f, connection, f_local)
+            f_new => f_local
+        end if
 
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
@@ -850,7 +874,7 @@ contains
 
     end subroutine create_spawned_particle_truncated
 
-    subroutine create_spawned_particle_initiator_truncated(cdet, connection, nspawn, particle_type, spawn)
+    subroutine create_spawned_particle_initiator_truncated(cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -861,10 +885,12 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
-        !        offspring.  Note that the perm field is not used.
+        !        offspring.  Note that the perm field is not used.  Ignored if fexcit is
+        !        given.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -881,13 +907,19 @@ contains
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0) :: f_new(basis_length)
+        integer(i0), target :: f_local(basis_length)
+        integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
-        ! Create bit string of new determinant.
-        call create_excited_det(cdet%f, connection, f_new)
+        if (present(fexcit)) then
+            f_new => fexcit
+        else
+            call create_excited_det(cdet%f, connection, f_local)
+            f_new => f_local
+        end if
 
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
@@ -900,7 +932,7 @@ contains
 
     end subroutine create_spawned_particle_initiator_truncated
 
-    subroutine create_spawned_particle_ras(cdet, connection, nspawn, particle_type, spawn)
+    subroutine create_spawned_particle_ras(cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -911,10 +943,12 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
-        !        offspring.  Note that the perm field is not used.
+        !        offspring.  Note that the perm field is not used.  Ignored if fexcit is
+        !        given.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -931,13 +965,19 @@ contains
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0) :: f_new(basis_length)
+        integer(i0), target :: f_local(basis_length)
+        integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
-        ! Create bit string of new determinant.
-        call create_excited_det(cdet%f, connection, f_new)
+        if (present(fexcit)) then
+            f_new => fexcit
+        else
+            call create_excited_det(cdet%f, connection, f_local)
+            f_new => f_local
+        end if
 
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
@@ -950,7 +990,7 @@ contains
 
     end subroutine create_spawned_particle_ras
 
-    subroutine create_spawned_particle_initiator_ras(cdet, connection, nspawn, particle_type, spawn)
+    subroutine create_spawned_particle_initiator_ras(cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -961,10 +1001,12 @@ contains
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
-        !        offspring.  Note that the perm field is not used.
+        !        offspring.  Note that the perm field is not used.  Ignored if fexcit is
+        !        given.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -981,13 +1023,19 @@ contains
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0) :: f_new(basis_length)
+        integer(i0), target :: f_local(basis_length)
+        integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
-        ! Create bit string of new determinant.
-        call create_excited_det(cdet%f, connection, f_new)
+        if (present(fexcit)) then
+            f_new => fexcit
+        else
+            call create_excited_det(cdet%f, connection, f_local)
+            f_new => f_local
+        end if
 
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
