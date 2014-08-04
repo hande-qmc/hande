@@ -32,8 +32,8 @@ contains
         ! where the delta function requires crystal momentum is conserved up to
         ! a reciprocal lattice vector.
 
-        s12 = spin_symmetry(phi1, phi2)
-        s34 = spin_symmetry(phi3, phi4)
+        s12 = spin_symmetry(sys%basis%basis_fns, phi1, phi2)
+        s34 = spin_symmetry(sys%basis%basis_fns, phi3, phi4)
 
         ! If phi1, phi2, phi3, phi4 all of the same spin, then < phi1 phi2 || phi3 phi4 > is zero
         ! as the Coulomb and exchange integrals will exactly cancel.
@@ -43,7 +43,7 @@ contains
             ! crystal momentum is conserved.
             ! Either the Coulomb integral or the exchange integral is
             ! non-zero.
-            if (spin_symmetry(phi1, phi3)) then
+            if (spin_symmetry(sys%basis%basis_fns, phi1, phi3)) then
                 two_e_int = sys%hubbard%coulomb_k
             else
                 two_e_int = -sys%hubbard%coulomb_k

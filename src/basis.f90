@@ -460,24 +460,27 @@ contains
 
     end subroutine init_model_basis_fns
 
-    pure function spin_symmetry(i, j) result(spin_match)
+    pure function spin_symmetry(basis_fns, i, j) result(spin_match)
 
         ! In:
+        !    basis_fns: list of single-particle basis functions.
         !    i: index of a basis function
         !    j: index of a basis function
         ! Returns:
         !    true if i and j refer to basis functions of the same spin.
 
         logical :: spin_match
+        type(basis_fn_t), intent(in) :: basis_fns(:)
         integer, intent(in) :: i, j
 
-        spin_match = basis_global%basis_fns(i)%ms == basis_global%basis_fns(j)%ms
+        spin_match = basis_fns(i)%ms == basis_fns(j)%ms
 
     end function spin_symmetry
 
-    subroutine set_orb(f,iorb)
+    subroutine set_orb(bit_lookup, f,iorb)
 
         ! In:
+        !    bit_lookup: bit lookup table for basis functions (see basis_t).
         !    f: bit string of orbitals.
         !    iorb: orbital index.
         ! Out:
@@ -485,12 +488,13 @@ contains
 
         ! Note that f must be zerod before first using this procedure.
 
+        integer, intent(in) :: bit_lookup(:,:)
         integer, intent(in) :: iorb
-        integer(i0), intent(inout) :: f(basis_global%basis_length)
+        integer(i0), intent(inout) :: f(:)
         integer :: pos, ind
 
-        pos = basis_global%bit_lookup(1,iorb)
-        ind = basis_global%bit_lookup(2,iorb)
+        pos = bit_lookup(1,iorb)
+        ind = bit_lookup(2,iorb)
         f(ind) = ibset(f(ind),pos)
 
     end subroutine set_orb

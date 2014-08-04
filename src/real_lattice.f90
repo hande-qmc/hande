@@ -181,12 +181,12 @@ contains
                             ! i and j are on sites which are nearest neighbours
                             if (all(sl%lvecs(:,ivec) == 0)) then
                                 ! Nearest neighbours within unit cell.
-                                call set_orb(tmat(:,i),j)
-                                if (isystem == 2) call set_orb(tmat(:,i+1),j+1)
+                                call set_orb(sys%basis%bit_lookup,tmat(:,i),j)
+                                if (isystem == 2) call set_orb(sys%basis%bit_lookup,tmat(:,i+1),j+1)
                             else if (.not. finite_cluster) then ! if we want inf. sl%lattice
                                 ! Nearest neighbours due to periodic boundaries.
-                                call set_orb(tmat(:,j),i)
-                                if (isystem == 2) call set_orb(tmat(:,j+1),i+1)
+                                call set_orb(sys%basis%bit_lookup,tmat(:,j),i)
+                                if (isystem == 2) call set_orb(sys%basis%bit_lookup,tmat(:,j+1),i+1)
                                 ! else we just want connections to other cells to
                                 ! stay as 0
                             end if
@@ -202,10 +202,10 @@ contains
                                 if (i /= j) then
                                     ! connected_orbs does not contain self-connections
                                     ! due to the periodic boundary conditions.
-                                    call set_orb(connected_orbs(:,i),j)
-                                    if (isystem == 2) call set_orb(connected_orbs(:,i+1),j+1)
-                                    call set_orb(connected_orbs(:,j),i)
-                                    if (isystem == 2) call set_orb(connected_orbs(:,j+1),i+1)
+                                    call set_orb(sys%basis%bit_lookup,connected_orbs(:,i),j)
+                                    if (isystem == 2) call set_orb(sys%basis%bit_lookup,connected_orbs(:,i+1),j+1)
+                                    call set_orb(sys%basis%bit_lookup,connected_orbs(:,j),i)
+                                    if (isystem == 2) call set_orb(sys%basis%bit_lookup,connected_orbs(:,j+1),i+1)
                                 end if
                             end if
                         end if
