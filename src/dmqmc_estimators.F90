@@ -245,7 +245,7 @@ contains
 
        ! Reduced density matrices.
        if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
-               &(idet, excitation, walker_population(:,idet), iteration)
+               &(sys%basis, idet, excitation, walker_population(:,idet), iteration)
 
        dmqmc_accumulated_probs_old = dmqmc_accumulated_probs
 
@@ -616,7 +616,7 @@ contains
 
    end subroutine update_full_renyi_2
 
-   subroutine update_reduced_density_matrix_heisenberg(idet, excitation, walker_pop, iteration)
+   subroutine update_reduced_density_matrix_heisenberg(basis, idet, excitation, walker_pop, iteration)
 
        ! Add the contribution from the current walker to the reduced density
        ! matrices being sampled. This is performed by 'tracing out' the
@@ -630,6 +630,7 @@ contains
        ! element.
 
        ! In:
+       !    basis: information about the single-particle basis.
        !    idet: current position in the main bitstring (density matrix) list.
        !    excitation: excit type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding to
@@ -641,7 +642,7 @@ contains
        !    iteration: interation number.  No accumulation of the RDM is
        !        performed if iteration <= start_averaging.
 
-       use basis, only: basis_global
+       use basis_types, only: basis_t
        use dmqmc_procedures, only: decode_dm_bitstring, rdms
        use excitations, only: excit
        use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
@@ -650,12 +651,13 @@ contains
        use fciqmc_data, only: nsym_vec, real_factor
        use spawning, only: create_spawned_particle_rdm
 
+       type(basis_t), intent(in) :: basis
        integer, intent(in) :: idet, iteration
        integer(int_p), intent(in) :: walker_pop(sampling_size)
        type(excit), intent(in) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
        integer :: irdm, isym, ireplica
-       integer(i0) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+       integer(i0) :: f1(basis%basis_length), f2(basis%basis_length)
 
        if (.not. (iteration > start_averaging .or. calc_inst_rdm)) return
 
@@ -666,8 +668,8 @@ contains
 
                ! Apply the mask for the B subsystem to set all sites in the A
                ! subsystem to 0.
-               f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis_global%basis_length,idet))
-               f2 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(basis_global%basis_length+1:basis_global%total_basis_length,idet))
+               f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis%basis_length,idet))
+               f2 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(basis%basis_length+1:basis%total_basis_length,idet))
 
                ! Once this is done, check if the resulting bitstrings (which can
                ! only possibly have 1's in the B subsystem) are identical. If
@@ -679,7 +681,7 @@ contains
                if (sum(abs(f1-f2)) == 0_i0) then
                    ! Call a function which maps the subsystem A state to two RDM
                    ! bitstrings.
-                   call decode_dm_bitstring(walker_dets(:,idet),irdm,isym)
+                   call decode_dm_bitstring(basis, walker_dets(:,idet),irdm,isym)
 
                    if (calc_ground_rdm) then
                        ! The above routine actually maps to numbers between 0

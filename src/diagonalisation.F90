@@ -282,7 +282,7 @@ contains
                             allocate(rdm_eigenvalues(rdm_size), stat=ierr)
                             call check_allocate('rdm_eigenvalues',rdm_size,ierr)
 
-                            call get_rdm_eigenvalues(sys%basis%basis_length, rdm_eigenvalues)
+                            call get_rdm_eigenvalues(sys%basis, rdm_eigenvalues)
                         end if
                     end if
                 end if
@@ -599,17 +599,18 @@ contains
 
     end subroutine generate_hamil
 
-    subroutine get_rdm_eigenvalues(basis_length, rdm_eigenvalues)
+    subroutine get_rdm_eigenvalues(basis, rdm_eigenvalues)
 
+        use basis_types, only: basis_t
         use checking, only: check_allocate, check_deallocate
         use determinant_enumeration, only: ndets, dets_list
         use dmqmc_procedures, only: decode_dm_bitstring, rdms
         use fciqmc_data, only: reduced_density_matrix
 
-        integer, intent(in) :: basis_length
+        type(basis_t), intent(in) :: basis
         real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))
-        integer(i0) :: f1(basis_length), f2(basis_length)
-        integer(i0) :: f3(2*basis_length)
+        integer(i0) :: f1(basis%basis_length), f2(basis%basis_length)
+        integer(i0) :: f3(2*basis%basis_length)
         integer :: i, j, rdm_size, info, ierr, lwork
         integer(i0) :: end1, end2
         real(p), allocatable :: work(:)
@@ -626,11 +627,11 @@ contains
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
                     ! In f3, concatenate the two bitstrings.
-                    f3(1:basis_length) = dets_list(:,i)
-                    f3(basis_length+1:basis_length*2) = dets_list(:,j)
+                    f3(1:basis%basis_length) = dets_list(:,i)
+                    f3(basis%basis_length+1:basis%basis_length*2) = dets_list(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
-                    call decode_dm_bitstring(f3,1,1)
+                    call decode_dm_bitstring(basis,f3,1,1)
                     rdms(1)%end1 = rdms(1)%end1 + 1
                     rdms(1)%end2 = rdms(1)%end2 + 1
 

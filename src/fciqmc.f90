@@ -23,7 +23,6 @@ contains
         use parallel
 
         use annihilation, only: direct_annihilation
-        use basis, only: basis_global
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
@@ -52,7 +51,7 @@ contains
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
 
-        integer(i0) :: f_child(basis_global%basis_length)
+        integer(i0) :: f_child(sys%basis%basis_length)
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det, nspawn_events
         type(excit) :: connection

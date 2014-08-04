@@ -131,7 +131,7 @@ type semi_stoch_t
     real(p), allocatable :: vector(:) ! determ_sizes(iproc)
     ! dets stores the deterministic states across all processes.
     ! All states on process 0 are stored first, then process 1, etc...
-    integer(i0), allocatable :: dets(:,:) ! (basis_global%basis_length, tot_size)
+    integer(i0), allocatable :: dets(:,:) ! (basis_length, tot_size)
     ! A hash table which allows the index of a determinant in dets to be found.
     ! This is done by calculating the hash value of the given determinant.
     type(determ_hash_t) :: hash_table
@@ -159,7 +159,6 @@ contains
         !    target_size: A size of deterministic space to aim for. This
         !        is only necessary for particular deterministic spaces.
 
-        use basis, only: basis_global
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: walker_length
         use parallel
@@ -197,7 +196,7 @@ contains
 
         ! Create temporary space for enumerating the deterministic space
         ! belonging to this processor only.
-        allocate(dets_this_proc(basis_global%total_basis_length, walker_length), stat=ierr)
+        allocate(dets_this_proc(sys%basis%total_basis_length, walker_length), stat=ierr)
         call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
         dets_this_proc = 0_i0
 
@@ -242,15 +241,15 @@ contains
 
         ! Array to hold all deterministic states from all processes.
         ! The memory required in MB.
-        determ_dets_mem = basis_global%total_basis_length*determ%tot_size*i0_length/(8*10**6)
+        determ_dets_mem = sys%basis%total_basis_length*determ%tot_size*i0_length/(8*10**6)
         if (print_info) write(6,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
             '# Memory required per core to store deterministic dets (MB):', determ_dets_mem
-        allocate(determ%dets(basis_global%total_basis_length, determ%tot_size), stat=ierr)
+        allocate(determ%dets(sys%basis%total_basis_length, determ%tot_size), stat=ierr)
         call check_allocate('determ%dets', size(determ%dets), ierr)
 
         ! Join and store all deterministic states from all processes.
 #ifdef PARALLEL
-        associate(tbl=>basis_global%total_basis_length)
+        associate(tbl=>sys%basis%total_basis_length)
             call mpi_allgatherv(dets_this_proc(:,1:determ%sizes(iproc)), tbl*determ%sizes(iproc), &
                             mpi_det_integer, determ%dets, tbl*determ%sizes, tbl*displs, &
                             mpi_det_integer, MPI_COMM_WORLD, ierr)
@@ -346,7 +345,6 @@ contains
         ! In:
         !    print_info: Should we print information to the screen?
 
-        use basis, only: basis_global
         use checking, only: check_allocate, check_deallocate
         use hashing, only: murmurhash_bit_string
         use utils, only: int_fmt
@@ -354,8 +352,10 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         logical, intent(in) :: print_info
 
-        integer :: i, iz, hash, mem_reqd, ierr
+        integer :: i, iz, hash, mem_reqd, ierr, total_basis_length
         integer, allocatable :: nclash(:)
+
+        total_basis_length = size(determ%dets, dim=1)
 
         associate(ht => determ%hash_table)
 
@@ -383,7 +383,7 @@ contains
                         
             ! Count the number of deterministic states with each hash value.
             do i = 1, determ%tot_size
-                hash = modulo(murmurhash_bit_string(determ%dets(:,i), basis_global%total_basis_length, ht%seed), ht%nhash) + 1
+                hash = modulo(murmurhash_bit_string(determ%dets(:,i), total_basis_length, ht%seed), ht%nhash) + 1
                 nclash(hash) = nclash(hash) + 1
             end do
 
@@ -397,7 +397,7 @@ contains
             ! Now loop over all states again and this time fill in the hash table.
             nclash = 0
             do i = 1, determ%tot_size
-                hash = modulo(murmurhash_bit_string(determ%dets(:,i), basis_global%total_basis_length, ht%seed), ht%nhash) + 1
+                hash = modulo(murmurhash_bit_string(determ%dets(:,i), total_basis_length, ht%seed), ht%nhash) + 1
                 iz = ht%hash_ptr(hash) + nclash(hash)
                 ht%ind(iz) = i
                 nclash(hash) = nclash(hash) + 1
@@ -576,18 +576,17 @@ contains
         !    dets: Array containing all deterministic states from all processors.
         !    f: Determinant whose status is to be returned.
 
-        use basis, only: basis_global
         use hashing, only: murmurhash_bit_string
 
         type(determ_hash_t), intent(in) :: ht
         integer(i0), intent(in) :: dets(:,:)
-        integer(i0), intent(in) :: f(basis_global%total_basis_length)
+        integer(i0), intent(in) :: f(:)
         integer :: iz, hash
         logical :: is_determ
 
         is_determ = .false.
 
-        hash = modulo(murmurhash_bit_string(f, basis_global%total_basis_length, ht%seed), ht%nhash) + 1
+        hash = modulo(murmurhash_bit_string(f, size(f), ht%seed), ht%nhash) + 1
         ! Search the region of the hash table corresponding to this hash value.
         do iz = ht%hash_ptr(hash), ht%hash_ptr(hash+1)-1
             if (all(f == dets(:,ht%ind(iz)))) then
@@ -716,7 +715,6 @@ contains
         !    check_proc: If true then first check if f belongs to this
         !        processor. If not then don't add it.
 
-        use basis, only: basis_global
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
@@ -724,7 +722,7 @@ contains
         integer, intent(inout) :: determ_size_this_proc
         integer(i0), intent(inout) :: dets_this_proc(:,:)
         type(spawn_t), intent(in) :: spawn
-        integer(i0), intent(in) :: f(basis_global%total_basis_length)
+        integer(i0), intent(in) :: f(:)
         logical, intent(in) :: check_proc
 
         integer :: proc
@@ -732,7 +730,7 @@ contains
         ! If check_proc is true then make sure that the determinant does belong
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
-            proc = modulo(murmurhash_bit_string(f, basis_global%total_basis_length, spawn%hash_seed), nprocs)
+            proc = modulo(murmurhash_bit_string(f, size(f), spawn%hash_seed), nprocs)
         else
             proc = iproc
         end if
@@ -761,7 +759,6 @@ contains
         !    determ_size_this_proc: Size of the deterministic space created,
         !        on this processor only.
 
-        use basis, only: basis_global
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: tot_walkers, walker_dets, walker_population
         use parallel
@@ -806,8 +803,8 @@ contains
         ! requested.
         if (target_size > ndets_tot) determ_size = ndets_tot
 
-        allocate(determ_dets(basis_global%total_basis_length, ndets), stat=ierr)
-        call check_allocate('determ_dets', basis_global%total_basis_length*ndets, ierr)
+        allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
+        call check_allocate('determ_dets', size(determ_dets), ierr)
         allocate(determ_pops(ndets), stat=ierr)
         call check_allocate('determ_pops', ndets, ierr)
         allocate(all_determ_pops(ndets_tot), stat=ierr)

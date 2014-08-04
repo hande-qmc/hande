@@ -641,7 +641,7 @@ contains
 
     end subroutine create_diagonal_density_matrix_particle
 
-    subroutine decode_dm_bitstring(f, irdm, isym)
+    subroutine decode_dm_bitstring(basis, f, irdm, isym)
 
         ! This function maps a full DMQMC bitstring to two bitstrings encoding
         ! the subsystem-A RDM bitstrings. These resulting bitstrings are stored
@@ -654,13 +654,15 @@ contains
         ! when using translational symmetry.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    f: bitstring representation of the subsystem-A state.
         !    irdm: The label of the RDM being considered.
         !    isym: The label of the symmetry vector being considered.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
 
-        integer(i0), intent(in) :: f(basis_global%total_basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f(basis%total_basis_length)
         integer, intent(in) :: irdm, isym
         integer :: i, bit_pos, bit_element
 
@@ -672,8 +674,8 @@ contains
         ! density matrix.
         do i = 1, rdms(irdm)%A_nsites
             ! Find the final bit positions and elements.
-            bit_pos = basis_global%bit_lookup(1,i)
-            bit_element = basis_global%bit_lookup(2,i)
+            bit_pos = basis%bit_lookup(1,i)
+            bit_element = basis%bit_lookup(2,i)
 
             ! If the spin is up, set the corresponding bit in the first
             ! bitstring.
@@ -681,7 +683,7 @@ contains
                 rdms(irdm)%end1(bit_element) = ibset(rdms(irdm)%end1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of
             ! the bitstring.
-            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)+basis_global%basis_length),rdms(irdm)%bit_pos(i,isym,1))) &
+            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)+basis%basis_length),rdms(irdm)%bit_pos(i,isym,1))) &
                 rdms(irdm)%end2(bit_element) = ibset(rdms(irdm)%end2(bit_element),bit_pos)
         end do
 
