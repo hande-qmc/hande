@@ -190,7 +190,6 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         use annihilation, only: direct_annihilation
-        use basis, only: basis_global
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
@@ -307,7 +306,7 @@ contains
 
             do icycle = 1, ncycles
 
-                D0_proc = assign_particle_processor(f0, basis_global%basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                D0_proc = assign_particle_processor(f0, sys%basis%basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
                                                    qmc_spawn%move_freq, nprocs)
 
                 ! Update the shift of the excitor locations to be the end of this
@@ -394,7 +393,7 @@ contains
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nattempts
 
-                    call select_cluster(rng(it), nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
+                    call select_cluster(rng(it), sys%basis, nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
                                         tot_abs_pop, max_cluster_size, cdet(it), cluster(it))
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
@@ -466,7 +465,7 @@ contains
 
             update_tau = bloom_stats%nwarnings_curr > 0
 
-            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit)
+            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit
 
@@ -499,7 +498,8 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(rng, nattempts, normalisation, D0_pos, cumulative_excip_pop, tot_excip_pop, max_size, cdet, cluster)
+    subroutine select_cluster(rng, basis, nattempts, normalisation, D0_pos, cumulative_excip_pop, &
+            tot_excip_pop, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -508,6 +508,7 @@ contains
         ! cluster is formed.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
         !    normalisation: intermediate normalisation factor, N_0, where we use the
@@ -537,6 +538,7 @@ contains
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
 
+        use basis_types, only: basis_t
         use calc, only: truncation_level
         use determinants, only: det_info
         use ccmc_data, only: cluster_t
@@ -549,6 +551,7 @@ contains
         use sort, only: insert_sort
         use parallel, only: nprocs
 
+        type(basis_t), intent(in) :: basis
         integer(lint), intent(in) :: nattempts
         integer, intent(in) :: D0_pos, normalisation
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
@@ -663,7 +666,8 @@ contains
                     cdet%f = walker_dets(:,pos)
                     cluster_population = int(walker_population(1,pos))
                 else
-                    call collapse_cluster(walker_dets(:,pos), int(walker_population(1,pos)), cdet%f, cluster_population, allowed)
+                    call collapse_cluster(basis, walker_dets(:,pos), int(walker_population(1,pos)), &
+                                          cdet%f, cluster_population, allowed)
                     if (.not.allowed) exit
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
@@ -751,7 +755,6 @@ contains
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
 
-        use basis, only: basis_global
         use ccmc_data, only: cluster_t
         use determinants, only: det_info
         use dSFMT_interface, only: dSFMT_t
@@ -777,7 +780,7 @@ contains
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
         real(p) :: hmatel, pgen
-        integer(i0) :: fexcit(basis_global%basis_length)
+        integer(i0) :: fexcit(sys%basis%basis_length)
         integer :: excitor_sign, excitor_level
 
         ! 1. Generate random excitation.
@@ -881,11 +884,12 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    pure subroutine collapse_cluster(excitor, excitor_population, cluster_excitor, cluster_population, allowed)
+    pure subroutine collapse_cluster(basis, excitor, excitor_population, cluster_excitor, cluster_population, allowed)
 
         ! Collapse two excitors.  The result is returned in-place.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    excitor: bit string of the Slater determinant formed by applying
         !        the excitor, e1, to the reference determinant.
         !    excitor_population: number of excips on the excitor e1.
@@ -904,27 +908,28 @@ contains
         ! ***WARNING***: if allowed is false then cluster_excitor and
         ! cluster_population are *not* updated.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use excitations, only: excit_mask
         use fciqmc_data, only: f0
 
         use bit_utils, only: count_set_bits
         use const, only: i0_end
 
-        integer(i0), intent(in) :: excitor(basis_global%basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: excitor(basis%basis_length)
         integer, intent(in) :: excitor_population
-        integer(i0), intent(inout) :: cluster_excitor(basis_global%basis_length)
+        integer(i0), intent(inout) :: cluster_excitor(basis%basis_length)
         real(p), intent(inout) :: cluster_population
         logical,  intent(out) :: allowed
 
         integer :: ibasis, ibit
-        integer(i0) :: excitor_excitation(basis_global%basis_length)
-        integer(i0) :: excitor_annihilation(basis_global%basis_length)
-        integer(i0) :: excitor_creation(basis_global%basis_length)
-        integer(i0) :: cluster_excitation(basis_global%basis_length)
-        integer(i0) :: cluster_annihilation(basis_global%basis_length)
-        integer(i0) :: cluster_creation(basis_global%basis_length)
-        integer(i0) :: permute_operators(basis_global%basis_length)
+        integer(i0) :: excitor_excitation(basis%basis_length)
+        integer(i0) :: excitor_annihilation(basis%basis_length)
+        integer(i0) :: excitor_creation(basis%basis_length)
+        integer(i0) :: cluster_excitation(basis%basis_length)
+        integer(i0) :: cluster_annihilation(basis%basis_length)
+        integer(i0) :: cluster_creation(basis%basis_length)
+        integer(i0) :: permute_operators(basis%basis_length)
 
         ! Apply excitor to the cluster of excitors.
 
@@ -964,7 +969,7 @@ contains
             ! permute the creation and annihilation operators.  Each permutation
             ! incurs a sign change.
 
-            do ibasis = 1, basis_global%basis_length
+            do ibasis = 1, basis%basis_length
                 do ibit = 0, i0_end
                     if (btest(excitor_excitation(ibasis),ibit)) then
                         if (btest(f0(ibasis),ibit)) then
@@ -978,7 +983,7 @@ contains
                             ! annihilation operators and the list of creation
                             ! operators.
                             ! First annihilation operators:
-                            permute_operators = iand(excit_mask(:,basis_global%basis_lookup(ibit,ibasis)),cluster_annihilation)
+                            permute_operators = iand(excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
                             ! Now add the creation operators:
                             permute_operators = ior(permute_operators,cluster_creation)
                         else
@@ -986,7 +991,7 @@ contains
                             cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
                             ! Need to swap it with every creation operator with
                             ! a lower index already in the cluster.
-                            permute_operators = iand(not(excit_mask(:,basis_global%basis_lookup(ibit,ibasis))),cluster_creation)
+                            permute_operators = iand(not(excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
                             permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
                         end if
                         if (mod(sum(count_set_bits(permute_operators)),2) == 1) &
@@ -1058,15 +1063,14 @@ contains
         !    applying the cluster of excitors, a_i, to the reference
         !    determinant.
 
-        use basis, only: basis_global
         use const, only: i0_end
         use fciqmc_data, only: f0
 
-        integer(i0), intent(in) :: excitor(basis_global%basis_length)
+        integer(i0), intent(in) :: excitor(:)
         integer, intent(in) :: excitor_level
         integer, intent(inout) :: excitor_sign
 
-        integer(i0) :: excitation(basis_global%basis_length)
+        integer(i0) :: excitation(size(excitor))
         integer :: ibasis, ibit, ncreation, nannihilation
 
         ! Bits involved in the excitation from the reference determinant.
@@ -1079,7 +1083,7 @@ contains
 
         ! Obtain sign change by (implicitly) constructing the determinant formed
         ! by applying the excitor to the reference determinant.
-        do ibasis = 1, basis_global%basis_length
+        do ibasis = 1, size(excitor)
             do ibit = 0, i0_end
                 if (btest(f0(ibasis),ibit)) then
                     ! Occupied orbital in reference.
@@ -1141,7 +1145,6 @@ contains
         !        to another processor have been added to the correct position in
         !        the spawned store.
 
-        use basis, only: basis_global
         use const, only: i0, dp
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor, add_spawned_particles
@@ -1155,16 +1158,17 @@ contains
 
         real(dp) :: nsent(size(nparticles))
 
-        integer :: iexcitor, pproc
+        integer :: iexcitor, pproc, basis_length
 
         nsent = 0.0_dp
+        basis_length = size(walker_dets, dim=1)
 
         !$omp parallel do default(none) &
-        !$omp shared(tot_walkers, walker_dets, walker_populations, basis_global, spawn, iproc, nprocs) &
+        !$omp shared(tot_walkers, walker_dets, walker_populations, spawn, iproc, nprocs, basis_length) &
         !$omp private(pproc) reduction(+:nsent)
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
-            pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_global%basis_length, spawn%hash_seed, &
+            pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
                                               spawn%hash_shift, spawn%move_freq, nprocs)
             if (pproc /= iproc) then
                 ! Need to move.

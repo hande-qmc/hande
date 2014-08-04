@@ -18,7 +18,7 @@ contains
 
 ! --- Utility routines ---
 
-    subroutine select_ref_det()
+    subroutine select_ref_det(sys)
 
         ! Change the reference determinant to be the determinant with the
         ! greatest population if it exceeds some threshold relative to the
@@ -31,15 +31,21 @@ contains
         ! reference determinant for the Hamiltonian space should also be
         ! important (if not crucial!) in the H-F space.
 
-        use basis, only: basis_global
+        ! In:
+        !    sys: system being studied.
+
         use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det, write_det
+        use system, only: sys_t
 
         use parallel
         use errors, only: stop_all
 
+        type(sys_t), intent(in) :: sys
+
         integer, parameter :: particle_type = 1
-        integer :: i, fmax(basis_global%basis_length), D0_proc
+        integer :: i, D0_proc
+        integer(i0), allocatable :: fmax(:)
         integer(int_p) :: max_pop
 #ifdef PARALLEL
         integer(int_p) :: in_data(2), out_data(2)
@@ -47,6 +53,8 @@ contains
 #endif
         real(p) :: H00_max, H00_old
         logical :: updated
+
+        allocate(fmax(lbound(walker_dets, dim=1):ubound(walker_dets, dim=1)))
 
         H00_old = H00
 
@@ -91,7 +99,7 @@ contains
             f0 = fmax
             H00 = H00_max
             ! Broadcast updated data
-            call mpi_bcast(f0, basis_global%basis_length, mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(f0, size(f0), mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
             call mpi_bcast(H00, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
         end if
 
@@ -107,7 +115,7 @@ contains
 
         if (updated) then
             ! Update occ_list.
-            call decode_det(f0, occ_list0)
+            call decode_det(sys%basis, f0, occ_list0)
             ! walker_data(1,i) holds <D_i|H|D_i> - H00_old.  Update.
             ! H00 is currently <D_0|H|D_0> - H00_old.
             ! Want walker_data(1,i) to be <D_i|H|D_i> - <D_0|H|D_0>
@@ -125,7 +133,7 @@ contains
             if (parent) then
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
-                call write_det(size(occ_list0), f0, new_line=.true.)
+                call write_det(sys%basis, sys%nel, f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') H00
@@ -153,7 +161,6 @@ contains
         !    pdouble: probability of attempting to spawn on a determinant
         !             connected to D by a double excitation.
 
-        use basis, only: basis_global
         use system
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, nbasis_sym_spin
 
@@ -178,8 +185,8 @@ contains
             virt_syms = nbasis_sym_spin
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_global%basis_fns(occ_list(i))%ms+3)/2
-                associate(isym=>basis_global%basis_fns(occ_list(i))%sym)
+                ims1 = (sys%basis%basis_fns(occ_list(i))%ms+3)/2
+                associate(isym=>sys%basis%basis_fns(occ_list(i))%sym)
                     virt_syms(ims1,isym) = virt_syms(ims1,isym) - 1
                 end associate
             end do
@@ -190,9 +197,9 @@ contains
             nsingles = 0
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_global%basis_fns(occ_list(i))%ms+3)/2
+                ims1 = (sys%basis%basis_fns(occ_list(i))%ms+3)/2
                 ! Can't excite into already occupied orbitals.
-                nsingles = nsingles + virt_syms(ims1,basis_global%basis_fns(occ_list(i))%sym)
+                nsingles = nsingles + virt_syms(ims1,sys%basis%basis_fns(occ_list(i))%sym)
             end do
 
             ! Count number of possible double excitations from the supplied
@@ -200,14 +207,14 @@ contains
             ndoubles = 0
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
-                ims1 = (basis_global%basis_fns(occ_list(i))%ms+3)/2
+                ims1 = (sys%basis%basis_fns(occ_list(i))%ms+3)/2
                 do j = i+1, sys%nel
                     ! Convert -1->1 and 1->2 for spin index in arrays.
-                    ims2 = (basis_global%basis_fns(occ_list(j))%ms+3)/2
+                    ims2 = (sys%basis%basis_fns(occ_list(j))%ms+3)/2
                     do isyma = sys%sym0, sys%sym_max
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
-                        isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j)))
+                        isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j), sys%basis%basis_fns))
                         if (isyma == isymb) then
                             if (ims1 == ims2) then
                                 ! Cannot excit 2 electrons into the same spin-orbital.
@@ -493,7 +500,7 @@ contains
         call alloc_det_info(sys, cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
-            call decode_det(cdet%f, cdet%occ_list)
+            call decode_det(sys%basis, cdet%f, cdet%occ_list)
             cdet%data => walker_data(:,idet)
             real_population = real(walker_population(:,idet),dp)/real_factor
             ! WARNING!  We assume only the bit string, occ list and data field
@@ -605,9 +612,10 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators)
+    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators)
 
         ! In:
+        !    sys: system being studied.
         !    ireport: index of current report loop.
         !    update_tau: true if the processor thinks the timestep should be rescaled.
         !             Only used if not in variable shift mode and if tau_search is being
@@ -629,7 +637,9 @@ contains
         use interact, only: fciqmc_interact
         use parallel, only: parent
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: ireport
         logical, intent(in) :: update_tau
         logical, optional, intent(in) :: update_estimators
@@ -662,7 +672,7 @@ contains
         report_time = curr_time
 
         call fciqmc_interact(soft_exit)
-        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det()
+        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
 
         if (tau_search .and. .not. vary_shift) call send_tau(update_tau)
 

@@ -21,7 +21,6 @@ contains
         !    < D_i | T | D_i >, the diagonal Kinetic matrix elements, for
         !        the Hubbard model in momentum space.
 
-        use basis, only: basis_global
         use determinants, only: decode_det
         use system, only: sys_t
 
@@ -29,15 +28,15 @@ contains
 
         real(p) :: kin
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
 
         integer :: i, occ(sys%nel)
 
         ! <D|T|D> = \sum_k \epsilon_k
         kin = 0.0_p
-        call decode_det(f, occ)
+        call decode_det(sys%basis, f, occ)
         do i = 1, sys%nel
-            kin = kin + basis_global%basis_fns(occ(i))%sp_eigv
+            kin = kin + sys%basis%basis_fns(occ(i))%sp_eigv
         end do
 
     end function kinetic0_hub_k
@@ -63,7 +62,6 @@ contains
         !    operator, where the determinants are formed from momentum space
         !    basis functions.
 
-        use determinants, only: basis_global
         use excitations, only: excit, get_excitation
         use system, only: sys_t
 
@@ -71,7 +69,7 @@ contains
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        integer(i0), intent(in) :: f1(sys%basis%basis_length), f2(sys%basis%basis_length)
         logical :: non_zero
         type(excit) :: excitation
 
@@ -101,14 +99,13 @@ contains
         !    occupancy operator in the momentum space formulation of the Hubbard
         !    model.
 
-        use basis, only: basis_global
         use system, only: sys_t
 
         use const, only: p, i0
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
 
         ! As with the potential operator, the double occupancy operator is
         ! constant for all diagonal elements (see slater_condon0_hub_k).
@@ -170,7 +167,6 @@ contains
         !    < D_i | \hat{D} | D_i >, the diagonal matrix element for the double
         !    occupancy operator.
 
-        use basis, only: basis_global
         use bit_utils, only: count_set_bits
         use real_lattice, only: get_coulomb_matel_real
         use system, only: sys_t
@@ -179,7 +175,7 @@ contains
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
 
         ! As for momentum space, can use standard integrals of the potential and
         ! then scale.
@@ -207,7 +203,6 @@ contains
         !    molecular orbitals read in from an FCIDUMP file and O_1 is
         !    a one-body operator.
 
-        use determinants, only: basis_global
         use excitations, only: excit, get_excitation
         use system, only: sys_t
 
@@ -215,7 +210,7 @@ contains
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        integer(i0), intent(in) :: f1(sys%basis%basis_length), f2(sys%basis%basis_length)
         logical :: non_zero
         type(excit) :: excitation
 
@@ -242,7 +237,6 @@ contains
         !    systems defined by integrals read in from an FCIDUMP file and O_1
         !    is a one-body operator.
 
-        use basis, only: basis_global
         use determinants, only: decode_det
         use molecular_integrals, only: get_one_body_int_mol_nonzero, one_body_op_integrals
         use point_group_symmetry, only: gamma_sym
@@ -252,12 +246,12 @@ contains
 
         real(p) :: intgrl
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
 
         integer :: occ_list(sys%nel)
         integer :: iel, iorb
 
-        call decode_det(f, occ_list)
+        call decode_det(sys%basis, f, occ_list)
 
         ! <D | O_1 | D > = \sum_i <i|O_1|i>
         ! The integrals can only be non-zero if the operator is totally symmetric.
@@ -266,7 +260,7 @@ contains
         if (one_body_op_integrals%op_sym == gamma_sym) then
             do iel = 1, sys%nel
                 iorb = occ_list(iel)
-                intgrl = intgrl + get_one_body_int_mol_nonzero(one_body_op_integrals, iorb, iorb)
+                intgrl = intgrl + get_one_body_int_mol_nonzero(one_body_op_integrals, iorb, iorb, sys%basis%basis_fns)
             end do
         end if
 
@@ -297,7 +291,7 @@ contains
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 
-        intgrl = get_one_body_int_mol(one_body_op_integrals, i, a)
+        intgrl = get_one_body_int_mol(one_body_op_integrals, i, a, sys%basis%basis_fns)
 
         if (perm) intgrl = -intgrl
 
@@ -333,7 +327,7 @@ contains
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 
-        intgrl = get_one_body_int_mol_nonzero(one_body_op_integrals, i, a)
+        intgrl = get_one_body_int_mol_nonzero(one_body_op_integrals, i, a, sys%basis%basis_fns)
 
         if (perm) intgrl = -intgrl
 
@@ -351,7 +345,6 @@ contains
         !    |\Psi> = \sum_i c_i|D_i>.
 
         use const, only: i0, p
-        use basis, only: basis_global
         use calc, only: proc_blacs_info, distribute, distribute_off
         use determinant_enumeration, only: dets_list, ndets
         use parallel

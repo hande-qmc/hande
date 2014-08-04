@@ -23,24 +23,26 @@ integer(i0), allocatable :: cas_mask(:), cas_core(:) ! (basis_length)
 
 contains
 
-    subroutine init_ifciqmc(nel)
+    subroutine init_ifciqmc(nel, basis)
 
         ! Allocate and initialise data required for i-FCIQMC.
 
         ! In:
         !    nel: number of electrons in system.
+        !    basis: information about the single-particle basis.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_t
         use checking, only: check_allocate
         use fciqmc_data, only: initiator_CAS
 
         integer, intent(in) :: nel
+        type(basis_t), intent(in) :: basis
         integer :: ierr, i, bit_pos, bit_element
 
-        allocate(cas_mask(basis_global%basis_length), stat=ierr)
-        call check_allocate('cas_mask', basis_global%basis_length, ierr)
-        allocate(cas_core(basis_global%basis_length), stat=ierr)
-        call check_allocate('cas_core', basis_global%basis_length, ierr)
+        allocate(cas_mask(basis%basis_length), stat=ierr)
+        call check_allocate('cas_mask', basis%basis_length, ierr)
+        allocate(cas_core(basis%basis_length), stat=ierr)
+        call check_allocate('cas_core', basis%basis_length, ierr)
 
         ! Create a mask which has bits set for all core electrons and a mask
         ! which has bits set for all inactive orbitals.
@@ -48,15 +50,15 @@ contains
         cas_core = 0_i0
         ! Set core obitals.
         do i = 1, nel - initiator_CAS(1)
-            bit_pos = basis_global%bit_lookup(1,i)
-            bit_element = basis_global%bit_lookup(2,i)
+            bit_pos = basis%bit_lookup(1,i)
+            bit_element = basis%bit_lookup(2,i)
             cas_mask = ibset(cas_mask(bit_element), bit_pos)
             cas_core = ibset(cas_core(bit_element), bit_pos)
         end do
         ! Set inactive obitals.
-        do i = nel - initiator_CAS(1) + 2*initiator_CAS(2) + 1, basis_global%nbasis
-            bit_pos = basis_global%bit_lookup(1,i)
-            bit_element = basis_global%bit_lookup(2,i)
+        do i = nel - initiator_CAS(1) + 2*initiator_CAS(2) + 1, basis%nbasis
+            bit_pos = basis%bit_lookup(1,i)
+            bit_element = basis%bit_lookup(2,i)
             cas_mask = ibset(cas_mask(bit_element), bit_pos)
         end do
 

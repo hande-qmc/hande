@@ -37,7 +37,7 @@ contains
         case(ueg)
             isym = symmetry_orb_list_ueg(sys, orb_list)
         case(read_in)
-            isym = symmetry_orb_list_mol(orb_list)
+            isym = symmetry_orb_list_mol(sys%basis, orb_list)
         case default
             ! symmetry not implemented
             isym = sys%sym0

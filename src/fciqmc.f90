@@ -195,7 +195,7 @@ contains
 
             update_tau = bloom_stats%nwarnings_curr > 0
 
-            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit)
+            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit
 

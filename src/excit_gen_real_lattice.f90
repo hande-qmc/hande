@@ -101,7 +101,6 @@ contains
         use system, only: sys_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use real_lattice, only: connected_sites
-        use basis, only: basis_global
         use spawning, only: attempt_to_spawn
 
         type(sys_t), intent(in) :: sys
@@ -121,8 +120,8 @@ contains
         i = int(get_rand_close_open(rng)*connected_sites(0,connection%from_orb(1)) + 1)
         connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
 
-        ipos = basis_global%bit_lookup(1, connection%to_orb(1))
-        iel = basis_global%bit_lookup(2, connection%to_orb(1))
+        ipos = sys%basis%bit_lookup(1, connection%to_orb(1))
+        iel = sys%basis%bit_lookup(2, connection%to_orb(1))
 
         if (btest(cdet%f(iel),ipos)) then
 
@@ -228,7 +227,6 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use basis, only: basis_global
         use determinants, only: det_info
         use excitations, only: excit
         use real_lattice, only: connected_sites
@@ -255,8 +253,8 @@ contains
 
         ! Is a already up?  If so, not an allowed excitation: return a null
         ! event.
-        ipos = basis_global%bit_lookup(1, connection%to_orb(1))
-        iel = basis_global%bit_lookup(2, connection%to_orb(1))
+        ipos = sys%basis%bit_lookup(1, connection%to_orb(1))
+        iel = sys%basis%bit_lookup(2, connection%to_orb(1))
 
         if (btest(cdet%f(iel),ipos)) then
 
@@ -307,17 +305,16 @@ contains
 
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
 
-        use basis, only: basis_global
         use bit_utils, only: count_set_bits
         use real_lattice, only: connected_orbs, connected_sites
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a, nvirt_avail
-        integer(i0) :: virt_avail(basis_global%basis_length)
+        integer(i0) :: virt_avail(sys%basis%basis_length)
         integer :: ivirt, ipos, iel, virt(3*sys%lattice%ndim) ! 3*sys%lattice%ndim to allow for triangular lattices; minor memory waste for other cases is irrelevant!
 
         do
@@ -350,8 +347,8 @@ contains
         nvirt_avail = 0
         ! Now need to find out what orbital this corresponds to...
         do ivirt = 1, connected_sites(0,i)
-            ipos = basis_global%bit_lookup(1, connected_sites(ivirt,i))
-            iel = basis_global%bit_lookup(2, connected_sites(ivirt,i))
+            ipos = sys%basis%bit_lookup(1, connected_sites(ivirt,i))
+            iel = sys%basis%bit_lookup(2, connected_sites(ivirt,i))
             if (btest(virt_avail(iel), ipos)) then
                 nvirt_avail = nvirt_avail + 1
                 virt(nvirt_avail) = connected_sites(ivirt,i)
@@ -394,7 +391,6 @@ contains
         !    pgen: the generation probability of the excitation.  See notes in
         !        spawning.
 
-        use basis, only: basis_global
         use system, only: sys_t
         use real_lattice, only: connected_orbs
 
@@ -403,7 +399,7 @@ contains
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         integer, intent(in) :: nvirt_avail
         integer :: i, no_excit
 

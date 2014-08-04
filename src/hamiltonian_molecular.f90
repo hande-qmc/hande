@@ -22,14 +22,13 @@ contains
         !
         ! Used in the read_in system only.
 
-        use basis, only: basis_global
         use determinants, only: decode_det
         use excitations, only: excit, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        integer(i0), intent(in) :: f1(sys%basis%basis_length), f2(sys%basis%basis_length)
 
         type(excit) :: excitation
         integer :: occ_list(sys%nel)
@@ -53,7 +52,7 @@ contains
             case(1)
 
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
-                call decode_det(f1, occ_list)
+                call decode_det(sys%basis, f1, occ_list)
                 hmatel = slater_condon1_mol(sys, occ_list, excitation%from_orb(1), &
                                             excitation%to_orb(1), excitation%perm)
 
@@ -79,7 +78,6 @@ contains
         !    <D|H|D>, the diagonal Hamiltonian matrix element involving D for
         !    systems defined by integrals read in from an FCIDUMP file.
 
-        use basis, only: basis_global
         use determinants, only: decode_det
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
                                        one_e_h_integrals, coulomb_integrals
@@ -87,23 +85,23 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
 
         integer :: occ_list(sys%nel)
         integer :: iel, jel, i, j
 
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-        call decode_det(f, occ_list)
+        call decode_det(sys%basis, f, occ_list)
 
         hmatel = sys%read_in%Ecore
         do iel = 1, sys%nel
             i = occ_list(iel)
-            hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_h_integrals, i, i)
+            hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_h_integrals, i, i, sys%basis%basis_fns)
             do jel = iel+1, sys%nel
                 j = occ_list(jel)
-                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j)
-                if (basis_global%basis_fns(i)%Ms == basis_global%basis_fns(j)%Ms) &
-                              hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, j, i)
+                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j, sys%basis%basis_fns)
+                if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) &
+                              hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, j, i, sys%basis%basis_fns)
             end do
         end do
 
@@ -128,7 +126,6 @@ contains
         use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
                                        one_e_h_integrals, coulomb_integrals
         use system, only: sys_t
-        use basis, only: basis_global
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
@@ -138,17 +135,18 @@ contains
         integer :: iel
 
         ! Check that this excitation is symmetry allowed.
-        if (basis_global%basis_fns(i)%sym/=basis_global%basis_fns(a)%sym) then
+        if (sys%basis%basis_fns(i)%sym/=sys%basis%basis_fns(a)%sym) then
             hmatel = 0.0_p
         else
             ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
-            hmatel = get_one_body_int_mol(one_e_h_integrals, i, a)
+            hmatel = get_one_body_int_mol(one_e_h_integrals, i, a, sys%basis%basis_fns)
 
             do iel = 1, sys%nel
                 if (occ_list(iel) /= i) &
-                    hmatel = hmatel + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel)) &
-                                    - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
+                    hmatel = hmatel &
+                        + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel), sys%basis%basis_fns) &
+                        - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a, sys%basis%basis_fns)
             end do
 
             if (perm) hmatel = -hmatel
@@ -177,7 +175,6 @@ contains
         ! symmetry).  This is less safe that slater_condon1_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use basis, only: basis_global
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
                                        one_e_h_integrals, coulomb_integrals
         use system, only: sys_t
@@ -191,15 +188,19 @@ contains
 
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
-        hmatel = get_one_body_int_mol_nonzero(one_e_h_integrals, i, a)
+        associate(basis_fns=>sys%basis%basis_fns)
+            hmatel = get_one_body_int_mol_nonzero(one_e_h_integrals, i, a, basis_fns)
 
-        do iel = 1, sys%nel
-            if (occ_list(iel) /= i) then
-                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), a, occ_list(iel))
-                if (basis_global%basis_fns(occ_list(iel))%Ms == basis_global%basis_fns(i)%Ms) &
-                    hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), occ_list(iel), a)
-            end if
-        end do
+            do iel = 1, sys%nel
+                if (occ_list(iel) /= i) then
+                    hmatel = hmatel &
+                                + get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), a, occ_list(iel), basis_fns)
+                    if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
+                        hmatel = hmatel &
+                                    - get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), occ_list(iel), a, basis_fns)
+                end if
+            end do
+        end associate
 
         if (perm) hmatel = -hmatel
 
@@ -238,7 +239,8 @@ contains
          
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = get_two_body_int_mol(coulomb_integrals, i, j, a, b) - get_two_body_int_mol(coulomb_integrals, i, j, b, a)
+        hmatel = get_two_body_int_mol(coulomb_integrals, i, j, a, b, sys%basis%basis_fns) &
+                 - get_two_body_int_mol(coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
 
         if (perm) hmatel = -hmatel
 
@@ -270,7 +272,6 @@ contains
         ! symmetry).  This is less safe that slater_condon2_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use basis, only: basis_global
         use molecular_integrals, only: get_two_body_int_mol_nonzero, coulomb_integrals
         use system, only: sys_t
 
@@ -283,10 +284,10 @@ contains
 
         hmatel = 0.0_p
 
-        if (basis_global%basis_fns(i)%Ms == basis_global%basis_fns(a)%Ms) &
-            hmatel = get_two_body_int_mol_nonzero(coulomb_integrals, i, j, a, b)
-        if (basis_global%basis_fns(i)%Ms == basis_global%basis_fns(b)%Ms) &
-            hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, b, a)
+        if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) &
+            hmatel = get_two_body_int_mol_nonzero(coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
+        if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(b)%Ms) &
+            hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
 
         if (perm) hmatel = -hmatel
 

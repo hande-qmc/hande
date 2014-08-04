@@ -200,7 +200,6 @@ contains
         !        Meaningless/unset if allowed_excitation is false.
         !    allowed_excitation: if true, then the excitation is allowed.
 
-        use basis, only: basis_global
         use const, only: i0_end
         use bit_utils, only: count_set_bits
         use system, only: sys_t
@@ -209,7 +208,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         integer, intent(in) :: i, j, ij_k(sys%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
@@ -249,7 +248,6 @@ contains
         !        0 if it's a "mixed" excitation, i.e. alpha, beta or beta,
         !        alpha.
 
-        use basis, only: basis_global
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -307,8 +305,8 @@ contains
         i = occ_list(i)
         j = occ_list(j)
 
-        ij_spin = basis_global%basis_fns(i)%Ms + basis_global%basis_fns(j)%Ms
-        ij_k = basis_global%basis_fns(i)%l + basis_global%basis_fns(j)%l 
+        ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
+        ij_k = sys%basis%basis_fns(i)%l + sys%basis%basis_fns(j)%l 
 
     end subroutine choose_ij_k
 
@@ -346,7 +344,6 @@ contains
         !    allowed_excitation: if true, then the excitation is allowed.
 
 
-        use basis, only: basis_global
         use const, only: i0_end
         use bit_utils, only: count_set_bits
         use system, only: sys_t
@@ -356,13 +353,13 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         integer, intent(in) :: i, j, ij_k(sys%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
         integer :: fac, shift, ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
-        integer(i0) :: poss_a(basis_global%basis_length)
+        integer(i0) :: poss_a(sys%basis%basis_length)
 
         ! Let's just check there are possible a,b first!
         ! Adjust for spin.  Allow a to be up (without bias) if possible.
@@ -381,13 +378,13 @@ contains
             a = int(max_na*get_rand_close_open(rng)) + 1
 
             n = 0
-            finda: do ibe = 1, basis_global%basis_length
+            finda: do ibe = 1, sys%basis%basis_length
                 if (poss_a(ibe) /= 0_i0) then
                     do ibp = 0, i0_end
                         if (btest(poss_a(ibe), ibp)) n = n + 1
                         if (n == a) then
                             ! Found our basis funtion!
-                            a = basis_global%basis_lookup(ibp, ibe)
+                            a = sys%basis%basis_lookup(ibp, ibe)
                             exit finda
                         end if
                     end do
@@ -395,7 +392,7 @@ contains
             end do finda
 
             ! Ok, b is now completely defined.
-            kb = ij_k - basis_global%basis_fns(a)%l
+            kb = ij_k - sys%basis%basis_fns(a)%l
 
             ! Implementation detail: b must be down spin if possible as a is up spin if possible.
             select case(ij_spin)
@@ -408,8 +405,8 @@ contains
             end select
 
             ! Excitation is forbidden if b is already occupied!
-            ibp = basis_global%bit_lookup(1,b)
-            ibe = basis_global%bit_lookup(2,b)
+            ibp = sys%basis%bit_lookup(1,b)
+            ibe = sys%basis%bit_lookup(2,b)
             allowed_excitation = .not.btest(f(ibe), ibp)
 
             ! It is useful to return a,b ordered (e.g. for the find_excitation_permutation2 routine).

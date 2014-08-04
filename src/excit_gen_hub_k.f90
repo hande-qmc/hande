@@ -519,12 +519,11 @@ contains
         ! Out:
         !    a,b: virtual spin orbitals involved in the excitation.
 
-        use basis, only: basis_global
         use system, only: sys_t
         use dSFMT_interface, only:  dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         integer, intent(in) :: unocc_list_alpha(:)
         integer, intent(in) :: ij_sym
         type(dSFMT_t), intent(inout) :: rng
@@ -568,13 +567,12 @@ contains
         !    allowed_excitation: is true if the excitation (i,j)->(a,b) is
         !        allowed (i.e. both a and b are indeed spin orbitals).
 
-        use basis, only: basis_global
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use system, only: sys_t
         use momentum_symmetry, only: sym_table, inv_sym
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         integer, intent(in) :: unocc_list_alpha(:)
         integer, intent(in) :: ij_sym
         type(dSFMT_t), intent(inout) :: rng
@@ -610,8 +608,8 @@ contains
         ka = (a+1)/2
         b = 2*sym_table(ij_sym, inv_sym(ka))
 
-        b_pos = basis_global%bit_lookup(1,b)
-        b_el = basis_global%bit_lookup(2,b)
+        b_pos = sys%basis%bit_lookup(1,b)
+        b_el = sys%basis%bit_lookup(2,b)
 
         ! If b is unoccupied then have found an allowed excitation.
         allowed_excitation = .not.btest(f(b_el), b_pos)
@@ -645,14 +643,13 @@ contains
         !    pgen: the generation probability of the excitation.  See notes in
         !        spawning.
 
-        use basis, only: basis_global
         use system, only: sys_t
         use momentum_symmetry, only: sym_table, inv_sym
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ab_sym
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         integer, intent(in) :: unocc_alpha(:)
 
         integer :: forbidden_excitations, a, b, a_pos, a_el, b_pos, b_el, ka, kb
@@ -733,8 +730,8 @@ contains
         do a = 1, sys%nvirt_alpha
             ka = (unocc_alpha(a)+1)/2
             b = 2*sym_table(ab_sym, inv_sym(ka))
-            b_pos = basis_global%bit_lookup(1,b)
-            b_el = basis_global%bit_lookup(2,b)
+            b_pos = sys%basis%bit_lookup(1,b)
+            b_el = sys%basis%bit_lookup(2,b)
             ! Are (a,b) both unoccupied?
             if (btest(f(b_el), b_pos)) forbidden_excitations = forbidden_excitations + 1
         end do

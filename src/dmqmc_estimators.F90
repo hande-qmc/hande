@@ -182,7 +182,6 @@ contains
        !    idet: Current position in the main bitstring list.
        !    iteration: current Monte Carlo cycle.
 
-       use basis, only: basis_global
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
        use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
        use excitations, only: get_excitation, excit
@@ -200,8 +199,8 @@ contains
        real(p) :: unweighted_walker_pop(sampling_size)
 
        ! Get excitation.
-       excitation = get_excitation(sys%nel, walker_dets(:basis_global%basis_length,idet), &
-                        walker_dets((1+basis_global%basis_length):basis_global%total_basis_length,idet))
+       excitation = get_excitation(sys%nel, walker_dets(:sys%basis%basis_length,idet), &
+                        walker_dets((1+sys%basis%basis_length):sys%basis%total_basis_length,idet))
 
        ! When performing importance sampling the result is that certain
        ! excitation levels have smaller psips populations than the true density
@@ -267,7 +266,6 @@ contains
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use basis, only: basis_global
        use excitations, only: excit
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
@@ -291,8 +289,8 @@ contains
        ! corresponding Hamiltonian element may be non-zero. Calculate if the
        ! flipped spins are neighbours on the lattice, and if so, add the
        ! contribution from this site.
-           bit_position = basis_global%bit_lookup(1,excitation%from_orb(1))
-           bit_element = basis_global%bit_lookup(2,excitation%from_orb(1))
+           bit_position = sys%basis%bit_lookup(1,excitation%from_orb(1))
+           bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
                  estimator_numerators(energy_index) = estimator_numerators(energy_index) - &
                                    (sys%heisenberg%J*walker_pop/2)
@@ -315,7 +313,6 @@ contains
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use basis, only: basis_global
        use excitations, only: excit
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
@@ -372,8 +369,8 @@ contains
            ! Note, for certain lattices, such as the triangular lattice, two
            ! spins can be both nearest neighbors *and* next-nearest neighbors.
            ! Therefore, it is necessary in general to check for both situations.
-           bit_position1 = basis_global%bit_lookup(1,excitation%from_orb(1))
-           bit_element1 = basis_global%bit_lookup(2,excitation%from_orb(1))
+           bit_position1 = sys%basis%bit_lookup(1,excitation%from_orb(1))
+           bit_element1 = sys%basis%bit_lookup(2,excitation%from_orb(1))
            if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
                    sum_H1_H2 = sum_H1_H2 - sys%heisenberg%J*(walker_data(1,idet)+H00)
 
@@ -396,10 +393,10 @@ contains
            ! these pairings have been chosen, the flips can be performed in
            ! either order.
 
-           bit_position1 = basis_global%bit_lookup(1,excitation%from_orb(1))
-           bit_element1 = basis_global%bit_lookup(2,excitation%from_orb(1))
-           bit_position2 = basis_global%bit_lookup(1,excitation%from_orb(2))
-           bit_element2 = basis_global%bit_lookup(2,excitation%from_orb(2))
+           bit_position1 = sys%basis%bit_lookup(1,excitation%from_orb(1))
+           bit_element1 = sys%basis%bit_lookup(2,excitation%from_orb(1))
+           bit_position2 = sys%basis%bit_lookup(1,excitation%from_orb(2))
+           bit_element2 = sys%basis%bit_lookup(2,excitation%from_orb(2))
            if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1) .and. &
            btest(connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2)) &
                sum_H1_H2 = 8.0*J_coupling_squared
@@ -428,7 +425,6 @@ contains
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use basis, only: basis_global
        use excitations, only: excit
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
@@ -474,7 +470,6 @@ contains
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use basis, only: basis_global
        use bit_utils, only: count_set_bits
        use excitations, only: excit
        use fciqmc_data, only: walker_dets
@@ -487,7 +482,7 @@ contains
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
-       integer(i0) :: f(basis_global%basis_length)
+       integer(i0) :: f(sys%basis%basis_length)
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer :: sign_factor
 
@@ -501,7 +496,7 @@ contains
            ! and the same values as walker_dets at i and j. Hence, if f has
            ! two 1's or no 1's, we want sign_factor = +1. Else if we have one 1,
            ! we want sign_factor = -1.
-           f = iand(walker_dets(:basis_global%basis_length,idet), correlation_mask)
+           f = iand(walker_dets(:sys%basis%basis_length,idet), correlation_mask)
            ! Count if we have zero, one or two 1's.
            sign_factor = sum(count_set_bits(f))
            ! The operation below will map 0 and 2 to +1, and will map 1 to -1,
@@ -517,10 +512,10 @@ contains
            ! sites which are flipped are sites i and j, else it will be 0. We
            ! assume that excitations will only be set if i and j are opposite
            ! (else they could not be flipped, for ms=0).
-           bit_position1 = basis_global%bit_lookup(1,excitation%from_orb(1))
-           bit_element1 = basis_global%bit_lookup(2,excitation%from_orb(1))
-           bit_position2 = basis_global%bit_lookup(1,excitation%to_orb(1))
-           bit_element2 = basis_global%bit_lookup(2,excitation%to_orb(1))
+           bit_position1 = sys%basis%bit_lookup(1,excitation%from_orb(1))
+           bit_element1 = sys%basis%bit_lookup(2,excitation%from_orb(1))
+           bit_position2 = sys%basis%bit_lookup(1,excitation%to_orb(1))
+           bit_element2 = sys%basis%bit_lookup(2,excitation%to_orb(1))
            if (btest(correlation_mask(bit_element1), bit_position1) .and. btest(correlation_mask(bit_element2), bit_position2)) &
                  estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + (walker_pop/2)
        end if
@@ -542,7 +537,6 @@ contains
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use basis, only: basis_global
        use bit_utils, only: count_set_bits
        use determinants, only: lattice_mask
        use excitations, only: excit
@@ -555,7 +549,7 @@ contains
        type(excit), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
-       integer(i0) :: f(basis_global%basis_length)
+       integer(i0) :: f(sys%basis%basis_length)
        integer :: n_up_plus
        integer :: total_sum
 
@@ -574,7 +568,7 @@ contains
            ! are nel spins up in total. Hence the matrix element will be written
            ! only in terms of the number of up spins on sublattice 1, to save
            ! computation.
-           f = iand(walker_dets(:basis_global%basis_length,idet), lattice_mask)
+           f = iand(walker_dets(:sys%basis%basis_length,idet), lattice_mask)
            n_up_plus = sum(count_set_bits(f))
            ! Below, the term in brackets and middle term come from the z
            ! component (the z operator is diagonal) and one nsites/4 factor
@@ -585,10 +579,10 @@ contains
            ! Off-diagonal elements from the y and z operators. For the pair of
            ! spins that are flipped, if they are on the same sublattice, we get
            ! a factor of 1, or if on different sublattices, a factor of -1.
-           bit_position1 = basis_global%bit_lookup(1,excitation%from_orb(1))
-           bit_element1 = basis_global%bit_lookup(2,excitation%from_orb(1))
-           bit_position2 = basis_global%bit_lookup(1,excitation%to_orb(1))
-           bit_element2 = basis_global%bit_lookup(2,excitation%to_orb(1))
+           bit_position1 = sys%basis%bit_lookup(1,excitation%from_orb(1))
+           bit_element1 = sys%basis%bit_lookup(2,excitation%from_orb(1))
+           bit_position2 = sys%basis%bit_lookup(1,excitation%to_orb(1))
+           bit_element2 = sys%basis%bit_lookup(2,excitation%to_orb(1))
            if (btest(lattice_mask(bit_element1), bit_position1)) total_sum = total_sum+1
            if (btest(lattice_mask(bit_element2), bit_position2)) total_sum = total_sum+1
            ! The operation below will map 0 and 2 to +1, and will map 1 to -1,

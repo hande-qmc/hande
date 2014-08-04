@@ -30,7 +30,7 @@ contains
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
 
-        use basis, only: write_basis_fn, basis_global
+        use basis, only: write_basis_fn
         use calc, only: sym_in, ms_in, truncate_space, truncation_level, seed
         use const, only: dp
         use checking, only: check_allocate, check_deallocate
@@ -47,7 +47,7 @@ contains
 
         integer :: icycle, i, ierr, b
         integer :: ref_sym, det_sym
-        integer(i0) :: f(basis_global%basis_length), f0(basis_global%basis_length)
+        integer(i0) :: f(sys%basis%basis_length), f0(sys%basis%basis_length)
         integer :: occ_list(sys%nel)
         real(dp) :: space_size, naccept, nsuccess, weight
         real(dp), allocatable :: ptrunc_level(:)
@@ -65,7 +65,7 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(basis_global%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         select case(sys%system)
 
@@ -107,7 +107,7 @@ contains
                 else
                     call set_reference_det(sys, occ_list0, .false.)
                 end if
-                call encode_det(occ_list0, f0)
+                call encode_det(sys%basis, occ_list0, f0)
 
                 ! Symmetry of the reference determinant.
                 ref_sym = symmetry_orb_list(sys, occ_list0)
@@ -130,8 +130,8 @@ contains
                         ! electrons and M is the number of alpha/beta spin orbitals.
                         do b = max(0,i-sys%nalpha), min(sys%nbeta,i)
                             space_size = space_size &
-                                             + (binom_r(sys%nbeta, b)*binom_r(basis_global%nbasis/2-sys%nbeta,b) &
-                                             *binom_r(sys%nalpha, i-b)*binom_r(basis_global%nbasis/2-sys%nalpha,i-b))
+                                             + (binom_r(sys%nbeta, b)*binom_r(sys%basis%nbasis/2-sys%nbeta,b) &
+                                             *binom_r(sys%nalpha, i-b)*binom_r(sys%basis%nbasis/2-sys%nalpha,i-b))
                         end do
                         ptrunc_level(i) = space_size
                     end do
@@ -140,13 +140,13 @@ contains
                     ! Size of the complete Hilbert space in the desired symmetry block is given
                     ! by
                     !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons).
-                    space_size = binom_r(basis_global%nbasis/2,sys%nalpha) * binom_r(basis_global%nbasis/2,sys%nbeta)
+                    space_size = binom_r(sys%basis%nbasis/2,sys%nalpha) * binom_r(sys%basis%nbasis/2,sys%nbeta)
                 end if
 
                 if (parent) then
                     write (6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
                     if (sys%momentum_space) then
-                        call write_basis_fn(sys, basis_global%basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+                        call write_basis_fn(sys, sys%basis%basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
                     else
                         write (6,'(1X,i2)') ref_sym
                     end if
@@ -239,7 +239,6 @@ contains
         !     occ_list: list of occupied orbital of random determinant.  Must have
         !         dimensions of (at least) sys%nel.
 
-        use basis, only: basis_global
         use const, only: i0
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
@@ -257,9 +256,9 @@ contains
         if (sys%nalpha > 0) then
             do
                 ! generate random number 1,3,5,...
-                a = 2*int(get_rand_close_open(rng)*(basis_global%nbasis/2))+1
-                a_pos = basis_global%bit_lookup(1,a)
-                a_el = basis_global%bit_lookup(2,a)
+                a = 2*int(get_rand_close_open(rng)*(sys%basis%nbasis/2))+1
+                a_pos = sys%basis%bit_lookup(1,a)
+                a_el = sys%basis%bit_lookup(2,a)
                 if (.not.btest(f(a_el), a_pos)) then
                     ! found unoccupied alpha orbital.
                     f(a_el) = ibset(f(a_el), a_pos)
@@ -273,9 +272,9 @@ contains
         if (sys%nbeta > 0) then
             do
                 ! generate random number 2,4,6,...
-                b = 2*int(get_rand_close_open(rng)*(basis_global%nbasis/2))+2
-                b_pos = basis_global%bit_lookup(1,b)
-                b_el = basis_global%bit_lookup(2,b)
+                b = 2*int(get_rand_close_open(rng)*(sys%basis%nbasis/2))+2
+                b_pos = sys%basis%bit_lookup(1,b)
+                b_el = sys%basis%bit_lookup(2,b)
                 if (.not.btest(f(b_el), b_pos)) then
                     ! FOUND Unoccupied beta orbital.
                     f(b_el) = ibset(f(b_el), b_pos)
@@ -326,7 +325,6 @@ contains
         !    weight: the weight of the generated determinant relative to other
         !        determinants at the same excitation level.
 
-        use basis, only: basis_global
         use const, only: i0, dp
         use determinants, only: decode_det
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -354,8 +352,8 @@ contains
         do ilevel = 1, truncation_level
             ! Excite from...
             a = occ_list0(int(get_rand_close_open(rng)*sys%nel)+1)
-            a_pos = basis_global%bit_lookup(1,a)
-            a_el = basis_global%bit_lookup(2,a)
+            a_pos = sys%basis%bit_lookup(1,a)
+            a_el = sys%basis%bit_lookup(2,a)
             if (btest(f(a_el), a_pos)) then
                 f(a_el) = ibclr(f(a_el), a_pos)
             else
@@ -366,14 +364,14 @@ contains
             ! Conserve spin.
             if (mod(a,2) == 1) then
                 ! alpha orbital; index 1,3,5,...
-                b = 2*int(get_rand_close_open(rng)*(basis_global%nbasis/2))+1
+                b = 2*int(get_rand_close_open(rng)*(sys%basis%nbasis/2))+1
                 nalpha_selected = nalpha_selected + 1
             else
                 ! beta orbital; index 2,4,6,...
-                b = 2*int(get_rand_close_open(rng)*(basis_global%nbasis/2))+2
+                b = 2*int(get_rand_close_open(rng)*(sys%basis%nbasis/2))+2
             end if
-            b_pos = basis_global%bit_lookup(1,b)
-            b_el = basis_global%bit_lookup(2,b)
+            b_pos = sys%basis%bit_lookup(1,b)
+            b_el = sys%basis%bit_lookup(2,b)
             ! Excite into an orbital which is unoccupied in the reference and which we
             ! have not already filled.  The former is crucial to ensure that we actually
             ! generate a determinant of excitation level determined by plevel rather
@@ -408,7 +406,7 @@ contains
         ! weighting all determinants by n!/(n_a! (n-n_a)!) we unbias for the
         ! non-uniformity in selection.
         if (tsuccess) then
-            call decode_det(f, occ_list)
+            call decode_det(sys%basis, f, occ_list)
             weight = binom_r(ilevel, nalpha_selected)
         end if
 

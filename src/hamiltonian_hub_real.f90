@@ -22,13 +22,12 @@ contains
 
         ! Used in the real space formulation of the Hubbard model only.
 
-        use determinants, only: basis_global
         use excitations, only: excit, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_global%basis_length), f2(basis_global%basis_length)
+        integer(i0), intent(in) :: f1(sys%basis%basis_length), f2(sys%basis%basis_length)
         logical :: non_zero
         type(excit) :: excitation
 
@@ -86,13 +85,13 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in real space.
 
-        use determinants, only: decode_det, basis_global
+        use determinants, only: decode_det
         use real_lattice, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         integer :: root_det(sys%nel)
         integer :: i
 
@@ -105,7 +104,7 @@ contains
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
         if (t_self_images) then
-            call decode_det(f, root_det)
+            call decode_det(sys%basis, f, root_det)
             do i = 1, sys%nel
                 hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))
             end do
@@ -172,12 +171,11 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use determinants, only: basis_global
         use excitations, only: excit, find_excitation_permutation1
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 

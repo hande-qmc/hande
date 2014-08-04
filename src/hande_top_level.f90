@@ -25,7 +25,7 @@ contains
         use parse_input, only: read_input, check_input, distribute_input
         use system
         use basis, only: init_model_basis_fns, basis_global
-        use basis_types, only: copy_basis_t
+        use basis_types, only: copy_basis_t, dealloc_basis_t
         use determinants, only: init_determinants
         use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
@@ -67,6 +67,9 @@ contains
         ! Initialise basis functions.
         if (sys%system == read_in) then
             call read_in_integrals(sys, cas_info=sys%cas)
+            ! TEMPORARY: copy sys%basis to basis_global to aid migration from global data.
+            call copy_basis_t(sys%basis, basis_global)
+            call dealloc_basis_t(sys%basis)
         else
             call init_model_basis_fns(sys)
         end if

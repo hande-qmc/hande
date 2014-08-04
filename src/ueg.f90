@@ -108,7 +108,6 @@ contains
         ! In:
         !    sys: UEG system to be studied.
 
-        use basis, only: basis_global
         use system, only: sys_t
 
         use checking, only: check_allocate
@@ -140,8 +139,8 @@ contains
         ueg_basis_lookup = -1
 
         ! Now fill in the values for the alpha orbitals which are in the basis.
-        forall (i=1:basis_global%nbasis:2) 
-            ueg_basis_lookup(dot_product(basis_global%basis_fns(i)%l, ueg_basis_dim) + ueg_basis_origin) = i
+        forall (i=1:sys%basis%nbasis:2) 
+            ueg_basis_lookup(dot_product(sys%basis%basis_fns(i)%l, ueg_basis_dim) + ueg_basis_origin) = i
         end forall
 
         ! Now fill in the values for permitted k_a in an excitation
@@ -150,10 +149,10 @@ contains
 
         k = 0
         k(1:sys%lattice%ndim) = 2*ueg_basis_max
-        allocate(ueg_ternary_conserve(0:basis_global%basis_length, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
+        allocate(ueg_ternary_conserve(0:sys%basis%basis_length, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
         call check_allocate('ueg_ternary_conserve', size(ueg_ternary_conserve), ierr)
         ueg_ternary_conserve = 0_i0
-        !$omp parallel do default(none) shared(k,sys,ueg_ternary_conserve,basis_global) &
+        !$omp parallel do default(none) shared(k,sys,ueg_ternary_conserve,sys%basis) &
         !$omp private(k1,k2,k3,a,kija,ktest,bit_pos,bit_el)
         do k3 = -k(3), k(3)
             if (sys%lattice%ndim == 3) ktest(3) = k3
@@ -165,13 +164,13 @@ contains
                    ! restricting the range of a such that there must be at least one b
                    ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! ueg_basis_max,
                    ! thus providing lower and upper bounds for a).
-                   do a = 1, basis_global%nbasis-1, 2 ! only bother with alpha orbitals
-                       kija = ktest - basis_global%basis_fns(a)%l
+                   do a = 1, sys%basis%nbasis-1, 2 ! only bother with alpha orbitals
+                       kija = ktest - sys%basis%basis_fns(a)%l
                        if (real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
                            ! There exists an allowed b in the basis!
                            ueg_ternary_conserve(0,k1,k2,k3) = ueg_ternary_conserve(0,k1,k2,k3) + 1
-                           bit_pos = basis_global%bit_lookup(1, a)
-                           bit_el = basis_global%bit_lookup(2, a)
+                           bit_pos = sys%basis%bit_lookup(1, a)
+                           bit_el = sys%basis%bit_lookup(2, a)
                            ueg_ternary_conserve(bit_el,k1,k2,k3) = ibset(ueg_ternary_conserve(bit_el,k1,k2,k3), bit_pos)
                        end if
                    end do
@@ -188,7 +187,7 @@ contains
         !    k: wavevector in units of 2\pi/L.
         !    spin: 1 for alpha orbital, -1 for beta orbital
         ! Returns:
-        !    Index of basis function in the (energy-ordered) basis_global%basis_fns array.
+        !    Index of basis function in the (energy-ordered) sys%basis%basis_fns array.
         !    Set to < 0 if the spin-orbital described by k and spin is not in the
         !    basis set.
 
@@ -252,7 +251,6 @@ contains
 
         ! Warning: assume i,j /= a,b (ie not asking for < ij || ij > or < ij || ji >).
 
-        use basis, only: basis_global
         use system, only: sys_t
 
         real(p) :: intgrl
@@ -262,7 +260,7 @@ contains
         intgrl = 0.0_p
 
         ! Crystal momentum conserved?
-        associate(bg=>basis_global)
+        associate(bg=>sys%basis)
             if (all(bg%basis_fns(i)%l + bg%basis_fns(j)%l - bg%basis_fns(a)%l - bg%basis_fns(b)%l == 0)) then
 
                 ! Spin conserved?
@@ -294,7 +292,6 @@ contains
         !    symmetry.  We also assume that i,j /= a,b (ie the integral is not
         !    a Hartree integral).
 
-        use basis, only: basis_global
         use system, only: sys_t
 
         real(p) :: intgrl
@@ -306,7 +303,7 @@ contains
         ! the cell.  As we only deal with cubic simulation cells (i.e. \Omega = L^2),
         ! the integral hence becomes 1/(L|q|), where q = k_i - k_a.
 
-        q = basis_global%basis_fns(i)%l - basis_global%basis_fns(a)%l
+        q = sys%basis%basis_fns(i)%l - sys%basis%basis_fns(a)%l
         intgrl = 1.0_p/(sys%lattice%box_length(1)*sqrt(real(dot_product(q,q),p)))
 
     end function coulomb_int_ueg_2d
@@ -325,7 +322,6 @@ contains
         !    symmetry.  We also assume that i,j /= a,b (ie the integral is not
         !    a Hartree integral).
 
-        use basis, only: basis_global
         use system, only: sys_t
 
         real(p) :: intgrl
@@ -337,7 +333,7 @@ contains
         ! the cell.  As we only deal with cubic simulation cells (i.e. \Omega = L^3),
         ! the integral hence becomes 1/(\pi.L.q^2), where q = k_i - k_a.
 
-        q = basis_global%basis_fns(i)%l - basis_global%basis_fns(a)%l
+        q = sys%basis%basis_fns(i)%l - sys%basis%basis_fns(a)%l
         intgrl = 1.0_p/(pi*sys%lattice%box_length(1)*dot_product(q,q))
 
     end function coulomb_int_ueg_3d

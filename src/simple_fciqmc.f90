@@ -47,7 +47,7 @@ contains
 
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(basis_global%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
         if (allocated(occ_list0)) then
             call enumerate_determinants(sys, .true., .false., occ_list0=occ_list0)
         else
@@ -101,8 +101,8 @@ contains
         if (restart) then
             allocate(occ_list0(sys%nel), stat=ierr)
             call check_allocate('occ_list0',sys%nel,ierr)
-            allocate(f0(basis_global%basis_length), stat=ierr)
-            call check_allocate('f0',basis_global%basis_length,ierr)
+            allocate(f0(sys%basis%basis_length), stat=ierr)
+            call check_allocate('f0',sys%basis%basis_length,ierr)
         else
             ref_det = 1
             do i = 2, ndets
@@ -114,20 +114,20 @@ contains
             ! Reference det
             H00 = hamil(ref_det,ref_det)
             if (.not.allocated(f0)) then
-                allocate(f0(basis_global%basis_length), stat=ierr)
-                call check_allocate('f0',basis_global%basis_length,ierr)
+                allocate(f0(sys%basis%basis_length), stat=ierr)
+                call check_allocate('f0',sys%basis%basis_length,ierr)
             end if
             if (.not.allocated(occ_list0)) then
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
-            call decode_det(f0, occ_list0)
+            call decode_det(sys%basis, f0, occ_list0)
             f0 = dets_list(:,ref_det)
             walker_population(1,ref_det) = nint(D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-        call write_det(sys%nel, dets_list(:,ref_det), new_line=.true.)
+        call write_det(sys%basis, sys%nel, dets_list(:,ref_det), new_line=.true.)
         write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 

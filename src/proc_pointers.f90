@@ -11,12 +11,11 @@ implicit none
 
 abstract interface
     pure subroutine i_decoder(sys,f,d)
-        use basis, only: basis_global
         use system, only: sys_t
         import :: i0, det_info
         implicit none
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
         type(det_info), intent(inout) :: d
     end subroutine i_decoder
     pure subroutine i_update_proj_energy(sys, f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
@@ -86,12 +85,11 @@ abstract interface
     end subroutine i_death
     pure function i_sc0(sys, f) result(hmatel)
         use system, only: sys_t
-        use basis, only: basis_global
         import :: p, i0
         implicit none
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_global%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%basis_length)
     end function i_sc0
     subroutine i_set_parent_flag(pop, f, determ_flag, flag)
         import :: i0, p

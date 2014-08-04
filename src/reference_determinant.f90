@@ -43,7 +43,6 @@ contains
         use checking, only: check_allocate
         use errors, only: stop_all
 
-        use basis, only: basis_global
         use determinants, only: encode_det
         use real_lattice, only: connected_orbs
         use symmetry, only: symmetry_orb_list
@@ -56,7 +55,7 @@ contains
 
         integer :: i, j, ierr, spins_set, connections, iel, icore, jcore, ivirt, jvirt
         integer :: bit_element, bit_pos, tmp_occ_list(sys%nel), curr_occ_list(sys%nel), sym
-        integer(i0) :: f(basis_global%basis_length)
+        integer(i0) :: f(sys%basis%basis_length)
         real(p) :: eigv_sum, sp_eigv_sum
         logical :: set
 
@@ -101,7 +100,7 @@ contains
                 ! to be clever and efficient...
                 if (present(ref_sym)) then
                     if (ref_sym >= sys%sym0 .and. ref_sym <= sys%sym_max) then
-                        call encode_det(occ_list, f)
+                        call encode_det(sys%basis, occ_list, f)
                         ! If occ_list is already of the correct symmetry, then
                         ! have nothing to do.
                         sym = symmetry_orb_list(sys, occ_list)
@@ -112,17 +111,17 @@ contains
                             eigv_sum = huge(0.0_p)
                             do icore = 1, sys%nel
                                 i = occ_list(icore)
-                                do ivirt = 1, basis_global%nbasis
+                                do ivirt = 1, sys%basis%nbasis
                                     ! Ensure ivirt is not already in the
                                     ! determinant.
-                                    if (.not.btest(f(basis_global%bit_lookup(2,ivirt)), basis_global%bit_lookup(1,ivirt)) .and. &
-                                            basis_global%basis_fns(i)%Ms == basis_global%basis_fns(ivirt)%Ms) then
+                                    if (.not.btest(f(sys%basis%bit_lookup(2,ivirt)), sys%basis%bit_lookup(1,ivirt)) .and. &
+                                            sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(ivirt)%Ms) then
                                         tmp_occ_list = occ_list
                                         tmp_occ_list(icore) = ivirt
                                         if (symmetry_orb_list(sys, tmp_occ_list) == ref_sym) then
                                             sp_eigv_sum = 0.0_p
                                             do iel = 1, sys%nel
-                                                sp_eigv_sum = sp_eigv_sum + basis_global%basis_fns(tmp_occ_list(iel))%sp_eigv
+                                                sp_eigv_sum = sp_eigv_sum + sys%basis%basis_fns(tmp_occ_list(iel))%sp_eigv
                                             end do
                                             if (sp_eigv_sum+depsilon < eigv_sum) then
                                                 curr_occ_list = tmp_occ_list
@@ -135,8 +134,8 @@ contains
 
                             ! Consider double excitations of our current
                             ! reference determinant, conserving only spin.
-                            associate(bit_lookup=>basis_global%bit_lookup, nbasis=>basis_global%nbasis, &
-                                    basis_fns=>basis_global%basis_fns)
+                            associate(bit_lookup=>sys%basis%bit_lookup, nbasis=>sys%basis%nbasis, &
+                                    basis_fns=>sys%basis%basis_fns)
                                 do icore = 1, sys%nel
                                     i = occ_list(icore)
                                     do jcore = icore+1, sys%nel
@@ -211,8 +210,8 @@ contains
                     ! Loop over other sites to find orbitals which are not connected to
                     ! the other sites previously chosen.
                     do i=2,sys%lattice%nsites
-                        bit_pos = basis_global%bit_lookup(1,i)
-                        bit_element = basis_global%bit_lookup(2,i)
+                        bit_pos = sys%basis%bit_lookup(1,i)
+                        bit_element = sys%basis%bit_lookup(2,i)
                         connections = 0
                         ! Loop over all chosen sites to see if they neighbour this site.
                         do j=1,spins_set

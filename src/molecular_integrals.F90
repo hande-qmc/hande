@@ -164,7 +164,7 @@ contains
 
     end subroutine end_one_body_int_store
 
-    subroutine init_two_body_int_store(uhf, op_sym, store)
+    subroutine init_two_body_int_store(uhf, nbasis, op_sym, store)
 
         ! Allocate memory required for the integrals involving a two-body
         ! operator.
@@ -172,20 +172,19 @@ contains
         ! In:
         !    uhf: whether integral store is from a UHF calculation or RHF
         !       calculation.
+        !    nbasis: number of single-particle spin functions.
         !    op_sym: bit string representations of irreducible representations
         !    of a point group.  See point_group_symmetry.
         ! Out:
         !    store: two-body integral store with components allocated to hold
         !    interals.  Note that the integral store is *not* zeroed.
 
-        use basis, only: basis_global
         use point_group_symmetry, only: nbasis_sym_spin
-        use system
 
         use checking, only: check_allocate
 
         logical, intent(in) :: uhf
-        integer, intent(in) :: op_sym
+        integer, intent(in) :: nbasis, op_sym
         type(two_body), intent(out) :: store
 
         integer :: ierr, ispin
@@ -217,7 +216,7 @@ contains
         ! spin-channel, where 2M is the number of spin-orbitals.
         ! NOTE:
         ! Compression due to spatial symmetry not yet implemented.
-        npairs = ((basis_global%nbasis/2)*(basis_global%nbasis/2 + 1))/2
+        npairs = ((nbasis/2)*(nbasis/2 + 1))/2
         nintgrls = (npairs*(npairs+1))/2
         do ispin = 1, nspin
             allocate(store%integrals(ispin)%v(nintgrls), stat=ierr)
@@ -252,7 +251,7 @@ contains
 
 !--- Allocate standard molecular integral stores ---
 
-    subroutine init_molecular_integrals(uhf)
+    subroutine init_molecular_integrals(uhf, nbasis)
 
         ! Initialise integral stores for molecular integrals (subsequently read
         ! in from an FCIDUMP file).
@@ -262,13 +261,15 @@ contains
         ! In:
         !    uhf: whether integral store is from a UHF calculation or RHF
         !       calculation.
+        !    nbasis: number of single-particle basis functions.
 
         use point_group_symmetry, only: gamma_sym
 
         logical, intent(in) :: uhf
+        integer, intent(in) :: nbasis
 
         call init_one_body_int_store(uhf, gamma_sym, one_e_h_integrals)
-        call init_two_body_int_store(uhf, gamma_sym, coulomb_integrals)
+        call init_two_body_int_store(uhf, nbasis, gamma_sym, coulomb_integrals)
 
     end subroutine init_molecular_integrals
 
@@ -335,7 +336,7 @@ contains
 
 ! 1. < i | o_1 | j >
 
-    subroutine store_one_body_int_mol(i, j, intgrl, suppress_err_msg, store, ierr)
+    subroutine store_one_body_int_mol(i, j, intgrl, basis_fns, suppress_err_msg, store, ierr)
 
         ! Store <i|o_1|j> in the appropriate slot in the one-body integral
         ! store.  The store does not have room for non-zero integrals, so it is
@@ -345,6 +346,7 @@ contains
         !    i,j: (indices of) spin-orbitals.
         !    intgrl: <i|o_1|j>, where o_1 is a one-body operator.
         !    suppress_err_msg: if true, don't print out any error messages.
+        !    basis_fns: list of single-particle basis functions.
         ! In/out:
         !    store: one-body integral store.  On exit the <i|o_1|j> is also
         !       stored.
@@ -352,14 +354,14 @@ contains
         !    ierr: 0 if no error is encountered, 1 if integral should be non-zero
         !       by symmetry but is larger than depsilon.
 
-        use basis, only: basis_global
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
-        use system
+        use basis_types, only: basis_fn_t
+        use point_group_symmetry, only: cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
 
         use const, only: depsilon
         use errors, only: warning
         use utils, only: tri_ind
 
+        type(basis_fn_t), intent(in) :: basis_fns(:)
         integer, intent(in) :: i, j
         real(p), intent(in) :: intgrl
         logical, intent(in) :: suppress_err_msg
@@ -372,14 +374,14 @@ contains
 
         ierr = 0
 
-        sym = cross_product_pg_sym(pg_sym_conj(basis_global%basis_fns(i)%sym), basis_global%basis_fns(j)%sym)
+        sym = cross_product_pg_sym(pg_sym_conj(basis_fns(i)%sym), basis_fns(j)%sym)
         sym = cross_product_pg_sym(sym, store%op_sym)
 
-        if (is_gamma_irrep_pg_sym(sym) .and. basis_global%basis_fns(i)%ms == basis_global%basis_fns(j)%ms) then
+        if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
 
             ! Integral is (should be!) non-zero by symmetry.
             if (store%uhf) then
-                if (basis_global%basis_fns(i)%ms > 0) then
+                if (basis_fns(i)%ms > 0) then
                     spin = 1
                 else
                     spin = 2
@@ -387,17 +389,17 @@ contains
             else
                 spin = 1
             end if
-            ii = basis_global%basis_fns(i)%sym_spin_index
-            jj = basis_global%basis_fns(j)%sym_spin_index
+            ii = basis_fns(i)%sym_spin_index
+            jj = basis_fns(j)%sym_spin_index
             if (ii == jj) then
                 ! See note about how operators which are no symmetric are
                 ! handled in init_one_body_int_store.
-                store%integrals(spin,basis_global%basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
-                store%integrals(spin,basis_global%basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
+                store%integrals(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
+                store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
             else if (ii > jj) then
-                store%integrals(spin,basis_global%basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
+                store%integrals(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
             else
-                store%integrals(spin,basis_global%basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
+                store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
             end if
         else if (abs(intgrl) > depsilon) then
             if (.not.suppress_err_msg) then
@@ -410,11 +412,12 @@ contains
 
     end subroutine store_one_body_int_mol
 
-    pure function get_one_body_int_mol(store, i, j) result(intgrl)
+    pure function get_one_body_int_mol(store, i, j, basis_fns) result(intgrl)
 
         ! In:
         !    store: one-body integral store.
         !    i,j: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
         ! Returns:
         !    <i|o|j>, the corresponding one-body matrix element, where o is a
         !    one-body operator given by store.
@@ -424,32 +427,33 @@ contains
         !    then it is faster to call get_one_body_int_mol_nonzero.
         !    It is also faster to call RHF- or UHF-specific routines.
 
-        use basis, only: basis_global
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym
-        use point_group_symmetry, only: pg_sym_conj
+        use basis_types, only: basis_fn_t
+        use point_group_symmetry, only: pg_sym_conj, cross_product_pg_sym, is_gamma_irrep_pg_sym
 
         real(p) :: intgrl
+        type(basis_fn_t), intent(in) :: basis_fns(:)
         type(one_body), intent(in) :: store
         integer, intent(in) :: i, j
 
         integer :: sym
 
-        sym = cross_product_pg_sym(pg_sym_conj(basis_global%basis_fns(i)%sym),basis_global%basis_fns(j)%sym)
+        sym = cross_product_pg_sym(pg_sym_conj(basis_fns(i)%sym),basis_fns(j)%sym)
         sym = cross_product_pg_sym(sym, store%op_sym)
 
-        if (is_gamma_irrep_pg_sym(sym) .and. basis_global%basis_fns(i)%ms == basis_global%basis_fns(j)%ms) then
-            intgrl = get_one_body_int_mol_nonzero(store, i, j)
+        if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+            intgrl = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
         else
             intgrl = 0.0_p
         end if
 
     end function get_one_body_int_mol
 
-    pure function get_one_body_int_mol_nonzero(store, i, j) result(intgrl)
+    pure function get_one_body_int_mol_nonzero(store, i, j, basis_fns) result(intgrl)
 
         ! In:
         !    store: one-body integral store.
         !    i,j: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
         ! Returns:
         !    <i|o|j>, the corresponding one-body matrix element, where o is a
         !    one-body operator given by store.
@@ -462,19 +466,18 @@ contains
         !    instead.
         !    It is faster to call RHF- or UHF-specific routines.
 
-        use basis, only: basis_global
-        use system
-
+        use basis_types, only: basis_fn_t
         use utils, only: tri_ind
 
         real(p) :: intgrl
+        type(basis_fn_t), intent(in) :: basis_fns(:)
         type(one_body), intent(in) :: store
         integer, intent(in) :: i, j
 
         integer :: ii, jj, spin
 
         if (store%uhf) then
-            if (basis_global%basis_fns(i)%ms > 0) then
+            if (basis_fns(i)%ms > 0) then
                 spin = 1
             else
                 spin = 2
@@ -482,25 +485,26 @@ contains
         else
             spin = 1
         end if
-        ii = basis_global%basis_fns(i)%sym_spin_index
-        jj = basis_global%basis_fns(j)%sym_spin_index
+        ii = basis_fns(i)%sym_spin_index
+        jj = basis_fns(j)%sym_spin_index
 
         if (ii >= jj) then
-            intgrl = store%integrals(spin, basis_global%basis_fns(i)%sym)%v(tri_ind(ii,jj))
+            intgrl = store%integrals(spin, basis_fns(i)%sym)%v(tri_ind(ii,jj))
         else
-            intgrl = store%integrals(spin, basis_global%basis_fns(j)%sym)%v(tri_ind(jj,ii))
+            intgrl = store%integrals(spin, basis_fns(j)%sym)%v(tri_ind(jj,ii))
         end if
 
     end function get_one_body_int_mol_nonzero
 
 ! 2. < i j | o_2 | a b >
 
-    elemental function two_body_int_indx(uhf, i, j, a, b) result(indx)
+    pure function two_body_int_indx(uhf, i, j, a, b, basis_fns) result(indx)
 
         ! In:
         !    uhf: whether integral store is from a UHF calculation (and hence is
         !        stored using spin orbital labels rather than spatial orbitals).
         !    i,j,a,b: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
         ! Returns:
         !    indx: spin-channel and index of a two_body integral store which contains the
         !        <ij|o_2|ab> integral, assuming the integral is non-zero by spin
@@ -510,12 +514,11 @@ contains
         !     This is not optimised for RHF systems, where the spin-channel is
         !     always 1.
 
-        use basis, only: basis_global
-        use system
-
+        use basis_types, only: basis_fn_t
         use utils, only: tri_ind
 
         type(int_indx) :: indx
+        type(basis_fn_t), intent(in) :: basis_fns(:)
         logical, intent(in) :: uhf
         integer, intent(in) :: i, j, a, b
 
@@ -547,8 +550,8 @@ contains
             jj = j
             bb = b
         end if
-        ia = tri_ind(basis_global%basis_fns(ii)%spatial_index, basis_global%basis_fns(aa)%spatial_index)
-        jb = tri_ind(basis_global%basis_fns(jj)%spatial_index, basis_global%basis_fns(bb)%spatial_index)
+        ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
+        jb = tri_ind(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
 
         ! Comine ia and jb in a unique way.
         ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
@@ -579,8 +582,8 @@ contains
                 jj = aa
             end if
 
-            if (basis_global%basis_fns(ii)%ms == -1) then
-                if (basis_global%basis_fns(jj)%ms == -1) then
+            if (basis_fns(ii)%ms == -1) then
+                if (basis_fns(jj)%ms == -1) then
                     ! down down down down
                     indx%spin_channel = 1
                 else
@@ -588,7 +591,7 @@ contains
                     indx%spin_channel = 3
                 end if
             else
-                if (basis_global%basis_fns(jj)%ms == 1) then
+                if (basis_fns(jj)%ms == 1) then
                     ! up up up up
                     indx%spin_channel = 2
                 else
@@ -602,7 +605,7 @@ contains
 
     end function two_body_int_indx
 
-    subroutine store_two_body_int_mol(i, j, a, b, intgrl, suppress_err_msg, store, ierr)
+    subroutine store_two_body_int_mol(i, j, a, b, intgrl, basis_fns, suppress_err_msg, store, ierr)
 
         ! Store <ij|o_2|ab> in the appropriate slot in the two-body integral store.
         ! The store does not have room for non-zero integrals, so it is assumed
@@ -615,6 +618,7 @@ contains
         !    i,j,a,b: (indices of) spin-orbitals.
         !    intgrl: <ij|o_2|ab>, where o_2 is a two-electron operator.  Note
         !       the integral is expressed in *PHYSICIST'S NOTATION*.
+        !    basis_fns: list of single-particle basis functions.
         !    suppress_err_msg: if true, don't print out any error messages.
         ! In/out:
         !    store: two-body integral store.  On exit the <ij|o_2|ab> is also
@@ -623,7 +627,7 @@ contains
         !    ierr: 0 if no error is encountered, 1 if integral should be non-zero
         !       by symmetry but is larger than depsilon.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
 
         use const, only: depsilon
@@ -631,6 +635,7 @@ contains
 
         integer, intent(in) :: i, j, a, b
         real(p), intent(in) :: intgrl
+        type(basis_fn_t), intent(in) :: basis_fns(:)
         logical, intent(in) :: suppress_err_msg
         type(two_body), intent(inout) :: store
         integer, intent(out) :: ierr
@@ -642,15 +647,15 @@ contains
         ierr = 0
 
         ! Should integral be non-zero by symmetry?
-        sym_ij = cross_product_pg_basis(i, j)
-        sym_ab = cross_product_pg_basis(a, b)
+        sym_ij = cross_product_pg_basis(i, j, basis_fns)
+        sym_ab = cross_product_pg_basis(a, b, basis_fns)
         sym = cross_product_pg_sym(pg_sym_conj(sym_ij), sym_ab)
         sym = cross_product_pg_sym(sym, store%op_sym)
 
-        if (is_gamma_irrep_pg_sym(sym) .and. basis_global%basis_fns(i)%ms == basis_global%basis_fns(a)%ms &
-                                       .and. basis_global%basis_fns(j)%ms == basis_global%basis_fns(b)%ms) then
+        if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
+                                       .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             ! Store integral
-            indx = two_body_int_indx(store%uhf, i, j, a, b)
+            indx = two_body_int_indx(store%uhf, i, j, a, b, basis_fns)
             store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
         else if (abs(intgrl) > depsilon) then
             if (.not.suppress_err_msg) then
@@ -663,11 +668,12 @@ contains
 
     end subroutine store_two_body_int_mol
 
-    pure function get_two_body_int_mol(store, i, j, a, b) result(intgrl)
+    pure function get_two_body_int_mol(store, i, j, a, b, basis_fns) result(intgrl)
 
         ! In:
         !    store: two-body integral store.
         !    i,j,a,b: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
         ! Returns:
         !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
         !    the (j,b) co-density involving a two-body operator o_2 given by
@@ -678,33 +684,35 @@ contains
         !    then it is faster to call get_two_body_int_mol_nonzero.
         !    It is also faster to call RHF- or UHF-specific routines.
 
-        use basis, only: basis_global
+        use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
 
         real(p) :: intgrl
         type(two_body), intent(in) :: store
+        type(basis_fn_t), intent(in) :: basis_fns(:)
         integer, intent(in) :: i, j, a, b
 
         integer :: sym_ij, sym_ab, sym
 
-        sym_ij = pg_sym_conj(cross_product_pg_basis(i, j))
-        sym_ab = cross_product_pg_basis(a, b)
+        sym_ij = pg_sym_conj(cross_product_pg_basis(i, j, basis_fns))
+        sym_ab = cross_product_pg_basis(a, b, basis_fns)
         sym = cross_product_pg_sym(sym_ij, sym_ab)
         sym = cross_product_pg_sym(sym, store%op_sym)
-        if (is_gamma_irrep_pg_sym(sym) .and. basis_global%basis_fns(i)%ms == basis_global%basis_fns(a)%ms &
-                                       .and. basis_global%basis_fns(j)%ms == basis_global%basis_fns(b)%ms) then
-            intgrl = get_two_body_int_mol_nonzero(store, i, j, a, b)
+        if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
+                                       .and. basis_fns(j)%ms == basis_fns(b)%ms) then
+            intgrl = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
         else
             intgrl = 0.0_p
         end if
 
     end function get_two_body_int_mol
 
-    pure function get_two_body_int_mol_nonzero(store, i, j, a, b) result(intgrl)
+    pure function get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns) result(intgrl)
 
         ! In:
         !    store: two-body integral store.
         !    i,j,a,b: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
         ! Returns:
         !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
         !    the (j,b) co-density involving a two-body operator o_2 given by
@@ -718,13 +726,16 @@ contains
         !    instead.
         !    It is faster to call RHF- or UHF-specific routines.
 
+        use basis_types, only: basis_fn_t
+
         real(p) :: intgrl
         type(two_body), intent(in) :: store
         integer, intent(in) :: i, j, a, b
+        type(basis_fn_t), intent(in) :: basis_fns(:)
 
         type(int_indx) :: indx
 
-        indx = two_body_int_indx(store%uhf, i, j, a, b)
+        indx = two_body_int_indx(store%uhf, i, j, a, b, basis_fns)
         intgrl = store%integrals(indx%spin_channel)%v(indx%indx)
 
     end function get_two_body_int_mol_nonzero
