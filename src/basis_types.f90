@@ -18,7 +18,7 @@ module basis_types
         !     units of the lattice vectors of the primitive unit cell.
         ! Obviously we should not convert between descriptions within one
         ! calculation! ;-)
-        integer, pointer :: l(:) => NULL()
+        integer, allocatable :: l(:)
         integer :: spatial_index
         ! Index of the irreducible representation spanned by the orbital.  Used only
         ! in systems where point group symmetry is used (e.g.  molecules).  See
@@ -124,16 +124,44 @@ module basis_types
             b2%total_basis_length = b1%total_basis_length
             b2%nbasis = b1%nbasis
 
-            allocate(b2%bit_lookup(2,b2%nbasis), source=b1%bit_lookup)
-            allocate(b2%basis_lookup(0:i0_end,b2%basis_length), source=b1%basis_lookup)
-            allocate(b2%basis_fns(b2%nbasis))
+            if (allocated(b1%bit_lookup)) then
+                allocate(b2%bit_lookup(2,b2%nbasis), source=b1%bit_lookup)
+            end if
+            if (allocated(b1%basis_lookup)) then
+                allocate(b2%basis_lookup(0:i0_end,b2%basis_length), source=b1%basis_lookup)
+            end if
 
-            n = size(b1%basis_fns(1)%l)
-            do i = 1, b2%nbasis
-                allocate(b2%basis_fns(i)%l(n))
-                b2%basis_fns(i) = b1%basis_fns(i)
-            end do
+            if (allocated(b1%basis_fns)) then
+                allocate(b2%basis_fns(b2%nbasis))
+                if (allocated(b1%basis_fns(1)%l)) then
+                    n = size(b1%basis_fns(1)%l)
+                    do i = 1, b2%nbasis
+                        allocate(b2%basis_fns(i)%l(n))
+                        b2%basis_fns(i) = b1%basis_fns(i)
+                    end do
+                end if
+            end if
 
         end subroutine copy_basis_t
+
+        subroutine dealloc_basis_t(b)
+
+            ! In/Out:
+            !    b: basis_t object to be deallocated.
+
+            type(basis_t), intent(inout) :: b
+
+            integer :: i
+
+            if (allocated(b%bit_lookup)) deallocate(b%bit_lookup)
+            if (allocated(b%basis_lookup)) deallocate(b%basis_lookup)
+            if (allocated(b%basis_fns)) then
+                do i = lbound(b%basis_fns, dim=1), ubound(b%basis_fns, dim=1)
+                    if (allocated(b%basis_fns(i)%l)) deallocate(b%basis_fns(i)%l)
+                end do
+                deallocate(b%basis_fns)
+            end if
+
+        end subroutine dealloc_basis_t
 
 end module basis_types

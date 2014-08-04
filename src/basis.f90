@@ -53,7 +53,7 @@ contains
         integer, intent(in), optional  :: sym, ms, lz
         integer :: ierr
 
-        if (.not.associated(b%l)) then
+        if (.not.allocated(b%l)) then
             allocate(b%l(sys%lattice%ndim),stat=ierr)
             call check_allocate('b%l',sys%lattice%ndim,ierr)
         end if
@@ -505,7 +505,7 @@ contains
 
         if (allocated(basis_global%basis_fns)) then
             do i = 1, basis_global%nbasis
-                deallocate(basis_global%basis_fns(i)%l, stat=ierr)
+                if (allocated(basis_global%basis_fns(i)%l)) deallocate(basis_global%basis_fns(i)%l, stat=ierr)
                 call check_deallocate('basis_global%basis_fns(i',ierr)
             end do
             deallocate(basis_global%basis_fns, stat=ierr)

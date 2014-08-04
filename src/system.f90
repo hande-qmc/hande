@@ -43,7 +43,10 @@ type sys_lattice_t
     ! See also specific structures.
 
     ! 1, 2 or 3 dimensions.
-    integer :: ndim = -1 ! set to a nonsensical value for error checking in input parser.
+    ! Set to a nonsensical value for error checking in input parser.
+    ! It is useful to default to 0 so we can still safely allocate arrays using it even
+    ! if we're not doing a lattice model.
+    integer :: ndim = 0
 
     ! Is a triangular lattice is being used? (not UEG)
     logical :: triangular_lattice = .false.
