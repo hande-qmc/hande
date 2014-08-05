@@ -198,20 +198,22 @@ contains
         nbasis_sym = 0
         nbasis_sym_spin = 0
 
-        do i = 1, sys%basis%nbasis
-            ! Encode the Lz into the symmetry. We shift the lz into higher bits (by *maxsym)  and offset.
-            if (maxLz>0) then
-                sys%basis%basis_fns(i)%sym = sys%basis%basis_fns(i)%sym + (sys%basis%basis_fns(i)%lz*Lz_divisor+Lz_offset)
-            endif
-            nbasis_sym(sys%basis%basis_fns(i)%sym) = nbasis_sym(sys%basis%basis_fns(i)%sym) + 1
-            sys%basis%basis_fns(i)%sym_index = nbasis_sym(sys%basis%basis_fns(i)%sym)
+        associate(nbasis=>sys%basis%nbasis, basis_fns=>sys%basis%basis_fns)
+            do i = 1, nbasis
+                ! Encode the Lz into the symmetry. We shift the lz into higher bits (by *maxsym)  and offset.
+                if (maxLz>0) then
+                    basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz*Lz_divisor+Lz_offset)
+                endif
+                nbasis_sym(basis_fns(i)%sym) = nbasis_sym(basis_fns(i)%sym) + 1
+                basis_fns(i)%sym_index = nbasis_sym(basis_fns(i)%sym)
 
-            ims = (sys%basis%basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
+                ims = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
 
-            nbasis_sym_spin(ims,sys%basis%basis_fns(i)%sym) = nbasis_sym_spin(ims,sys%basis%basis_fns(i)%sym) + 1
-            sys%basis%basis_fns(i)%sym_spin_index = nbasis_sym_spin(ims,sys%basis%basis_fns(i)%sym)
+                nbasis_sym_spin(ims,basis_fns(i)%sym) = nbasis_sym_spin(ims,basis_fns(i)%sym) + 1
+                basis_fns(i)%sym_spin_index = nbasis_sym_spin(ims,basis_fns(i)%sym)
 
-        end do
+            end do
+        end associate
 
         allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
         call check_allocate('sym_spin_basis_fns', size(sym_spin_basis_fns), ierr)
