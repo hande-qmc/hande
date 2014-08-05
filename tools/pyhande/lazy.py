@@ -7,8 +7,10 @@ import warnings
 import pyblock
 import pyhande.extract
 import pyhande.analysis
+import pyhande.weight
 
-def std_analysis(datafiles, start=0, select_function=None, extract_psips=False):
+def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
+                reweight_itts=0):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -23,6 +25,10 @@ select_function : function
     below for examples.
 extract_psips : bool
     also extract the mean number of psips from the calculation.
+reweight_itts : integer
+    reweight in an attempt to remove population control bias. According to
+    C. J. Umirigar et. al. J. Chem. Phys. 99, 2865 (1993) this should be set
+    to be a few correlation times.
 
 Returns
 -------
@@ -62,6 +68,15 @@ size from the blocking analysis:
     to_block = ['Shift', '\sum H_0j N_j', 'N_0']
     if extract_psips:
         to_block.append('# H psips')
+
+    # Compute and define new weighted columns to reblock.
+    if reweight_itts > 0:
+        data.append(pyhande.weight.reweight(data, metadata[0]['tau'], reweight_itts))
+        data['W * \sum H_0j N_j'] = data['\sum H_0j N_j'] * data['Weight']
+        data['W * N_0'] = data['N_0'] * data['Weight']
+        to_block.append('W * \sum H_0j N_j')
+        to_block.append('W * N_0')
+
     mc_data = data.ix[indx, to_block]
 
     if mc_data['Shift'][1] == mc_data['Shift'][2]:
@@ -73,11 +88,22 @@ size from the blocking analysis:
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
     reblock = pd.concat([reblock, proje], axis=1)
 
+    if reweight_itts > 0:
+        proje = pyhande.analysis.projected_energy(reblock, covariance, 
+                    data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0'
+                    ,col_name='Weighted Proj. E.')
+        reblock = pd.concat([reblock, proje], axis=1)
+
     # Summary (including pretty printing of estimates).
     (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock)
     if extract_psips:
         (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock,
                 keys=('# H psips',), summary_tuple=(opt_block, no_opt_block))
+    if reweight_itts > 0:
+        (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock,
+                keys=('W * \sum H_0j N_j', 'W * N_0', 'Weighted Proj. E.'),
+                summary_tuple=(opt_block, no_opt_block))
+
     estimates = []
     for (name, row) in opt_block.iterrows():
         estimates.append(
