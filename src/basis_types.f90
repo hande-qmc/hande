@@ -18,7 +18,9 @@ module basis_types
         !     units of the lattice vectors of the primitive unit cell.
         ! Obviously we should not convert between descriptions within one
         ! calculation! ;-)
-        ! For molecular systems l is not used and remains deallocated.
+        ! For molecular systems l is not used but is allocated with size 0.  This is
+        ! solely a legacy 'feature' and could be safely changed, if someone is so
+        ! inclined...
         integer, allocatable :: l(:)
         integer :: spatial_index
         ! Index of the irreducible representation spanned by the orbital.  Used only
