@@ -18,6 +18,7 @@ module basis_types
         !     units of the lattice vectors of the primitive unit cell.
         ! Obviously we should not convert between descriptions within one
         ! calculation! ;-)
+        ! For molecular systems l is not used and remains deallocated.
         integer, allocatable :: l(:)
         integer :: spatial_index
         ! Index of the irreducible representation spanned by the orbital.  Used only
@@ -59,8 +60,8 @@ module basis_types
         ! fortran numbers bits from 0...
         type(basis_fn_t), allocatable :: basis_fns(:) ! (nbasis)
 
-        ! number of basis functions.
-        ! For the Hubbard model is equal to twice the number of sites as there are
+        ! Number of basis functions.
+        ! For the Hubbard model this is equal to twice the number of sites as there are
         ! 2 spin orbitals per site, for the Heisenberg model to the number of sites,
         ! for UEG equal to twice the number of k-points within the energy cutoff and for
         ! read in (e.g. molecular) systems the number of single-particle states read in.
@@ -76,10 +77,10 @@ module basis_types
         ! strings separately, and so basis_length is 2*ceiling(nbasis/(2*i0_length)).
         integer :: basis_length
 
-        ! DMQMC uses two determinants for each psip to refer to the two components
-        ! of the relevant matrix element. Hence, the bitstring which is stored in DMQMC has
-        ! 2*basis_length components. There are some procedures which required basis_length
-        ! when used for stahndard FCIQMC but 2*basis_length when used for DMQMC. It is
+        ! DMQMC uses two determinants for each psip to refer to the two indices
+        ! of the relevant matrix element. Hence, the byte array used in DMQMC has
+        ! 2*basis_length components. There are some procedures which require basis_length
+        ! when used for standard FCIQMC but 2*basis_length when used for DMQMC. It is
         ! therefore useful to have a quantity which equal to 2*basis_length for DMQMC and
         ! equal to basis_length for other methods. Then a procedure can use this quantity
         ! and will work for both methods, making it general. This quantity is total_basis_length.
