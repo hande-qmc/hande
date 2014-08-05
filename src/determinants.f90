@@ -124,6 +124,7 @@ contains
 
         tot_ndets = nint(binom_r(sys%basis%nbasis, sys%nel), lint)
 
+        ! [review] - AJWT: Is there a reason this is done in determinants rather than in basis?
         ! See note in basis.
         if (separate_strings) then
             sys%basis%basis_length = 2*ceiling(real(sys%basis%nbasis)/(2*i0_length))
@@ -153,6 +154,8 @@ contains
                 'Number of integers used to store determinant bit-strings:', sys%basis%basis_length
         end if
 
+        ! [review] - AJWT: Again this feels like it should reall be in basis as it's a function
+        ! [review] - AJWT: of basis which just happens to be used by determinants.
         ! Lookup arrays.
         allocate(sys%basis%bit_lookup(2,sys%basis%nbasis), stat=ierr)
         call check_allocate('sys%basis%bit_lookup',2*sys%basis%nbasis,ierr)

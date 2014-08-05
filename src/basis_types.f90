@@ -88,6 +88,10 @@ module basis_types
         ! and will work for both methods, making it general. This quantity is total_basis_length.
         ! total_basis_length can then be used when we want to refer to *both* determinants
         ! in DMQMC, and hence the entire bitstring.
+        ! [review] - AJWT: This looks ok for now but does make me feel a little uneasy.
+        ! [review] - AJWT:   It feels like either it should be the whole basis for DMQMC
+        ! [review] - AJWT:   or perhaps we need to abstract the concept of the space we're
+        ! [review] - AJWT:   working in.  Either way it's something to keep an eye on.
         integer :: total_basis_length
 
         ! A determinant is stored in the array f(nbasis).  A basis function is occupied
