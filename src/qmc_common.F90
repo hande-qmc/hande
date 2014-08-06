@@ -417,7 +417,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, rep_comm)
+    subroutine initial_fciqmc_status(sys, rep_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -439,6 +439,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(nb_rep_t), optional, intent(inout) :: rep_comm
+        integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet
         integer(lint) :: ntot_particles(sampling_size)
@@ -469,7 +470,7 @@ contains
 #ifdef PARALLEL
         if (present(rep_comm)) then
             D0_population = D0_population_cycle*ncycles
-            call local_energy_estimators(rep_comm%rep_info)
+            call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
             call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -706,6 +707,44 @@ contains
 
     end subroutine send_tau
 
+    subroutine init_non_blocking_comm(spawn, request, send_counts, restart_list, restart)
+
+        ! Deal with initial send of data when using non-blocking communications.
+
+        ! In/Out:
+        !    spawn: spawned array we we be sending.
+        !    request: array of requests for non-blocking communications
+        !    send_counts: number of elements to send from each processor
+        !    restart_list: walkers spawned from final iteration of a restart
+        !                  calculation. These need to be evolved and merged.
+        ! In:
+        !    restart: doing a restart calculation or not.
+
+        use spawn_data, only: spawn_t, non_blocking_send
+        use parallel, only: iproc, nthreads
+
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(inout) :: request(0:), send_counts(0:)
+        type(spawn_t), intent(inout) :: restart_list
+        logical, intent(in) :: restart
+
+        integer :: start, nspawn
+
+        send_counts = 0
+
+        if (restart) then
+            start = spawn%head_start(0,iproc) + nthreads
+            nspawn = restart_list%head(0,0)
+            send_counts(iproc) = restart_list%head(0,0)
+            spawn%sdata(:,start:start+nspawn) = restart_list%sdata(:,:nspawn)
+        else
+            send_counts = 0
+        end if
+
+        call non_blocking_send(spawn, send_counts, request)
+
+    end subroutine init_non_blocking_comm
+
     subroutine end_non_blocking_comm(sys, tinitiator, ireport, spawn, request_s, request_rep, report_time, ntot_particles)
 
         ! Subroutine dealing with the last iteration when using non-blocking communications.
@@ -753,9 +792,11 @@ contains
 
         ! Need to receive walkers sent from final iteration and merge into main list.
         call receive_spawned_walkers(spawn, request_s)
-        call annihilate_wrapper_non_blocking_spawn(spawn, tinitiator)
-        call annihilate_main_list_wrapper(sys, tinitiator, spawn)
-        ! Receive final send of report loop quantities.
+        if (.not. dump_restart_file) then
+            call annihilate_wrapper_non_blocking_spawn(spawn, tinitiator)
+            call annihilate_main_list_wrapper(sys, tinitiator, spawn)
+            ! Receive final send of report loop quantities.
+        end if
         call update_energy_estimators_recv(request_rep, ntot_particles)
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 

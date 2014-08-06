@@ -74,13 +74,10 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
+
         if (non_blocking_comm) then
-            ! For non-blocking communications we need to initially send zero walkers
-            ! to all processors this is so we don't have to deal with a special case
-            ! in the receive step later on.
-            send_counts = 0
-            call non_blocking_send(qmc_spawn, send_counts, req_data_s)
-            call initial_fciqmc_status(sys, report_comm)
+            call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart)
+            call initial_fciqmc_status(sys, report_comm, send_counts(iproc)/received_list%element_len)
         else
             call initial_fciqmc_status(sys)
         end if
