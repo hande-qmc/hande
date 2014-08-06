@@ -111,6 +111,107 @@ module basis_types
 
     contains
 
+        subroutine init_basis_strings(b, separate_strings)
+
+            ! Initialise the string information in a basis_t object for
+            ! converting a bit-string representation of a list of orbitials to/from the
+            ! integer list.
+
+            ! In/Out:
+            !   b: basis_t object to be set.  On input b%nbasis must be set.  On output
+            !   the bit string look up tables
+            ! In:
+            !   separate_strings: true if the alpha and beta orbitals are stored in
+            !       separate strings rather than in alternating within one string.
+
+            use calc, only: doing_calc, dmqmc_calc
+            use const, only: i0_end, i0_length
+            use checking, only: check_allocate
+
+            type(basis_t), intent(inout) :: b
+            logical, intent(in) :: separate_strings
+
+            integer :: i, bit_element, bit_pos, ierr
+
+            if (separate_strings) then
+                b%basis_length = 2*ceiling(real(b%nbasis)/(2*i0_length))
+            else
+                b%basis_length = ceiling(real(b%nbasis)/i0_length)
+            end if
+
+            if(doing_calc(dmqmc_calc)) then
+                b%total_basis_length = 2*b%basis_length
+            else
+                b%total_basis_length = b%basis_length
+            end if
+
+            ! Lookup arrays.
+            allocate(b%bit_lookup(2,b%nbasis), stat=ierr)
+            call check_allocate('b%bit_lookup',2*b%nbasis,ierr)
+            allocate(b%basis_lookup(0:i0_end,b%basis_length), stat=ierr)
+            call check_allocate('b%basis_lookup',i0_length*b%basis_length,ierr)
+            b%basis_lookup = 0
+
+            if (separate_strings) then
+                do i = 1, b%nbasis-1, 2
+                    ! find position of alpha orbital
+                    bit_pos = mod((i+1)/2, i0_length) - 1
+                    if (bit_pos == -1) bit_pos = i0_end
+                    bit_element = ((i+1)/2+i0_end)/i0_length
+                    b%bit_lookup(:,i) = (/ bit_pos, bit_element /)
+                    b%basis_lookup(bit_pos, bit_element) = i
+                    ! corresponding beta orbital is in the same position in the
+                    ! second half of the string.
+                    bit_element = bit_element + b%basis_length/2
+                    b%bit_lookup(:,i+1) = (/ bit_pos, bit_element /)
+                    b%basis_lookup(bit_pos, bit_element) = i+1
+                end do
+            else
+                do i = 1, b%nbasis
+                    bit_pos = mod(i, i0_length) - 1
+                    if (bit_pos == -1) bit_pos = i0_end
+                    bit_element = (i+i0_end)/i0_length
+                    b%bit_lookup(:,i) = (/ bit_pos, bit_element /)
+                    b%basis_lookup(bit_pos, bit_element) = i
+                end do
+            end if
+
+        end subroutine init_basis_strings
+
+        subroutine print_basis_metadata(b, nel, heisenberg_system)
+
+            ! Print out metadata regarding the basis (but not the basis itself).
+
+            ! In:
+            !    b: basis_t to be (partly) printed.
+            !    nel: number of electrons in the system
+            !    heisenberg_system: true if the system of interest is a Heisenberg model.
+
+            use utils, only: int_fmt
+            use parallel, only: parent
+            use const, only: i0_length
+
+            type(basis_t), intent(in) :: b
+            integer, intent(in) :: nel
+            logical, intent(in) :: heisenberg_system
+
+            character(4) :: fmt1(4)
+
+            if (parent) then
+                fmt1 = int_fmt((/nel, b%nbasis, i0_length, b%basis_length/), padding=1)
+                if (heisenberg_system) then
+                    write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', nel
+                else
+                    write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', nel
+                end if
+                write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', b%nbasis
+                write (6,'(/,1X,a61,'//fmt1(3)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
+                write (6,'(1X,a57,'//fmt1(4)//',/)') &
+                    'Number of integers used to store determinant bit-strings:', b%basis_length
+            end if
+
+        end subroutine print_basis_metadata
+
         subroutine copy_basis_t(b1, b2)
 
             ! Copy a basis_t object into a new basis_t object.

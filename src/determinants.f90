@@ -104,10 +104,9 @@ contains
         ! integer list of orbitals to bit strings and vice versa.
 
         ! In/Out:
-        !    sys: system being studied.  On input system-level properties have been
-        !         set (as in init_system, e.g. sys%nel, sys%lattice, etc).  On output
-        !         sys%basis%bit_lookup and sys%basis%basis_lookup tables have been
-        !         created.
+        !    sys: system being studied.  On input system-level properties (as in
+        !         init_system,  e.g. sys%nel, sys%lattice, etc) and basis-level
+        !         properties (as in init_basis_t) have been set.
 
         use checking, only: check_allocate
         use utils, only: binom_r
@@ -116,76 +115,16 @@ contains
                         dmqmc_calc, ras, ras1, ras3, ras1_min, truncation_level
         use system, only: sys_t, heisenberg
 
-        type(sys_t), intent(inout) :: sys
+        type(sys_t), intent(in) :: sys
 
         integer :: i, j, k, bit_pos, bit_element, ierr, site_index
-        character(4) :: fmt1(5)
+        character(4) :: fmt1
         integer(lint) :: tot_ndets
 
         tot_ndets = nint(binom_r(sys%basis%nbasis, sys%nel), lint)
-
-        ! [review] - AJWT: Is there a reason this is done in determinants rather than in basis?
-        ! See note in basis.
-        if (separate_strings) then
-            sys%basis%basis_length = 2*ceiling(real(sys%basis%nbasis)/(2*i0_length))
-        else
-            sys%basis%basis_length = ceiling(real(sys%basis%nbasis)/i0_length)
-        end if
-
-        if(doing_calc(dmqmc_calc)) then
-            sys%basis%total_basis_length = 2*sys%basis%basis_length
-        else
-            sys%basis%total_basis_length = sys%basis%basis_length
-        end if
-
-        if (parent) then
-            fmt1 = int_fmt((/sys%nel, sys%basis%nbasis, 0, i0_length, sys%basis%basis_length/), padding=1)
-            fmt1(3) = int_fmt(tot_ndets, padding=1)
-            if (sys%system == heisenberg) then
-                write (6,'(1X,a22,'//fmt1(1)//')') 'Number of alpha spins:', sys%nel
-            else
-                write (6,'(1X,a20,'//fmt1(1)//')') 'Number of electrons:', sys%nel
-            end if
-            write (6,'(1X,a26,'//fmt1(2)//')') 'Number of basis functions:', sys%basis%nbasis
-            if (doing_calc(exact_diag+lanczos_diag)) &
-                write (6,'(1X,a32,'//fmt1(3)//')') 'Total size of determinant space:', tot_ndets
-            write (6,'(/,1X,a61,'//fmt1(4)//')') 'Bit-length of integers used to store determinant bit-strings:', i0_length
-            write (6,'(1X,a57,'//fmt1(5)//',/)') &
-                'Number of integers used to store determinant bit-strings:', sys%basis%basis_length
-        end if
-
-        ! [review] - AJWT: Again this feels like it should reall be in basis as it's a function
-        ! [review] - AJWT: of basis which just happens to be used by determinants.
-        ! Lookup arrays.
-        allocate(sys%basis%bit_lookup(2,sys%basis%nbasis), stat=ierr)
-        call check_allocate('sys%basis%bit_lookup',2*sys%basis%nbasis,ierr)
-        allocate(sys%basis%basis_lookup(0:i0_end,sys%basis%basis_length), stat=ierr)
-        call check_allocate('sys%basis%basis_lookup',i0_length*sys%basis%basis_length,ierr)
-        sys%basis%basis_lookup = 0
-
-        if (separate_strings) then
-            do i = 1, sys%basis%nbasis-1, 2
-                ! find position of alpha orbital
-                bit_pos = mod((i+1)/2, i0_length) - 1
-                if (bit_pos == -1) bit_pos = i0_end
-                bit_element = ((i+1)/2+i0_end)/i0_length
-                sys%basis%bit_lookup(:,i) = (/ bit_pos, bit_element /)
-                sys%basis%basis_lookup(bit_pos, bit_element) = i
-                ! corresponding beta orbital is in the same position in the
-                ! second half of the string.
-                bit_element = bit_element + sys%basis%basis_length/2
-                sys%basis%bit_lookup(:,i+1) = (/ bit_pos, bit_element /)
-                sys%basis%basis_lookup(bit_pos, bit_element) = i+1
-            end do
-        else
-            do i = 1, sys%basis%nbasis
-                bit_pos = mod(i, i0_length) - 1
-                if (bit_pos == -1) bit_pos = i0_end
-                bit_element = (i+i0_end)/i0_length
-                sys%basis%bit_lookup(:,i) = (/ bit_pos, bit_element /)
-                sys%basis%basis_lookup(bit_pos, bit_element) = i
-            end do
-        end if
+        fmt1 = int_fmt(tot_ndets, padding=1)
+        if (parent .and. doing_calc(exact_diag+lanczos_diag)) &
+                write (6,'(1X,a32,'//fmt1//')') 'Total size of determinant space:', tot_ndets
 
         ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
         ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...

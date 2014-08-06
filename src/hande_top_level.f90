@@ -25,8 +25,8 @@ contains
         use parse_input, only: read_input, check_input, distribute_input
         use system
         use basis, only: init_model_basis_fns
-        use basis_types, only: copy_basis_t, dealloc_basis_t
-        use determinants, only: init_determinants
+        use basis_types, only: copy_basis_t, dealloc_basis_t, init_basis_strings, print_basis_metadata
+        use determinants, only: init_determinants, separate_strings
         use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, nthreads, parent
@@ -71,6 +71,8 @@ contains
             call init_model_basis_fns(sys)
         end if
 
+        call init_basis_strings(sys%basis, separate_strings)
+        call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
         call init_determinants(sys)
         call init_determinant_enumeration()
 
