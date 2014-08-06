@@ -32,7 +32,8 @@ contains
         use basis, only: basis_fn, nbasis, basis_fns, end_basis_fns, write_basis_fn, &
                          write_basis_fn_header
         use molecular_integrals
-        use point_group_symmetry, only: init_pg_symmetry
+        use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
+                                        is_gamma_irrep_pg_sym, pg_sym_conj
         use system, only: sys_t
 
         use checking, only: check_allocate, check_deallocate
@@ -573,7 +574,13 @@ contains
                                         end if
                                     else
                                         ! < i a | b i > (or a permutation thereof)
-                                        if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2) then
+                                        ! For systems with complex orbitals (but real integrals)
+                                        ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
+                                        if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
+                                            is_gamma_irrep_pg_sym(                                          &
+                                                cross_product_pg_sym(pg_sym_conj(basis_fns(active(1))%sym), &
+                                                                     basis_fns(active(2))%sym)))            then
+
                                             ! Update <j|h|a> with contribution <ij|ai>.
                                             x = get_one_body_int_mol(one_e_h_integrals, active(1), active(2)) - x
                                             call store_one_body_int_mol(active(1), active(2), x, int_err > max_err_msg, &
