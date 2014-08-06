@@ -1,6 +1,7 @@
 '''Attempt to remove population control bias by reweighting averages.'''
 
 import pandas as pd
+import numpy as np
 from math import exp
 
 def reweight(data, tstep, weight_itts, weight_key='Shift'):
@@ -31,14 +32,13 @@ data : :class:`pandas.DataFrame`
     HANDE QMC data. with weights appended
 '''
     weights = []
+    to_prod = np.exp(-tstep*data[weight_key])
     for i in range(len(data[weight_key])):
-        weight = 1.0
-        for j in range(i-weight_itts, i):
-            if j > 0:
-                weight = weight*exp(-tstep*data[weight_key][j])
-            else:
-                weight = weight
-        weights.append(weight)
+        if i-weight_itts > 0:
+            weights.append(np.prod(to_prod[i-weight_itts:i]))
+        else:
+            weights.append(np.prod(to_prod[0:i-1]))
+
     data['Weight'] = weights
 
     return data
