@@ -60,7 +60,7 @@ contains
         type(basis_fn), allocatable :: all_basis_fns(:)
 
         ! Integrals
-        integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb
+        integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb, ti
         real(dp) :: x
 
         ! reading in...
@@ -512,6 +512,7 @@ contains
                                 if (ii == aa .and. jj == bb .and. ii == jj) then
                                     if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                         ! RHF calculations: need to include <i,up i,down|i,up i,down>.
+
                                         sys%read_in%Ecore = sys%read_in%Ecore + x
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
@@ -529,12 +530,17 @@ contains
                                 else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
                                          ii == jj .and. aa == bb .and. ii /= aa) then
                                     ! <ij|ji>, i/=j (or <ii|jj> version)
-                                    if (seen_ijij(tri_ind_reorder(i,j)) < 2) then
+                                    if (ii == jj) then
+                                        ti = tri_ind_reorder(i, a)
+                                    else
+                                        ti = tri_ind_reorder(i, j)
+                                    end if
+                                    if (seen_ijij(ti) < 2) then
                                         ! If RHF, then need to include:
                                         !   <i,up j,up|j,up, i,up>
                                         !   <i,down j,down|j,down, i,down>
                                         sys%read_in%Ecore = sys%read_in%Ecore - rhf_fac*x
-                                        seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 2
+                                        seen_ijij(ti) = seen_ijij(ti) + 2
                                     end if
                                 end if
                             case(2)
