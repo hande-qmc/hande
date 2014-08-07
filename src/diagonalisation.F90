@@ -609,8 +609,8 @@ contains
 
         type(basis_t), intent(in) :: basis
         real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))
-        integer(i0) :: f1(basis%basis_length), f2(basis%basis_length)
-        integer(i0) :: f3(2*basis%basis_length)
+        integer(i0) :: f1(basis%string_len), f2(basis%string_len)
+        integer(i0) :: f3(2*basis%string_len)
         integer :: i, j, rdm_size, info, ierr, lwork
         integer(i0) :: end1, end2
         real(p), allocatable :: work(:)
@@ -627,8 +627,8 @@ contains
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
                     ! In f3, concatenate the two bitstrings.
-                    f3(1:basis%basis_length) = dets_list(:,i)
-                    f3(basis%basis_length+1:basis%basis_length*2) = dets_list(:,j)
+                    f3(1:basis%string_len) = dets_list(:,i)
+                    f3(basis%string_len+1:basis%string_len*2) = dets_list(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
                     call decode_dm_bitstring(basis,f3,1,1)

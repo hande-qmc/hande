@@ -43,9 +43,9 @@ integer :: ueg_basis_max
 ! basis functions corresponding to *alpha* orbitals are set.
 ! For systems with dimensionality lower than 3, the higher ki values are set to
 ! 0, i.e. dimensions:
-! (0:basis_length,-N:N,0,0) (1D)
-! (0:basis_length,-N:N,-N:N,0) (2D)
-! (0:basis_length,-N:N,-N:N,-N:N) (3D)
+! (0:string_len,-N:N,0,0) (1D)
+! (0:string_len,-N:N,-N:N,0) (2D)
+! (0:string_len,-N:N,-N:N,-N:N) (3D)
 ! NOTE: this contains values of k_i+k_j which cannot be formed by the basis with
 ! the energy cutoff.  Memory can be saved by not using a cubic array for
 ! k_i+k_j...
@@ -149,7 +149,7 @@ contains
 
         k = 0
         k(1:sys%lattice%ndim) = 2*ueg_basis_max
-        allocate(ueg_ternary_conserve(0:sys%basis%basis_length, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
+        allocate(ueg_ternary_conserve(0:sys%basis%string_len, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
         call check_allocate('ueg_ternary_conserve', size(ueg_ternary_conserve), ierr)
         ueg_ternary_conserve = 0_i0
         !$omp parallel do default(none) shared(k,sys,ueg_ternary_conserve,sys%basis) &

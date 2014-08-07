@@ -50,7 +50,7 @@ contains
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
 
-        integer(i0) :: f_child(sys%basis%basis_length)
+        integer(i0) :: f_child(sys%basis%string_len)
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det, nspawn_events
         type(excit) :: connection

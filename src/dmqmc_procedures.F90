@@ -9,10 +9,10 @@ implicit none
 type rdm
     ! The total number of sites in subsystem A.
     integer :: A_nsites
-    ! Similar to basis_length, rdm_basis_length is the length of the byte array
+    ! Similar to string_len, rdm_string_len is the length of the byte array
     ! necessary to contain a bit for each subsystem-A basis function. An array
     ! of twice this length is stored to hold both RDM indices.
-    integer :: rdm_basis_length
+    integer :: rdm_string_len
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
     ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
@@ -28,7 +28,7 @@ type rdm
     ! bit_pos(i,:,2) will not be sorted). This is very important so that
     ! equivalent psips will contribute to the same RDM element.
     integer, allocatable :: bit_pos(:,:,:)
-    ! Two bitstrings of length rdm_basis_length. To be used as temporary
+    ! Two bitstrings of length rdm_string_len. To be used as temporary
     ! bitstrings to prevent having to regularly allocate different length
     ! bitstrings for different RDMs.
     integer(i0), allocatable :: end1(:), end2(:)
@@ -80,8 +80,8 @@ contains
          if (doing_dmqmc_calc(dmqmc_correlation)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
              correlation_index = number_dmqmc_estimators
-             allocate(correlation_mask(1:sys%basis%basis_length), stat=ierr)
-             call check_allocate('correlation_mask',sys%basis%basis_length,ierr)
+             allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
+             call check_allocate('correlation_mask',sys%basis%string_len,ierr)
              correlation_mask = 0_i0
              do i = 1, 2
                  bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
@@ -252,11 +252,11 @@ contains
         ! Loop over all subsystems for which we are calculating RDMs.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
-            rdms(i)%rdm_basis_length = ceiling(real(rdms(i)%A_nsites)/i0_length)
-            allocate(rdms(i)%end1(rdms(i)%rdm_basis_length), stat=ierr)
-            call check_allocate('rdms(i)%end1', rdms(i)%rdm_basis_length, ierr)
-            allocate(rdms(i)%end2(rdms(i)%rdm_basis_length), stat=ierr)
-            call check_allocate('rdms(i)%end2', rdms(i)%rdm_basis_length, ierr)
+            rdms(i)%rdm_string_len = ceiling(real(rdms(i)%A_nsites)/i0_length)
+            allocate(rdms(i)%end1(rdms(i)%rdm_string_len), stat=ierr)
+            call check_allocate('rdms(i)%end1', rdms(i)%rdm_string_len, ierr)
+            allocate(rdms(i)%end2(rdms(i)%rdm_string_len), stat=ierr)
+            call check_allocate('rdms(i)%end2', rdms(i)%rdm_string_len, ierr)
             rdms(i)%end1 = 0_i0
             rdms(i)%end2 = 0_i0
 
@@ -264,12 +264,12 @@ contains
             ! the following condition is met then the number of rows is greater
             ! than the maximum integer accessible. This would clearly be too
             ! large, so abort in this case.
-            if (calc_ground_rdm .and. rdms(i)%rdm_basis_length > 1) call stop_all("setup_rdm_arrays",&
+            if (calc_ground_rdm .and. rdms(i)%rdm_string_len > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
             ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
-                size_spawned_rdm = (rdms(i)%rdm_basis_length*2+sampling_size)*int_s_length/8
+                size_spawned_rdm = (rdms(i)%rdm_string_len*2+sampling_size)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_rdm_length < 0) then
                     ! Given in MB.  Convert.
@@ -282,14 +282,14 @@ contains
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
-                call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
+                call alloc_spawn_t(rdms(i)%rdm_string_len*2, sampling_size, .false., &
                                      spawned_rdm_length, spawn_cutoff, real_bit_shift, &
                                      27, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
                 ! the table is three times as large as the spawning arrays and
                 ! each hash value can have 7 clashes. This was found to give
                 ! reasonable performance.
-                call alloc_hash_table(3*spawned_rdm_length, 7, rdms(i)%rdm_basis_length*2, &
+                call alloc_hash_table(3*spawned_rdm_length, 7, rdms(i)%rdm_string_len*2, &
                                      0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
@@ -343,7 +343,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer(i0) :: A_mask(sys%basis%basis_length)
+        integer(i0) :: A_mask(sys%basis%string_len)
         real(p), allocatable :: sym_vecs(:,:)
         integer :: r(sys%lattice%ndim)
 
@@ -358,8 +358,8 @@ contains
                               &dmqmc_full_renyi_2 option to calculate the Renyi entropy of the &
                               &whole lattice.')
             else
-                allocate(rdms(i)%B_masks(sys%basis%basis_length,nsym_vec), stat=ierr)
-                call check_allocate('rdms(i)%B_masks', nsym_vec*sys%basis%basis_length,ierr)
+                allocate(rdms(i)%B_masks(sys%basis%string_len,nsym_vec), stat=ierr)
+                call check_allocate('rdms(i)%B_masks', nsym_vec*sys%basis%string_len,ierr)
                 allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
                 call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
             end if
@@ -400,9 +400,9 @@ contains
                 ! then flip all the bits.
                 rdms(i)%B_masks(:,j) = A_mask
                 do ipos = 0, i0_end
-                    basis_find = sys%basis%basis_lookup(ipos, sys%basis%basis_length)
+                    basis_find = sys%basis%basis_lookup(ipos, sys%basis%string_len)
                     if (basis_find == 0) then
-                        rdms(i)%B_masks(sys%basis%basis_length,j) = ibset(rdms(i)%B_masks(sys%basis%basis_length,j),ipos)
+                        rdms(i)%B_masks(sys%basis%string_len,j) = ibset(rdms(i)%B_masks(sys%basis%string_len,j),ipos)
                     end if
                 end do
                 rdms(i)%B_masks(:,j) = not(rdms(i)%B_masks(:,j))
@@ -543,7 +543,7 @@ contains
         integer(lint) :: i
         integer :: rand_basis, bits_set
         integer :: bit_element, bit_position
-        integer(i0) :: f(basis%basis_length)
+        integer(i0) :: f(basis%string_len)
         real(dp) :: rand_num
 
         do i = 1, npsips
@@ -571,14 +571,14 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_diagonal_density_matrix_particle(f,basis%basis_length, &
-                    basis%total_basis_length, real_factor,ireplica)
+            call create_diagonal_density_matrix_particle(f,basis%string_len, &
+                    basis%tensor_label_len, real_factor,ireplica)
 
         end do
 
     end subroutine random_distribution_heisenberg
 
-    subroutine create_diagonal_density_matrix_particle(f, basis_length, total_basis_length, nspawn, particle_type)
+    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly
@@ -587,10 +587,10 @@ contains
         ! In:
         !    f: bitstring representation of index of the diagonal element upon
         !        which a new psip shall be placed.
-        !    basis_length: length of bit array storing a many-particle basis function
+        !    string_len: length of bit array storing a many-particle basis function
         !        (e.g. a determinant or spin product).
-        !    total_basis_length: length of bit array storing the label of a density
-        !        matrix element (usually 2xbasis_length).
+        !    tensor_label_len: length of bit array storing the label of a density
+        !        matrix element (usually 2xstring_len).
         !    nspawn: the number of particles to be added to this diagonal
         !        element.
         !    particle_type: the label of the replica to which this particle is
@@ -601,11 +601,11 @@ contains
         use parallel
         use errors, only: stop_all
 
-        integer, intent(in) :: basis_length, total_basis_length
-        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: string_len, tensor_label_len
+        integer(i0), intent(in) :: f(string_len)
         integer(int_p), intent(in) :: nspawn
         integer ::particle_type
-        integer(i0) :: f_new(total_basis_length)
+        integer(i0) :: f_new(tensor_label_len)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -614,13 +614,13 @@ contains
 
         ! Create the bitstring of the determinant.
         f_new = 0_i0
-        f_new(:basis_length) = f
-        f_new((basis_length+1):(total_basis_length)) = f
+        f_new(:string_len) = f
+        f_new((string_len+1):(tensor_label_len)) = f
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
         iproc_spawn = modulo(murmurhash_bit_string(f_new, &
-                                total_basis_length, qmc_spawn%hash_seed), nprocs)
+                                tensor_label_len, qmc_spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
@@ -634,10 +634,10 @@ contains
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
         qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
-        ! indices 1 to total_basis_length store the bitstring.
-        qmc_spawn%sdata(:(total_basis_length),qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
+        ! indices 1 to tensor_label_len store the bitstring.
+        qmc_spawn%sdata(:(tensor_label_len),qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
         ! The final index stores the number of psips created.
-        qmc_spawn%sdata((total_basis_length)+particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
+        qmc_spawn%sdata((tensor_label_len)+particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_diagonal_density_matrix_particle
 
@@ -662,7 +662,7 @@ contains
         use basis_types, only: basis_t
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f(basis%total_basis_length)
+        integer(i0), intent(in) :: f(basis%tensor_label_len)
         integer, intent(in) :: irdm, isym
         integer :: i, bit_pos, bit_element
 
@@ -683,7 +683,7 @@ contains
                 rdms(irdm)%end1(bit_element) = ibset(rdms(irdm)%end1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of
             ! the bitstring.
-            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)+basis%basis_length),rdms(irdm)%bit_pos(i,isym,1))) &
+            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)+basis%string_len),rdms(irdm)%bit_pos(i,isym,1))) &
                 rdms(irdm)%end2(bit_element) = ibset(rdms(irdm)%end2(bit_element),bit_pos)
         end do
 
@@ -726,8 +726,8 @@ contains
         ! appropriate probability.
         do idet = 1, tot_walkers
 
-            excit_level = get_excitation_level(walker_dets(1:basis%basis_length,idet), &
-                    walker_dets(basis%basis_length+1:basis%total_basis_length,idet))
+            excit_level = get_excitation_level(walker_dets(1:basis%string_len,idet), &
+                    walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
 
             old_population = abs(walker_population(:,idet))
 

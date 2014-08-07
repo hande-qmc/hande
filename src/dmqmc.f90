@@ -103,10 +103,10 @@ contains
 
                         ! f points to the bitstring that is spawning, f2 to the
                         ! other bit string.
-                        cdet1%f => walker_dets(:sys%basis%basis_length,idet)
-                        cdet1%f2 => walker_dets((sys%basis%basis_length+1):(2*sys%basis%basis_length),idet)
-                        cdet2%f => walker_dets((sys%basis%basis_length+1):(2*sys%basis%basis_length),idet)
-                        cdet2%f2 => walker_dets(:sys%basis%basis_length,idet)
+                        cdet1%f => walker_dets(:sys%basis%string_len,idet)
+                        cdet1%f2 => walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet2%f => walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet2%f2 => walker_dets(:sys%basis%string_len,idet)
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.

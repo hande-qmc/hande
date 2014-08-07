@@ -199,8 +199,8 @@ contains
        real(p) :: unweighted_walker_pop(sampling_size)
 
        ! Get excitation.
-       excitation = get_excitation(sys%nel, sys%basis, walker_dets(:sys%basis%basis_length,idet), &
-                        walker_dets((1+sys%basis%basis_length):sys%basis%total_basis_length,idet))
+       excitation = get_excitation(sys%nel, sys%basis, walker_dets(:sys%basis%string_len,idet), &
+                        walker_dets((1+sys%basis%string_len):sys%basis%tensor_label_len,idet))
 
        ! When performing importance sampling the result is that certain
        ! excitation levels have smaller psips populations than the true density
@@ -482,7 +482,7 @@ contains
        integer, intent(in) :: idet
        type(excit), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
-       integer(i0) :: f(sys%basis%basis_length)
+       integer(i0) :: f(sys%basis%string_len)
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer :: sign_factor
 
@@ -496,7 +496,7 @@ contains
            ! and the same values as walker_dets at i and j. Hence, if f has
            ! two 1's or no 1's, we want sign_factor = +1. Else if we have one 1,
            ! we want sign_factor = -1.
-           f = iand(walker_dets(:sys%basis%basis_length,idet), correlation_mask)
+           f = iand(walker_dets(:sys%basis%string_len,idet), correlation_mask)
            ! Count if we have zero, one or two 1's.
            sign_factor = sum(count_set_bits(f))
            ! The operation below will map 0 and 2 to +1, and will map 1 to -1,
@@ -549,7 +549,7 @@ contains
        type(excit), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
-       integer(i0) :: f(sys%basis%basis_length)
+       integer(i0) :: f(sys%basis%string_len)
        integer :: n_up_plus
        integer :: total_sum
 
@@ -568,7 +568,7 @@ contains
            ! are nel spins up in total. Hence the matrix element will be written
            ! only in terms of the number of up spins on sublattice 1, to save
            ! computation.
-           f = iand(walker_dets(:sys%basis%basis_length,idet), lattice_mask)
+           f = iand(walker_dets(:sys%basis%string_len,idet), lattice_mask)
            n_up_plus = sum(count_set_bits(f))
            ! Below, the term in brackets and middle term come from the z
            ! component (the z operator is diagonal) and one nsites/4 factor
@@ -657,7 +657,7 @@ contains
        type(excit), intent(in) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
        integer :: irdm, isym, ireplica
-       integer(i0) :: f1(basis%basis_length), f2(basis%basis_length)
+       integer(i0) :: f1(basis%string_len), f2(basis%string_len)
 
        if (.not. (iteration > start_averaging .or. calc_inst_rdm)) return
 
@@ -668,8 +668,8 @@ contains
 
                ! Apply the mask for the B subsystem to set all sites in the A
                ! subsystem to 0.
-               f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis%basis_length,idet))
-               f2 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(basis%basis_length+1:basis%total_basis_length,idet))
+               f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis%string_len,idet))
+               f2 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
 
                ! Once this is done, check if the resulting bitstrings (which can
                ! only possibly have 1's in the B subsystem) are identical. If
@@ -693,7 +693,7 @@ contains
                        unweighted_walker_pop = real(walker_population(:,idet),p)*&
                                                 dmqmc_accumulated_probs(excitation%nexcit)/real_factor
                        ! Note, when storing the entire RDM (as done here), the
-                       ! maximum value of rdms(i)%rdm_basis_length is 1, so we
+                       ! maximum value of rdms(i)%rdm_string_len is 1, so we
                        ! only consider this one element here.
                        reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) = &
                            reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) + unweighted_walker_pop(1)
@@ -954,7 +954,7 @@ contains
 
         ! Loop over all RDMs being calculated.
         do irdm = 1, size(rdm_data)
-            rdm_bl = rdm_data(irdm)%rdm_basis_length
+            rdm_bl = rdm_data(irdm)%rdm_string_len
             ! Loop over the total population of RDM psips on this processor.
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
                 ! If on the diagonal of the RDM...
@@ -996,7 +996,7 @@ contains
 
         ! Loop over all RDMs being calculated.
         do irdm = 1, size(rdm_data)
-            rdm_bl = rdm_data(irdm)%rdm_basis_length
+            rdm_bl = rdm_data(irdm)%rdm_string_len
             ! Loop over the total population of RDM psips on this processor.
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
 

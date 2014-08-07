@@ -216,8 +216,8 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
-        integer(i0) :: f_mask(sys%basis%basis_length), f_not(sys%basis%basis_length), g(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0) :: f_mask(sys%basis%string_len), f_not(sys%basis%string_len), g(sys%basis%string_len)
         integer :: lattice_1_up, n, i, ipos, basis_find
         integer :: spin_config_data(2)
 
@@ -228,7 +228,7 @@ contains
         ! Find the number of 0-1 bonds where the 1 lies on the first sublattice.
         lattice_1_up = 0
         f_not = not(f)
-        do i = 1, sys%basis%basis_length
+        do i = 1, sys%basis%string_len
             do ipos = 0, i0_end
                 if (btest(f_mask(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)

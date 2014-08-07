@@ -23,7 +23,7 @@ implicit none
 ! Bit list of the Slater determinant.  See note for f in determinants module.
 ! We only store determinants of the same Ms and (for momentum space
 ! calculations) same ksum at a time.
-integer(i0), allocatable :: dets_list(:,:) ! (basis_length,ndets)
+integer(i0), allocatable :: dets_list(:,:) ! (string_len,ndets)
 
 ! Number of determinants stored in dets.
 ! This is the number of determinants enumerated in enumerate_determinants with
@@ -127,7 +127,7 @@ contains
         integer, allocatable :: nalpha_combinations(:)
         integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
         character(4) :: fmt1
-        integer(i0) :: f(sys%basis%basis_length)
+        integer(i0) :: f(sys%basis%string_len)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
         type(det_info) :: d0
@@ -153,8 +153,8 @@ contains
 
             ndets = sym_space_size(ref_sym)
 
-            allocate(dets_list(sys%basis%basis_length, ndets), stat=ierr)
-            call check_allocate('dets_list',sys%basis%basis_length*ndets,ierr)
+            allocate(dets_list(sys%basis%string_len, ndets), stat=ierr)
+            call check_allocate('dets_list',sys%basis%string_len*ndets,ierr)
         end if
 
         call alloc_det_info(sys, d0)

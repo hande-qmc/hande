@@ -484,7 +484,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(basis_length): bit string representation of the Slater determinant, D_i.
+        !    f(string_len): bit string representation of the Slater determinant, D_i.
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.
         !    fdata(:): additional information about the determinant (unused, for
@@ -537,7 +537,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !    f(string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant (unused, for interface
         !       compatibility only).
@@ -593,7 +593,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Requires hubbard%u and lattice%nsites.
-        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !    f(string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.
@@ -652,7 +652,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !    f(string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.

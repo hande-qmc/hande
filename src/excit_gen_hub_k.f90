@@ -508,7 +508,7 @@ contains
         ! allowed.
         ! In:
         !    sys: system object being studied.
-        !    f(basis_length): bit string representation of the Slater
+        !    f(string_len): bit string representation of the Slater
         !        determinant.
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
         !        (min length: sys%nvirt_alpha.)
@@ -523,7 +523,7 @@ contains
         use dSFMT_interface, only:  dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: unocc_list_alpha(:)
         integer, intent(in) :: ij_sym
         type(dSFMT_t), intent(inout) :: rng
@@ -554,7 +554,7 @@ contains
         ! without loss of generality.
         ! In:
         !    sys: system object being studied.
-        !    f(basis_length): bit string representation of the Slater
+        !    f(string_len): bit string representation of the Slater
         !        determinant.
         !    unocc_alpha: integer list of the unoccupied alpha spin-orbitals.
         !        (min length: sys%nvirt_alpha.)
@@ -572,7 +572,7 @@ contains
         use momentum_symmetry, only: sym_table, inv_sym
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: unocc_list_alpha(:)
         integer, intent(in) :: ij_sym
         type(dSFMT_t), intent(inout) :: rng
@@ -649,7 +649,7 @@ contains
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ab_sym
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: unocc_alpha(:)
 
         integer :: forbidden_excitations, a, b, a_pos, a_el, b_pos, b_el, ka, kb

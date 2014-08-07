@@ -28,7 +28,7 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(sys%basis%basis_length), f2(sys%basis%basis_length)
+        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
 
         type(excit) :: excitation
         integer :: occ_list(sys%nel)
@@ -85,7 +85,7 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
 
         integer :: occ_list(sys%nel)
         integer :: iel, jel, i, j

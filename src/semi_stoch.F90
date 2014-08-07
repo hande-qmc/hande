@@ -131,7 +131,7 @@ type semi_stoch_t
     real(p), allocatable :: vector(:) ! determ_sizes(iproc)
     ! dets stores the deterministic states across all processes.
     ! All states on process 0 are stored first, then process 1, etc...
-    integer(i0), allocatable :: dets(:,:) ! (basis_length, tot_size)
+    integer(i0), allocatable :: dets(:,:) ! (string_len, tot_size)
     ! A hash table which allows the index of a determinant in dets to be found.
     ! This is done by calculating the hash value of the given determinant.
     type(determ_hash_t) :: hash_table
@@ -196,7 +196,7 @@ contains
 
         ! Create temporary space for enumerating the deterministic space
         ! belonging to this processor only.
-        allocate(dets_this_proc(sys%basis%total_basis_length, walker_length), stat=ierr)
+        allocate(dets_this_proc(sys%basis%tensor_label_len, walker_length), stat=ierr)
         call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
         dets_this_proc = 0_i0
 
@@ -241,15 +241,15 @@ contains
 
         ! Array to hold all deterministic states from all processes.
         ! The memory required in MB.
-        determ_dets_mem = sys%basis%total_basis_length*determ%tot_size*i0_length/(8*10**6)
+        determ_dets_mem = sys%basis%tensor_label_len*determ%tot_size*i0_length/(8*10**6)
         if (print_info) write(6,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
             '# Memory required per core to store deterministic dets (MB):', determ_dets_mem
-        allocate(determ%dets(sys%basis%total_basis_length, determ%tot_size), stat=ierr)
+        allocate(determ%dets(sys%basis%tensor_label_len, determ%tot_size), stat=ierr)
         call check_allocate('determ%dets', size(determ%dets), ierr)
 
         ! Join and store all deterministic states from all processes.
 #ifdef PARALLEL
-        associate(tbl=>sys%basis%total_basis_length)
+        associate(tbl=>sys%basis%tensor_label_len)
             call mpi_allgatherv(dets_this_proc(:,1:determ%sizes(iproc)), tbl*determ%sizes(iproc), &
                             mpi_det_integer, determ%dets, tbl*determ%sizes, tbl*displs, &
                             mpi_det_integer, MPI_COMM_WORLD, ierr)
@@ -352,10 +352,10 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         logical, intent(in) :: print_info
 
-        integer :: i, iz, hash, mem_reqd, ierr, total_basis_length
+        integer :: i, iz, hash, mem_reqd, ierr, tensor_label_len
         integer, allocatable :: nclash(:)
 
-        total_basis_length = size(determ%dets, dim=1)
+        tensor_label_len = size(determ%dets, dim=1)
 
         associate(ht => determ%hash_table)
 
@@ -383,7 +383,7 @@ contains
                         
             ! Count the number of deterministic states with each hash value.
             do i = 1, determ%tot_size
-                hash = modulo(murmurhash_bit_string(determ%dets(:,i), total_basis_length, ht%seed), ht%nhash) + 1
+                hash = modulo(murmurhash_bit_string(determ%dets(:,i), tensor_label_len, ht%seed), ht%nhash) + 1
                 nclash(hash) = nclash(hash) + 1
             end do
 
@@ -397,7 +397,7 @@ contains
             ! Now loop over all states again and this time fill in the hash table.
             nclash = 0
             do i = 1, determ%tot_size
-                hash = modulo(murmurhash_bit_string(determ%dets(:,i), total_basis_length, ht%seed), ht%nhash) + 1
+                hash = modulo(murmurhash_bit_string(determ%dets(:,i), tensor_label_len, ht%seed), ht%nhash) + 1
                 iz = ht%hash_ptr(hash) + nclash(hash)
                 ht%ind(iz) = i
                 nclash(hash) = nclash(hash) + 1

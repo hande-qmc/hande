@@ -306,7 +306,7 @@ contains
 
             do icycle = 1, ncycles
 
-                D0_proc = assign_particle_processor(f0, sys%basis%basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                D0_proc = assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
                                                    qmc_spawn%move_freq, nprocs)
 
                 ! Update the shift of the excitor locations to be the end of this
@@ -780,7 +780,7 @@ contains
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
         real(p) :: hmatel, pgen
-        integer(i0) :: fexcit(sys%basis%basis_length)
+        integer(i0) :: fexcit(sys%basis%string_len)
         integer :: excitor_sign, excitor_level
 
         ! 1. Generate random excitation.
@@ -916,20 +916,20 @@ contains
         use const, only: i0_end
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: excitor(basis%basis_length)
+        integer(i0), intent(in) :: excitor(basis%string_len)
         integer, intent(in) :: excitor_population
-        integer(i0), intent(inout) :: cluster_excitor(basis%basis_length)
+        integer(i0), intent(inout) :: cluster_excitor(basis%string_len)
         real(p), intent(inout) :: cluster_population
         logical,  intent(out) :: allowed
 
         integer :: ibasis, ibit
-        integer(i0) :: excitor_excitation(basis%basis_length)
-        integer(i0) :: excitor_annihilation(basis%basis_length)
-        integer(i0) :: excitor_creation(basis%basis_length)
-        integer(i0) :: cluster_excitation(basis%basis_length)
-        integer(i0) :: cluster_annihilation(basis%basis_length)
-        integer(i0) :: cluster_creation(basis%basis_length)
-        integer(i0) :: permute_operators(basis%basis_length)
+        integer(i0) :: excitor_excitation(basis%string_len)
+        integer(i0) :: excitor_annihilation(basis%string_len)
+        integer(i0) :: excitor_creation(basis%string_len)
+        integer(i0) :: cluster_excitation(basis%string_len)
+        integer(i0) :: cluster_annihilation(basis%string_len)
+        integer(i0) :: cluster_creation(basis%string_len)
+        integer(i0) :: permute_operators(basis%string_len)
 
         ! Apply excitor to the cluster of excitors.
 
@@ -969,7 +969,7 @@ contains
             ! permute the creation and annihilation operators.  Each permutation
             ! incurs a sign change.
 
-            do ibasis = 1, basis%basis_length
+            do ibasis = 1, basis%string_len
                 do ibit = 0, i0_end
                     if (btest(excitor_excitation(ibasis),ibit)) then
                         if (btest(f0(ibasis),ibit)) then
@@ -1158,17 +1158,17 @@ contains
 
         real(dp) :: nsent(size(nparticles))
 
-        integer :: iexcitor, pproc, basis_length
+        integer :: iexcitor, pproc, string_len
 
         nsent = 0.0_dp
-        basis_length = size(walker_dets, dim=1)
+        string_len = size(walker_dets, dim=1)
 
         !$omp parallel do default(none) &
-        !$omp shared(tot_walkers, walker_dets, walker_populations, spawn, iproc, nprocs, basis_length) &
+        !$omp shared(tot_walkers, walker_dets, walker_populations, spawn, iproc, nprocs, string_len) &
         !$omp private(pproc) reduction(+:nsent)
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
-            pproc = assign_particle_processor(walker_dets(:,iexcitor), basis_length, spawn%hash_seed, &
+            pproc = assign_particle_processor(walker_dets(:,iexcitor), string_len, spawn%hash_seed, &
                                               spawn%hash_shift, spawn%move_freq, nprocs)
             if (pproc /= iproc) then
                 ! Need to move.

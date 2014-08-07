@@ -47,7 +47,7 @@ contains
 
         integer :: icycle, i, ierr, b
         integer :: ref_sym, det_sym
-        integer(i0) :: f(sys%basis%basis_length), f0(sys%basis%basis_length)
+        integer(i0) :: f(sys%basis%string_len), f0(sys%basis%string_len)
         integer :: occ_list(sys%nel)
         real(dp) :: space_size, naccept, nsuccess, weight
         real(dp), allocatable :: ptrunc_level(:)
@@ -235,7 +235,7 @@ contains
         !    sys: system being studied.  Unaltered on output.
         ! Out:
         !     f: bit string representation of random determinant.  Must have dimensions of
-        !        (at least) basis_length.
+        !        (at least) string_len.
         !     occ_list: list of occupied orbital of random determinant.  Must have
         !         dimensions of (at least) sys%nel.
 
@@ -319,7 +319,7 @@ contains
         !        other outputs are not set and statistics from this attempt should not be
         !        included.
         !    f: bit string representation of random determinant.  Must have dimensions of
-        !        (at least) basis_length.
+        !        (at least) string_len.
         !    occ_list: list of occupied orbital of random determinant.  Must have
         !        dimensions of (at least) sys%nel.
         !    weight: the weight of the generated determinant relative to other

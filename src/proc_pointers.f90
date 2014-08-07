@@ -15,7 +15,7 @@ abstract interface
         import :: i0, det_info
         implicit none
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info), intent(inout) :: d
     end subroutine i_decoder
     pure subroutine i_update_proj_energy(sys, f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
@@ -89,7 +89,7 @@ abstract interface
         implicit none
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
     end function i_sc0
     subroutine i_set_parent_flag(pop, f, determ_flag, flag)
         import :: i0, p
@@ -118,8 +118,8 @@ abstract interface
         import :: excit, i0, int_p
         implicit none
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f1(basis%basis_length)
-        integer(i0), intent(in) :: f2(basis%basis_length)
+        integer(i0), intent(in) :: f1(basis%string_len)
+        integer(i0), intent(in) :: f2(basis%string_len)
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: spawning_end, particle_indx

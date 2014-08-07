@@ -27,7 +27,7 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(sys%basis%basis_length), f2(sys%basis%basis_length)
+        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
         type(excit) :: excitation
 
@@ -101,7 +101,7 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer :: occ_list(sys%nel)
         integer :: i
 
@@ -184,7 +184,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 

@@ -101,8 +101,8 @@ contains
         if (restart) then
             allocate(occ_list0(sys%nel), stat=ierr)
             call check_allocate('occ_list0',sys%nel,ierr)
-            allocate(f0(sys%basis%basis_length), stat=ierr)
-            call check_allocate('f0',sys%basis%basis_length,ierr)
+            allocate(f0(sys%basis%string_len), stat=ierr)
+            call check_allocate('f0',sys%basis%string_len,ierr)
         else
             ref_det = 1
             do i = 2, ndets
@@ -114,8 +114,8 @@ contains
             ! Reference det
             H00 = hamil(ref_det,ref_det)
             if (.not.allocated(f0)) then
-                allocate(f0(sys%basis%basis_length), stat=ierr)
-                call check_allocate('f0',sys%basis%basis_length,ierr)
+                allocate(f0(sys%basis%string_len), stat=ierr)
+                call check_allocate('f0',sys%basis%string_len,ierr)
             end if
             if (.not.allocated(occ_list0)) then
                 allocate(occ_list0(sys%nel), stat=ierr)

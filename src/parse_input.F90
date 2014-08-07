@@ -307,7 +307,7 @@ contains
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
-                call readi(lanczos_basis_length)
+                call readi(lanczos_string_len)
             case('LANCZOS_SOLUTIONS','LANCZOS_SOLNS')
                 call readi(nlanczos_eigv)
             case('SPARSE_HAMILTONIAN')
@@ -630,7 +630,7 @@ contains
 
         ! Calculation specific checking.
         if (doing_calc(lanczos_diag)) then
-            if (lanczos_basis_length <= 0) call stop_all(this,'Lanczos basis not positive.')
+            if (lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
             if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
 
@@ -799,7 +799,7 @@ contains
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(lanczos_basis_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(lanczos_string_len, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(use_sparse_hamil, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

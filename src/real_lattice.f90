@@ -22,13 +22,13 @@ implicit none
 ! correct evaluation of the kinetic energy using bit operations.
 ! Further it enables us to pick up cases such as the 2x2 (non-tilted) system,
 ! where a site is connected to a different site and that site's periodic image.
-integer(i0), allocatable :: tmat(:,:) ! (basis_length, nbasis)
+integer(i0), allocatable :: tmat(:,:) ! (string_len, nbasis)
 
 ! Orbitals i and j are connected if the j-th bit of connected_orbs(:,i) is
 ! set.  This is a bit like tmat but without a bit set for a site being its own
 ! periodic image.  This is useful in FCIQMC for generating random
 ! excitations.
-integer(i0), allocatable :: connected_orbs(:,:) ! (basis_length, nbasis)
+integer(i0), allocatable :: connected_orbs(:,:) ! (string_len, nbasis)
 
 ! connected_sites(0,i) contains the number of unique sites connected to i.
 ! connected_sites(1:,i) contains the list of sites connected to site i (ie is the
@@ -103,10 +103,10 @@ contains
 
             t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
 
-            allocate(tmat(sys%basis%basis_length,sys%basis%nbasis), stat=ierr)
-            call check_allocate('tmat',sys%basis%basis_length*sys%basis%nbasis,ierr)
-            allocate(connected_orbs(sys%basis%basis_length,sys%basis%nbasis), stat=ierr)
-            call check_allocate('connected_orbs',sys%basis%basis_length*sys%basis%nbasis,ierr)
+            allocate(tmat(sys%basis%string_len,sys%basis%nbasis), stat=ierr)
+            call check_allocate('tmat',sys%basis%string_len*sys%basis%nbasis,ierr)
+            allocate(connected_orbs(sys%basis%string_len,sys%basis%nbasis), stat=ierr)
+            call check_allocate('connected_orbs',sys%basis%string_len*sys%basis%nbasis,ierr)
             allocate(sl%lvecs(sl%ndim,3**sl%ndim))
             call check_allocate('sl%lvecs',sl%ndim*(3**sl%ndim),ierr)
             if (sl%triangular_lattice) then
@@ -222,7 +222,7 @@ contains
         connected_sites = 0
         do i = 1, sys%basis%nbasis
             v = 0
-            do ind = 1, sys%basis%basis_length
+            do ind = 1, sys%basis%string_len
                 do pos = 0, i0_end
                     if (btest(connected_orbs(ind,i), pos)) then
                         v = v + 1
@@ -300,7 +300,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    f(basis_length): bit string representation of the Slater
+        !    f(string_len): bit string representation of the Slater
         !        determinant, D.
         ! Returns:
         !    The matrix element < D | U | D >
@@ -314,14 +314,14 @@ contains
 
         real(p) :: umatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer :: i
         integer(i0) :: b
 
         ! < D | U | D > = U*number of doubly occupied sites.
         if (separate_strings) then
             ! Just need to AND the alpha string with the beta string.
-            umatel = sum(count_set_bits(iand(f(:sys%basis%basis_length/2),f(sys%basis%basis_length/2+1:))))
+            umatel = sum(count_set_bits(iand(f(:sys%basis%string_len/2),f(sys%basis%string_len/2+1:))))
         else
             ! 1. Find the bit string representing the occupied beta orbitals.
             ! 2. Right shift it by one place.  The beta orbitals now line up with
@@ -332,7 +332,7 @@ contains
             !    orbitals occupied.
             ! 5. Hence < D | U | D >.
             umatel = 0.0_p
-            do i = 1, sys%basis%basis_length
+            do i = 1, sys%basis%string_len
                 b = iand(f(i), beta_mask)
                 umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
             end do

@@ -113,7 +113,7 @@ contains
         integer :: step, size_main_walker, size_spawned_walker
         integer :: nwalker_int, nwalker_int_p, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
-        integer(i0) :: f0_inv(sys%basis%basis_length)
+        integer(i0) :: f0_inv(sys%basis%string_len)
         integer(lint) :: tmp_lint
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
@@ -127,7 +127,7 @@ contains
             sampling_size = sampling_size + 1
         end if
 
-        ! Each determinant occupies basis_length kind=i0 integers,
+        ! Each determinant occupies string_len kind=i0 integers,
         ! sampling_size kind=int_p integers, sampling_size kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
         ! the projected estimator, then a further 2 reals are used per
@@ -142,14 +142,14 @@ contains
         nwalker_real = sampling_size + info_size
 
         ! Thus the number of bits occupied by each determinant in the main
-        ! walker list is given by basis_length*i0_length+nwalker_int*32+
+        ! walker list is given by string_len*i0_length+nwalker_int*32+
         ! nwalker_int_p*int_p_length+nwalker_real*32 (*64 if double precision).
         ! The number of bytes is simply 1/8 this.
 #ifdef SINGLE_PRECISION
-        size_main_walker = sys%basis%total_basis_length*i0_length/8 + nwalker_int_p*int_p_length/8 + &
+        size_main_walker = sys%basis%tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &
                            nwalker_int*4 + nwalker_real*4
 #else
-        size_main_walker = sys%basis%total_basis_length*i0_length/8 + nwalker_int_p*int_p_length/8 + &
+        size_main_walker = sys%basis%tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &
                            nwalker_int*4 + nwalker_real*8
 #endif
         if (walker_length < 0) then
@@ -160,9 +160,9 @@ contains
 
         ! Each spawned_walker occupies spawned_size kind=int_s integers.
         if (initiator_approximation) then
-            size_spawned_walker = (sys%basis%total_basis_length+sampling_size+1)*int_s_length/8
+            size_spawned_walker = (sys%basis%tensor_label_len+sampling_size+1)*int_s_length/8
         else
-            size_spawned_walker = (sys%basis%total_basis_length+sampling_size)*int_s_length/8
+            size_spawned_walker = (sys%basis%tensor_label_len+sampling_size)*int_s_length/8
         end if
         if (spawned_walker_length < 0) then
             ! Given in MB.  Convert.
@@ -190,8 +190,8 @@ contains
         call check_allocate('nparticles', sampling_size, ierr)
         allocate(tot_nparticles(sampling_size), stat=ierr)
         call check_allocate('tot_nparticles', sampling_size, ierr)
-        allocate(walker_dets(sys%basis%total_basis_length,walker_length), stat=ierr)
-        call check_allocate('walker_dets', sys%basis%basis_length*walker_length, ierr)
+        allocate(walker_dets(sys%basis%tensor_label_len,walker_length), stat=ierr)
+        call check_allocate('walker_dets', sys%basis%string_len*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
         allocate(walker_data(sampling_size+info_size,walker_length), stat=ierr)
@@ -238,12 +238,12 @@ contains
         ! equal to 1.0, so overwrite the default.
         if (.not. real_amplitudes) spawn_cutoff = 0.0_p
 
-        call alloc_spawn_t(sys%basis%total_basis_length, sampling_size, initiator_approximation, &
+        call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, qmc_spawn)
 
-        allocate(f0(sys%basis%basis_length), stat=ierr)
-        call check_allocate('f0',sys%basis%basis_length,ierr)
-        allocate(hs_f0(sys%basis%basis_length), stat=ierr)
+        allocate(f0(sys%basis%string_len), stat=ierr)
+        call check_allocate('f0',sys%basis%string_len,ierr)
+        allocate(hs_f0(sys%basis%string_len), stat=ierr)
         call check_allocate('hs_f0', size(hs_f0), ierr)
 
         ! --- Initial walker distributions ---
@@ -326,7 +326,7 @@ contains
                 ! Finally, we need to check if the reference determinant actually
                 ! belongs on this processor.
                 ! If it doesn't, set the walkers array to be empty.
-                D0_proc = assign_particle_processor(f0, sys%basis%basis_length, qmc_spawn%hash_seed, &
+                D0_proc = assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, &
                                                     qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs)
                 if (D0_proc /= iproc) tot_walkers = 0
             end if
@@ -364,7 +364,7 @@ contains
                     call encode_det(sys%basis, occ_list0_inv, f0_inv)
                 end select
 
-                D0_inv_proc = assign_particle_processor(f0_inv, sys%basis%basis_length, qmc_spawn%hash_seed, &
+                D0_inv_proc = assign_particle_processor(f0_inv, sys%basis%string_len, qmc_spawn%hash_seed, &
                                                         qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs)
 
                 ! Store if not identical to reference det.

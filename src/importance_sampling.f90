@@ -124,7 +124,7 @@ contains
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
-        integer(i0) :: f_new(sys%basis%basis_length)
+        integer(i0) :: f_new(sys%basis%string_len)
         integer :: excit_level_old, excit_level_new
 
         excit_level_old = get_excitation_level(cdet%f,cdet%f2)

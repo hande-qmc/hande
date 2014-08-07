@@ -208,7 +208,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: i, j, ij_k(sys%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
@@ -353,13 +353,13 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: i, j, ij_k(sys%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
         integer :: fac, shift, ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
-        integer(i0) :: poss_a(sys%basis%basis_length)
+        integer(i0) :: poss_a(sys%basis%string_len)
 
         ! Let's just check there are possible a,b first!
         ! Adjust for spin.  Allow a to be up (without bias) if possible.
@@ -378,7 +378,7 @@ contains
             a = int(max_na*get_rand_close_open(rng)) + 1
 
             n = 0
-            finda: do ibe = 1, sys%basis%basis_length
+            finda: do ibe = 1, sys%basis%string_len
                 if (poss_a(ibe) /= 0_i0) then
                     do ibp = 0, i0_end
                         if (btest(poss_a(ibe), ibp)) n = n + 1

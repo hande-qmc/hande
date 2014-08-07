@@ -752,7 +752,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%basis_length)
+        integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
@@ -763,7 +763,7 @@ contains
             f_new => f_local
         end if
 
-        iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
+        iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
             spawn%hash_shift, spawn%move_freq, nprocs)
 
         call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
@@ -804,7 +804,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%basis_length)
+        integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
@@ -815,7 +815,7 @@ contains
             f_new => f_local
         end if
 
-        iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
+        iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
             spawn%hash_shift, spawn%move_freq, nprocs)
 
         call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
@@ -860,7 +860,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%basis_length)
+        integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
@@ -874,7 +874,7 @@ contains
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
@@ -921,7 +921,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%basis_length)
+        integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
@@ -935,7 +935,7 @@ contains
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
@@ -982,7 +982,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%basis_length)
+        integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
@@ -996,7 +996,7 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
@@ -1043,7 +1043,7 @@ contains
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
-        integer(i0), target :: f_local(basis%basis_length)
+        integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
         integer :: iproc_spawn
 
@@ -1057,7 +1057,7 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis%basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
@@ -1095,15 +1095,15 @@ contains
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
+        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%basis_length)
-        integer(i0) :: f_new_tot(basis%total_basis_length)
+        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
@@ -1116,14 +1116,14 @@ contains
 
         f_new_tot = 0_i0
         if (spawning_end==1) then
-            f_new_tot(:basis%basis_length) = f_new
-            f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f2
+            f_new_tot(:basis%string_len) = f_new
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
         else
-            f_new_tot(:basis%basis_length) = f2
-            f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f_new
+            f_new_tot(:basis%string_len) = f2
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        iproc_spawn = assign_particle_processor(f_new_tot, basis%total_basis_length, spawn%hash_seed, &
+        iproc_spawn = assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
                                                 spawn%hash_shift, spawn%move_freq, nprocs)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
@@ -1167,15 +1167,15 @@ contains
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
+        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%basis_length)
-        integer(i0) :: f_new_tot(basis%total_basis_length)
+        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
@@ -1192,15 +1192,15 @@ contains
         ! as they are. If not then swap bitstring ends so that the
         ! new psips are reflected into the upper triangle of the density
         ! matrix as they try to spawn.
-        if (det_compare(f_new, f2, basis%basis_length) == -1) then
-            f_new_tot(:basis%basis_length) = f_new
-            f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f2
+        if (det_compare(f_new, f2, basis%string_len) == -1) then
+            f_new_tot(:basis%string_len) = f_new
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
         else
-            f_new_tot(:basis%basis_length) = f2
-            f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f_new
+            f_new_tot(:basis%string_len) = f2
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        iproc_spawn = assign_particle_processor(f_new_tot, basis%total_basis_length, spawn%hash_seed, &
+        iproc_spawn = assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
                                                 spawn%hash_shift, spawn%move_freq, nprocs)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
@@ -1252,15 +1252,15 @@ contains
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
+        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%basis_length)
-        integer(i0) :: f_new_tot(basis%total_basis_length)
+        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
@@ -1279,15 +1279,15 @@ contains
             ! as they are. If not then swap bitstring ends so that the
             ! new psips are reflected into the upper triangle of the density
             ! matrix as they try to spawn.
-            if (det_compare(f_new, f2, basis%basis_length) == -1) then
-                f_new_tot(:basis%basis_length) = f_new
-                f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f2
+            if (det_compare(f_new, f2, basis%string_len) == -1) then
+                f_new_tot(:basis%string_len) = f_new
+                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
             else
-                f_new_tot(:basis%basis_length) = f2
-                f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f_new
+                f_new_tot(:basis%string_len) = f2
+                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, basis%total_basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
                                                     spawn%hash_shift, spawn%move_freq, nprocs)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
@@ -1335,15 +1335,15 @@ contains
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f1(basis%basis_length), f2(basis%basis_length)
+        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit), intent(in) :: connection
 
-        integer(i0) :: f_new(basis%basis_length)
-        integer(i0) :: f_new_tot(basis%total_basis_length)
+        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
@@ -1358,14 +1358,14 @@ contains
 
             f_new_tot = 0_i0
             if (spawning_end==1) then
-                f_new_tot(:basis%basis_length) = f_new
-                f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f2
+                f_new_tot(:basis%string_len) = f_new
+                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
             else
-                f_new_tot(:basis%basis_length) = f2
-                f_new_tot((basis%basis_length+1):(basis%total_basis_length)) = f_new
+                f_new_tot(:basis%string_len) = f2
+                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, basis%total_basis_length, spawn%hash_seed, &
+            iproc_spawn = assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
                                                     spawn%hash_shift, spawn%move_freq, nprocs)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
@@ -1408,8 +1408,8 @@ contains
         integer(int_p) :: nspawn
         integer :: rdm_bl
 
-        integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_basis_length)
-        integer(i0) :: f1(rdms(irdm)%rdm_basis_length), f2(rdms(irdm)%rdm_basis_length)
+        integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_string_len)
+        integer(i0) :: f1(rdms(irdm)%rdm_string_len), f2(rdms(irdm)%rdm_string_len)
 
         integer :: iproc_spawn
         ! WARNING!  The below algorithm is *not* suitable for conversion to
@@ -1423,7 +1423,7 @@ contains
         logical :: hit
         integer :: err_code
 
-        rdm_bl = rdms(irdm)%rdm_basis_length
+        rdm_bl = rdms(irdm)%rdm_string_len
         nspawn = nspawn_in
 
         f_new_tot = 0_i0

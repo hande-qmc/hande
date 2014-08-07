@@ -62,7 +62,7 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! index of spawning array which contains population
-        spawned_pop = sys%basis%basis_length + 1
+        spawned_pop = sys%basis%string_len + 1
 
         if (sys%system == hub_k) then
             associate(sl=>sys%lattice)
@@ -179,7 +179,7 @@ contains
                         ! processor proc_id.  Need to advance them to the barrier.
 
                         ! decode the spawned walker bitstring
-                        cdet%f = int(qmc_spawn%sdata(:sys%basis%basis_length,current_pos(thread_id,proc_id)), i0)
+                        cdet%f = int(qmc_spawn%sdata(:sys%basis%string_len,current_pos(thread_id,proc_id)), i0)
                         K_ii = sc0_ptr(sys, cdet%f) - H00
                         call decoder_ptr(sys, cdet%f,cdet)
 
@@ -380,7 +380,7 @@ contains
         integer, intent(in) :: particle_type
         real(p), intent(in) :: spawn_time
 
-        integer(i0) :: f_new(basis%basis_length)
+        integer(i0) :: f_new(basis%string_len)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -395,7 +395,7 @@ contains
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis%basis_length, qmc_spawn%hash_seed), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis%string_len, qmc_spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
@@ -404,7 +404,7 @@ contains
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
         qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
-        qmc_spawn%sdata(:basis%basis_length,qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
+        qmc_spawn%sdata(:basis%string_len,qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
         qmc_spawn%sdata(particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
         spawn_times(qmc_spawn%head(0,iproc_spawn)) = spawn_time
 
