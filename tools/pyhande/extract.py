@@ -94,9 +94,26 @@ data : :class:`pandas.DataFrame`
         shift_damping = 'shift_damping',
         mc_cycles = 'mc_cycles',
         hilbert_space = 'Monte-Carlo estimate of size of space is:',
+        min_psips_per_mpi_process = 'Min # of particles on a processor:',
+        max_psips_per_mpi_process = 'Max # of particles on a processor:',
+        mean_psips_per_mpi_process = 'Mean # of particles on a processor:',
+        min_dets_per_mpi_process = 'Min # of determinants on a processor:',
+        max_dets_per_mpi_process = 'Max # of determinants on a processor:',
+        mean_dets_per_mpi_process = 'Mean # of determinants on a processor:',
+        min_communication_time = 'Min time taken by walker communication:',
+        max_communication_time = 'Max time taken by walker communication:',
+        mean_communication_time = 'Mean time taken by walker communication:',
+        wall_time = 'Wall time:',
+        cpu_time = 'CPU time \(per processor\):'
     )
-    md_int = 'sym ms nel nbasis truncation seed bit_length'.split()
-    md_float = 'tau ref_energy psingle pdouble init_pop'.split()
+    md_int = ['sym', 'ms', 'nel', 'nbasis', 'truncation', 'seed',
+         'bit_length',  'min_dets_per_mpi_process', 'max_dets_per_mpi_process']
+
+    md_float = ['tau', 'ref_energy', 'psingle', 'pdouble', 'init_pop', 
+         'min_psips_per_mpi_process', 'mean_psips_per_mpi_process',
+         'mean_dets_per_mpi_process', 'mean_communication_time', 'wall_time',
+         'cpu_time', 'min_communication_time', 'max_communication_time']
+    
     for (k,v) in md_regex.items():
         md_regex[k] = re.compile(v, re.IGNORECASE)
     input_regex = re.compile('Input options')
@@ -138,16 +155,8 @@ data : :class:`pandas.DataFrame`
                 elif k == 'hilbert_space':
                     metadata[k] = float(line.split()[7])
                 else:
-                    val = line.split()[-1]
-                    if val[-1] == '.':
-                        # Remove trailing full-stops.
-                        val = val[:-1]
-                    if k in md_int:
-                        metadata[k] = int(val)
-                    elif k in md_float:
-                        metadata[k] = float(val)
-                    else:
-                        metadata[k] = val
+                    metadata[k] = default_extract(line, k, md_int, md_float)
+
         # Hunt for start of data table.
         if ' # iterations' in line:
             # Columns are separated by at least two spaces but each column name
@@ -164,6 +173,12 @@ data : :class:`pandas.DataFrame`
             break
         else:
             skip_footer += 1
+
+    #Extract meta data from the end of the calulation.
+    for line in end_lines[-skip_footer:]:
+        for (k,v) in md_regex.items():
+            if v.search(line):
+                metadata[k] = default_extract(line, k, md_int, md_float)
 
     if float(os.path.getsize(filename))/1024 < 8000 or not temp_file:
         # Read table --- only read the first N columns, where N is the number of
@@ -227,6 +242,42 @@ data : :class:`pandas.DataFrame`
         })
 
     return (metadata, data)
+
+def default_extract(line, key, md_int, md_float):
+    '''Extract a single record of data when the record to be extracted is the
+last thing on the line.
+
+Parameters
+----------
+line: string
+    a line in the file
+key: string
+    the key to which has been matched
+md_int: list
+    a list of keys which should be stored as ints
+md_float: list
+    a list of keys which should be stored as floats
+
+Returns
+-------
+val:
+    The record
+'''
+    val = line.split()[-1]
+    if val[-1] == '.':
+        # Remove trailing full-stops.
+        val = val[:-1]
+    if key in md_int:
+        val = int(val)
+    elif key in md_float:
+        if val[-1] == 's':
+            #Remove trailing s
+            val = float(val[:-1])
+        else:
+            val = float(val)
+
+    return val
+
 
 def _get_last_lines(filename, bytes=2048):
     '''Get the lines within a given number of bytes from the end of the file.
