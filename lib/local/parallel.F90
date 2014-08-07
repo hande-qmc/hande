@@ -238,13 +238,8 @@ contains
         ncols = numroc(matrix_size, block_size, procy, 0, nproc_cols)
 
         ! Initialise the descriptor vectors needed for scalapack procedures.
-        if (nrows > 0) then
-            call descinit(desc_m, matrix_size, matrix_size, block_size, block_size, 0, 0, context, nrows, ierr)
-            call descinit(desc_v, matrix_size, 1, block_size, block_size, 0, 0, context, nrows, ierr)
-        else
-            desc_m = 0
-            desc_v = 0
-        end if
+        call descinit(desc_m, matrix_size, matrix_size, block_size, block_size, 0, 0, context, max(1,nrows), ierr)
+        call descinit(desc_v, matrix_size, 1, block_size, block_size, 0, 0, context, max(1,nrows), ierr)
 #else
         procx = 0
         procy = 0
