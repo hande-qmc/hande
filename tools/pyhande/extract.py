@@ -174,7 +174,7 @@ data : :class:`pandas.DataFrame`
         else:
             skip_footer += 1
 
-    #Extract meta data from the end of the calulation.
+    # Extract meta data from the end of the calulation.
     for line in end_lines[-skip_footer:]:
         for (k,v) in md_regex.items():
             if v.search(line):
@@ -243,9 +243,8 @@ data : :class:`pandas.DataFrame`
 
     return (metadata, data)
 
-def extract_last_field(line, key, md_int, md_float):
-    '''Extract a field of data when the field to be extracted is at the end of
-the line.
+def extract_last_field(line, key, md_int=None, md_float=None):
+    '''Extract the final field from the last (space-separated) entry in a line.
 
 Parameters
 ----------
@@ -261,7 +260,8 @@ md_float: list
 Returns
 -------
 val:
-    The record
+    The record, converted to an integer or a float if the key (the preceding
+    fields in the line) is in md_int or md_float.
 '''
     val = line.split()[-1]
     if val[-1] == '.':
