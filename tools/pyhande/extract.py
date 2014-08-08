@@ -155,7 +155,7 @@ data : :class:`pandas.DataFrame`
                 elif k == 'hilbert_space':
                     metadata[k] = float(line.split()[7])
                 else:
-                    metadata[k] = default_extract(line, k, md_int, md_float)
+                    metadata[k] = extract_last_field(line, k, md_int, md_float)
 
         # Hunt for start of data table.
         if ' # iterations' in line:
@@ -178,7 +178,7 @@ data : :class:`pandas.DataFrame`
     for line in end_lines[-skip_footer:]:
         for (k,v) in md_regex.items():
             if v.search(line):
-                metadata[k] = default_extract(line, k, md_int, md_float)
+                metadata[k] = extract_last_field(line, k, md_int, md_float)
 
     if float(os.path.getsize(filename))/1024 < 8000 or not temp_file:
         # Read table --- only read the first N columns, where N is the number of
@@ -243,9 +243,9 @@ data : :class:`pandas.DataFrame`
 
     return (metadata, data)
 
-def default_extract(line, key, md_int, md_float):
-    '''Extract a single record of data when the record to be extracted is the
-last thing on the line.
+def extract_last_field(line, key, md_int, md_float):
+    '''Extract a field of data when the field to be extracted is at the end of
+the line.
 
 Parameters
 ----------
@@ -268,13 +268,15 @@ val:
         # Remove trailing full-stops.
         val = val[:-1]
     if key in md_int:
-        val = int(val)
+        if "*" not in val:
+            val = int(val)
     elif key in md_float:
         if val[-1] == 's':
-            #Remove trailing s
+            # Remove trailing s
             val = float(val[:-1])
         else:
-            val = float(val)
+            if "*" not in val:
+                val = float(val)
 
     return val
 
