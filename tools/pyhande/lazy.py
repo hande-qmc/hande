@@ -10,7 +10,7 @@ import pyhande.analysis
 import pyhande.weight
 
 def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
-                reweight_itts=0):
+                reweight_itts=0, mean_shift=0.0):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -29,7 +29,8 @@ reweight_itts : integer
     reweight in an attempt to remove population control bias. According to
     C. J. Umirigar et. al. J. Chem. Phys. 99, 2865 (1993) this should be set
     to be a few correlation times.
-
+mean_shift: float
+    prevent the weights from beoming to large.
 Returns
 -------
 info : :func:`collections.namedtuple`
@@ -71,7 +72,7 @@ size from the blocking analysis:
 
     # Compute and define new weighted columns to reblock.
     if reweight_itts > 0:
-        data = pyhande.weight.reweight(data, metadata[0]['tau'], reweight_itts)
+        data = pyhande.weight.reweight(data, metadata[0]['tau'], reweight_itts, mean_shift)
         data['W * \sum H_0j N_j'] = data['\sum H_0j N_j'] * data['Weight']
         data['W * N_0'] = data['N_0'] * data['Weight']
         to_block.append('W * \sum H_0j N_j')
