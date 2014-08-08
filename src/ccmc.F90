@@ -236,6 +236,7 @@ contains
 
         logical :: update_tau
 
+        integer :: nspawnings_left, nspawnings_total
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=real_factor)
 
@@ -452,16 +453,29 @@ contains
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
-                                          gen_excit_ptr, nspawned, connection)
+                        ! Spawning
+                        ! This has the potential to create blooms, so we allow for multiple
+                        ! spawning events per cluster.
+                        ! The number of spawning events is decided by the value
+                        ! of cluster%amplitude/cluster%pselect.  If this is less
+                        ! than cluster_multispawn_threshold, then nspawnings is
+                        ! increased to the ratio of these.
+                        nspawnings_left = 1
+                        nspawnings_total=min(1,ceiling(cluster_multispawn_threshold/    &
+                                          (cluster(it)%amplitude/cluster%pselect) ))
+                        do while (nspawnings_left > 0)
+                           call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
+                                          gen_excit_ptr, nspawned, connection, nspawnings_total)
 
-                        if (nspawned /= 0_int_p) then
-                            call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn)
-
-                            if (abs(nspawned) > bloom_threshold) then
-                                call accumulate_bloom_stats(bloom_stats, nspawned)
-                            end if
-                        end if
+                           if (nspawned /= 0_int_p) then
+                               call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
+                               if (abs(nspawned) > bloom_threshold) then
+                                   ! [todo] - adapt bloom_handler to handle real psips/excips.
+                                   call accumulate_bloom_stats(bloom_stats, int(nspawned))
+                               end if
+                           end if
+                            nspawnings_left = nspawnings_left - 1
+                        end do
 
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
@@ -924,7 +938,8 @@ contains
 
     end subroutine select_cluster_non_composite
 
-    subroutine spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection)
+    subroutine spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
+                            nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -942,6 +957,10 @@ contains
         ! probability compared to the FCIQMC algorithm as we spawn from multiple
         ! excips at once (in FCIQMC we allow each psip to spawn individually)
         ! and have additional probabilities to take into account.
+
+        ! This routine will only attempt one spawning event, but needs to know
+        ! the total number attempted for this cluster which is passed into
+        ! nspawnings_total.
 
         ! In:
         !    sys: system being studied.
@@ -961,6 +980,7 @@ contains
         !        a complete excitation.
         ! In/Out:
         !    rng: random number generator.
+        !    nspawnings_total: The total nuber of spawnings attemped.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -983,6 +1003,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(inout) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
@@ -1003,7 +1024,7 @@ contains
 
         ! 2, Apply additional factors.
         hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign
-        pgen = pgen*cluster%pselect
+        pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)

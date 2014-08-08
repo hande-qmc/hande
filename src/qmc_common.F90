@@ -355,6 +355,7 @@ contains
         ! In:
         !    population: populations to be stochastically rounded.
         !    cutoff: the value to round up to.
+        !    ntypes: the number of values in population to apply this op to.
         !    
 
         use const, only: int_4
@@ -391,6 +392,7 @@ contains
         ! In:
         !    population: populations to be stochastically rounded.
         !    cutoff: the value to round up to.
+        !    ntypes: the number of values in population to apply this op to.
         !    
 
         use const, only: int_8

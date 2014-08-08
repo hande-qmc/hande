@@ -931,6 +931,18 @@ The following options are valid for FCIQMC calculations.
 
     For DMQMC calculations this option sets the number of psips which will
     be randomly distributed along the diagonal at the start of each beta loop.
+**cluster_multispawn_threshold** *thresh*
+    real.
+    
+    Default: 0.0
+
+    When selecting clusters the generations probabilities can vary over orders of
+    magnitude.  If after having selected the cluster, the value of
+    cluster%amplitude/cluster%pselect
+    is lower than thresh, then the number of spawning attempts from that cluster
+    will be increased to counteract this.
+    The overall effect will be to reduce population blooms which raise plateau heights
+
 **init_spin_inverse_reference_det**
     Default: false.
 
