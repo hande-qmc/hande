@@ -201,7 +201,8 @@ contains
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
                                dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
                                tot_walkers, walker_length, write_fciqmc_report_header,               &
-                               write_fciqmc_final, nparticles, ccmc_move_freq, real_factor
+                               write_fciqmc_final, nparticles, ccmc_move_freq, real_factor,          &
+                               cluster_multispawn_threshold
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle
         use proc_pointers
@@ -408,7 +409,8 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
-                !$omp private(it, iexcip_pos, nspawned, connection, junk) &
+                !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
+                !$omp         nspawnings_left, nspawnings_total               ) &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level, &
                 !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
@@ -460,9 +462,10 @@ contains
                         ! of cluster%amplitude/cluster%pselect.  If this is less
                         ! than cluster_multispawn_threshold, then nspawnings is
                         ! increased to the ratio of these.
-                        nspawnings_left = 1
-                        nspawnings_total=min(1,ceiling(cluster_multispawn_threshold/    &
-                                          (cluster(it)%amplitude/cluster%pselect) ))
+                        nspawnings_total=max(1,ceiling(cluster_multispawn_threshold*    &
+                                          abs(cluster(it)%amplitude/cluster(it)%pselect) ))
+                        nspawnings_left = nspawnings_total
+!                        write(6,*) "nst",nspawnings_total,abs(cluster(it)%amplitude/cluster(it)%pselect)
                         do while (nspawnings_left > 0)
                            call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total)
@@ -474,7 +477,7 @@ contains
                                    call accumulate_bloom_stats(bloom_stats, int(nspawned))
                                end if
                            end if
-                            nspawnings_left = nspawnings_left - 1
+                           nspawnings_left = nspawnings_left - 1
                         end do
 
                         ! Does the cluster collapsed onto D0 produce
@@ -1003,7 +1006,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
-        integer, intent(inout) :: nspawnings_total
+        integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
