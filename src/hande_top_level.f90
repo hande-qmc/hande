@@ -107,7 +107,7 @@ contains
         use qmc, only: do_qmc
         use hilbert_space, only: estimate_hilbert_space
         use parallel, only: iproc, parent
-        use simple_fciqmc, only: do_simple_fciqmc, init_simple_fciqmc
+        use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
@@ -120,8 +120,7 @@ contains
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call init_simple_fciqmc(sys)
-                call do_simple_fciqmc()
+                call do_simple_fciqmc(sys)
             else 
                 call do_qmc(sys)
             end if

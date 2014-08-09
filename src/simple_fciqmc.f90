@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys)
+    subroutine init_simple_fciqmc(sys, ref_det)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -28,6 +28,8 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        ! Out:
+        !    ref_det: location of reference in dets_list.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -38,6 +40,7 @@ contains
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
 
         type(sys_t), intent(inout) :: sys
+        integer, intent(out) :: ref_det
 
         integer :: ierr
         integer :: i, j
@@ -136,22 +139,30 @@ contains
 
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc()
+    subroutine do_simple_fciqmc(sys)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
+
+        ! In/Out:
+        !    sys: system being studied.  Unaltered on output.
 
         use calc, only: seed
         use determinant_enumeration, only: ndets
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
+        use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
+        type(sys_t), intent(inout) :: sys
         integer :: ireport, icycle, iwalker, ipart
         real(dp) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
         type(dSFMT_t) :: rng
+        integer :: ref_det
+
+        call init_simple_fciqmc(sys, ref_det)
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -183,7 +194,7 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(iwalker, proj_energy)
+                    call simple_update_proj_energy(ref_det, iwalker, proj_energy)
 
                     ! Simulate spawning.
                     do ipart = 1, abs(walker_population(1,iwalker))
@@ -374,7 +385,7 @@ contains
 
     end subroutine simple_annihilation
 
-    subroutine simple_update_proj_energy(iwalker, inst_proj_energy)
+    subroutine simple_update_proj_energy(ref_det, iwalker, inst_proj_energy)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -390,12 +401,13 @@ contains
         ! This procedure is only for the simple fciqmc algorithm, where the
         ! Hamiltonian matrix is explicitly stored.
         ! In:
+        !    ref_det: index of the reference determinant in the walker list.
         !    iwalker: index of current determinant in the main walker list.
         ! In/Out:
         !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
-        integer, intent(in) :: iwalker
+        integer, intent(in) :: ref_det, iwalker
         real(p), intent(inout) :: inst_proj_energy
 
         if (iwalker == ref_det) then
