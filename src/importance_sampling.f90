@@ -57,13 +57,13 @@ contains
         !        functions (kets).  On output, transformed matrix element,
         !        \Psi_i^T H_{ij} 1/\Psi_j^T.
 
-        use determinants, only: det_info, lattice_mask
+        use determinants, only: det_info_t, lattice_mask
         use excitations, only: excit
         use fciqmc_data, only: neel_singlet_amp, sampling_size
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
 
@@ -115,13 +115,13 @@ contains
         !        bitstring we spawn onto. Note this is different to more conventional
         !        importance sampling.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, get_excitation_level, create_excited_det
         use fciqmc_data, only: dmqmc_accumulated_probs
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
         integer(i0) :: f_new(sys%basis%string_len)

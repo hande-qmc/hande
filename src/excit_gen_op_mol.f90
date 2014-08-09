@@ -44,7 +44,7 @@ contains
         !        between a determinant and a connected determinant in molecular
         !        systems.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, find_excitation_permutation1
         use excit_gen_mol, only: choose_ia_mol, calc_pgen_single_mol
         use fciqmc_data, only: pattempt_single
@@ -56,7 +56,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
         type(excit), intent(out) :: connection
         real(p), intent(out) :: matel
@@ -120,7 +120,7 @@ contains
         !        between a determinant and a connected determinant in molecular
         !        systems.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, find_excitation_permutation1
         use excit_gen_mol, only: find_ia_mol, calc_pgen_single_mol_no_renorm
         use fciqmc_data, only: pattempt_single
@@ -131,7 +131,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
         type(excit), intent(out) :: connection
         real(p), intent(out) :: matel

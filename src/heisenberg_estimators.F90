@@ -36,14 +36,14 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, get_excitation
         use system, only: sys_t
         use real_lattice, only: connected_orbs
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit), intent(out) :: excitation
@@ -106,7 +106,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use fciqmc_data, only: sampling_size, neel_singlet_amp
         use system, only: sys_t
@@ -114,7 +114,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit), intent(out) :: excitation

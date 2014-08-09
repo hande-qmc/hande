@@ -468,7 +468,7 @@ contains
             sys%nvirt = (sys%lattice%nsites - Ms)/2
             ! The Heisenberg model doesn't use these values, but they need to be
             ! initialized to something sensible as we allocate memory using them in 
-            ! alloc_det_info.
+            ! alloc_det_info_t.
             sys%nalpha = 0
             sys%nbeta = 0
             sys%nvirt_alpha = 0

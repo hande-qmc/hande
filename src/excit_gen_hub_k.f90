@@ -47,13 +47,13 @@ contains
         !        matrix element between a determinant and a connected determinant in
         !        the Hubbard model in a Bloch basis.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(out) :: connection
         real(p), intent(out) :: pgen, abs_hmatel
@@ -117,7 +117,7 @@ contains
         !        between a determinant and the connected determinant in the Hubbard
         !        model in a Bloch basis.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use momentum_symmetry, only: sym_table
@@ -125,7 +125,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
@@ -177,7 +177,7 @@ contains
         !        matrix element between a determinant and a connected determinant in
         !        the Hubbard model in a Bloch basis.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
@@ -185,7 +185,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(out) :: connection
         real(p), intent(out) :: pgen, abs_hmatel
@@ -270,14 +270,14 @@ contains
         !        between a determinant and the connected determinant in the Hubbard
         !        model in a Bloch basis.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(inout) :: connection ! inout for interface compatibility
         real(p), intent(out) :: hmatel
@@ -312,7 +312,7 @@ contains
         !        determinant and a connected determinant in the Hubbard model in
         !        a Bloch basis.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use fciqmc_data, only: tau
         use system, only: sys_t
@@ -320,7 +320,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
@@ -383,7 +383,7 @@ contains
         !        determinant and a connected determinant in the Hubbard model in
         !        a Bloch basis.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use fciqmc_data, only: tau
         use system, only: sys_t
@@ -391,7 +391,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection

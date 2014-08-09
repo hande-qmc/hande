@@ -39,7 +39,7 @@ contains
         use annihilation, only: direct_annihilation
         use calc, only: seed, initiator_approximation
         use death, only: stochastic_hf_cloning
-        use determinants, only:det_info, alloc_det_info, dealloc_det_info
+        use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit
         use fciqmc_data, only: tau, real_factor
@@ -58,7 +58,7 @@ contains
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
         real(dp) :: real_population(sampling_size)
-        type(det_info) :: cdet
+        type(det_info_t) :: cdet
 
         integer(int_p) :: nspawned, ndeath, nspawn_events
         type(excit) :: connection
@@ -73,8 +73,8 @@ contains
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
-        ! Allocate det_info components.
-        call alloc_det_info(sys, cdet, .false.)
+        ! Allocate det_info_t components.
+        call alloc_det_info_t(sys, cdet, .false.)
 
         ! from restart
         nparticles_old = tot_nparticles
@@ -138,7 +138,7 @@ contains
                     ! Is this determinant an initiator?
                     ! A determinant can be an initiator in the Hamiltonian space
                     ! or the Hellmann-Feynman space or both.
-                    ! The initiator_flag attribute of det_info is checked and passed to the
+                    ! The initiator_flag attribute of det_info_t is checked and passed to the
                     ! annihilation routine in the appropriate create_spawned_particle_*
                     ! routine, so we must set cdet%initiator_flag
                     ! appropriately...
@@ -262,7 +262,7 @@ contains
             if (parent) write (6,'()')
         end if
 
-        call dealloc_det_info(cdet, .false.)
+        call dealloc_det_info_t(cdet, .false.)
 
     end subroutine do_hfs_fciqmc
 

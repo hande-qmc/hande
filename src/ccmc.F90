@@ -194,7 +194,7 @@ contains
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
         use ccmc_data, only: cluster_t
-        use determinants, only: det_info, alloc_det_info, dealloc_det_info, det_compare
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, det_compare
         use excitations, only: excit, get_excitation_level
         use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
@@ -213,7 +213,7 @@ contains
         integer :: i, ireport, icycle, it
         integer(lint) :: iattempt, nattempts
         real(dp) :: nparticles_old(sampling_size)
-        type(det_info), allocatable :: cdet(:)
+        type(det_info_t), allocatable :: cdet(:)
 
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events, ierr
@@ -265,8 +265,8 @@ contains
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
             call dSFMT_init(seed+iproc+i*nprocs, 50000, rng(i))
-            ! ...and allocate det_info components...
-            call alloc_det_info(sys, cdet(i))
+            ! ...and allocate det_info_t components...
+            call alloc_det_info_t(sys, cdet(i))
             ! ...and cluster_t components
             allocate(cluster(i)%excitors(truncation_level+2), stat=ierr)
             call check_allocate('cluster%excitors', truncation_level+2, ierr)
@@ -491,7 +491,7 @@ contains
         end if
 
         ! TODO: deallocation...
-!        call dealloc_det_info(cdet)
+!        call dealloc_det_info_t(cdet)
 !        cdet%cluster => NULL()
 !        deallocate(cluster%excitors, stat=ierr)
 !        call check_deallocate('cluster%excitors', ierr)
@@ -527,7 +527,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    cdet: information about the cluster of excitors applied to the
-        !        reference determinant.  This is a bare det_info variable on input
+        !        reference determinant.  This is a bare det_info_t variable on input
         !        with only the relevant fields allocated.  On output the
         !        appropriate (system-specific) fields have been filled by
         !        decoding the bit string of the determinant formed from applying
@@ -540,7 +540,7 @@ contains
 
         use basis_types, only: basis_t
         use calc, only: truncation_level
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -557,7 +557,7 @@ contains
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         integer :: max_size
         type(dSFMT_t), intent(inout) :: rng
-        type(det_info), intent(inout) :: cdet
+        type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
         real(p) :: rand, psize, cluster_population
@@ -756,7 +756,7 @@ contains
         !        and the child excitor, on which progeny are spawned.
 
         use ccmc_data, only: cluster_t
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: f0
@@ -768,7 +768,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
@@ -833,7 +833,7 @@ contains
         !    rng: random number generator.
 
         use ccmc_data, only: cluster_t
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn
         use excitations, only: excit, get_excitation_level
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
@@ -842,7 +842,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
 

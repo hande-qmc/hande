@@ -24,7 +24,7 @@ contains
         use bit_utils, only: count_set_bits
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
-        use determinants, only: det_info, alloc_det_info, dealloc_det_info
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use dmqmc_estimators
         use dmqmc_procedures
         use excitations, only: excit
@@ -44,7 +44,7 @@ contains
         real(dp) :: tot_nparticles_old(sampling_size), real_population
         integer(lint) :: nattempts
         integer :: nel_temp, nattempts_current_det
-        type(det_info) :: cdet1, cdet2
+        type(det_info_t) :: cdet1, cdet2
         integer(int_p) :: nspawned, ndeath
         type(excit) :: connection
         integer :: spawning_end, nspawn_events
@@ -53,10 +53,10 @@ contains
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
 
-        ! Allocate det_info components. We need two cdet objects for each 'end'
+        ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
-        call alloc_det_info(sys, cdet1, .false.)
-        call alloc_det_info(sys, cdet2, .false.)
+        call alloc_det_info_t(sys, cdet1, .false.)
+        call alloc_det_info_t(sys, cdet2, .false.)
 
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=real_factor)
@@ -259,8 +259,8 @@ contains
             if (parent) write (6,'()')
         end if
 
-        call dealloc_det_info(cdet1, .false.)
-        call dealloc_det_info(cdet2, .false.)
+        call dealloc_det_info_t(cdet1, .false.)
+        call dealloc_det_info_t(cdet2, .false.)
 
     end subroutine do_dmqmc
 

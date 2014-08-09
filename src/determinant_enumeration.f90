@@ -130,7 +130,7 @@ contains
         integer(i0) :: f(sys%basis%string_len)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
-        type(det_info) :: d0
+        type(det_info_t) :: d0
         logical :: in_space, force_full
 
         force_full = .false.
@@ -157,7 +157,7 @@ contains
             call check_allocate('dets_list',sys%basis%string_len*ndets,ierr)
         end if
 
-        call alloc_det_info(sys, d0)
+        call alloc_det_info_t(sys, d0)
 
         ! For fermionic systems, we generate the alpha string and beta string
         ! separately and then combine them to form a determinant.
@@ -395,7 +395,7 @@ contains
         call check_deallocate('nalpha_combinations', ierr)
         deallocate(comb, stat=ierr)
         call check_deallocate('comb', ierr)
-        call dealloc_det_info(d0)
+        call dealloc_det_info_t(d0)
 
     end subroutine enumerate_determinants
 

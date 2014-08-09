@@ -53,12 +53,12 @@ contains
         !    hmatel: on input, the Hamiltonian matrix element, < D | \hat{H} | D'>.
         !        On output, the operator matrix element, < D | \hat{D} | D' >.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
 

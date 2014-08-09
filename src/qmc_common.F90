@@ -475,7 +475,7 @@ contains
         ! In:
         !    sys: system being studied.
 
-        use determinants, only: det_info, alloc_det_info, dealloc_det_info, decode_det
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
@@ -485,7 +485,7 @@ contains
         integer :: idet
         real(dp) :: ntot_particles(sampling_size)
         real(dp) :: real_population(sampling_size)
-        type(det_info) :: cdet
+        type(det_info_t) :: cdet
         real(p) :: hmatel
         type(excit) :: D0_excit
 #ifdef PARALLEL
@@ -497,7 +497,7 @@ contains
         ! distribution.  proj_energy and D0_population_cycle are both accumulated in
         ! update_proj_energy.
         proj_energy = 0.0_p
-        call alloc_det_info(sys, cdet)
+        call alloc_det_info_t(sys, cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
@@ -508,7 +508,7 @@ contains
             call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &
                                         D0_population_cycle, proj_energy, D0_excit, hmatel)
         end do
-        call dealloc_det_info(cdet)
+        call dealloc_det_info_t(cdet)
 
 #ifdef PARALLEL
         call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)

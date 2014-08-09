@@ -26,7 +26,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
-        use determinants, only: det_info, alloc_det_info, dealloc_det_info
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use excitations, only: excit, create_excited_det
         use qmc_common
         use ifciqmc, only: set_parent_flag
@@ -40,7 +40,7 @@ contains
 
         type(sys_t), intent(in) :: sys
 
-        type(det_info) :: cdet
+        type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(semi_stoch_t) :: determ
@@ -70,11 +70,11 @@ contains
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=real_factor)
 
-        ! Allocate det_info components.
-        call alloc_det_info(sys, cdet, .false.)
+        ! Allocate det_info_t components.
+        call alloc_det_info_t(sys, cdet, .false.)
         ! Folded spectrum *needs* the bit strings to be allocated as it needs
         ! be able to manipulate the bit string to create excited states.
-        if (doing_calc(folded_spectrum)) call alloc_det_info(sys, cdet_excit)
+        if (doing_calc(folded_spectrum)) call alloc_det_info_t(sys, cdet_excit)
 
         ! Create the semi_stoch_t object, determ.
         ! If the user has asked to use semi-stochastic from the first iteration
@@ -220,8 +220,8 @@ contains
 
         call dealloc_semi_stoch_t(determ)
 
-        call dealloc_det_info(cdet, .false.)
-        if (doing_calc(folded_spectrum)) call dealloc_det_info(cdet_excit)
+        call dealloc_det_info_t(cdet, .false.)
+        if (doing_calc(folded_spectrum)) call dealloc_det_info_t(cdet_excit)
 
     end subroutine do_fciqmc
 
