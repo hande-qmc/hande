@@ -377,8 +377,6 @@ contains
 
                 ! Two options for evolution:
 
-! [review] - AJWT: Modified this to actually be correct.
-
                 ! * Original CCMC algorithm
                 !       + The number of excips on this processor determines the number
                 !         of cluster generations, each of which can spawn and die.
