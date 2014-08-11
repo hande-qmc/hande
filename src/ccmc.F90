@@ -214,6 +214,7 @@ contains
 
         integer :: i, ireport, icycle, it
         integer(lint) :: iattempt, nattempts, nclusters, nstochastic_clusters
+        integer(lint) :: nattempts_spawn
         real(dp) :: nparticles_old(sampling_size)
         type(det_info_t), allocatable :: cdet(:)
 
@@ -372,6 +373,9 @@ contains
                 ! always 0.
                 call init_mc_cycle(nattempts, ndeath, int(D0_normalisation,lint))
 
+                ! We need to count spawning attempts differently as there may be multiple spawns
+                ! per cluster
+                nattempts_spawn=0
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
 
@@ -465,6 +469,7 @@ contains
                         nspawnings_total=max(1,ceiling(cluster_multispawn_threshold*    &
                                           abs(cluster(it)%amplitude/cluster(it)%pselect) ))
                         nspawnings_left = nspawnings_total
+                        nattempts_spawn = nattempts_spawn+nspawnings_total
 !                        write(6,*) "nst",nspawnings_total,abs(cluster(it)%amplitude/cluster(it)%pselect)
                         do while (nspawnings_left > 0)
                            call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
@@ -515,7 +520,7 @@ contains
                     proj_energy_cycle = proj_energy_cycle/nattempts
                 end if
 
-                call end_mc_cycle(nspawn_events, ndeath, nclusters)
+                call end_mc_cycle(nspawn_events, ndeath, nspawnings_total)
 
             end do
 
