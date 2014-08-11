@@ -474,7 +474,7 @@ contains
         !    slot_pos: position in proc_map for this determinant
 
         use hashing, only: murmurhash_bit_string
-        use fciqmc_data, only: load_balancing_slots, proc_map
+        use fciqmc_data, only: par_info
 
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np
@@ -490,8 +490,8 @@ contains
         hash = murmurhash_bit_string(particle_label, length, seed)
         if (shift == 0) then
             ! p = hash(label) % np
-            slot_pos = modulo(hash, np*load_balancing_slots)
-            particle_proc = proc_map(slot_pos)
+            slot_pos = modulo(hash, np*par_info%load%nslots)
+            particle_proc = par_info%load%proc_map(slot_pos)
         else
             ! o = [ hash(label) + shift ] >> freq
             ! p = [ hash(label) + o ] % np
@@ -508,8 +508,8 @@ contains
             offset = ishft(hash+shift, -freq)
             mod_label = particle_label + offset
             hash = murmurhash_bit_string(mod_label, length, seed)
-            slot_pos = modulo(hash, np*load_balancing_slots)
-            particle_proc = proc_map(slot_pos)
+            slot_pos = modulo(hash, np*par_info%load%nslots)
+            particle_proc = par_info%load%proc_map(slot_pos)
         end if
 
     end subroutine assign_particle_processor

@@ -27,7 +27,7 @@ contains
         use basis, only: basis_length, nbasis
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
-                        nb_rep_t
+                        doing_load_balancing
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit
         use spawning, only: create_spawned_particle_initiator
@@ -77,7 +77,7 @@ contains
 
         if (non_blocking_comm) then
             call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart)
-            call initial_fciqmc_status(sys, report_comm, send_counts(iproc)/received_list%element_len)
+            call initial_fciqmc_status(sys, par_info%report_comm, send_counts(iproc)/received_list%element_len)
         else
             call initial_fciqmc_status(sys)
         end if
@@ -134,12 +134,13 @@ contains
                     call direct_annihilation_received_list(sys, initiator_approximation)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
                     if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, walker_population, tot_walkers, &
-                                                                                    nparticles, qmc_spawn, load_balancing_tag)
-                    call direct_annihilation_spawned_list(sys, initiator_approximation, send_counts, req_data_s, report_comm%nb_spawn)
-                    call end_mc_cycle(ndeath, nattempts, report_comm%nb_spawn)
+                                                                                    nparticles, qmc_spawn, par_info%load%needed)
+                    call direct_annihilation_spawned_list(sys, initiator_approximation, send_counts, req_data_s, &
+                                                          par_info%report_comm%nb_spawn)
+                    call end_mc_cycle(ndeath, nattempts, par_info%report_comm%nb_spawn)
                 else
                     if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, walker_population, tot_walkers, &
-                                                                                    nparticles, qmc_spawn, load_balancing_tag)
+                                                                                    nparticles, qmc_spawn, par_info%load%needed)
                     call direct_annihilation(sys, initiator_approximation)
                     call end_mc_cycle(ndeath, nattempts)
                 end if
@@ -148,14 +149,14 @@ contains
 
             update_tau = bloom_stats%nwarnings_curr > 0
 
-            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit, report_comm)
+            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit, par_info%report_comm)
 
             if (soft_exit) exit
 
         end do
 
-        if (non_blocking_comm) call end_non_blocking_comm(sys, initiator_approximation, ireport, received_list, &
-                                                          req_data_s, report_comm%request, t1, nparticles_old)
+        if (non_blocking_comm) call end_non_blocking_comm(sys, initiator_approximation, ireport, received_list,      &
+                                                          req_data_s, par_info%report_comm%request, t1, nparticles_old)
 
         if (parent) then
             call write_fciqmc_final(ireport)

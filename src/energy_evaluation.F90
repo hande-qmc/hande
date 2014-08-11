@@ -185,11 +185,10 @@ contains
         use fciqmc_data, only: sampling_size, target_particles, ncycles, rspawn,               &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
                                vary_shift_from_proje, D0_population, fold_line,                &
-                               nparticles_proc, load_balancing_pop, load_attempts,             &
-                               max_load_attempts, load_balancing_tag, doing_load_balancing
+                               nparticles_proc, par_info
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
-        use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum
+        use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum, doing_load_balancing
         use parallel, only: nprocs
 
         real(dp), intent(in) :: rep_loop_sum(:)
@@ -213,11 +212,13 @@ contains
             D0_hf_population = rep_loop_sum(sample_shift+7)
         end if
 
-        if(doing_load_balancing .and. ntot_particles(1) > load_balancing_pop .and. load_attempts < max_load_attempts) then
-            pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
-            ! Check if there is at least one processor with load imbalance.
-            call check_imbalance(nparticles_proc, pop_av, load_balancing_tag)
-        end if
+        associate(lb=>par_info%load)
+            if(doing_load_balancing .and. ntot_particles(1) > lb%pop .and. lb%nattempts < lb%max_attempts) then
+                pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
+                ! Check if there is at least one processor with load imbalance.
+                call check_imbalance(nparticles_proc, pop_av, lb%percent, lb%needed)
+            end if
+        end associate
 
         if (vary_shift) then
             call update_shift(shift(1), ntot_particles_old(1), ntot_particles(1), ncycles)

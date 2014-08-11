@@ -6,7 +6,7 @@ module fciqmc_data
 use const
 use spawn_data, only: spawn_t
 use hash_table, only: hash_table_t
-use calc, only: nb_rep_t
+use calc, only: parallel_t
 implicit none
 
 !--- Input data: FCIQMC ---
@@ -442,43 +442,8 @@ real(p) :: X__=0, Xo_=0, X_o=0
 
 !--- Non blocking data ---
 
-! Type for storing report loop information when using non-blocking
-! communications.
-type(nb_rep_t) :: report_comm
-
-!--- Input data: Load Balancing ---
-
-! Are we doing load balancing? Default false
-logical :: doing_load_balancing = .false.
-! Number of slots walker lists are initially subdivided into for proc_map
-! Default = 20. This reverts to 1 when run in serial.
-integer :: load_balancing_slots = 20
-! Population which must be reached before load balancing is attempted.
-! Default = 1000.
-integer(lint) :: load_balancing_pop = 1000
-! Percentage load imbalance we aim to achieve when performing load balancing.
-! i.e. min_pop = (1-percent_imbal)*av_pop, max_pop = (1+percent_imbal)*av_pop.
-! Default = 0.05
-real(p) :: percent_imbal = 0.05
-! Maximum number of load balancing attempts.
-! Default = 2.
-integer :: max_load_attempts = 2
-! Write load balancing information every time load balancing is attempted.
-logical :: write_load_info = .false.
-
-!--- Load Balancing Data ---
-
-! Array which maps particles to processors. If attempting load balancing then
-! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
-! map particles to processors using modular arithmetic. Otherwise it's entries are
-! 0,1,..,nprocs-1.
-integer, allocatable :: proc_map(:)
-! Tag to check which stage if load balancing is required. This is reset to false
-! once redistribution of determinants has taken place to ensure load balancing
-! occurs once during a report loop.
-logical :: load_balancing_tag = .false.
-! Current number of load balancing attempts.
-integer :: load_attempts = 0
+! Type for storing parallel information: see calc for description.
+type(parallel_t) :: par_info
 
 contains
 
@@ -708,7 +673,7 @@ contains
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
-        use calc, only: non_blocking_comm, dealloc_nb_rep_t
+        use calc, only: non_blocking_comm, dealloc_parallel_t
 
         integer :: ierr
 
@@ -744,18 +709,11 @@ contains
             deallocate(estimator_numerators, stat=ierr)
             call check_deallocate('estimator_numerators', ierr)
         end if
-        if (non_blocking_comm) then
-            call dealloc_spawn_t(received_list)
-            call dealloc_nb_rep_t(report_comm)
-        end if
-        if (allocated(proc_map)) then
-            deallocate(proc_map, stat=ierr)
-            call check_deallocate('proc_map', ierr)
-        end if
         if (allocated(nparticles_proc)) then
             deallocate(nparticles_proc, stat=ierr)
             call check_deallocate('nparticles_proc', ierr)
         end if
+        call dealloc_parallel_t(par_info)
         call dealloc_spawn_t(qmc_spawn)
 
     end subroutine end_fciqmc

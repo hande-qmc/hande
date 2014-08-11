@@ -214,7 +214,7 @@ module restart_hdf5
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data, &
                                    shift, f0, hs_f0, tot_walkers,               &
-                                   D0_population_cycle, proc_map, received_list
+                                   D0_population_cycle, par_info, received_list
             use calc, only: calc_type, non_blocking_comm
 
             type(restart_info_t), intent(in) :: ri
@@ -292,7 +292,7 @@ module restart_hdf5
                                     received_list%sdata(:,:received_list%head(0,0)))
                     call hdf5_write(subgroup_id, dnspawn, received_list%head(0,0))
                 end if
-                call hdf5_write(subgroup_id, dproc_map, kinds, shape(proc_map), proc_map)
+                call hdf5_write(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
@@ -353,7 +353,7 @@ module restart_hdf5
             use fciqmc_data, only: walker_dets, walker_population, walker_data,  &
                                    shift, tot_nparticles, f0, hs_f0,             &
                                    D0_population, mc_cycles_done, tot_walkers,   &
-                                   proc_map, received_list
+                                   par_info, received_list
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space, &
                             non_blocking_comm
             use parallel, only: nprocs
@@ -459,7 +459,7 @@ module restart_hdf5
 
                 end if
 
-                call hdf5_read(subgroup_id, dproc_map, kinds, shape(proc_map), proc_map)
+                call hdf5_read(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
 
                 call h5gclose_f(subgroup_id, ierr)
 

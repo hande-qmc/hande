@@ -525,7 +525,7 @@ contains
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
 
-        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, doing_load_balancing
         use load_balancing, only: do_load_balancing
 
         integer(lint), intent(in), optional :: min_attempts
@@ -563,8 +563,8 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
-        if(doing_load_balancing .and. load_balancing_tag) then
-            call do_load_balancing(proc_map)
+        if(doing_load_balancing .and. par_info%load%needed) then
+            call do_load_balancing(par_info)
         end if
 
     end subroutine init_mc_cycle
@@ -801,34 +801,6 @@ contains
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 
     end subroutine end_non_blocking_comm
-
-! --- Load balancing routines ---
-
-    subroutine initialise_proc_map(load_balancing_slots, proc_map_d)
-
-        ! Determinants are assigned to processors using proc_map(0:load_balancing_slots*nprocs-1) which
-        ! is initialised so that its entries cyclically contain processors 0,..,nprocs-1
-
-        ! In:
-        !    load_balancing_slots: number of "slots" we subdivide interval by on each processor
-        ! Out:
-        !    proc_map_d: will become proc_map upon allocation.
-
-        use parallel, only : nprocs
-
-        integer, intent(in) :: load_balancing_slots
-        integer , allocatable, intent(out) :: proc_map_d(:)
-        integer :: i, p_map_size
-
-        p_map_size = load_balancing_slots*nprocs
-
-        allocate(proc_map(0:p_map_size-1))
-
-        do i = 0, p_map_size - 1
-            proc_map_d(i) = modulo(i, nprocs)
-        end do
-
-    end subroutine initialise_proc_map
 
     subroutine redistribute_load_balancing_dets(walker_dets, walker_populations, tot_walkers, nparticles, spawn, load_tag)
 

@@ -30,7 +30,6 @@ contains
         use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
-        use qmc_common, only: initialise_proc_map
         use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
@@ -44,8 +43,6 @@ contains
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(nbasis, ms_in, sys)
-        if (nprocs == 1 .or. .not. doing_load_balancing) load_balancing_slots = 1
-        call initialise_proc_map(load_balancing_slots, proc_map)
 
         ! Initialise data
         call init_qmc(sys)
@@ -222,8 +219,10 @@ contains
         if (non_blocking_comm) then
             call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
                              spawned_walker_length, 7, received_list)
-            call alloc_nb_rep_t(sampling_size, report_comm)
         end if
+
+        if (nprocs == 1 .or. .not. doing_load_balancing) par_info%load%nslots = 1
+        call init_parallel_t(sampling_size, non_blocking_comm, par_info)
 
         allocate(f0(basis_length), stat=ierr)
         call check_allocate('f0',basis_length,ierr)

@@ -95,6 +95,9 @@ integer :: distribute = distribute_off
 ! Flag for using non-blocking communications.
 ! Default: False.
 logical :: non_blocking_comm = .false.
+! Flag for using load balancing.
+! Default: False.
+logical :: doing_load_balancing = .false.
 
 !--- Input data: Hilbert space truncation ---
 
@@ -196,6 +199,45 @@ type nb_rep_t
     integer, allocatable :: request(:)
 end type nb_rep_t
 
+type load_t
+    ! Number of slots walker lists are initially subdivided into for proc_map
+    ! Default = 20. This reverts to 1 when run in serial.
+    ! Input option: load_balancing_slots
+    integer :: nslots = 20
+    ! Population which must be reached before load balancing is attempted.
+    ! Default = 1000.
+    ! Input option: load_balancing_pop
+    integer(lint) :: pop = 1000
+    ! Percentage load imbalance we aim to achieve when performing load balancing.
+    ! i.e. min_pop = (1-percent_imbal)*av_pop, max_pop = (1+percent_imbal)*av_pop.
+    ! Default = 0.05
+    ! Input option: percent_imbal
+    real(p) :: percent= 0.05
+    ! Maximum number of load balancing attempts.
+    ! Default = 2.
+    ! Input option: max_load_attempts
+    integer :: max_attempts = 2
+    ! Write load balancing information every time load balancing is attempted.
+    ! Input option: write_load_info
+    logical :: write_info = .false.
+    ! Tag to check which stage if load balancing is required. This is reset to false
+    ! once redistribution of determinants has taken place to ensure load balancing
+    ! occurs once during a report loop.
+    logical :: needed = .false.
+    ! Current number of load balancing attempts.
+    integer :: nattempts = 0
+    ! Array which maps particles to processors. If attempting load balancing then
+    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
+    ! map particles to processors using modular arithmetic. Otherwise it's entries are
+    ! 0,1,..,nprocs-1.
+    integer, allocatable :: proc_map(:)
+end type load_t
+
+type parallel_t
+    type(load_t) :: load
+    type(nb_rep_t) :: report_comm
+end type parallel_t
+
 contains
 
     subroutine init_calc_defaults()
@@ -259,13 +301,15 @@ contains
 
     end function doing_dmqmc_calc
 
-    subroutine alloc_nb_rep_t(ntypes, report_loop)
+    subroutine init_parallel_t(ntypes, non_blocking_comm, par_calc)
 
         ! Allocate nb_rep_t object.
 
         ! In:
         !    ntypes:
         !       number of types of walkers sampled (see sampling_size).
+        !    non_blocking_comm: true if using non-blocking communications
+        !    load_balancing: true if attempting load balancing.
         ! Out:
         !    report_loop: initialies object for storing and communicating
         !        report loop quantities for non-blocking communications.
@@ -274,21 +318,29 @@ contains
         use checking, only: check_allocate
 
         integer, intent(in) :: ntypes
-        type(nb_rep_t), intent(out) :: report_loop
+        logical, intent(in) :: non_blocking_comm
+        type(parallel_t), intent(inout) :: par_calc
 
-        integer :: ierr
+        integer :: i, ierr
 
-        allocate(report_loop%rep_info(ntypes*nprocs+7), stat=ierr)
-        call check_allocate('report_loop%rep_info', size(report_loop%rep_info), ierr)
+        associate(nb=>par_calc%report_comm)
+            if (non_blocking_comm) then
+                allocate(nb%rep_info(ntypes*nprocs+7), stat=ierr)
+                call check_allocate('nb%rep_info', size(nb%rep_info), ierr)
+                allocate(nb%request(0:nprocs-1), stat=ierr)
+                call check_allocate('nb%request', size(nb%request), ierr)
+            end if
+        end associate
 
-        report_loop%nb_spawn = 0
+        associate(lb=>par_calc%load)
+            allocate(lb%proc_map(0:lb%nslots*nprocs-1), stat=ierr)
+            call check_allocate('lb%proc_map', size(lb%proc_map), ierr)
+            forall (i=0:lb%nslots*nprocs-1) lb%proc_map(i) = modulo(i,nprocs)
+        end associate
 
-        allocate(report_loop%request(0:nprocs-1), stat=ierr)
-        call check_allocate('report_loop%request', size(report_loop%request), ierr)
+    end subroutine init_parallel_t
 
-    end subroutine alloc_nb_rep_t
-
-    subroutine dealloc_nb_rep_t(rep_comm)
+    subroutine dealloc_parallel_t(par_calc)
 
         ! Deallocate nb_rep_t object.
 
@@ -297,16 +349,30 @@ contains
 
         use checking, only: check_deallocate
 
-        type(nb_rep_t), intent(inout) :: rep_comm
+        type(parallel_t), intent(inout) :: par_calc
 
         integer :: ierr
 
-        deallocate(rep_comm%rep_info, stat=ierr)
-        call check_deallocate('rep_comm%rep_info', ierr)
+        associate(nb=>par_calc%report_comm)
+            if (non_blocking_comm) then
+                if (allocated(nb%rep_info)) then
+                    deallocate(nb%rep_info, stat=ierr)
+                    call check_deallocate('nb%rep_info', ierr)
+                end if
+                if (allocated(nb%request)) then
+                    deallocate(nb%request, stat=ierr)
+                    call check_deallocate('nb%request', ierr)
+                end if
+            end if
+        end associate
 
-        deallocate(rep_comm%request, stat=ierr)
-        call check_deallocate('rep_comm%request', ierr)
+        associate(lb=>par_calc%load)
+            if (allocated(lb%proc_map)) then
+                deallocate(lb%proc_map, stat=ierr)
+                call check_deallocate('lb%proc_mapr', ierr)
+            end if
+        end associate
 
-    end subroutine dealloc_nb_rep_t
+    end subroutine dealloc_parallel_t
 
 end module calc

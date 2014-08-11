@@ -76,13 +76,13 @@ module load_balancing
 !    should probably be performed at the start of a calculation if the population
 !    is held constant.
 
-use const , only: lint
+use const , only: lint, p
 
 implicit none
 
 contains
 
-    subroutine do_load_balancing(proc_map)
+    subroutine do_load_balancing(parallel_info)
 
         ! Main subroutine in module, carries out load balancing as follows:
         ! 1. If doing load balancing then:
@@ -102,15 +102,15 @@ contains
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use spawn_data, only: spawn_t
         use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
-                               nparticles, load_balancing_slots, nparticles_proc, sampling_size,  &
-                               percent_imbal, load_attempts, write_load_info, load_balancing_tag
+                               nparticles, nparticles_proc, sampling_size
         use ranking, only: insertion_rank_lint
+        use calc, only: parallel_t
         use checking, only: check_allocate, check_deallocate
 
-        integer, intent(inout) :: proc_map(:)
+        type(parallel_t), intent(inout) :: parallel_info
 
-        integer(lint) :: slot_pop(0:size(proc_map)-1)
-        integer(lint) :: slot_list(0:size(proc_map)-1)
+        integer(lint) :: slot_pop(0:size(parallel_info%load%proc_map)-1)
+        integer(lint) :: slot_list(0:size(parallel_info%load%proc_map)-1)
 
         integer, allocatable :: donors(:), receivers(:)
         integer, allocatable :: d_slot_rank(:), d_slot_index(:)
@@ -123,11 +123,13 @@ contains
 
         slot_list = 0
 
+        associate(lb=>parallel_info%load)
+
         ! Find slot populations.
-        call initialise_slot_pop(proc_map, load_balancing_slots, qmc_spawn, slot_pop)
+        call initialise_slot_pop(lb%proc_map, lb%nslots, qmc_spawn, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
-        call MPI_AllReduce(slot_pop, slot_list, size(proc_map), MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
         ! Whether load balancing is required or not is decided based on the
         ! populations across processors during the report loop. For non-blocking
@@ -141,7 +143,7 @@ contains
         ! Note: these populations are calculated from the main list and do not
         ! include walkers in the received list which have not been introduced
         ! yet.
-        forall (i=1:nprocs) nparticles_proc(1,i) = sum(slot_list, MASK=proc_map==i-1)
+        forall (i=1:nprocs) nparticles_proc(1,i) = sum(slot_list, MASK=lb%proc_map==i-1)
         pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
 
         ! As stated above we only initially determine when to do load balancing
@@ -150,14 +152,14 @@ contains
         ! taken this first load balancing into account. As a result the decision
         ! to attempt load balancing will be a bad one, so we potentially need to
         ! exit the subroutine now.
-        call check_imbalance(nparticles_proc, pop_av, load_balancing_tag)
-        if (.not. load_balancing_tag) return
+        call check_imbalance(nparticles_proc, pop_av, lb%percent, lb%needed)
+        if (.not. lb%needed) return
 
-        up_thresh = pop_av + int(pop_av*percent_imbal)
-        low_thresh = pop_av - int(pop_av*percent_imbal)
+        up_thresh = pop_av + int(pop_av*lb%percent)
+        low_thresh = pop_av - int(pop_av*lb%percent)
 
         ! Find donor/receiver processors.
-        call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, proc_map, receivers, donors, d_slot_pop_size)
+        call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, lb%proc_map, receivers, donors, d_slot_pop_size)
 
         ! Smaller list of donor slot populations.
         allocate(d_slot_pop(d_slot_pop_size), stat=ierr)
@@ -170,17 +172,17 @@ contains
         call check_allocate('d_slot_index', d_slot_pop_size, ierr)
 
         ! Put donor slots into array so we can sort them.
-        call reduce_slots(donors, slot_list, proc_map, d_slot_index, d_slot_pop)
+        call reduce_slots(donors, slot_list, lb%proc_map, d_slot_index, d_slot_pop)
         call insertion_rank_lint(d_slot_pop, d_slot_rank)
 
-        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop)
+        if (lb%write_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop)
 
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(d_slot_pop, d_slot_index, d_slot_rank, donors, receivers, up_thresh, &
-                                low_thresh, proc_map, nparticles_proc(1,:nprocs))
-        load_attempts = load_attempts + 1
+                                low_thresh, lb%proc_map, nparticles_proc(1,:nprocs))
+        lb%nattempts = lb%nattempts + 1
 
-        if (write_load_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop)
+        if (lb%write_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop)
 
         deallocate(donors, stat=ierr)
         call check_deallocate('donors', ierr)
@@ -192,6 +194,8 @@ contains
         call check_deallocate('d_slot_rank', ierr)
         deallocate(d_slot_index, stat=ierr)
         call check_deallocate('d_slot_index', ierr)
+
+        end associate
 
     end subroutine do_load_balancing
 
@@ -220,21 +224,22 @@ contains
 
     end subroutine write_load_balancing_info
 
-    subroutine check_imbalance(nparticles_proc, average_pop, load_tag)
+    subroutine check_imbalance(nparticles_proc, average_pop, percent_imbal, load_tag)
 
         ! Check if there is at least one imbalanced processor.
 
         ! In:
         !    nparticles_proc: population of walkers across all processors.
         !    average_pop: average population across all processors.
+        !    percent_imbal: desired percentage load imbalance.
         ! Out:
         !    load_tag: set to .true. if load balancing is required
         !        else set to .false..
 
         use parallel, only: nprocs
-        use fciqmc_data, only: percent_imbal
 
         integer(lint), intent(in) :: nparticles_proc(:,:), average_pop
+        real(p), intent(in) :: percent_imbal
         logical, intent(out) :: load_tag
 
         integer :: i, upper_threshold
@@ -275,7 +280,6 @@ contains
         !   procs_pop: array containing populations on each processor.
 
         use parallel, only: nprocs
-        use fciqmc_data, only: load_balancing_slots
 
         integer(lint), intent(in) :: d_slot_pop(:)
         integer, intent(in) ::  d_slot_index(:), d_slot_rank(:)
