@@ -54,7 +54,7 @@ integer :: initiator_cas(2) = (/ 0,0 /)
 real(p) :: initiator_population = 3.0_p
 
 ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
-real(p) :: cluster_multispawn_threshold = 0.0_p
+real(p) :: cluster_multispawn_threshold = 1.e9_p
 
 ! True if allowing non-integer values for psip populations.
 logical :: real_amplitudes = .false.

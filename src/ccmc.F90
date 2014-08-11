@@ -463,11 +463,12 @@ contains
                         ! This has the potential to create blooms, so we allow for multiple
                         ! spawning events per cluster.
                         ! The number of spawning events is decided by the value
-                        ! of cluster%amplitude/cluster%pselect.  If this is less
-                        ! than cluster_multispawn_threshold, then nspawnings is
+                        ! of cluster%amplitude/cluster%pselect.  If this is
+                        ! greater than cluster_multispawn_threshold, then nspawnings is
                         ! increased to the ratio of these.
-                        nspawnings_total=max(1,ceiling(cluster_multispawn_threshold*    &
-                                          abs(cluster(it)%amplitude/cluster(it)%pselect) ))
+                        nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
+                                                         cluster_multispawn_threshold))
+
                         nspawnings_left = nspawnings_total
                         nattempts_spawn = nattempts_spawn+nspawnings_total
 !                        write(6,*) "nst",nspawnings_total,abs(cluster(it)%amplitude/cluster(it)%pselect)
