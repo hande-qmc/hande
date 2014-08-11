@@ -936,6 +936,8 @@ The following options are valid for FCIQMC calculations.
     
     Default: 1e9
 
+    .. [review] - JSS: unclear (without reading code) how the number of spawning
+    .. [review] - JSS: attempts is decided.
     When selecting clusters the generations probabilities can vary over orders of
     magnitude.  If after having selected the cluster, the value of
     cluster%amplitude/cluster%pselect

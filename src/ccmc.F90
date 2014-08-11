@@ -413,6 +413,7 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
+                ! [review] - JSS: better to be explicit with OpenMP: state nattempts_spawn is shared.
                 !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
                 !$omp         nspawnings_left, nspawnings_total               ) &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
@@ -466,12 +467,18 @@ contains
                         ! of cluster%amplitude/cluster%pselect.  If this is
                         ! greater than cluster_multispawn_threshold, then nspawnings is
                         ! increased to the ratio of these.
+                        ! [review] - JSS: why not simply rescale the amplitude?
+                        ! [review] - JSS: Then spawner_ccmc would not need to know anything about 
+                        ! [review] - JSS: how many spawning attempts are made by a single cluster.
                         nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
                                                          cluster_multispawn_threshold))
 
                         nspawnings_left = nspawnings_total
+                        ! [review] - JSS: nattempts_spawn total is not thread safe (include in reduction clause).
                         nattempts_spawn = nattempts_spawn+nspawnings_total
+                        ! [review] - JSS: remove debug output line (even though commented out).
 !                        write(6,*) "nst",nspawnings_total,abs(cluster(it)%amplitude/cluster(it)%pselect)
+                        ! [review] - JSS: why not a simple 'do i = 1, nspawnings_left'?
                         do while (nspawnings_left > 0)
                            call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total)
@@ -989,7 +996,9 @@ contains
         !        a complete excitation.
         ! In/Out:
         !    rng: random number generator.
-        !    nspawnings_total: The total nuber of spawnings attemped.
+        !    [review] - JSS: check amended comment.
+        !    nspawnings_total: The total number of spawnings attemped by the current cluster
+        !        in the current timestep.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
