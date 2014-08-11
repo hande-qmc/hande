@@ -17,6 +17,7 @@ module system
 ! coordinate system.
 
 use const
+use basis_types, only: basis_t
 
 implicit none
 
@@ -42,7 +43,10 @@ type sys_lattice_t
     ! See also specific structures.
 
     ! 1, 2 or 3 dimensions.
-    integer :: ndim = -1 ! set to a nonsensical value for error checking in input parser.
+    ! Set to a nonsensical value for error checking in input parser.
+    ! It is useful to default to 0 so we can still safely allocate arrays using it even
+    ! if we're not doing a lattice model.
+    integer :: ndim = 0
 
     ! Is a triangular lattice is being used? (not UEG)
     logical :: triangular_lattice = .false.
@@ -208,6 +212,11 @@ type sys_t
     ! Heisenberg model: number of antiparallel pairs of spins which can be
     ! flipped.  Used only in DMQMC.
     integer :: max_number_excitations
+
+    ! Basis set information
+    ! ^^^^^^^^^^^^^^^^^^^^^
+
+    type(basis_t) :: basis
 
     ! System-specific structure handles
     ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

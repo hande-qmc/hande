@@ -21,7 +21,6 @@ contains
 
         use parallel
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length
         use bit_utils, only: count_set_bits
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
@@ -104,10 +103,10 @@ contains
 
                         ! f points to the bitstring that is spawning, f2 to the
                         ! other bit string.
-                        cdet1%f => walker_dets(:basis_length,idet)
-                        cdet1%f2 => walker_dets((basis_length+1):(2*basis_length),idet)
-                        cdet2%f => walker_dets((basis_length+1):(2*basis_length),idet)
-                        cdet2%f2 => walker_dets(:basis_length,idet)
+                        cdet1%f => walker_dets(:sys%basis%string_len,idet)
+                        cdet1%f2 => walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet2%f => walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet2%f2 => walker_dets(:sys%basis%string_len,idet)
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
@@ -148,7 +147,7 @@ contains
                                                      walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
-                                        call create_spawned_particle_dm_ptr(cdet1%f, cdet2%f, connection, nspawned, &
+                                        call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
                                                                             spawning_end, ireplica, qmc_spawn)
 
                                         if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
@@ -160,8 +159,8 @@ contains
                                     call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet2, &
                                                      walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     if (nspawned /= 0_int_p) then
-                                        call create_spawned_particle_dm_ptr(cdet2%f, cdet1%f, connection, nspawned, spawning_end, &
-                                                                            ireplica, qmc_spawn)
+                                        call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
+                               spawning_end, ireplica, qmc_spawn)
 
                                         if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -200,7 +199,7 @@ contains
                     ! the trial function, call a routine to update these weights
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
-                    if (dmqmc_vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng)
+                    if (dmqmc_vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng, sys%basis)
 
                 end do
 
@@ -215,7 +214,7 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(ireport, .false., tot_nparticles_old, t1, soft_exit, .false.)
+                call end_report_loop(sys, ireport, .false., tot_nparticles_old, t1, soft_exit, .false.)
 
                 if (soft_exit) exit
 

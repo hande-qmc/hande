@@ -123,9 +123,9 @@ contains
             pure function list_compare(item1, item2) result(compare)
 
                 ! In:
-                !    f1(total_basis_length): bit string representation of the Slater
+                !    f1(tensor_label_len): bit string representation of the Slater
                 !        determinant.
-                !    f2(total_basis_length): bit string representation of the Slater
+                !    f2(tensor_label_len): bit string representation of the Slater
                 !        determinant.
                 !    (For DMQMC this bitstring contains information for both determinants)
                 ! Returns:

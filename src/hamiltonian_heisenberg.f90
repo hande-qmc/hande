@@ -21,19 +21,18 @@ contains
 
         ! Used in the Heisenberg model only.
 
-        use determinants, only: basis_length
         use excitations, only: excit, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         type(excit) :: excitation
 
         ! Test to see if Hamiltonian matrix element is non-zero.
 
         ! We assume Ms is conserved (ie has already been checked for).
-        excitation = get_excitation(sys%nel, f1, f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1, f2)
         ! Connected determinants can differ by (at most) 1 spin orbitals.
         ! Space group symmetry not currently implemented.
 
@@ -70,7 +69,6 @@ contains
         !
         ! Includes an uniform external field, if one is added.
 
-        use basis, only: basis_length, basis_lookup
         use calc, only: ms_in
         use real_lattice, only: connected_orbs
         use bit_utils, only: count_set_bits
@@ -78,18 +76,18 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
-        integer(i0) :: f_not(basis_length), g(basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0) :: f_not(sys%basis%string_len), g(sys%basis%string_len)
         integer :: ipos, i, basis_find, counter
 
         counter = 0
 
         ! Count the number of 0-1 type bonds
         f_not = not(f)
-        do i = 1, basis_length
+        do i = 1, sys%basis%string_len
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
-                    basis_find = basis_lookup(ipos, i)
+                    basis_find = sys%basis%basis_lookup(ipos, i)
                     g = iand(f_not, connected_orbs(:,basis_find))
                     counter = counter + sum(count_set_bits(g))
                 end if
@@ -128,7 +126,6 @@ contains
         ! This function is for diagonal elements for the Hamiltonian which includes
         ! a staggered magnetization term.
 
-        use basis, only: basis_length, basis_lookup
         use determinants, only: lattice_mask
         use real_lattice, only: connected_orbs
         use bit_utils, only: count_set_bits
@@ -136,9 +133,9 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
-        integer(i0) :: f_not(basis_length), f_mask(basis_length), &
-                       g(basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0) :: f_not(sys%basis%string_len), f_mask(sys%basis%string_len), &
+                       g(sys%basis%string_len)
         integer :: ipos, i, basis_find, counter, sublattice1_up_spins
 
         counter = 0
@@ -151,10 +148,10 @@ contains
 
         ! Count the number of 0-1 type bonds
         f_not = not(f)
-        do i = 1, basis_length
+        do i = 1, sys%basis%string_len
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
-                    basis_find = basis_lookup(ipos, i)
+                    basis_find = sys%basis%basis_lookup(ipos, i)
                     g = iand(f_not, connected_orbs(:,basis_find))
                     counter = counter + sum(count_set_bits(g))
                 end if
@@ -201,7 +198,6 @@ contains
         ! uniform and staggered external fields applied, since these additions
         ! only alter the diagonal elements.
 
-        use basis, only: basis_length, bit_lookup
         use real_lattice, only: connected_orbs
         use system, only: sys_t
 
@@ -211,8 +207,8 @@ contains
 
         integer :: ipos, iel
 
-        ipos = bit_lookup(1,a)
-        iel = bit_lookup(2,a)
+        ipos = sys%basis%bit_lookup(1,a)
+        iel = sys%basis%bit_lookup(2,a)
 
         if (btest(connected_orbs(iel,i), ipos)) then
             ! If the two sites connected and of opposite spin, matrix element is -J/2.

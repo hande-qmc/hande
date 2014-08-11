@@ -25,35 +25,39 @@ end type excit
 
 ! excit_mask(:,i) is a bit field with bits corresponding to all orbitals with
 ! a higher index than i set.
-integer(i0), allocatable :: excit_mask(:,:) ! (basis_length, nbasis)
+integer(i0), allocatable :: excit_mask(:,:) ! (string_len, nbasis)
 
 contains
 
-    subroutine init_excitations()
+    subroutine init_excitations(basis)
 
         ! Allocate and initialise data in excit_mask.
 
-        use basis, only: bit_lookup, nbasis, basis_length
+        ! In:
+        !    basis: information about the single-particle basis.
+
+        use basis_types, only: basis_t
         use checking, only: check_allocate
 
+        type(basis_t), intent(in) :: basis
         integer :: ibasis, jbasis, ipos, iel, jpos, jel, ierr
 
-        allocate(excit_mask(basis_length, nbasis), stat=ierr)
-        call check_allocate('excit_mask', basis_length*nbasis, ierr)
+        allocate(excit_mask(basis%string_len, basis%nbasis), stat=ierr)
+        call check_allocate('excit_mask', size(excit_mask), ierr)
 
         excit_mask = 0_i0
 
-        do ibasis = 1, nbasis
-            ipos = bit_lookup(1, ibasis)
-            iel = bit_lookup(2, ibasis)
+        do ibasis = 1, basis%nbasis
+            ipos = basis%bit_lookup(1, ibasis)
+            iel = basis%bit_lookup(2, ibasis)
             ! Set bits corresponding to all orbitals above ibasis.
             ! Sure, there are quicker (and probably more elegant) ways of doing
             ! this, but it's a one-off...
             ! Loop from jbasis=1 as separate_strings means that even if
             ! jbasis<ibasis, it can still come after ibasis in the bit string.
-            do jbasis = 1, nbasis
-                jpos = bit_lookup(1, jbasis)
-                jel = bit_lookup(2, jbasis)
+            do jbasis = 1, basis%nbasis
+                jpos = basis%bit_lookup(1, jbasis)
+                jel = basis%bit_lookup(2, jbasis)
                 if ( (jel==iel .and. jpos > ipos) .or. jel>iel) &
                     excit_mask(jel, ibasis) = ibset(excit_mask(jel, ibasis), jpos)
             end do
@@ -74,13 +78,14 @@ contains
 
     end subroutine end_excitations
 
-    pure function get_excitation(nel, f1,f2) result(excitation)
+    pure function get_excitation(nel, basis, f1, f2) result(excitation)
 
         ! In:
         !    nel: number of electrons in system.
-        !    f1(basis_length): bit string representation of the Slater
+        !    basis: information about the single-particle basis.
+        !    f1(string_len): bit string representation of the Slater
         !        determinant.
-        !    f2(basis_length): bit string representation of the Slater
+        !    f2(string_len): bit string representation of the Slater
         !        determinant.
         ! Returns:
         !    excitation: excit type containing the following information---
@@ -97,12 +102,12 @@ contains
         !        excitations.
 
         use bit_utils
-        use basis, only: basis_length, basis_lookup
-        use system
+        use basis_types, only: basis_t
 
         type(excit) :: excitation
         integer, intent(in) :: nel
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift
         logical :: test_f1, test_f2
 
@@ -156,7 +161,7 @@ contains
 
             if (excitation%nexcit <= 2) then
 
-                do i = 1, basis_length
+                do i = 1, basis%string_len
                     ! Bonus optimisation: skip bit strings which aren't changed.
                     ! This modifies the algorithm above by skipping basis
                     ! functions which are already lined up.  Doing so is
@@ -176,14 +181,14 @@ contains
                             if (.not.test_f2) then
                                 ! occupied in f1 but not in f2
                                 iexcit1 = iexcit1 + 1
-                                excitation%from_orb(iexcit1) = basis_lookup(j,i)
+                                excitation%from_orb(iexcit1) = basis%basis_lookup(j,i)
                                 perm = perm + (shift - iel1 + iexcit1)
                             end if
                         else
                             if (test_f2) then
                                 ! occupied in f1 but not in f2
                                 iexcit2 = iexcit2 + 1
-                                excitation%to_orb(iexcit2) = basis_lookup(j,i)
+                                excitation%to_orb(iexcit2) = basis%basis_lookup(j,i)
                                 perm = perm + (shift - iel2 + iexcit2)
                             end if
                         end if
@@ -202,9 +207,9 @@ contains
     pure function get_excitation_level(f1, f2) result(level)
 
         ! In:
-        !    f1(basis_length): bit string representation of the Slater
+        !    f1(string_len): bit string representation of the Slater
         !        determinant.
-        !    f2(basis_length): bit string representation of the Slater
+        !    f2(string_len): bit string representation of the Slater
         !        determinant.
         ! Returns:
         !    Excitation level connecting determinants f1 and f2.
@@ -242,14 +247,13 @@ contains
         !    excitation: excit type with the parity of the permutation also
         !        specified.
 
-        use basis, only: basis_length
         use bit_utils, only: count_set_bits
 
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         type(excit), intent(inout) :: excitation
 
         integer :: perm
-        integer(i0) :: ia(basis_length)
+        integer(i0) :: ia(size(f))
 
         ! This is just a simplification of find_excitation_permutation2.  See
         ! the comments there (and ignore any that refer to j and b...).
@@ -279,14 +283,13 @@ contains
         !    excitation: excit type with the parity of the permutation also
         !        specified.
 
-        use basis, only: basis_length
         use bit_utils, only: count_set_bits
 
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         type(excit), intent(inout) :: excitation
 
         integer :: perm
-        integer(i0) :: ia(basis_length), jb(basis_length)
+        integer(i0) :: ia(size(f)), jb(size(f))
 
         ! Fast way of getting the parity of the permutation required to align
         ! two determinants given one determinant and the connecting exctitation.
@@ -344,24 +347,27 @@ contains
 
     end subroutine find_excitation_permutation2
 
-    pure subroutine create_excited_det(f_in, connection, f_out)
+    pure subroutine create_excited_det(basis, f_in, connection, f_out)
 
         ! Generate a determinant from another determinant and the excitation
         ! information connecting the two determinants.
+
         ! In:
-        !    f_in(basis_length): bit string representation of the reference
+        !    basis: information about the single-particle basis.
+        !    f_in(string_len): bit string representation of the reference
         !        Slater determinant.
         !    connection: excitation connecting f_in to f_out.  Note that
         !        the perm field is not used.
         ! Out:
-        !    f_out(basis_length): bit string representation of the excited
+        !    f_out(string_len): bit string representation of the excited
         !        Slater determinant.
 
-        use basis, only: basis_length, bit_lookup
+        use basis_types, only: basis_t
 
-        integer(i0), intent(in) :: f_in(basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f_in(basis%string_len)
         type(excit), intent(in) :: connection
-        integer(i0), intent(out) :: f_out(basis_length)
+        integer(i0), intent(out) :: f_out(basis%string_len)
 
         integer :: i, orb, bit_pos, bit_element
 
@@ -371,13 +377,13 @@ contains
         do i = 1, connection%nexcit
             ! Clear i/j orbital.
             orb = connection%from_orb(i)
-            bit_pos = bit_lookup(1,orb)
-            bit_element = bit_lookup(2,orb)
+            bit_pos = basis%bit_lookup(1,orb)
+            bit_element = basis%bit_lookup(2,orb)
             f_out(bit_element) = ibclr(f_out(bit_element), bit_pos)
             ! Set a/b orbital.
             orb = connection%to_orb(i)
-            bit_pos = bit_lookup(1,orb)
-            bit_element = bit_lookup(2,orb)
+            bit_pos = basis%bit_lookup(1,orb)
+            bit_element = basis%bit_lookup(2,orb)
             f_out(bit_element) = ibset(f_out(bit_element), bit_pos)
         end do
 

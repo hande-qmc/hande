@@ -254,7 +254,7 @@ contains
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(sys%nel, cdet%f, f0)
+        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -312,7 +312,7 @@ contains
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(sys%nel, cdet%f, f0)
+        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -357,7 +357,6 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use basis, only: basis_fns
         use determinants, only: det_info
         use excitations, only: excit, get_excitation
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
@@ -374,7 +373,7 @@ contains
 
         integer :: ij_sym, ab_sym
 
-        excitation = get_excitation(sys%nel, cdet%f, f0)
+        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
         hmatel = 0.0_p
 
         select case(excitation%nexcit)
@@ -385,8 +384,8 @@ contains
             ! Have a determinant connected to the reference determinant by
             ! a single excitation: add to projected energy.
             ! Is excitation symmetry allowed?
-            if (basis_fns(excitation%from_orb(1))%Ms == basis_fns(excitation%to_orb(1))%Ms .and. &
-                    basis_fns(excitation%from_orb(1))%sym == basis_fns(excitation%to_orb(1))%sym) then
+            if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
+                    sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
                 proj_energy_sum = proj_energy_sum + hmatel*pop
@@ -395,10 +394,10 @@ contains
             ! Have a determinant connected to the reference determinant by
             ! a double excitation: add to projected energy.
             ! Is excitation symmetry allowed?
-            if (basis_fns(excitation%from_orb(1))%Ms+basis_fns(excitation%from_orb(2))%Ms == &
-                    basis_fns(excitation%to_orb(1))%Ms+basis_fns(excitation%to_orb(2))%Ms) then
-                ij_sym = cross_product_pg_basis(excitation%from_orb(1), excitation%from_orb(2))
-                ab_sym = cross_product_pg_basis(excitation%to_orb(1), excitation%to_orb(2))
+            if (sys%basis%basis_fns(excitation%from_orb(1))%Ms+sys%basis%basis_fns(excitation%from_orb(2))%Ms == &
+                    sys%basis%basis_fns(excitation%to_orb(1))%Ms+sys%basis%basis_fns(excitation%to_orb(2))%Ms) then
+                ij_sym = cross_product_pg_basis(excitation%from_orb(1), excitation%from_orb(2), sys%basis%basis_fns)
+                ab_sym = cross_product_pg_basis(excitation%to_orb(1), excitation%to_orb(2), sys%basis%basis_fns)
                 if (ij_sym == ab_sym) then
                     hmatel = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
@@ -452,7 +451,7 @@ contains
         type(excit), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(sys%nel, cdet%f, f0)
+        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
         hmatel = 0.0_p
 
         if (excitation%nexcit == 0) then
@@ -485,7 +484,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(basis_length): bit string representation of the Slater determinant, D_i.
+        !    f(string_len): bit string representation of the Slater determinant, D_i.
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.
         !    fdata(:): additional information about the determinant (unused, for
@@ -502,12 +501,11 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use basis, only: basis_length
         use excitations, only: excit
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation
@@ -539,7 +537,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !    f(string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant (unused, for interface
         !       compatibility only).
@@ -558,12 +556,11 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use basis, only: basis_length
         use excitations, only: excit
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation
@@ -596,7 +593,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Requires hubbard%u and lattice%nsites.
-        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !    f(string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.
@@ -614,12 +611,11 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use basis, only: basis_length
         use excitations, only: excit
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation
@@ -656,7 +652,7 @@ contains
 
         ! In:
         !    sys: system being studied.  Unused.
-        !    f(basis_length): bit string representation of the Slater determinant, D_i
+        !    f(string_len): bit string representation of the Slater determinant, D_i
         !       (unused, for interface compatibility only).
         !    fpop: Hamiltonian population on the determinant.
         !    f_hfpop: Hellmann-Feynman population on the determinant.
@@ -674,13 +670,12 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use basis, only: basis_length
         use excitations, only: excit
         use operators, only: one_body1_mol
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
         type(excit), intent(in) :: excitation

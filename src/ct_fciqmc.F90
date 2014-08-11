@@ -19,7 +19,6 @@ contains
         !       t (atomic/real-space orbitals).
 
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length
         use bloom_handler, only: bloom_stats_t
         use calc, only: seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info
@@ -63,7 +62,7 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         ! index of spawning array which contains population
-        spawned_pop = basis_length + 1
+        spawned_pop = sys%basis%string_len + 1
 
         if (sys%system == hub_k) then
             associate(sl=>sys%lattice)
@@ -152,7 +151,7 @@ contains
                             ! spawned array - maintaining processor blocks if going in
                             ! parallel. We now also have an extra "time" array giving
                             ! the birth time of the walker.
-                            call create_spawned_particle_ct(cdet, connection, nspawned, 1, time)
+                            call create_spawned_particle_ct(sys%basis, cdet, connection, nspawned, 1, time)
 
                         end if
 
@@ -180,7 +179,7 @@ contains
                         ! processor proc_id.  Need to advance them to the barrier.
 
                         ! decode the spawned walker bitstring
-                        cdet%f = int(qmc_spawn%sdata(:basis_length,current_pos(thread_id,proc_id)), i0)
+                        cdet%f = int(qmc_spawn%sdata(:sys%basis%string_len,current_pos(thread_id,proc_id)), i0)
                         K_ii = sc0_ptr(sys, cdet%f) - H00
                         call decoder_ptr(sys, cdet%f,cdet)
 
@@ -210,7 +209,7 @@ contains
                                     ! Add a walker to the end of the spawned walker list in the
                                     ! appropriate block - this will increment the appropriate
                                     ! spawning heads for the processors which were spawned on
-                                    call create_spawned_particle_ct(cdet, connection, nspawned, spawned_pop, time)
+                                    call create_spawned_particle_ct(sys%basis, cdet, connection, nspawned, spawned_pop, time)
 
                                 end if
                             
@@ -234,7 +233,7 @@ contains
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
-            call end_report_loop(ireport, .false., nparticles_old, t1, soft_exit)
+            call end_report_loop(sys, ireport, .false., nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit
 
@@ -346,12 +345,13 @@ contains
 
     end subroutine ct_spawn
 
-    subroutine create_spawned_particle_ct(cdet, connection, nspawn, particle_type, spawn_time)
+    subroutine create_spawned_particle_ct(basis, cdet, connection, nspawn, particle_type, spawn_time)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -368,18 +368,19 @@ contains
         use hashing
         use parallel, only: iproc, nprocs
 
-        use basis, only: basis_length
+        use basis_types, only: basis_t
         use determinants, only: det_info
         use excitations, only: excit, create_excited_det
         use fciqmc_data, only: qmc_spawn
 
+        type(basis_t), intent(in) :: basis
         type(det_info), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         real(p), intent(in) :: spawn_time
 
-        integer(i0) :: f_new(basis_length)
+        integer(i0) :: f_new(basis%string_len)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -387,14 +388,14 @@ contains
 #endif
 
         ! Create bit string of new determinant.
-        call create_excited_det(cdet%f, connection, f_new)
+        call create_excited_det(basis, cdet%f, connection, f_new)
 
 #ifdef PARALLEL
         ! (Extra credit for parallel calculations)
         ! Need to determine which processor the spawned walker should be sent
         ! to.  This communication is done during the annihilation process, after
         ! all spawning and death has occured..
-        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis_length, qmc_spawn%hash_seed), nprocs)
+        iproc_spawn = modulo(murmurhash_bit_string(f_new, basis%string_len, qmc_spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
@@ -403,7 +404,7 @@ contains
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
         qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
-        qmc_spawn%sdata(:basis_length,qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
+        qmc_spawn%sdata(:basis%string_len,qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
         qmc_spawn%sdata(particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
         spawn_times(qmc_spawn%head(0,iproc_spawn)) = spawn_time
 

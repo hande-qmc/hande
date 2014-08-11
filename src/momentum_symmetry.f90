@@ -32,7 +32,7 @@ contains
         ! In/Out:
         !    sys: system to be studied.  On output the symmetry components are set.
 
-        use basis, only: nbasis, basis_fns, write_basis_fn
+        use basis, only: write_basis_fn
         use system
         use kpoints, only: is_reciprocal_lattice_vector
         use parallel, only: parent
@@ -49,7 +49,7 @@ contains
 
         ! model systems use symmetry indices starting from 1.
         sys%sym0 = 1
-        sys%nsym = nbasis/2 ! two spin orbitals per wavevector
+        sys%nsym = sys%basis%nbasis/2 ! two spin orbitals per wavevector
         sys%sym_max = sys%nsym
         sys%sym0_tot = sys%sym0
         sys%nsym_tot = sys%nsym
@@ -72,15 +72,15 @@ contains
 
             gamma_sym = 0
             do i = 1, sys%nsym
-                if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
+                if (all(sys%basis%basis_fns(i*2)%l == 0)) gamma_sym = i
             end do
             if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
             do i = 1, sys%nsym
                 do j = i, sys%nsym
-                    ksum = basis_fns(i*2)%l + basis_fns(j*2)%l
+                    ksum = sys%basis%basis_fns(i*2)%l + sys%basis%basis_fns(j*2)%l
                     do k = 1, sys%nsym
-                        if (is_reciprocal_lattice_vector(sys, ksum - basis_fns(k*2)%l)) then
+                        if (is_reciprocal_lattice_vector(sys, ksum - sys%basis%basis_fns(k*2)%l)) then
                             sym_table(i,j) = k
                             sym_table(j,i) = k
                             if (k == gamma_sym) then
@@ -103,7 +103,7 @@ contains
                 write (6,'(a7)') 'Inverse'
                 do i = 1, sys%nsym
                     write (6,'(i4,5X)', advance='no') i
-                    call write_basis_fn(sys, basis_fns(2*i), new_line=.false., print_full=.false.)
+                    call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
                     write (6,'(5X,i4)') inv_sym(i)
                 end do
                 write (6,'()')
@@ -134,11 +134,11 @@ contains
 
             ! We'll only consider determinants with symmetry corresponding to
             ! a basis function though.
-            sys%nsym = nbasis/2
+            sys%nsym = sys%basis%nbasis/2
 
             gamma_sym = 0
             do i = 1, sys%nsym
-                if (all(basis_fns(i*2)%l == 0)) gamma_sym = i
+                if (all(sys%basis%basis_fns(i*2)%l == 0)) gamma_sym = i
             end do
             if (gamma_sym == 0) call stop_all('init_symmetry', 'Gamma-point symmetry not found.')
 
@@ -227,7 +227,6 @@ contains
 
         ! UEG basis can be large; avoid storing O(N^2) symmetry table.
 
-        use basis, only: basis_fns
         use system, only: sys_t
         use ueg_system, only: ueg_basis_index
 
@@ -240,7 +239,7 @@ contains
         integer :: k(3)
 
         ! Find k_1+k_2.  Need to convert s1 and s2 into basis set indices.
-        k(:sys%lattice%ndim) = basis_fns(2*s1)%l + basis_fns(2*s2)%l
+        k(:sys%lattice%ndim) = sys%basis%basis_fns(2*s1)%l + sys%basis%basis_fns(2*s2)%l
         ! Get symmetry index.  Need to convert from basis set index back into
         ! wavevector index.
         prod = (ueg_basis_index(k(:sys%lattice%ndim),1)+1)/2
@@ -284,7 +283,6 @@ contains
 
         ! For momentum symmetry in the UEG.
 
-        use basis, only: basis_fns
         use system, only: sys_t
         use ueg_system, only: ueg_basis_index
 
@@ -297,7 +295,7 @@ contains
         k = 0
         do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
             ! Cannot use cross_product_ueg for multiple operations.
-            k = k + basis_fns(orb_list(i))%l
+            k = k + sys%basis%basis_fns(orb_list(i))%l
         end do
         ! Convert to symmetry index.
         isym = (ueg_basis_index(k,1)+1)/2

@@ -148,7 +148,7 @@ integer :: sampling_size
 ! (e.g.) importance sampling.
 integer :: info_size
 ! a) determinants
-integer(i0), allocatable, target :: walker_dets(:,:) ! (basis_length, walker_length)
+integer(i0), allocatable, target :: walker_dets(:,:) ! (string_len, walker_length)
 ! b) walker population
 ! NOTE:
 !   When using the real_amplitudes option, walker_population stores encoded
@@ -411,7 +411,7 @@ real(p), allocatable :: shift_profile(:) ! (nreport)
 ! correlation_mask is a bit string with a 1 at positions i and j which
 ! are considered when finding the spin correlation function, C(r_{i,j}).
 ! All other bits are set to 0. i and j are chosen by the user initially.
-integer(i0), allocatable :: correlation_mask(:) ! (basis_length)
+integer(i0), allocatable :: correlation_mask(:) ! (string_len)
 ! correlation_sites stores the site positions specified by the users
 ! initially (as orbital labels).
 integer, allocatable :: correlation_sites(:)

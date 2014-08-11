@@ -20,7 +20,7 @@ contains
         !         run if needed.
 
         use calc
-        use basis, only: nbasis
+
         use ccmc, only: do_ccmc
         use ct_fciqmc, only: do_ct_fciqmc
         use dmqmc, only: do_dmqmc
@@ -41,14 +41,14 @@ contains
 
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         ! Initialise data
         call init_qmc(sys)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
-        if (initiator_approximation) call init_ifciqmc(sys%nel)
+        if (initiator_approximation) call init_ifciqmc(sys%nel, sys%basis)
 
         if (doing_calc(dmqmc_calc)) then
             call do_dmqmc(sys)
@@ -89,7 +89,7 @@ contains
         use parallel
         use utils, only: int_fmt
 
-        use basis, only: nbasis, basis_length, total_basis_length, basis_fns, write_basis_fn, basis_lookup, bit_lookup
+        use basis, only: write_basis_fn
         use calc
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: decode_det, encode_det, write_det
@@ -113,7 +113,7 @@ contains
         integer :: step, size_main_walker, size_spawned_walker
         integer :: nwalker_int, nwalker_int_p, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
-        integer(i0) :: f0_inv(basis_length)
+        integer(i0) :: f0_inv(sys%basis%string_len)
         integer(lint) :: tmp_lint
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
@@ -127,7 +127,7 @@ contains
             sampling_size = sampling_size + 1
         end if
 
-        ! Each determinant occupies basis_length kind=i0 integers,
+        ! Each determinant occupies string_len kind=i0 integers,
         ! sampling_size kind=int_p integers, sampling_size kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
         ! the projected estimator, then a further 2 reals are used per
@@ -142,14 +142,14 @@ contains
         nwalker_real = sampling_size + info_size
 
         ! Thus the number of bits occupied by each determinant in the main
-        ! walker list is given by basis_length*i0_length+nwalker_int*32+
+        ! walker list is given by string_len*i0_length+nwalker_int*32+
         ! nwalker_int_p*int_p_length+nwalker_real*32 (*64 if double precision).
         ! The number of bytes is simply 1/8 this.
 #ifdef SINGLE_PRECISION
-        size_main_walker = total_basis_length*i0_length/8 + nwalker_int_p*int_p_length/8 + &
+        size_main_walker = sys%basis%tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &
                            nwalker_int*4 + nwalker_real*4
 #else
-        size_main_walker = total_basis_length*i0_length/8 + nwalker_int_p*int_p_length/8 + &
+        size_main_walker = sys%basis%tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &
                            nwalker_int*4 + nwalker_real*8
 #endif
         if (walker_length < 0) then
@@ -160,9 +160,9 @@ contains
 
         ! Each spawned_walker occupies spawned_size kind=int_s integers.
         if (initiator_approximation) then
-            size_spawned_walker = (total_basis_length+sampling_size+1)*int_s_length/8
+            size_spawned_walker = (sys%basis%tensor_label_len+sampling_size+1)*int_s_length/8
         else
-            size_spawned_walker = (total_basis_length+sampling_size)*int_s_length/8
+            size_spawned_walker = (sys%basis%tensor_label_len+sampling_size)*int_s_length/8
         end if
         if (spawned_walker_length < 0) then
             ! Given in MB.  Convert.
@@ -190,8 +190,8 @@ contains
         call check_allocate('nparticles', sampling_size, ierr)
         allocate(tot_nparticles(sampling_size), stat=ierr)
         call check_allocate('tot_nparticles', sampling_size, ierr)
-        allocate(walker_dets(total_basis_length,walker_length), stat=ierr)
-        call check_allocate('walker_dets', basis_length*walker_length, ierr)
+        allocate(walker_dets(sys%basis%tensor_label_len,walker_length), stat=ierr)
+        call check_allocate('walker_dets', sys%basis%string_len*walker_length, ierr)
         allocate(walker_population(sampling_size,walker_length), stat=ierr)
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
         allocate(walker_data(sampling_size+info_size,walker_length), stat=ierr)
@@ -238,12 +238,12 @@ contains
         ! equal to 1.0, so overwrite the default.
         if (.not. real_amplitudes) spawn_cutoff = 0.0_p
 
-        call alloc_spawn_t(total_basis_length, sampling_size, initiator_approximation, &
+        call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, qmc_spawn)
 
-        allocate(f0(basis_length), stat=ierr)
-        call check_allocate('f0',basis_length,ierr)
-        allocate(hs_f0(basis_length), stat=ierr)
+        allocate(f0(sys%basis%string_len), stat=ierr)
+        call check_allocate('f0',sys%basis%string_len,ierr)
+        allocate(hs_f0(sys%basis%string_len), stat=ierr)
         call check_allocate('hs_f0', size(hs_f0), ierr)
 
         ! --- Initial walker distributions ---
@@ -256,7 +256,7 @@ contains
             end if
             call read_restart_hdf5(restart_info_global)
             ! Need to re-calculate the reference determinant data
-            call decode_det(f0, occ_list0)
+            call decode_det(sys%basis, f0, occ_list0)
             if (trial_function == neel_singlet) then
                 ! Set the Neel state data for the reference state, if it is being used.
                 H00 = 0.0_p
@@ -278,10 +278,10 @@ contains
                 call set_reference_det(sys, occ_list0, .false.)
             end if
 
-            call encode_det(occ_list0, f0)
+            call encode_det(sys%basis, occ_list0, f0)
 
             if (allocated(hs_occ_list0)) then
-                call encode_det(hs_occ_list0, hs_f0)
+                call encode_det(sys%basis, hs_occ_list0, hs_f0)
             else
                 allocate(hs_occ_list0(sys%nel), stat=ierr)
                 call check_allocate('hs_occ_list0', size(hs_occ_list0), ierr)
@@ -326,8 +326,8 @@ contains
                 ! Finally, we need to check if the reference determinant actually
                 ! belongs on this processor.
                 ! If it doesn't, set the walkers array to be empty.
-                D0_proc = assign_particle_processor(f0, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                                    qmc_spawn%move_freq, nprocs)
+                D0_proc = assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, &
+                                                    qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs)
                 if (D0_proc /= iproc) tot_walkers = 0
             end if
 
@@ -346,8 +346,8 @@ contains
                     ! In general, the basis bit string has some padding at the
                     ! end which must be unset.  We need to clear this...
                     ! Loop over all bits after the last basis function.
-                    i = bit_lookup(2,nbasis)
-                    do ipos = bit_lookup(1,nbasis)+1, i0_end
+                    i = sys%basis%bit_lookup(2,sys%basis%nbasis)
+                    do ipos = sys%basis%bit_lookup(1,sys%basis%nbasis)+1, i0_end
                         f0_inv(i) = ibclr(f0_inv(i), ipos)
                     end do
                 case default
@@ -361,11 +361,11 @@ contains
                             occ_list0_inv(i) = occ_list0(i) - 1
                         end if
                     end do
-                    call encode_det(occ_list0_inv, f0_inv)
+                    call encode_det(sys%basis, occ_list0_inv, f0_inv)
                 end select
 
-                D0_inv_proc = assign_particle_processor(f0_inv, basis_length, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                                        qmc_spawn%move_freq, nprocs)
+                D0_inv_proc = assign_particle_processor(f0_inv, sys%basis%string_len, qmc_spawn%hash_seed, &
+                                                        qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs)
 
                 ! Store if not identical to reference det.
                 if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
@@ -455,13 +455,13 @@ contains
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-            call write_det(sys%nel, f0, new_line=.true.)
+            call write_det(sys%basis, sys%nel, f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
             if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =',O00
             write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
             select case(sys%system)
             case (hub_k)
-                call write_basis_fn(sys, basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
+                call write_basis_fn(sys, sys%basis%basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
             case default
                 write(6,'(i2)') ref_sym
             end select

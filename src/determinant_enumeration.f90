@@ -23,7 +23,7 @@ implicit none
 ! Bit list of the Slater determinant.  See note for f in determinants module.
 ! We only store determinants of the same Ms and (for momentum space
 ! calculations) same ksum at a time.
-integer(i0), allocatable :: dets_list(:,:) ! (basis_length,ndets)
+integer(i0), allocatable :: dets_list(:,:) ! (string_len,ndets)
 
 ! Number of determinants stored in dets.
 ! This is the number of determinants enumerated in enumerate_determinants with
@@ -111,7 +111,6 @@ contains
         use utils, only: binom_i, get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string, count_set_bits
 
-        use basis, only: basis_length
         use calc, only: truncate_space, truncation_level, ras, ras1, ras3, ras1_min, ras3_max
         use excitations, only: get_excitation_level, in_ras
         use system
@@ -128,7 +127,7 @@ contains
         integer, allocatable :: nalpha_combinations(:)
         integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
         character(4) :: fmt1
-        integer(i0) :: f(basis_length)
+        integer(i0) :: f(sys%basis%string_len)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
         type(det_info) :: d0
@@ -154,8 +153,8 @@ contains
 
             ndets = sym_space_size(ref_sym)
 
-            allocate(dets_list(basis_length, ndets), stat=ierr)
-            call check_allocate('dets_list',basis_length*ndets,ierr)
+            allocate(dets_list(sys%basis%string_len, ndets), stat=ierr)
+            call check_allocate('dets_list',sys%basis%string_len*ndets,ierr)
         end if
 
         call alloc_det_info(sys, d0)
@@ -191,7 +190,7 @@ contains
                     end do
                 end do
             end associate
-            call encode_det(occ_list0, d0%f)
+            call encode_det(sys%basis, occ_list0, d0%f)
             ! Check symmetries of reference matches the desired symmetries.  If
             ! not, are doing spin flip and need to do a full enumeration!
             if (spin_flip .or. all(ras > 0)) then
@@ -203,8 +202,8 @@ contains
             ! No matter what the excitation level of the beta string, all alpha
             ! combinations are allowed.
             allocate(nalpha_combinations(0:0), stat=ierr)
-            nbeta_combinations = binom_i(nbasis/2, sys%nbeta)
-            nalpha_combinations = binom_i(nbasis/2, sys%nalpha)
+            nbeta_combinations = binom_i(sys%basis%nbasis/2, sys%nbeta)
+            nalpha_combinations = binom_i(sys%basis%nbasis/2, sys%nalpha)
             truncation_level = sys%nel
         end if
         call check_allocate('nalpha_combinations',size(nalpha_combinations),ierr)
@@ -241,14 +240,14 @@ contains
             else
                 if (truncate_space) then
                     ! Need list of spin-down sites (ie 'unoccupied' bits).
-                    allocate(unocc(nbasis-sys%nel), stat=ierr)
+                    allocate(unocc(sys%basis%nbasis-sys%nel), stat=ierr)
                     call check_allocate('unocc', size(unocc), ierr)
                     call decode_bit_string(d0%f(1), unocc)
                     do i = 1, ndets
-                        call next_string(i==1, .false., nbasis, sys%nel, d0%occ_list, &
+                        call next_string(i==1, .false., sys%basis%nbasis, sys%nel, d0%occ_list, &
                                          unocc, truncation_level, force_full, comb(:,1),  &
                                          occ, excit_level_alpha)
-                        call encode_det(occ, dets_list(:,i))
+                        call encode_det(sys%basis, occ, dets_list(:,i))
                     end do
                     deallocate(unocc, stat=ierr)
                     call check_deallocate('unocc', ierr)
@@ -257,7 +256,7 @@ contains
                     ! No symmetry to check!
                     ! Assume that we're not attempting to do FCI for more than
                     ! a i0_length sites , which is quite large... ;-)
-                    if (nbasis > i0_length) then
+                    if (sys%basis%nbasis > i0_length) then
                         call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
                     end if
                     dets_list(1,1) = first_perm(sys%nel)
@@ -291,7 +290,7 @@ contains
                 do i = 1, nbeta_combinations
 
                     ! Get beta orbitals.
-                    call next_string(i==1, .false., nbasis/2, sys%nbeta, d0%occ_list_beta, &
+                    call next_string(i==1, .false., sys%basis%nbasis/2, sys%nbeta, d0%occ_list_beta, &
                                      d0%unocc_list_beta, truncation_level, force_full, comb(:,1),  &
                                      occ(1:sys%nbeta), excit_level_beta)
 
@@ -302,7 +301,7 @@ contains
                     if (sys%system == ueg) then
                         k_beta = 0
                         do iel = 1, sys%nbeta
-                            k_beta = k_beta + basis_fns(occ(iel))%l
+                            k_beta = k_beta + sys%basis%basis_fns(occ(iel))%l
                         end do
                     else
                         sym_beta = symmetry_orb_list(sys, occ(1:sys%nbeta))
@@ -311,7 +310,7 @@ contains
                     do j = 1, nalpha_combinations(excit_level_beta)
 
                         ! Get alpha orbitals.
-                        call next_string(j==1, .true., nbasis/2, sys%nalpha, d0%occ_list_alpha, &
+                        call next_string(j==1, .true., sys%basis%nbasis/2, sys%nalpha, d0%occ_list_alpha, &
                                          d0%unocc_list_alpha, truncation_level-excit_level_beta, force_full, &
                                          comb(:,2), occ(sys%nbeta+1:), excit_level_alpha)
 
@@ -319,7 +318,7 @@ contains
                         if (sys%system == ueg) then
                             k = k_beta
                             do iel = sys%nbeta+1, sys%nel
-                                k = k + basis_fns(occ(iel))%l
+                                k = k + sys%basis%basis_fns(occ(iel))%l
                             end do
                             ! Symmetry label (convert from basis index).
                             sym = (ueg_basis_index(k,1)+1)/2
@@ -332,10 +331,10 @@ contains
                         ! requiring this test...
                         in_space = .true.
                         if (all(ras > 0)) then
-                            call encode_det(occ, f)
+                            call encode_det(sys%basis, occ, f)
                             in_space = in_ras(ras1, ras3, ras1_min, ras3_max, f)
                         else if (truncate_space) then
-                            call encode_det(occ, f)
+                            call encode_det(sys%basis, occ, f)
                             in_space = get_excitation_level(d0%f,f) <= truncation_level
                         end if
 
@@ -350,7 +349,7 @@ contains
                             else if (sym == ref_sym) then
                                 ! Store determinant.
                                 idet = idet + 1
-                                call encode_det(occ, dets_list(:,idet))
+                                call encode_det(sys%basis, occ, dets_list(:,idet))
                             end if
                         end if
 
@@ -374,7 +373,7 @@ contains
                     'Only determinants within', truncation_level, &
                     'excitations of the reference determinant are included.'
                 write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-                call write_det(sys%nel, d0%f, new_line=.true.)
+                call write_det(sys%basis, sys%nel, d0%f, new_line=.true.)
             end if
             write (6,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
             do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
@@ -386,7 +385,7 @@ contains
             fmt1 = int_fmt(ndets, padding=1)
             do i = 1, ndets
                 write (det_unit,'('//fmt1//',4X)',advance='no') i
-                call write_det(sys%nel, dets_list(:,i), det_unit, new_line=.true.)
+                call write_det(sys%basis, sys%nel, dets_list(:,i), det_unit, new_line=.true.)
             end do
         end if
 

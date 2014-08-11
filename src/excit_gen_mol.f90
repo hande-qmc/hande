@@ -140,7 +140,6 @@ contains
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !    determinant and a connected determinant in molecular systems.
 
-        use basis, only: basis_fns
         use determinants, only: det_info
         use excitations, only: excit
         use fciqmc_data, only: pattempt_single, pattempt_double
@@ -188,7 +187,9 @@ contains
 
             ! 2b. Select orbitals to excite from and orbitals to excite into.
             call choose_ij_mol(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
-            call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+            call find_ab_mol(rng, cdet%f, ij_sym, ij_spin, sys%basis,    &
+                             connection%to_orb(1), connection%to_orb(2), &
+                             allowed_excitation)
             connection%nexcit = 2
 
             if (allowed_excitation) then
@@ -239,7 +240,6 @@ contains
         !        excitations from the determinant which conserve spin and spatial
         !        symmetry.
 
-        use basis, only: basis_length, basis_fns, bit_lookup
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym, pg_sym_conj
         use system, only: sys_t
 
@@ -247,7 +247,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: occ_list(:), symunocc(:,sys%sym0_tot:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a
@@ -258,9 +258,9 @@ contains
         ! Does this determinant have any possible single excitations?
         allowed_excitation = .false.
         do i = 1, sys%nel
-            ims = (basis_fns(occ_list(i))%Ms+3)/2
+            ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
             ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
-            isym = cross_product_pg_sym(basis_fns(occ_list(i))%sym, op_sym)
+            isym = cross_product_pg_sym(sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims, isym) /= 0) then
                 allowed_excitation = .true.
                 exit
@@ -276,8 +276,8 @@ contains
                 ! Select an occupied orbital at random.
                 i = occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
                 ! Conserve symmetry (spatial and spin) in selecting a.
-                ims = (basis_fns(i)%Ms+3)/2
-                isym = pg_sym_conj(cross_product_pg_sym(basis_fns(i)%sym, op_sym))
+                ims = (sys%basis%basis_fns(i)%Ms+3)/2
+                isym = pg_sym_conj(cross_product_pg_sym(sys%basis%basis_fns(i)%sym, op_sym))
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
                         ! It's cheaper to draw additional random numbers than
@@ -287,7 +287,7 @@ contains
                         do
                             ind = int(nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
                             a = sym_spin_basis_fns(ind,ims,isym)
-                            if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) exit
+                            if (.not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
                         end do
                     exit
                 end if
@@ -320,7 +320,6 @@ contains
         !                =  0   i up and j down or vice versa
         !                =  2   i,j both up
 
-        use basis, only: basis_fns
         use system, only: sys_t
         use point_group_symmetry, only: cross_product_pg_basis,pg_sym_conj
 
@@ -351,9 +350,9 @@ contains
         i = occ_list(i)
         j = occ_list(j)
 
-        ij_sym = pg_sym_conj(cross_product_pg_basis(i,j))
+        ij_sym = pg_sym_conj(cross_product_pg_basis(i,j,sys%basis%basis_fns))
         ! ij_spin = -2 (down, down), 0 (up, down or down, up), +2 (up, up)
-        ij_spin = basis_fns(i)%Ms + basis_fns(j)%Ms
+        ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
 
     end subroutine choose_ij_mol
 
@@ -383,14 +382,13 @@ contains
         !        which conserve spin and spatial symmetry given the choice of
         !        (i,j).
 
-        use basis, only: basis_length, basis_fns, bit_lookup, nbasis
         use system, only: sys_t
         use point_group_symmetry, only: cross_product_pg_sym, nbasis_sym_spin, sym_spin_basis_fns, pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: sym, spin, symunocc(:,sys%sym0_tot:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
@@ -421,7 +419,7 @@ contains
             ! [1,nbasis] using 2*x
             fac = 2
             shift = 0
-            na = nbasis/2
+            na = sys%basis%nbasis/2
         case(0)
             do isyma = sys%sym0, sys%sym_max
                 isymb = pg_sym_conj(cross_product_pg_sym(isyma, sym))
@@ -434,10 +432,10 @@ contains
 
             ! Can select from any of the nbasis functions.
             ! Convert number, x, in range [1,nbasis] to any number in range
-            ! [1,nbasis] using simply x (for compatibility with spin=-2,2).
+            ! [1,sys%basis%nbasis] using simply x (for compatibility with spin=-2,2).
             fac = 1
             shift = 0
-            na = nbasis
+            na = sys%basis%nbasis
         case(2)
             do isyma = sys%sym0, sys%sym_max
                 isymb = pg_sym_conj(cross_product_pg_sym(isyma, sym))
@@ -455,7 +453,7 @@ contains
             ! [1,nbasis] using 2*x-1
             fac = 2
             shift = 1
-            na = nbasis/2
+            na = sys%basis%nbasis/2
         end select
 
         if (allowed_excitation) then
@@ -470,20 +468,20 @@ contains
                 a = fac*a-shift
                 ! If a is unoccupied and there's a possbible b, then have found
                 ! first orbital to excite into.
-                if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) then
+                if (.not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) then
                     ! b must conserve spatial and spin symmetry.
-                    imsb = (spin-basis_fns(a)%Ms+3)/2
-                    isymb = pg_sym_conj(cross_product_pg_sym(sym, basis_fns(a)%sym))
+                    imsb = (spin-sys%basis%basis_fns(a)%Ms+3)/2
+                    isymb = pg_sym_conj(cross_product_pg_sym(sym, sys%basis%basis_fns(a)%sym))
                     ! Is there a possible b?
                     if ( (symunocc(imsb,isymb) > 1) .or. &
-                            (symunocc(imsb,isymb) == 1 .and. (isymb /= basis_fns(a)%sym .or. spin == 0)) ) then
+                            (symunocc(imsb,isymb) == 1 .and. (isymb /= sys%basis%basis_fns(a)%sym .or. spin == 0)) ) then
                         ! Possible b.  Find it.
                         do
                             ind = int(nbasis_sym_spin(imsb,isymb)*get_rand_close_open(rng))+1
                             b = sym_spin_basis_fns(ind,imsb,isymb)
                             ! If b is unoccupied and is different from a then
                             ! we've found the excitation.
-                            if ( b /= a .and. .not.btest(f(bit_lookup(2,b)),bit_lookup(1,b)) ) exit
+                            if ( b /= a .and. .not.btest(f(sys%basis%bit_lookup(2,b)),sys%basis%bit_lookup(1,b)) ) exit
                         end do
                         exit
                     end if
@@ -529,7 +527,6 @@ contains
         !        excitations from the determinant which conserve spin and spatial
         !        symmetry or if a is already occupied.
 
-        use basis, only: basis_length, basis_fns, bit_lookup
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym
         use system, only: sys_t
 
@@ -537,7 +534,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: occ_list(:)
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: i, a
@@ -549,8 +546,8 @@ contains
         i = occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
 
         ! Conserve symmetry (spatial and spin) in selecting a.
-        ims = (basis_fns(i)%Ms+3)/2
-        isym = cross_product_pg_sym(basis_fns(i)%sym,op_sym)
+        ims = (sys%basis%basis_fns(i)%Ms+3)/2
+        isym = cross_product_pg_sym(sys%basis%basis_fns(i)%sym,op_sym)
         ind = int(nbasis_sym_spin(ims,isym)*get_rand_close_open(rng))+1
         if (nbasis_sym_spin(ims,isym) == 0) then
             ! No orbitals with the correct symmetry.
@@ -559,14 +556,14 @@ contains
             a = sym_spin_basis_fns(ind,ims,isym)
             ! Is a already occupied in the determinant f?  If so, the excitation is
             ! not permitted.
-            allowed_excitation = .not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))
+            allowed_excitation = .not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))
         end if
 
     end subroutine find_ia_mol
 
 !--- Select random orbitals in double excitations ---
 
-    subroutine find_ab_mol(rng, f, sym, spin, a, b, allowed_excitation)
+    subroutine find_ab_mol(rng, f, sym, spin, basis, a, b, allowed_excitation)
 
         ! Select a random pair of orbitals to excite into as part of a double
         ! excitation, given that the (i,j) pair of orbitals to excite from have
@@ -586,6 +583,7 @@ contains
         !    sym: sym conjugate of the irreducible representation spanned by the (i,j) codensity.
         !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
         !        and j are down, +2 if both are up and 0 otherwise.
+        !    basis: set of one-particle basis functions and related information.
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -596,12 +594,13 @@ contains
         !        which conserve spin and spatial symmetry given the choice of
         !        (i,j) or given the choice of (i,j,a).
 
-        use basis, only: basis_length, basis_fns, bit_lookup, nbasis
+        use basis_types, only: basis_t
         use point_group_symmetry, only: nbasis_sym_spin, sym_spin_basis_fns, cross_product_pg_sym, pg_sym_conj
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        integer(i0), intent(in) :: f(basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f(basis%string_len)
         integer, intent(in) :: sym, spin
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: a, b
@@ -618,21 +617,21 @@ contains
             ! [1,nbasis] using 2*x
             fac = 2
             shift = 0
-            na = nbasis/2
+            na = basis%nbasis/2
         case(0)
             ! a can be up or down.
             ! Convert number, x, in range [1,nbasis] to any number in range
             ! [1,nbasis] using simply x (for compatibility with spin=-2,2).
             fac = 1
             shift = 0
-            na = nbasis
+            na = basis%nbasis
         case(2)
             ! a must be up.
             ! Convert number, x, in range [1,nbasis/2] to odd number in range
             ! [1,nbasis] using 2*x-1
             fac = 2
             shift = 1
-            na = nbasis/2
+            na = basis%nbasis/2
         end select
 
         do
@@ -646,21 +645,21 @@ contains
             ! or to any orbital.
             a = fac*a-shift
             ! If a is unoccupied, then have found first orbital to excite into.
-            if (.not.btest(f(bit_lookup(2,a)), bit_lookup(1,a))) exit
+            if (.not.btest(f(basis%bit_lookup(2,a)), basis%bit_lookup(1,a))) exit
         end do
 
         ! Conserve symmetry (spatial and spin) in selecting the fourth orbital.
         ! Ms_i + Ms_j = Ms_a + Ms_b (Ms_i = -1,+1)
         ! => Ms_b = Ms_i + Ms_j - Ms_a
-        ims = (spin-basis_fns(a)%Ms+3)/2
+        ims = (spin-basis%basis_fns(a)%Ms+3)/2
         ! (sym_i* x sym_j* x sym_a)* = sym_b
         ! (at least for Abelian point groups)
-        isym = pg_sym_conj(cross_product_pg_sym(sym, basis_fns(a)%sym))
+        isym = pg_sym_conj(cross_product_pg_sym(sym, basis%basis_fns(a)%sym))
 
         if (nbasis_sym_spin(ims,isym) == 0) then
             ! No orbitals with the correct symmetry.
             allowed_excitation = .false.
-        else if (spin /= 0 .and. isym == basis_fns(a)%sym .and. nbasis_sym_spin(ims,isym) == 1) then
+        else if (spin /= 0 .and. isym == basis%basis_fns(a)%sym .and. nbasis_sym_spin(ims,isym) == 1) then
             allowed_excitation = .false.
         else
             do
@@ -671,7 +670,7 @@ contains
 
             ! Is b already occupied in the determinant f?  If so, the excitation is
             ! not permitted.
-            allowed_excitation = .not.btest(f(bit_lookup(2,b)), bit_lookup(1,b))
+            allowed_excitation = .not.btest(f(basis%bit_lookup(2,b)), basis%bit_lookup(1,b))
 
             ! It is useful to return a,b ordered (e.g. for the find_excitation_permutation2 routine).
             if (a > b) then
@@ -711,7 +710,6 @@ contains
         ! explicitly reject them.  The generation probabilites of allowed
         ! excitations correctly take into account such rejected events.
 
-        use basis, only: basis_fns
         use system, only: sys_t
         use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
 
@@ -730,13 +728,13 @@ contains
 
         ni = sys%nel
         do i = 1, sys%nel
-            ims = (basis_fns(occ_list(i))%Ms+3)/2
-            isym = pg_sym_conj(cross_product_pg_sym(basis_fns(occ_list(i))%sym, op_sym))
+            ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
+            isym = pg_sym_conj(cross_product_pg_sym(sys%basis%basis_fns(occ_list(i))%sym, op_sym))
             if (symunocc(ims,isym) == 0) ni = ni - 1
         end do
 
-        ims = (basis_fns(a)%Ms+3)/2
-        isym = basis_fns(a)%sym
+        ims = (sys%basis%basis_fns(a)%Ms+3)/2
+        isym = sys%basis%basis_fns(a)%sym
         pgen = 1.0_p/(ni*symunocc(ims,isym))
 
     end function calc_pgen_single_mol
@@ -772,7 +770,6 @@ contains
         ! of allowed excitations correctly take into account such rejected
         ! events.
 
-        use basis, only: basis_fns
         use system, only: sys_t
         use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym, pg_sym_conj
 
@@ -794,8 +791,8 @@ contains
         ! such that spin and spatial symmetry are conserved.
         ! n.b. p(a|i,j,b) =/= p(b|i,j,a) in general.
 
-        imsa = (basis_fns(a)%ms+3)/2
-        imsb = (basis_fns(b)%ms+3)/2
+        imsa = (sys%basis%basis_fns(a)%ms+3)/2
+        imsb = (sys%basis%basis_fns(b)%ms+3)/2
 
         ! Count number of possible choices of a, given the choice of (i,j).
         ! Find number of possible b, given the choice of (i,j,a).
@@ -816,12 +813,12 @@ contains
                 end if
             end do
             ! # b.
-            if (basis_fns(a)%sym == basis_fns(b)%sym) then
-                p_aijb = 1.0_p/(symunocc(imsa,basis_fns(a)%sym)-1)
-                p_bija = 1.0_p/(symunocc(imsb,basis_fns(b)%sym)-1)
+            if (sys%basis%basis_fns(a)%sym == sys%basis%basis_fns(b)%sym) then
+                p_aijb = 1.0_p/(symunocc(imsa,sys%basis%basis_fns(a)%sym)-1)
+                p_bija = 1.0_p/(symunocc(imsb,sys%basis%basis_fns(b)%sym)-1)
             else
-                p_aijb = 1.0_p/symunocc(imsa,basis_fns(a)%sym)
-                p_bija = 1.0_p/symunocc(imsb,basis_fns(b)%sym)
+                p_aijb = 1.0_p/symunocc(imsa,sys%basis%basis_fns(a)%sym)
+                p_bija = 1.0_p/symunocc(imsb,sys%basis%basis_fns(b)%sym)
             end if
         case(0)
             ! # a.
@@ -837,8 +834,8 @@ contains
                 end if
             end do
             ! # b.  b cannot have same spin and symmetry as a.
-            p_aijb = 1.0_p/symunocc(imsa,basis_fns(a)%sym)
-            p_bija = 1.0_p/symunocc(imsb,basis_fns(b)%sym)
+            p_aijb = 1.0_p/symunocc(imsa,sys%basis%basis_fns(a)%sym)
+            p_bija = 1.0_p/symunocc(imsb,sys%basis%basis_fns(b)%sym)
         case(2)
             ! # a.
             n_aij = sys%nvirt_alpha
@@ -853,12 +850,12 @@ contains
                 end if
             end do
             ! # b.
-            if (basis_fns(a)%sym == basis_fns(b)%sym) then
-                p_aijb = 1.0_p/(symunocc(imsa,basis_fns(a)%sym)-1)
-                p_bija = 1.0_p/(symunocc(imsb,basis_fns(b)%sym)-1)
+            if (sys%basis%basis_fns(a)%sym == sys%basis%basis_fns(b)%sym) then
+                p_aijb = 1.0_p/(symunocc(imsa,sys%basis%basis_fns(a)%sym)-1)
+                p_bija = 1.0_p/(symunocc(imsb,sys%basis%basis_fns(b)%sym)-1)
             else
-                p_aijb = 1.0_p/symunocc(imsa,basis_fns(a)%sym)
-                p_bija = 1.0_p/symunocc(imsb,basis_fns(b)%sym)
+                p_aijb = 1.0_p/symunocc(imsa,sys%basis%basis_fns(a)%sym)
+                p_bija = 1.0_p/symunocc(imsb,sys%basis%basis_fns(b)%sym)
             end if
         end select
 
@@ -886,7 +883,6 @@ contains
         ! explicitly reject them.  The generation probabilites of allowed
         ! excitations correctly take into account such rejected events.
 
-        use basis, only: basis_fns
         use system, only: sys_t
         use point_group_symmetry, only: nbasis_sym_spin
 
@@ -901,8 +897,8 @@ contains
         !   pgen = p_single p(i) p(a|i)
         !        = p_single 1/nel 1/nbasis_sym_spin(ms_i, sym_i)
 
-        ims = (basis_fns(a)%Ms+3)/2
-        isym = basis_fns(a)%sym
+        ims = (sys%basis%basis_fns(a)%Ms+3)/2
+        isym = sys%basis%basis_fns(a)%sym
         pgen = 1.0_p/(sys%nel*nbasis_sym_spin(ims,isym))
 
     end function calc_pgen_single_mol_no_renorm
@@ -934,7 +930,6 @@ contains
         ! occupied.  This problem arises because if a or b are actually occpied,
         ! then p(a|ijb) or p(b|ijb) = 0.  We do not handle such cases here.
 
-        use basis, only: basis_fns
         use system, only: sys_t
         use point_group_symmetry, only: nbasis_sym_spin
 
@@ -969,10 +964,10 @@ contains
             n_aij = sys%nvirt_alpha
         end select
 
-        imsa = (basis_fns(a)%ms+3)/2
-        isyma = basis_fns(a)%sym
-        imsb = (basis_fns(b)%ms+3)/2
-        isymb = basis_fns(b)%sym
+        imsa = (sys%basis%basis_fns(a)%ms+3)/2
+        isyma = sys%basis%basis_fns(a)%sym
+        imsb = (sys%basis%basis_fns(b)%ms+3)/2
+        isymb = sys%basis%basis_fns(b)%sym
 
         if (isyma == isymb .and. imsa == imsb) then
             ! b cannot be the same as a.

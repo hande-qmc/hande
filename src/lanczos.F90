@@ -8,7 +8,7 @@ implicit none
 integer :: nlanczos_eigv = 5
 
 ! Size of Lanczos basis.
-integer :: lanczos_basis_length = 40
+integer :: lanczos_string_len = 40
 
 logical :: direct_lanczos = .false.
 
@@ -88,11 +88,11 @@ contains
         ! Initialise trlan.
         ! info: type(trl_info_t).  Used by trl to store calculation info.
         ! nrows: number of rows of matrix on processor.
-        ! lanczos_basis_length: maximum Lanczos basis size.
+        ! lanczos_string_len: maximum Lanczos basis size.
         ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
         !       the largest).
         ! nlanczos_eigv: number of eigenvalues to compute.
-        call trl_init_info(info, nrows, lanczos_basis_length, lohi, min(nlanczos_eigv,ndets))
+        call trl_init_info(info, nrows, lanczos_string_len, lohi, min(nlanczos_eigv,ndets))
 
         allocate(eval(mev), stat=ierr)
         call check_allocate('eval',mev,ierr)

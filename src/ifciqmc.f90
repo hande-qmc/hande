@@ -19,28 +19,30 @@ implicit none
 ! core or inactive orbitals.  The determinant is only in the CAS if the
 ! result is identical to the cas_core mask (i.e. all the core orbitals
 ! are filled and no electrons are in the inactive orbitals).
-integer(i0), allocatable :: cas_mask(:), cas_core(:) ! (basis_length)
+integer(i0), allocatable :: cas_mask(:), cas_core(:) ! (string_len)
 
 contains
 
-    subroutine init_ifciqmc(nel)
+    subroutine init_ifciqmc(nel, basis)
 
         ! Allocate and initialise data required for i-FCIQMC.
 
         ! In:
         !    nel: number of electrons in system.
+        !    basis: information about the single-particle basis.
 
-        use basis, only: basis_length, bit_lookup, nbasis
+        use basis_types, only: basis_t
         use checking, only: check_allocate
         use fciqmc_data, only: initiator_CAS
 
         integer, intent(in) :: nel
+        type(basis_t), intent(in) :: basis
         integer :: ierr, i, bit_pos, bit_element
 
-        allocate(cas_mask(basis_length), stat=ierr)
-        call check_allocate('cas_mask', basis_length, ierr)
-        allocate(cas_core(basis_length), stat=ierr)
-        call check_allocate('cas_core', basis_length, ierr)
+        allocate(cas_mask(basis%string_len), stat=ierr)
+        call check_allocate('cas_mask', basis%string_len, ierr)
+        allocate(cas_core(basis%string_len), stat=ierr)
+        call check_allocate('cas_core', basis%string_len, ierr)
 
         ! Create a mask which has bits set for all core electrons and a mask
         ! which has bits set for all inactive orbitals.
@@ -48,15 +50,15 @@ contains
         cas_core = 0_i0
         ! Set core obitals.
         do i = 1, nel - initiator_CAS(1)
-            bit_pos = bit_lookup(1,i)
-            bit_element = bit_lookup(2,i)
+            bit_pos = basis%bit_lookup(1,i)
+            bit_element = basis%bit_lookup(2,i)
             cas_mask = ibset(cas_mask(bit_element), bit_pos)
             cas_core = ibset(cas_core(bit_element), bit_pos)
         end do
         ! Set inactive obitals.
-        do i = nel - initiator_CAS(1) + 2*initiator_CAS(2) + 1, nbasis
-            bit_pos = bit_lookup(1,i)
-            bit_element = bit_lookup(2,i)
+        do i = nel - initiator_CAS(1) + 2*initiator_CAS(2) + 1, basis%nbasis
+            bit_pos = basis%bit_lookup(1,i)
+            bit_element = basis%bit_lookup(2,i)
             cas_mask = ibset(cas_mask(bit_element), bit_pos)
         end do
 
@@ -74,11 +76,10 @@ contains
         ! Out:
         !    parent_flag: set to 0 if the determinant is an initiator and 1 otherwise.
 
-        use basis, only: basis_length
         use fciqmc_data, only: initiator_population
 
         real(p), intent(in) :: parent_population
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: determ_flag
         integer, intent(out) :: parent_flag
 
@@ -106,10 +107,8 @@ contains
         ! anything.  This call *should* then get optimised away during standard
         ! FCIQMC calculations.
 
-        use basis, only: basis_length
-
         real(p), intent(in) :: parent_population
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: determ_flag
         integer, intent(out) :: parent_flag
         

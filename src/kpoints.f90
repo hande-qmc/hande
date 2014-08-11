@@ -2,8 +2,6 @@ module kpoints
 
 ! Module for handling wavevectors.
 
-use const
-
 implicit none
 
 contains
@@ -18,6 +16,7 @@ contains
         ! Returns:
         !    The kinetic energy associated with a given wavevector.
 
+        use const, only: p, pi
         use system, only: sys_t, hub_k, ueg
 
         real(p) :: kinetic
@@ -56,6 +55,7 @@ contains
         ! Returns:
         !    True if k is a reciprocal lattice vector of the *primitive* cell.
 
+        use const, only: p, depsilon
         use system, only: sys_t, ueg
 
         logical :: t_rlv

@@ -22,13 +22,12 @@ contains
 
         ! Used in the momentum space formulation of the Hubbard model only.
 
-        use determinants, only: basis_length
         use excitations, only: excit, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
         type(excit) :: excitation
 
@@ -46,7 +45,7 @@ contains
         !     vector (i.e. satisfy translational symmetry).
         !     We assume this is also already checked.
 
-        excitation = get_excitation(sys%nel, f1,f2)
+        excitation = get_excitation(sys%nel, sys%basis, f1,f2)
         ! Connected determinants can differ by (at most) 2 spin orbitals.
         if (excitation%nexcit <= 2) then
             non_zero = .true.
@@ -97,16 +96,16 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
-        use determinants, only: decode_det, basis_fns, basis_length
+        use determinants, only: decode_det
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         integer :: occ_list(sys%nel)
         integer :: i
 
-        call decode_det(f, occ_list)
+        call decode_det(sys%basis, f, occ_list)
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
 
@@ -126,7 +125,7 @@ contains
         ! One electron operator
         ! Get directly rather than incur the cost of the if test in get_one_e_int_k.
         do i = 1, sys%nel
-            hmatel = hmatel + basis_fns(occ_list(i))%sp_eigv
+            hmatel = hmatel + sys%basis%basis_fns(occ_list(i))%sp_eigv
         end do
 
     end function slater_condon0_hub_k
@@ -182,11 +181,10 @@ contains
         !    formulation of the Hubbard model.
 
         use excitations, only: excit, find_excitation_permutation2
-        use basis, only: basis_length
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(basis_length)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 

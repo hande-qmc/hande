@@ -38,7 +38,6 @@ contains
 
         use determinants, only: det_info
         use excitations, only: excit, get_excitation
-        use basis, only: bit_lookup
         use system, only: sys_t
         use real_lattice, only: connected_orbs
 
@@ -53,7 +52,7 @@ contains
         integer :: bit_position, bit_element
 
         hmatel = 0.0_p
-        excitation = get_excitation(sys%nel, cdet%f, f0)
+        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -62,8 +61,8 @@ contains
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
 
-            bit_position = bit_lookup(1,excitation%from_orb(1))
-            bit_element = bit_lookup(2,excitation%from_orb(1))
+            bit_position = sys%basis%bit_lookup(1,excitation%from_orb(1))
+            bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
 
             if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
                  hmatel = -sys%heisenberg%J/2
@@ -194,7 +193,7 @@ contains
 
     end subroutine update_proj_energy_heisenberg_neel_singlet
 
-    pure function neel_singlet_data(f) result(spin_config_data)
+    pure function neel_singlet_data(sys, f) result(spin_config_data)
 
         ! This subroutine calculates the number of up spins on one of the
         ! sublattices so that it can be stored, and also the total number
@@ -203,6 +202,7 @@ contains
         ! This procedure is for the Heisenberg model only.
 
         ! In:
+        !    sys: system being studied.
         !    f: bit string representation of the basis function.
         ! Returns:
         !    spin_config_data: A two component integer vector, where the first
@@ -210,14 +210,14 @@ contains
         !       for this basis function, and the second component stores the numbers
         !       of 0-1 bonds, where the 1 (the up spin) is on the first sublattice.
 
-        use basis, only: basis_length, basis_lookup
         use bit_utils, only: count_set_bits
         use determinants, only: lattice_mask
         use real_lattice, only: connected_orbs
-        use system
+        use system, only: sys_t
 
-        integer(i0), intent(in) :: f(basis_length)
-        integer(i0) :: f_mask(basis_length), f_not(basis_length), g(basis_length)
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer(i0) :: f_mask(sys%basis%string_len), f_not(sys%basis%string_len), g(sys%basis%string_len)
         integer :: lattice_1_up, n, i, ipos, basis_find
         integer :: spin_config_data(2)
 
@@ -228,10 +228,10 @@ contains
         ! Find the number of 0-1 bonds where the 1 lies on the first sublattice.
         lattice_1_up = 0
         f_not = not(f)
-        do i = 1, basis_length
+        do i = 1, sys%basis%string_len
             do ipos = 0, i0_end
                 if (btest(f_mask(i), ipos)) then
-                    basis_find = basis_lookup(ipos, i)
+                    basis_find = sys%basis%basis_lookup(ipos, i)
                     g = iand(f_not, connected_orbs(:,basis_find))
                     lattice_1_up = lattice_1_up + sum(count_set_bits(g))
                 end if

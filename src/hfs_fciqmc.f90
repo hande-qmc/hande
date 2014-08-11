@@ -37,7 +37,6 @@ contains
         use parallel
 
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length
         use calc, only: seed, initiator_approximation
         use death, only: stochastic_hf_cloning
         use determinants, only:det_info, alloc_det_info, dealloc_det_info
@@ -153,7 +152,8 @@ contains
                         call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
                                          gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0_int_p) call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
+                        if (nspawned /= 0_int_p) &
+                            call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
@@ -161,7 +161,8 @@ contains
                         call spawner_hfs_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
                                              gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0_int_p) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
+                        if (nspawned /= 0_int_p) &
+                            call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 2, qmc_spawn)
 
                     end do
 
@@ -174,7 +175,8 @@ contains
                         call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(2,idet), &
                                          gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0_int_p) call create_spawned_particle_ptr(cdet, connection, nspawned, 2, qmc_spawn)
+                        if (nspawned /= 0_int_p) &
+                            call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 2, qmc_spawn)
 
                     end do
 
@@ -210,7 +212,7 @@ contains
                     cdet%initiator_flag = h_initiator_flag
                     ! [todo] - JSS: real populations for HFS spawner.
                     call stochastic_hf_cloning(rng, walker_data(2,idet), walker_population(1,idet), nspawned)
-                    if (nspawned /= 0) call create_spawned_particle_ptr(cdet, null_excit, nspawned, 2, qmc_spawn)
+                    if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nspawned, 2, qmc_spawn)
 
                     ! Clone or die: Hamiltonian walkers.
                     call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)

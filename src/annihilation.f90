@@ -49,9 +49,9 @@ contains
             ! Have spawned walkers on this processor.
 
             if (tinitiator) then 
-                call annihilate_main_list_initiator()
+                call annihilate_main_list_initiator(sys%basis%tensor_label_len)
             else
-                call annihilate_main_list()
+                call annihilate_main_list(sys%basis%tensor_label_len)
             end if
 
             ! Remove determinants with zero walkers on them from the main
@@ -75,17 +75,23 @@ contains
 
     end subroutine direct_annihilation
 
-    subroutine annihilate_main_list()
+    subroutine annihilate_main_list(tensor_label_len)
 
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.
 
-        use basis, only: total_basis_length
+        ! In:
+        !    tensor_label_len: number of elements in the bit array describing the position
+        !       of the particle in the space (i.e.  determinant label in vector/pair of
+        !       determinants label in array).
+
         use search, only: binary_search
+
+        integer, intent(in) :: tensor_label_len
 
         integer :: i, pos, k, istart, iend, nannihilate
         integer(int_p) :: old_pop(sampling_size)
-        integer(i0) :: f(total_basis_length)
+        integer(i0) :: f(tensor_label_len)
         logical :: hit
         integer, parameter :: thread_id = 0
 
@@ -93,7 +99,7 @@ contains
         istart = 1
         iend = tot_walkers
         do i = 1, qmc_spawn%head(thread_id,0)
-            f = int(qmc_spawn%sdata(:total_basis_length,i), i0)
+            f = int(qmc_spawn%sdata(:tensor_label_len,i), i0)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
@@ -122,7 +128,7 @@ contains
 
     end subroutine annihilate_main_list
 
-    subroutine annihilate_main_list_initiator()
+    subroutine annihilate_main_list_initiator(tensor_label_len)
 
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.
@@ -131,12 +137,17 @@ contains
         ! discard spawned walkers which are on previously unoccupied determinants
         ! and which are from non-initiator or non-sign-coherent events.
 
-        use basis, only: total_basis_length
+        ! In:
+        !    tensor_label_len: number of elements in the bit array describing the position
+        !       of the particle in the space (i.e.  determinant label in vector/pair of
+        !       determinants label in array).
+
         use search, only: binary_search
 
+        integer, intent(in) :: tensor_label_len
         integer :: i, ipart, pos, k, istart, iend, nannihilate
         integer(int_p) :: old_pop(sampling_size)
-        integer(i0) :: f(total_basis_length)
+        integer(i0) :: f(tensor_label_len)
         logical :: hit, discard
         integer, parameter :: thread_id = 0
 
@@ -144,7 +155,7 @@ contains
         istart = 1
         iend = tot_walkers
         do i = 1, qmc_spawn%head(thread_id,0)
-            f = int(qmc_spawn%sdata(:total_basis_length,i), i0)
+            f = int(qmc_spawn%sdata(:tensor_label_len,i), i0)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 old_pop = walker_population(:,pos)
@@ -203,7 +214,8 @@ contains
                     nannihilate = nannihilate + 1
                 else
                     ! Need to copy the bit string across...
-                    qmc_spawn%sdata(:total_basis_length,i-nannihilate) = qmc_spawn%sdata(:total_basis_length,i)
+                    qmc_spawn%sdata(:tensor_label_len,i-nannihilate) = &
+                        qmc_spawn%sdata(:tensor_label_len,i)
                 end if
             end if
         end do
@@ -227,7 +239,6 @@ contains
         !    determ_flags: A list of flags specifying whether determinants in
         !        walker_dets are deterministic or not.
 
-        use basis, only: total_basis_length
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_common, only: stochastic_round
 
@@ -341,7 +352,6 @@ contains
         !    determ_flags: A list of flags specifying whether determinants in
         !        walker_dets are deterministic or not.
 
-        use basis, only: total_basis_length
         use search, only: binary_search
         use system, only: sys_t
 
@@ -377,7 +387,7 @@ contains
         do i = qmc_spawn%head(thread_id,0), 1, -1
 
             ! spawned det is not in the main walker list.
-            call binary_search(walker_dets, int(qmc_spawn%sdata(:total_basis_length,i), i0), istart, iend, hit, pos)
+            call binary_search(walker_dets, int(qmc_spawn%sdata(:sys%basis%tensor_label_len,i), i0), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
@@ -393,8 +403,9 @@ contains
             k = pos + i - 1
 
             ! The encoded spawned walker sign.
-            associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i))
-                call insert_new_walker(sys, k, int(qmc_spawn%sdata(:total_basis_length,i), i0), int(spawned_population, int_p))
+            associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), &
+                    tbl=>sys%basis%tensor_label_len)
+                call insert_new_walker(sys, k, int(qmc_spawn%sdata(:tbl,i), i0), int(spawned_population, int_p))
                 ! Extract the real sign from the encoded sign.
                 real_population = real(spawned_population,dp)/real_factor
                 nparticles = nparticles + abs(real_population)
@@ -429,7 +440,6 @@ contains
         !    det: The determinant to insert into walker_dets.
         !    population: The population to insert into walker_population.
 
-        use basis, only: basis_length, total_basis_length
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use calc, only: trial_function, neel_singlet
         use heisenberg_estimators, only: neel_singlet_data
@@ -439,7 +449,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: pos
-        integer(i0), intent(in) :: det(total_basis_length)
+        integer(i0), intent(in) :: det(sys%basis%tensor_label_len)
         integer(int_p), intent(in) :: population(sampling_size)
 
         ! Insert the new determinant.
@@ -448,13 +458,15 @@ contains
         walker_population(:,pos) = population
         ! Calculate and insert all new components of walker_data.
         if (.not. doing_calc(dmqmc_calc)) walker_data(1,pos) = sc0_ptr(sys, det) - H00
-        if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = neel_singlet_data(det)
+        if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = neel_singlet_data(sys, det)
         if (doing_calc(hfs_fciqmc_calc)) then
             ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
             walker_data(2,pos) = op0_ptr(sys, det) - O00
         else if (doing_calc(dmqmc_calc)) then
             ! Set the energy to be the average of the two induvidual energies.
-            walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((basis_length+1):(2*basis_length),pos)) - H00)/2
+            associate(bl=>sys%basis%string_len)
+                walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - H00)/2
+            end associate
             if (replica_tricks) then
                 walker_data(2:sampling_size,pos) = walker_data(1,pos)
             end if

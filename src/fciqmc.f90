@@ -23,13 +23,11 @@ contains
         use parallel
 
         use annihilation, only: direct_annihilation
-        use basis, only: basis_length, nbasis
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info, alloc_det_info, dealloc_det_info
         use excitations, only: excit, create_excited_det
-        use spawning, only: create_spawned_particle_initiator
         use qmc_common
         use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
@@ -52,7 +50,7 @@ contains
         integer(lint) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
 
-        integer(i0) :: f_child(basis_length)
+        integer(i0) :: f_child(sys%basis%string_len)
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det, nspawn_events
         type(excit) :: connection
@@ -158,17 +156,17 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             if (determ_parent) then
-                                call create_excited_det(cdet%f, connection, f_child)
+                                call create_excited_det(sys%basis, cdet%f, connection, f_child)
                                 determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
-                                    call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn, f_child)
+                                    call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
-                                call create_spawned_particle_ptr(cdet, connection, nspawned, 1, qmc_spawn)
+                                call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
                             end if
                             if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -195,7 +193,7 @@ contains
 
             update_tau = bloom_stats%nwarnings_curr > 0
 
-            call end_report_loop(ireport, update_tau, nparticles_old, t1, soft_exit)
+            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit)
 
             if (soft_exit) exit
 

@@ -50,7 +50,6 @@ contains
         ! but enables us to use only one test for the system type.  A small
         ! efficiency for not much effort. :-)
 
-        use determinants, only: basis_length
         use hamiltonian_chung_landau, only: get_hmatel_chung_landau
         use hamiltonian_heisenberg, only: get_hmatel_heisenberg
         use hamiltonian_hub_k, only: get_hmatel_hub_k
@@ -61,7 +60,7 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1(basis_length), f2(basis_length)
+        integer(i0), intent(in) :: f1(:), f2(:)
 
         select case(sys%system)
         case(chung_landau)

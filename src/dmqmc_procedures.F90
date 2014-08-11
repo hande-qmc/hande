@@ -9,10 +9,10 @@ implicit none
 type rdm
     ! The total number of sites in subsystem A.
     integer :: A_nsites
-    ! Similar to basis_length, rdm_basis_length is the length of the byte array
+    ! Similar to string_len, rdm_string_len is the length of the byte array
     ! necessary to contain a bit for each subsystem-A basis function. An array
     ! of twice this length is stored to hold both RDM indices.
-    integer :: rdm_basis_length
+    integer :: rdm_string_len
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
     ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
@@ -28,7 +28,7 @@ type rdm
     ! bit_pos(i,:,2) will not be sorted). This is very important so that
     ! equivalent psips will contribute to the same RDM element.
     integer, allocatable :: bit_pos(:,:,:)
-    ! Two bitstrings of length rdm_basis_length. To be used as temporary
+    ! Two bitstrings of length rdm_string_len. To be used as temporary
     ! bitstrings to prevent having to regularly allocate different length
     ! bitstrings for different RDMs.
     integer(i0), allocatable :: end1(:), end2(:)
@@ -45,7 +45,6 @@ contains
          ! In:
          !    sys: system being studied.
 
-         use basis, only: basis_length, total_basis_length, bit_lookup, basis_lookup
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
          use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
          use checking, only: check_allocate
@@ -81,12 +80,12 @@ contains
          if (doing_dmqmc_calc(dmqmc_correlation)) then
              number_dmqmc_estimators = number_dmqmc_estimators + 1
              correlation_index = number_dmqmc_estimators
-             allocate(correlation_mask(1:basis_length), stat=ierr)
-             call check_allocate('correlation_mask',basis_length,ierr)
+             allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
+             call check_allocate('correlation_mask',sys%basis%string_len,ierr)
              correlation_mask = 0_i0
              do i = 1, 2
-                 bit_position = bit_lookup(1,correlation_sites(i))
-                 bit_element = bit_lookup(2,correlation_sites(i))
+                 bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
+                 bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
                  correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
              end do
          end if
@@ -253,11 +252,11 @@ contains
         ! Loop over all subsystems for which we are calculating RDMs.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
-            rdms(i)%rdm_basis_length = ceiling(real(rdms(i)%A_nsites)/i0_length)
-            allocate(rdms(i)%end1(rdms(i)%rdm_basis_length), stat=ierr)
-            call check_allocate('rdms(i)%end1', rdms(i)%rdm_basis_length, ierr)
-            allocate(rdms(i)%end2(rdms(i)%rdm_basis_length), stat=ierr)
-            call check_allocate('rdms(i)%end2', rdms(i)%rdm_basis_length, ierr)
+            rdms(i)%rdm_string_len = ceiling(real(rdms(i)%A_nsites)/i0_length)
+            allocate(rdms(i)%end1(rdms(i)%rdm_string_len), stat=ierr)
+            call check_allocate('rdms(i)%end1', rdms(i)%rdm_string_len, ierr)
+            allocate(rdms(i)%end2(rdms(i)%rdm_string_len), stat=ierr)
+            call check_allocate('rdms(i)%end2', rdms(i)%rdm_string_len, ierr)
             rdms(i)%end1 = 0_i0
             rdms(i)%end2 = 0_i0
 
@@ -265,12 +264,12 @@ contains
             ! the following condition is met then the number of rows is greater
             ! than the maximum integer accessible. This would clearly be too
             ! large, so abort in this case.
-            if (calc_ground_rdm .and. rdms(i)%rdm_basis_length > 1) call stop_all("setup_rdm_arrays",&
+            if (calc_ground_rdm .and. rdms(i)%rdm_string_len > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
             ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
-                size_spawned_rdm = (rdms(i)%rdm_basis_length*2+sampling_size)*int_s_length/8
+                size_spawned_rdm = (rdms(i)%rdm_string_len*2+sampling_size)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_rdm_length < 0) then
                     ! Given in MB.  Convert.
@@ -283,14 +282,14 @@ contains
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
-                call alloc_spawn_t(rdms(i)%rdm_basis_length*2, sampling_size, .false., &
+                call alloc_spawn_t(rdms(i)%rdm_string_len*2, sampling_size, .false., &
                                      spawned_rdm_length, spawn_cutoff, real_bit_shift, &
                                      27, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
                 ! the table is three times as large as the spawning arrays and
                 ! each hash value can have 7 clashes. This was found to give
                 ! reasonable performance.
-                call alloc_hash_table(3*spawned_rdm_length, 7, rdms(i)%rdm_basis_length*2, &
+                call alloc_hash_table(3*spawned_rdm_length, 7, rdms(i)%rdm_string_len*2, &
                                      0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
@@ -335,7 +334,6 @@ contains
         ! In:
         !    sys: system being studied.
 
-        use basis, only: basis_length, bit_lookup, basis_lookup, basis_fns, nbasis
         use checking, only: check_allocate, check_deallocate
         use errors
         use fciqmc_data, only: nrdms, nsym_vec
@@ -345,7 +343,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
-        integer(i0) :: A_mask(basis_length)
+        integer(i0) :: A_mask(sys%basis%string_len)
         real(p), allocatable :: sym_vecs(:,:)
         integer :: r(sys%lattice%ndim)
 
@@ -360,8 +358,8 @@ contains
                               &dmqmc_full_renyi_2 option to calculate the Renyi entropy of the &
                               &whole lattice.')
             else
-                allocate(rdms(i)%B_masks(basis_length,nsym_vec), stat=ierr)
-                call check_allocate('rdms(i)%B_masks', nsym_vec*basis_length,ierr)
+                allocate(rdms(i)%B_masks(sys%basis%string_len,nsym_vec), stat=ierr)
+                call check_allocate('rdms(i)%B_masks', nsym_vec*sys%basis%string_len,ierr)
                 allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
                 call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
             end if
@@ -375,20 +373,20 @@ contains
             do j = 1, nsym_vec ! Over every symmetry vector.
                 A_mask = 0_i0
                 do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
-                    r = basis_fns(rdms(i)%subsystem_A(k))%l
+                    r = sys%basis%basis_fns(rdms(i)%subsystem_A(k))%l
                     r = r + nint(sym_vecs(:,j))
                     ! If r is outside the cell considered in this simulation,
                     ! shift it by the appropriate lattice vector so that it is
                     ! in this cell.
-                    call map_vec_to_cell(sys%lattice%ndim, sys%lattice%lvecs, r)
+                    call map_vec_to_cell(sys%basis%nbasis, sys%basis%basis_fns, sys%lattice%ndim, sys%lattice%lvecs, r)
                     ! Now need to find which basis function this site 
                     ! corresponds to. Simply loopover all basis functions and
                     ! check...
-                    do l = 1, nbasis
-                        if (all(basis_fns(l)%l == r)) then
+                    do l = 1, sys%basis%nbasis
+                        if (all(sys%basis%basis_fns(l)%l == r)) then
                             ! Found the correct basis function!
-                            bit_position = bit_lookup(1,l)
-                            bit_element = bit_lookup(2,l)
+                            bit_position = sys%basis%bit_lookup(1,l)
+                            bit_element = sys%basis%bit_lookup(2,l)
                             A_mask(bit_element) = ibset(A_mask(bit_element), bit_position)
                             rdms(i)%bit_pos(k,j,1) = bit_position
                             rdms(i)%bit_pos(k,j,2) = bit_element
@@ -402,9 +400,9 @@ contains
                 ! then flip all the bits.
                 rdms(i)%B_masks(:,j) = A_mask
                 do ipos = 0, i0_end
-                    basis_find = basis_lookup(ipos, basis_length)
+                    basis_find = sys%basis%basis_lookup(ipos, sys%basis%string_len)
                     if (basis_find == 0) then
-                        rdms(i)%B_masks(basis_length,j) = ibset(rdms(i)%B_masks(basis_length,j),ipos)
+                        rdms(i)%B_masks(sys%basis%string_len,j) = ibset(rdms(i)%B_masks(sys%basis%string_len,j),ipos)
                     end if
                 end do
                 rdms(i)%B_masks(:,j) = not(rdms(i)%B_masks(:,j))
@@ -483,12 +481,12 @@ contains
                         if (r < prob) npsips = npsips + 1_lint
 
                         nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, dp)
-                        call random_distribution_heisenberg(rng, nel, npsips, ireplica)
+                        call random_distribution_heisenberg(rng, sys%basis, nel, npsips, ireplica)
                     end do
                 else
                     ! This process will always create excatly the target number
                     ! of psips.
-                    call random_distribution_heisenberg(rng, sys%nel, npsips_this_proc, ireplica)
+                    call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica)
                 end if
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
@@ -511,7 +509,7 @@ contains
 
     end subroutine create_initial_density_matrix
 
-    subroutine random_distribution_heisenberg(rng, spins_up, npsips, ireplica)
+    subroutine random_distribution_heisenberg(rng, basis, spins_up, npsips, ireplica)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -523,13 +521,14 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    basis: information about the single-particle basis.
         !    spins_up: for the spin configurations generated, this number
         !       specifies how many of the spins shall be up.
         !    npsips: The total number of psips to be created.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
 
-        use basis, only: nbasis, basis_length, bit_lookup
+        use basis_types, only: basis_t
         use calc, only: ms_in
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: real_factor
@@ -537,13 +536,14 @@ contains
         use system
 
         type(dSFMT_t), intent(inout) :: rng
+        type(basis_t), intent(in) :: basis
         integer, intent(in) :: spins_up
         integer(lint), intent(in) :: npsips
         integer, intent(in) :: ireplica
         integer(lint) :: i
         integer :: rand_basis, bits_set
         integer :: bit_element, bit_position
-        integer(i0) :: f(basis_length)
+        integer(i0) :: f(basis%string_len)
         real(dp) :: rand_num
 
         do i = 1, npsips
@@ -558,10 +558,10 @@ contains
                 if (bits_set == spins_up) exit
                 ! Choose a random spin to flip.
                 rand_num = get_rand_close_open(rng)
-                rand_basis = ceiling(rand_num*nbasis)
+                rand_basis = ceiling(rand_num*basis%nbasis)
                 ! Find the corresponding positions for this spin.
-                bit_position = bit_lookup(1,rand_basis)
-                bit_element = bit_lookup(2,rand_basis)
+                bit_position = basis%bit_lookup(1,rand_basis)
+                bit_element = basis%bit_lookup(2,rand_basis)
                 if (.not. btest(f(bit_element),bit_position)) then
                     ! If not flipped up, flip the spin up.
                     f(bit_element) = ibset(f(bit_element),bit_position)
@@ -571,13 +571,14 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_diagonal_density_matrix_particle(f,real_factor,ireplica)
+            call create_diagonal_density_matrix_particle(f,basis%string_len, &
+                    basis%tensor_label_len, real_factor,ireplica)
 
         end do
 
     end subroutine random_distribution_heisenberg
 
-    subroutine create_diagonal_density_matrix_particle(f, nspawn, particle_type)
+    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly
@@ -586,21 +587,25 @@ contains
         ! In:
         !    f: bitstring representation of index of the diagonal element upon
         !        which a new psip shall be placed.
+        !    string_len: length of bit array storing a many-particle basis function
+        !        (e.g. a determinant or spin product).
+        !    tensor_label_len: length of bit array storing the label of a density
+        !        matrix element (usually 2xstring_len).
         !    nspawn: the number of particles to be added to this diagonal
         !        element.
         !    particle_type: the label of the replica to which this particle is
         !        to sample.
 
         use hashing
-        use basis, only: basis_length, total_basis_length
         use fciqmc_data, only: qmc_spawn
         use parallel
         use errors, only: stop_all
 
-        integer(i0), intent(in) :: f(basis_length)
+        integer, intent(in) :: string_len, tensor_label_len
+        integer(i0), intent(in) :: f(string_len)
         integer(int_p), intent(in) :: nspawn
         integer ::particle_type
-        integer(i0) :: f_new(total_basis_length)
+        integer(i0) :: f_new(tensor_label_len)
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -609,13 +614,13 @@ contains
 
         ! Create the bitstring of the determinant.
         f_new = 0_i0
-        f_new(:basis_length) = f
-        f_new((basis_length+1):(total_basis_length)) = f
+        f_new(:string_len) = f
+        f_new((string_len+1):(tensor_label_len)) = f
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
         iproc_spawn = modulo(murmurhash_bit_string(f_new, &
-                                total_basis_length, qmc_spawn%hash_seed), nprocs)
+                                tensor_label_len, qmc_spawn%hash_seed), nprocs)
 #endif
 
         ! Move to the next position in the spawning array.
@@ -629,14 +634,14 @@ contains
         ! Set info in spawning array.
         ! Zero it as not all fields are set.
         qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
-        ! indices 1 to total_basis_length store the bitstring.
-        qmc_spawn%sdata(:(total_basis_length),qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
+        ! indices 1 to tensor_label_len store the bitstring.
+        qmc_spawn%sdata(:(tensor_label_len),qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
         ! The final index stores the number of psips created.
-        qmc_spawn%sdata((total_basis_length)+particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
+        qmc_spawn%sdata((tensor_label_len)+particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
 
     end subroutine create_diagonal_density_matrix_particle
 
-    subroutine decode_dm_bitstring(f, irdm, isym)
+    subroutine decode_dm_bitstring(basis, f, irdm, isym)
 
         ! This function maps a full DMQMC bitstring to two bitstrings encoding
         ! the subsystem-A RDM bitstrings. These resulting bitstrings are stored
@@ -649,13 +654,15 @@ contains
         ! when using translational symmetry.
 
         ! In:
+        !    basis: information about the single-particle basis.
         !    f: bitstring representation of the subsystem-A state.
         !    irdm: The label of the RDM being considered.
         !    isym: The label of the symmetry vector being considered.
 
-        use basis, only: basis_length, total_basis_length, bit_lookup
+        use basis_types, only: basis_t
 
-        integer(i0), intent(in) :: f(total_basis_length)
+        type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f(basis%tensor_label_len)
         integer, intent(in) :: irdm, isym
         integer :: i, bit_pos, bit_element
 
@@ -667,8 +674,8 @@ contains
         ! density matrix.
         do i = 1, rdms(irdm)%A_nsites
             ! Find the final bit positions and elements.
-            bit_pos = bit_lookup(1,i)
-            bit_element = bit_lookup(2,i)
+            bit_pos = basis%bit_lookup(1,i)
+            bit_element = basis%bit_lookup(2,i)
 
             ! If the spin is up, set the corresponding bit in the first
             ! bitstring.
@@ -676,13 +683,13 @@ contains
                 rdms(irdm)%end1(bit_element) = ibset(rdms(irdm)%end1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of
             ! the bitstring.
-            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)+basis_length),rdms(irdm)%bit_pos(i,isym,1))) &
+            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)+basis%string_len),rdms(irdm)%bit_pos(i,isym,1))) &
                 rdms(irdm)%end2(bit_element) = ibset(rdms(irdm)%end2(bit_element),bit_pos)
         end do
 
     end subroutine decode_dm_bitstring
  
-    subroutine update_sampling_weights(rng)
+    subroutine update_sampling_weights(rng, basis)
         
         ! This routine updates the values of the weights used in importance
         ! sampling. It also removes or adds psips from the various excitation
@@ -690,9 +697,11 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        ! In:
+        !    basis: information about the single-particle basis.
 
         use annihilation, only: remove_unoccupied_dets
-        use basis, only: basis_length, total_basis_length
+        use basis_types, only: basis_t
         use excitations, only: get_excitation_level
         use fciqmc_data, only: dmqmc_accumulated_probs, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
@@ -700,6 +709,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
+        type(basis_t), intent(in) :: basis
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
         real(dp) :: new_population_target(sampling_size)
         integer(int_p) :: old_population(sampling_size), new_population(sampling_size)
@@ -716,8 +726,8 @@ contains
         ! appropriate probability.
         do idet = 1, tot_walkers
 
-            excit_level = get_excitation_level(walker_dets(1:basis_length,idet), &
-                    walker_dets(basis_length+1:total_basis_length,idet))
+            excit_level = get_excitation_level(walker_dets(1:basis%string_len,idet), &
+                    walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
 
             old_population = abs(walker_population(:,idet))
 
