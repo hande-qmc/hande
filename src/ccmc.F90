@@ -182,6 +182,7 @@ contains
         ! In:
         !    sys: system being studied.
 
+        use bit_utils, only: bit_str_cmp
         use calc, only: ccmc_full_nc
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -195,7 +196,7 @@ contains
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
         use ccmc_data, only: cluster_t
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, det_compare
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use excitations, only: excit, get_excitation_level
         use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
@@ -328,7 +329,7 @@ contains
                         ! D0 was just moved to this processor.  No idea where it might be...
                         call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
                     else
-                        select case(det_compare(f0, walker_dets(:,D0_pos), size(f0)))
+                        select case(bit_str_cmp(f0, walker_dets(:,D0_pos)))
                         case(0)
                             ! D0 hasn't moved.
                             hit = .true.

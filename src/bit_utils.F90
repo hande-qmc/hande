@@ -16,6 +16,11 @@ interface operator(.bitstrgt.)
     module procedure bit_str_64_gt
 end interface
 
+interface bit_str_cmp
+    module procedure bit_str_32_cmp
+    module procedure bit_str_64_cmp
+end interface
+
 contains
 
 !--- Counting set bits ---
@@ -247,26 +252,26 @@ contains
 
 !--- Comparison of bit strings---
 
-    pure function bit_str_32_gt(f1, f2) result(gt)
+    pure function bit_str_32_gt(b1, b2) result(gt)
 
         ! In:
-        !    f1(:), f2(:) bit string.
+        !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if the first element of f1 which is not equal to the
-        !    corresponding element of f2 is greater than the corresponding
-        !    element in f2.
+        !    True if the first element of b1 which is not equal to the
+        !    corresponding element of b2 is greater than the corresponding
+        !    element in b2.
 
         logical :: gt
-        integer(int_4), intent(in) :: f1(:), f2(:)
+        integer(int_4), intent(in) :: b1(:), b2(:)
 
         integer :: i
 
         gt = .false.
-        do i = 1, ubound(f1,dim=1)
-            if (f1(i) > f2(i)) then
+        do i = 1, ubound(b1,dim=1)
+            if (b1(i) > b2(i)) then
                 gt = .true.
                 exit
-            else if (f1(i) < f2(i)) then
+            else if (b1(i) < b2(i)) then
                 gt = .false.
                 exit
             end if
@@ -274,31 +279,89 @@ contains
 
     end function bit_str_32_gt
 
-    pure function bit_str_64_gt(f1, f2) result(gt)
+    pure function bit_str_64_gt(b1, b2) result(gt)
 
         ! In:
-        !    f1(:), f2(:) bit string.
+        !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if the first element of f1 which is not equal to the
-        !    corresponding element of f2 is greater than the corresponding
-        !    element in f2.
+        !    True if the first element of b1 which is not equal to the
+        !    corresponding element of b2 is greater than the corresponding
+        !    element in b2.
 
         logical :: gt
-        integer(int_8), intent(in) :: f1(:), f2(:)
+        integer(int_8), intent(in) :: b1(:), b2(:)
 
         integer :: i
 
         gt = .false.
-        do i = 1, ubound(f1,dim=1)
-            if (f1(i) > f2(i)) then
+        do i = 1, ubound(b1,dim=1)
+            if (b1(i) > b2(i)) then
                 gt = .true.
                 exit
-            else if (f1(i) < f2(i)) then
+            else if (b1(i) < b2(i)) then
                 gt = .false.
                 exit
             end if
         end do
 
     end function bit_str_64_gt
+
+    pure function bit_str_32_cmp(b1, b2) result(cmp)
+
+        ! In:
+        !    b1(:), b2(:): bit string.
+        ! Returns:
+        !    0 if b1 and b2 are identical;
+        !    1 if the first non-identical element in b1 is smaller than the
+        !    corresponding element in b2;
+        !    -1 if the first non-identical element in b1 is greater than the
+        !    corresponding element in b2;
+
+        integer :: cmp
+        integer(int_4), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        cmp = 0
+        do i = 1, ubound(b1, dim=1)
+            if (b1(i) < b2(i)) then
+                cmp = 1
+                exit
+            else if (b1(i) > b2(i)) then
+                cmp = -1
+                exit
+            end if
+        end do
+
+    end function bit_str_32_cmp
+
+    pure function bit_str_64_cmp(b1, b2) result(cmp)
+
+        ! In:
+        !    b1(:), b2(:): bit string.
+        ! Returns:
+        !    0 if b1 and b2 are identical;
+        !    1 if the first non-identical element in b1 is smaller than the
+        !    corresponding element in b2;
+        !    -1 if the first non-identical element in b1 is greater than the
+        !    corresponding element in b2;
+
+        integer :: cmp
+        integer(int_8), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        cmp = 0
+        do i = 1, ubound(b1, dim=1)
+            if (b1(i) < b2(i)) then
+                cmp = 1
+                exit
+            else if (b1(i) > b2(i)) then
+                cmp = -1
+                exit
+            end if
+        end do
+
+    end function bit_str_64_cmp
 
 end module bit_utils
