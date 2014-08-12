@@ -113,6 +113,12 @@ module basis_types
         ! tensor_label_len = (rank of tensor) * string_len.
         integer :: tensor_label_len
 
+        ! Bit masks to reveal the list of alpha basis functions and beta functions occupied
+        ! in a Slater determinant, assuming separate_strings is false (if
+        ! separate_strings is true, this operation is trivial: simply take
+        ! alternating integers in the bit array).
+        integer(i0) :: alpha_mask, beta_mask
+
         ! A determinant is stored in the array f(nbasis).  A basis function is occupied
         ! in the determinant if the relevant bit is set.  The relevant bit is given by
         ! bit_element, the element of the array which contains the bit corresponding to
@@ -190,6 +196,20 @@ module basis_types
                     b%basis_lookup(bit_pos, bit_element) = i
                 end do
             end if
+
+            ! Bit masks...
+            ! ASSUMING separate_strings is false:
+            ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
+            ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
+            b%alpha_mask = 0_i0
+            b%beta_mask = 0_i0
+            do i = 0, i0_end
+                if (mod(i,2)==0) then
+                    b%alpha_mask = ibset(b%alpha_mask,i)
+                else
+                    b%beta_mask = ibset(b%beta_mask,i)
+                end if
+            end do
 
         end subroutine init_basis_strings
 

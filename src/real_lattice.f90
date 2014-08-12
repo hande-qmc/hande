@@ -339,7 +339,6 @@ contains
         use basis
         use system, only: sys_t
         use bit_utils, only: count_set_bits
-        use determinants, only: beta_mask
 
         real(p) :: umatel
         type(sys_t), intent(in) :: sys
@@ -348,25 +347,27 @@ contains
         integer(i0) :: b
 
         ! < D | U | D > = U*number of doubly occupied sites.
-        if (sys%basis%separate_strings) then
-            ! Just need to AND the alpha string with the beta string.
-            umatel = sum(count_set_bits(iand(f(:sys%basis%string_len/2),f(sys%basis%string_len/2+1:))))
-        else
-            ! 1. Find the bit string representing the occupied beta orbitals.
-            ! 2. Right shift it by one place.  The beta orbitals now line up with
-            !    alpha orbitals.
-            ! 3. AND the shifted beta bit string with the original bit string
-            !    representing the list of occupied orbitals in the determinant.
-            ! 4. The non-zero bits represent a sites which have both alpha and beta
-            !    orbitals occupied.
-            ! 5. Hence < D | U | D >.
-            umatel = 0.0_p
-            do i = 1, sys%basis%string_len
-                b = iand(f(i), beta_mask)
-                umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
-            end do
-        end if
-        umatel = sys%hubbard%u*umatel
+        associate(basis=>sys%basis)
+            if (basis%separate_strings) then
+                ! Just need to AND the alpha string with the beta string.
+                umatel = sum(count_set_bits(iand(f(:basis%string_len/2),f(basis%string_len/2+1:))))
+            else
+                ! 1. Find the bit string representing the occupied beta orbitals.
+                ! 2. Right shift it by one place.  The beta orbitals now line up with
+                !    alpha orbitals.
+                ! 3. AND the shifted beta bit string with the original bit string
+                !    representing the list of occupied orbitals in the determinant.
+                ! 4. The non-zero bits represent a sites which have both alpha and beta
+                !    orbitals occupied.
+                ! 5. Hence < D | U | D >.
+                umatel = 0.0_p
+                do i = 1, basis%string_len
+                    b = iand(f(i), basis%beta_mask)
+                    umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
+                end do
+            end if
+            umatel = sys%hubbard%u*umatel
+        end associate
 
     end function get_coulomb_matel_real
 

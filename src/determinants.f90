@@ -21,18 +21,6 @@ implicit none
 ! represent the alpha orbitals and the second half of the bit array the beta
 ! orbitals.
 
-! --- Bit masks ---
-
-! Bit masks to reveal the list of alpha basis functions and beta functions
-! occupied in a Slater determinant, required for Hubbard model.
-! If separate_strings is false, then:
-!     Alpha basis functions are in the even bits.  alpha_mask = 01010101...
-!     Beta basis functions are in the odd bits.    beta_mask  = 10101010...
-! otherwise:
-!     Alpha basis functions are stored in the first string_len/2 integers
-!     followed by the beta orbitals in the next string_len/2 integers.
-integer(i0) :: alpha_mask, beta_mask
-
 ! --- FCIQMC info ---
 
 ! A handy type for containing a lot of information about a determinant.
@@ -97,19 +85,6 @@ contains
         fmt1 = int_fmt(tot_ndets, padding=1)
         if (parent .and. doing_calc(exact_diag+lanczos_diag)) &
                 write (6,'(1X,a32,'//fmt1//')') 'Total size of determinant space:', tot_ndets
-
-        ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
-        ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
-        ! This is assumming separate_strings is off...
-        alpha_mask = 0_i0
-        beta_mask = 0_i0
-        do i = 0, i0_end
-            if (mod(i,2)==0) then
-                alpha_mask = ibset(alpha_mask,i)
-            else
-                beta_mask = ibset(beta_mask,i)
-            end if
-        end do
 
         if (all(ras > 0)) then
             allocate(ras1(sys%basis%string_len), stat=ierr)
