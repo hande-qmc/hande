@@ -168,7 +168,7 @@ contains
         call end_determinants()
         call end_excitations()
         call end_hamil()
-        call end_real_space()
+        call end_real_space(sys%heisenberg)
         call end_fciqmc()
         call end_ifciqmc()
 

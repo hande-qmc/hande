@@ -126,7 +126,6 @@ contains
         ! This function is for diagonal elements for the Hamiltonian which includes
         ! a staggered magnetization term.
 
-        use determinants, only: lattice_mask
         use real_lattice, only: connected_orbs
         use bit_utils, only: count_set_bits
         use system, only: sys_t
@@ -143,7 +142,7 @@ contains
         ! For non-frustrtated lattices where we want to add a staggered magnetization
         ! term, we need to calculate how many up spins are on each of the sublattices,
         ! so we first consider one particular sublattice and put 0's at all other sites:
-        f_mask = iand(f, lattice_mask)
+        f_mask = iand(f, sys%Heisenberg%lattice_mask)
         sublattice1_up_spins = sum(count_set_bits(f_mask))
 
         ! Count the number of 0-1 type bonds

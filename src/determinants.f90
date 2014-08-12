@@ -33,17 +33,6 @@ implicit none
 !     followed by the beta orbitals in the next string_len/2 integers.
 integer(i0) :: alpha_mask, beta_mask
 
-! For the Heisenberg model, certain lattices can be split into two
-! sublattices such that all the sites on one sublattice only have neighbors
-! on the other sublattice. This is important when finding the staggered
-! magnetisation:
-!
-! \hat{M} = \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
-!
-! Here zeta will be +1 for sites on one sublattice, and -1 for sites on the
-! other sublattice. This is the standard measure of antiferromagnetism.
-integer(i0), allocatable :: lattice_mask(:)
-
 ! --- FCIQMC info ---
 
 ! A handy type for containing a lot of information about a determinant.
@@ -122,26 +111,6 @@ contains
             end if
         end do
 
-        ! For Heisenberg systems, to include staggered fields and to calculate
-        ! the staggered magnetisation, we require lattice_mask. Here we find
-        ! lattice_mask for a gerenal bipartite lattice.
-        if (sys%system == heisenberg .and. sys%lattice%bipartite_lattice) then
-            allocate (lattice_mask(sys%basis%string_len), stat=ierr)
-            call check_allocate('lattice_mask',sys%basis%string_len,ierr)
-            lattice_mask = 0_i0
-            do k = 1,sys%lattice%lattice_size(3)
-                do j = 1,sys%lattice%lattice_size(2)
-                    do i = 1,sys%lattice%lattice_size(1),2
-                        site_index = (sys%lattice%lattice_size(2)*sys%lattice%lattice_size(1))*(k-1) + &
-                                      sys%lattice%lattice_size(1)*(j-1) + mod(j+k,2) + i
-                        bit_pos = sys%basis%bit_lookup(1, site_index)
-                        bit_element = sys%basis%bit_lookup(2, site_index)
-                        lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
-                    end do
-                end do
-            end do
-        end if
-
         if (all(ras > 0)) then
             allocate(ras1(sys%basis%string_len), stat=ierr)
             call check_allocate('ras1', sys%basis%string_len, ierr)
@@ -176,10 +145,6 @@ contains
 
         integer :: ierr
 
-        if (allocated(lattice_mask)) then
-            deallocate(lattice_mask, stat=ierr)
-            call check_deallocate('lattice_mask',ierr)
-        end if
         if (allocated(ras1)) then
             deallocate(ras1, stat=ierr)
             call check_deallocate('ras1',ierr)

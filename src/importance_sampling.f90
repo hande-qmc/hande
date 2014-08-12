@@ -57,7 +57,7 @@ contains
         !        functions (kets).  On output, transformed matrix element,
         !        \Psi_i^T H_{ij} 1/\Psi_j^T.
 
-        use determinants, only: det_info_t, lattice_mask
+        use determinants, only: det_info_t
         use excitations, only: excit
         use fciqmc_data, only: neel_singlet_amp, sampling_size
         use system, only: sys_t
@@ -78,7 +78,7 @@ contains
         ! up spin on sublattice 1, else it will have one more spin up here.
         bit_position = sys%basis%bit_lookup(1,connection%from_orb(1))
         bit_element = sys%basis%bit_lookup(2,connection%from_orb(1))
-        if (btest(lattice_mask(bit_element), bit_position)) then
+        if (btest(sys%heisenberg%lattice_mask(bit_element), bit_position)) then
             up_spins_to = up_spins_from-1
         else
             up_spins_to = up_spins_from+1
