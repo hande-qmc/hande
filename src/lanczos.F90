@@ -14,12 +14,14 @@ logical :: direct_lanczos = .false.
 
 contains
 
-    subroutine lanczos_diagonalisation(sys, nfound, eigv)
+    subroutine lanczos_diagonalisation(sys, dets, nfound, eigv)
 
         ! Perform a Lanczos diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
         ! In:
         !    sys: system to be studied.
+        !    dets: list of determinants in the Hilbert space in the bit
+        !        string representation.
         ! Out:
         !    nfound: number of solutions found from this block.  This is
         !        min(number of determinants with current spin, nlanczos_eigv).
@@ -35,13 +37,13 @@ contains
         use calc
         use operators
 #endif
-        use determinant_enumeration, only: ndets
         use errors, only: stop_all
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: dets(:,:)
         integer, intent(out) :: nfound
-        real(dp), intent(out) :: eigv(ndets)
+        real(dp), intent(out) :: eigv(:)
 
 #ifdef DISABLE_LANCZOS
         call stop_all('lanczos_diagonalisation','Lanczos diagonalisation disabled at compile-time.')
@@ -51,11 +53,13 @@ contains
 #else
 
         integer, parameter :: lohi = -1
-        integer :: mev
+        integer :: mev, ndets
         real(dp), allocatable :: eval(:) ! (mev)
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         integer :: ierr, nrows, i, nwfn
         type(trl_info_t) :: info
+
+        ndets = ubound(dets, dim=2)
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
@@ -133,12 +137,12 @@ contains
         nwfn = analyse_fci_wfn
         if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
         do i = 1, nwfn
-            call analyse_wavefunction(sys, evec(:,i))
+            call analyse_wavefunction(sys, evec(:,i), dets)
         end do
         nwfn = print_fci_wfn
         if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
         do i = 1, nwfn
-            call print_wavefunction(print_fci_wfn_file, evec(:,i))
+            call print_wavefunction(print_fci_wfn_file, evec(:,i), dets)
         end do
 
         deallocate(eval, stat=ierr)
@@ -168,7 +172,6 @@ contains
             use parallel, only: nprocs
 
             use calc, only: hamil, hamil_csr, use_sparse_hamil, proc_blacs_info
-            use determinant_enumeration, only: ndets
 
             integer, intent(in) :: nrow, ncol, ldx, ldy
             real(dp), intent(in) :: xin(ldx,ncol)
@@ -275,8 +278,7 @@ contains
             
             ! NOTE: sys is used from the scope of lanczos_diagonalisation.
 
-            use determinant_enumeration, only: ndets
-            use hamiltonian, only: get_hmatel_dets
+            use hamiltonian, only: get_hmatel
 
             integer, intent(in) :: nrow, ncol, ldx, ldy
             real(dp), intent(in) :: xin(ldx,ncol)
@@ -294,11 +296,11 @@ contains
                 do j = 1, nrow ! Identical to ndets in serial.
                     tmp = 0.0_dp
                     do i = 1, j-1
-                        hmatel = get_hmatel_dets(sys, i,j)
+                        hmatel = get_hmatel(sys, dets(:,i), dets(:,j))
                         yout(i,k) = yout(i,k) + hmatel*xin(j, k)
                         tmp = tmp + hmatel*xin(i,k)
                     end do
-                    yout(j,k) = get_hmatel_dets(sys, j,j)*xin(j,k) + tmp
+                    yout(j,k) = get_hmatel(sys, dets(:,j), dets(:,j))*xin(j,k) + tmp
                 end do
             end do
 

@@ -6,32 +6,6 @@ implicit none
 
 contains
 
-    pure function get_hmatel_dets(sys, d1, d2) result(hmatel)
-
-        ! In:
-        !    sys: system being studied.
-        !    d1, d2: integer labels of two determinants, as stored in the
-        !            dets array.
-        ! Returns:
-        !    Hamiltonian matrix element between the two determinants,
-        !    < D1 | H | D2 >.
-
-        ! This is just a wrapper around get_hmatel (which is itself a wrapper
-        ! around system-specific functions) but is handy for computing matrix
-        ! elements (slowly!) when we have the entire Hilbert space of
-        ! determinants stored in dets_list.
-
-        use determinant_enumeration, only: dets_list
-        use system, only: sys_t
-
-        real(p) :: hmatel
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: d1, d2
-
-        hmatel = get_hmatel(sys, dets_list(:,d1), dets_list(:,d2))
-
-    end function get_hmatel_dets
-
     pure function get_hmatel(sys, f1, f2) result(hmatel)
 
         ! In:

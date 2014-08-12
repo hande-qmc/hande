@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine exact_diagonalisation(sys, eigv)
+    subroutine exact_diagonalisation(sys, dets, eigv)
 
         ! Perform an exact diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
@@ -17,6 +17,8 @@ contains
         ! In:
         !    sys: system being studied.  Only used if the wavefunction is
         !        analysed.
+        !    dets: list of determinants in the Hilbert space in the bit
+        !        string representation.
         ! Out:
         !    eigv(ndets): Lanczos eigenvalues of the current block of the
         !        Hamiltonian matrix.
@@ -28,15 +30,17 @@ contains
         use system, only: sys_t
 
         use calc
-        use determinant_enumeration, only: ndets
 
         use operators
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(out) :: eigv(ndets)
+        integer(i0), intent(in) :: dets(:,:)
+        real(p), intent(out) :: eigv(:)
         real(p), allocatable :: work(:), eigvec(:,:)
-        integer :: info, ierr, lwork, i, nwfn
+        integer :: info, ierr, lwork, i, nwfn, ndets
         character(1) :: job
+
+        ndets = ubound(dets, dim=2)
 
         if (parent) then
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
@@ -117,18 +121,18 @@ contains
         if (nwfn < 0) nwfn = ndets
         do i = 1, nwfn
             if (nprocs == 1) then
-                call analyse_wavefunction(sys, hamil(:,i))
+                call analyse_wavefunction(sys, hamil(:,i), dets)
             else
-                call analyse_wavefunction(sys, eigvec(:,i))
+                call analyse_wavefunction(sys, eigvec(:,i), dets)
             end if
         end do
         nwfn = print_fci_wfn
         if (nwfn < 0) nwfn = ndets
         do i = 1, nwfn
             if (nprocs == 1) then
-                call print_wavefunction(print_fci_wfn_file, hamil(:,i))
+                call print_wavefunction(print_fci_wfn_file, hamil(:,i), dets)
             else
-                call print_wavefunction(print_fci_wfn_file, eigvec(:,i))
+                call print_wavefunction(print_fci_wfn_file, eigvec(:,i), dets)
             end if
         end do
 

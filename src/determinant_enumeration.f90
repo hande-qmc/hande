@@ -9,31 +9,6 @@ use determinants
 
 implicit none
 
-!--- Info for FCI calculations ---
-
-! Store of determinant information.
-! This will quickly become a memory issue, but for dealing with the FCI of small
-! systems it is ok.
-
-! Rather than creating an array of derived types containing information about
-! each determinant, which leads to a serious memory overhead due to the need for
-! pointers/allocatable arrays in the derived type, we instead create 3 separate
-! variables.
-
-! Bit list of the Slater determinant.  See note for f in determinants module.
-! We only store determinants of the same Ms and (for momentum space
-! calculations) same ksum at a time.
-integer(i0), allocatable :: dets_list(:,:) ! (string_len,ndets)
-
-! Number of determinants stored in dets.
-! This is the number of determinants enumerated in enumerate_determinants with
-! the desired spin and momentum symmetry.
-integer :: ndets
-
-! Total (exact) size of determinant space.
-! Number of determinants of each symmetry.
-integer, allocatable :: sym_space_size(:) ! (nsym)
-
 ! If true then the determinant list is written to determinant_file.
 logical :: write_determinants = .false.
 character(255) :: determinant_file = 'DETS'
@@ -62,26 +37,13 @@ contains
 
         ! Clean up.
 
-        use checking, only: check_deallocate
-
-        integer :: ierr
-
-        if (allocated(dets_list)) then
-            deallocate(dets_list, stat=ierr)
-            call check_deallocate('dets_list',ierr)
-        end if
-        if (allocated(sym_space_size)) then
-            deallocate(sym_space_size, stat=ierr)
-            call check_deallocate('sym_space_size',ierr)
-        end if
-
         if (write_determinants) close(det_unit, status='keep')
 
     end subroutine end_determinant_enumeration
 
 !--- Hilbert space enumeration ---
 
-    subroutine enumerate_determinants(sys, init, spin_flip, ref_sym, occ_list0)
+    subroutine enumerate_determinants(sys, init, spin_flip, sym_space_size, ndets, dets_list, ref_sym, occ_list0)
 
         ! Find the Slater determinants of a given system that can be formed from
         ! the basis functions.
@@ -93,7 +55,7 @@ contains
         ! dets_list array.
 
         ! In:
-        !    sys: object describing the system of interest.
+        !    sys: object describing the system of interest, including spin polarisation.
         !    init: if true, count the number of determinants rather than store
         !        them.  This must be done for each spin polarisation before
         !        subsequent calls to store the determinants.
@@ -105,6 +67,14 @@ contains
         !    occ_list0(optional): list of occupied orbitals in a determinant.
         !        Used as the reference determinant if a truncated CI space is
         !        being used.  *MUST* be specified if truncate_space is true.
+        ! In/Out:
+        !    sym_space_size: number of determinants of each symmetry.  Output if init
+        !        is true, input if init is false.
+        ! Out:
+        !    ndets: number of determinants of the desired spin polarisation and symmetry.
+        !        Only set if init is false.
+        !    dets_list: bit-string representation of determinants in the Hilbert space
+        !        with the desired spin polarisation and symmetry.  Only set if init is false.
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -121,6 +91,9 @@ contains
         logical, intent(in) :: init, spin_flip
         integer, intent(in), optional :: ref_sym
         integer, intent(in), optional :: occ_list0(sys%nel)
+        integer, intent(inout), allocatable :: sym_space_size(:) ! (nsym)
+        integer, intent(out) :: ndets
+        integer(i0), intent(out), allocatable :: dets_list(:,:) ! (string_len,ndets)
 
         integer :: i, j, iel, idet, ierr
         integer :: nbeta_combinations
@@ -154,7 +127,7 @@ contains
             ndets = sym_space_size(ref_sym)
 
             allocate(dets_list(sys%basis%string_len, ndets), stat=ierr)
-            call check_allocate('dets_list',sys%basis%string_len*ndets,ierr)
+            call check_allocate('dets_list', size(dets_list), ierr)
         end if
 
         call alloc_det_info_t(sys, d0)

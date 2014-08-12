@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, ref_det)
+    subroutine init_simple_fciqmc(sys, ndets, dets, ref_det)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -29,7 +29,9 @@ contains
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
         ! Out:
-        !    ref_det: location of reference in dets_list.
+        !    ndets: number of determinants in the Hilbert space.
+        !    dets: list of determinants in the Hilbert space.
+        !    ref_det: location of reference in dets.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -42,6 +44,10 @@ contains
         type(sys_t), intent(inout) :: sys
         integer, intent(out) :: ref_det
 
+        integer, allocatable :: sym_space_size(:)
+        integer :: ndets
+        integer(i0), allocatable :: dets(:,:)
+
         integer :: ierr
         integer :: i, j
         type(sys_t) :: sys_bak
@@ -52,21 +58,21 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
         if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .true., .false., occ_list0=occ_list0)
+            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=occ_list0)
         else
-            call enumerate_determinants(sys, .true., .false.)
+            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets)
         end if
 
         ! Find all determinants with desired spin and symmetry.
         if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .false., .false., sym_in, occ_list0)
+            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, occ_list0)
         else
-            call enumerate_determinants(sys, .false., .false., sym_in)
+            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in)
         end if
 
 
         ! Set up hamiltonian matrix.
-        call generate_hamil(sys, distribute_off)
+        call generate_hamil(sys, ndets, dets, distribute_off)
         ! generate_hamil fills in only the lower triangle.
         ! fill in upper triangle for easy access.
         do i = 1,ndets
@@ -125,17 +131,19 @@ contains
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
             call decode_det(sys%basis, f0, occ_list0)
-            f0 = dets_list(:,ref_det)
+            f0 = dets(:,ref_det)
             walker_population(1,ref_det) = nint(D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-        call write_det(sys%basis, sys%nel, dets_list(:,ref_det), new_line=.true.)
+        call write_det(sys%basis, sys%nel, dets(:,ref_det), new_line=.true.)
         write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 
         ! Return sys in an unaltered state.
         call copy_sys_spin_info(sys_bak, sys)
+
+        deallocate(sym_space_size)
 
     end subroutine init_simple_fciqmc
 
@@ -147,7 +155,6 @@ contains
         !    sys: system being studied.  Unaltered on output.
 
         use calc, only: seed
-        use determinant_enumeration, only: ndets
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
         use system, only: sys_t
@@ -160,9 +167,10 @@ contains
         integer :: nattempts
         real :: t1, t2
         type(dSFMT_t) :: rng
-        integer :: ref_det
+        integer :: ref_det, ndets
+        integer(i0), allocatable :: dets(:,:)
 
-        call init_simple_fciqmc(sys, ref_det)
+        call init_simple_fciqmc(sys, ndets, dets, ref_det)
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -251,6 +259,8 @@ contains
             if (parent) write (6,'()')
         end if
 
+        deallocate(dets)
+
     end subroutine do_simple_fciqmc
 
     subroutine attempt_spawn(rng, iwalker)
@@ -265,8 +275,6 @@ contains
         ! In/Out:
         !    rng: random number generator.
 
-        use determinant_enumeration, only: ndets
-
         integer, intent(in) :: iwalker
         type(dSFMT_t), intent(inout) :: rng
 
@@ -277,7 +285,7 @@ contains
 
         ! Simulate spawning by attempting to spawn on all
         ! connected determinants.
-        do j = 1, ndets
+        do j = 1, ubound(hamil, dim=1)
 
             ! Can't spawn onto self.
             if (iwalker == j) cycle
