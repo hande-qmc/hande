@@ -166,7 +166,7 @@ contains
             case("LZ")
                 sys%read_in%useLz=.true.
             case('SEPARATE_STRINGS')
-                separate_strings = .true.
+                sys%basis%separate_strings = .true.
             case('CAS')
                 do i = 1,2
                     call readi(sys%CAS(i))
@@ -524,13 +524,13 @@ contains
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
 
-        ! In:
-        !    sys: system object, as set in read_input.
+        ! In/Out:
+        !    sys: system object, as set in read_input (invalid settings are overridden).
 
         use const
         use system
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
 
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
@@ -667,19 +667,19 @@ contains
         if(sys%momentum_space) then
             if (finite_cluster .and. parent) call warning(this,'FINITE_CLUSTER keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
-            if (separate_strings .and. parent) call warning(this,'SEPARATE_STRINGS keyword only valid for hubbard&
+            if (sys%basis%separate_strings .and. parent) call warning(this,'SEPARATE_STRINGS keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
             finite_cluster = .false.
-            separate_strings = .false.
+            sys%basis%separate_strings = .false.
         end if
 
-        if (separate_strings) then
+        if (sys%basis%separate_strings) then
             if (sys%system.ne.hub_real) then
-                separate_strings = .false.
+                sys%basis%separate_strings = .false.
                 if (parent) call warning(this,'SEPARATE_STRINGS keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
             else if (sys%lattice%ndim /= 1) then
-                separate_strings = .false.
+                sys%basis%separate_strings = .false.
                 if (parent) call warning(this,'SEPARATE_STRINGS keyword only valid for 1D&
                                       & calculations in real-space: ignoring keyword')
             end if
@@ -783,7 +783,7 @@ contains
         call mpi_bcast(sys%ueg%r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%read_in%dipole_int_file, len(sys%read_in%dipole_int_file), mpi_character, 0, mpi_comm_world, ierr)
-        call mpi_bcast(separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%basis%separate_strings, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%cas, 2, mpi_integer, 0, mpi_comm_world, ierr)

@@ -310,7 +310,7 @@ contains
         use basis
         use system, only: sys_t
         use bit_utils, only: count_set_bits
-        use determinants, only: beta_mask, separate_strings
+        use determinants, only: beta_mask
 
         real(p) :: umatel
         type(sys_t), intent(in) :: sys
@@ -319,7 +319,7 @@ contains
         integer(i0) :: b
 
         ! < D | U | D > = U*number of doubly occupied sites.
-        if (separate_strings) then
+        if (sys%basis%separate_strings) then
             ! Just need to AND the alpha string with the beta string.
             umatel = sum(count_set_bits(iand(f(:sys%basis%string_len/2),f(sys%basis%string_len/2+1:))))
         else
