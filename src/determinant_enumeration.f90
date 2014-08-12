@@ -12,7 +12,6 @@ implicit none
 ! If true then the determinant list is written to determinant_file.
 logical :: write_determinants = .false.
 character(255) :: determinant_file = 'DETS'
-integer :: det_unit
 
 contains
 
@@ -26,20 +25,16 @@ contains
 
         use utils, only: get_free_unit
 
+        integer :: det_unit
+
         if (write_determinants) then
+            ! Overwrite any existing file...
             det_unit = get_free_unit()
             open(det_unit, file=determinant_file, status='unknown')
+            close(det_unit, status='delete')
         end if
 
     end subroutine init_determinant_enumeration
-
-    subroutine end_determinant_enumeration()
-
-        ! Clean up.
-
-        if (write_determinants) close(det_unit, status='keep')
-
-    end subroutine end_determinant_enumeration
 
 !--- Hilbert space enumeration ---
 
@@ -102,7 +97,7 @@ contains
         character(4) :: fmt1
         integer(i0) :: f(sys%basis%string_len)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
-        integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
+        integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim), det_unit
         type(det_info_t) :: d0
         logical :: in_space, force_full
 
@@ -356,10 +351,13 @@ contains
         else if (.not. init .and. write_determinants .and. parent) then
             ! Output the determinants.
             fmt1 = int_fmt(ndets, padding=1)
+            det_unit = get_free_unit()
+            open(det_unit, file=determinant_file, status='unknown', position='append')
             do i = 1, ndets
                 write (det_unit,'('//fmt1//',4X)',advance='no') i
                 call write_det(sys%basis, sys%nel, dets_list(:,i), det_unit, new_line=.true.)
             end do
+            close(det_unit, status='keep')
         end if
 
         deallocate(occ, stat=ierr)
