@@ -8,19 +8,6 @@ use parallel, only: parent
 
 implicit none
 
-! --- Slater determinants ---
-
-! Bit string representation of the Slater determinant.
-! f is used throughout to indicate a Slater determinant
-! represented as a bit string.
-! The *even* bits contain the alpha (spin up) functions.  This is in
-! contrast to the list of basis functions, basis_fns, where the *odd*
-! indices refer to alpha (spin up) functions.  This difference arises because
-! fortran numbers bits from 0...
-! If separate_strings is turned on, then the first string_len/2 integers
-! represent the alpha orbitals and the second half of the bit array the beta
-! orbitals.
-
 ! --- FCIQMC info ---
 
 ! A handy type for containing a lot of information about a determinant.
