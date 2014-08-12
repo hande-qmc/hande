@@ -77,8 +77,22 @@ module load_balancing
 !    is held constant.
 
 use const , only: lint, p
-
 implicit none
+
+type dbin_t
+    ! Number of bins we can donate from donor processors.
+    integer :: nslots
+    ! pop: array containing populations of donor slots which we try and redistribute
+    !      to receiver processors. This is a reduced version of slot_list containing
+    !      only slots corresponding to donor processors.
+    integer(lint), allocatable :: pop(:)
+    ! index: entries contains the original index of a donor bin in slot_list/proc_map.
+    integer, allocatable :: index(:)
+    ! rank: array containing indices which correspond to the ranked (lowest to highest)
+    !       entries in pop array.
+    integer, allocatable :: rank(:)
+end type dbin_t
+
 
 contains
 
@@ -113,12 +127,10 @@ contains
         integer(lint) :: slot_list(0:size(parallel_info%load%proc_map)-1)
 
         integer, allocatable :: donors(:), receivers(:)
-        integer, allocatable :: d_slot_rank(:), d_slot_index(:)
-        integer(lint), allocatable :: d_slot_pop(:)
+        type(dbin_t) :: donor_bins
 
         integer :: i, ierr
         integer(lint) :: pop_av
-        integer :: d_slot_pop_size
         integer(lint) :: up_thresh, low_thresh
 
         slot_list = 0
@@ -159,41 +171,28 @@ contains
         low_thresh = pop_av - int(pop_av*lb%percent)
 
         ! Find donor/receiver processors.
-        call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, lb%proc_map, receivers, donors, d_slot_pop_size)
+        call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, lb%proc_map, receivers, donors, donor_bins%nslots)
 
         ! Smaller list of donor slot populations.
-        allocate(d_slot_pop(d_slot_pop_size), stat=ierr)
-        call check_allocate('d_slot_pop', d_slot_pop_size, ierr)
-        ! Contains ranked version of d_slot_pop.
-        allocate(d_slot_rank(d_slot_pop_size), stat=ierr)
-        call check_allocate('d_slot_rank', d_slot_pop_size, ierr)
-        ! Contains index in proc_map of donor slots.
-        allocate(d_slot_index(d_slot_pop_size), stat=ierr)
-        call check_allocate('d_slot_index', d_slot_pop_size, ierr)
+        call alloc_dbin_t(donor_bins)
 
         ! Put donor slots into array so we can sort them.
-        call reduce_slots(donors, slot_list, lb%proc_map, d_slot_index, d_slot_pop)
-        call insertion_rank_lint(d_slot_pop, d_slot_rank)
+        call reduce_slots(donors, slot_list, lb%proc_map, donor_bins%index, donor_bins%pop)
+        call insertion_rank_lint(donor_bins%pop, donor_bins%rank)
 
-        if (lb%write_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop)
+        if (lb%write_info .and. parent) call write_load_balancing_info(nparticles_proc, donor_bins%pop)
 
         ! Attempt to modify proc map to get more even population distribution.
-        call redistribute_slots(d_slot_pop, d_slot_index, d_slot_rank, donors, receivers, up_thresh, &
-                                low_thresh, lb%proc_map, nparticles_proc(1,:nprocs))
+        call redistribute_slots(donor_bins, donors, receivers, up_thresh, low_thresh, lb%proc_map, nparticles_proc(1,:nprocs))
         lb%nattempts = lb%nattempts + 1
 
-        if (lb%write_info .and. parent) call write_load_balancing_info(nparticles_proc, d_slot_pop)
+        if (lb%write_info .and. parent) call write_load_balancing_info(nparticles_proc, donor_bins%pop)
 
         deallocate(donors, stat=ierr)
         call check_deallocate('donors', ierr)
         deallocate(receivers, stat=ierr)
         call check_deallocate('receivers', ierr)
-        deallocate(d_slot_pop, stat=ierr)
-        call check_deallocate('d_slot_pop', ierr)
-        deallocate(d_slot_rank, stat=ierr)
-        call check_deallocate('d_slot_rank', ierr)
-        deallocate(d_slot_index, stat=ierr)
-        call check_deallocate('d_slot_index', ierr)
+        call dealloc_dbin_t(donor_bins)
 
         end associate
 
@@ -254,7 +253,59 @@ contains
 
     end subroutine check_imbalance
 
-    subroutine redistribute_slots(d_slot_pop, d_slot_index, d_slot_rank, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
+    subroutine alloc_dbin_t(donor_slots)
+
+        ! Allocate dslot type.
+
+        ! In/Out:
+        !     donor_slots: type containing population and position in
+        !         proc_map of bins of walkers which we are attempting
+        !         to redistribute. Also contains ranked version of donor
+        !         bins.
+
+        use checking, only: check_allocate
+
+        type(dbin_t), intent(inout) :: donor_slots
+
+        integer :: ierr
+
+        allocate(donor_slots%pop(donor_slots%nslots), stat=ierr)
+        call check_allocate('donor_slots%pop', donor_slots%nslots, ierr)
+        ! Contains ranked version of d_slot_pop.
+        allocate(donor_slots%rank(donor_slots%nslots), stat=ierr)
+        call check_allocate('donor_slots%rank', donor_slots%nslots, ierr)
+        ! Contains index in proc_map of donor slots.
+        allocate(donor_slots%index(donor_slots%nslots), stat=ierr)
+        call check_allocate('donor_slots%index', donor_slots%nslots, ierr)
+
+    end subroutine alloc_dbin_t
+
+    subroutine dealloc_dbin_t(donor_slots)
+
+        ! Deallocate d_slot type.
+
+        ! In/Out:
+        !     donor_slots: type containing population and position in
+        !         proc_map of bins of walkers which we are attempting
+        !         to redistribute. Also contains ranked version of donor
+        !         bins.
+
+        use checking, only: check_deallocate
+
+        type(dbin_t), intent(inout) :: donor_slots
+
+        integer :: ierr
+
+        deallocate(donor_slots%pop, stat=ierr)
+        call check_deallocate('donor_slots%pop', ierr)
+        deallocate(donor_slots%rank, stat=ierr)
+        call check_deallocate('donor_slots%rank', ierr)
+        deallocate(donor_slots%index, stat=ierr)
+        call check_deallocate('donor_slots%index', ierr)
+
+    end subroutine dealloc_dbin_t
+
+    subroutine redistribute_slots(donor_bins, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
 
         ! Attempt to modify entries in proc_map to get a more even population distribution across processors.
 
@@ -263,13 +314,10 @@ contains
         ! or the receiver processor's population is below a certain threshold.
 
         ! In:
-        !   d_slot_pop: array containing populations of donor slots which we try and redistribute
-        !       to receiver processors. This is a reduced version of slot_list containing
-        !       only slots corresponding to donor processors.
-        !   d_slot_index: slot_list(d_slot_index(i)) = d_slot_pop(i), i.e. contains the
-        !       original index of the entry in slot_list/proc_map.
-        !   d_slot_rank: array containing indices which correspond to the ranked (lowest to highest)
-        !       entries in d_slot_pop.
+        !   donor_bins: type containing various information about bins of
+        !       walkers we will attempt to distribute such as population and
+        !       index in original proc_map array. See defintion of type for more
+        !       details.
         !   donors/receivers: array containing donor/receiver processors
         !       (ones with above/below average population).
         !   up_thresh: Upper population threshold for load imbalance.
@@ -281,8 +329,7 @@ contains
 
         use parallel, only: nprocs
 
-        integer(lint), intent(in) :: d_slot_pop(:)
-        integer, intent(in) ::  d_slot_index(:), d_slot_rank(:)
+        type(dbin_t) :: donor_bins
         integer, intent(in) :: donors(:), receivers(:)
         integer(lint), intent(in) :: up_thresh, low_thresh
         integer(lint), intent(inout) :: procs_pop(0:)
@@ -294,21 +341,21 @@ contains
         donor_pop = 0
         new_pop = 0
 
-        do i = 1, size(d_slot_pop)
+        do i = 1, size(donor_bins%pop)
             ! Loop over receivers.
-            pos = d_slot_rank(i)
+            pos = donor_bins%rank(i)
             do j = 1, size(receivers)
                 ! Try to add this to below average population.
-                new_pop = d_slot_pop(pos) + procs_pop(receivers(j))
+                new_pop = donor_bins%pop(pos) + procs_pop(receivers(j))
                 ! Modify donor population.
-                donor_pop = procs_pop(proc_map(d_slot_index(pos))) - d_slot_pop(pos)
+                donor_pop = procs_pop(proc_map(donor_bins%index(pos))) - donor_bins%pop(pos)
                 ! If adding subtracting slot doesn't move processor pop past a bound.
                 if (donor_pop .ge. low_thresh .and. new_pop .le. up_thresh)  then
                     ! Changing processor population.
-                    procs_pop(proc_map(d_slot_index(pos))) = donor_pop
+                    procs_pop(proc_map(donor_bins%index(pos))) = donor_pop
                     procs_pop(receivers(j)) = new_pop
                     ! Updating proc_map.
-                    proc_map(d_slot_index(pos)) = receivers(j)
+                    proc_map(donor_bins%index(pos)) = receivers(j)
                     ! Leave the j loop, could be more than one receiver.
                     exit
                  end if
