@@ -68,18 +68,15 @@ contains
 #endif
         else
 #ifdef PARALLEL
-            if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
-                ! Part of matrix on this processor.
 #ifdef SINGLE_PRECISION
-                call pssyev(job, 'U', ndets, hamil, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, work, -1, info)
+            call pssyev(job, 'U', ndets, hamil, 1, 1,               &
+                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                        proc_blacs_info%desc_m, work, -1, info)
 #else
-                call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, work, -1, info)
+            call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
+                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                        proc_blacs_info%desc_m, work, -1, info)
 #endif
-            end if
 #endif
         end if
 
@@ -101,18 +98,15 @@ contains
         else
 #ifdef PARALLEL
             ! Use scalapack to do the diagonalisation in parallel.
-            if (proc_blacs_info%nrows > 0 .and. proc_blacs_info%ncols > 0) then
-                ! Part of matrix on this processor.
 #ifdef SINGLE_PRECISION
-                call pssyev(job, 'U', ndets, hamil, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, work, lwork, info)
+            call pssyev(job, 'U', ndets, hamil, 1, 1,               &
+                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                        proc_blacs_info%desc_m, work, lwork, info)
 #else
-                call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, work, lwork, info)
+            call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
+                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                        proc_blacs_info%desc_m, work, lwork, info)
 #endif
-            end if
 #endif
         end if
 
