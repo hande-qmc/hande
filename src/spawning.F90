@@ -1378,13 +1378,13 @@ contains
 
     end subroutine create_spawned_particle_truncated_density_matrix
 
-    subroutine create_spawned_particle_rdm(irdm, nspawn_in, particle_type, rdm_spawn)
+    subroutine create_spawned_particle_rdm(rdm, nspawn_in, particle_type, rdm_spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
-        !    irdm: the index of the rdm that this psip contributes to.
+        !    rdm: the rdm that this psip contributes to.
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
@@ -1393,23 +1393,20 @@ contains
         !    will be added.
 
         use bit_utils, only: operator(.bitstrgt.)
-        use dmqmc_procedures, only: rdms
         use errors, only: stop_all
-        use fciqmc_data, only: rdm_spawn_t
+        use fciqmc_data, only: rdm_t, rdm_spawn_t
         use parallel, only: iproc, nprocs, nthreads
         use hash_table, only: hash_table_pos_t, lookup_hash_table_entry
         use hash_table, only: assign_hash_table_entry
         use utils, only: int_fmt
 
-        integer, intent(in) :: irdm
+        type(rdm_t), intent(in) :: rdm
         integer(int_p), intent(in) :: nspawn_in
         integer, intent(in) :: particle_type
         type(rdm_spawn_t), intent(inout) :: rdm_spawn
         integer(int_p) :: nspawn
-        integer :: rdm_bl
 
-        integer(i0) :: f_new_tot(2*rdms(irdm)%rdm_string_len)
-        integer(i0) :: f1(rdms(irdm)%rdm_string_len), f2(rdms(irdm)%rdm_string_len)
+        integer(i0) :: f_new_tot(2*rdm%rdm_string_len)
 
         integer :: iproc_spawn
         ! WARNING!  The below algorithm is *not* suitable for conversion to
@@ -1423,29 +1420,26 @@ contains
         logical :: hit
         integer :: err_code
 
-        rdm_bl = rdms(irdm)%rdm_string_len
-        nspawn = nspawn_in
+        associate(f1=>rdm%end1, f2=>rdm%end2, rdm_bl=>rdm%rdm_string_len, spawn=>rdm_spawn%spawn, &
+                  ht=>rdm_spawn%ht, bsl=>rdm_spawn%spawn%bit_str_len)
 
-        f_new_tot = 0_i0
-        f1 = rdms(irdm)%end1
-        f2 = rdms(irdm)%end2
+            nspawn = nspawn_in
+            f_new_tot = 0_i0
 
-        ! Symmetry is enforced on the RDM in the following.
-        if (f1 .bitstrgt. f2) then
-            ! If below the diagonal, swap the bitstrings so that the spawning occurs above it.
-            f_new_tot(:rdm_bl) = f2
-            f_new_tot(rdm_bl+1:2*rdm_bl) = f1
-        else
-            f_new_tot(:rdm_bl) = f1
-            f_new_tot(rdm_bl+1:2*rdm_bl) = f2
-            if (all(f1 == f2)) then
-                ! Because off-diagonal elements have been doubled (elements above the diagonal taking
-                ! contributions from both below and above it), we must double the diagonal elements too.
-                nspawn = nspawn*2
+            ! Symmetry is enforced on the RDM in the following.
+            if (f1 .bitstrgt. f2) then
+                ! If below the diagonal, swap the bitstrings so that the spawning occurs above it.
+                f_new_tot(:rdm_bl) = f2
+                f_new_tot(rdm_bl+1:2*rdm_bl) = f1
+            else
+                f_new_tot(:rdm_bl) = f1
+                f_new_tot(rdm_bl+1:2*rdm_bl) = f2
+                if (all(f1 == f2)) then
+                    ! Because off-diagonal elements have been doubled (elements above the diagonal taking
+                    ! contributions from both below and above it), we must double the diagonal elements too.
+                    nspawn = nspawn*2
+                end if
             end if
-        end if
-
-        associate(spawn=>rdm_spawn%spawn, ht=>rdm_spawn%ht, bsl=>rdm_spawn%spawn%bit_str_len)
 
             iproc_spawn = assign_particle_processor(f_new_tot, 2*rdm_bl, spawn%hash_seed, &
                                                     spawn%hash_shift, spawn%move_freq, nprocs)

@@ -14,7 +14,6 @@ use fciqmc_data
 use restart_hdf5, only: restart_info_global, restart_info_global_shift
 use real_lattice, only: finite_cluster
 use hfs_data
-use dmqmc_procedures, only: rdms
 use semi_stoch
 
 implicit none

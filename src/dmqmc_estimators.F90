@@ -18,12 +18,11 @@ contains
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_rdm_r2
         use checking, only: check_allocate
-        use dmqmc_procedures, only: rdms
         use fciqmc_data, only: nparticles, sampling_size, rspawn, shift, replica_tricks
         use fciqmc_data, only: estimator_numerators, number_dmqmc_estimators
         use fciqmc_data, only: ncycles, trace, calculate_excit_distribution
         use fciqmc_data, only: excit_distribution, tot_nparticles
-        use fciqmc_data, only: calc_inst_rdm, rdm_spawn, nrdms, rdm_traces, renyi_2
+        use fciqmc_data, only: calc_inst_rdm, rdm_spawn, rdms, nrdms, rdm_traces, renyi_2
         use hash_table, only: reset_hash_table
         use parallel
 
@@ -643,10 +642,10 @@ contains
        !        performed if iteration <= start_averaging.
 
        use basis_types, only: basis_t
-       use dmqmc_procedures, only: decode_dm_bitstring, rdms
+       use dmqmc_procedures, only: decode_dm_bitstring
        use excitations, only: excit
        use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
-       use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, nrdms
+       use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, rdms, nrdms
        use fciqmc_data, only: start_averaging, rdm_spawn, dmqmc_accumulated_probs
        use fciqmc_data, only: nsym_vec, real_factor
        use spawning, only: create_spawned_particle_rdm
@@ -702,7 +701,7 @@ contains
                    if (calc_inst_rdm) then
                       do ireplica = 1, sampling_size
                           if (abs(walker_pop(ireplica)) > 0) then
-                              call create_spawned_particle_rdm(irdm, walker_pop(ireplica), &
+                              call create_spawned_particle_rdm(rdms(irdm), walker_pop(ireplica), &
                                       ireplica, rdm_spawn(irdm))
                           end if
                       end do
@@ -724,8 +723,7 @@ contains
        !    beta_cycle: index of the beta loop being performed.
 
         use checking, only: check_allocate, check_deallocate
-        use dmqmc_procedures, only: rdms
-        use fciqmc_data, only: reduced_density_matrix
+        use fciqmc_data, only: rdms, reduced_density_matrix
         use fciqmc_data, only: doing_von_neumann_entropy, doing_concurrence
         use fciqmc_data, only: output_rdm, rdm_unit, rdm_traces
         use parallel
@@ -812,8 +810,7 @@ contains
         !    trace_rdm: The trace of the RDM being considered.
 
         use checking, only: check_allocate, check_deallocate
-        use dmqmc_procedures, only: rdms
-        use fciqmc_data, only: reduced_density_matrix
+        use fciqmc_data, only: reduced_density_matrix, rdms
 
         real(p), intent(in) :: trace_rdm
         integer :: i, rdm_size
@@ -933,18 +930,18 @@ contains
     subroutine calculate_rdm_traces(rdm_data, rdm_lists, traces)
 
         ! In:
-        !    rdm_data: Array of rdm derived types, holding information about
+        !    rdm_data: Array of rdm_t derived types, holding information about
         !        the various subsystems for which RDMs are being estimated.
         !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of
         !        the RDM psips which belong to this processor.
         ! Out:
         !    r2: The calculated RDM traces.
 
-        use dmqmc_procedures, only: rdm
+        use fciqmc_data, only: rdm_t
         use excitations, only: get_excitation_level
         use spawn_data, only: spawn_t
 
-        type(rdm), intent(in) :: rdm_data(:)
+        type(rdm_t), intent(in) :: rdm_data(:)
         type(spawn_t), intent(in) :: rdm_lists(:)
         real(p), intent(out) :: traces(:,:)
         integer :: irdm, i, rdm_bl
@@ -973,19 +970,19 @@ contains
         ! calculated.
 
         ! In:
-        !    rdm_data: Array of rdm derived types, holding information about the
+        !    rdm_data: Array of rdm_t derived types, holding information about the
         !        various subsystems for which RDMs are being estimated.
         !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of
         !        the RDM psips which belong to this processor.
         ! Out:
         !    r2: The calculated Renyi entropies (S_2).
 
-        use dmqmc_procedures, only: rdm
+        use fciqmc_data, only: rdm_t
         use excitations, only: get_excitation_level
         use fciqmc_data, only: dmqmc_accumulated_probs_old
         use spawn_data, only: spawn_t
 
-        type(rdm), intent(in) :: rdm_data(:)
+        type(rdm_t), intent(in) :: rdm_data(:)
         type(spawn_t), intent(in) :: rdm_lists(:)
         real(p), intent(out) :: r2(:)
         integer :: i, irdm, excit_level, rdm_bl
