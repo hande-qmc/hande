@@ -355,7 +355,7 @@ logical :: doing_von_neumann_entropy = .false.
 
 ! If true then, if doing an exact diagonalisation, calculate and output the
 ! eigenvalues of the reduced density matrix requested.
-logical :: doing_exact_rdm_eigv
+logical :: doing_exact_rdm_eigv=.false.
 
 ! This stores the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
