@@ -33,7 +33,7 @@ contains
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !    determinant and a connected determinant in molecular systems.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
@@ -44,7 +44,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
@@ -140,7 +140,7 @@ contains
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !    determinant and a connected determinant in molecular systems.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
@@ -151,7 +151,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection

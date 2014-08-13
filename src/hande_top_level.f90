@@ -26,7 +26,7 @@ contains
         use system
         use basis, only: init_model_basis_fns
         use basis_types, only: copy_basis_t, dealloc_basis_t, init_basis_strings, print_basis_metadata
-        use determinants, only: init_determinants, separate_strings
+        use determinants, only: init_determinants
         use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, nthreads, parent
@@ -71,7 +71,7 @@ contains
             call init_model_basis_fns(sys)
         end if
 
-        call init_basis_strings(sys%basis, separate_strings)
+        call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
         call init_determinants(sys)
         call init_determinant_enumeration()
@@ -107,7 +107,7 @@ contains
         use qmc, only: do_qmc
         use hilbert_space, only: estimate_hilbert_space
         use parallel, only: iproc, parent
-        use simple_fciqmc, only: do_simple_fciqmc, init_simple_fciqmc
+        use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
@@ -120,8 +120,7 @@ contains
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call init_simple_fciqmc(sys)
-                call do_simple_fciqmc()
+                call do_simple_fciqmc(sys)
             else 
                 call do_qmc(sys)
             end if
@@ -169,7 +168,7 @@ contains
         call end_determinants()
         call end_excitations()
         call end_hamil()
-        call end_real_space()
+        call end_real_space(sys%heisenberg)
         call end_fciqmc()
         call end_ifciqmc()
 

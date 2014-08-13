@@ -537,7 +537,6 @@ contains
        !        element.
 
        use bit_utils, only: count_set_bits
-       use determinants, only: lattice_mask
        use excitations, only: excit
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: estimator_numerators, staggered_mag_index
@@ -567,7 +566,7 @@ contains
            ! are nel spins up in total. Hence the matrix element will be written
            ! only in terms of the number of up spins on sublattice 1, to save
            ! computation.
-           f = iand(walker_dets(:sys%basis%string_len,idet), lattice_mask)
+           f = iand(walker_dets(:sys%basis%string_len,idet), sys%heisenberg%lattice_mask)
            n_up_plus = sum(count_set_bits(f))
            ! Below, the term in brackets and middle term come from the z
            ! component (the z operator is diagonal) and one nsites/4 factor
@@ -582,8 +581,8 @@ contains
            bit_element1 = sys%basis%bit_lookup(2,excitation%from_orb(1))
            bit_position2 = sys%basis%bit_lookup(1,excitation%to_orb(1))
            bit_element2 = sys%basis%bit_lookup(2,excitation%to_orb(1))
-           if (btest(lattice_mask(bit_element1), bit_position1)) total_sum = total_sum+1
-           if (btest(lattice_mask(bit_element2), bit_position2)) total_sum = total_sum+1
+           if (btest(sys%heisenberg%lattice_mask(bit_element1), bit_position1)) total_sum = total_sum+1
+           if (btest(sys%heisenberg%lattice_mask(bit_element2), bit_position2)) total_sum = total_sum+1
            ! The operation below will map 0 and 2 to +1, and will map 1 to -1,
            ! as is easily checked. We want this - if both or no spins on this
            ! sublattice, then both on same sublattice either way, so plus one.

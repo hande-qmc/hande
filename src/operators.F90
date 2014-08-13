@@ -335,7 +335,7 @@ contains
 
 !== Debug/test routines for operating on exact wavefunction ===
 
-    subroutine analyse_wavefunction(sys, wfn)
+    subroutine analyse_wavefunction(sys, wfn, dets)
 
         ! Analyse an exact wavefunction using the desired operator(s).
 
@@ -343,18 +343,19 @@ contains
         !    sys: system being studied.
         !    wfn: exact wavefunction to be analysed.  wfn(i) = c_i, where
         !    |\Psi> = \sum_i c_i|D_i>.
+        !    dets: list of determinants in the Hilbert space (bit string representation).
 
         use const, only: i0, p
         use calc, only: proc_blacs_info, distribute, distribute_off
-        use determinant_enumeration, only: dets_list, ndets
         use parallel
         use system
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
+        integer(i0), intent(in) :: dets(:,:)
 
         real(p) :: expectation_val(2), cicj
-        integer :: idet, i, ii, ilocal, jdet, j, jj, jlocal
+        integer :: idet, i, ii, ilocal, jdet, j, jj, jlocal, ndets
 
 #ifdef PARALLEL
         integer :: ierr
@@ -362,6 +363,7 @@ contains
 #endif
 
         expectation_val = 0.0_p
+        ndets = ubound(dets, dim=2)
 
         ! NOTE: we don't pretend to be efficient here but rather just get the
         ! job done...
@@ -370,22 +372,22 @@ contains
             do idet = 1, ndets
                 select case(sys%system)
                 case(hub_k)
-                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*kinetic0_hub_k(sys, dets_list(:,idet))
-                    expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(sys, dets_list(:,idet))
+                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*kinetic0_hub_k(sys, dets(:,idet))
+                    expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(sys, dets(:,idet))
                 case(hub_real)
-                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*double_occ0_hub_real(sys, dets_list(:,idet))
+                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*double_occ0_hub_real(sys, dets(:,idet))
                 case(read_in)
-                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(sys, dets_list(:,idet))
+                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(sys, dets(:,idet))
                 end select
                 do jdet = idet+1, ndets
                     cicj = wfn(idet) * wfn(jdet)
                     select case(sys%system)
                     case(hub_k)
                         expectation_val(2) = expectation_val(2) + &
-                                             2*cicj*double_occ_hub_k(sys, dets_list(:,jdet), dets_list(:,idet))
+                                             2*cicj*double_occ_hub_k(sys, dets(:,jdet), dets(:,idet))
                     case (read_in)
                         expectation_val(1) = expectation_val(1) + &
-                                             2*cicj*one_body_mol(sys, dets_list(:,jdet), dets_list(:,idet))
+                                             2*cicj*one_body_mol(sys, dets(:,jdet), dets(:,idet))
                     end select
                 end do
             end do
@@ -396,12 +398,12 @@ contains
                     idet =  (i-1)*nproc_rows + proc_blacs_info%procx* block_size + ii
                     select case(sys%system)
                     case(hub_k)
-                        expectation_val(1) = expectation_val(1) + wfn(ilocal)**2*kinetic0_hub_k(sys, dets_list(:,idet))
-                        expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(sys, dets_list(:,idet))
+                        expectation_val(1) = expectation_val(1) + wfn(ilocal)**2*kinetic0_hub_k(sys, dets(:,idet))
+                        expectation_val(2) = expectation_val(2) + wfn(idet)**2*double_occ0_hub_k(sys, dets(:,idet))
                     case(hub_real)
-                        expectation_val(1) = expectation_val(1) + wfn(idet)**2*double_occ0_hub_real(sys, dets_list(:,idet))
+                        expectation_val(1) = expectation_val(1) + wfn(idet)**2*double_occ0_hub_real(sys, dets(:,idet))
                     case(read_in)
-                        expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(sys, dets_list(:,idet))
+                        expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(sys, dets(:,idet))
                     end select
                     do j = 1, proc_blacs_info%ncols, block_size
                         do jj = 1, min(block_size, proc_blacs_info%nrows - j + 1)
@@ -411,10 +413,10 @@ contains
                             select case(sys%system)
                             case(hub_k)
                                 expectation_val(2) = expectation_val(2) + &
-                                                    cicj*double_occ_hub_k(sys, dets_list(:,idet), dets_list(:,jdet))
+                                                    cicj*double_occ_hub_k(sys, dets(:,idet), dets(:,jdet))
                             case (read_in)
                                 expectation_val(1) = expectation_val(1) + &
-                                                     2*cicj*one_body_mol(sys, dets_list(:,idet), dets_list(:,jdet))
+                                                     2*cicj*one_body_mol(sys, dets(:,idet), dets(:,jdet))
                             end select
                         end do
                     end do
@@ -443,7 +445,7 @@ contains
 
     end subroutine analyse_wavefunction
 
-    subroutine print_wavefunction(filename, wfn)
+    subroutine print_wavefunction(filename, wfn, dets)
 
         ! Print out an exact wavefunction.
 
@@ -451,10 +453,10 @@ contains
         !    filename: file to be printed to.
         !    wfn: exact wavefunction to be printed out.  wfn(i) = c_i, where
         !    |\Psi> = \sum_i c_i|D_i>.
+        !    dets: list of determinants in the Hilbert space (bit string representation).
 
         use const, only: i0, p
         use calc, only: proc_blacs_info, distribute, distribute_off
-        use determinant_enumeration, only: dets_list, ndets
 
         use checking, only: check_allocate, check_deallocate
         use utils, only: get_free_unit
@@ -462,6 +464,7 @@ contains
 
         character(*), intent(in) :: filename
         real(p), intent(in) :: wfn(proc_blacs_info%nrows)
+        integer(i0), intent(in) :: dets(:,:)
 
         integer :: idet, i, ii, ilocal, iunit
 
@@ -480,7 +483,7 @@ contains
 
         if (nprocs == 1) then
             do idet = 1, size(wfn)
-                write (iunit,*) idet, dets_list(:,idet), wfn(idet)
+                write (iunit,*) idet, dets(:,idet), wfn(idet)
             end do
         else
 #ifdef PARALLEL
@@ -522,7 +525,7 @@ contains
                     do ii = 1, min(block_size, nrows - i + 1)
                         ilocal = i - 1 + ii
                         idet =  (i-1)*nproc_rows + procx* block_size + ii
-                        write (iunit,*) idet, dets_list(:,idet), wfn_curr(ilocal)
+                        write (iunit,*) idet, dets(:,idet), wfn_curr(ilocal)
                     end do
                 end do
 

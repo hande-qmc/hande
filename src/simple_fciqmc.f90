@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys)
+    subroutine init_simple_fciqmc(sys, ndets, dets, ref_det)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -28,6 +28,10 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        ! Out:
+        !    ndets: number of determinants in the Hilbert space.
+        !    dets: list of determinants in the Hilbert space.
+        !    ref_det: location of reference in dets.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -38,6 +42,11 @@ contains
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
 
         type(sys_t), intent(inout) :: sys
+        integer, intent(out) :: ref_det
+
+        integer, allocatable :: sym_space_size(:)
+        integer :: ndets
+        integer(i0), allocatable :: dets(:,:)
 
         integer :: ierr
         integer :: i, j
@@ -49,21 +58,21 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
         if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .true., .false., occ_list0=occ_list0)
+            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=occ_list0)
         else
-            call enumerate_determinants(sys, .true., .false.)
+            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets)
         end if
 
         ! Find all determinants with desired spin and symmetry.
         if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .false., .false., sym_in, occ_list0)
+            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, occ_list0)
         else
-            call enumerate_determinants(sys, .false., .false., sym_in)
+            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in)
         end if
 
 
         ! Set up hamiltonian matrix.
-        call generate_hamil(sys, distribute_off)
+        call generate_hamil(sys, ndets, dets, distribute_off)
         ! generate_hamil fills in only the lower triangle.
         ! fill in upper triangle for easy access.
         do i = 1,ndets
@@ -122,36 +131,46 @@ contains
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
             call decode_det(sys%basis, f0, occ_list0)
-            f0 = dets_list(:,ref_det)
+            f0 = dets(:,ref_det)
             walker_population(1,ref_det) = nint(D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-        call write_det(sys%basis, sys%nel, dets_list(:,ref_det), new_line=.true.)
+        call write_det(sys%basis, sys%nel, dets(:,ref_det), new_line=.true.)
         write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 
         ! Return sys in an unaltered state.
         call copy_sys_spin_info(sys_bak, sys)
 
+        deallocate(sym_space_size)
+
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc()
+    subroutine do_simple_fciqmc(sys)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
+        ! In/Out:
+        !    sys: system being studied.  Unaltered on output.
+
         use calc, only: seed
-        use determinant_enumeration, only: ndets
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
+        use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
+        type(sys_t), intent(inout) :: sys
         integer :: ireport, icycle, iwalker, ipart
         real(dp) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
         type(dSFMT_t) :: rng
+        integer :: ref_det, ndets
+        integer(i0), allocatable :: dets(:,:)
+
+        call init_simple_fciqmc(sys, ndets, dets, ref_det)
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -183,7 +202,7 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(iwalker, proj_energy)
+                    call simple_update_proj_energy(ref_det, iwalker, proj_energy)
 
                     ! Simulate spawning.
                     do ipart = 1, abs(walker_population(1,iwalker))
@@ -240,6 +259,8 @@ contains
             if (parent) write (6,'()')
         end if
 
+        deallocate(dets)
+
     end subroutine do_simple_fciqmc
 
     subroutine attempt_spawn(rng, iwalker)
@@ -254,8 +275,6 @@ contains
         ! In/Out:
         !    rng: random number generator.
 
-        use determinant_enumeration, only: ndets
-
         integer, intent(in) :: iwalker
         type(dSFMT_t), intent(inout) :: rng
 
@@ -266,7 +285,7 @@ contains
 
         ! Simulate spawning by attempting to spawn on all
         ! connected determinants.
-        do j = 1, ndets
+        do j = 1, ubound(hamil, dim=1)
 
             ! Can't spawn onto self.
             if (iwalker == j) cycle
@@ -374,7 +393,7 @@ contains
 
     end subroutine simple_annihilation
 
-    subroutine simple_update_proj_energy(iwalker, inst_proj_energy)
+    subroutine simple_update_proj_energy(ref_det, iwalker, inst_proj_energy)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -390,12 +409,13 @@ contains
         ! This procedure is only for the simple fciqmc algorithm, where the
         ! Hamiltonian matrix is explicitly stored.
         ! In:
+        !    ref_det: index of the reference determinant in the walker list.
         !    iwalker: index of current determinant in the main walker list.
         ! In/Out:
         !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !    This is updated if D_i is connected to D_0 (and isn't D_0).
 
-        integer, intent(in) :: iwalker
+        integer, intent(in) :: ref_det, iwalker
         real(p), intent(inout) :: inst_proj_energy
 
         if (iwalker == ref_det) then

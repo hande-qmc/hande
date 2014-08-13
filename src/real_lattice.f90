@@ -89,7 +89,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
         integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
-        integer :: r(sys%lattice%ndim)
+        integer :: r(sys%lattice%ndim), bit_element, bit_pos, site_index
         logical :: diag_connection
 
         sys%nsym = 1
@@ -238,18 +238,47 @@ contains
             ! This is the number of bonds for an arbitrary lattice
             ! with periodic or fixed end boundary conditions.
             sys%heisenberg%nbonds = sum(connected_sites(0,:))/2
+            ! Find lattice_mask for a gerenal bipartite lattice.
+            if (sys%lattice%bipartite_lattice) then
+                allocate (sys%heisenberg%lattice_mask(sys%basis%string_len), stat=ierr)
+                associate(lattice_mask=>sys%heisenberg%lattice_mask)
+                    call check_allocate('lattice_mask',sys%basis%string_len,ierr)
+                    lattice_mask = 0_i0
+                    do k = 1,sys%lattice%lattice_size(3)
+                        do j = 1,sys%lattice%lattice_size(2)
+                            do i = 1,sys%lattice%lattice_size(1),2
+                                site_index = (sys%lattice%lattice_size(2)*sys%lattice%lattice_size(1))*(k-1) + &
+                                              sys%lattice%lattice_size(1)*(j-1) + mod(j+k,2) + i
+                                bit_pos = sys%basis%bit_lookup(1, site_index)
+                                bit_element = sys%basis%bit_lookup(2, site_index)
+                                lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
+                            end do
+                        end do
+                    end do
+                end associate
+            end if
         end select
 
     end subroutine init_real_space
 
-    subroutine end_real_space()
+    subroutine end_real_space(sh)
 
         ! Clean up real_lattice specific allocations.
 
+        ! In/Out:
+        !    sh: Heisenberg system object to be deallocated.
+
         use checking, only: check_deallocate
+        use system, only: sys_heisenberg_t
+
+        type(sys_heisenberg_t), intent(inout) :: sh
 
         integer :: ierr
 
+        if (allocated(sh%lattice_mask)) then
+            deallocate(sh%lattice_mask, stat=ierr)
+            call check_deallocate('sh%lattice_mask', ierr)
+        end if
         if (allocated(tmat)) then
             deallocate(tmat, stat=ierr)
             call check_deallocate('tmat',ierr)
@@ -310,7 +339,6 @@ contains
         use basis
         use system, only: sys_t
         use bit_utils, only: count_set_bits
-        use determinants, only: beta_mask, separate_strings
 
         real(p) :: umatel
         type(sys_t), intent(in) :: sys
@@ -319,25 +347,27 @@ contains
         integer(i0) :: b
 
         ! < D | U | D > = U*number of doubly occupied sites.
-        if (separate_strings) then
-            ! Just need to AND the alpha string with the beta string.
-            umatel = sum(count_set_bits(iand(f(:sys%basis%string_len/2),f(sys%basis%string_len/2+1:))))
-        else
-            ! 1. Find the bit string representing the occupied beta orbitals.
-            ! 2. Right shift it by one place.  The beta orbitals now line up with
-            !    alpha orbitals.
-            ! 3. AND the shifted beta bit string with the original bit string
-            !    representing the list of occupied orbitals in the determinant.
-            ! 4. The non-zero bits represent a sites which have both alpha and beta
-            !    orbitals occupied.
-            ! 5. Hence < D | U | D >.
-            umatel = 0.0_p
-            do i = 1, sys%basis%string_len
-                b = iand(f(i), beta_mask)
-                umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
-            end do
-        end if
-        umatel = sys%hubbard%u*umatel
+        associate(basis=>sys%basis)
+            if (basis%separate_strings) then
+                ! Just need to AND the alpha string with the beta string.
+                umatel = sum(count_set_bits(iand(f(:basis%string_len/2),f(basis%string_len/2+1:))))
+            else
+                ! 1. Find the bit string representing the occupied beta orbitals.
+                ! 2. Right shift it by one place.  The beta orbitals now line up with
+                !    alpha orbitals.
+                ! 3. AND the shifted beta bit string with the original bit string
+                !    representing the list of occupied orbitals in the determinant.
+                ! 4. The non-zero bits represent a sites which have both alpha and beta
+                !    orbitals occupied.
+                ! 5. Hence < D | U | D >.
+                umatel = 0.0_p
+                do i = 1, basis%string_len
+                    b = iand(f(i), basis%beta_mask)
+                    umatel = umatel + count_set_bits(iand(f(i), ishft(b,-1)))
+                end do
+            end if
+            umatel = sys%hubbard%u*umatel
+        end associate
 
     end function get_coulomb_matel_real
 

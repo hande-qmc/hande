@@ -21,14 +21,14 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
-        use determinant_enumeration, only: enumerate_determinants, ndets, sym_space_size
+        use determinant_enumeration, only: enumerate_determinants
         use determinants, only: spin_orb_list
         use fciqmc_data, only: occ_list0
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
         use fciqmc_data, only: doing_exact_rdm_eigv, reduced_density_matrix
         use full_diagonalisation
-        use hamiltonian, only: get_hmatel_dets
+        use hamiltonian, only: get_hmatel
         use reference_determinant
         use symmetry, only: symmetry_orb_list
 
@@ -44,7 +44,9 @@ contains
         end type soln
 
         integer :: ms, ms_min, ms_max, ierr, nlanczos, nexact, nfound, i, ind, state, isym, isym_min, isym_max
-        integer :: tot_ndets
+        integer :: tot_ndets, ndets
+        integer, allocatable :: sym_space_size(:)
+        integer(i0), allocatable :: dets(:,:)
 
         type(soln), allocatable :: lanczos_solns(:), exact_solns(:), solns_tmp(:)
 
@@ -156,9 +158,9 @@ contains
             ! Find and set information about the space.
             call set_spin_polarisation(sys%basis%nbasis, ms, sys)
             if (allocated(occ_list0)) then
-                call enumerate_determinants(sys, .true., spin_flip, occ_list0=occ_list0)
+                call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets, occ_list0=occ_list0)
             else
-                call enumerate_determinants(sys, .true., spin_flip)
+                call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets)
             end if
 
             if (doing_calc(exact_diag)) then
@@ -195,9 +197,9 @@ contains
 
                 ! Find all determinants with this spin.
                 if (allocated(occ_list0)) then
-                    call enumerate_determinants(sys, .false., spin_flip, isym, occ_list0)
+                    call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, isym, occ_list0)
                 else
-                    call enumerate_determinants(sys, .false., spin_flip, isym)
+                    call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, isym)
                 end if
 
                 if (ndets == 1) then
@@ -209,12 +211,12 @@ contains
                     ! The trivial case seems to trip up TRLan and scalapack in
                     ! parallel.
                     if (doing_calc(lanczos_diag)) then
-                        lanczos_solns(nlanczos+1)%energy = get_hmatel_dets(sys,1,1)
+                        lanczos_solns(nlanczos+1)%energy = get_hmatel(sys, dets(:,1), dets(:,1))
                         lanczos_solns(nlanczos+1)%ms = ms
                         nlanczos = nlanczos + 1
                     end if
                     if (doing_calc(exact_diag)) then
-                        exact_solns(nexact+1)%energy = get_hmatel_dets(sys,1,1)
+                        exact_solns(nexact+1)%energy = get_hmatel(sys, dets(:,1), dets(:,1))
                         exact_solns(nexact+1)%ms = ms
                         nexact = nexact + 1
                     end if
@@ -222,7 +224,7 @@ contains
                 else
 
                     if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) &
-                        call generate_hamil(sys, distribute_off)
+                        call generate_hamil(sys, ndets, dets, distribute_off)
 
                     ! Lanczos.
                     if (doing_calc(lanczos_diag)) then
@@ -230,8 +232,8 @@ contains
                         call check_allocate('lanczos_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(sys, distribute_cols)
-                        call lanczos_diagonalisation(sys, nfound, lanczos_eigv)
+                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(sys, ndets, dets, distribute_cols)
+                        call lanczos_diagonalisation(sys, dets, nfound, lanczos_eigv)
                         if (nlanczos+nfound > size(lanczos_solns)) then
                             ! We have found more solutions than we asked for.
                             ! Allocate more space...
@@ -254,8 +256,8 @@ contains
                         call check_allocate('exact_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1) call generate_hamil(sys, distribute_blocks)
-                        call exact_diagonalisation(sys, exact_eigv)
+                        if (nprocs > 1) call generate_hamil(sys, ndets, dets, distribute_blocks)
+                        call exact_diagonalisation(sys, dets, exact_eigv)
                         exact_solns(nexact+1:nexact+ndets)%energy = exact_eigv
                         exact_solns(nexact+1:nexact+ndets)%ms = ms
                         nexact = nexact + ndets
@@ -282,7 +284,7 @@ contains
                             allocate(rdm_eigenvalues(rdm_size), stat=ierr)
                             call check_allocate('rdm_eigenvalues',rdm_size,ierr)
 
-                            call get_rdm_eigenvalues(sys%basis, rdm_eigenvalues)
+                            call get_rdm_eigenvalues(sys%basis, ndets, dets, rdm_eigenvalues)
                         end if
                     end if
                 end if
@@ -357,13 +359,17 @@ contains
             deallocate(exact_solns, stat=ierr)
             call check_deallocate('exact_solns',ierr)
         end if
+        deallocate(dets, stat=ierr)
+        call check_deallocate('dets', ierr)
+        deallocate(sym_space_size, stat=ierr)
+        call check_deallocate('sym_space_size', ierr)
 
         ! Return sys in an unaltered state.
         call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine diagonalise
 
-    subroutine generate_hamil(sys, distribute_mode)
+    subroutine generate_hamil(sys, ndets, dets, distribute_mode)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
@@ -378,6 +384,8 @@ contains
         !        processor.  Can take the values given by the distribute_off,
         !        distribute_blocks and distribute_cols parameters.  See above
         !        for descriptions of the different behaviours.
+        !    ndets: number of determinants in the Hilbert space.
+        !    dets: list of determinants in the Hilbert space (bit-string representation).
 
         use checking, only: check_allocate, check_deallocate
         use csr, only: init_csrp, end_csrp
@@ -385,12 +393,13 @@ contains
         use errors
         use parallel
 
-        use hamiltonian, only: get_hmatel_dets
+        use hamiltonian, only: get_hmatel
         use real_lattice
-        use determinant_enumeration, only: ndets
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: ndets
+        integer(i0), intent(in) :: dets(:,:)
         integer, intent(in), optional :: distribute_mode
         integer :: ierr, iunit, n1, n2, ind_offset
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
@@ -491,7 +500,7 @@ contains
                         ! from a single test.  Please feel free to improve...
                         !$omp do private(j, hmatel) schedule(dynamic, 200)
                         do j = i, ndets
-                            hmatel = get_hmatel_dets(sys,i+ind_offset, j+ind_offset)
+                            hmatel = get_hmatel(sys, dets(:,i+ind_offset), dets(:,j+ind_offset))
                             if (abs(hmatel) > depsilon) then
                                 !$omp critical
                                 nnz = nnz + 1
@@ -525,7 +534,7 @@ contains
                 do i = 1, ndets
                     !$omp do private(j) schedule(dynamic, 200)
                     do j = i, ndets
-                        hamil(i,j) = get_hmatel_dets(sys,i+ind_offset,j+ind_offset)
+                        hamil(i,j) = get_hmatel(sys,dets(:,i+ind_offset),dets(:,j+ind_offset))
                     end do
                     !$omp end do
                 end do
@@ -554,7 +563,7 @@ contains
                         do jj = 1, min(block_size, proc_blacs_info%ncols - j + 1)
                             jlocal = j - 1 + jj
                             jglobal = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj + ind_offset
-                            hamil(ilocal, jlocal) = get_hmatel_dets(sys,iglobal, jglobal)
+                            hamil(ilocal, jlocal) = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
                         end do
                     end do
                 end do
@@ -599,15 +608,16 @@ contains
 
     end subroutine generate_hamil
 
-    subroutine get_rdm_eigenvalues(basis, rdm_eigenvalues)
+    subroutine get_rdm_eigenvalues(basis, ndets, dets, rdm_eigenvalues)
 
         use basis_types, only: basis_t
         use checking, only: check_allocate, check_deallocate
-        use determinant_enumeration, only: ndets, dets_list
         use dmqmc_procedures, only: decode_dm_bitstring
         use fciqmc_data, only: reduced_density_matrix, rdms
 
         type(basis_t), intent(in) :: basis
+        integer, intent(in) :: ndets
+        integer(i0), intent(in) :: dets(:,:)
         real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(2*basis%string_len)
@@ -621,14 +631,14 @@ contains
         ! Loop over all elements of the density matrix and add all contributing elements to the RDM.
         do i = 1, ndets
             do j = 1, ndets
-                f1 = iand(rdms(1)%B_masks(:,1),dets_list(:,i))
-                f2 = iand(rdms(1)%B_masks(:,1),dets_list(:,j))
+                f1 = iand(rdms(1)%B_masks(:,1),dets(:,i))
+                f2 = iand(rdms(1)%B_masks(:,1),dets(:,j))
                 ! If the two bitstrings are the same after bits corresponding to subsystem B have
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
                     ! In f3, concatenate the two bitstrings.
-                    f3(1:basis%string_len) = dets_list(:,i)
-                    f3(basis%string_len+1:basis%string_len*2) = dets_list(:,j)
+                    f3(1:basis%string_len) = dets(:,i)
+                    f3(basis%string_len+1:basis%string_len*2) = dets(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
                     call decode_dm_bitstring(basis,f3,1,1)

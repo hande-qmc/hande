@@ -10,7 +10,7 @@ type bit_string_ptr
 end type bit_string_ptr
 
 ! Information about a cluster of excitors in addition to that stored in
-! a det_info variable.
+! a det_info_t variable.
 type cluster_t
     ! Pointers to the determinants formed by applying individual excitors to the
     ! reference determinant.

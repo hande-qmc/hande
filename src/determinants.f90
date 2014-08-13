@@ -8,66 +8,13 @@ use parallel, only: parent
 
 implicit none
 
-! --- Slater determinants ---
-
-! Bit string representation of the Slater determinant.
-! f is used throughout to indicate a Slater determinant
-! represented as a bit string.
-! The *even* bits contain the alpha (spin up) functions.  This is in
-! contrast to the list of basis functions, basis_fns, where the *odd*
-! indices refer to alpha (spin up) functions.  This difference arises because
-! fortran numbers bits from 0...
-! If separate_strings is turned on, then the first string_len/2 integers
-! represent the alpha orbitals and the second half of the bit array the beta
-! orbitals.
-
-! --- Bit masks ---
-
-! Bit masks to reveal the list of alpha basis functions and beta functions
-! occupied in a Slater determinant, required for Hubbard model.
-! If separate_strings is false, then:
-!     Alpha basis functions are in the even bits.  alpha_mask = 01010101...
-!     Beta basis functions are in the odd bits.    beta_mask  = 10101010...
-! otherwise:
-!     Alpha basis functions are stored in the first string_len/2 integers
-!     followed by the beta orbitals in the next string_len/2 integers.
-integer(i0) :: alpha_mask, beta_mask
-
-! For the Heisenberg model, certain lattices can be split into two
-! sublattices such that all the sites on one sublattice only have neighbors
-! on the other sublattice. This is important when finding the staggered
-! magnetisation:
-!
-! \hat{M} = \sum_{i}(-1)^{\zeta}\sigma_{i}^{z}
-!
-! Here zeta will be +1 for sites on one sublattice, and -1 for sites on the
-! other sublattice. This is the standard measure of antiferromagnetism.
-integer(i0), allocatable :: lattice_mask(:)
-
-! If true the determinant bit string is formed from concatenating the strings
-! for the alpha and beta orbitals rather than interleaving them.
-! Note that this in general uses more memory due to padding at the end of the
-! alpha and beta strings.
-! Whilst some memory could be saved by having no padding between the end of the
-! alpha string and the start of the beta string (ie not have the beta string
-! start on a new integer) this would make certain operations (eg finding
-! <D|U|D> in the real space Hubbard model) much harder and slower.
-! WARNING: the vast majority of procedures assume this to be false.  It is the
-! developer's responsibility to ensure required procedures can handle the case
-! when it is true.
-! Further, decoding the bit string does not produce an ordered list of
-! orbitals but several procedures assume that the list *is* ordered.  It is
-! therefore not sufficient to only check the procedures which operate directly
-! upon bit strings.
-logical :: separate_strings = .false.
-
 ! --- FCIQMC info ---
 
 ! A handy type for containing a lot of information about a determinant.
 ! This is convenient for passing around different amounts of info when
 ! we need consistent interfaces.
 ! Not all compenents are necessarily allocated: only those needed at the time.
-type det_info
+type det_info_t
     ! bit representation of determinant.
     integer(i0), pointer :: f(:)  => NULL()  ! (string_len)
     integer(i0), pointer :: f2(:)  => NULL()  ! (string_len); for DMQMC
@@ -91,7 +38,7 @@ type det_info
     ! should be taken with excitation generators which are designed for both
     ! FCIQMC and CCMC.
     type(cluster_t), pointer :: cluster
-end type det_info
+end type det_info_t
 
 contains
 
@@ -125,39 +72,6 @@ contains
         fmt1 = int_fmt(tot_ndets, padding=1)
         if (parent .and. doing_calc(exact_diag+lanczos_diag)) &
                 write (6,'(1X,a32,'//fmt1//')') 'Total size of determinant space:', tot_ndets
-
-        ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
-        ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
-        ! This is assumming separate_strings is off...
-        alpha_mask = 0_i0
-        beta_mask = 0_i0
-        do i = 0, i0_end
-            if (mod(i,2)==0) then
-                alpha_mask = ibset(alpha_mask,i)
-            else
-                beta_mask = ibset(beta_mask,i)
-            end if
-        end do
-
-        ! For Heisenberg systems, to include staggered fields and to calculate
-        ! the staggered magnetisation, we require lattice_mask. Here we find
-        ! lattice_mask for a gerenal bipartite lattice.
-        if (sys%system == heisenberg .and. sys%lattice%bipartite_lattice) then
-            allocate (lattice_mask(sys%basis%string_len), stat=ierr)
-            call check_allocate('lattice_mask',sys%basis%string_len,ierr)
-            lattice_mask = 0_i0
-            do k = 1,sys%lattice%lattice_size(3)
-                do j = 1,sys%lattice%lattice_size(2)
-                    do i = 1,sys%lattice%lattice_size(1),2
-                        site_index = (sys%lattice%lattice_size(2)*sys%lattice%lattice_size(1))*(k-1) + &
-                                      sys%lattice%lattice_size(1)*(j-1) + mod(j+k,2) + i
-                        bit_pos = sys%basis%bit_lookup(1, site_index)
-                        bit_element = sys%basis%bit_lookup(2, site_index)
-                        lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
-                    end do
-                end do
-            end do
-        end if
 
         if (all(ras > 0)) then
             allocate(ras1(sys%basis%string_len), stat=ierr)
@@ -193,10 +107,6 @@ contains
 
         integer :: ierr
 
-        if (allocated(lattice_mask)) then
-            deallocate(lattice_mask, stat=ierr)
-            call check_deallocate('lattice_mask',ierr)
-        end if
         if (allocated(ras1)) then
             deallocate(ras1, stat=ierr)
             call check_deallocate('ras1',ierr)
@@ -206,22 +116,22 @@ contains
 
     end subroutine end_determinants
 
-!--- Initialisation and finalisation of det_info objects ---
+!--- Initialisation and finalisation of det_info_t objects ---
 
-    subroutine alloc_det_info(sys, det_info_t, allocate_bit_strings)
+    subroutine alloc_det_info_t(sys, det_info, allocate_bit_strings)
 
-        ! Allocate the components of a det_info variable.
+        ! Allocate the components of a det_info_t variable.
 
         ! In:
         !    sys: system to be studied (which defines the length of the
-        !        det_info components).
+        !        det_info_t components).
         !    allocate_bit_strings (optional): if true (default), allocate the
         !        bit string attributes.  If false, then the bit string attributes
         !        can be used to point to already allocated bit strings.
         !        If set to false, the programmer *must* set allocated_bit_strings to
-        !        false when calling dealloc_det_info.
+        !        false when calling dealloc_det_info_t.
         ! Out:
-        !    det_info_t: det_info variable with components allocated to the
+        !    det_info: det_info variable with components allocated to the
         !        appropriate sizes.
 
         use checking, only: check_allocate
@@ -229,7 +139,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         logical, intent(in), optional :: allocate_bit_strings
-        type(det_info), intent(inout) :: det_info_t
+        type(det_info_t), intent(inout) :: det_info
         logical :: alloc_f
         integer :: ierr
 
@@ -240,35 +150,35 @@ contains
             alloc_f = .true.
         end if
         if (alloc_f) then
-            allocate(det_info_t%f(sys%basis%string_len), stat=ierr)
-            call check_allocate('det_info_t%f',sys%basis%string_len,ierr)
-            allocate(det_info_t%f2(sys%basis%string_len), stat=ierr)
-            call check_allocate('det_info_t%f2',sys%basis%string_len,ierr)
+            allocate(det_info%f(sys%basis%string_len), stat=ierr)
+            call check_allocate('det_info%f',sys%basis%string_len,ierr)
+            allocate(det_info%f2(sys%basis%string_len), stat=ierr)
+            call check_allocate('det_info%f2',sys%basis%string_len,ierr)
         end if
 
         ! Components for occupied basis functions...
-        allocate(det_info_t%occ_list(sys%nel), stat=ierr)
-        call check_allocate('det_info_t%occ_list',sys%nel,ierr)
-        allocate(det_info_t%occ_list_alpha(sys%nalpha), stat=ierr)
-        call check_allocate('det_info_t%occ_list_alpha',sys%nalpha,ierr)
-        allocate(det_info_t%occ_list_beta(sys%nbeta), stat=ierr)
+        allocate(det_info%occ_list(sys%nel), stat=ierr)
+        call check_allocate('det_info%occ_list',sys%nel,ierr)
+        allocate(det_info%occ_list_alpha(sys%nalpha), stat=ierr)
+        call check_allocate('det_info%occ_list_alpha',sys%nalpha,ierr)
+        allocate(det_info%occ_list_beta(sys%nbeta), stat=ierr)
 
         ! Components for unoccupied basis functions...
-        call check_allocate('det_info_t%occ_list_beta',sys%nbeta,ierr)
-        allocate(det_info_t%unocc_list_alpha(sys%nvirt_alpha), stat=ierr)
-        call check_allocate('det_info_t%unocc_list_alpha',sys%nvirt_alpha,ierr)
-        allocate(det_info_t%unocc_list_beta(sys%nvirt_beta), stat=ierr)
-        call check_allocate('det_info_t%unocc_list_beta',sys%nvirt_beta,ierr)
+        call check_allocate('det_info%occ_list_beta',sys%nbeta,ierr)
+        allocate(det_info%unocc_list_alpha(sys%nvirt_alpha), stat=ierr)
+        call check_allocate('det_info%unocc_list_alpha',sys%nvirt_alpha,ierr)
+        allocate(det_info%unocc_list_beta(sys%nvirt_beta), stat=ierr)
+        call check_allocate('det_info%unocc_list_beta',sys%nvirt_beta,ierr)
 
         ! Components for symmetry summary of unoccupied basis functions...
-        allocate(det_info_t%symunocc(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
-        call check_allocate('det_info_t%symunocc',size(det_info_t%symunocc),ierr)
+        allocate(det_info%symunocc(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
+        call check_allocate('det_info%symunocc',size(det_info%symunocc),ierr)
 
-    end subroutine alloc_det_info
+    end subroutine alloc_det_info_t
 
-    subroutine dealloc_det_info(det_info_t, allocated_bit_strings)
+    subroutine dealloc_det_info_t(det_info, allocated_bit_strings)
 
-        ! Deallocate the components of a det_info variable.
+        ! Deallocate the components of a det_info_t variable.
 
         ! In:
         !    allocated_bit_strings (optional): if true (default), the
@@ -276,14 +186,14 @@ contains
         !        If false, then the bit string attributes were just used to
         !        point to already allocated bit strings and don't need to be
         !        deallocated.  This *must* correspond to the alloc_bit_strings
-        !        argument given to alloc_det_info.
+        !        argument given to alloc_det_info_t.
         ! Out:
-        !    det_info_t: det_info variable with all components deallocated.
+        !    det_info: det_info variable with all components deallocated.
 
         use checking, only: check_deallocate
 
         logical, intent(in), optional :: allocated_bit_strings
-        type(det_info), intent(inout) :: det_info_t
+        type(det_info_t), intent(inout) :: det_info
         integer :: ierr
 
         logical :: alloc_f
@@ -295,25 +205,25 @@ contains
         end if
 
         if (alloc_f) then
-            deallocate(det_info_t%f, stat=ierr)
-            call check_deallocate('det_info_t%f',ierr)
-            deallocate(det_info_t%f2, stat=ierr)
-            call check_deallocate('det_info_t%f2',ierr)
+            deallocate(det_info%f, stat=ierr)
+            call check_deallocate('det_info%f',ierr)
+            deallocate(det_info%f2, stat=ierr)
+            call check_deallocate('det_info%f2',ierr)
         end if
-        deallocate(det_info_t%occ_list, stat=ierr)
-        call check_deallocate('det_info_t%occ_list',ierr)
-        deallocate(det_info_t%occ_list_alpha, stat=ierr)
-        call check_deallocate('det_info_t%occ_list_alpha',ierr)
-        deallocate(det_info_t%occ_list_beta, stat=ierr)
-        call check_deallocate('det_info_t%occ_list_beta',ierr)
-        deallocate(det_info_t%unocc_list_alpha, stat=ierr)
-        call check_deallocate('det_info_t%unocc_list_alpha',ierr)
-        deallocate(det_info_t%unocc_list_beta, stat=ierr)
-        call check_deallocate('det_info_t%unocc_list_beta',ierr)
-        deallocate(det_info_t%symunocc, stat=ierr)
-        call check_deallocate('det_info_t%symunocc',ierr)
+        deallocate(det_info%occ_list, stat=ierr)
+        call check_deallocate('det_info%occ_list',ierr)
+        deallocate(det_info%occ_list_alpha, stat=ierr)
+        call check_deallocate('det_info%occ_list_alpha',ierr)
+        deallocate(det_info%occ_list_beta, stat=ierr)
+        call check_deallocate('det_info%occ_list_beta',ierr)
+        deallocate(det_info%unocc_list_alpha, stat=ierr)
+        call check_deallocate('det_info%unocc_list_alpha',ierr)
+        deallocate(det_info%unocc_list_beta, stat=ierr)
+        call check_deallocate('det_info%unocc_list_beta',ierr)
+        deallocate(det_info%symunocc, stat=ierr)
+        call check_deallocate('det_info%symunocc',ierr)
 
-    end subroutine dealloc_det_info
+    end subroutine dealloc_det_info_t
 
 !--- Encode determinant bit strings ---
 
@@ -389,7 +299,7 @@ contains
         !    f(string_len): bit string representation of the Slater
         !        determinant.
         ! Out:
-        !    d: det_info variable.  The following components are set:
+        !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
 
@@ -397,7 +307,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(det_info), intent(inout) :: d
+        type(det_info_t), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b
 
         iocc = 0
@@ -425,7 +335,7 @@ contains
         !    f(string_len): bit string representation of the Slater
         !        determinant.
         ! Out:
-        !    d: det_info variable.  The following components are set:
+        !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
         !        unocc_list_alpha: integer list of unoccupied alpha
@@ -437,7 +347,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(det_info), intent(inout) :: d
+        type(det_info_t), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b
 
         iocc = 0
@@ -479,7 +389,7 @@ contains
         !    f(string_len): bit string representation of the Slater
         !        determinant.
         ! Out:
-        !    d: det_info variable.  The following components are set:
+        !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
         !        occ_list_alpha: integer list of occupied alpha
@@ -495,7 +405,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(det_info), intent(inout) :: d
+        type(det_info_t), intent(inout) :: d
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
 
         iocc = 0
@@ -576,7 +486,7 @@ contains
         !    f(string_len): bit string representation of the Slater
         !        determinant.
         ! Out:
-        !    d: det_info variable.  The following components are set:
+        !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
         !        symunocc(2, sym0_tot:symmax_tot): number of unoccupied orbitals of each
@@ -588,7 +498,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(det_info), intent(inout) :: d
+        type(det_info_t), intent(inout) :: d
         integer :: i, j, iocc, iunocc_a, iunocc_b, orb, ims, isym
 
         iocc = 0

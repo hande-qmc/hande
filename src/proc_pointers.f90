@@ -1,7 +1,7 @@
 module proc_pointers
 
 use const, only: i0, p, dp, lint, int_p
-use determinants, only: det_info
+use determinants, only: det_info_t
 use excitations, only: excit
 
 implicit none
@@ -12,19 +12,19 @@ implicit none
 abstract interface
     pure subroutine i_decoder(sys,f,d)
         use system, only: sys_t
-        import :: i0, det_info
+        import :: i0, det_info_t
         implicit none
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(det_info), intent(inout) :: d
+        type(det_info_t), intent(inout) :: d
     end subroutine i_decoder
     pure subroutine i_update_proj_energy(sys, f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
         use system, only: sys_t
-        import :: det_info, p, i0, excit
+        import :: det_info_t, p, i0, excit
         implicit none
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
-        type(det_info), intent(in) :: d
+        type(det_info_t), intent(in) :: d
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit), intent(out) :: excitation
@@ -54,22 +54,22 @@ abstract interface
     subroutine i_gen_excit(rng, sys, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        import :: det_info, excit, p
+        import :: det_info_t, excit, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: d
+        type(det_info_t), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
     end subroutine i_gen_excit
     subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        import :: det_info, excit, p
+        import :: det_info_t, excit, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: d
+        type(det_info_t), intent(in) :: d
         type(excit), intent(inout) :: connection
         real(p), intent(out) :: hmatel
     end subroutine i_gen_excit_finalise
@@ -102,10 +102,10 @@ abstract interface
     subroutine i_create_spawned_particle(basis, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
-        import :: excit, det_info, int_p, i0
+        import :: excit, det_info_t, int_p, i0
         implicit none
         type(basis_t), intent(in) :: basis
-        type(det_info), intent(in) :: d
+        type(det_info_t), intent(in) :: d
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: particle_indx
@@ -127,9 +127,9 @@ abstract interface
     end subroutine i_create_spawned_particle_dm
     subroutine i_trial_fn(sys, cdet, connection, hmatel)
         use system, only: sys_t
-        import :: det_info, excit, p
+        import :: det_info_t, excit, p
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         real(p), intent(inout) :: hmatel
     end subroutine i_trial_fn
@@ -178,13 +178,13 @@ abstract interface
     subroutine i_spawner(rng, sys, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, nspawned, connection)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        import :: det_info, excit, gen_excit_ptr_t, int_p
+        import :: det_info_t, excit, gen_excit_ptr_t, int_p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info), intent(in) :: d
+        type(det_info_t), intent(in) :: d
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawned

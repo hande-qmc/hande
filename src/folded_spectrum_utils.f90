@@ -43,11 +43,11 @@ module folded_spectrum_utils
 use const
 
 use fciqmc_data, only: fold_line
-use determinants, only: det_info
+use determinants, only: det_info_t
 
 implicit none
 
-type(det_info), save :: cdet_excit
+type(det_info_t), save :: cdet_excit
 
 contains
 
@@ -90,15 +90,15 @@ contains
         !    cdet_out info: on the determinant that we will excite to.  Note
         !        that the appropriate fields of cdet_out must be allocated.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use proc_pointers, only: decoder_ptr
         use excitations, only: excit, create_excited_det
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in)  :: cdet_in
+        type(det_info_t), intent(in)  :: cdet_in
         type(excit), intent(in)     :: connection
-        type(det_info), intent(inout) :: cdet_out
+        type(det_info_t), intent(inout) :: cdet_out
 
         ! Create the excited determinant bit string representation
         call create_excited_det(sys%basis, cdet_in%f, connection, cdet_out%f)
@@ -148,7 +148,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn

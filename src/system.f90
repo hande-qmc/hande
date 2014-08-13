@@ -120,6 +120,13 @@ type sys_heisenberg_t
     ! Number of bonds in the crystal cell.
     integer :: nbonds
 
+    ! For the Heisenberg model, certain lattices can be split into two sublattices such
+    ! that all the sites on one sublattice only have neighbors on the other sublattice.
+    ! This is, for example, when finding the staggered magnetisation.  lattice_mask masks
+    ! out one sublattice from a bit string representation of a spin product basis
+    ! function.
+    integer(i0), allocatable :: lattice_mask(:)
+
 end type sys_heisenberg_t
 
 type sys_ueg_t
@@ -468,7 +475,7 @@ contains
             sys%nvirt = (sys%lattice%nsites - Ms)/2
             ! The Heisenberg model doesn't use these values, but they need to be
             ! initialized to something sensible as we allocate memory using them in 
-            ! alloc_det_info.
+            ! alloc_det_info_t.
             sys%nalpha = 0
             sys%nbeta = 0
             sys%nvirt_alpha = 0

@@ -241,14 +241,14 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_k, only: slater_condon2_hub_k
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit), intent(out) :: excitation
@@ -299,14 +299,14 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit), intent(out) :: excitation
@@ -357,7 +357,7 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, get_excitation
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
@@ -365,7 +365,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit), intent(out) :: excitation
@@ -438,14 +438,14 @@ contains
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
         ! proj_energy_sum are zero before the first call.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, get_excitation
         use hamiltonian_ueg, only: slater_condon2_ueg
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit), intent(out) :: excitation

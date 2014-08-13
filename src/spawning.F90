@@ -60,7 +60,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
@@ -70,7 +70,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
@@ -119,7 +119,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit
         use proc_pointers, only: gen_excit_ptr_t
@@ -129,7 +129,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
@@ -191,7 +191,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit
         use fciqmc_data, only: tau
@@ -202,7 +202,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
@@ -270,7 +270,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit
         use fciqmc_data, only: tau
@@ -281,7 +281,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
@@ -341,7 +341,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit
         use proc_pointers, only: gen_excit_ptr_t
@@ -351,7 +351,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
@@ -740,12 +740,12 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, create_excited_det
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
@@ -792,12 +792,12 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, create_excited_det
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
@@ -847,13 +847,13 @@ contains
 
         use basis_types, only: basis_t
         use calc, only: truncation_level
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
@@ -908,13 +908,13 @@ contains
 
         use basis_types, only: basis_t
         use calc, only: truncation_level
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, create_excited_det, get_excitation_level
         use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
@@ -970,12 +970,12 @@ contains
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
         use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
@@ -1031,12 +1031,12 @@ contains
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
         use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type

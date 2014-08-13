@@ -21,7 +21,7 @@ contains
         use annihilation, only: direct_annihilation
         use bloom_handler, only: bloom_stats_t
         use calc, only: seed, initiator_approximation
-        use determinants, only: det_info, alloc_det_info
+        use determinants, only: det_info_t, alloc_det_info_t
         use excitations, only: excit
         use qmc_common
         use proc_pointers
@@ -47,7 +47,7 @@ contains
         integer, allocatable :: current_pos(:,:) ! (nthreads, 0:max(1,nprocs-1))
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
-        type(det_info) :: cdet
+        type(det_info_t) :: cdet
         type(excit) :: connection
         type(excit), allocatable :: connection_list(:)
         logical :: soft_exit
@@ -79,7 +79,7 @@ contains
 
         sum_off_diag = max_nexcitations*matel
 
-        call alloc_det_info(sys, cdet)
+        call alloc_det_info_t(sys, cdet)
 
         nparticles_old = tot_nparticles
 
@@ -284,7 +284,7 @@ contains
         !        determinants
 
         use excitations, only: excit
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t, hub_real, hub_k
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
@@ -292,7 +292,7 @@ contains
         use excit_gen_hub_k, only: choose_ij_hub_k, find_ab_hub_k
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: K_ii, R
         integer(int_p), intent(in) :: parent_sgn
         type(dSFMT_t), intent(inout) :: rng
@@ -369,12 +369,12 @@ contains
         use parallel, only: iproc, nprocs
 
         use basis_types, only: basis_t
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit, create_excited_det
         use fciqmc_data, only: qmc_spawn
 
         type(basis_t), intent(in) :: basis
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(excit), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type

@@ -37,14 +37,14 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
@@ -95,7 +95,7 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit
         use system, only: sys_t
@@ -104,7 +104,7 @@ contains
         use spawning, only: attempt_to_spawn
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit), intent(out) :: connection
         real(p), intent(out) :: pgen, hmatel
@@ -167,13 +167,13 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
@@ -227,7 +227,7 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use determinants, only: det_info
+        use determinants, only: det_info_t
         use excitations, only: excit
         use real_lattice, only: connected_sites
         use system, only: sys_t
@@ -235,7 +235,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        type(det_info), intent(in) :: cdet
+        type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit), intent(out) :: connection
