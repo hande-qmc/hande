@@ -600,6 +600,7 @@ contains
         use fciqmc_data, only: qmc_spawn
         use parallel
         use errors, only: stop_all
+        use spawning, only: add_spawned_particle
 
         integer, intent(in) :: string_len, tensor_label_len
         integer(i0), intent(in) :: f(string_len)
@@ -623,21 +624,12 @@ contains
                                 tensor_label_len, qmc_spawn%hash_seed), nprocs)
 #endif
 
-        ! Move to the next position in the spawning array.
-        qmc_spawn%head(0,iproc_spawn) = qmc_spawn%head(0,iproc_spawn) + 1
-
         ! qmc_spawn%head_start(nthreads-1,i) stores the last entry before the
         ! start of the block of spawned particles to be sent to processor i.
-        if (qmc_spawn%head(0,iproc_spawn) - qmc_spawn%head_start(nthreads-1,iproc_spawn) >= qmc_spawn%block_size) &
+        if (qmc_spawn%head(0,iproc_spawn)+1 - qmc_spawn%head_start(nthreads-1,iproc_spawn) >= qmc_spawn%block_size) &
             call stop_all('create_diagonal_density_matrix_particle', 'There is no space left in the spawning array.')
 
-        ! Set info in spawning array.
-        ! Zero it as not all fields are set.
-        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
-        ! indices 1 to tensor_label_len store the bitstring.
-        qmc_spawn%sdata(:(tensor_label_len),qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
-        ! The final index stores the number of psips created.
-        qmc_spawn%sdata((tensor_label_len)+particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
+        call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, qmc_spawn)
 
     end subroutine create_diagonal_density_matrix_particle
 
