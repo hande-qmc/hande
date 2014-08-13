@@ -95,8 +95,8 @@ contains
         !   that they can be moved to their new processor.
 
         ! In/Out:
-        ! proc_map: array which maps determinants to processors
-        !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)) = processor
+        !    parallel_info: parallel_t type object containing information for
+        !       parallel calculation see calc.f90 for description.
 
         use parallel
         use determinants, only: det_info, alloc_det_info, dealloc_det_info

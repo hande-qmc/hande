@@ -440,8 +440,6 @@ real(p) :: P__=0.05, Po_=0.475, P_o=0.475
 ! The split generation normalisations
 real(p) :: X__=0, Xo_=0, X_o=0
 
-!--- Non blocking data ---
-
 ! Type for storing parallel information: see calc for description.
 type(parallel_t) :: par_info
 

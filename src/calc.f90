@@ -303,16 +303,15 @@ contains
 
     subroutine init_parallel_t(ntypes, non_blocking_comm, par_calc)
 
-        ! Allocate nb_rep_t object.
+        ! Allocate parallel_t object.
 
         ! In:
-        !    ntypes:
-        !       number of types of walkers sampled (see sampling_size).
+        !    ntypes: number of types of walkers sampled (see sampling_size).
         !    non_blocking_comm: true if using non-blocking communications
         !    load_balancing: true if attempting load balancing.
-        ! Out:
-        !    report_loop: initialies object for storing and communicating
-        !        report loop quantities for non-blocking communications.
+        ! In/Out:
+        !    par_calc: type containing parallel information for calculation
+        !        see definitions above.
 
         use parallel, only: nprocs
         use checking, only: check_allocate
@@ -342,10 +341,11 @@ contains
 
     subroutine dealloc_parallel_t(par_calc)
 
-        ! Deallocate nb_rep_t object.
+        ! Deallocate parallel_t object.
 
         ! In/Out:
-        !    rep_comm: nb_rep_t object to be deallocated.
+        !    par_calc: type containing parallel information for calculation
+        !        see definitions above.
 
         use checking, only: check_deallocate
 
