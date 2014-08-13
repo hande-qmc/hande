@@ -585,7 +585,7 @@ contains
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, initiator_population
+        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data, initiator_population
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
         use search, only: binary_search
@@ -698,6 +698,7 @@ contains
                 if (i == 1) then
                     ! First excitor 'seeds' the cluster:
                     cdet%f = walker_dets(:,pos)
+                    cdet%data => walker_data(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = int(walker_population(1,pos))
                 else
                     call collapse_cluster(basis, walker_dets(:,pos), int(walker_population(1,pos)), &
@@ -849,7 +850,7 @@ contains
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, initiator_population
+        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data, initiator_population
         use search, only: binary_search
 
         integer(lint), intent(in) :: iexcip, nattempts
@@ -911,6 +912,7 @@ contains
         if (iexcip_pos == D0_pos) iexcip_pos = iexcip_pos - 1
 
         cdet%f = walker_dets(:,iexcip_pos)
+        cdet%data => walker_data(:,iexcip_pos)
         cluster%excitors(1)%f => walker_dets(:,iexcip_pos)
         if (abs(walker_population(1,iexcip_pos)) <= initiator_population) cdet%initiator_flag = 1
         ! pclust = |population|/total_population, as just a single excitor in the cluster..
@@ -1066,9 +1068,14 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
-        ! [todo] - optimise for the case where the cluster is either the reference
-        ! determinant or consisting of a single excitor.
-        KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
+        select case (cluster%nexcitors)
+        case(0)
+            KiiAi = (-shift(1))*cluster%amplitude
+        case(1)
+            KiiAi = (cdet%data(1) - shift(1))*cluster%amplitude
+        case(2)
+            KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
+        end select
 
         pdeath = tau*abs(KiiAi)/cluster%pselect
 
