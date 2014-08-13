@@ -277,7 +277,8 @@ contains
                 i = occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
                 ! Conserve symmetry (spatial and spin) in selecting a.
                 ims = (sys%basis%basis_fns(i)%Ms+3)/2
-                isym = pg_sym_conj(cross_product_pg_sym(sys%basis%basis_fns(i)%sym, op_sym))
+                ! Assume op_sym is self-conjugate.
+                isym = cross_product_pg_sym(sys%basis%basis_fns(i)%sym, op_sym)
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
                         ! It's cheaper to draw additional random numbers than

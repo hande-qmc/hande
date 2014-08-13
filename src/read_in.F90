@@ -32,7 +32,8 @@ contains
         use basis, only: write_basis_fn, write_basis_fn_header
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
-        use point_group_symmetry, only: init_pg_symmetry
+        use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
+                                        is_gamma_irrep_pg_sym, pg_sym_conj
         use system, only: sys_t
 
         use checking, only: check_allocate, check_deallocate
@@ -60,7 +61,7 @@ contains
         type(basis_fn_t), allocatable :: all_basis_fns(:)
 
         ! Integrals
-        integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb
+        integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb, ti
         real(dp) :: x
 
         ! reading in...
@@ -513,6 +514,7 @@ contains
                                 if (ii == aa .and. jj == bb .and. ii == jj) then
                                     if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                         ! RHF calculations: need to include <i,up i,down|i,up i,down>.
+
                                         sys%read_in%Ecore = sys%read_in%Ecore + x
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
@@ -530,12 +532,17 @@ contains
                                 else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
                                          ii == jj .and. aa == bb .and. ii /= aa) then
                                     ! <ij|ji>, i/=j (or <ii|jj> version)
-                                    if (seen_ijij(tri_ind_reorder(i,j)) < 2) then
+                                    if (ii == jj) then
+                                        ti = tri_ind_reorder(i, a)
+                                    else
+                                        ti = tri_ind_reorder(i, j)
+                                    end if
+                                    if (seen_ijij(ti) < 2) then
                                         ! If RHF, then need to include:
                                         !   <i,up j,up|j,up, i,up>
                                         !   <i,down j,down|j,down, i,down>
                                         sys%read_in%Ecore = sys%read_in%Ecore - rhf_fac*x
-                                        seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 2
+                                        seen_ijij(ti) = seen_ijij(ti) + 2
                                     end if
                                 end if
                             case(2)
@@ -569,7 +576,13 @@ contains
                                         end if
                                     else
                                         ! < i a | b i > (or a permutation thereof)
-                                        if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2) then
+                                        ! For systems with complex orbitals (but real integrals)
+                                        ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
+                                        if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
+                                            is_gamma_irrep_pg_sym(                                          &
+                                                cross_product_pg_sym(pg_sym_conj(sys%basis%basis_fns(active(1))%sym), &
+                                                                     sys%basis%basis_fns(active(2))%sym)))            then
+
                                             ! Update <j|h|a> with contribution <ij|ai>.
                                             x = get_one_body_int_mol(one_e_h_integrals, active(1), active(2), sys%basis%basis_fns) &
                                                     - x
