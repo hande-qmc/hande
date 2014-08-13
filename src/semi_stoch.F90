@@ -616,6 +616,7 @@ contains
         use omp_lib
         use parallel, only: nprocs, iproc, nthreads
         use spawn_data, only: spawn_t
+        use spawning, only: add_spawned_particle, add_flagged_spawned_particle
 
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
@@ -687,16 +688,11 @@ contains
                 nspawn = int(abs(target_nspawn_scaled), int_p)
                 if (abs(target_nspawn_scaled) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
                 nspawn = nspawn*nint(sgn, int_p)
-                ! Upate the spawning slot...
-                ! [todo] - use updated procedure in spawning post-merge.
-                spawn%head(thread_id,proc) = spawn%head(thread_id,proc) + nthreads
-                ! ...and finally add the state to the spawning array.
-                spawn%sdata(:,spawn%head(thread_id,proc)) = 0_int_s
-                spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,proc)) = int(determ%dets(:,idet), int_s)
-                spawn%sdata(spawn%bit_str_len+1,spawn%head(thread_id,proc)) = int(nspawn, int_s)
-                ! Spawning has occurred from a deterministic state, an
-                ! initiator by definition.
-                if (initiator_approximation) spawn%sdata(spawn%flag_indx,spawn%head(thread_id,proc)) = 0_int_s
+                if (initiator_approximation) then
+                    call add_flagged_spawned_particle(determ%dets(:,idet), nspawn, 1, 0, proc, spawn)
+                else
+                    call add_spawned_particle(determ%dets(:,idet), nspawn, 1, proc, spawn)
+                end if
 
             end subroutine create_spawned_particle_determ
 

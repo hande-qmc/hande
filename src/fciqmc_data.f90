@@ -374,6 +374,41 @@ type(rdm_spawn_t), allocatable :: rdm_spawn(:)
 ! The total number of rdms beings calculated.
 integer :: nrdms
 
+! This type contains information for the RDM corresponding to a given
+! subsystem. It takes translational symmetry into account by storing information
+! for all subsystems which are equivalent by translational symmetry.
+type rdm_t
+    ! The total number of sites in subsystem A.
+    integer :: A_nsites
+    ! Similar to string_len, rdm_string_len is the length of the byte array
+    ! necessary to contain a bit for each subsystem-A basis function. An array
+    ! of twice this length is stored to hold both RDM indices.
+    integer :: rdm_string_len
+    ! The sites in subsystem A, as entered by the user.
+    integer, allocatable :: subsystem_A(:)
+    ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
+    ! version i of subsystem B, where the different 'versions' correspond to
+    ! subsystems which are equivalent by symmetry.
+    integer(i0), allocatable :: B_masks(:,:)
+    ! bit_pos(i,j,1) contains the position of the bit corresponding to site i in 
+    ! 'version' j of subsystem A.
+    ! bit_pos(i,j,2) contains the element of the bit corresponding to site i in
+    ! 'version' j of subsystem A.
+    ! Note that site i in a given version is the site that corresponds to site i 
+    ! in all other versions of subsystem A (and so bit_pos(i,:,1) and
+    ! bit_pos(i,:,2) will not be sorted). This is very important so that
+    ! equivalent psips will contribute to the same RDM element.
+    integer, allocatable :: bit_pos(:,:,:)
+    ! Two bitstrings of length rdm_string_len. To be used as temporary
+    ! bitstrings to prevent having to regularly allocate different length
+    ! bitstrings for different RDMs.
+    integer(i0), allocatable :: end1(:), end2(:)
+end type rdm_t
+
+! This stores all the information for the various RDMs that the user asks
+! to be calculated. Each element of this array corresponds to one of these RDMs.
+type(rdm_t), allocatable :: rdms(:)
+
 ! The total number of translational symmetry vectors.
 ! This is only set and used when performing rdm calculations.
 integer :: nsym_vec

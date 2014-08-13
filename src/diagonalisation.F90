@@ -604,8 +604,8 @@ contains
         use basis_types, only: basis_t
         use checking, only: check_allocate, check_deallocate
         use determinant_enumeration, only: ndets, dets_list
-        use dmqmc_procedures, only: decode_dm_bitstring, rdms
-        use fciqmc_data, only: reduced_density_matrix
+        use dmqmc_procedures, only: decode_dm_bitstring
+        use fciqmc_data, only: reduced_density_matrix, rdms
 
         type(basis_t), intent(in) :: basis
         real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))

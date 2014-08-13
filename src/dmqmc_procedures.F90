@@ -3,41 +3,6 @@ module dmqmc_procedures
 use const
 implicit none
 
-! This type contains information for the RDM corresponding to a given
-! subsystem. It takes translational symmetry into account by storing information
-! for all subsystems which are equivalent by translational symmetry.
-type rdm
-    ! The total number of sites in subsystem A.
-    integer :: A_nsites
-    ! Similar to string_len, rdm_string_len is the length of the byte array
-    ! necessary to contain a bit for each subsystem-A basis function. An array
-    ! of twice this length is stored to hold both RDM indices.
-    integer :: rdm_string_len
-    ! The sites in subsystem A, as entered by the user.
-    integer, allocatable :: subsystem_A(:)
-    ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
-    ! version i of subsystem B, where the different 'versions' correspond to
-    ! subsystems which are equivalent by symmetry.
-    integer(i0), allocatable :: B_masks(:,:)
-    ! bit_pos(i,j,1) contains the position of the bit corresponding to site i in 
-    ! 'version' j of subsystem A.
-    ! bit_pos(i,j,2) contains the element of the bit corresponding to site i in
-    ! 'version' j of subsystem A.
-    ! Note that site i in a given version is the site that corresponds to site i 
-    ! in all other versions of subsystem A (and so bit_pos(i,:,1) and
-    ! bit_pos(i,:,2) will not be sorted). This is very important so that
-    ! equivalent psips will contribute to the same RDM element.
-    integer, allocatable :: bit_pos(:,:,:)
-    ! Two bitstrings of length rdm_string_len. To be used as temporary
-    ! bitstrings to prevent having to regularly allocate different length
-    ! bitstrings for different RDMs.
-    integer(i0), allocatable :: end1(:), end2(:)
-end type rdm
-
-! This stores all the information for the various RDMs that the user asks
-! to be calculated. Each element of this array corresponds to one of these RDMs.
-type(rdm), allocatable :: rdms(:)
-
 contains
 
     subroutine init_dmqmc(sys)
@@ -213,7 +178,7 @@ contains
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
         use fciqmc_data, only: replica_tricks, renyi_2, sampling_size, real_bit_shift, spawn_cutoff
-        use fciqmc_data, only: spawned_rdm_length, rdm_spawn
+        use fciqmc_data, only: spawned_rdm_length, rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
@@ -336,7 +301,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use errors
-        use fciqmc_data, only: nrdms, nsym_vec
+        use fciqmc_data, only: nrdms, rdms, nsym_vec
         use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell
         use system, only: sys_t
 
@@ -600,6 +565,7 @@ contains
         use fciqmc_data, only: qmc_spawn
         use parallel
         use errors, only: stop_all
+        use spawning, only: add_spawned_particle
 
         integer, intent(in) :: string_len, tensor_label_len
         integer(i0), intent(in) :: f(string_len)
@@ -623,21 +589,12 @@ contains
                                 tensor_label_len, qmc_spawn%hash_seed), nprocs)
 #endif
 
-        ! Move to the next position in the spawning array.
-        qmc_spawn%head(0,iproc_spawn) = qmc_spawn%head(0,iproc_spawn) + 1
-
         ! qmc_spawn%head_start(nthreads-1,i) stores the last entry before the
         ! start of the block of spawned particles to be sent to processor i.
-        if (qmc_spawn%head(0,iproc_spawn) - qmc_spawn%head_start(nthreads-1,iproc_spawn) >= qmc_spawn%block_size) &
+        if (qmc_spawn%head(0,iproc_spawn)+1 - qmc_spawn%head_start(nthreads-1,iproc_spawn) >= qmc_spawn%block_size) &
             call stop_all('create_diagonal_density_matrix_particle', 'There is no space left in the spawning array.')
 
-        ! Set info in spawning array.
-        ! Zero it as not all fields are set.
-        qmc_spawn%sdata(:,qmc_spawn%head(0,iproc_spawn)) = 0_int_s
-        ! indices 1 to tensor_label_len store the bitstring.
-        qmc_spawn%sdata(:(tensor_label_len),qmc_spawn%head(0,iproc_spawn)) = int(f_new, int_s)
-        ! The final index stores the number of psips created.
-        qmc_spawn%sdata((tensor_label_len)+particle_type,qmc_spawn%head(0,iproc_spawn)) = int(nspawn, int_s)
+        call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, qmc_spawn)
 
     end subroutine create_diagonal_density_matrix_particle
 
@@ -660,6 +617,7 @@ contains
         !    isym: The label of the symmetry vector being considered.
 
         use basis_types, only: basis_t
+        use fciqmc_data, only: rdms
 
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f(basis%tensor_label_len)
