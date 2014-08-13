@@ -35,10 +35,10 @@ data : :class:`pandas.DataFrame`
     weights = []
     to_prod = np.exp(-tstep*(data[weight_key]-mean_shift))
     for i in range(len(data[weight_key])):
-        if i-weight_itts > 0:
-            weights.append(np.prod(to_prod[i-weight_itts:i]))
+        if i-weight_itts + 1> 0:
+            weights.append(np.prod(to_prod[i-weight_itts+1:i+1]))
         else:
-            weights.append(np.prod(to_prod[0:i-1]))
+            weights.append(np.prod(to_prod[0:i+1]))
 
     data['Weight'] = weights
 
