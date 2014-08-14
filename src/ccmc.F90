@@ -182,6 +182,7 @@ contains
         ! In:
         !    sys: system being studied.
 
+        use calc, only: ccmc_full_nc
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
@@ -211,7 +212,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
-        integer(lint) :: iattempt, nattempts
+        integer(lint) :: iattempt, nattempts, nclusters, nstochastic_clusters
         real(dp) :: nparticles_old(sampling_size)
         type(det_info_t), allocatable :: cdet(:)
 
@@ -225,7 +226,7 @@ contains
         logical :: soft_exit
 
         integer(int_p), allocatable :: cumulative_abs_pops(:)
-        integer :: D0_proc, D0_pos, max_cluster_size
+        integer :: D0_proc, D0_pos, min_cluster_size, max_cluster_size, iexcip_pos
         integer(int_p) :: tot_abs_pop
         integer :: D0_normalisation
         logical :: hit
@@ -337,6 +338,7 @@ contains
                             call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
                         end select
                     end if
+                    if (.not.hit) call stop_all('do_ccmc', 'Cannot find reference!')
                     ! [note] - D0_normalisation will need to be real for CCMC with real excips.
                     D0_normalisation = int(walker_population(1,D0_pos))
 
@@ -347,11 +349,11 @@ contains
                     ! excitors.
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
-                    max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers-1)
+                    max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers-1)
 
                 else
 
-                    max_cluster_size = min(min(sys%nel, truncation_level+2), tot_walkers)
+                    max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers)
 
                     ! Can't find D0 on this processor.  (See how D0_pos is used
                     ! in select_cluster.)
@@ -373,8 +375,30 @@ contains
 
                 bloom_threshold = ceiling(max(nattempts, tot_walkers)*bloom_stats%prop*real(bloom_stats%encoding_factor,p))
 
-                ! Allow one spawning & death attempt for each excip on the
-                ! processor.
+                ! Two options for evolution:
+
+                ! * Original CCMC algorithm
+                !       + The number of excips on this processor determines the number
+                !         of cluster generations, each of which can spawn and die.
+                !         non-composite clusters therefore are seldom selected.
+                ! * 'full non-composite' algorithm, where spawning and death are split into two tranches.
+                !       + non-composite clusters (i.e. consisting of a single excitor):
+                !         enumerate explicitly (this is just the list of excitors)
+                !       + composite clusters, which must be selected stochastically (as in
+                !         the original algorithm for all clusters).  We sample the space
+                !         of composite clusters, choosing nattempts samples.  For convenience
+                !         nattempts = # excitors not on the reference (i.e. the number of
+                !         excitors which can actually be involved in a composite cluster).
+                if (ccmc_full_nc) then
+                    min_cluster_size = 2
+                    nclusters = 2*nattempts - D0_normalisation
+                    nstochastic_clusters = nattempts - D0_normalisation
+                else
+                    min_cluster_size = 0
+                    nclusters = nattempts
+                    nstochastic_clusters = nattempts
+                end if
+
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -383,18 +407,33 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
-                !$omp private(it, nspawned, connection, junk) &
+                !$omp private(it, iexcip_pos, nspawned, connection, junk) &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level, &
                 !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
                 !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
-                !$omp        proj_energy, real_factor)
+                !$omp        proj_energy, real_factor, min_cluster_size,        &
+                !$omp        nclusters, nstochastic_clusters)
                 it = get_thread_id()
+                iexcip_pos = 1
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
-                do iattempt = 1, nattempts
+                do iattempt = 1, nclusters
 
-                    call select_cluster(rng(it), sys%basis, nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
-                                        tot_abs_pop, max_cluster_size, cdet(it), cluster(it))
+                    ! For OpenMP scalability, have this test inside a single loop rather
+                    ! than attempt to parallelise over three separate loops.
+                    if (iattempt <= nstochastic_clusters) then
+                        call select_cluster(rng(it), sys%basis, nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
+                                            tot_abs_pop, min_cluster_size, max_cluster_size, cdet(it), cluster(it))
+                    else if (iattempt <= nattempts) then
+                        ! We just select the empty cluster
+                        call create_null_cluster(D0_normalisation+0.0_p,D0_normalisation,cdet(it),cluster(it))
+                    else
+                        ! From nattempts..2*nattempts-D0_normalisation, we just
+                        ! select a non-composite cluster with a single excitor.
+                        call select_cluster_non_composite(iattempt-nattempts, iexcip_pos, nattempts-D0_normalisation, &
+                                                          D0_normalisation, D0_pos, cumulative_abs_pops, tot_abs_pop, &
+                                                          cdet(it), cluster(it))
+                    end if
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
 
@@ -459,7 +498,7 @@ contains
                     proj_energy_cycle = proj_energy_cycle/nattempts
                 end if
 
-                call end_mc_cycle(nspawn_events, ndeath, nattempts)
+                call end_mc_cycle(nspawn_events, ndeath, nclusters)
 
             end do
 
@@ -498,8 +537,8 @@ contains
 
     end subroutine do_ccmc
 
-    subroutine select_cluster(rng, basis, nattempts, normalisation, D0_pos, cumulative_excip_pop, &
-            tot_excip_pop, max_size, cdet, cluster)
+    subroutine select_cluster(rng, basis, nattempts, normalisation, D0_pos, cumulative_excip_pop, tot_excip_pop, &
+                              min_size, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -518,6 +557,8 @@ contains
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_population(1:i)).
         !    tot_excip_pop: total excip population.
+        !    min_size: the minimum size cluster to allow.
+        !    max_size: the maximum size cluster to allow.
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on
         ! the reference as excips on the reference cannot form a cluster.  Both
@@ -555,7 +596,7 @@ contains
         integer(lint), intent(in) :: nattempts
         integer, intent(in) :: D0_pos, normalisation
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
-        integer :: max_size
+        integer :: min_size, max_size
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
@@ -586,14 +627,18 @@ contains
         ! Coupled Cluster Theory' (unpublished), each size, n_s, has probability
         ! p(n_s) = 1/2^(n_s+1), n_s=0,truncation_level and p(truncation_level+2)
         ! is such that \sum_{n_s=0}^{truncation_level+2} p(n_s) = 1.
+
+        ! This procedure is modified so that clusters of size min_size+n_s
+        ! has probability 1/2^(n_s+1), and the max_size picks up the remaining
+        ! probability from the series.
         rand = get_rand_close_open(rng)
         psize = 0.0_p
         cluster%nexcitors = -1
-        do i = 0, max_size-1
+        do i = 0, max_size-min_size-1
             psize = psize + 1.0_p/2**(i+1)
             if (rand < psize) then
                 ! Found size!
-                cluster%nexcitors = i
+                cluster%nexcitors = i+min_size
                 cluster%pselect = cluster%pselect/2**(i+1)
                 exit
             end if
@@ -614,24 +659,13 @@ contains
         cdet%initiator_flag = 0
 
         ! Assume cluster is allowed unless collapse_cluster finds out otherwise
-        ! when collapsing/combining excitors.
-        allowed = .true.
+        ! when collapsing/combining excitors or if it could never have been
+        ! valid
+        allowed = min_size <= max_size
 
         select case(cluster%nexcitors)
         case(0)
-            ! Must be the reference.
-            cdet%f = f0
-            cluster%excitation_level = 0
-            cluster%amplitude = normalisation
-            cluster%cluster_to_det_sign = 1
-            cluster%pselect = cluster%pselect
-            if (abs(cluster%amplitude) <= initiator_population) then
-                ! Something has gone seriously wrong and the CC
-                ! approximation is (most likely) not suitably for this system.
-                ! Let the user be an idiot if they want to be...
-                cdet%initiator_flag = 1
-            end if
-            ! Only one cluster of this size to choose => p_clust = 1
+            call create_null_cluster(cluster%pselect, normalisation, cdet, cluster)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -711,6 +745,184 @@ contains
         end select
 
     end subroutine select_cluster
+
+    subroutine create_null_cluster(prob, D0_normalisation, cdet, cluster)
+
+        ! Create a cluster with no excitors in it, and set it to have
+        ! probability of generation prob.
+
+        ! In:
+        !    prob: The probability we set in it of having been generated
+        !    D0_normalisation:  The number of excips at the reference (which
+        !        will become the amplitude of this cluster)
+
+        ! In/Out:
+        !    cdet: information about the cluster of excitors applied to the
+        !        reference determinant.  This is a bare det_info variable on input
+        !        with only the relevant fields allocated.  On output the
+        !        appropriate (system-specific) fields have been filled by
+        !        decoding the bit string of the determinant formed from applying
+        !        the cluster to the reference determinant.
+        !    cluster:
+        !        Additional information about the cluster of excitors.  On
+        !        input this is a bare cluster_t variable with the excitors array
+        !        allocated to the maximum number of excitors in a cluster.  On
+        !        output all fields in cluster have been set.
+
+        use determinants, only: det_info_t
+        use ccmc_data, only: cluster_t
+        use fciqmc_data, only: f0, initiator_population
+
+        integer, intent(in) :: D0_normalisation
+        type(cluster_t), intent(inout) :: cluster
+        type(det_info_t), intent(inout) :: cdet
+        real(p), intent(in) :: prob
+
+        ! Note only one null cluster to choose => p_clust = 1.
+        cluster%pselect = prob
+
+        cluster%nexcitors = 0
+
+        ! Initiator approximation: no point using a CAS so just use the populations.
+        ! This is sufficiently quick that we'll just do it in all cases, even
+        ! when not using the initiator approximation.  This matches the approach
+        ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
+        ! (unpublished).
+        ! Surely the reference has an initiator population?
+        cdet%initiator_flag = 0
+
+        ! Must be the reference.
+        cdet%f = f0
+        cluster%excitation_level = 0
+        cluster%amplitude = D0_normalisation
+        cluster%cluster_to_det_sign = 1
+        if (cluster%amplitude <= initiator_population) then
+             ! Something has gone seriously wrong and the CC
+             ! approximation is (most likely) not suitably for this system.
+             ! Let the user be an idiot if they want to be...
+             cdet%initiator_flag = 1
+        end if
+
+    end subroutine create_null_cluster
+
+    subroutine select_cluster_non_composite(iexcip, iexcip_pos, nattempts, normalisation, D0_pos, &
+                                            cumulative_excip_pop, tot_excip_pop, cdet, cluster)
+
+        ! Select (deterministically) the non-composite cluster containing only
+        ! the single excitor iexcitor and set the same information as select_cluster.
+
+        ! In:
+        !    iexcip: the index (in range [1,tot_excip_pop]) of the excip to select.
+        !    nattempts: the number of times (on this processor) a random cluster
+        !        of excitors is generated in the current timestep.
+        !    normalisation: intermediate normalisation factor, N_0, where we use the
+        !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
+        !    D0_pos: position in the excip list of the reference.
+        !    cumulative_excip_population: running cumulative excip population on
+        !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_population(1:i)).
+        !    tot_excip_pop: total excip population.
+
+        ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on
+        ! the reference as excips on the reference cannot form a cluster.  Both
+        ! these quantities should be generated by cumulative_population (or be
+        ! in the same format).
+
+        ! In/Out:
+        !    iexcip_pos: on output position of iexcip in the
+        !        cumulative_excip_pop list.  Set to 1 on the initial call and use
+        !        the previous return value (or a smaller number) on subsequent
+        !        calls.  WARNING: we assume that this is a minimum value for the
+        !        position of iexcip (hence loop over excips in order or reset
+        !        iexcip pos each time).
+        !    cdet: information about the cluster of excitors applied to the
+        !        reference determinant.  This is a bare det_info variable on input
+        !        with only the relevant fields allocated.  On output the
+        !        appropriate (system-specific) fields have been filled by
+        !        decoding the bit string of the determinant formed from applying
+        !        the cluster to the reference determinant.
+        !    cluster:
+        !        Additional information about the cluster of excitors.  On
+        !        input this is a bare cluster_t variable with the excitors array
+        !        allocated to the maximum number of excitors in a cluster.  On
+        !        output all fields in cluster have been set.
+
+        use determinants, only: det_info_t
+        use ccmc_data, only: cluster_t
+        use excitations, only: get_excitation_level
+        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, initiator_population
+        use search, only: binary_search
+
+        integer(lint), intent(in) :: iexcip, nattempts
+        integer, intent(inout) :: iexcip_pos
+        integer, intent(in) :: D0_pos, normalisation
+        integer, intent(in) :: cumulative_excip_pop(:), tot_excip_pop
+        type(det_info_t), intent(inout) :: cdet
+        type(cluster_t), intent(inout) :: cluster
+
+        ! We shall accumulate the factors which comprise cluster%pselect as we go.
+        !   cluster%pselect = n_sel p_size p_clust
+        ! where
+        !   n_sel   is the number of cluster selections made (by this
+        !           processor);
+        !   p_size  is the probability of choosing a cluster of that size (1 in this case);
+        !   p_clust is the probability of choosing a specific cluster given
+        !           the choice of size.
+
+        cluster%pselect = nattempts
+
+        cluster%nexcitors = 1
+
+        ! Initiator approximation: no point using a CAS so just use the populations.
+        ! This is sufficiently quick that we'll just do it in all cases, even
+        ! when not using the initiator approximation.  This matches the approach
+        ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
+        ! (unpublished).
+        ! Assume all excitors in the cluster are initiators (initiator_flag=0)
+        ! until proven otherwise (initiator_flag=1).
+        cdet%initiator_flag = 0
+
+        ! It is more convenient to find the excitor on which the iexcip-th excip resides
+        ! rather than looping over all excips explicitly (as in fciqmc) as it enables us
+        ! to use the same control loop for all CCMC spawning which is then simpler and
+        ! more performant for OpenMP parallelisation.
+
+        ! Note that whilst we select each excip in turn, we actually set the amplitude to
+        ! the population of excips on that excitor and the selection probability to the
+        ! ratio of the population and the total population.  These factors cancel out in
+        ! the spawning attempt (see spawner_ccmc) but doing so means that cluster is set
+        ! here is an identical fashion to select_cluster.
+
+        ! Most of the time the excip is either on the current position or the
+        ! next one, so special case to avoid the loop overhead.
+        if (cumulative_excip_pop(iexcip_pos) >= iexcip) then
+            ! Do nothing---already on the right position
+        else if (cumulative_excip_pop(iexcip_pos+1) >= iexcip) then
+            ! In the next slot...
+            iexcip_pos = iexcip_pos + 1
+        else
+            ! Need to hunt for it (ie the reference position is in the way).
+            iexcip_pos = iexcip_pos + 1
+            do
+                if (cumulative_excip_pop(iexcip_pos) >= iexcip .and. cumulative_excip_pop(iexcip_pos-1) < iexcip) exit
+                iexcip_pos = iexcip_pos + 1
+            end do
+        end if
+        ! Adjust for reference---cumulative_excip_pop(D0_pos) = cumulative_excip_pop(D0_pos-1).
+        if (iexcip_pos == D0_pos) iexcip_pos = iexcip_pos - 1
+
+        cdet%f = walker_dets(:,iexcip_pos)
+        cluster%excitors(1)%f => walker_dets(:,iexcip_pos)
+        if (abs(walker_population(1,iexcip_pos)) <= initiator_population) cdet%initiator_flag = 1
+        ! pclust = |population|/total_population, as just a single excitor in the cluster..
+        cluster%pselect = (cluster%pselect*abs(walker_population(1,iexcip_pos)))/tot_excip_pop
+        cluster%excitation_level = get_excitation_level(f0, cdet%f)
+        cluster%amplitude = int(walker_population(1,iexcip_pos))
+
+        ! Sign change due to difference between determinant
+        ! representation and excitors and excitation level.
+        call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign)
+
+    end subroutine select_cluster_non_composite
 
     subroutine spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection)
 
@@ -854,7 +1066,7 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
-        ! TODO: optimise for the case where the cluster is either the reference
+        ! [todo] - optimise for the case where the cluster is either the reference
         ! determinant or consisting of a single excitor.
         KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
 

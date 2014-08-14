@@ -34,6 +34,9 @@ integer, parameter :: ccmc_calc = 2**9
 ! Using the initiator approximation in FCIQMC or CCMC?
 logical :: initiator_approximation = .false.
 
+! Use the full non-composite algorithm in CCMC?
+logical :: ccmc_full_nc = .false.
+
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
 integer :: ms_in = huge(1)

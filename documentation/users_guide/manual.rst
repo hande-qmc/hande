@@ -1123,6 +1123,18 @@ Calculation options: CCMC options
     Excitors are allowed to move processors every 2^x iterations in order to
     allow all composite excitors to be correctly sampled.  Relevant only when
     performing CCMC calculations with multiple MPI processes.
+
+**ccmc_full_nc**
+    Default: off.
+
+    The original CCMC algorithm involves randomly selected a cluster of arbitrary size
+    consisting of any set of excitors and then making spawning attempts from it.
+    The full non-composite algorithm is a simple modification in which all occupied
+    non-composite clusters (i.e. those consisting of the reference or just a single
+    excitor) are (deterministically) selected and composite clusters (involving two or
+    more excitors) are randomly selected to make spawning attempts.  This has been shown
+    to give substantially more stable dynamics and reduce the plateau height in
+    several systems.
     
 Calculation options: DMQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

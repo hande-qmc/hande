@@ -84,6 +84,6 @@ fciqmc_all = hubbard_k_nontilted_2d_sfciqmc fciqmc ifciqmc
 hilbert = hubbard_k_tilted_2d_mchilbert ueg_n14_rs1_e3_hilbert_space
 
 ccmc = Ne-RHF-cc-pVDZ_ccmc
-ccmc_mpi = mpi/*/*ccsdmc
+ccmc_mpi = mpi/*/*ccsd*
 
 _default_ = hubbard_k hubbard_real heisenberg fciqmc_all fci lanczos hilbert real_32 ccmc semi_stochastic_real_32
