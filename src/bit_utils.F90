@@ -51,20 +51,7 @@ contains
         integer(i0), intent(in) :: b
         integer(i0) :: tmp
 
-        ! For 8 bit integers:
-#if DET_SIZE == 8
-        integer(i0), parameter :: m1 = Z'55'
-        integer(i0), parameter :: m2 = Z'33'
-        integer(i0), parameter :: m3 = Z'0F'
-
-#elif DET_SIZE == 16
-        ! For 16 bit integers:
-        integer(i0), parameter :: m1 = Z'5555'
-        integer(i0), parameter :: m2 = Z'3333'
-        integer(i0), parameter :: m3 = Z'0F0F'
-        integer(i0), parameter :: m4 = Z'0101'
-
-#elif DET_SIZE == 32
+#if DET_SIZE == 32
         ! For 32 bit integers:
         integer(i0), parameter :: m1 = Z'55555555'
         integer(i0), parameter :: m2 = Z'33333333'
@@ -114,20 +101,7 @@ contains
         !   followed by a right shift.
         ! Thus the following (extremely fast) algorithms.
 
-#if DET_SIZE == 8
-        ! For 8 bit integers:
-        tmp = tmp - iand(ishft(tmp,-1), m1)
-        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
-        nbits = iand(tmp + ishft(tmp,-4), m3)
-
-#elif DET_SIZE == 16
-        ! For 16 bit integers:
-        tmp = tmp - iand(ishft(tmp,-1), m1)
-        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
-        tmp = iand(tmp + ishft(tmp,-4), m3)*m4
-        nbits = ishft(tmp, -8)
-
-#elif DET_SIZE == 32
+#if DET_SIZE == 32
         ! For 32 bit integers:
         tmp = tmp - iand(ishft(tmp,-1), m1)
         tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
