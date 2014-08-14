@@ -196,10 +196,11 @@ FAQ
 
         [master]$ git diff origin/master
 
-        [master]$
-
-    I'm going to merge the branch bug_fix/rdm_init.  Crucially we use the 
-    --no-ff flag to ensure that a commit is made to master
+    I'm going to merge the branch bug_fix/rdm_init.  Crucially we use the --no-ff
+    flag to ensure that the merge creates a commit on master; this keeps the
+    history clean (by keeping development work in logical chunks after merging)
+    and also makes it very easy to roll-back and revert an entire feature if problems
+    are encounted.
 
     .. code-block:: bash
 
