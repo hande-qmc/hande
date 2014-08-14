@@ -45,6 +45,8 @@ contains
         integer, intent(out) :: nfound
         real(dp), intent(out) :: eigv(:)
 
+        integer :: ndets
+
 #ifdef DISABLE_LANCZOS
         call stop_all('lanczos_diagonalisation','Lanczos diagonalisation disabled at compile-time.')
         ! Avoid compile-time warnings about unset intent(out) variables...
@@ -53,7 +55,7 @@ contains
 #else
 
         integer, parameter :: lohi = -1
-        integer :: mev, ndets
+        integer :: mev
         real(dp), allocatable :: eval(:) ! (mev)
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         integer :: ierr, nrows, i, nwfn
