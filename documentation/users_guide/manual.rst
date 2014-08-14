@@ -934,19 +934,21 @@ The following options are valid for FCIQMC calculations.
 **cluster_multispawn_threshold** *thresh*
     real.
     
-    Default: 1e9
+    Default: huge  (i.e. off).
 
-    .. [review] - JSS: unclear (without reading code) how the number of spawning
-    .. [review] - JSS: attempts is decided.
     When selecting clusters the generations probabilities can vary over orders of
     magnitude.  If after having selected the cluster, the value of
     cluster%amplitude/cluster%pselect
-    is greater than thresh, then the number of spawning attempts from that cluster
-    will be increased to counteract this.
+    is greater than *thresh*, then the number of spawning attempts from that cluster,
+    nspawn_attempts, will be set to the smallest number such that
+    cluster%amplitude/(cluster%pselect*nspawn_attempts) is less than *thresh*.
     The overall effect will be to reduce population blooms which raise plateau heights.
     The lower this number is the slower a calculation will be, though a larger tau might
     be able to be used.
     To enable, set to a number such as 0.1.
+    NB the probability that the spawning is successful is still also dependent on 
+    tau*(the spawning matrix element)/(the probability of generating the spawning excitation),
+    and so estimates of these might be able to be used to set sensible values of *thresh*.
 
 **init_spin_inverse_reference_det**
     Default: false.

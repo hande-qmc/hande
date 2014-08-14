@@ -413,15 +413,14 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
-                ! [review] - JSS: better to be explicit with OpenMP: state nattempts_spawn is shared.
                 !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
-                !$omp         nspawnings_left, nspawnings_total               ) &
+                !$omp         nspawnings_left, nspawnings_total,i             ) &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level, &
                 !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
                 !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
                 !$omp        proj_energy, real_factor, min_cluster_size,        &
-                !$omp        nclusters, nstochastic_clusters)
+                !$omp        nclusters, nstochastic_clusters, nattempts_spawn)
                 it = get_thread_id()
                 iexcip_pos = 1
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
@@ -470,16 +469,13 @@ contains
                         ! [review] - JSS: why not simply rescale the amplitude?
                         ! [review] - JSS: Then spawner_ccmc would not need to know anything about 
                         ! [review] - JSS: how many spawning attempts are made by a single cluster.
+                        ! [reply] - AJWT: Alas death needs the amplitude as well, so it's
+                        ! [reply] - AJWT: cleaner this way I think.
                         nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
                                                          cluster_multispawn_threshold))
 
-                        nspawnings_left = nspawnings_total
-                        ! [review] - JSS: nattempts_spawn total is not thread safe (include in reduction clause).
-                        nattempts_spawn = nattempts_spawn+nspawnings_total
-                        ! [review] - JSS: remove debug output line (even though commented out).
-!                        write(6,*) "nst",nspawnings_total,abs(cluster(it)%amplitude/cluster(it)%pselect)
-                        ! [review] - JSS: why not a simple 'do i = 1, nspawnings_left'?
-                        do while (nspawnings_left > 0)
+                        nattempts_spawn = nattempts_spawn + nspawnings_total
+                        do i = 1, nspawnings_total
                            call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total)
 
@@ -490,7 +486,6 @@ contains
                                    call accumulate_bloom_stats(bloom_stats, int(nspawned))
                                end if
                            end if
-                           nspawnings_left = nspawnings_left - 1
                         end do
 
                         ! Does the cluster collapsed onto D0 produce
@@ -528,7 +523,7 @@ contains
                     proj_energy_cycle = proj_energy_cycle/nattempts
                 end if
 
-                call end_mc_cycle(nspawn_events, ndeath, nspawnings_total)
+                call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 
             end do
 
@@ -996,7 +991,6 @@ contains
         !        a complete excitation.
         ! In/Out:
         !    rng: random number generator.
-        !    [review] - JSS: check amended comment.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
         !        in the current timestep.
         ! Out:
