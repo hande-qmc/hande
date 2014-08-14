@@ -37,6 +37,34 @@ The hope is that this approach will lead to better code and also (with a little
 work) everyone will be more familiar/comfortable with the code that they're not
 directly working on themselves.
 
+Branch namespaces
+-----------------
+
+A (non-exhaustive!) list of namespaces we use for branches:
+
+he/XXX
+    for an enhancement to HANDE.
+bug_fix/XXX
+    for a bug fix to a specific area of the codebase.
+opt/XXX
+    for optimisation work (please include performance details in the commit
+    message!).
+feature/XXX
+    for a new feature.
+doc/XXX
+    for fixes/enhancements solely to the documentation.  (Often this kind of work
+    is coupled to feature/enhancement development work and the documentation is
+    updated directly in the relevant branches consisting mainly of changes to the
+    source code.)
+config/XXX
+    for new configuration file(s)/updates to existing configurations.
+
+Obviously there is some overlap between the he, feature and (to a lesser extent)
+opt namespaces.  Broadly speaking, new algorithms or changes to existing algothims
+which require a new input options are best suited to the feature namespace,
+speed/memory improvements to opt/ and other improvements (code tidying, logging,
+etc.) to the he namespace.
+
 How to generate a pull request
 ------------------------------
 
