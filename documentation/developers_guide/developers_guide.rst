@@ -161,7 +161,7 @@ FAQ
     origin.  You should adapt the reset command to set your master to point to
     the desired commit (ie the first commit shared with the new branch he/XXX).
 
-  + Ok - I've gone through the review process and I'd like to try to merge to 
+  + Ok - I've gone through the review process and I'd like to try to merge to
     master myself.  Is it easy?
 
     Easy as pie.  Here's a workflow to make it simple.  Remember that
@@ -172,8 +172,8 @@ FAQ
     Do not merge broken code into master.
 
     Now make sure your master branch is up to date.  Here I do this in a fetch
-     then a pull just to see what else has changed.  I do a diff to be sure 
-     I'm the same as the origin master.
+    then a pull just to see what else has changed.  I do a diff to be sure
+    I'm the same as the origin master.
 
     .. code-block:: bash
 
@@ -203,18 +203,19 @@ FAQ
 
     .. code-block:: bash
 
-        [master]$ git merge --no-ff bug_fix/rdm_init 
+        [master]$ git merge --no-ff bug_fix/rdm_init
             Merge made by the 'recursive' strategy.
              src/fciqmc_data.f90 |    2 +-
              1 file changed, 1 insertion(+), 1 deletion(-)
 
-        [master]$ git log --graph --oneline --decorate |head 
+        [master]$ git log --graph --oneline --decorate | head
             *   647b7dd (HEAD, master) Merge branch 'bug_fix/rdm_init'
-            |\  
+            |\
             | * 3c67d81 (bug_fix/rdm_init) Fix uninitialised doing_exact_rdm_eigv breaking fci
             * |   2d8e130 (origin/master, origin/HEAD) Merge branch 'bug_fix/small_fci_mpi'
-            |\ \  
-    This shows that a new commit has been created on master.  
+            |\ \
+
+    This shows that a new commit has been created on master.
 
     At this point it's possible that the merge needed some manual intervention.  It's fine
     to make these changes directly and commit them in the merge to your local master.  If the merge
@@ -224,14 +225,15 @@ FAQ
     completed without any problems --- there might be unintented effects.  Only continue if the code
     compiles and the tests pass.
     If you need to make changes at this point, you can modify your local existing merge commit with
+
     .. code-block:: bash
+
         [master]$ git commit --amend
 
-    
     Now we've made sure that the code works, all we do is push to the main repo
 
     .. code-block:: bash
- 
+
         [master]$ git push origin master
             Counting objects: 12, done.
             Delta compression using up to 12 threads.
@@ -241,27 +243,29 @@ FAQ
             To git@tyc-svn.cmth.ph.ic.ac.uk:hubbard_fciqmc.git
                2d8e130..647b7dd  master -> master
 
-        [master]$ git log --graph --oneline --decorate |head
+        [master]$ git log --graph --oneline --decorate | head
             *   647b7dd (HEAD, origin/master, origin/HEAD, master) Merge branch 'bug_fix/rdm_init'
-            |\  
+            |\
             | * 3c67d81 (bug_fix/rdm_init) Fix uninitialised doing_exact_rdm_eigv breaking fci
             * |   2d8e130 Merge branch 'bug_fix/small_fci_mpi'
-            |\ \  
+            |\ \
 
     Almost there.  We now ought to clean up the namespace to avoid old branch names hanging around
-     (the code of course will always stay).
+    (the code of course will always stay).
 
     .. code-block:: bash
+
          [master]$ git branch --delete bug_fix/rdm_init
          [master]$ git push origin --delete bug_fix/rdm_init
 
     The list of branches merged into HEAD can be found by doing
 
     .. code-block:: bash
+
          [master]$ git branch --all --merged
- 
-    All done       
-   
+
+    All done!
+
 * I've got a local branch which I've been working on for some time, but I don't
   want the pain of a large merge at the end.
 
@@ -385,7 +389,7 @@ How to add a new test
     and change to it.
 #.  Place the input files for your test in the directory.  You can have multiple input
     files in a single directory.
-#.  git add your directory (this avoids having to separate out files generated during 
+#.  git add your directory (this avoids having to separate out files generated during
     the tests).
 #.  Add your directory name in [ ] to the jobconfig file.  This specifies that your tests
     should be included in the test suite.
@@ -410,6 +414,7 @@ How to add a new test
     Hopefully the only failed tests are your new tests (which you've checked).
 
     Alternatively if you can't run all the tests, you can just make a benchmark for your new test:
+
     .. code-block:: bash
 
         $ ../../testcode2/bin/testcode.py make-benchmarks -c H2-RHF-cc-pVTZ-Lz
@@ -418,11 +423,13 @@ How to add a new test
 
         Setting new benchmark in userconfig to be 6d161d0.
 
-    Now revert userconfig to the old versiona
-    .. code-block: bash
+    Now revert userconfig to the old version
+
+    .. code-block:: bash
+
         $ git checkout userconfig
 
-    And now append the hash (6d161d0) to the benchmark = line in userconfig.
+    and append the hash (6d161d0, in this case) to the benchmark = line in userconfig.
 #.  Now remember to add the benchmark files and the jobconfig and userconfig files
     to the repository.
 
@@ -432,7 +439,7 @@ How to add a new test
 
     where 6d161d0 is the hash printed out at the end of the make-benchmarks
 
-#.  Do a quick git status to make sure you haven't missed anything important out, and 
+#.  Do a quick git status to make sure you haven't missed anything important out, and
     then you're ready to commit the tests:
 
     .. code-block:: bash
