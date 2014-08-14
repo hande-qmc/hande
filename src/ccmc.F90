@@ -1073,7 +1073,7 @@ contains
             KiiAi = (-shift(1))*cluster%amplitude
         case(1)
             KiiAi = (cdet%data(1) - shift(1))*cluster%amplitude
-        case(2)
+        case default
             KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
         end select
 
