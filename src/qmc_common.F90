@@ -244,7 +244,7 @@ contains
 
     end subroutine find_single_double_prob
 
-    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, cumulative_pops, tot_pop)
+    subroutine cumulative_population(pops, nactive, D0_proc, D0_pos, real_factor, cumulative_pops, tot_pop)
 
         ! Calculate the cumulative population, i.e. the number of psips/excips
         ! residing on a determinant/an excitor and all determinants/excitors which
@@ -263,8 +263,11 @@ contains
         !    nactive: number of occupied determinants/excitors (ie pops(:,1:nactive)
         !       contains the population(s) on each currently "active"
         !       determinant/excitor.
+        !    D0_proc: processor on which the reference resides.
         !    D0_pos: position in the pops list of the reference.  Only relevant if
         !       1<=D0_pos<=nactive and the processor holds the reference.
+        !    real_factor: the encoding factor by which the stored populations are multiplied
+        !       to enable non-integer populations.
         ! Out:
         !    cumulative_pops: running total of excitor population, i.e.
         !        cumulative_pops(i) = sum(abs(pops(1:i))), excluding the
@@ -276,22 +279,21 @@ contains
         ! considered.  This should be changed if we do multiple simulations at
         ! once/Hellmann-Feynman sampling/etc.
 
-        ! WARNING: almost certainly not suitable for a parallel implementation.
-
         use parallel, only: iproc
 
-        integer(int_p), intent(in) :: pops(:,:)
+        integer(int_p), intent(in) :: pops(:,:), real_factor
         integer, intent(in) :: nactive, D0_proc, D0_pos
         integer(int_p), intent(out) :: cumulative_pops(:), tot_pop
 
         integer :: i
 
-        cumulative_pops(1) = abs(pops(1,1))
+        cumulative_pops(1) = nint(real(abs(pops(1,1)),p)/real_factor)
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference
             ! between the loops.
             do i = 2, d0_pos-1
-                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+                cumulative_pops(i) = cumulative_pops(i-1) + &
+                                        nint(real(abs(pops(1,i)),p)/real_factor)
             end do
             ! Set cumulative on the reference to be the running total merely so we
             ! can continue accessing the running total from the i-1 element in the
@@ -299,12 +301,14 @@ contains
             if (d0_pos == 1) cumulative_pops(d0_pos) = 0
             if (d0_pos > 1) cumulative_pops(d0_pos) = cumulative_pops(d0_pos-1)
             do i = d0_pos+1, nactive
-                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+                cumulative_pops(i) = cumulative_pops(i-1) + &
+                                        nint(real(abs(pops(1,i)),p)/real_factor)
             end do
         else
             ! V simple on other processors: no reference to get in the way!
             do i = 2, nactive
-                cumulative_pops(i) = cumulative_pops(i-1) + abs(pops(1,i))
+                cumulative_pops(i) = cumulative_pops(i-1) + &
+                                        nint(real(abs(pops(1,i)),p)/real_factor)
             end do
         end if
         if (nactive > 0) then

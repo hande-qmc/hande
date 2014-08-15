@@ -626,8 +626,7 @@ contains
 
         ! Real amplitude checks.
         if (real_amplitudes) then
-            if (doing_calc(ccmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc) .or. &
-               doing_calc(folded_spectrum)) then
+            if (doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc) .or. doing_calc(folded_spectrum)) then
                 call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
             end if
             if (bit_size(0_int_p) == 32 .and. parent) then
