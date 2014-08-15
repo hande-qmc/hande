@@ -420,7 +420,8 @@ contains
                 !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
                 !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
                 !$omp        proj_energy, real_factor, min_cluster_size,        &
-                !$omp        nclusters, nstochastic_clusters, nattempts_spawn)
+                !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
+                !$omp        cluster_multispawn_threshold)
                 it = get_thread_id()
                 iexcip_pos = 1
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
@@ -466,11 +467,6 @@ contains
                         ! of cluster%amplitude/cluster%pselect.  If this is
                         ! greater than cluster_multispawn_threshold, then nspawnings is
                         ! increased to the ratio of these.
-                        ! [review] - JSS: why not simply rescale the amplitude?
-                        ! [review] - JSS: Then spawner_ccmc would not need to know anything about 
-                        ! [review] - JSS: how many spawning attempts are made by a single cluster.
-                        ! [reply] - AJWT: Alas death needs the amplitude as well, so it's
-                        ! [reply] - AJWT: cleaner this way I think.
                         nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
                                                          cluster_multispawn_threshold))
 
