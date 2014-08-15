@@ -114,9 +114,7 @@ contains
         !  * SYML: currently unused.  Defined solely for compatibility with NECI
         !    FCIDUMP files.  Array containing L (angular momentum) for each orbital.
         !    Set to -1 if L is not a good quantum number.
-        !  * SYMLZ: currently unused.  Defined solely for compatibility with NECI
-        !    FCIDUMP files.  Array containing Lz (angular momentum along the
-        !    z-axis) for each orbital.
+        !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
 
         ! Integrals:
