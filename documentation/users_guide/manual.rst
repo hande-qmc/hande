@@ -1513,10 +1513,12 @@ operator commutes with the Hamiltonian, and this can be a convenient symmetry to
 Lz is measured in units of hbar.
 Normal FCIDUMP files do not contain orbitals which are eigenfunctions of the Lz operator,
 so they must be transformed using post-processing.  The TransLz  script available from
-https://github.com/ghb24/NECI_STABLE for this purpose.  The FCIDUMP file header format has
+https://github.com/ghb24/NECI_STABLE for this purpose. The FCIDUMP file header format has
 been modified to include additional parameters: SYML, and SYMLZ which have a list of values
 , one for each orbital.  SYML gives the magnitude of L for the orbital if known (or -20 if not)
 but is not used.  SYMLZ give the eigenvalue of Lz (the m_l value).
 Orbitals with defined values of Lz are likely to be complex-valued, but luckily the integrals
 involving them are not, so although the FCIDUMP file must be translated, it still retains the
-same format (see comments in the code for details).
+same format (see comments in src/read_in.F90 and src/molecular_integrals.F90 for details if 
+you wish to create FCIDUMP files by other means).  NB these transformed integral files
+require you to enforce Lz symmetry and will produce incorrect results if you do not.
