@@ -480,7 +480,7 @@ contains
                                           gen_excit_ptr, nspawned, connection, nspawnings_total)
 
                            if (nspawned /= 0_int_p) then
-                               call create_spawned_particle_ptr(cdet(it), connection, nspawned, 1, qmc_spawn)
+                               call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn)
                                if (abs(nspawned) > bloom_threshold) then
                                    ! [todo] - adapt bloom_handler to handle real psips/excips.
                                    call accumulate_bloom_stats(bloom_stats, int(nspawned))
