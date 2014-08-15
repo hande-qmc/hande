@@ -43,14 +43,14 @@ Branch namespaces
 A (non-exhaustive!) list of namespaces we use for branches:
 
 he/XXX
-    for an enhancement to HANDE.
+    for an enhancement to HANDE (usually a modification to existing algorithms).
 bug_fix/XXX
     for a bug fix to a specific area of the codebase.
 opt/XXX
     for optimisation work (please include performance details in the commit
     message!).
 feature/XXX
-    for a new feature.
+    for a new feature (generally bigger than an enhancement).
 doc/XXX
     for fixes/enhancements solely to the documentation.  (Often this kind of work
     is coupled to feature/enhancement development work and the documentation is
@@ -223,6 +223,8 @@ FAQ
              2 files changed, 14 insertions(+), 25 deletions(-)
 
         [master]$ git diff origin/master
+
+    The blank output from this indicates we're at origin/master.
 
     I'm going to merge the branch bug_fix/rdm_init.  Crucially we use the --no-ff
     flag to ensure that the merge creates a commit on master; this keeps the
