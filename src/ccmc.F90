@@ -201,7 +201,8 @@ contains
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
                                dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
                                tot_walkers, walker_length, write_fciqmc_report_header,               &
-                               write_fciqmc_final, nparticles, ccmc_move_freq, real_factor
+                               write_fciqmc_final, nparticles, ccmc_move_freq, real_factor,          &
+                               cluster_multispawn_threshold
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle
         use proc_pointers
@@ -213,6 +214,7 @@ contains
 
         integer :: i, ireport, icycle, it
         integer(lint) :: iattempt, nattempts, nclusters, nstochastic_clusters
+        integer(lint) :: nattempts_spawn
         real(dp) :: nparticles_old(sampling_size)
         type(det_info_t), allocatable :: cdet(:)
 
@@ -236,6 +238,7 @@ contains
 
         logical :: update_tau
 
+        integer :: nspawnings_left, nspawnings_total
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=real_factor)
 
@@ -370,6 +373,9 @@ contains
                 ! always 0.
                 call init_mc_cycle(nattempts, ndeath, int(D0_normalisation,lint))
 
+                ! We need to count spawning attempts differently as there may be multiple spawns
+                ! per cluster
+                nattempts_spawn=0
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
 
@@ -407,13 +413,15 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
-                !$omp private(it, iexcip_pos, nspawned, connection, junk) &
+                !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
+                !$omp         nspawnings_left, nspawnings_total,i             ) &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level, &
                 !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
                 !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
                 !$omp        proj_energy, real_factor, min_cluster_size,        &
-                !$omp        nclusters, nstochastic_clusters)
+                !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
+                !$omp        cluster_multispawn_threshold)
                 it = get_thread_id()
                 iexcip_pos = 1
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
@@ -452,16 +460,29 @@ contains
                                  cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                  D0_population_cycle, proj_energy, connection, junk)
 
-                        call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
-                                          gen_excit_ptr, nspawned, connection)
+                        ! Spawning
+                        ! This has the potential to create blooms, so we allow for multiple
+                        ! spawning events per cluster.
+                        ! The number of spawning events is decided by the value
+                        ! of cluster%amplitude/cluster%pselect.  If this is
+                        ! greater than cluster_multispawn_threshold, then nspawnings is
+                        ! increased to the ratio of these.
+                        nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
+                                                         cluster_multispawn_threshold))
 
-                        if (nspawned /= 0_int_p) then
-                            call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn)
+                        nattempts_spawn = nattempts_spawn + nspawnings_total
+                        do i = 1, nspawnings_total
+                           call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
+                                          gen_excit_ptr, nspawned, connection, nspawnings_total)
 
-                            if (abs(nspawned) > bloom_threshold) then
-                                call accumulate_bloom_stats(bloom_stats, nspawned)
-                            end if
-                        end if
+                           if (nspawned /= 0_int_p) then
+                               call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn)
+                               if (abs(nspawned) > bloom_threshold) then
+                                   ! [todo] - adapt bloom_handler to handle real psips/excips.
+                                   call accumulate_bloom_stats(bloom_stats, int(nspawned))
+                               end if
+                           end if
+                        end do
 
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
@@ -498,7 +519,7 @@ contains
                     proj_energy_cycle = proj_energy_cycle/nattempts
                 end if
 
-                call end_mc_cycle(nspawn_events, ndeath, nclusters)
+                call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 
             end do
 
@@ -924,7 +945,8 @@ contains
 
     end subroutine select_cluster_non_composite
 
-    subroutine spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection)
+    subroutine spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
+                            nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -942,6 +964,10 @@ contains
         ! probability compared to the FCIQMC algorithm as we spawn from multiple
         ! excips at once (in FCIQMC we allow each psip to spawn individually)
         ! and have additional probabilities to take into account.
+
+        ! This routine will only attempt one spawning event, but needs to know
+        ! the total number attempted for this cluster which is passed into
+        ! nspawnings_total.
 
         ! In:
         !    sys: system being studied.
@@ -961,6 +987,8 @@ contains
         !        a complete excitation.
         ! In/Out:
         !    rng: random number generator.
+        !    nspawnings_total: The total number of spawnings attemped by the current cluster
+        !        in the current timestep.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -983,6 +1011,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
         type(excit), intent(out) :: connection
@@ -1003,7 +1032,7 @@ contains
 
         ! 2, Apply additional factors.
         hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign
-        pgen = pgen*cluster%pselect
+        pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)

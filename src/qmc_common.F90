@@ -355,7 +355,7 @@ contains
         ! In:
         !    population: populations to be stochastically rounded.
         !    cutoff: the value to round up to.
-        !    
+        !    ntypes: the number of values in population to apply this op to.
 
         use const, only: int_4
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -391,7 +391,7 @@ contains
         ! In:
         !    population: populations to be stochastically rounded.
         !    cutoff: the value to round up to.
-        !    
+        !    ntypes: the number of values in population to apply this op to.
 
         use const, only: int_8
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
