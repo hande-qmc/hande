@@ -37,6 +37,34 @@ The hope is that this approach will lead to better code and also (with a little
 work) everyone will be more familiar/comfortable with the code that they're not
 directly working on themselves.
 
+Branch namespaces
+-----------------
+
+A (non-exhaustive!) list of namespaces we use for branches:
+
+he/XXX
+    for an enhancement to HANDE (usually a modification to existing algorithms).
+bug_fix/XXX
+    for a bug fix to a specific area of the codebase.
+opt/XXX
+    for optimisation work (please include performance details in the commit
+    message!).
+feature/XXX
+    for a new feature (generally bigger than an enhancement).
+doc/XXX
+    for fixes/enhancements solely to the documentation.  (Often this kind of work
+    is coupled to feature/enhancement development work and the documentation is
+    updated directly in the relevant branches consisting mainly of changes to the
+    source code.)
+config/XXX
+    for new configuration file(s)/updates to existing configurations.
+
+Obviously there is some overlap between the he, feature and (to a lesser extent)
+opt namespaces.  Broadly speaking, new algorithms or changes to existing algothims
+which require a new input options are best suited to the feature namespace,
+speed/memory improvements to opt/ and other improvements (code tidying, logging,
+etc.) to the he namespace.
+
 How to generate a pull request
 ------------------------------
 
@@ -161,6 +189,11 @@ FAQ
     origin.  You should adapt the reset command to set your master to point to
     the desired commit (ie the first commit shared with the new branch he/XXX).
 
+  + Ok - I've gone through the review process and I'd like to try to merge to
+    master myself.  Is it easy?
+
+    Easy as pie.  There's a workflow in the section Merging to master
+
 * I've got a local branch which I've been working on for some time, but I don't
   want the pain of a large merge at the end.
 
@@ -272,6 +305,116 @@ FAQ
   announcing that the requester had also merged into master (or perhaps just the
   latter email).
 
+
+Merging to master
+-----------------
+
+Here's a workflow to make merging to master simple.  Remember that
+with git it's extremely difficult to make permanently destructive changes
+so if it goes wrong it can be fixed.
+
+Before you start make sure your code compiles and passes the test suite.
+Do not merge broken code into master.
+
+Now make sure your master branch is up to date.  Here I do this in a fetch
+then a pull just to see what else has changed.  I do a diff to be sure
+I'm the same as the origin master.
+
+.. code-block:: bash
+
+    [master]$ git fetch
+        remote: Counting objects: 340, done.
+        remote: Compressing objects: 100% (182/182), done.
+        remote: Total 200 (delta 137), reused 47 (delta 16)
+        Receiving objects: 100% (200/200), 96.89 KiB, done.
+        Resolving deltas: 100% (137/137), completed with 58 local objects.
+        From tyc-svn.cmth.ph.ic.ac.uk:hubbard_fciqmc
+           c17ef9e..2d8e130  master     -> origin/master
+            ...
+
+    [master]$ git pull
+        Updating c17ef9e..2d8e130
+        Fast-forward
+         lib/local/parallel.F90       |    9 ++-------
+         src/full_diagonalisation.F90 |   30 ++++++++++++------------------
+         2 files changed, 14 insertions(+), 25 deletions(-)
+
+    [master]$ git diff origin/master
+
+The blank output from this indicates we're at origin/master.
+
+I'm going to merge the branch bug_fix/rdm_init.  Crucially we use the --no-ff
+flag to ensure that the merge creates a commit on master; this keeps the
+history clean (by keeping development work in logical chunks after merging)
+and also makes it very easy to roll-back and revert an entire feature if problems
+are encounted.
+
+.. code-block:: bash
+
+    [master]$ git merge --no-ff bug_fix/rdm_init
+        Merge made by the 'recursive' strategy.
+         src/fciqmc_data.f90 |    2 +-
+         1 file changed, 1 insertion(+), 1 deletion(-)
+
+    [master]$ git log --graph --oneline --decorate | head
+        *   647b7dd (HEAD, master) Merge branch 'bug_fix/rdm_init'
+        |\
+        | * 3c67d81 (bug_fix/rdm_init) Fix uninitialised doing_exact_rdm_eigv breaking fci
+        * |   2d8e130 (origin/master, origin/HEAD) Merge branch 'bug_fix/small_fci_mpi'
+        |\ \
+
+This shows that a new commit has been created on master.
+
+At this point it's possible that the merge needed some manual intervention.  It's fine
+to make these changes directly and commit them in the merge to your local master.  If the merge
+is starting to get messy it might be best to rebase first to make it easier.
+
+Very importantly, you should now compile the code and run the tests, even if the merge
+completed without any problems --- there might be unintented effects.  Only continue if the code
+compiles and the tests pass.
+If you need to make changes at this point, you can modify your local existing merge commit with
+
+.. code-block:: bash
+
+    [master]$ git commit --amend
+
+Now we've made sure that the code works, all we do is push to the main repo
+
+.. code-block:: bash
+
+    [master]$ git push origin master
+        Counting objects: 12, done.
+        Delta compression using up to 12 threads.
+        Compressing objects: 100% (7/7), done.
+        Writing objects: 100% (7/7), 705 bytes, done.
+        Total 7 (delta 5), reused 0 (delta 0)
+        To git@tyc-svn.cmth.ph.ic.ac.uk:hubbard_fciqmc.git
+           2d8e130..647b7dd  master -> master
+
+    [master]$ git log --graph --oneline --decorate | head
+        *   647b7dd (HEAD, origin/master, origin/HEAD, master) Merge branch 'bug_fix/rdm_init'
+        |\
+        | * 3c67d81 (bug_fix/rdm_init) Fix uninitialised doing_exact_rdm_eigv breaking fci
+        * |   2d8e130 Merge branch 'bug_fix/small_fci_mpi'
+        |\ \
+
+Almost there.  We now ought to clean up the namespace to avoid old branch names hanging around
+(the code of course will always stay).
+
+.. code-block:: bash
+
+     [master]$ git branch --delete bug_fix/rdm_init
+     [master]$ git push origin --delete bug_fix/rdm_init
+
+The list of branches merged into HEAD can be found by doing
+
+.. code-block:: bash
+
+     [master]$ git branch --all --merged
+
+All done!
+
+
 How to add a new test
 ---------------------
 
@@ -284,7 +427,7 @@ How to add a new test
     and change to it.
 #.  Place the input files for your test in the directory.  You can have multiple input
     files in a single directory.
-#.  git add your directory (this avoids having to separate out files generated during 
+#.  git add your directory (this avoids having to separate out files generated during
     the tests).
 #.  Add your directory name in [ ] to the jobconfig file.  This specifies that your tests
     should be included in the test suite.
@@ -308,6 +451,23 @@ How to add a new test
 
     Hopefully the only failed tests are your new tests (which you've checked).
 
+    Alternatively if you can't run all the tests, you can just make a benchmark for your new test:
+
+    .. code-block:: bash
+
+        $ ../../testcode2/bin/testcode.py make-benchmarks -c H2-RHF-cc-pVTZ-Lz
+
+        ...
+
+        Setting new benchmark in userconfig to be 6d161d0.
+
+    Now revert userconfig to the old version
+
+    .. code-block:: bash
+
+        $ git checkout userconfig
+
+    and append the hash (6d161d0, in this case) to the benchmark = line in userconfig.
 #.  Now remember to add the benchmark files and the jobconfig and userconfig files
     to the repository.
 
@@ -317,7 +477,7 @@ How to add a new test
 
     where 6d161d0 is the hash printed out at the end of the make-benchmarks
 
-#.  Do a quick git status to make sure you haven't missed anything important out, and 
+#.  Do a quick git status to make sure you haven't missed anything important out, and
     then you're ready to commit the tests:
 
     .. code-block:: bash
