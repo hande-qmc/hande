@@ -1,0 +1,21 @@
+# I used the default modules except for cce (use cce/8.3.1 instead of the default cce/8.2.6) and in addition used
+# cray-hdf5/1.8.13 (note the default version is not sufficient as it lacks the Fortran 2003 interface to HDF5).
+[main]
+fc = ftn
+cc = cc
+cxx = CC
+ccd = gcc
+cppflags = -DDISABLE_LANCZOS -DDISABLE_UUID
+ld = ftn
+libs =
+f90_module_flag = -J
+
+[opt]
+fflags =  -e fm -O3
+cflags = -O3
+cxxflags = -O3
+
+[dbg]
+fflags = -e fm -g
+cflags = -g
+cxxflags = -g
