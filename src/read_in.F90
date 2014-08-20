@@ -243,7 +243,7 @@ contains
                 read (ir,*, iostat=ios) x, i, a, j, b
                 if (ios == iostat_end) exit ! reached end of file
                 if (ios /= 0) call stop_all('read_in_integrals','&
-                                             Problem reading integrals file: '//trim(sys%read_in%fcidump))
+                                             &Problem reading integrals file: '//trim(sys%read_in%fcidump))
                 if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
                     ! \epsilon_i --- temporarily store for all basis functions,
                     ! including inactive (frozen) orbitals.

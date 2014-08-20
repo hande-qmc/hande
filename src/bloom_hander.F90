@@ -118,7 +118,7 @@ module bloom_handler
             ! population may have exploded.
             if ( bloom_stats%nwarnings == huge(bloom_stats%nwarnings) ) then
                 call stop_all('accumulate_bloom_stats', 'Number of bloom events exceeded &
-                     the size of an integer: the population may have exploded')
+                     &the size of an integer: the population may have exploded')
             end if
 
             ! Print out a warning message the first nverbose warning times only.
@@ -126,15 +126,15 @@ module bloom_handler
                 select case(bloom_stats%mode)
                 case(bloom_mode_fixedn)
                     write (6,'(1X, "# WARNING more than", '//int_fmt(bloom_stats%n_bloom,1)//',&
-                        " particles spawned in a single event.  Spawned: ", f8.1)') &
+                       &" particles spawned in a single event.  Spawned: ", f8.1)') &
                         bloom_stats%n_bloom, true_nspawn
                 case(bloom_mode_fractionn)
                     write (6,'(1X, "# WARNING more than", '//int_fmt(int(bloom_stats%prop*100))//',&
-                        " % of the total number of particles spawned in a single event.  # spawned: ", f8.1)') &
+                       &" % of the total number of particles spawned in a single event.  # spawned: ", f8.1)') &
                         int(bloom_stats%prop*100), true_nspawn
                 end select
                 write (6,'(1X,"# This warning only prints",'//int_fmt(bloom_stats%nverbose_warnings)//',& 
-                    " time(s). You may wish to reduce the time step.")'), bloom_stats%nverbose_warnings
+                    &" time(s). You may wish to reduce the time step.")') bloom_stats%nverbose_warnings
             end if
 
             bloom_stats%nwarnings = bloom_stats%nwarnings + 1
@@ -178,12 +178,12 @@ module bloom_handler
 
             if(bloom_stats%nwarnings > 0 .and. parent) then
                 write (6, '(1X, "Blooming events occured: a more efficent calulation may be possible &
-                    with a smaller timestep.")')
-                write (6, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nwarnings,1)//')'), &
+                    &with a smaller timestep.")')
+                write (6, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nwarnings,1)//')') &
                     bloom_stats%nwarnings
-                write (6, '(1X, "Maxium number of excips spawned in a blooming event:",f11.2)'), &
+                write (6, '(1X, "Maxium number of excips spawned in a blooming event:",f11.2)') &
                     bloom_stats%max_bloom
-                write (6, '(1X, "Mean number of excips spawned in a blooming event:", 2X, f11.2, /)'),&
+                write (6, '(1X, "Mean number of excips spawned in a blooming event:", 2X, f11.2, /)') &
                     bloom_stats%tot_bloom/bloom_stats%nwarnings
             end if
 

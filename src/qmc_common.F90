@@ -729,7 +729,7 @@ contains
             else
                 tau = 0.950_p*tau
             end if
-            if(parent) write(6, '(1X, "# Warning timestep changed to: ",f7.5)'), tau
+            if (parent) write(6, '(1X, "# Warning timestep changed to: ",f7.5)') tau
         end if
 
     end subroutine send_tau
