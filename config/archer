@@ -5,17 +5,17 @@ fc = ftn
 cc = cc
 cxx = CC
 ccd = gcc
-cppflags = -DDISABLE_LANCZOS -DDISABLE_UUID
+cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDISABLE_UUID
 ld = ftn
 libs =
 f90_module_flag = -J
 
 [opt]
 fflags =  -e fm -O3
-cflags = -O3
+cflags = -O3 -hgnu
 cxxflags = -O3
 
 [dbg]
 fflags = -e fm -g
-cflags = -g
+cflags = -g -hgnu
 cxxflags = -g
