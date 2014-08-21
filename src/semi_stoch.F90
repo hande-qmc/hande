@@ -211,7 +211,10 @@ contains
 
         ! Let each process hold the number of deterministic states on each process.
 #ifdef PARALLEL
-        call mpi_allgather(determ%sizes(iproc), 1, mpi_integer, determ%sizes, 1, mpi_integer, MPI_COMM_WORLD, ierr)
+        ! Note: just using displs as scratch space as experience has taught us
+        !to avoid MPI_IN_PLACE (perhaps things are better now though?).
+        call mpi_allgather(determ%sizes(iproc), 1, mpi_integer, displs, 1, mpi_integer, MPI_COMM_WORLD, ierr)
+        determ%sizes = displs
 #endif
         determ%tot_size = sum(determ%sizes)
 
