@@ -5,17 +5,18 @@ fc = ftn
 cc = cc
 cxx = CC
 ccd = gcc
-cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDISABLE_UUID
+cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS
 ld = ftn
-libs =
+ldflags = -dynamic
+libs = /lib64/libuuid.so.1.3.0
 f90_module_flag = -J
 
 [opt]
-fflags =  -e fm -O3
-cflags = -O3 -hgnu
+fflags =  -e fm -O3 -dynamic
+cflags = -O3 -hgnu -dynamic
 cxxflags = -O3
 
 [dbg]
-fflags = -e fm -g
-cflags = -g -hgnu
-cxxflags = -g
+fflags = -e fm -g -dynamic
+cflags = -g -hgnu -dynamic
+cxxflags = -g -dynamic
