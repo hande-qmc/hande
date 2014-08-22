@@ -97,6 +97,7 @@ calc_data : list of `:class:`pandas.Series`
         truncation = 'truncation_level',
         target = 'varyshift_target',
         shift_damping = 'shift_damping',
+        mc_cycles = 'mc_cycles',
     )
 
     # ... main body of output (ie after input but before QMC data table)
@@ -127,7 +128,7 @@ calc_data : list of `:class:`pandas.Series`
     )
     md_keys = [x for v in (md_header, md_input, md_body, md_footer)
             for x in v.keys()]
-    md_int = ['sym', 'ms', 'nel', 'nbasis', 'truncation', 'seed',
+    md_int = ['sym', 'ms', 'nel', 'nbasis', 'truncation', 'seed', 'mc_cycles',
          'bit_length',  'min_dets_per_mpi_process', 'max_dets_per_mpi_process']
 
     md_float = ['tau', 'ref_energy', 'psingle', 'pdouble', 'init_pop',

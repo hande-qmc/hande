@@ -72,7 +72,8 @@ size from the blocking analysis:
 
     # Compute and define new weighted columns to reblock.
     if reweight_itts > 0:
-        data = pyhande.weight.reweight(data, metadata[0]['tau'], reweight_itts, mean_shift)
+        data = pyhande.weight.reweight(data, metadata[0]['mc_cycles'],
+            metadata[0]['tau'], reweight_itts, mean_shift)
         data['W * \sum H_0j N_j'] = data['\sum H_0j N_j'] * data['Weight']
         data['W * N_0'] = data['N_0'] * data['Weight']
         to_block.append('W * \sum H_0j N_j')
