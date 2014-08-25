@@ -108,7 +108,7 @@ contains
         integer, intent(in) :: nel
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
-        integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift
+        integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift, nset_bits
         logical :: test_f1, test_f2
 
         excitation = excit(0, 0, 0, .false.)
@@ -151,7 +151,7 @@ contains
             ! and so requires 5 - 2 - 2 + 1 = 2 permutation to shift it to the
             ! first "slot" in the excitation "block" in the list of states.
             ! 4 is the second orbital found and requires 5 - 4 - 2 + 2 = 1
-            ! permutation to shift it the end (last "slot" in the excitation
+            ! permutations to shift it to the end (last "slot" in the excitation
             ! block).
             ! Whilst the resultant number of permutations isn't necessarily the
             ! minimal number for the determinants to align, this is irrelevant
@@ -162,13 +162,26 @@ contains
             if (excitation%nexcit <= 2) then
 
                 do i = 1, basis%string_len
-                    ! Bonus optimisation: skip bit strings which aren't changed.
-                    ! This modifies the algorithm above by skipping basis
-                    ! functions which are already lined up.  Doing so is
-                    ! guaranteed to introduce an additional even number of
-                    ! permuations (as we underestimate both iel1 and iel2 by the
-                    ! same number of electrons).
-                    if (f1(i) == f2(i)) cycle
+                    ! Bonus optimisation: We can skip most of the following for
+                    ! this element of the bit strings if they are equal, but
+                    ! may have to update iel1 and iel2 first...
+                    if (f1(i) == f2(i)) then
+                        ! We usually still need to update iel1 and iel2, even
+                        ! if there are no differences between this part of the
+                        ! bit string. However, if iexcit1 == iexcit2 then there
+                        ! are an equal number of contributions to still be
+                        ! included in perm from both f1 and f2, so an even
+                        ! number overall. Updating iel1 and iel2 (by the same
+                        ! amount) is therefore not necessary in this case - it
+                        ! wouldn't effect the final parity if we did.
+                        if (iexcit1 /= iexcit2) then
+                            nset_bits = count_set_bits(f1(i))
+                            iel1 = iel1 + nset_bits
+                            iel2 = iel2 + nset_bits
+                        end if
+                        cycle
+                    end if
+
                     do j = 0, i0_end
 
                         test_f1 = btest(f1(i),j)
