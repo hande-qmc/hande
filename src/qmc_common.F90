@@ -745,7 +745,7 @@ contains
 
     end subroutine init_non_blocking_comm
 
-    subroutine end_non_blocking_comm(sys, tinitiator, ireport, spawn, request_s, request_rep, report_time, ntot_particles)
+    subroutine end_non_blocking_comm(sys, tinitiator, ireport, spawn, request_s, request_rep, report_time, ntot_particles, shift)
 
         ! Subroutine dealing with the last iteration when using non-blocking communications.
 
@@ -768,6 +768,7 @@ contains
         !        the current time (ie the time for the start of the next report
         !        loop.
         !    ntot_particles: total number of particles in main walker list.
+        !    shift: current shift value.
 
 
         use annihilation, only: annihilate_main_list_wrapper
@@ -776,6 +777,7 @@ contains
         use energy_evaluation, only: update_energy_estimators_recv
         use system, only: sys_t
         use parallel, only: parent
+        use fciqmc_data, only: dump_restart_file
 
 
         type(sys_t), intent(in) :: sys
@@ -785,8 +787,11 @@ contains
         integer, intent(inout) :: request_s(:), request_rep(:)
         real, intent(inout) :: report_time
         integer(lint), intent(inout) :: ntot_particles(sampling_size)
+        real(p), intent(inout) :: shift
 
         real :: curr_time
+        real(p) :: shift_save
+        integer(lint) :: ntot_particles_save(sampling_size)
 
         call cpu_time(curr_time)
 
@@ -797,8 +802,18 @@ contains
             call annihilate_main_list_wrapper(sys, tinitiator, spawn)
             ! Receive final send of report loop quantities.
         end if
+        ntot_particles_save = ntot_particles
+        shift_save = shift
         call update_energy_estimators_recv(request_rep, ntot_particles)
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
+        ! The call to update_energy_estimators updates the shift and ntot_particles.
+        ! When restarting a calculation we actually need the old (before the call)
+        ! values of these quantites to be written to the restart file, so reset
+        ! them in this case.
+        if (dump_restart_file) then
+            ntot_particles = ntot_particles_save
+            shift = shift_save
+        end if
 
     end subroutine end_non_blocking_comm
 

@@ -155,8 +155,8 @@ contains
 
         end do
 
-        if (non_blocking_comm) call end_non_blocking_comm(sys, initiator_approximation, ireport, received_list,      &
-                                                          req_data_s, par_info%report_comm%request, t1, nparticles_old)
+        if (non_blocking_comm) call end_non_blocking_comm(sys, initiator_approximation, ireport, received_list, req_data_s,  &
+                                                          par_info%report_comm%request, t1, nparticles_old, shift(1))
 
         if (parent) then
             call write_fciqmc_final(ireport)

@@ -389,7 +389,10 @@ contains
         do i=1, sampling_size
             call mpi_allgather(nparticles(i), 1, MPI_INTEGER8, nparticles_proc(i,:), 1, MPI_INTEGER8, MPI_COMM_WORLD, ierr)
         end do
-        forall(i=1:sampling_size) tot_nparticles(i) = sum(nparticles_proc(i,:))
+        ! When restarting a non-blocking calculation this sum will not equal
+        ! tot_nparticles as some walkers have been communicated around the report
+        ! loop. The correct total is in the restart file so get it from there.
+        if (.not. restart) forall(i=1:sampling_size) tot_nparticles(i) = sum(nparticles_proc(i,:))
 #else
         tot_nparticles = nparticles
         nparticles_proc(:sampling_size,1) = nparticles(:sampling_size)
