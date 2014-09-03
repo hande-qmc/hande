@@ -166,15 +166,11 @@ contains
                     ! this element of the bit strings if they are equal, but
                     ! may have to update iel1 and iel2 first...
                     if (f1(i) == f2(i)) then
-                        ! We usually still need to update iel1 and iel2, even
-                        ! if there are no differences between this part of the
-                        ! bit string. However, if iexcit1 == iexcit2 then there
-                        ! are an equal number of contributions to still be
-                        ! included in perm from both f1 and f2, so an even
-                        ! number overall. Updating iel1 and iel2 (by the same
-                        ! amount) is therefore not necessary in this case - it
-                        ! wouldn't effect the final parity if we did.
-                        if (iexcit1 /= iexcit2) then
+                        ! If iexcit1-excit2 is even then we don't need to
+                        ! update iel1 and iel2, since any error introduced into
+                        ! perm by not doing so will be included an even number
+                        ! of times, and so won't alter the parity.
+                        if (modulo(iexcit1-iexcit2,2) == 1) then
                             nset_bits = count_set_bits(f1(i))
                             iel1 = iel1 + nset_bits
                             iel2 = iel2 + nset_bits
