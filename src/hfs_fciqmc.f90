@@ -60,7 +60,8 @@ contains
         real(dp) :: real_population(sampling_size)
         type(det_info_t) :: cdet
 
-        integer(int_p) :: nspawned, ndeath, nspawn_events
+        integer(int_p) :: nspawned, ndeath
+        integer :: nspawn_events
         type(excit) :: connection
         type(dSFMT_t) :: rng
         real(p) :: hmatel
