@@ -876,7 +876,7 @@ contains
         integer(lint), intent(in) :: iexcip, nattempts
         integer, intent(inout) :: iexcip_pos
         integer, intent(in) :: D0_pos, normalisation
-        integer, intent(in) :: cumulative_excip_pop(:), tot_excip_pop
+        integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
