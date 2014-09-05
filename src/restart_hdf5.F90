@@ -42,6 +42,8 @@ module restart_hdf5
     !            populations           # population(s) on each determinant
     !            data                  # data associated with each determinant
     !            total population      # total population for each particle type.
+    !            received_list         # list of walkers sent from last iteration of non-blocking calculation.
+    !            processor map         # processor map used for load balancing
     !      state/
     !            shift                 # shift (energy offset/population control)
     !            ncycles               # number of Monte Carlo cycles performed
@@ -119,6 +121,9 @@ module restart_hdf5
                                dshift = 'shift',                    &
                                dncycles = 'ncycles',                &
                                dtot_pop = 'total population',       &
+                               dproc_map = 'processor map',         &
+                               dspawn = 'received_list',            &
+                               dnspawn = 'nspawn',                  &
                                dref = 'reference determinant',      &
                                dref_pop = 'reference population @ t-1', &
                                dhsref = 'Hilbert space reference determinant'
@@ -204,13 +209,13 @@ module restart_hdf5
             use const
             use, intrinsic :: iso_c_binding
             use report, only: VCS_VERSION, GLOBAL_UUID
-            use parallel, only: nprocs, iproc, parent
+            use parallel, only: nprocs, iproc, parent, nthreads
             use utils, only: get_unique_filename, int_fmt
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data, &
                                    shift, f0, hs_f0, tot_walkers,               &
-                                   D0_population_cycle
-            use calc, only: calc_type
+                                   D0_population_cycle, par_info, received_list
+            use calc, only: calc_type, non_blocking_comm
 
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: ncycles
@@ -282,6 +287,12 @@ module restart_hdf5
 
                 call hdf5_write(subgroup_id, ddata, kinds, shape(walker_data(:,:tot_walkers)), &
                                  walker_data(:,:tot_walkers))
+                if (non_blocking_comm) then
+                    call hdf5_write(subgroup_id, dspawn, kinds, shape(received_list%sdata(:,:received_list%head(0,0))), &
+                                    received_list%sdata(:,:received_list%head(0,0)))
+                    call hdf5_write(subgroup_id, dnspawn, received_list%head(0,0))
+                end if
+                call hdf5_write(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
@@ -341,8 +352,10 @@ module restart_hdf5
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data,  &
                                    shift, tot_nparticles, f0, hs_f0,             &
-                                   D0_population, mc_cycles_done, tot_walkers
-            use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
+                                   D0_population, mc_cycles_done, tot_walkers,   &
+                                   par_info, received_list
+            use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space, &
+                            non_blocking_comm
             use parallel, only: nprocs
 
             type(restart_info_t), intent(in) :: ri
@@ -437,6 +450,16 @@ module restart_hdf5
                 call hdf5_read(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
 
                 call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
+
+                if (non_blocking_comm) then
+
+                    call hdf5_read(subgroup_id, dspawn, kinds, shape(received_list%sdata), received_list%sdata)
+
+                    call hdf5_read(subgroup_id, dnspawn, received_list%head(0,0))
+
+                end if
+
+                call hdf5_read(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
 
                 call h5gclose_f(subgroup_id, ierr)
 

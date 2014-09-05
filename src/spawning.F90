@@ -540,7 +540,7 @@ contains
 
 !--- Assuming spawning is successful, create new particle appropriately ---
 
-    function assign_particle_processor(particle_label, length, seed, shift, freq, np) result(particle_proc)
+    subroutine assign_particle_processor(particle_label, length, seed, shift, freq, np, particle_proc, slot_pos)
 
         ! In:
         !    particle_label: bit string which describes the location/basis
@@ -554,15 +554,16 @@ contains
         !       than 32.
         !    np: number of processors over which the particles are to be
         !       distributed.
-        ! Returns:
-        !    particle_proc: processor number (in range [0,np-1] on which the
-        !       particle should reside.
+        ! Out:
+        !    particle_proc: processor where determinant resides
+        !    slot_pos: position in proc_map for this determinant
 
         use hashing, only: murmurhash_bit_string
+        use fciqmc_data, only: par_info
 
-        integer :: particle_proc
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np
+        integer, intent(out) :: particle_proc, slot_pos
 
         integer :: hash, offset
         integer(i0) :: mod_label(length)
@@ -574,7 +575,8 @@ contains
         hash = murmurhash_bit_string(particle_label, length, seed)
         if (shift == 0) then
             ! p = hash(label) % np
-            particle_proc = modulo(hash, np)
+            slot_pos = modulo(hash, np*par_info%load%nslots)
+            particle_proc = par_info%load%proc_map(slot_pos)
         else
             ! o = [ hash(label) + shift ] >> freq
             ! p = [ hash(label) + o ] % np
@@ -591,10 +593,11 @@ contains
             offset = ishft(hash+shift, -freq)
             mod_label = particle_label + offset
             hash = murmurhash_bit_string(mod_label, length, seed)
-            particle_proc = modulo(hash, np)
+            slot_pos = modulo(hash, np*par_info%load%nslots)
+            particle_proc = par_info%load%proc_map(slot_pos)
         end if
 
-    end function assign_particle_processor
+    end subroutine assign_particle_processor
 
     subroutine add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -754,7 +757,7 @@ contains
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         if (present(fexcit)) then
             f_new => fexcit
@@ -763,8 +766,8 @@ contains
             f_new => f_local
         end if
 
-        iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-            spawn%hash_shift, spawn%move_freq, nprocs)
+        call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
+                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
         call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -806,7 +809,7 @@ contains
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         if (present(fexcit)) then
             f_new => fexcit
@@ -815,8 +818,8 @@ contains
             f_new => f_local
         end if
 
-        iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-            spawn%hash_shift, spawn%move_freq, nprocs)
+        call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
+                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
         call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
@@ -862,7 +865,7 @@ contains
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         if (present(fexcit)) then
             f_new => fexcit
@@ -874,8 +877,8 @@ contains
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs)
+            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
+                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -923,7 +926,7 @@ contains
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         if (present(fexcit)) then
             f_new => fexcit
@@ -935,8 +938,8 @@ contains
         ! Only accept spawning if it's within the truncation level.
         if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs)
+            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
+                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
@@ -984,7 +987,7 @@ contains
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         if (present(fexcit)) then
             f_new => fexcit
@@ -996,8 +999,8 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs)
+            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
+                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -1045,7 +1048,7 @@ contains
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         if (present(fexcit)) then
             f_new => fexcit
@@ -1057,8 +1060,8 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            iproc_spawn = assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs)
+            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
+                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
@@ -1108,7 +1111,7 @@ contains
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
 
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
@@ -1123,8 +1126,8 @@ contains
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        iproc_spawn = assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                                spawn%hash_shift, spawn%move_freq, nprocs)
+        call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
+                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_spawned_particle_density_matrix',&
@@ -1180,7 +1183,7 @@ contains
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
 
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
@@ -1200,8 +1203,8 @@ contains
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        iproc_spawn = assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                                spawn%hash_shift, spawn%move_freq, nprocs)
+        call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
+                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_spawned_particle_half_density_matrix',&
@@ -1265,7 +1268,7 @@ contains
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
 
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
@@ -1287,8 +1290,8 @@ contains
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                                    spawn%hash_shift, spawn%move_freq, nprocs)
+            call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
+                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_half_density_matrix',&
@@ -1348,7 +1351,7 @@ contains
         ! DMQMC is not yet OpenMP parallelised.
         integer, parameter :: thread_id = 0
 
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
@@ -1365,8 +1368,8 @@ contains
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                                    spawn%hash_shift, spawn%move_freq, nprocs)
+            call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
+                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_density_matrix', &
@@ -1408,7 +1411,7 @@ contains
 
         integer(i0) :: f_new_tot(2*rdm%rdm_string_len)
 
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
         ! WARNING!  The below algorithm is *not* suitable for conversion to
         ! thread-safety as each thread could be spawning onto the same RDM
         ! element, yet the hash table requires a given element to exist in one
@@ -1441,8 +1444,8 @@ contains
                 end if
             end if
 
-            iproc_spawn = assign_particle_processor(f_new_tot, 2*rdm_bl, spawn%hash_seed, &
-                                                    spawn%hash_shift, spawn%move_freq, nprocs)
+            call assign_particle_processor(f_new_tot, 2*rdm_bl, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                          nprocs, iproc_spawn, slot)
 
             call lookup_hash_table_entry(ht, f_new_tot, pos, hit)
 

@@ -6,6 +6,7 @@ module fciqmc_data
 use const
 use spawn_data, only: spawn_t
 use hash_table, only: hash_table_t
+use calc, only: parallel_t
 implicit none
 
 !--- Input data: FCIQMC ---
@@ -143,6 +144,9 @@ integer :: tot_walkers
 real(dp), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
 real(dp), allocatable, target :: tot_nparticles(:) ! (sampling_size)
+! Total number of particles on all determinants for each processor
+! [todo] - JSS: check type with Nick when merging due to the reals work.
+real(dp), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -182,6 +186,9 @@ real(p), allocatable, target :: walker_data(:,:) ! (sampling_size+info_size,walk
 
 ! Walker information: spawned list.
 type(spawn_t) :: qmc_spawn
+
+! Walker information: received list for non-blocking communications.
+type(spawn_t) :: received_list
 
 ! spawn times of the progeny (only used for ct_fciqmc)
 real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
@@ -504,6 +511,9 @@ real(p) :: P__=0.05, Po_=0.475, P_o=0.475
 ! The split generation normalisations
 real(p) :: X__=0, Xo_=0, X_o=0
 
+! Type for storing parallel information: see calc for description.
+type(parallel_t) :: par_info
+
 contains
 
     !--- Statistics. ---
@@ -528,6 +538,7 @@ contains
 
         ! Death is not scaled if using real
         ndeath_real = real(ndeath,dp)/real_factor
+
         ! The total spawning rate is
         !   (nspawn + ndeath) / nattempts
         ! In, for example, the timestep algorithm each particle has 2 attempts
@@ -624,7 +635,7 @@ contains
         !    comment: if true, then prefix the line with a #.
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
-        use calc, only: dmqmc_full_r2, dmqmc_rdm_r2
+        use calc, only: dmqmc_full_r2, dmqmc_rdm_r2, non_blocking_comm
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
@@ -633,7 +644,13 @@ contains
         logical :: comment
         integer :: mc_cycles, i, j
 
-        mc_cycles = ireport*ncycles
+        ! For non-blocking communications we print out the nth report loop
+        ! after the (n+1)st iteration. Adjust mc_cycles accordingly
+        if (.not. non_blocking_comm) then
+            mc_cycles = ireport*ncycles
+        else
+            mc_cycles = (ireport-1)*ncycles
+        end if
 
         if (comment) then
             write (6,'(1X,"#",1X)', advance='no')
@@ -722,6 +739,7 @@ contains
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
+        use calc, only: non_blocking_comm, dealloc_parallel_t
 
         integer :: ierr
 
@@ -757,6 +775,11 @@ contains
             deallocate(estimator_numerators, stat=ierr)
             call check_deallocate('estimator_numerators', ierr)
         end if
+        if (allocated(nparticles_proc)) then
+            deallocate(nparticles_proc, stat=ierr)
+            call check_deallocate('nparticles_proc', ierr)
+        end if
+        call dealloc_parallel_t(par_info)
         call dealloc_spawn_t(qmc_spawn)
 
     end subroutine end_fciqmc

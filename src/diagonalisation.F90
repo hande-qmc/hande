@@ -34,7 +34,7 @@ contains
 
         use errors, only: stop_all
         use utils, only: int_fmt, get_free_unit
-        use ranking, only: insertion_rank_rp
+        use ranking, only: insertion_rank
 
         type(sys_t), intent(inout) :: sys
 
@@ -300,7 +300,7 @@ contains
             write (6,'(1X,a31,/,1X,31("-"),/)') 'Lanczos diagonalisation results'
             allocate(eigv_rank(nlanczos), stat=ierr)
             call check_allocate('eigv_rank',nlanczos,ierr)
-            call insertion_rank_rp(lanczos_solns(:nlanczos)%energy, eigv_rank, tolerance=depsilon)
+            call insertion_rank(lanczos_solns(:nlanczos)%energy, eigv_rank, tolerance=depsilon)
             write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
             state = 0
             do i = 1, nlanczos
@@ -322,7 +322,7 @@ contains
             write (6,'(1X,a29,/,1X,29("-"),/)') 'Exact diagonalisation results'
             allocate(eigv_rank(nexact), stat=ierr)
             call check_allocate('eigv_rank',nexact,ierr)
-            call insertion_rank_rp(exact_solns(:nexact)%energy, eigv_rank, tolerance=depsilon)
+            call insertion_rank(exact_solns(:nexact)%energy, eigv_rank, tolerance=depsilon)
             write (6,'(1X,a8,3X,a4,3X,a12)') 'State','Spin','Total energy'
             state = 0
             do i = 1, nexact

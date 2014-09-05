@@ -95,6 +95,12 @@ integer, parameter :: distribute_cols = 2
 
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
+! Flag for using non-blocking communications.
+! Default: False.
+logical :: non_blocking_comm = .false.
+! Flag for using load balancing.
+! Default: False.
+logical :: doing_load_balancing = .false.
 
 !--- Input data: Hilbert space truncation ---
 
@@ -174,6 +180,67 @@ integer, parameter :: dmqmc_correlation = 2**3
 integer, parameter :: dmqmc_rdm_r2 = 2**4
 integer, parameter :: dmqmc_full_r2 = 2**5
 
+! Combine information required for non-blocking report loop quantities
+! into one type for convenience.
+type nb_rep_t
+    ! Array to store report loop estimators such as projected energy
+    ! etc.
+    ! This array must not be deallocated, copied or inspected in any
+    ! way in between report loop communication.
+    real(dp), allocatable :: rep_info(:)
+    ! Array whose entries will contain:
+    ! 1. The total number of spawned walkers in a given report loop
+    !    which is to be used for calculating the spawning rate.
+    ! 2. The number of walkers spawned from a given processor
+    !    to all other processors except the current one, which
+    !    is used for calculating the total number of walkers for a give
+    !    report loop.
+    integer :: nb_spawn(2)
+    ! Array of requests used for non blocking communications.
+    ! This array must not be deallocated, copied or inspected in any
+    ! way in between report loop communication. request(nprocs)
+    integer, allocatable :: request(:)
+end type nb_rep_t
+
+type load_t
+    ! Number of slots walker lists are initially subdivided into for proc_map
+    ! Default = 20. This reverts to 1 when run in serial.
+    ! Input option: load_balancing_slots
+    integer :: nslots = 20
+    ! Population which must be reached before load balancing is attempted.
+    ! Default = 1000.
+    ! Input option: load_balancing_pop
+    integer(lint) :: pop = 1000
+    ! Percentage load imbalance we aim to achieve when performing load balancing.
+    ! i.e. min_pop = (1-percent_imbal)*av_pop, max_pop = (1+percent_imbal)*av_pop.
+    ! Default = 0.05
+    ! Input option: percent_imbal
+    real(p) :: percent= 0.05
+    ! Maximum number of load balancing attempts.
+    ! Default = 2.
+    ! Input option: max_load_attempts
+    integer :: max_attempts = 2
+    ! Write load balancing information every time load balancing is attempted.
+    ! Input option: write_load_info
+    logical :: write_info = .false.
+    ! Tag to check which stage if load balancing is required. This is reset to false
+    ! once redistribution of determinants has taken place to ensure load balancing
+    ! occurs once during a report loop.
+    logical :: needed = .false.
+    ! Current number of load balancing attempts.
+    integer :: nattempts = 0
+    ! Array which maps particles to processors. If attempting load balancing then
+    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
+    ! map particles to processors using modular arithmetic. Otherwise it's entries are
+    ! 0,1,..,nprocs-1.
+    integer, allocatable :: proc_map(:)
+end type load_t
+
+type parallel_t
+    type(load_t) :: load
+    type(nb_rep_t) :: report_comm
+end type parallel_t
+
 contains
 
     subroutine init_calc_defaults()
@@ -236,5 +303,79 @@ contains
         doing = iand(calc_param, dmqmc_calc_type) /= 0
 
     end function doing_dmqmc_calc
+
+    subroutine init_parallel_t(ntypes, non_blocking_comm, par_calc)
+
+        ! Allocate parallel_t object.
+
+        ! In:
+        !    ntypes: number of types of walkers sampled (see sampling_size).
+        !    non_blocking_comm: true if using non-blocking communications
+        !    load_balancing: true if attempting load balancing.
+        ! In/Out:
+        !    par_calc: type containing parallel information for calculation
+        !        see definitions above.
+
+        use parallel, only: nprocs
+        use checking, only: check_allocate
+
+        integer, intent(in) :: ntypes
+        logical, intent(in) :: non_blocking_comm
+        type(parallel_t), intent(inout) :: par_calc
+
+        integer :: i, ierr
+
+        associate(nb=>par_calc%report_comm)
+            if (non_blocking_comm) then
+                allocate(nb%rep_info(ntypes*nprocs+7), stat=ierr)
+                call check_allocate('nb%rep_info', size(nb%rep_info), ierr)
+                allocate(nb%request(0:nprocs-1), stat=ierr)
+                call check_allocate('nb%request', size(nb%request), ierr)
+            end if
+        end associate
+
+        associate(lb=>par_calc%load)
+            allocate(lb%proc_map(0:lb%nslots*nprocs-1), stat=ierr)
+            call check_allocate('lb%proc_map', size(lb%proc_map), ierr)
+            forall (i=0:lb%nslots*nprocs-1) lb%proc_map(i) = modulo(i,nprocs)
+        end associate
+
+    end subroutine init_parallel_t
+
+    subroutine dealloc_parallel_t(par_calc)
+
+        ! Deallocate parallel_t object.
+
+        ! In/Out:
+        !    par_calc: type containing parallel information for calculation
+        !        see definitions above.
+
+        use checking, only: check_deallocate
+
+        type(parallel_t), intent(inout) :: par_calc
+
+        integer :: ierr
+
+        associate(nb=>par_calc%report_comm)
+            if (non_blocking_comm) then
+                if (allocated(nb%rep_info)) then
+                    deallocate(nb%rep_info, stat=ierr)
+                    call check_deallocate('nb%rep_info', ierr)
+                end if
+                if (allocated(nb%request)) then
+                    deallocate(nb%request, stat=ierr)
+                    call check_deallocate('nb%request', ierr)
+                end if
+            end if
+        end associate
+
+        associate(lb=>par_calc%load)
+            if (allocated(lb%proc_map)) then
+                deallocate(lb%proc_map, stat=ierr)
+                call check_deallocate('lb%proc_mapr', ierr)
+            end if
+        end associate
+
+    end subroutine dealloc_parallel_t
 
 end module calc

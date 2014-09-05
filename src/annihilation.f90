@@ -22,7 +22,7 @@ contains
         !    tinitiator: true if the initiator approximation is being used.
         ! In/Out:
         !    rng: random number generator.
-        !    determ_flags: A list of flags specifying whether determinants in
+        !    determ_flags (optional): A list of flags specifying whether determinants in
         !        walker_dets are deterministic or not.
         ! Out:
         !    nspawn_events (optional): number of successful spawning events on
@@ -45,13 +45,163 @@ contains
 
         call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
 
-        if (qmc_spawn%head(thread_id,0) > 0) then
+        call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn, determ_flags=determ_flags)
+
+    end subroutine direct_annihilation
+
+    ! [todo] - handle nspawn_events and determ_flags (as in direct_annihilation)
+    subroutine direct_annihilation_received_list(sys, rng, tinitiator)
+
+        ! Annihilation algorithm for non-blocking communications.
+        ! Spawned walkers are added to the main list, by which new walkers are
+        ! introduced to the main list and existing walkers can have their
+        ! populations either enhanced or diminished.
+
+        ! If doing load balancing as well the annihilation procedure changes a
+        ! bit. If load balancing has been decided upon then proc_map will have been
+        ! updated by now. This means any walkers spawned during the current iteration
+        ! will have been added to the modified section of the spawned walker array.
+        ! To take care of annihilation we first merge the received list into the
+        ! main list and then redistribute sections of the main list according
+        ! the the updated proc map, as in normal load balancing.
+        ! These walkers will be added to the spawned list and then communicated,
+        ! using non-blocking comms instead of the normal MPI_AlltoAll. So they
+        ! will need to be evolved upon receipt, as is the case for nomal
+        ! non-blocking communications.
+
+        ! This is a wrapper around various utility functions which perform the
+        ! different parts of the annihilation process.
+
+        ! In:
+        !    sys: system being studied.
+        !    tinitiator: true if the initiator approximation is being used.
+        ! In/Out:
+        !    rng: random number generator.
+
+        use parallel, only: nthreads, nprocs, iproc
+        use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
+                              non_blocking_send
+        use sort, only: qsort
+        use system, only: sys_t
+        use dSFMT_interface, only: dSFMT_t
+
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_t), intent(inout) :: rng
+        logical, intent(in) :: tinitiator
+
+        integer, parameter :: thread_id = 0
+
+        ! Perform annihilation inside received list. This involves annihilating
+        ! walkers which were spawned onto this processor from other processors
+        ! (not including the current processor) from  the previous iteration.
+        ! They have since been evolved so they can be annihilated with the main list.
+        ! First annihilate within the received_list.
+        call annihilate_wrapper_non_blocking_spawn(received_list, tinitiator)
+        ! Annihilate with main list.
+        call annihilate_main_list_wrapper(sys, rng, tinitiator, received_list)
+
+    end subroutine direct_annihilation_received_list
+
+    subroutine direct_annihilation_spawned_list(sys, rng, tinitiator, send_counts, req_data_s, non_block_spawn)
+
+        ! Annihilation algorithm for non-blocking communications.
+        ! Spawned walkers are added to the main list, by which new walkers are
+        ! introduced to the main list and existing walkers can have their
+        ! populations either enhanced or diminished.
+
+        ! This is a wrapper around various utility functions which perform the
+        ! different parts of the annihilation process.
+
+        ! In:
+        !    sys: system being studied.
+        !    tinitiator: true if the initiator approximation is being used.
+        ! In/Out:
+        !    rng: random number generator.
+        !    send_counts: array of messages sizes. Will be allocated in
+        !       calculate_displacements and sent in non_blocking_send.
+        !    req_data_s: array of requests for non-blocking send of walkers.
+        ! Out:
+        !    non_block_spawn: number of spawned particles on current processor
+        !       during current MC cycle.
+
+        use parallel, only: nthreads, nprocs, iproc
+        use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
+                              non_blocking_send
+        use sort, only: qsort
+        use system, only: sys_t
+        use dSFMT_interface, only: dSFMT_t
+
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_t), intent(inout) :: rng
+        logical, intent(in) :: tinitiator
+        integer, intent(inout) :: send_counts(0:)
+        integer, intent(inout) :: req_data_s(0:)
+        integer, intent(out) :: non_block_spawn(:)
+
+        integer, parameter :: thread_id = 0
+
+        ! Need to calculate how many walkers we are going to send to all other
+        ! processors. Need to do it now as spawn%head changes meaning upon annihilation.
+        call calculate_displacements(qmc_spawn, send_counts, non_block_spawn)
+
+        ! Perform annihilation within the spawned walker list.
+        ! This involves locating, compressing and sorting the section of the spawned
+        ! list which needs to be annihilated with the main list on this processor.
+        call annihilate_wrapper_non_blocking_spawn(qmc_spawn, tinitiator, iproc)
+        ! Annihilate portion of spawned list with main list.
+        call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+nthreads)
+        ! Communicate walkers spawned onto other processors during this
+        ! evolution step to their new processors.
+        call non_blocking_send(qmc_spawn, send_counts, req_data_s)
+
+    end subroutine direct_annihilation_spawned_list
+
+    subroutine annihilate_main_list_wrapper(sys, rng, tinitiator, spawn, lower_bound, determ_flags)
+
+        ! This is a wrapper around various utility functions which perform the
+        ! different parts of the annihilation process during non-blocking
+        ! communications.
+
+        ! In:
+        !    sys: system being studied.
+        !    tinitiator: true if the initiator approximation is being used.
+        ! In/Out:
+        !    rng: random number generator.
+        !    spawn: spawn_t object containing spawned particles. For non-blocking
+        !       communications a subsection of the spawned walker list will be annihilated
+        !       with the main list, otherwise the entire list will be annihilated and merged.
+        !    determ_flags (optional): A list of flags specifying whether determinants in
+        !        walker_dets are deterministic or not.
+        ! In (optional):
+        !     lower_bound: starting point we annihiliate from in spawn_t object.
+
+        use system, only: sys_t
+        use spawn_data, only: spawn_t
+        use dSFMT_interface, only: dSFMT_t
+
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_t), intent(inout) :: rng
+        logical, intent(in) :: tinitiator
+        integer, optional, intent(in) :: lower_bound
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(inout), optional :: determ_flags(:)
+
+        integer, parameter :: thread_id = 0
+        integer :: spawn_start
+
+        if (present(lower_bound)) then
+            spawn_start = lower_bound
+        else
+            spawn_start = 1
+        end if
+
+        if (spawn%head(thread_id,0) >= spawn_start) then
             ! Have spawned walkers on this processor.
 
-            if (tinitiator) then 
-                call annihilate_main_list_initiator(sys%basis%tensor_label_len)
+            if (tinitiator) then
+                call annihilate_main_list_initiator(spawn, sys%basis%tensor_label_len, lower_bound)
             else
-                call annihilate_main_list(sys%basis%tensor_label_len)
+                call annihilate_main_list(spawn, sys%basis%tensor_label_len, lower_bound)
             end if
 
             ! Remove determinants with zero walkers on them from the main
@@ -63,7 +213,7 @@ contains
             if (real_amplitudes) call round_low_population_spawns(rng)
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers_wrapper(sys, determ_flags)
+            call insert_new_walkers(sys, spawn, determ_flags, lower_bound)
 
         else
 
@@ -73,9 +223,9 @@ contains
 
         end if
 
-    end subroutine direct_annihilation
+    end subroutine annihilate_main_list_wrapper
 
-    subroutine annihilate_main_list(tensor_label_len)
+    subroutine annihilate_main_list(spawn, tensor_label_len, lower_bound)
 
         ! Annihilate particles in the main walker list with those in the spawned
         ! walker list.
@@ -84,28 +234,44 @@ contains
         !    tensor_label_len: number of elements in the bit array describing the position
         !       of the particle in the space (i.e.  determinant label in vector/pair of
         !       determinants label in array).
+        ! In/Out:
+        !    spawn: spawn_t obeject containing spawned particles to be annihilated with main
+        !       list.
+        ! In (optional):
+        !    lower_bound: starting point we annihiliate from in spawn_t object.
+        !       Default: 1.
 
         use search, only: binary_search
+        use spawn_data, only: spawn_t
 
         integer, intent(in) :: tensor_label_len
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in), optional :: lower_bound
 
-        integer :: i, pos, k, istart, iend, nannihilate
+        integer :: i, pos, k, istart, iend, nannihilate, spawn_start
         integer(int_p) :: old_pop(sampling_size)
         integer(i0) :: f(tensor_label_len)
+
         logical :: hit
         integer, parameter :: thread_id = 0
 
         nannihilate = 0
+        if (present(lower_bound)) then
+            spawn_start = lower_bound
+        else
+            spawn_start = 1
+        end if
         istart = 1
         iend = tot_walkers
-        do i = 1, qmc_spawn%head(thread_id,0)
-            f = int(qmc_spawn%sdata(:tensor_label_len,i), i0)
+
+        do i = spawn_start, spawn%head(thread_id,0)
+            f = int(spawn%sdata(:tensor_label_len,i), i0)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
                 old_pop = walker_population(:,pos)
                 walker_population(:,pos) = walker_population(:,pos) + &
-                    int(qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes,i), int_p)
+                    int(spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,i), int_p)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
                 ! We need to take into account:
@@ -120,18 +286,18 @@ contains
             else
                 ! Compress spawned list.
                 k = i - nannihilate
-                qmc_spawn%sdata(:,k) = qmc_spawn%sdata(:,i)
+                spawn%sdata(:,k) = spawn%sdata(:,i)
             end if
         end do
 
-        qmc_spawn%head(thread_id,0) = qmc_spawn%head(thread_id,0) - nannihilate
+        spawn%head(thread_id,0) = spawn%head(thread_id,0) - nannihilate
 
     end subroutine annihilate_main_list
 
-    subroutine annihilate_main_list_initiator(tensor_label_len)
+    subroutine annihilate_main_list_initiator(spawn, tensor_label_len, lower_bound)
 
         ! Annihilate particles in the main walker list with those in the spawned
-        ! walker list.
+        ! walker list starting from lower bound in spawn.
 
         ! This version is for the initiator algorithm, where we also need to
         ! discard spawned walkers which are on previously unoccupied determinants
@@ -141,21 +307,33 @@ contains
         !    tensor_label_len: number of elements in the bit array describing the position
         !       of the particle in the space (i.e.  determinant label in vector/pair of
         !       determinants label in array).
+        ! In/Out:
+        !    spawn: spawn_t object we wish to annihilate with main list.
+        ! In (Optional):
+        !    lower_bound: starting point we annihiliate from in spawn_t object.
 
         use search, only: binary_search
 
         integer, intent(in) :: tensor_label_len
-        integer :: i, ipart, pos, k, istart, iend, nannihilate
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in), optional :: lower_bound
+
+        integer :: i, ipart, pos, k, istart, iend, nannihilate, spawn_start
         integer(int_p) :: old_pop(sampling_size)
         integer(i0) :: f(tensor_label_len)
         logical :: hit, discard
         integer, parameter :: thread_id = 0
 
         nannihilate = 0
+        if (present(lower_bound)) then
+            spawn_start = lower_bound
+        else
+            spawn_start = 1
+        end if
         istart = 1
         iend = tot_walkers
-        do i = 1, qmc_spawn%head(thread_id,0)
-            f = int(qmc_spawn%sdata(:tensor_label_len,i), i0)
+        do i = spawn_start, spawn%head(thread_id,0)
+            f = int(spawn%sdata(:tensor_label_len,i), i0)
             call binary_search(walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 old_pop = walker_population(:,pos)
@@ -165,15 +343,15 @@ contains
                     if (walker_population(ipart,pos) /= 0_int_p) then
                         ! Annihilate!
                         walker_population(ipart,pos) = walker_population(ipart,pos) + &
-                                                        int(qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i), int_p)
-                    else if (.not.btest(qmc_spawn%sdata(qmc_spawn%flag_indx,i),ipart+qmc_spawn%bit_str_len)) then
+                                                        int(spawn%sdata(ipart+spawn%bit_str_len,i), int_p)
+                    else if (.not.btest(spawn%sdata(spawn%flag_indx,i),ipart+spawn%bit_str_len)) then
                         ! Keep only if from a multiple spawning event or an
                         ! initiator.
-                        ! If this is the case, then sdata(flag_indx,i) 
-                        ! does not have a bit set in corresponding to 2**pop_indx, 
+                        ! If this is the case, then sdata(flag_indx,i)
+                        ! does not have a bit set in corresponding to 2**pop_indx,
                         ! where pop_indx is the index of this walker type in the
-                        ! qmc_spawn%sdata array (i.e. ipart+bit_str_len).
-                        walker_population(ipart,pos) = int(qmc_spawn%sdata(ipart+qmc_spawn%bit_str_len,i), int_p)
+                        ! spawn%sdata array (i.e. ipart+bit_str_len).
+                        walker_population(ipart,pos) = int(spawn%sdata(ipart+spawn%bit_str_len,i), int_p)
                     end if
                 end do
                 ! The change in the number of particles is a bit subtle.
@@ -183,7 +361,7 @@ contains
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
                 nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop), dp)/real_factor
-                ! One more entry to be removed from the qmc_spawn%sdata array.
+                ! One more entry to be removed from the spawn%sdata array.
                 nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
@@ -193,18 +371,18 @@ contains
                 ! Keep only progeny spawned by initiator determinants
                 ! or multiple sign-coherent events.  If neither of these
                 ! conditions are met then the j-th bit of sdata(flag_indx,i) is set,
-                ! where j is the particle index in qmc_spawn%sdata.
+                ! where j is the particle index in spawn%sdata.
                 discard = .true.
-                do ipart = qmc_spawn%bit_str_len+1, qmc_spawn%bit_str_len+qmc_spawn%ntypes
-                    if (btest(qmc_spawn%sdata(qmc_spawn%flag_indx,i),ipart)) then
+                do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
+                    if (btest(spawn%sdata(spawn%flag_indx,i),ipart)) then
                         ! discard attempting spawnings from non-initiator walkers
                         ! onto unoccupied determinants.
                         ! note that the number of particles (nparticles) was not
                         ! updated at the time of spawning, so doesn't change.
-                        qmc_spawn%sdata(ipart,i-nannihilate) = 0_int_s
+                        spawn%sdata(ipart,i-nannihilate) = 0_int_s
                     else
                         ! keep!
-                        qmc_spawn%sdata(ipart,i-nannihilate) = qmc_spawn%sdata(ipart,i)
+                        spawn%sdata(ipart,i-nannihilate) = spawn%sdata(ipart,i)
                         discard = .false.
                     end if
                 end do
@@ -214,13 +392,12 @@ contains
                     nannihilate = nannihilate + 1
                 else
                     ! Need to copy the bit string across...
-                    qmc_spawn%sdata(:tensor_label_len,i-nannihilate) = &
-                        qmc_spawn%sdata(:tensor_label_len,i)
+                    spawn%sdata(:tensor_label_len,i-nannihilate) = spawn%sdata(:tensor_label_len,i)
                 end if
             end if
         end do
 
-        qmc_spawn%head(thread_id,0) = qmc_spawn%head(thread_id,0) - nannihilate
+        spawn%head(thread_id,0) = spawn%head(thread_id,0) - nannihilate
 
     end subroutine annihilate_main_list_initiator
 
@@ -310,7 +487,7 @@ contains
         real_factor_s = int(real_factor, int_s)
 
         nremoved = 0
-        ! [note] - It might be more efficient to combine this with insert_new_walkers_wrapper.
+        ! [note] - It might be more efficient to combine this with insert_new_walkers.
         ! [note] - The number of particles to insert should be small by this point though...
         do i = 1, qmc_spawn%head(thread_id,0)
 
@@ -341,7 +518,7 @@ contains
 
     end subroutine round_low_population_spawns
 
-    subroutine insert_new_walkers_wrapper(sys, determ_flags)
+    subroutine insert_new_walkers(sys, spawn, determ_flags, lower_bound)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -349,18 +526,25 @@ contains
 
         ! In:
         !    sys: system being studied.
+        ! In/Out:
+        !    spawn: spawn_t object containing list of spawned particles.
+        ! In (optional):
         !    determ_flags: A list of flags specifying whether determinants in
         !        walker_dets are deterministic or not.
-
+        !    lower_bound: starting point we annihiliate from in spawn_t object.
+ 
         use search, only: binary_search
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
+        type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
+        integer, intent(in), optional :: lower_bound
 
-        integer :: i, istart, iend, j, k, pos
+        integer :: i, istart, iend, j, k, pos, spawn_start, disp
         integer(int_p) :: spawned_population(sampling_size)
         real(dp) :: real_population(sampling_size)
+
         logical :: hit
         integer, parameter :: thread_id = 0
 
@@ -382,16 +566,23 @@ contains
         ! know that the next new walker has to go below it, allowing us to
         ! search through an ever-decreasing number of elements.
 
+        if (present(lower_bound)) then
+            spawn_start = lower_bound
+            disp = lower_bound - 1
+        else
+            spawn_start = 1
+            disp = 0
+        end if
         istart = 1
         iend = tot_walkers
-        do i = qmc_spawn%head(thread_id,0), 1, -1
+        do i = spawn%head(thread_id,0), spawn_start, -1
 
             ! spawned det is not in the main walker list.
-            call binary_search(walker_dets, int(qmc_spawn%sdata(:sys%basis%tensor_label_len,i), i0), istart, iend, hit, pos)
+            call binary_search(walker_dets, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
-                k = j + i
+                k = j + i - disp
                 walker_dets(:,k) = walker_dets(:,j)
                 walker_population(:,k) = walker_population(:,j)
                 walker_data(:,k) = walker_data(:,j)
@@ -400,12 +591,12 @@ contains
 
             ! Insert new walker into pos and shift it to accommodate the number
             ! of elements that are still to be inserted below it.
-            k = pos + i - 1
+            k = pos + i - 1 - disp
 
             ! The encoded spawned walker sign.
-            associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i), &
+            associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i), &
                     tbl=>sys%basis%tensor_label_len)
-                call insert_new_walker(sys, k, int(qmc_spawn%sdata(:tbl,i), i0), int(spawned_population, int_p))
+                call insert_new_walker(sys, k, int(spawn%sdata(:tbl,i), i0), int(spawned_population, int_p))
                 ! Extract the real sign from the encoded sign.
                 real_population = real(spawned_population,dp)/real_factor
                 nparticles = nparticles + abs(real_population)
@@ -420,10 +611,10 @@ contains
             iend = pos - 1
         end do
 
-        ! Update tot_walkers
-        tot_walkers = tot_walkers + qmc_spawn%head(thread_id,0)
+        ! Update tot_walkers.
+        tot_walkers = tot_walkers + spawn%head(thread_id,0) - disp
 
-    end subroutine insert_new_walkers_wrapper
+    end subroutine insert_new_walkers
 
     subroutine insert_new_walker(sys, pos, det, population)
 

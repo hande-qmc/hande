@@ -254,7 +254,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use system
-        use ranking, only: insertion_rank_rp
+        use ranking, only: insertion_rank
         use errors, only: stop_all
         use parallel, only: parent
 
@@ -413,7 +413,7 @@ contains
         ! Rank by kinetic energy (applies to momentum space basis sets only).
         select case(sys%system)
         case(hub_k, ueg)
-            call insertion_rank_rp(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking, tolerance=depsilon)
+            call insertion_rank(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking, tolerance=depsilon)
         case(hub_real, heisenberg, chung_landau)
             forall (i=1:sys%lattice%nsites) basis_fns_ranking(i) = i
         end select

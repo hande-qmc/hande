@@ -464,9 +464,82 @@ contains
 
     end subroutine load_balancing_report
 
+    subroutine redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
+
+        ! [todo] JSS: - update comments to be more general than just for CCMC.
+
+        ! Due to the cooperative spawning (ie from multiple excitors at once) in
+        ! CCMC, we need to give each excitor the chance to be on the same
+        ! processor with all combinations of excitors, unlike in FCIQMC where
+        ! the spawning events are independent.  We satisfy this by periodically
+        ! moving an excitor to a different processor (MPI rank).
+
+        ! WARNING: if the number of processors is large or the system small,
+        ! this introduces a bias as load balancing prevents all possible
+        ! clusters from being on the same processor at the same time.
+
+        ! In:
+        !    walker_dets: list of occupied excitors on the current processor.
+        !    total_walkers: number of occupied excitors on the current processor.
+        ! In/Out:
+        !    nparticles: number of excips on the current processor.
+        !    walker_populations: Population on occupied excitors.  On output the
+        !        populations of excitors which are sent to other processors are
+        !        set to zero.
+        !    spawn: spawn_t object.  On output particles which need to be sent
+        !        to another processor have been added to the correct position in
+        !        the spawned store.
+
+        use const, only: i0, dp
+        use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor, add_spawned_particles
+        use parallel, only: iproc, nprocs
+
+        integer(i0), intent(in) :: walker_dets(:,:)
+        integer(int_p), intent(inout) :: walker_populations(:,:)
+        integer, intent(inout) :: tot_walkers
+        real(dp), intent(inout) :: nparticles(:)
+        type(spawn_t), intent(inout) :: spawn
+
+        real(dp) :: nsent(size(nparticles))
+
+        integer :: iexcitor, pproc, string_len, slot
+
+        nsent = 0.0_dp
+        string_len = size(walker_dets, dim=1)
+
+        !$omp parallel do default(none) &
+        !$omp shared(tot_walkers, walker_dets, walker_populations, spawn, iproc, nprocs, string_len) &
+        !$omp private(pproc) reduction(+:nsent)
+        do iexcitor = 1, tot_walkers
+            !  - set hash_shift and move_freq
+            call assign_particle_processor(walker_dets(:,iexcitor), string_len, spawn%hash_seed, &
+                                           spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot)
+            if (pproc /= iproc) then
+                ! Need to move.
+                ! Add to spawned array so it will be sent to the correct
+                ! processor during annihilation.
+                ! NOTE: for initiator calculations we need to keep this
+                ! population no matter what.  This relies upon the
+                ! (undocumented) 'feature' that a flag of 0 indicates the parent
+                ! was an initiator...
+                call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
+                ! Update population on the sending processor.
+                nsent = nsent + abs(walker_populations(:,iexcitor))
+                ! Zero population here.  Will be pruned on this determinant
+                ! automatically during annihilation (which will also update tot_walkers).
+                walker_populations(:,iexcitor) = 0_int_p
+            end if
+        end do
+        !$omp end parallel do
+
+        nparticles = nparticles - nsent
+
+    end subroutine redistribute_particles
+
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys)
+    subroutine initial_fciqmc_status(sys, rep_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -474,14 +547,22 @@ contains
 
         ! In:
         !    sys: system being studied.
+        ! In (optional):
+        ! Out (Optional):
+        !    rep_comm: nb_rep_t object containg report loop information.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use excitations, only: excit
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         use system, only: sys_t
+        use calc, only: non_blocking_comm, nb_rep_t
+        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
 
         type(sys_t), intent(in) :: sys
+        type(nb_rep_t), optional, intent(inout) :: rep_comm
+        integer, optional, intent(in) :: spawn_elsewhere
+
         integer :: idet
         real(dp) :: ntot_particles(sampling_size)
         real(dp) :: real_population(sampling_size)
@@ -511,17 +592,23 @@ contains
         call dealloc_det_info_t(cdet)
 
 #ifdef PARALLEL
-        call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        proj_energy = proj_energy_sum
-        call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-        call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-        ! TODO: HFS, DMQMC quantities
+        if (present(rep_comm)) then
+            D0_population = D0_population_cycle*ncycles
+            call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere)
+            call update_energy_estimators_send(rep_comm)
+        else
+            call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            proj_energy = proj_energy_sum
+            call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            ! TODO: HFS, DMQMC quantities
+        end if
 #else
         ntot_particles = nparticles
         D0_population = D0_population_cycle
 #endif
 
-        if (parent) then
+        if (.not. non_blocking_comm .and. parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
@@ -567,7 +654,8 @@ contains
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
 
-        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, doing_load_balancing
+        use load_balancing, only: do_load_balancing
 
         integer(lint), intent(in), optional :: min_attempts
         integer(lint), intent(out) :: nattempts
@@ -608,11 +696,15 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
+        if(doing_load_balancing .and. par_info%load%needed) then
+            call do_load_balancing(par_info)
+        end if
+
     end subroutine init_mc_cycle
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators)
+    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators, rep_comm)
 
         ! In:
         !    sys: system being studied.
@@ -632,12 +724,19 @@ contains
         ! Out:
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
+        ! In/Out (optional):
+        !    rep_comm: nb_rep_t object containing report loop info. Used for
+        !        non-blocking communications where we receive report information
+        !        from previous iteration and communicate the current iterations
+        !        estimators.
 
-        use energy_evaluation, only: update_energy_estimators
+        use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
+                                     update_energy_estimators_recv, update_energy_estimators_send
         use interact, only: fciqmc_interact
-        use parallel, only: parent
+        use parallel, only: parent, nprocs
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
         use system, only: sys_t
+        use calc, only: non_blocking_comm, nb_rep_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ireport
@@ -646,14 +745,31 @@ contains
         real(dp), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
+        type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
         logical :: update
+        real(dp) :: rep_info_copy(nprocs*sampling_size+7)
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update) call update_energy_estimators(ntot_particles)
+
+        if (.not. non_blocking_comm) then
+            ! Update the energy estimators (shift & projected energy).
+            call update_energy_estimators(ntot_particles)
+        else
+           ! Save current report loop quantitites.
+           ! Can't overwrite the send buffer before message completion
+           ! so copy information somewhere else.
+           call local_energy_estimators(rep_info_copy, rep_comm%nb_spawn(2))
+           ! Receive previous iterations report loop quantities.
+           call update_energy_estimators_recv(rep_comm%request, ntot_particles)
+           ! Send current report loop quantities.
+           rep_comm%rep_info = rep_info_copy
+           call update_energy_estimators_send(rep_comm)
+        end if
 
         call cpu_time(curr_time)
 
@@ -733,5 +849,44 @@ contains
         end if
 
     end subroutine send_tau
+
+    subroutine redistribute_load_balancing_dets(walker_dets, walker_populations, tot_walkers, nparticles, spawn, load_tag)
+
+        ! When doing load balancing we need to redistribute chosen sections of
+        ! main list to be sent to their new processors. This is a wrapper which
+        ! takes care of this and resets the load balancing tag so that no
+        ! further load balancing is attempted this report loop. Currently don't
+        ! check if anything will actually be sent.
+
+        ! In:
+        !    walker_dets: list of occupied excitors on the current processor.
+        !    total_walkers: number of occupied excitors on the current processor.
+        ! In/Out:
+        !    nparticles: number of excips on the current processor.
+        !    walker_populations: Population on occupied excitors.  On output the
+        !        populations of excitors which are sent to other processors are
+        !        set to zero.
+        !    spawn: spawn_t object.  On output particles which need to be sent
+        !        to another processor have been added to the correct position in
+        !        the spawned store.
+        !    load_tag: load_t object. On input this has load_tag%doing = .true.
+        !        On output flags will be reset so that load_tag%required =
+        !        .false.
+
+        use spawn_data, only: spawn_t
+
+        integer(i0), intent(in) :: walker_dets(:,:)
+        integer(int_p), intent(inout) :: walker_populations(:,:)
+        integer, intent(inout) :: tot_walkers
+        real(dp), intent(inout) :: nparticles(:)
+        type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: load_tag
+
+        if (load_tag) then
+            call redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
+            load_tag = .false.
+        end if
+
+    end subroutine redistribute_load_balancing_dets
 
 end module qmc_common

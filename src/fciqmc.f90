@@ -22,14 +22,17 @@ contains
 
         use parallel
 
-        use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
-        use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use excitations, only: excit, create_excited_det
+        use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
+                                direct_annihilation_spawned_list
+        use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
+                        doing_load_balancing
+        use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
+        use spawning, only: create_spawned_particle_initiator
         use qmc_common
-        use ifciqmc, only: set_parent_flag
         use folded_spectrum_utils, only: cdet_excit
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
@@ -37,6 +40,8 @@ contains
         use semi_stoch, only: empty_determ_space, dealloc_semi_stoch_t, init_semi_stoch_t
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
+        use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
+        use energy_evaluation, only: update_energy_estimators_recv
 
         type(sys_t), intent(in) :: sys
 
@@ -56,6 +61,7 @@ contains
         type(excit) :: connection
         real(p) :: hmatel
         real(dp) :: real_population
+        integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
 
         logical :: soft_exit
         logical :: semi_stochastic, determ_parent, determ_child
@@ -93,7 +99,13 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys)
+
+        if (non_blocking_comm) then
+            call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart)
+            call initial_fciqmc_status(sys, par_info%report_comm, send_counts(iproc)/received_list%element_len)
+        else
+            call initial_fciqmc_status(sys)
+        end if
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -180,24 +192,40 @@ contains
 
                 end do
 
-                if (semi_stochastic) then
-                    call determ_projection(rng, qmc_spawn, determ)
-                    call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ%flags)
+                if (non_blocking_comm) then
+                    call receive_spawned_walkers(received_list, req_data_s)
+                    call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
+                    call direct_annihilation_received_list(sys, rng, initiator_approximation)
+                    ! Need to add walkers which have potentially moved processor to the spawned walker list.
+                    if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, walker_population, tot_walkers, &
+                                                                                    nparticles, qmc_spawn, par_info%load%needed)
+                    call direct_annihilation_spawned_list(sys, rng, initiator_approximation, send_counts, req_data_s, &
+                                                          par_info%report_comm%nb_spawn)
+                    call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
                 else
-                    call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+                    if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, walker_population, tot_walkers, &
+                                                                                    nparticles, qmc_spawn, par_info%load%needed)
+                    if (semi_stochastic) then
+                        call determ_projection(rng, qmc_spawn, determ)
+                        call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ%flags)
+                    else
+                        call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+                    end if
+                    call end_mc_cycle(nspawn_events, ndeath, nattempts)
                 end if
-
-                call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
             end do
 
             update_tau = bloom_stats%nwarnings_curr > 0
 
-            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit)
+            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 
         end do
+
+        if (non_blocking_comm) call end_non_blocking_comm(sys, rng, initiator_approximation, ireport, received_list, req_data_s,  &
+                                                          par_info%report_comm%request, t1, nparticles_old, shift(1))
 
         if (parent) then
             call write_fciqmc_final(ireport)
@@ -224,5 +252,89 @@ contains
         if (doing_calc(folded_spectrum)) call dealloc_det_info_t(cdet_excit)
 
     end subroutine do_fciqmc
+
+    subroutine evolve_spawned_walkers(sys, spawn, cdet, rng, ndeath)
+
+        ! Evolve spawned list of walkers one time step.
+        ! Used for non-blocking communications.
+
+        ! In:
+        !   sys: system being studied.
+        ! In/Out:
+        !   spawn: spawn_t object containing walkers spawned onto this processor during previous time step.
+        !   cdet: type containing information about determinant. (easier to take this in as it is allocated
+        !        / deallocated in do_fciqmc).
+        !   rng: random number generator.
+        !   ndeath: running total of number of particles which have died or been cloned.
+
+        use proc_pointers, only: sc0_ptr
+        use determinants, only: det_info_t
+        use dSFMT_interface, only: dSFMT_t
+        use excitations, only: excit
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(spawn_t), intent(inout) :: spawn
+        type(dSFMT_t), intent(inout) :: rng
+        type(det_info_t), intent(inout) :: cdet
+        integer(int_p), intent(inout) :: ndeath
+
+        ! [todo] - Check types with Nick's real coefficient work (which will probably be
+        ! [todo] - merged before this).
+        real(p), target :: tmp_data(sampling_size)
+        type(excit) :: connection
+        real(p) :: hmatel
+        integer :: idet, iparticle
+        integer(int_p) :: nspawned
+        integer(int_p) :: pop(spawn%ntypes)
+        real(dp) :: list_pop
+        integer(i0), target :: ftmp(sys%basis%tensor_label_len)
+
+        cdet%f => ftmp
+
+        do idet = 1, spawn%head(0,0) ! loop over walkers/dets
+
+            pop = int(spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet), int_p)
+            ftmp = int(spawn%sdata(:sys%basis%tensor_label_len,idet),i0)
+            ! Need to generate spawned walker data to perform evolution.
+            tmp_data(1) = sc0_ptr(sys, cdet%f) - H00
+            cdet%data => tmp_data
+
+            ! [todo] - Population encoding and decoding when merged with the real coefficient work.
+
+            call decoder_ptr(sys, cdet%f, cdet)
+
+            ! It is much easier to evaluate the projected energy at the
+            ! start of the i-FCIQMC cycle than at the end, as we're
+            ! already looping over the determinants.
+            call update_proj_energy_ptr(sys, f0, cdet, real(pop(1),p), D0_population_cycle, &
+                                        proj_energy, connection, hmatel)
+
+            ! Is this determinant an initiator?
+            ! [todo] - pass determ_flag rather than 1.
+            call set_parent_flag_ptr(real(pop(1),dp), cdet%f, 1, cdet%initiator_flag)
+
+            ! Possibly redundant if only one walker spawned at each spawning event.
+            do iparticle = 1, abs(pop(1))
+
+                ! Attempt to spawn.
+                call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, pop(1), gen_excit_ptr, nspawned, connection)
+
+                ! Spawn if attempt was successful.
+                if (nspawned /= 0) then
+                    call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
+                end if
+
+            end do
+
+            ! Clone or die.
+            ! list_pop is meaningless as nparticles is updated upon annihilation.
+            call death_ptr(rng, tmp_data(1), shift(1), pop(1), list_pop, ndeath)
+            ! Update population of walkers on current determinant.
+            spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet) = pop
+
+        end do
+
+    end subroutine evolve_spawned_walkers
 
 end module fciqmc

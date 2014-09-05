@@ -30,6 +30,7 @@ contains
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+        use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
 
@@ -109,7 +110,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: ierr
-        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel)
+        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
         integer :: step, size_main_walker, size_spawned_walker
         integer :: nwalker_int, nwalker_int_p, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
@@ -196,6 +197,8 @@ contains
         call check_allocate('walker_population', sampling_size*walker_length, ierr)
         allocate(walker_data(sampling_size+info_size,walker_length), stat=ierr)
         call check_allocate('walker_data', size(walker_data), ierr)
+        allocate(nparticles_proc(sampling_size, nprocs), stat=ierr)
+        call check_allocate('nparticles_proc', nprocs*sampling_size, ierr)
 
         ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
         if (mod(spawned_walker_length, nprocs) /= 0) then
@@ -240,6 +243,13 @@ contains
 
         call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, qmc_spawn)
+        if (non_blocking_comm) then
+            call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
+                               spawned_walker_length, spawn_cutoff, real_bit_shift, 7, received_list)
+        end if
+
+        if (nprocs == 1 .or. .not. doing_load_balancing) par_info%load%nslots = 1
+        call init_parallel_t(sampling_size, non_blocking_comm, par_info)
 
         allocate(f0(sys%basis%string_len), stat=ierr)
         call check_allocate('f0',sys%basis%string_len,ierr)
@@ -326,8 +336,8 @@ contains
                 ! Finally, we need to check if the reference determinant actually
                 ! belongs on this processor.
                 ! If it doesn't, set the walkers array to be empty.
-                D0_proc = assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, &
-                                                    qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs)
+                call assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, &
+                                                    qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, D0_proc, slot)
                 if (D0_proc /= iproc) tot_walkers = 0
             end if
 
@@ -364,8 +374,8 @@ contains
                     call encode_det(sys%basis, occ_list0_inv, f0_inv)
                 end select
 
-                D0_inv_proc = assign_particle_processor(f0_inv, sys%basis%string_len, qmc_spawn%hash_seed, &
-                                                        qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs)
+                call assign_particle_processor(f0_inv, sys%basis%string_len, qmc_spawn%hash_seed, &
+                                                        qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, D0_inv_proc, slot)
 
                 ! Store if not identical to reference det.
                 if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
@@ -403,9 +413,16 @@ contains
         forall (i=1:sampling_size) nparticles(i) = sum(abs( real(walker_population(i,:tot_walkers),dp)/real_factor))
         ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
-        call mpi_allreduce(nparticles, tot_nparticles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        do i=1, sampling_size
+            call mpi_allgather(nparticles(i), 1, MPI_REAL8, nparticles_proc(i,:), 1, MPI_REAL8, MPI_COMM_WORLD, ierr)
+        end do
+        ! When restarting a non-blocking calculation this sum will not equal
+        ! tot_nparticles as some walkers have been communicated around the report
+        ! loop. The correct total is in the restart file so get it from there.
+        if (.not. restart) forall(i=1:sampling_size) tot_nparticles(i) = sum(nparticles_proc(i,:))
 #else
         tot_nparticles = nparticles
+        nparticles_proc(:sampling_size,1) = nparticles(:sampling_size)
 #endif
         vary_shift = tot_nparticles(1) >= target_particles
         if (doing_calc(hfs_fciqmc_calc)) then

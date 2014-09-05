@@ -39,7 +39,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all, warning
         use parallel
-        use ranking, only: insertion_rank_rp
+        use ranking, only: insertion_rank
         use utils, only: get_free_unit, tri_ind_reorder, int_fmt
 
         use, intrinsic :: iso_fortran_env
@@ -275,11 +275,11 @@ contains
             ! Further we assume that basis functions have alternating alpha, beta
             ! spins.  To overcome this we sort by energy within each spin and then
             ! merge the two ranking orders.
-            ! Yes, this the calls to insertion_rank_rp do result in array copies,
+            ! Yes, this the calls to insertion_rank do result in array copies,
             ! but the arrays are small and the elegance and brevity of the code is
             ! more than aadequate compensation.
-            call insertion_rank_rp(sp_eigv(1::2), sp_eigv_rank(1::2), tolerance=depsilon)
-            call insertion_rank_rp(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
+            call insertion_rank(sp_eigv(1::2), sp_eigv_rank(1::2), tolerance=depsilon)
+            call insertion_rank(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
             ! Interweave so the basis functions remain with alternating spins.
             forall (i = 1:sys%basis%nbasis-1:2)
                 sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
@@ -288,7 +288,7 @@ contains
         else
             ! RHF case is much easier, as spin channels are degenerate and have
             ! the same spatial components.
-            call insertion_rank_rp(sp_eigv(1:), sp_eigv_rank(1:), tolerance=depsilon)
+            call insertion_rank(sp_eigv(1:), sp_eigv_rank(1:), tolerance=depsilon)
         end if
 
         ! the 0 index is used as a null entry in the FCIDUMP file, so need

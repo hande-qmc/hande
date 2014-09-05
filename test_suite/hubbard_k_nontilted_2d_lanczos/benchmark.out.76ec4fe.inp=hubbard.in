@@ -1,0 +1,2010 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Jun 09 2014 at 16:25:02
+ Compiled using cmth.mpi.(optimised)
+ VCS BASE repository version:
+     76ec4fe513f9f016e43962e3ab3d5cb0170ffec2
+ Hostname:
+     kirchhoff
+ Working directory: 
+     /home/fm813/projects/hubbard_fciqmc/test_suite/hubbard_k_nontilted_2d_lanczos
+ Started running on 09/06/2014 at 16:38:29
+ Calculation UUID: 6374312e-2ed4-4548-8811-56560fa12d8e.
+ ================================================================
+
+ Input options
+ -------------
+
+hubbard_k
+
+lattice
+4 0
+0 4
+electrons 4
+lanczos
+lanczos_basis 20
+lanczos_solns 8
+block_size 8
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point        ms     <i|h|i>
+     1   (  0,  0)      1     -4.00000000
+     2   (  0,  0)     -1     -4.00000000
+     3   (  0, -1)      1     -2.00000000
+     4   (  0, -1)     -1     -2.00000000
+     5   ( -1,  0)      1     -2.00000000
+     6   ( -1,  0)     -1     -2.00000000
+     7   (  1,  0)      1     -2.00000000
+     8   (  1,  0)     -1     -2.00000000
+     9   (  0,  1)      1     -2.00000000
+    10   (  0,  1)     -1     -2.00000000
+    11   ( -1, -1)      1      0.00000000
+    12   ( -1, -1)     -1      0.00000000
+    13   (  1, -1)      1      0.00000000
+    14   (  1, -1)     -1      0.00000000
+    15   (  2,  0)      1      0.00000000
+    16   (  2,  0)     -1      0.00000000
+    17   ( -1,  1)      1      0.00000000
+    18   ( -1,  1)     -1      0.00000000
+    19   (  1,  1)      1      0.00000000
+    20   (  1,  1)     -1      0.00000000
+    21   (  0,  2)      1      0.00000000
+    22   (  0,  2)     -1      0.00000000
+    23   (  2, -1)      1      2.00000000
+    24   (  2, -1)     -1      2.00000000
+    25   (  2,  1)      1      2.00000000
+    26   (  2,  1)     -1      2.00000000
+    27   ( -1,  2)      1      2.00000000
+    28   ( -1,  2)     -1      2.00000000
+    29   (  1,  2)      1      2.00000000
+    30   (  1,  2)     -1      2.00000000
+    31   (  2,  2)      1      4.00000000
+    32   (  2,  2)     -1      4.00000000
+
+ Number of electrons: 4
+ Number of basis functions: 32
+ Total size of determinant space: 35960
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point      Inverse
+   1      (  0,  0)        1
+   2      (  0, -1)        5
+   3      ( -1,  0)        4
+   4      (  1,  0)        3
+   5      (  0,  1)        2
+   6      ( -1, -1)       10
+   7      (  1, -1)        9
+   8      (  2,  0)        8
+   9      ( -1,  1)        7
+  10      (  1,  1)        6
+  11      (  0,  2)       11
+  12      (  2, -1)       13
+  13      (  2,  1)       12
+  14      ( -1,  2)       15
+  15      (  1,  2)       14
+  16      (  2,  2)       16
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16
+   2  11   6   7   1  14  15  12   3   4   5  16   8   9  10  13
+   3   6   8   1   9  12   2   4  13   5  14   7  10  16  11  15
+   4   7   1   8  10   2  12   3   5  13  15   6   9  11  16  14
+   5   1   9  10  11   3   4  13  14  15   2   8  16   6   7  12
+   6  14  12   2   3  16  11   7   8   1   9  15   4  13   5  10
+   7  15   2  12   4  11  16   6   1   8  10  14   3   5  13   9
+   8  12   4   3  13   7   6   1  10   9  16   2   5  15  14  11
+   9   3  13   5  14   8   1  10  16  11   6   4  15  12   2   7
+  10   4   5  13  15   1   8   9  11  16   7   3  14   2  12   6
+  11   5  14  15   2   9  10  16   6   7   1  13  12   3   4   8
+  12  16   7   6   8  15  14   2   4   3  13  11   1  10   9   5
+  13   8  10   9  16   4   3   5  15  14  12   1  11   7   6   2
+  14   9  16  11   6  13   5  15  12   2   3  10   7   8   1   4
+  15  10  11  16   7   5  13  14   2  12   4   9   6   1   8   3
+  16  13  15  14  12  10   9  11   7   6   8   5   2   4   3   1
+
+ Diagonalisation
+ ===============
+
+ Considering determinants with spin:  0
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1              912
+         2              896
+         3              896
+         4              896
+         5              896
+         6              896
+         7              896
+         8              912
+         9              896
+        10              896
+        11              912
+        12              896
+        13              896
+        14              896
+        15              896
+        16              912
+
+ Diagonalising symmetry block 1 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:29.870 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          8 (computed),          8 (wanted)
+Times the operator is applied:        140 (MAX:             1000 ).
+Problem size:                         912 (PE:   0),         912 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.862E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       140
+Number of (re)start loops:             16
+Number of eigenpairs locked:            4
+OP(MATVEC):             2.0200E-02 sec,  1.1554E+10 FLOP/S ( 2.3340E+08 FLOP)
+Re-Orthogonalization:   1.6000E-03 sec,  5.2252E+09 FLOP/S ( 8.3603E+06 FLOP)
+Restarting:             2.7000E-03 sec,  1.9118E+09 FLOP/S ( 5.1619E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  1.1550E+03 FLOP/S ( 2.4804E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 2 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:29.910 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         13 (computed),          8 (wanted)
+Times the operator is applied:        120 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.547E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       120
+Number of (re)start loops:             15
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.4700E-02 sec,  1.3136E+10 FLOP/S ( 1.9311E+08 FLOP)
+Re-Orthogonalization:   1.3000E-03 sec,  5.4580E+09 FLOP/S ( 7.0954E+06 FLOP)
+Restarting:             2.3000E-03 sec,  2.2564E+09 FLOP/S ( 5.1896E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  9.6110E+02 FLOP/S ( 2.0639E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 3 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:29.948 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         13 (computed),          8 (wanted)
+Times the operator is applied:        122 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.547E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       122
+Number of (re)start loops:             15
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.4700E-02 sec,  1.3355E+10 FLOP/S ( 1.9632E+08 FLOP)
+Re-Orthogonalization:   1.3000E-03 sec,  5.5365E+09 FLOP/S ( 7.1975E+06 FLOP)
+Restarting:             2.1000E-03 sec,  2.4235E+09 FLOP/S ( 5.0893E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  9.7612E+02 FLOP/S ( 2.0962E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 4 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:29.987 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         13 (computed),          8 (wanted)
+Times the operator is applied:        125 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.547E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       125
+Number of (re)start loops:             16
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.5400E-02 sec,  1.3062E+10 FLOP/S ( 2.0115E+08 FLOP)
+Re-Orthogonalization:   1.0000E-03 sec,  7.4458E+09 FLOP/S ( 7.4458E+06 FLOP)
+Restarting:             2.4000E-03 sec,  2.2221E+09 FLOP/S ( 5.3330E+06 FLOP)
+TRLAN on this PE:       1.9200E-02 sec,  1.1197E+10 FLOP/S ( 2.1499E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 5 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.025 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         13 (computed),          8 (wanted)
+Times the operator is applied:        120 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.547E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       120
+Number of (re)start loops:             15
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.4600E-02 sec,  1.3226E+10 FLOP/S ( 1.9311E+08 FLOP)
+Re-Orthogonalization:   9.0000E-04 sec,  7.8798E+09 FLOP/S ( 7.0918E+06 FLOP)
+Restarting:             2.5000E-03 sec,  2.1490E+09 FLOP/S ( 5.3724E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  9.6195E+02 FLOP/S ( 2.0658E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 6 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.097 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         10 (computed),          8 (wanted)
+Times the operator is applied:        319 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.842E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       319
+Number of (re)start loops:             57
+Number of eigenpairs locked:            5
+OP(MATVEC):             4.0100E-02 sec,  1.2801E+10 FLOP/S ( 5.1334E+08 FLOP)
+Re-Orthogonalization:   2.2000E-03 sec,  9.2542E+09 FLOP/S ( 2.0359E+07 FLOP)
+Restarting:             9.4000E-03 sec,  2.3018E+09 FLOP/S ( 2.1637E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.6020E+03 FLOP/S ( 5.5877E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 7 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.175 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         10 (computed),          8 (wanted)
+Times the operator is applied:        350 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.842E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       350
+Number of (re)start loops:             66
+Number of eigenpairs locked:            4
+OP(MATVEC):             4.2900E-02 sec,  1.3129E+10 FLOP/S ( 5.6323E+08 FLOP)
+Re-Orthogonalization:   2.5000E-03 sec,  8.9843E+09 FLOP/S ( 2.2461E+07 FLOP)
+Restarting:             1.1000E-02 sec,  2.3244E+09 FLOP/S ( 2.5568E+07 FLOP)
+TRLAN on this PE:       5.8400E-02 sec,  1.0534E+10 FLOP/S ( 6.1519E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 8 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.238 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         11 (computed),          8 (wanted)
+Times the operator is applied:        257 (MAX:             1000 ).
+Problem size:                         912 (PE:   0),         912 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.842E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       257
+Number of (re)start loops:             47
+Number of eigenpairs locked:            3
+OP(MATVEC):             3.2800E-02 sec,  1.3063E+10 FLOP/S ( 4.2845E+08 FLOP)
+Re-Orthogonalization:   2.1000E-03 sec,  7.8882E+09 FLOP/S ( 1.6565E+07 FLOP)
+Restarting:             8.5000E-03 sec,  2.3261E+09 FLOP/S ( 1.9772E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.1779E+03 FLOP/S ( 4.6770E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 9 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.299 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         11 (computed),          8 (wanted)
+Times the operator is applied:        260 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.842E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       260
+Number of (re)start loops:             37
+Number of eigenpairs locked:            3
+OP(MATVEC):             3.2100E-02 sec,  1.3034E+10 FLOP/S ( 4.1840E+08 FLOP)
+Re-Orthogonalization:   2.1000E-03 sec,  7.6306E+09 FLOP/S ( 1.6024E+07 FLOP)
+Restarting:             5.7000E-03 sec,  2.3868E+09 FLOP/S ( 1.3605E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.0974E+03 FLOP/S ( 4.5041E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 10 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.360 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         11 (computed),          8 (wanted)
+Times the operator is applied:        261 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.842E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       261
+Number of (re)start loops:             41
+Number of eigenpairs locked:            3
+OP(MATVEC):             3.2400E-02 sec,  1.2963E+10 FLOP/S ( 4.2001E+08 FLOP)
+Re-Orthogonalization:   1.4000E-03 sec,  1.1630E+10 FLOP/S ( 1.6282E+07 FLOP)
+Restarting:             7.2000E-03 sec,  2.1651E+09 FLOP/S ( 1.5589E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.1162E+03 FLOP/S ( 4.5444E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 11 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.424 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         11 (computed),          8 (wanted)
+Times the operator is applied:        263 (MAX:             1000 ).
+Problem size:                         912 (PE:   0),         912 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.842E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       263
+Number of (re)start loops:             48
+Number of eigenpairs locked:            3
+OP(MATVEC):             3.2300E-02 sec,  1.3575E+10 FLOP/S ( 4.3846E+08 FLOP)
+Re-Orthogonalization:   2.6000E-03 sec,  6.5277E+09 FLOP/S ( 1.6972E+07 FLOP)
+Restarting:             8.1000E-03 sec,  2.4532E+09 FLOP/S ( 1.9871E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.2271E+03 FLOP/S ( 4.7826E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 12 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.459 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         10 (computed),          8 (wanted)
+Times the operator is applied:        105 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.553E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       105
+Number of (re)start loops:             13
+Number of eigenpairs locked:            3
+OP(MATVEC):             1.2900E-02 sec,  1.3098E+10 FLOP/S ( 1.6897E+08 FLOP)
+Re-Orthogonalization:   5.0000E-04 sec,  1.2282E+10 FLOP/S ( 6.1410E+06 FLOP)
+Restarting:             2.3000E-03 sec,  2.2299E+09 FLOP/S ( 5.1287E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  8.4343E+02 FLOP/S ( 1.8112E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 13 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.498 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         10 (computed),          8 (wanted)
+Times the operator is applied:        100 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.546E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       100
+Number of (re)start loops:             13
+Number of eigenpairs locked:            3
+OP(MATVEC):             1.3400E-02 sec,  1.2009E+10 FLOP/S ( 1.6092E+08 FLOP)
+Re-Orthogonalization:   8.0000E-04 sec,  7.3503E+09 FLOP/S ( 5.8803E+06 FLOP)
+Restarting:             2.3000E-03 sec,  2.1574E+09 FLOP/S ( 4.9620E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  8.0388E+02 FLOP/S ( 1.7263E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 14 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.534 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         10 (computed),          8 (wanted)
+Times the operator is applied:        100 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.546E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       100
+Number of (re)start loops:             12
+Number of eigenpairs locked:            3
+OP(MATVEC):             1.2900E-02 sec,  1.2475E+10 FLOP/S ( 1.6092E+08 FLOP)
+Re-Orthogonalization:   6.0000E-04 sec,  9.6630E+09 FLOP/S ( 5.7978E+06 FLOP)
+Restarting:             2.1000E-03 sec,  2.3253E+09 FLOP/S ( 4.8832E+06 FLOP)
+TRLAN on this PE:       1.6300E-02 sec,  1.0579E+10 FLOP/S ( 1.7244E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 15 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.571 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         10 (computed),          8 (wanted)
+Times the operator is applied:        104 (MAX:             1000 ).
+Problem size:                         896 (PE:   0),         896 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.546E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       104
+Number of (re)start loops:             14
+Number of eigenpairs locked:            3
+OP(MATVEC):             1.3300E-02 sec,  1.2583E+10 FLOP/S ( 1.6736E+08 FLOP)
+Re-Orthogonalization:   8.0000E-04 sec,  7.6909E+09 FLOP/S ( 6.1527E+06 FLOP)
+Restarting:             2.6000E-03 sec,  2.1704E+09 FLOP/S ( 5.6430E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  8.3859E+02 FLOP/S ( 1.8009E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 16 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.671 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          8 (computed),          8 (wanted)
+Times the operator is applied:        444 (MAX:             1000 ).
+Problem size:                         912 (PE:   0),         912 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.352E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       444
+Number of (re)start loops:             89
+Number of eigenpairs locked:            5
+OP(MATVEC):             6.0000E-02 sec,  1.2337E+10 FLOP/S ( 7.4021E+08 FLOP)
+Re-Orthogonalization:   3.9000E-03 sec,  7.5389E+09 FLOP/S ( 2.9402E+07 FLOP)
+Restarting:             1.4600E-02 sec,  2.3217E+09 FLOP/S ( 3.3897E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  3.7662E+03 FLOP/S ( 8.0878E+08 FLOP)
+
+ ---------------
+
+ Considering determinants with spin:  2
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=2.
+
+ Symmetry index      # dets
+         1              560
+         2              560
+         3              560
+         4              560
+         5              560
+         6              560
+         7              560
+         8              560
+         9              560
+        10              560
+        11              560
+        12              560
+        13              560
+        14              560
+        15              560
+        16              560
+
+ Diagonalising symmetry block 1 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.695 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          9 (computed),          8 (wanted)
+Times the operator is applied:        216 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.820E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       216
+Number of (re)start loops:             38
+Number of eigenpairs locked:            6
+OP(MATVEC):             1.0200E-02 sec,  1.3329E+10 FLOP/S ( 1.3596E+08 FLOP)
+Re-Orthogonalization:   1.6000E-03 sec,  5.3037E+09 FLOP/S ( 8.4859E+06 FLOP)
+Restarting:             3.4000E-03 sec,  2.0493E+09 FLOP/S ( 6.9675E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  7.1178E+02 FLOP/S ( 1.5285E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 2 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.709 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          8 (computed),          8 (wanted)
+Times the operator is applied:         89 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.547E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        89
+Number of (re)start loops:             10
+Number of eigenpairs locked:            5
+OP(MATVEC):             4.0000E-03 sec,  1.4005E+10 FLOP/S ( 5.6020E+07 FLOP)
+Re-Orthogonalization:   4.0000E-04 sec,  7.9548E+09 FLOP/S ( 3.1819E+06 FLOP)
+Restarting:             1.3000E-03 sec,  1.8351E+09 FLOP/S ( 2.3856E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.8892E+02 FLOP/S ( 6.2046E+07 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 3 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.724 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          8 (computed),          8 (wanted)
+Times the operator is applied:         89 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.547E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        89
+Number of (re)start loops:             10
+Number of eigenpairs locked:            5
+OP(MATVEC):             4.7000E-03 sec,  1.1919E+10 FLOP/S ( 5.6020E+07 FLOP)
+Re-Orthogonalization:   5.0000E-04 sec,  6.3639E+09 FLOP/S ( 3.1819E+06 FLOP)
+Restarting:             1.0000E-03 sec,  2.2646E+09 FLOP/S ( 2.2646E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.8834E+02 FLOP/S ( 6.1921E+07 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 4 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.738 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          8 (computed),          8 (wanted)
+Times the operator is applied:         89 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.547E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        89
+Number of (re)start loops:             10
+Number of eigenpairs locked:            5
+OP(MATVEC):             4.1000E-03 sec,  1.3663E+10 FLOP/S ( 5.6020E+07 FLOP)
+Re-Orthogonalization:   6.0000E-04 sec,  5.3032E+09 FLOP/S ( 3.1819E+06 FLOP)
+Restarting:             1.3000E-03 sec,  1.7179E+09 FLOP/S ( 2.2333E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.8819E+02 FLOP/S ( 6.1889E+07 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 5 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.751 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          8 (computed),          8 (wanted)
+Times the operator is applied:         89 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.547E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        89
+Number of (re)start loops:             10
+Number of eigenpairs locked:            5
+OP(MATVEC):             4.4000E-03 sec,  1.2732E+10 FLOP/S ( 5.6020E+07 FLOP)
+Re-Orthogonalization:   2.0000E-04 sec,  1.5910E+10 FLOP/S ( 3.1819E+06 FLOP)
+Restarting:             1.2000E-03 sec,  1.9385E+09 FLOP/S ( 2.3262E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  2.8864E+02 FLOP/S ( 6.1985E+07 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 6 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.779 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:        256 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.820E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       256
+Number of (re)start loops:             42
+Number of eigenpairs locked:            2
+OP(MATVEC):             1.1700E-02 sec,  1.3772E+10 FLOP/S ( 1.6114E+08 FLOP)
+Re-Orthogonalization:   1.2000E-03 sec,  8.3393E+09 FLOP/S ( 1.0007E+07 FLOP)
+Restarting:             6.0000E-03 sec,  1.8868E+09 FLOP/S ( 1.1321E+07 FLOP)
+TRLAN on this PE:       2.0200E-02 sec,  9.1210E+09 FLOP/S ( 1.8424E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 7 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.806 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         11 (computed),          8 (wanted)
+Times the operator is applied:        249 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.820E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       249
+Number of (re)start loops:             41
+Number of eigenpairs locked:            2
+OP(MATVEC):             1.1200E-02 sec,  1.3994E+10 FLOP/S ( 1.5673E+08 FLOP)
+Re-Orthogonalization:   1.5000E-03 sec,  6.4784E+09 FLOP/S ( 9.7176E+06 FLOP)
+Restarting:             5.6000E-03 sec,  1.9784E+09 FLOP/S ( 1.1079E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  8.3477E+02 FLOP/S ( 1.7927E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 8 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.829 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          9 (computed),          8 (wanted)
+Times the operator is applied:        172 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.289E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       172
+Number of (re)start loops:             33
+Number of eigenpairs locked:            1
+OP(MATVEC):             7.8000E-03 sec,  1.3880E+10 FLOP/S ( 1.0826E+08 FLOP)
+Re-Orthogonalization:   1.1000E-03 sec,  6.1340E+09 FLOP/S ( 6.7474E+06 FLOP)
+Restarting:             5.8000E-03 sec,  1.8909E+09 FLOP/S ( 1.0967E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  5.9346E+02 FLOP/S ( 1.2744E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 9 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.854 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         13 (computed),          8 (wanted)
+Times the operator is applied:        223 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.820E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       223
+Number of (re)start loops:             36
+Number of eigenpairs locked:            2
+OP(MATVEC):             9.8000E-03 sec,  1.4323E+10 FLOP/S ( 1.4037E+08 FLOP)
+Re-Orthogonalization:   1.3000E-03 sec,  6.6831E+09 FLOP/S ( 8.6880E+06 FLOP)
+Restarting:             5.2000E-03 sec,  1.8829E+09 FLOP/S ( 9.7910E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  7.4680E+02 FLOP/S ( 1.6037E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 10 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.879 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         13 (computed),          8 (wanted)
+Times the operator is applied:        228 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.820E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       228
+Number of (re)start loops:             38
+Number of eigenpairs locked:            2
+OP(MATVEC):             9.7000E-03 sec,  1.4795E+10 FLOP/S ( 1.4351E+08 FLOP)
+Re-Orthogonalization:   1.1000E-03 sec,  8.1055E+09 FLOP/S ( 8.9161E+06 FLOP)
+Restarting:             6.0000E-03 sec,  1.7360E+09 FLOP/S ( 1.0416E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  7.6579E+02 FLOP/S ( 1.6445E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 11 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.902 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          9 (computed),          8 (wanted)
+Times the operator is applied:        176 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.289E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       176
+Number of (re)start loops:             30
+Number of eigenpairs locked:            1
+OP(MATVEC):             8.1000E-03 sec,  1.3677E+10 FLOP/S ( 1.1078E+08 FLOP)
+Re-Orthogonalization:   6.0000E-04 sec,  1.1354E+10 FLOP/S ( 6.8123E+06 FLOP)
+Restarting:             4.9000E-03 sec,  1.9154E+09 FLOP/S ( 9.3856E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  5.9749E+02 FLOP/S ( 1.2831E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 12 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.932 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:        313 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.546E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       313
+Number of (re)start loops:             57
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.5100E-02 sec,  1.3047E+10 FLOP/S ( 1.9701E+08 FLOP)
+Re-Orthogonalization:   1.2000E-03 sec,  1.0430E+10 FLOP/S ( 1.2516E+07 FLOP)
+Restarting:             5.6000E-03 sec,  1.8588E+09 FLOP/S ( 1.0409E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  1.0341E+03 FLOP/S ( 2.2208E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 13 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.964 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:        337 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.546E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       337
+Number of (re)start loops:             62
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.4800E-02 sec,  1.4333E+10 FLOP/S ( 2.1212E+08 FLOP)
+Re-Orthogonalization:   1.8000E-03 sec,  7.5297E+09 FLOP/S ( 1.3553E+07 FLOP)
+Restarting:             6.6000E-03 sec,  1.7121E+09 FLOP/S ( 1.1300E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  1.1143E+03 FLOP/S ( 2.3929E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 14 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:30.995 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:        323 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.546E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       323
+Number of (re)start loops:             55
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.5000E-02 sec,  1.3554E+10 FLOP/S ( 2.0331E+08 FLOP)
+Re-Orthogonalization:   1.7000E-03 sec,  7.5580E+09 FLOP/S ( 1.2849E+07 FLOP)
+Restarting:             5.4000E-03 sec,  1.8109E+09 FLOP/S ( 9.7787E+06 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  1.0619E+03 FLOP/S ( 2.2803E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 15 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.029 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:        351 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.546E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       351
+Number of (re)start loops:             69
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.5900E-02 sec,  1.3895E+10 FLOP/S ( 2.2093E+08 FLOP)
+Re-Orthogonalization:   1.7000E-03 sec,  8.3714E+09 FLOP/S ( 1.4231E+07 FLOP)
+Restarting:             7.3000E-03 sec,  1.7573E+09 FLOP/S ( 1.2828E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  1.1667E+03 FLOP/S ( 2.5054E+08 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 16 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.058 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:        268 (MAX:             1000 ).
+Problem size:                         560 (PE:   0),         560 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.289E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       268
+Number of (re)start loops:             55
+Number of eigenpairs locked:            5
+OP(MATVEC):             1.2500E-02 sec,  1.3495E+10 FLOP/S ( 1.6869E+08 FLOP)
+Re-Orthogonalization:   1.4000E-03 sec,  7.7052E+09 FLOP/S ( 1.0787E+07 FLOP)
+Restarting:             5.6000E-03 sec,  2.0566E+09 FLOP/S ( 1.1517E+07 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  8.9896E+02 FLOP/S ( 1.9305E+08 FLOP)
+
+ ---------------
+
+ Considering determinants with spin:  4
+
+ Size of determinant space
+ -------------------------
+
+ The table below gives the number of determinants for each symmetry with Ms=4.
+
+ Symmetry index      # dets
+         1              116
+         2              112
+         3              112
+         4              112
+         5              112
+         6              112
+         7              112
+         8              120
+         9              112
+        10              112
+        11              120
+        12              112
+        13              112
+        14              112
+        15              112
+        16              120
+
+ Diagonalising symmetry block 1 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.059 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         116 (PE:   0),         116 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.192E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        17
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.0000E-04 sec,  3.2851E+09 FLOP/S ( 3.2851E+05 FLOP)
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  2.0134E+00 FLOP/S ( 4.3238E+05 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 2 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.059 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.490E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        16
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 3 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.060 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.490E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        15
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+Restarting:             1.0000E-04 sec,  3.2256E+08 FLOP/S ( 3.2256E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 4 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.060 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.490E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        15
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+Restarting:             1.0000E-04 sec,  3.2256E+08 FLOP/S ( 3.2256E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 5 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.061 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.490E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        15
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 6 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.062 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.192E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        17
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+Re-Orthogonalization:   1.0000E-04 sec,  5.9404E+08 FLOP/S ( 5.9404E+04 FLOP)
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 7 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.062 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.192E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        15
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+Restarting:             1.0000E-04 sec,  3.2256E+08 FLOP/S ( 3.2256E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 8 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.063 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         120 (PE:   0),         120 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.192E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        18
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+Restarting:             1.0000E-04 sec,  3.4560E+08 FLOP/S ( 3.4560E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 9 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.064 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.192E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        17
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.0000E-04 sec,  3.0643E+09 FLOP/S ( 3.0643E+05 FLOP)
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  1.8918E+00 FLOP/S ( 4.0627E+05 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 10 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.064 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.192E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        17
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.0000E-04 sec,  3.0643E+09 FLOP/S ( 3.0643E+05 FLOP)
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  1.8918E+00 FLOP/S ( 4.0627E+05 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 11 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.065 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         12 (computed),          8 (wanted)
+Times the operator is applied:         12 (MAX:             1000 ).
+Problem size:                         120 (PE:   0),         120 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.192E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        17
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 12 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.066 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          8 (computed),          8 (wanted)
+Times the operator is applied:         20 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       8.941E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        25
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+Re-Orthogonalization:   1.0000E-04 sec,  1.2126E+09 FLOP/S ( 1.2126E+05 FLOP)
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 13 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.066 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         15 (computed),          8 (wanted)
+Times the operator is applied:         20 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       8.941E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        26
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.0000E-04 sec,  5.1072E+09 FLOP/S ( 5.1072E+05 FLOP)
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  3.3335E+00 FLOP/S ( 7.1587E+05 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 14 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.067 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         15 (computed),          8 (wanted)
+Times the operator is applied:         20 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       8.941E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        26
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+time in OP:                   0.00000E+00 sec
+Re-Orthogonalization:   1.0000E-04 sec,  1.2440E+09 FLOP/S ( 1.2440E+05 FLOP)
+Restarting:             1.0000E-04 sec,  6.7200E+08 FLOP/S ( 6.7200E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 15 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.068 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         15 (computed),          8 (wanted)
+Times the operator is applied:         20 (MAX:             1000 ).
+Problem size:                         112 (PE:   0),         112 (Global)
+Convergence tolerance:           1.49E-08 (rel),       8.941E-08 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        26
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.0000E-04 sec,  5.1072E+09 FLOP/S ( 5.1072E+05 FLOP)
+time in orth:                 0.00000E+00 sec
+Restarting:             1.0000E-04 sec,  6.7200E+08 FLOP/S ( 6.7200E+04 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  3.3335E+00 FLOP/S ( 7.1587E+05 FLOP)
+
+ ---------------
+
+ Diagonalising symmetry block 16 out of 16
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2014/06/09 16:38:31.069 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         15 (computed),          8 (wanted)
+Times the operator is applied:         20 (MAX:             1000 ).
+Problem size:                         120 (PE:   0),         120 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.192E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations        26
+Number of (re)start loops:              1
+Number of random vectors used:          1
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.0000E-04 sec,  5.8560E+09 FLOP/S ( 5.8560E+05 FLOP)
+time in orth:                 0.00000E+00 sec
+time in restarting:           0.00000E+00 sec
+TRLAN on this PE:       2.1475E+05 sec,  3.7594E+00 FLOP/S ( 8.0732E+05 FLOP)
+
+ ---------------
+
+ Lanczos diagonalisation results
+ -------------------------------
+
+    State   Spin   Total energy
+      1       0   -11.836469023564
+      2       0   -11.836469023564
+      3       0   -11.836469023564
+      4       0   -11.833781295697
+      5       0   -11.833781295697
+      6       0   -11.833781295697
+      7       0   -11.833781295697
+      8       0   -11.833781295697
+      9       0   -11.833781295697
+     10       2   -11.833781295697
+     11      -2   -11.833781295697
+     12       2   -11.833781295697
+     13      -2   -11.833781295697
+     14       2   -11.833781295697
+     15      -2   -11.833781295697
+     16       2   -11.833781295697
+     17      -2   -11.833781295697
+     18       2   -11.833781295697
+     19      -2   -11.833781295697
+     20       2   -11.833781295697
+     21      -2   -11.833781295697
+     22       0   -11.726318038518
+     23       0   -11.726318038518
+     24       0   -11.726318038518
+     25       0   -11.726318038518
+     26       0   -11.726318038518
+     27       0   -11.726318038518
+     28       0   -11.614562490616
+     29       0   -10.000000000000
+     30       0   -10.000000000000
+     31       0   -10.000000000000
+     32       0   -10.000000000000
+     33       2   -10.000000000000
+     34      -2   -10.000000000000
+     35       2   -10.000000000000
+     36      -2   -10.000000000000
+     37       2   -10.000000000000
+     38      -2   -10.000000000000
+     39       2   -10.000000000000
+     40      -2   -10.000000000000
+     41       4   -10.000000000000
+     42      -4   -10.000000000000
+     43       4   -10.000000000000
+     44      -4   -10.000000000000
+     45       4   -10.000000000000
+     46      -4   -10.000000000000
+     47       4   -10.000000000000
+     48      -4   -10.000000000000
+     49       0    -9.925493617423
+     50       0    -9.925493617423
+     51       0    -9.925493617423
+     52       0    -9.925493617423
+     53       0    -9.925493617423
+     54       0    -9.925493617423
+     55       0    -9.925493617423
+     56       0    -9.925493617423
+     57       2    -9.925493617423
+     58      -2    -9.925493617423
+     59       2    -9.925493617423
+     60      -2    -9.925493617423
+     61       2    -9.925493617423
+     62      -2    -9.925493617423
+     63       2    -9.925493617423
+     64      -2    -9.925493617423
+     65       2    -9.925493617423
+     66      -2    -9.925493617423
+     67       2    -9.925493617423
+     68      -2    -9.925493617423
+     69       2    -9.925493617423
+     70      -2    -9.925493617423
+     71       2    -9.925493617423
+     72      -2    -9.925493617423
+     73       0    -9.908015506801
+     74       0    -9.908015506801
+     75       0    -9.908015506801
+     76       0    -9.908015506801
+     77       0    -9.908015506801
+     78       0    -9.908015506801
+     79       0    -9.908015506801
+     80       0    -9.908015506801
+     81       2    -9.908015506801
+     82      -2    -9.908015506801
+     83       2    -9.908015506801
+     84      -2    -9.908015506801
+     85       2    -9.908015506801
+     86      -2    -9.908015506801
+     87       2    -9.908015506801
+     88      -2    -9.908015506801
+     89       2    -9.908015506801
+     90      -2    -9.908015506801
+     91       2    -9.908015506801
+     92      -2    -9.908015506801
+     93       2    -9.908015506801
+     94      -2    -9.908015506801
+     95       2    -9.908015506801
+     96      -2    -9.908015506801
+     97       0    -9.879534706996
+     98       0    -9.879534706996
+     99       0    -9.879534706996
+    100       0    -9.879534706996
+    101       0    -9.879534706996
+    102       0    -9.879534706996
+    103       0    -9.879534706996
+    104       0    -9.879534706996
+    105       0    -9.869665864593
+    106       0    -9.869665864593
+    107       0    -9.869665864593
+    108       0    -9.869665864593
+    109       0    -9.869665864593
+    110       0    -9.869665864593
+    111       0    -9.869665864593
+    112       0    -9.869665864593
+    113       0    -9.859608357997
+    114       0    -9.859608357997
+    115       0    -9.859608357997
+    116       0    -9.859608357997
+    117       2    -9.859608357997
+    118      -2    -9.859608357997
+    119       2    -9.859608357997
+    120      -2    -9.859608357997
+    121       2    -9.859608357997
+    122      -2    -9.859608357997
+    123       2    -9.859608357997
+    124      -2    -9.859608357997
+    125       0    -9.836380074295
+    126       0    -9.836380074295
+    127       0    -9.836380074295
+    128       0    -9.836380074295
+    129       2    -9.836380074295
+    130      -2    -9.836380074295
+    131       2    -9.836380074295
+    132      -2    -9.836380074295
+    133       2    -9.836380074295
+    134      -2    -9.836380074295
+    135       2    -9.836380074295
+    136      -2    -9.836380074295
+    137       0    -9.802198351931
+    138       0    -9.802198351931
+    139       0    -9.802198351931
+    140       0    -9.802198351931
+    141       0    -9.802198351931
+    142       0    -9.802198351931
+    143       0    -9.802198351931
+    144       0    -9.802198351931
+    145       2    -9.802198351931
+    146      -2    -9.802198351931
+    147       2    -9.802198351931
+    148      -2    -9.802198351931
+    149       2    -9.802198351931
+    150      -2    -9.802198351931
+    151       2    -9.802198351931
+    152      -2    -9.802198351931
+    153       2    -9.802198351931
+    154      -2    -9.802198351931
+    155       2    -9.802198351931
+    156      -2    -9.802198351931
+    157       2    -9.802198351931
+    158      -2    -9.802198351931
+    159       2    -9.802198351931
+    160      -2    -9.802198351931
+    161       0    -9.777727018434
+    162       0    -9.777727018434
+    163       0    -9.777727018434
+    164       0    -9.777727018434
+    165       2    -9.777727018434
+    166      -2    -9.777727018434
+    167       2    -9.777727018434
+    168      -2    -9.777727018434
+    169       2    -9.777727018434
+    170      -2    -9.777727018434
+    171       2    -9.777727018434
+    172      -2    -9.777727018434
+    173       0    -9.749460730755
+    174       0    -9.749460730755
+    175       0    -9.749460730755
+    176       0    -9.749460730755
+    177       0    -9.707449943743
+    178       0    -9.707449943743
+    179       0    -9.707449943743
+    180       0    -9.707449943743
+    181       2    -9.707449943743
+    182      -2    -9.707449943743
+    183       2    -9.707449943743
+    184      -2    -9.707449943743
+    185       2    -9.707449943743
+    186      -2    -9.707449943743
+    187       2    -9.707449943743
+    188      -2    -9.707449943743
+    189       2    -9.707449943743
+    190      -2    -9.707449943743
+    191       2    -9.707449943743
+    192      -2    -9.707449943743
+    193       2    -9.707449943743
+    194      -2    -9.707449943743
+    195       2    -9.707449943743
+    196      -2    -9.707449943743
+    197       2    -9.700245841511
+    198      -2    -9.700245841511
+    199       2    -9.700245841511
+    200      -2    -9.700245841511
+    201       2    -9.700245841511
+    202      -2    -9.700245841511
+    203       2    -9.700245841511
+    204      -2    -9.700245841511
+    205       0    -8.000000000000
+    206       0    -8.000000000000
+    207       0    -8.000000000000
+    208       0    -8.000000000000
+    209       0    -8.000000000000
+    210       0    -8.000000000000
+    211       0    -8.000000000000
+    212       0    -8.000000000000
+    213       0    -8.000000000000
+    214       0    -8.000000000000
+    215       0    -8.000000000000
+    216       0    -8.000000000000
+    217       0    -8.000000000000
+    218       0    -8.000000000000
+    219       0    -8.000000000000
+    220       0    -8.000000000000
+    221       2    -8.000000000000
+    222      -2    -8.000000000000
+    223       2    -8.000000000000
+    224      -2    -8.000000000000
+    225       2    -8.000000000000
+    226      -2    -8.000000000000
+    227       2    -8.000000000000
+    228      -2    -8.000000000000
+    229       2    -8.000000000000
+    230      -2    -8.000000000000
+    231       2    -8.000000000000
+    232      -2    -8.000000000000
+    233       2    -8.000000000000
+    234      -2    -8.000000000000
+    235       2    -8.000000000000
+    236      -2    -8.000000000000
+    237       2    -8.000000000000
+    238      -2    -8.000000000000
+    239       2    -8.000000000000
+    240      -2    -8.000000000000
+    241       2    -8.000000000000
+    242      -2    -8.000000000000
+    243       2    -8.000000000000
+    244      -2    -8.000000000000
+    245       2    -8.000000000000
+    246      -2    -8.000000000000
+    247       2    -8.000000000000
+    248      -2    -8.000000000000
+    249       2    -8.000000000000
+    250      -2    -8.000000000000
+    251       2    -8.000000000000
+    252      -2    -8.000000000000
+    253       2    -8.000000000000
+    254      -2    -8.000000000000
+    255       4    -8.000000000000
+    256      -4    -8.000000000000
+    257       4    -8.000000000000
+    258      -4    -8.000000000000
+    259       4    -8.000000000000
+    260      -4    -8.000000000000
+    261       4    -8.000000000000
+    262      -4    -8.000000000000
+    263       4    -8.000000000000
+    264      -4    -8.000000000000
+    265       4    -8.000000000000
+    266      -4    -8.000000000000
+    267       4    -8.000000000000
+    268      -4    -8.000000000000
+    269       4    -8.000000000000
+    270      -4    -8.000000000000
+    271       4    -8.000000000000
+    272      -4    -8.000000000000
+    273       4    -8.000000000000
+    274      -4    -8.000000000000
+    275       0    -7.969828263512
+    276       0    -7.969828263512
+    277       0    -7.962727788572
+    278       0    -7.962727788572
+    279       0    -7.962727788572
+    280       0    -7.957529431197
+    281       0    -7.957529431197
+    282       0    -7.957529431197
+    283       0    -7.957529431197
+    284       0    -7.957529431197
+    285       2    -7.957529431197
+    286      -2    -7.957529431197
+    287       2    -7.957529431197
+    288      -2    -7.957529431197
+    289       2    -7.957529431197
+    290      -2    -7.957529431197
+    291       2    -7.957529431197
+    292      -2    -7.957529431197
+    293       2    -7.957529431197
+    294      -2    -7.957529431197
+    295       2    -7.957529431197
+    296      -2    -7.957529431197
+    297       0    -7.955484104993
+    298       0    -7.947496031029
+    299       0    -7.947496031029
+    300       0    -7.947496031029
+    301       2    -7.947496031029
+    302      -2    -7.947496031029
+    303       2    -7.947496031029
+    304      -2    -7.947496031029
+    305       2    -7.947496031029
+    306      -2    -7.947496031029
+    307       0    -7.947055779189
+    308       0    -7.947055779189
+    309       0    -7.947055779189
+    310       0    -7.947055779189
+    311       0    -7.947055779189
+    312       2    -7.947055779189
+    313      -2    -7.947055779189
+    314       2    -7.947055779189
+    315      -2    -7.947055779189
+    316       2    -7.947055779189
+    317      -2    -7.947055779189
+    318       2    -7.947055779189
+    319      -2    -7.947055779189
+    320       2    -7.947055779189
+    321      -2    -7.947055779189
+    322       2    -7.947055779189
+    323      -2    -7.947055779189
+    324       0    -7.946736171230
+    325       0    -7.946736171230
+    326       0    -7.946736171230
+    327       0    -7.946736171230
+    328       0    -7.946736171230
+    329       0    -7.946736171230
+    330       2    -7.946736171230
+    331      -2    -7.946736171230
+    332       2    -7.946736171230
+    333      -2    -7.946736171230
+    334       2    -7.946736171230
+    335      -2    -7.946736171230
+    336       2    -7.946736171230
+    337      -2    -7.946736171230
+    338       2    -7.946736171230
+    339      -2    -7.946736171230
+    340       2    -7.946736171230
+    341      -2    -7.946736171230
+    342       0    -7.946405727677
+    343       0    -7.946405727678
+    344       2    -7.946405727678
+    345      -2    -7.946405727678
+    346       2    -7.946405727677
+    347      -2    -7.946405727677
+    348       2    -7.946405727677
+    349      -2    -7.946405727677
+    350       0    -7.946121748873
+    351       0    -7.946121748873
+    352       0    -7.946121748873
+    353       2    -7.946121748873
+    354      -2    -7.946121748873
+    355       2    -7.946121748873
+    356      -2    -7.946121748873
+    357       2    -7.946121748873
+    358      -2    -7.946121748873
+    359       2    -7.946121748873
+    360      -2    -7.946121748873
+    361       2    -7.946121748873
+    362      -2    -7.946121748873
+    363       2    -7.946121748873
+    364      -2    -7.946121748873
+    365       2    -7.946112822744
+    366      -2    -7.946112822744
+    367       2    -7.946112822744
+    368      -2    -7.946112822744
+    369       2    -7.946112822744
+    370      -2    -7.946112822744
+    371       2    -7.946112822744
+    372      -2    -7.946112822744
+    373       0    -7.911566695747
+    374       0    -7.911566695747
+    375       2    -7.906004429719
+    376      -2    -7.906004429719
+    377       2    -7.899484597362
+    378      -2    -7.899484597362
+    379       2    -7.899484597362
+    380      -2    -7.899484597362
+    381       2    -7.888119859452
+    382      -2    -7.888119859452
+    383       2    -7.888119859452
+    384      -2    -7.888119859452
+    385       2    -7.868643330187
+    386      -2    -7.868643330187
+    387       2    -7.868643330187
+    388      -2    -7.868643330187
+    389       2    -6.000000000000
+    390      -2    -6.000000000000
+    391       2    -6.000000000000
+    392      -2    -6.000000000000
+    393       2    -6.000000000000
+    394      -2    -6.000000000000
+    395       2    -6.000000000000
+    396      -2    -6.000000000000
+    397       2    -6.000000000000
+    398      -2    -6.000000000000
+    399       2    -6.000000000000
+    400      -2    -6.000000000000
+    401       2    -6.000000000000
+    402      -2    -6.000000000000
+    403       2    -6.000000000000
+    404      -2    -6.000000000000
+    405       4    -6.000000000000
+    406      -4    -6.000000000000
+    407       4    -6.000000000000
+    408      -4    -6.000000000000
+    409       4    -6.000000000000
+    410      -4    -6.000000000000
+    411       4    -6.000000000000
+    412      -4    -6.000000000000
+    413       4    -6.000000000000
+    414      -4    -6.000000000000
+    415       4    -6.000000000000
+    416      -4    -6.000000000000
+    417       4    -6.000000000000
+    418      -4    -6.000000000000
+    419       4    -6.000000000000
+    420      -4    -6.000000000000
+    421       4    -6.000000000000
+    422      -4    -6.000000000000
+    423       4    -6.000000000000
+    424      -4    -6.000000000000
+    425       4    -6.000000000000
+    426      -4    -6.000000000000
+    427       4    -6.000000000000
+    428      -4    -6.000000000000
+    429       4    -6.000000000000
+    430      -4    -6.000000000000
+    431       4    -6.000000000000
+    432      -4    -6.000000000000
+    433       4    -6.000000000000
+    434      -4    -6.000000000000
+    435       4    -6.000000000000
+    436      -4    -6.000000000000
+    437       2    -5.955406081332
+    438      -2    -5.955406081332
+    439       2    -5.955406081332
+    440      -2    -5.955406081332
+    441       2    -5.955406081332
+    442      -2    -5.955406081332
+    443       2    -5.955406081332
+    444      -2    -5.955406081332
+    445       4    -4.000000000000
+    446      -4    -4.000000000000
+    447       4    -4.000000000000
+    448      -4    -4.000000000000
+    449       4    -4.000000000000
+    450      -4    -4.000000000000
+    451       4    -4.000000000000
+    452      -4    -4.000000000000
+    453       4    -4.000000000000
+    454      -4    -4.000000000000
+    455       4    -4.000000000000
+    456      -4    -4.000000000000
+    457       4    -4.000000000000
+    458      -4    -4.000000000000
+    459       4    -4.000000000000
+    460      -4    -4.000000000000
+    461       4    -4.000000000000
+    462      -4    -4.000000000000
+    463       4    -4.000000000000
+    464      -4    -4.000000000000
+    465       4    -4.000000000000
+    466      -4    -4.000000000000
+    467       4    -4.000000000000
+    468      -4    -4.000000000000
+    469       4    -4.000000000000
+    470      -4    -4.000000000000
+    471       4    -4.000000000000
+    472      -4    -4.000000000000
+    473       4    -4.000000000000
+    474      -4    -4.000000000000
+    475       4    -4.000000000000
+    476      -4    -4.000000000000
+    477       4    -4.000000000000
+    478      -4    -4.000000000000
+    479       4    -2.000000000000
+    480      -4    -2.000000000000
+    481       4    -2.000000000000
+    482      -4    -2.000000000000
+    483       4    -2.000000000000
+    484      -4    -2.000000000000
+    485       4    -2.000000000000
+    486      -4    -2.000000000000
+    487       4    -2.000000000000
+    488      -4    -2.000000000000
+    489       4    -2.000000000000
+    490      -4    -2.000000000000
+    491       4    -2.000000000000
+    492      -4    -2.000000000000
+    493       4    -2.000000000000
+    494      -4    -2.000000000000
+    495       4    -2.000000000000
+    496      -4    -2.000000000000
+    497       4    -2.000000000000
+    498      -4    -2.000000000000
+    499       4    -2.000000000000
+    500      -4    -2.000000000000
+    501       4    -2.000000000000
+    502      -4    -2.000000000000
+    503       4    -2.000000000000
+    504      -4    -2.000000000000
+    505       4    -2.000000000000
+    506      -4    -2.000000000000
+    507       4    -2.000000000000
+    508      -4    -2.000000000000
+    509       4    -2.000000000000
+    510      -4    -2.000000000000
+    511       4    -2.000000000000
+    512      -4    -2.000000000000
+    513       4    -2.000000000000
+    514      -4    -2.000000000000
+    515       4    -2.000000000000
+    516      -4    -2.000000000000
+    517       4    -2.000000000000
+    518      -4    -2.000000000000
+    519       4    -2.000000000000
+    520      -4    -2.000000000000
+    521       4    -2.000000000000
+    522      -4    -2.000000000000
+    523       4    -2.000000000000
+    524      -4    -2.000000000000
+    525       4    -2.000000000000
+    526      -4    -2.000000000000
+    527       4    -2.000000000000
+    528      -4    -2.000000000000
+    529       4    -2.000000000000
+    530      -4    -2.000000000000
+    531       4    -2.000000000000
+    532      -4    -2.000000000000
+    533       4    -2.000000000000
+    534      -4    -2.000000000000
+    535       4    -2.000000000000
+    536      -4    -2.000000000000
+    537       4    -2.000000000000
+    538      -4    -2.000000000000
+    539       4    -2.000000000000
+    540      -4    -2.000000000000
+    541       4    -2.000000000000
+    542      -4    -2.000000000000
+    543       4     0.000000000000
+    544      -4     0.000000000000
+    545       4     0.000000000000
+    546      -4     0.000000000000
+    547       4     0.000000000000
+    548      -4     0.000000000000
+    549       4     0.000000000000
+    550      -4     0.000000000000
+    551       4     0.000000000000
+    552      -4     0.000000000000
+    553       4     0.000000000000
+    554      -4     0.000000000000
+    555       4     0.000000000000
+    556      -4     0.000000000000
+    557       4     0.000000000000
+    558      -4     0.000000000000
+    559       4     0.000000000000
+    560      -4     0.000000000000
+    561       4     0.000000000000
+    562      -4     0.000000000000
+    563       4     0.000000000000
+    564      -4     0.000000000000
+    565       4     0.000000000000
+    566      -4     0.000000000000
+    567       4     0.000000000000
+    568      -4     0.000000000000
+    569       4     0.000000000000
+    570      -4     0.000000000000
+    571       4     0.000000000000
+    572      -4     0.000000000000
+    573       4     0.000000000000
+    574      -4     0.000000000000
+    575       4     0.000000000000
+    576      -4     0.000000000000
+    577       4     0.000000000000
+    578      -4     0.000000000000
+    579       4     0.000000000000
+    580      -4     0.000000000000
+    581       4     0.000000000000
+    582      -4     0.000000000000
+    583       4     0.000000000000
+    584      -4     0.000000000000
+    585       4     0.000000000000
+    586      -4     0.000000000000
+    587       4     0.000000000000
+    588      -4     0.000000000000
+    589       4     0.000000000000
+    590      -4     0.000000000000
+    591       4     0.000000000000
+    592      -4     0.000000000000
+    593       4     0.000000000000
+    594      -4     0.000000000000
+    595       4     0.000000000000
+    596      -4     0.000000000000
+    597       4     0.000000000000
+    598      -4     0.000000000000
+    599       4     0.000000000000
+    600      -4     0.000000000000
+    601       4     0.000000000000
+    602      -4     0.000000000000
+    603       4     0.000000000000
+    604      -4     0.000000000000
+    605       4     0.000000000000
+    606      -4     0.000000000000
+    607       4     0.000000000000
+    608      -4     0.000000000000
+    609       4     0.000000000000
+    610      -4     0.000000000000
+    611       4     0.000000000000
+    612      -4     0.000000000000
+    613       4     0.000000000000
+    614      -4     0.000000000000
+    615       4     0.000000000000
+    616      -4     0.000000000000
+    617       4     2.000000000000
+    618      -4     2.000000000000
+    619       4     2.000000000000
+    620      -4     2.000000000000
+    621       4     2.000000000000
+    622      -4     2.000000000000
+    623       4     2.000000000000
+    624      -4     2.000000000000
+    625       4     2.000000000000
+    626      -4     2.000000000000
+    627       4     2.000000000000
+    628      -4     2.000000000000
+    629       4     2.000000000000
+    630      -4     2.000000000000
+    631       4     2.000000000000
+    632      -4     2.000000000000
+    633       4     2.000000000000
+    634      -4     2.000000000000
+    635       4     2.000000000000
+    636      -4     2.000000000000
+    637       4     2.000000000000
+    638      -4     2.000000000000
+    639       4     2.000000000000
+    640      -4     2.000000000000
+
+ Lanczos ground state:  -11.836469023564
+
+ ================================================================
+ Finished running on 09/06/2014 at 16:38:31
+ Wall time:                           1.25s
+ CPU time (per processor):            1.24s
+ ================================================================
+
