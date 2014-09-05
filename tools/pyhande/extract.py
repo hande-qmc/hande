@@ -255,6 +255,14 @@ calc_data : list of `:class:`pandas.Series`
             qmc_data = pd.io.parsers.read_csv(tmp_csv, names=column_names)
             os.remove(tmp_csv)
 
+        # If the number of iterations counter goes over 8 digits then the hande
+        # output file prints stars.  This has now been fixed, however for
+        # legacy reasons:
+        for (i,iteration) in enumerate(data['iterations']):
+            if numpy.isnan(iteration):
+                qmc_data['iterations'][i] = \
+                        i*metadata['mc_cycles'] + qmc_data['iterations'][0]
+
         qmc_data = qmc_data.convert_objects(convert_numeric=True, copy=False)
 
         unique_iterations = qmc_data['iterations'].unique()

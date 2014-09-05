@@ -81,9 +81,9 @@ size from the blocking analysis:
 
     mc_data = data.ix[indx, to_block]
 
-    if mc_data['Shift'][1] == mc_data['Shift'][2]:
-        warnings.warn('The blocking analysis starts from before the shift '
-                     'begins to vary.')
+#    if mc_data['Shift'][1] == mc_data['Shift'][2]:
+#        warnings.warn('The blocking analysis starts from before the shift '
+#                     'begins to vary.')
 
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
     
