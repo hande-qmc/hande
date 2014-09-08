@@ -753,12 +753,9 @@ contains
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
-        if (present(update_estimators)) update = update_estimators
-        if (update) call update_energy_estimators(ntot_particles)
-
         if (.not. non_blocking_comm) then
-            ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(ntot_particles)
+            if (present(update_estimators)) update = update_estimators
+            if (update) call update_energy_estimators(ntot_particles)
         else
            ! Save current report loop quantitites.
            ! Can't overwrite the send buffer before message completion
