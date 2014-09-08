@@ -36,7 +36,7 @@ data : :class:`pandas.DataFrame`
     HANDE QMC data. with weights appended
 '''
     weights = []
-    to_prod = np.exp(-tstep*mc_cycles*(data[weight_key]-mean_shift))
+    to_prod = np.exp(-tstep*mc_cycles*(data[weight_key].values-mean_shift))
     for i in range(len(data[weight_key])):
         if i-weight_itts + 1> 0:
             weights.append(np.prod(to_prod[i-weight_itts+1:i+1]))
