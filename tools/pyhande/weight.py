@@ -37,11 +37,12 @@ data : :class:`pandas.DataFrame`
 '''
     weights = []
     to_prod = np.exp(-tstep*mc_cycles*(data[weight_key].values-mean_shift))
-    for i in range(len(data[weight_key])):
-        if i-weight_itts + 1> 0:
-            weights.append(np.prod(to_prod[i-weight_itts+1:i+1]))
-        else:
-            weights.append(np.prod(to_prod[0:i+1]))
+    if len(data[weight_key]) > 0:
+        weights.append(to_prod[0])
+    for i in range(1, min(weight_itts, len(data[weight_key]))):
+        weights.append(weights[i-1]*to_prod[i])
+    for i in range(weight_itts, len(data[weight_key])):
+        weights.append(weights[i-1]*to_prod[i] / to_prod[i-weight_itts])
 
     data['Weight'] = weights
 
