@@ -648,7 +648,7 @@ contains
         ! Insert the new population.
         walker_population(:,pos) = population
         ! Calculate and insert all new components of walker_data.
-        if (.not. doing_calc(dmqmc_calc)) walker_data(1,pos) = sc0_ptr(sys, det) - H00
+        walker_data(1,pos) = sc0_ptr(sys, det) - H00
         if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = neel_singlet_data(sys, det)
         if (doing_calc(hfs_fciqmc_calc)) then
             ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
