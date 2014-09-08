@@ -510,7 +510,7 @@ contains
 
         !$omp parallel do default(none) &
         !$omp shared(tot_walkers, walker_dets, walker_populations, spawn, iproc, nprocs, string_len) &
-        !$omp private(pproc) reduction(+:nsent)
+        !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
             call assign_particle_processor(walker_dets(:,iexcitor), string_len, spawn%hash_seed, &
