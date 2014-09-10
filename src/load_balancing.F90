@@ -342,10 +342,11 @@ contains
         integer, intent(inout) :: proc_map(0:)
 
         integer :: pos
-        integer :: i, j, total, donor_pop, new_pop
+        integer :: i, j
+        real(dp) :: donor_pop, new_pop
 
-        donor_pop = 0
-        new_pop = 0
+        donor_pop = 0.0_dp
+        new_pop = 0.0_dp
 
         do i = 1, size(donor_bins%pop)
             ! Loop over receivers.
