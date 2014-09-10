@@ -529,13 +529,16 @@ contains
                 call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
                 ! Update population on the sending processor.
                 ! [review] - JSS: similarly might want to rescale total sent population rather than each contribution.
-                nsent = nsent + abs(real(walker_populations(:,iexcitor),dp))/real_factor
+                nsent = nsent + abs(real(walker_populations(:,iexcitor),dp))
                 ! Zero population here.  Will be pruned on this determinant
                 ! automatically during annihilation (which will also update tot_walkers).
                 walker_populations(:,iexcitor) = 0_int_p
             end if
         end do
         !$omp end parallel do
+
+        ! Remove encoding factor to obtain the true populations.
+        nsent = nsent/real_factor
 
         nparticles = nparticles - nsent
 
