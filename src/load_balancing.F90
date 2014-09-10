@@ -144,8 +144,6 @@ contains
         call initialise_slot_pop(lb%proc_map, lb%nslots, qmc_spawn, real_factor, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
-        ! [review] - JSS: slot_list is real(dp) but the reduce is an MPI_INTEGER8...
-        ! [review] - JSS: actually, this appears to be a bug from the merge...oops!
         call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
         ! Whether load balancing is required or not is decided based on the
@@ -533,9 +531,6 @@ contains
         do i = 1, tot_walkers
             call assign_particle_processor(walker_dets(:,i), tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                            nprocs, iproc_slot, det_pos)
-            ! [review] - JSS: Is it worth doing the rescaling outside the do loop?
-            ! [review] - JSS: Cheaper but is there danger of real overflow?
-            ! [review] - JSS: Probably not given slot_pop is real(dp).
             slot_pop(det_pos) = slot_pop(det_pos) + abs(real(walker_population(1,i),dp))
         end do
 

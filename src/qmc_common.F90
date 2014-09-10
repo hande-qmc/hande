@@ -528,7 +528,6 @@ contains
                 ! was an initiator...
                 call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
                 ! Update population on the sending processor.
-                ! [review] - JSS: similarly might want to rescale total sent population rather than each contribution.
                 nsent = nsent + abs(real(walker_populations(:,iexcitor),dp))
                 ! Zero population here.  Will be pruned on this determinant
                 ! automatically during annihilation (which will also update tot_walkers).
