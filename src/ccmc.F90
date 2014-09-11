@@ -504,7 +504,7 @@ contains
                 ! that we need to deal with.
                 if (nprocs > 1) call redistribute_particles(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
 
-                call direct_annihilation(sys, rng(it), initiator_approximation, nspawn_events)
+                call direct_annihilation(sys, rng(0), initiator_approximation, nspawn_events)
 
                 ! Ok, this is fairly non-obvious.
                 ! Because we sample the projected estimator (and normalisation
