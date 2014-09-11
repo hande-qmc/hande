@@ -532,11 +532,12 @@ contains
         use parallel, only: nprocs
 
         real(p) :: rate
-        integer(int_p), intent(in) :: nspawn_events, ndeath
+        integer, intent(in) :: nspawn_events
+        integer(int_p), intent(in) :: ndeath
         integer(lint), intent(in) :: nattempts
         real(dp) :: ndeath_real
 
-        ! Death is not scaled if using real
+        ! Death is not scaled when using reals.
         ndeath_real = real(ndeath,dp)/real_factor
 
         ! The total spawning rate is
