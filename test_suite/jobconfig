@@ -1,62 +1,58 @@
-[hubbard_k_1d]
-[hubbard_k_nontilted_2d_fci]
-[hubbard_k_tilted_2d_fci]
-[hubbard_k_nontilted_2d_lanczos]
-[hubbard_k_nontilted_2d_fciqmc]
+# tests are already neatly arranged into categories by the directory structure...
 
-[chung_landau_1d_fci]
-
-[hubbard_k_1d_ifciqmc]
-[hubbard_k_1d_ifciqmc_real_32]
-[hubbard_k_1d_ifciqmc_real_32_SS]
-[hubbard_k_1d_ifciqmc_cas]
-[hubbard_k_1d_ifciqmc_load]
-nprocs = 4
-[hubbard_k_nontilted_2d_ifciqmc]
-[hubbard_k_tilted_2d_mchilbert]
-
-[hubbard_k_nontilted_2d_sfciqmc]
+# deterministic methods
+[fci/*/]
+[lanczos/*/]
+[lanczos_direct/*/]
 max_nprocs = 1
 
-[hubbard_real_1d_fciqmc]
-[hubbard_real_1d_fciqmc_finite_cluster]
-[hubbard_real_nontilted_2d]
-[hubbard_real_rectangle_2d_lanczos]
+# Hilbert space estimation
+[mc_hilbert_space/*/]
+max_nprocs = 1
 
-[heisenberg_1d_fci]
-[heisenberg_1d_finite_cluster_fci]
-[heisenberg_1d_ferro_field_fciqmc]
-[heisenberg_1d_neel_ref_fciqmc]
-[heisenberg_1d_neel_ref_fciqmc_real_64]
-[heisenberg_2d_field_fciqmc]
-[heisenberg_2d_neel_guide_fciqmc]
-[heisenberg_2d_tri_fciqmc]
-[heisenberg_2d_tri_lanczos]
+# Toy FCIQMC algorithm
+[simple_fciqmc/*/]
 
-[CN-UHF-cc-pVDZ]
-[CN-UHF-cc-pVDZ_real_32]
-[CN-UHF-sto-3g]
+# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - integer weights, serial
+[fciqmc/*/]
+[ifciqmc/*/]
 
-[H2O-RHF-cc-pVTZ]
-[H2O-RHF-cc-pVTZ-non-block]
-nprocs = 4
-[H2O-RHF-sto-2g]
-[Ne-RHF-aug-cc-pVDZ]
-[H2-RHF-cc-pVTZ-Lz]
-[He2-aug-cc-pVDZ_real_32_SS]
+# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - real weights, serial
+# _32 indicates POP_SIZE=32 preprocessor flag was used.
+# _64 indicates POP_SIZE=32 preprocessor flag was used.
+[fciqmc_real_32/*/]
+[fciqmc_real_64/*/]
+[ifciqmc_real_32/*/]
 
-[ueg_n14_rs1_e3_hilbert_space]
-[ueg_n4_rs2_e1_fci]
+# CCMC - integer weights, serial
+[ccmc/*/]
 
-[Ne-RHF-cc-pVDZ_ccmc]
-[Ne-RHF-cc-pVDZ-Lz-CAS8_12-CCSDT]
-[Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn]
+# CCMC - integer weights, parallel (2 and 4 cores)
+[ccmc_mpi/np?/*/]
 
-[mpi/np2/*/]
+# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - integer weights, parallel (2 and 4 cores)
+[fciqmc_mpi/np?/*/]
+[ifciqmc_mpi/np?/*/]
+
+# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - real weights, parallel (2 and 4 cores)
+[fciqmc_real_32_mpi/np?/*/]
+[fciqmc_real_64_mpi/np?/*/]
+[ifciqmc_real_32_mpi/np?/*/]
+[ifciqmc_real_64_mpi/np?/*/]
+
+## Processor options.
+# force serial jobs to always use 1 processor
+[*mc/*/]
+max_nprocs = 1
+[*mc_real_??/*/]
+max_nprocs = 1
+
+# force MC jobs to run on the same number of cores as the benchmarks in order to
+[*_mpi/np2/*/]
 nprocs = 2
 min_nprocs = 2
 max_nprocs = 2
-[mpi/np4/*/]
+[*_mpi/np4/*/]
 nprocs = 4
 min_nprocs = 4
 max_nprocs = 4
@@ -64,34 +60,11 @@ max_nprocs = 4
 # Form job categories.
 [categories]
 
-hubbard_k = hubbard_k_1d hubbard_k_nontilted_2d_fci hubbard_k_tilted_2d_fci hubbard_k_nontilted_2d_lanczos hubbard_k_nontilted_2d_sfciqmc hubbard_k_1d_ifciqmc hubbard_k_1d_ifciqmc_real_32 hubbard_k_1d_ifciqmc_cas hubbard_k_nontilted_2d_ifciqmc
+# By default, run serial MC tests (with POP_SIZE=32) + deterministic tests.
+_default_ = fci lanczos mc_hilbert_space *mc *mc_real_32
 
-hubbard_real = hubbard_real_nontilted_2d hubbard_real_rectangle_2d_lanczos
+mpi = _default_ *mc_mpi *mc_real_32_mpi
 
-heisenberg = heisenberg_1d_fci heisenberg_1d_finite_cluster_fci heisenberg_1d_ferro_field_fciqmc heisenberg_1d_neel_ref_fciqmc heisenberg_2d_field_fciqmc heisenberg_2d_neel_guide_fciqmc heisenberg_2d_tri_fciqmc heisenberg_2d_tri_lanczos
+pop64 = fci lanczos mc_hilbert_space *mc *mc_real_64
 
-fci =  hubbard_k_1d hubbard_k_nontilted_2d_fci hubbard_k_tilted_2d_fci hubbard_real_nontilted_2d heisenberg_1d_fci heisenberg_1d_fci H2O-RHF-sto-2g ueg_n4_rs2_e1_fci chung_landau_1d_fci
-lanczos = hubbard_k_1d hubbard_k_nontilted_2d_lanczos hubbard_real_nontilted_2d hubbard_real_rectangle_2d_lanczos heisenberg_2d_tri_lanczos CN-UHF-sto-3g
-
-real_32 = CN-UHF-cc-pVDZ_real_32 hubbard_k_1d_ifciqmc_real_32 He2-aug-cc-pVDZ_real_32_SS hubbard_k_1d_ifciqmc_real_32_SS
-real_64 = heisenberg_1d_neel_ref_fciqmc_real_64
-
-mpi_real_32 = mpi/*/*real_32
-mpi_real_64 = mpi/*/*real_64
-
-semi_stochastic_real_32 = He2-aug-cc-pVDZ_real_32_SS hubbard_k_1d_ifciqmc_real_32_SS
-
-parallel = H2O-RHF-cc-pVTZ-non-block hubbard_k_1d_ifciqmc_load
-
-sfciqmc = hubbard_k_nontilted_2d_sfciqmc
-fciqmc = hubbard_real_1d_fciqmc hubbard_real_1d_fciqmc_finite_cluster hubbard_k_nontilted_2d_fciqmc heisenberg_1d_ferro_field_fciqmc heisenberg_1d_neel_ref_fciqmc heisenberg_2d_field_fciqmc heisenberg_2d_neel_guide_fciqmc heisenberg_2d_tri_fciqmc H2O-RHF-cc-pVTZ CN-UHF-cc-pVDZ H2-RHF-cc-pVTZ-Lz CN-UHF-cc-pVDZ_real_32
-
-ifciqmc = hubbard_k_1d_ifciqmc hubbard_k_1d_ifciqmc_cas hubbard_k_nontilted_2d_ifciqmc Ne-RHF-aug-cc-pVDZ
-fciqmc_all = hubbard_k_nontilted_2d_sfciqmc fciqmc ifciqmc
-
-hilbert = hubbard_k_tilted_2d_mchilbert ueg_n14_rs1_e3_hilbert_space
-
-ccmc = Ne-RHF-cc-pVDZ_ccmc Ne-RHF-cc-pVDZ-Lz-CAS8_12-CCSDT Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn
-ccmc_mpi = mpi/*/*ccsd*
-
-_default_ = hubbard_k hubbard_real heisenberg fciqmc_all fci lanczos hilbert real_32 ccmc semi_stochastic_real_32
+pop64_mpi = pop64 *mc_mpi *mc_real_64_mpi
