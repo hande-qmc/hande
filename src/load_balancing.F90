@@ -76,7 +76,7 @@ module load_balancing
 !    should probably be performed at the start of a calculation if the population
 !    is held constant.
 
-use const , only: lint, p, dp
+use const , only: lint, p, dp, int_p
 
 implicit none
 
@@ -97,7 +97,7 @@ end type dbin_t
 
 contains
 
-    subroutine do_load_balancing(parallel_info)
+    subroutine do_load_balancing(real_factor, parallel_info)
 
         ! Main subroutine in module, carries out load balancing as follows:
         ! 1. If doing load balancing then:
@@ -109,6 +109,9 @@ contains
         !   of of donor slots, we then add these determinants to spawned walker list so
         !   that they can be moved to their new processor.
 
+        ! In:
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         ! In/Out:
         !    parallel_info: parallel_t type object containing information for
         !       parallel calculation see calc.f90 for description.
@@ -121,6 +124,7 @@ contains
         use calc, only: parallel_t
         use checking, only: check_allocate, check_deallocate
 
+        integer(int_p), intent(in) :: real_factor
         type(parallel_t), intent(inout) :: parallel_info
 
         real(dp) :: slot_pop(0:size(parallel_info%load%proc_map)-1)
@@ -132,15 +136,15 @@ contains
         integer :: i, ierr
         real(dp) :: pop_av, up_thresh, low_thresh
 
-        slot_list = 0
+        slot_list = 0.0_dp
 
         associate(lb=>parallel_info%load)
 
         ! Find slot populations.
-        call initialise_slot_pop(lb%proc_map, lb%nslots, qmc_spawn, slot_pop)
+        call initialise_slot_pop(lb%proc_map, lb%nslots, qmc_spawn, real_factor, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
-        call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
         ! Whether load balancing is required or not is decided based on the
         ! populations across processors during the report loop. For non-blocking
@@ -336,10 +340,11 @@ contains
         integer, intent(inout) :: proc_map(0:)
 
         integer :: pos
-        integer :: i, j, total, donor_pop, new_pop
+        integer :: i, j
+        real(dp) :: donor_pop, new_pop
 
-        donor_pop = 0
-        new_pop = 0
+        donor_pop = 0.0_dp
+        new_pop = 0.0_dp
 
         do i = 1, size(donor_bins%pop)
             ! Loop over receivers.
@@ -495,13 +500,15 @@ contains
 
     end subroutine find_processors
 
-    subroutine initialise_slot_pop(proc_map, load_balancing_slots, spawn, slot_pop)
+    subroutine initialise_slot_pop(proc_map, load_balancing_slots, spawn, real_factor, slot_pop)
 
         ! In:
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor
         !   load_balancing_slots: number of slots which we divide slot_pop (and similar arrays) into.
         !   spawn: spawn_t object.
+        !   real_factor: The factor by which populations are multiplied to
+        !       enable non-integer populations.
         ! In/Out:
         !   slot_pop: array containing population of slots in proc_map. Processor dependendent.
 
@@ -512,6 +519,7 @@ contains
 
         integer, intent(in):: load_balancing_slots
         type(spawn_t), intent(in) :: spawn
+        integer(int_p), intent(in) :: real_factor
         integer, intent(in) :: proc_map(0:)
         real(dp), intent(out) :: slot_pop(0:)
 
@@ -519,12 +527,15 @@ contains
 
         tensor_label_len = size(walker_dets, dim=1)
 
-        slot_pop = 0
+        slot_pop = 0.0_dp
         do i = 1, tot_walkers
             call assign_particle_processor(walker_dets(:,i), tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                            nprocs, iproc_slot, det_pos)
-            slot_pop(det_pos) = slot_pop(det_pos) + abs(walker_population(1,i))
+            slot_pop(det_pos) = slot_pop(det_pos) + abs(real(walker_population(1,i),dp))
         end do
+
+        ! Remove encoding factor to obtain the true populations.
+        slot_pop = slot_pop/real_factor
 
    end subroutine initialise_slot_pop
 

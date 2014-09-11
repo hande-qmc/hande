@@ -202,7 +202,7 @@ contains
                                dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
                                tot_walkers, walker_length, write_fciqmc_report_header,               &
                                write_fciqmc_final, nparticles, ccmc_move_freq, real_factor,          &
-                               cluster_multispawn_threshold
+                               cluster_multispawn_threshold, real_factor
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles
@@ -372,7 +372,7 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(nattempts, ndeath, int(D0_normalisation,lint))
+                call init_mc_cycle(real_factor, nattempts, ndeath, int(D0_normalisation,lint))
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
                 ! per cluster
@@ -502,7 +502,8 @@ contains
                 ! The spawned excips were sent to the correct processors with
                 ! the current hash shift, so it's just those in the main list
                 ! that we need to deal with.
-                if (nprocs > 1) call redistribute_particles(walker_dets, walker_population, tot_walkers, nparticles, qmc_spawn)
+                if (nprocs > 1) call redistribute_particles(walker_dets, real_factor, walker_population, &
+                                                             tot_walkers, nparticles, qmc_spawn)
 
                 call direct_annihilation(sys, rng(0), initiator_approximation, nspawn_events)
 

@@ -464,7 +464,7 @@ contains
 
     end subroutine load_balancing_report
 
-    subroutine redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
+    subroutine redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
 
         ! [todo] JSS: - update comments to be more general than just for CCMC.
 
@@ -480,12 +480,14 @@ contains
 
         ! In:
         !    walker_dets: list of occupied excitors on the current processor.
-        !    total_walkers: number of occupied excitors on the current processor.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         ! In/Out:
         !    nparticles: number of excips on the current processor.
         !    walker_populations: Population on occupied excitors.  On output the
         !        populations of excitors which are sent to other processors are
         !        set to zero.
+        !    tot_walkers: number of occupied excitors on the current processor.
         !    spawn: spawn_t object.  On output particles which need to be sent
         !        to another processor have been added to the correct position in
         !        the spawned store.
@@ -496,6 +498,7 @@ contains
         use parallel, only: iproc, nprocs
 
         integer(i0), intent(in) :: walker_dets(:,:)
+        integer(int_p), intent(in) :: real_factor
         integer(int_p), intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
         real(dp), intent(inout) :: nparticles(:)
@@ -525,13 +528,16 @@ contains
                 ! was an initiator...
                 call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
                 ! Update population on the sending processor.
-                nsent = nsent + abs(walker_populations(:,iexcitor))
+                nsent = nsent + abs(real(walker_populations(:,iexcitor),dp))
                 ! Zero population here.  Will be pruned on this determinant
                 ! automatically during annihilation (which will also update tot_walkers).
                 walker_populations(:,iexcitor) = 0_int_p
             end if
         end do
         !$omp end parallel do
+
+        ! Remove encoding factor to obtain the true populations.
+        nsent = nsent/real_factor
 
         nparticles = nparticles - nsent
 
@@ -641,12 +647,14 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(nattempts, ndeath, min_attempts)
+    subroutine init_mc_cycle(real_factor, nattempts, ndeath, min_attempts)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
 
         ! In:
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    min_attempts (optional): if present, set nattempts to be at least this value.
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
@@ -657,6 +665,7 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, doing_load_balancing
         use load_balancing, only: do_load_balancing
 
+        integer(int_p), intent(in) :: real_factor
         integer(lint), intent(in), optional :: min_attempts
         integer(lint), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
@@ -697,7 +706,7 @@ contains
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
         if(doing_load_balancing .and. par_info%load%needed) then
-            call do_load_balancing(par_info)
+            call do_load_balancing(real_factor, par_info)
         end if
 
     end subroutine init_mc_cycle
@@ -847,7 +856,7 @@ contains
 
     end subroutine send_tau
 
-    subroutine redistribute_load_balancing_dets(walker_dets, walker_populations, tot_walkers, nparticles, spawn, load_tag)
+    subroutine redistribute_load_balancing_dets(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn, load_tag)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -857,12 +866,14 @@ contains
 
         ! In:
         !    walker_dets: list of occupied excitors on the current processor.
-        !    total_walkers: number of occupied excitors on the current processor.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         ! In/Out:
         !    nparticles: number of excips on the current processor.
         !    walker_populations: Population on occupied excitors.  On output the
         !        populations of excitors which are sent to other processors are
         !        set to zero.
+        !    tot_walkers: number of occupied excitors on the current processor.
         !    spawn: spawn_t object.  On output particles which need to be sent
         !        to another processor have been added to the correct position in
         !        the spawned store.
@@ -873,6 +884,7 @@ contains
         use spawn_data, only: spawn_t
 
         integer(i0), intent(in) :: walker_dets(:,:)
+        integer(int_p), intent(in) :: real_factor
         integer(int_p), intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
         real(dp), intent(inout) :: nparticles(:)
@@ -880,7 +892,7 @@ contains
         logical, intent(inout) :: load_tag
 
         if (load_tag) then
-            call redistribute_particles(walker_dets, walker_populations, tot_walkers, nparticles, spawn)
+            call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
             load_tag = .false.
         end if
 
