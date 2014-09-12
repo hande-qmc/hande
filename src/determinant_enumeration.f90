@@ -24,10 +24,11 @@ contains
         ! routines.
 
         use utils, only: get_free_unit
+        use parallel, only: parent
 
         integer :: det_unit
 
-        if (write_determinants) then
+        if (write_determinants .and. parent) then
             ! Overwrite any existing file...
             det_unit = get_free_unit()
             open(det_unit, file=determinant_file, status='unknown')
