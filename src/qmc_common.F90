@@ -856,7 +856,9 @@ contains
 
     end subroutine send_tau
 
-    subroutine redistribute_load_balancing_dets(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn, load_tag)
+    subroutine redistribute_load_balancing_dets(walker_dets, real_factor,        &
+                                                walker_populations, tot_walkers, &
+                                                nparticles, spawn, load_tag)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
