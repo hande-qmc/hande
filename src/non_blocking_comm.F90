@@ -1,9 +1,49 @@
 module non_blocking_comm_m
 
-    ! Core routines for initialisation and termination for non-blocking
-    ! communication QMC algorithm.
+! Core routines for initialisation and termination for non-blocking
+! communication QMC algorithm.
 
-    implicit none
+! Non-Blocking Communications
+! ===========================
+!
+! The cost of MPI communication soon becomes the biggest overhead when scaling a
+! code to thousands of cores. Non-blocking communications (NBCs) can potentially
+! reduce or eliminate this overhead if the communication operation is overlapped
+! with computation. NBCs have been shown to help both strong (scaling the same
+! problem size to more processors) and weak (increasing the problem size in
+! proportion to the increase in processor count) scaling in the QMC code CASINO.
+! Implementing them for FCIQMC is slightly tricky.
+!
+! The general outline of the algorithm is the following:
+!
+! 1. Evolve the main list to time t + dt.
+! 2. Receive walkers spawned during the previous iteration's evolution of the
+!    main list.
+! 3. We now need to evolve this received list (received_list in fciqmc_data),
+!    one time step so that they can be annihilated with the main list
+!    (evolve_spawned_walkers).
+! 4. Annihilation then proceeds by annihilating the received_list and the portion
+!    of the spawned list which contains walkers spawned from the current processor
+!    onto the current processor in this iteration.
+! 5. We then perform a non-blocking send operation of the walkers in the spawned
+!    list to their new processors which will be received and evolved as in step
+!    2 above.
+!
+! This staggered nature of events complicates certain things such as restarting
+! a calculation and the reporting of report loop quantities.
+! To avoid blocking mpi calls in between non-blocking sends/receives (which
+! would happen during a report loop), we also use NBCs. This means
+! that we print out the nth report loop's information when we usually would have
+! printed the (n+1)st. It also means that the shift we use when evolving from
+! step t to t + mc_steps*dt is based on total populations from the previous
+! report loop.
+! These above features also complicate the restarting of a calculation, as the
+! shift required for the first iteration is not what would normally be printed
+! out in the restart file. Currently only calculations restarted from
+! one which used NBCs behave correctly as the shift is generally
+! incorrect otherwise.
+
+implicit none
 
 contains
 
