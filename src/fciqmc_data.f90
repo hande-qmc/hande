@@ -707,33 +707,6 @@ contains
 
     end subroutine write_fciqmc_report
 
-    subroutine write_fciqmc_final(ireport)
-
-        ! Write out the energies (shift and projected energy) at the end of an
-        ! FCIQMC calculation.
-        ! In:
-        !    ireport: index of the report loop after the report loop has been
-        !    exited.
-
-        integer, intent(in) :: ireport
-        integer :: report_cycles_done
-
-        if (ireport /= nreport+1) then
-            ! exited calculation early via softexit.
-            ! number of report loops done that actually were done is ireport.
-            report_cycles_done = ireport
-        else
-            ! terminated the report loop cycle after reaching the last index.
-            report_cycles_done = nreport
-        end if
-
-        write (6,'(/,1X,a13,10X,f22.12)') 'final shift =', shift(1)
-        write (6,'(1X,a20,3X,f22.12)') 'final proj. energy =', proj_energy/D0_population
-        write (6,'(1X,a12,11X,f22.12)') 'E0 + shift =', shift(1)+H00
-        write (6,'(1X,a19,4X,f22.12)') 'E0 + proj. energy =', proj_energy/D0_population+H00
-
-    end subroutine write_fciqmc_final
-
     subroutine end_fciqmc()
 
         ! Deallocate fciqmc data arrays.

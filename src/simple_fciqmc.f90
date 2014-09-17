@@ -251,9 +251,6 @@ contains
 
         end do
 
-        call write_fciqmc_final(ireport)
-        write (6,'()')
-
         if (dump_restart_file) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*nreport, (/nparticles_old/))
             if (parent) write (6,'()')
