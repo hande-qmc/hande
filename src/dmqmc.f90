@@ -41,7 +41,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
         integer(lint) :: init_tot_nparticles
-        real(dp) :: tot_nparticles_old(sampling_size), real_population
+        real(dp) :: tot_nparticles_old(sampling_size), real_population(sampling_size)
         integer(lint) :: nattempts
         integer :: nel_temp, nattempts_current_det
         type(det_info_t) :: cdet1, cdet2
@@ -121,8 +121,8 @@ contains
                         call decoder_ptr(sys, cdet1%f, cdet1)
                         call decoder_ptr(sys, cdet2%f, cdet2)
 
-                        ! Extract the real sign from the encoded sign.
-                        real_population = real(walker_population(1,idet),dp)/real_factor
+                        ! Extract the real signs from the encoded signs.
+                        real_population = real(walker_population(:,idet),dp)/real_factor
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
@@ -138,7 +138,7 @@ contains
                             ! one det in this symmetry sector, so don't attempt
                             ! to spawn.
                             if (.not. (sys%nel == 0 .or. sys%nel == sys%lattice%nsites)) then
-                                nattempts_current_det = decide_nattempts(rng, real_population)
+                                nattempts_current_det = decide_nattempts(rng, real_population(ireplica))
                                 do iparticle = 1, nattempts_current_det
                                     ! Spawn from the first end.
                                     spawning_end = 1
