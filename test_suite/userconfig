@@ -3,7 +3,9 @@ exe = ../bin/hande.x
 timing_output = cpu elapsed
 inputs_args = ('*.in', '')
 vcs = git
-extract_program = ../tools/extract.py
+extract_program = ../tools/tests/extract_test_data.py
+extract_args = --socket --
+ignore_fields = time
 
 [user]
 diff = vimdiff
