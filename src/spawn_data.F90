@@ -569,25 +569,24 @@ contains
         integer :: stat_probe_r(MPI_STATUS_SIZE), stat_data_r(MPI_STATUS_SIZE)
         integer :: stat_data_s(MPI_STATUS_SIZE, nprocs)
 
-
-        ! [todo] - JSS: update the MPI types before merging in with real coefficients work.
         start = 1
         do i = 0, nprocs-1
             ! Probe incoming messages. We receive the messages as they arrive
             ! and decide how to insert them into received_list.
             call MPI_Probe(i, iproc, MPI_COMM_WORLD, stat_probe_r, ierr)
             ! Find the size of the message size.
-            call MPI_Get_Count(stat_probe_r, MPI_INTEGER, counter, ierr)
+            call MPI_Get_Count(stat_probe_r, mpi_sdata_integer, counter, ierr)
             counter = counter / received_list%element_len
             if (counter > 0) then
                 ! Actually receiving walkers from another processor so enter
                 ! them in the received_list one after the other
                 call MPI_Recv(received_list%sdata(:,start:start+counter-1), counter*received_list%element_len, &
-                              MPI_INTEGER, stat_probe_r(MPI_SOURCE), stat_probe_r(MPI_TAG), MPI_COMM_WORLD, stat_data_r, ierr)
+                              mpi_sdata_integer, stat_probe_r(MPI_SOURCE), stat_probe_r(MPI_TAG), MPI_COMM_WORLD, &
+                              stat_data_r, ierr)
             else
                 ! We've been sent a zero sized message. Do nothing with it, but still
                 ! need to receive to complete the send.
-                call MPI_Recv(empty_message, 0, MPI_INTEGER, stat_probe_r(MPI_SOURCE), &
+                call MPI_Recv(empty_message, 0, mpi_sdata_integer, stat_probe_r(MPI_SOURCE), &
                               stat_probe_r(MPI_TAG), MPI_COMM_WORLD, stat_data_r, ierr)
             end if
             start = start + counter
@@ -653,7 +652,7 @@ contains
         do i = 0, nprocs-1
             start_point = spawn%head_start(thread_id, i) + nthreads
             end_point = start_point + send_counts(i)/spawn%element_len - 1
-            call MPI_ISend(spawn%sdata_recvd(:,start_point:end_point), send_counts(i), mpi_det_integer, i, &
+            call MPI_ISend(spawn%sdata_recvd(:,start_point:end_point), send_counts(i), mpi_sdata_integer, i, &
                            i, MPI_COMM_WORLD, req_data_s(i), ierr)
         end do
 
