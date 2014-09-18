@@ -9,7 +9,7 @@ sym 0
 ifciqmc
 
 walker_length 5 mb
-spawned_walker_length 1 mb
+spawned_walker_length 2 mb
 
 nreports 75
 mc_cycles 20
