@@ -818,6 +818,7 @@ contains
         real(p), allocatable :: dm_tmp(:,:)
         real(p) :: eigv(2**rdms(1)%A_nsites)
         real(p) :: vn_entropy
+        logical :: thrown_away
         
         rdm_size = 2**rdms(1)%A_nsites
         vn_entropy = 0.0_p
@@ -851,15 +852,21 @@ contains
 #else
         call dsyev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
 #endif
-        write(6,'(a24)',advance='no') "Eigenvalues thrown away:"
+        thrown_away = .false.
+        write(6,'(1X,"#",1X,a24)',advance='no') "Eigenvalues thrown away:"
         do i = 1, ubound(eigv,1)
             if (eigv(i) < 0.0_p) then
                 write(6,'(es15.8,2x)',advance='no') eigv(i)/trace_rdm
+                thrown_away = .true.
                 cycle
             end if
             vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.0_p))
         end do
-        write(6,'()',advance='yes')
+        if (thrown_away) then
+            write(6,'()',advance='yes')
+        else
+            write(6,'(1X,"none")',advance='yes')
+        end if
         write (6,'(1x,a36,1X,f22.9)') "# Unnormalised von Neumann entropy= ", vn_entropy
 
         deallocate(dm_tmp)
