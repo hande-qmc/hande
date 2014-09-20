@@ -10,9 +10,9 @@ def extract_data(data_files):
     unormalised_concurrence = []
     entropy = []
     trace = []
-    entropy_regex = '^ # Unnormalised von Neumann entropy='
-    concurrence_regex = '^ # Unnormalised concurrence='
-    trace_regex = '^ # RDM trace=' 
+    entropy_regex = '^ # Unnormalised von Neumann entropy ='
+    concurrence_regex = '^ # Unnormalised concurrence ='
+    trace_regex = '^ # RDM trace ='
     
     for data_file in data_files:
 
@@ -21,13 +21,13 @@ def extract_data(data_files):
         for line in f:
             if re.match(entropy_regex, line):
                 words = line.split()
-                entropy.append(float(words[5]))
+                entropy.append(float(words[-1]))
             elif re.match(concurrence_regex, line):
                 words = line.split()
-                unormalised_concurrence.append(float(words[3]))
+                unormalised_concurrence.append(float(words[-1]))
             elif re.match(trace_regex, line):
                 words = line.split()
-                trace.append(float(words[3]))
+                trace.append(float(words[-1]))
         f.close()
     return entropy, unormalised_concurrence, trace
 
