@@ -142,28 +142,28 @@ contains
 
         use energy_evaluation, only: update_shift
         use fciqmc_data, only: shift, shift_profile, average_shift_until, ncycles
-        use fciqmc_data, only: target_particles, vary_shift, nreport
+        use fciqmc_data, only: target_particles, vary_shift, nreport, sampling_size
 
         real(dp), intent(in) :: loc_tot_nparticles(:)
         real(dp), intent(in) :: loc_tot_nparticles_old(:)
         integer, intent(in) :: ireport
         integer :: ireplica
 
-        ! If average_shift_until = -1 then it means that the shift should be
-        ! updated to use the values of shift stored in shift_profile. Otherwise,
-        ! use the standard update routine.
-        if (average_shift_until == -1) then
-            if (ireport < nreport) shift = shift_profile(ireport+1)
-        else
-            if (vary_shift) then
-                do ireplica = 1, size(loc_tot_nparticles)
+        do ireplica = 1, sampling_size
+            ! If average_shift_until = -1 then it means that the shift should be
+            ! updated to use the values of shift stored in shift_profile. Otherwise,
+            ! use the standard update routine.
+            if (average_shift_until == -1) then
+                if (ireport < nreport) shift(ireplica) = shift_profile(ireport+1)
+            else
+                if (vary_shift(ireplica)) then
                     call update_shift(shift(ireplica), loc_tot_nparticles_old(ireplica), &
                         loc_tot_nparticles(ireplica), ncycles)
-                end do
+                end if
+                if (loc_tot_nparticles(ireplica) > target_particles .and. (.not. vary_shift(ireplica))) &
+                    vary_shift(ireplica) = .true.
             end if
-            if (loc_tot_nparticles(1) > target_particles .and. (.not. vary_shift)) &
-                vary_shift = .true.
-        end if
+        end do
 
    end subroutine update_shift_dmqmc
 

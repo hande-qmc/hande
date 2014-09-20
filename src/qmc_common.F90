@@ -784,7 +784,7 @@ contains
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 
         ! Write restart file if required.
-        if (dump_restart_file_shift .and. vary_shift) then
+        if (dump_restart_file_shift .and. vary_shift(1)) then
             dump_restart_file_shift = .false.
             call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+ncycles*ireport, ntot_particles)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
@@ -796,7 +796,7 @@ contains
         call fciqmc_interact(soft_exit)
         if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
 
-        if (tau_search .and. .not. vary_shift) call send_tau(update_tau)
+        if (tau_search .and. .not. vary_shift(1)) call send_tau(update_tau)
 
     end subroutine end_report_loop
 

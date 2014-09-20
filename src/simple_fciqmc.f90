@@ -225,12 +225,12 @@ contains
 
             ! Update the shift
             nparticles = real(sum(abs(walker_population(1,:))),dp)
-            if (vary_shift) then
+            if (vary_shift(1)) then
                 call update_shift(shift(1), nparticles_old, nparticles, ncycles)
             end if
             nparticles_old = nparticles
-            if (nparticles > target_particles .and. .not.vary_shift) then
-                vary_shift = .true.
+            if (nparticles > target_particles .and. .not.vary_shift(1)) then
+                vary_shift(1) = .true.
             end if
 
             ! Average these quantities over the report cycle.

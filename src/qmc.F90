@@ -213,6 +213,9 @@ contains
         call check_allocate('shift', size(shift), ierr)
         shift = initial_shift
 
+        allocate(vary_shift(sampling_size), stat=ierr)
+        call check_allocate('vary_shift', size(vary_shift), ierr)
+
         if (doing_calc(ct_fciqmc_calc)) then
             allocate(spawn_times(spawned_walker_length),stat=ierr)
             call check_allocate('spawn_times',spawned_walker_length,ierr)
@@ -424,7 +427,9 @@ contains
         tot_nparticles = nparticles
         nparticles_proc(:sampling_size,1) = nparticles(:sampling_size)
 #endif
-        vary_shift = tot_nparticles(1) >= target_particles
+        do i = 1, sampling_size
+            vary_shift(i) = tot_nparticles(i) >= target_particles
+        end do
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
             tmp_lint = calculate_hf_signed_pop()
