@@ -12,24 +12,30 @@ module non_blocking_comm_m
 ! with computation. NBCs have been shown to help both strong (scaling the same
 ! problem size to more processors) and weak (increasing the problem size in
 ! proportion to the increase in processor count) scaling in the QMC code CASINO.
-! Implementing them for FCIQMC is slightly tricky.
+! Implementing them for FCIQMC is slightly tricky, as while annihilation is not
+! necessary at every time step (see continuous time algorithm), it is vital that
+! psips are annihilated at the same point in time.
 !
 ! The general outline of the algorithm is the following:
 !
 ! 1. Evolve the main list to time t + dt.
 ! 2. Receive walkers spawned during the previous iteration's evolution of the
-!    main list.
-! 3. We now need to evolve this received list (received_list in fciqmc_data),
-!    one time step so that they can be annihilated with the main list
-!    (evolve_spawned_walkers).
-! 4. Annihilation then proceeds by annihilating the received_list and the portion
-!    of the spawned list which contains walkers spawned from the current processor
-!    onto the current processor in this iteration.
+!    main list into a second spawn_t type object (received_list).
+! 3. We now need to evolve this received list one time step so that they can be
+!    annihilated with the main list (evolve_spawned_walkers).
+! 4. Annihilation then proceeds by annihilating the entirety of the received_list
+!    and the portion of the spawned list which contains all walkers spawned from the
+!    current processor onto the current processor in this iteration. This
+!    includes walkers spawned from the received_list and the main list.
 ! 5. We then perform a non-blocking send operation of the walkers in the spawned
 !    list to their new processors which will be received and evolved as in step
 !    2 above.
 !
-! This staggered nature of events complicates certain things such as restarting
+! Starting NB calculation requires us to initially send / receive zero walkers
+! so that step 2 above can be carried out without a special case in the first
+! iteration.
+!
+! The staggered nature of events complicates certain things such as restarting
 ! a calculation and the reporting of report loop quantities.
 ! To avoid blocking mpi calls in between non-blocking sends/receives (which
 ! would happen during a report loop), we also use NBCs. This means
@@ -42,6 +48,10 @@ module non_blocking_comm_m
 ! out in the restart file. Currently only calculations restarted from
 ! one which used NBCs behave correctly as the shift is generally
 ! incorrect otherwise.
+!
+! Currently point-to-point nbcs are used as collective nbcs have only
+! recently been added to the MPI standard (3.0) and which is not widely
+! implemented by vendors.
 
 implicit none
 
