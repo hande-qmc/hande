@@ -440,7 +440,7 @@ contains
 
         integer ::  i, j, upper, lower
         integer :: ierr, nrecv, ndonor
-        integer, allocatable, dimension(:) ::  tmp_rec, tmp_don, rec_sort
+        integer, allocatable ::  tmp_rec(:), tmp_don(:), rec_sort(:)
         integer :: rank_nparticles(nprocs)
 
         allocate(tmp_rec(0:nprocs-1), stat=ierr)
