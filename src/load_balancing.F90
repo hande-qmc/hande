@@ -471,8 +471,8 @@ contains
         allocate(don_dummy(ndonor), stat=ierr)
         call check_allocate('don_dummy', ndonor, ierr)
 
-        don_dummy = tmp_don(:ndonor)
-        rec_dummy = tmp_rec(:nrecv)
+        don_dummy = tmp_don(:ndonor-1)
+        rec_dummy = tmp_rec(:nrecv-1)
 
         ! Sort receiver processers.
         call insertion_rank(procs_pop, rank_nparticles, 1.0e-8_dp)
