@@ -206,6 +206,13 @@ DISABLE_LANCZOS
     Default: not defined.
 
     If defined then Lanczos diagonalisation is disabled.  This removes the dependency on the TRLan
+DISABLE_HDF5
+    Default: not defined.
+
+    If defined then the QMC restart functionality is disabled and the dependency on HDF5
+    (which can be tricky to compile on some machines) is removed.  Note that restart
+    functionality is extremely useful in production simulations so this option should
+    only be used during initial porting efforts.
 DSFMT_MEXP 
     Default: 19937.
 
