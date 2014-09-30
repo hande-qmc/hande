@@ -17,7 +17,13 @@ class DataServer(socketserver.BaseRequestHandler):
 
 def main(filename):
 
-    import pyhande
+    try:
+        import pyhande
+    except ImportError:
+        # Try to find pyhande in the hande directory tree.
+        scriptdir = os.path.dirname(sys.argv[0])
+        sys.path.append(os.path.join(scriptdir, '..'))
+        import pyhande
 
     (metadata, qmc_data, other_calcs) = pyhande.extract.extract_data(filename)
 
