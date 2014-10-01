@@ -193,15 +193,17 @@ contains
 
         ! This does take i/o formatting to a slightly OCD level addmittedly...
 
+        use const, only: dp
+
         character(4) :: fmt1
         integer, intent(in) :: i
         integer, intent(in), optional :: padding
-        real :: logi
+        real(dp) :: logi
 
         if (i == 0 .or. i==1) then
             logi = 1.0
         else
-            logi = log10(real(abs(i)+1))
+            logi = log10(real(abs(i)+1,dp))
         end if
         if (i < 0) logi = logi + 1
 
@@ -221,17 +223,17 @@ contains
 
         ! This does take i/o formatting to a slightly OCD level addmittedly...
 
-        use const, only: lint
+        use const, only: lint, dp
 
         character(4) :: fmt1
         integer(lint), intent(in) :: i
         integer, intent(in), optional :: padding
-        real :: logi
+        real(dp) :: logi
 
         if (i == 0 .or. i==1) then
             logi = 1.0
         else
-            logi = log10(real(abs(i)+1))
+            logi = log10(real(abs(i)+1,dp))
         end if
         if (i < 0) logi = logi + 1
 
@@ -250,8 +252,10 @@ contains
         !    fmt1: a format statement for an real field using the G format
         !       statement which will hold i perfectly plus an amount of padding.
 
+        use const, only: dp
+
         character(4) :: fmt1
-        real, intent(in) :: logi
+        real(dp), intent(in) :: logi
         integer, intent(in), optional :: padding
         integer :: p
 
