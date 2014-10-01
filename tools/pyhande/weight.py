@@ -5,7 +5,7 @@ import numpy as np
 from math import exp
 
 def reweight(data, mc_cycles, tstep, weight_itts, mean_shift,
-weight_key='Shift', geom_mean=False):
+weight_key='Shift', geom_mean=False, arith_mean=False):
     '''Reweight using population control to reduce population control bias.
 See C. J. Umirigar et. al. J. Chem. Phys. 99, 2865 (1993) equations 14 ..., 20. 
 
@@ -40,7 +40,17 @@ data : :class:`pandas.DataFrame`
     weights = []
 
     if geom_mean:
-       to_prod = to_prod*np.exp(-tstep*((3*mc_cycles + 1)/float(2)*(data[weight_key].values) - mc_cycle*mean_shift))
+       to_prod = np.exp(-tstep*((3*mc_cycles + 1)/float(2)*(data[weight_key].values -  mean_shift)))
+    elif arith_mean:
+       to_prod =  np.exp(-tstep*mc_cycles*(data[weight_key].values-mean_shift))*\
+                  (1/float(mc_cycles))*\
+                  (1 - np.exp((mc_cycles)*tstep*data[weight_key].values))/\
+                  (1 - np.exp(tstep*data[weight_key].values))
+       # if the shift is small we end up dividing by zero, we need to do
+       # this before population control turns on.
+       for i in xrange(len(to_prod)):
+           if np.isnan(to_prod[i]):
+               to_prod[i] = 1.0
     else:
        to_prod = np.exp(-tstep*mc_cycles*(data[weight_key].values-mean_shift))
     if len(data[weight_key]) > 0:

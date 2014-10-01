@@ -10,7 +10,8 @@ import pyhande.analysis
 import pyhande.weight
 
 def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
-                reweight_itts=0, mean_shift=0.0, geom_mean=False):
+                reweight_itts=0, mean_shift=0.0, geom_mean=False,
+                arith_mean=False):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -73,7 +74,8 @@ size from the blocking analysis:
     # Compute and define new weighted columns to reblock.
     if reweight_itts > 0:
         data = pyhande.weight.reweight(data, metadata[0]['mc_cycles'],
-            metadata[0]['tau'], reweight_itts, mean_shift, geom_mean)
+            metadata[0]['tau'], reweight_itts, mean_shift, geom_mean=geom_mean,
+             arith_mean=arith_mean)
         data['W * \sum H_0j N_j'] = data['\sum H_0j N_j'] * data['Weight']
         data['W * N_0'] = data['N_0'] * data['Weight']
         to_block.append('W * \sum H_0j N_j')
