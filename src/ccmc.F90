@@ -201,7 +201,7 @@ contains
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
                                dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
                                tot_walkers, walker_length, write_fciqmc_report_header,               &
-                               write_fciqmc_final, nparticles, ccmc_move_freq, real_factor,          &
+                               nparticles, ccmc_move_freq, real_factor,          &
                                cluster_multispawn_threshold, real_factor
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
@@ -532,11 +532,6 @@ contains
             if (soft_exit) exit
 
         end do
-
-        if (parent) then
-            call write_fciqmc_final(ireport)
-            write (6,'()')
-        end if
 
         call write_bloom_report(bloom_stats)
         call load_balancing_report()

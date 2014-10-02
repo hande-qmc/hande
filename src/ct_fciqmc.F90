@@ -239,11 +239,6 @@ contains
 
         end do
 
-        if (parent) then
-            call write_fciqmc_final(ireport)
-            write(6,'()')
-        end if
-
         call load_balancing_report()
 
         if (soft_exit) then

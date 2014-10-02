@@ -50,6 +50,8 @@ lib/
 tools/
     Directory containing scripts and tools for compiling, running and analysing
     output from HANDE.
+test_suite/
+    Directory containing a set of tests which HANDE should agree with.
 
 Compilation
 -----------
@@ -261,6 +263,50 @@ Output is sent to STDOUT and can be redirected as desired.
 
 hande.x only performs i/o operations on the root processor when run on
 multiple processors.
+
+Running tests
+-------------
+
+The tests are run using the ``testcode`` package (https://github.com/jsspencer/testcode).  testcode can be run from the test_suite subdirectory:
+
+.. code-block:: bash
+
+    testcode.py
+
+Note that the default set of tests are serial only.  The entire test suite is
+run every night using buildbot (http://www.cmth.ph.ic.ac.uk/buildbot/hande/).
+
+Selected data from the HANDE output is compared to known 'good' results
+('benchmarks').  The python script which extracts this data uses the pandas
+module and, unfortunately, importing pandas is actually the time-consuming step
+in the data analysis.  To help alleviate this, the data extraction script, can
+be run in a server-client mode.  The server can be launched using:
+
+.. code-block:: bash
+
+    tools/tests/extract_test_data.py --socket &
+
+If a server (on the default port) is running, the data extraction script used
+by testcode will automatically use it, greatly speeding up the data analysis
+step.
+
+testcode is quite flexible and it's easy to run subsets of tests, check against
+different benchmarks, compare previously run tests, run tests concurrently for
+speed, etc.  Please see the testcode documentation for more details.
+
+.. note::
+
+    For algorithmic reasons, certain compilation options (principally POP_SIZE
+    and DET_SIZE and processor/thread count) result in different Markov chains
+    and hence different exact results (but same results on average).  The tests
+    should therefore be run using the same compilatition options and the same
+    parallel distribution as was used for the benchmarks.  The latter for MPI
+    parallelisation is done automatically by testcode.  Separate tests exist
+    for both POP_SIZE=32 and POP_SIZE=64.
+
+    Currently there are no QMC tests suitable for OpenMP parallelisation due to
+    difficulties with making the scheduler behave deterministically without
+    affecting performance of production simulations.
 
 Analysing FCIQMC and iFCIQMC calculations
 -----------------------------------------
