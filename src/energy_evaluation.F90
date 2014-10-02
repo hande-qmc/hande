@@ -219,7 +219,7 @@ contains
             end if
         end associate
 
-        if (vary_shift) then
+        if (vary_shift(1)) then
             call update_shift(shift(1), ntot_particles_old(1), ntot_particles(1), ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
                 call update_hf_shift(ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
@@ -228,8 +228,8 @@ contains
         end if
         ntot_particles_old = ntot_particles
         hf_signed_pop = new_hf_signed_pop
-        if (ntot_particles(1) > target_particles .and. .not.vary_shift) then
-            vary_shift = .true.
+        if (ntot_particles(1) > target_particles .and. .not.vary_shift(1)) then
+            vary_shift(1) = .true.
             if (vary_shift_from_proje) then
                 if(doing_calc(folded_spectrum)) then
                   ! if running a folded spectrum calculation, set the shift to

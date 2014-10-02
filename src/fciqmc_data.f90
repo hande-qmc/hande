@@ -484,7 +484,7 @@ real(dp) :: annihilation_comms_time = 0.0_dp
 !--- Calculation modes ---
 
 ! The shift is updated at the end of each report loop when vary_shift is true.
-logical :: vary_shift = .false.
+logical, allocatable :: vary_shift(:) ! (sampling_size)
 
 !--- Restart data ---
 
