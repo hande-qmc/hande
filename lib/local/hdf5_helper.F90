@@ -10,6 +10,7 @@ module hdf5_helper
     ! [todo] - Check error flags returned by HDF5 procedures.
 
 #include "../../src/cdefs.h"
+#ifndef DISABLE_HDF5
 
     use hdf5, only: hid_t
 
@@ -676,5 +677,7 @@ module hdf5_helper
             call h5dclose_f(dset_id, ierr)
 
         end subroutine read_ptr
+
+#endif
 
 end module hdf5_helper

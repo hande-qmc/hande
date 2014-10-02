@@ -130,6 +130,7 @@ module restart_hdf5
 
     contains
 
+#ifndef DISABLE_HDF5
         subroutine init_restart_hdf5(ri, write_mode, filename, kinds)
 
             ! Initialise restart functionality:
@@ -194,6 +195,7 @@ module restart_hdf5
             call hdf5_kinds_init(kinds)
 
         end subroutine init_restart_hdf5
+#endif
 
         subroutine dump_restart_hdf5(ri, ncycles, total_population)
 
@@ -204,8 +206,10 @@ module restart_hdf5
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
 
+#ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_write
+#endif
             use const
             use, intrinsic :: iso_c_binding
             use report, only: VCS_VERSION, GLOBAL_UUID
@@ -216,11 +220,14 @@ module restart_hdf5
                                    shift, f0, hs_f0, tot_walkers,               &
                                    D0_population_cycle, par_info, received_list
             use calc, only: calc_type, non_blocking_comm
+            use errors, only: warning
 
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: ncycles
             real(dp), intent(in) :: total_population(:)
+#ifndef DISABLE_HDF5
             character(255) :: restart_file
+
 
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
@@ -335,6 +342,9 @@ module restart_hdf5
             ! And terminate HDF5.
             call h5fclose_f(file_id, ierr)
             call h5close_f(ierr)
+#else
+            call warning('dump_restart_hdf5', '# Not compiled with HDF5 support.  Cannot write out restart file.')
+#endif
 
         end subroutine dump_restart_hdf5
 
@@ -345,8 +355,10 @@ module restart_hdf5
             ! In:
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
 
+#ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read
+#endif
             use errors, only: stop_all
             use const
 
@@ -360,6 +372,7 @@ module restart_hdf5
 
             type(restart_info_t), intent(in) :: ri
 
+#ifndef DISABLE_HDF5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
@@ -493,6 +506,9 @@ module restart_hdf5
             ! And terminate HDF5.
             call h5fclose_f(file_id, ierr)
             call h5close_f(ierr)
+#else
+            call stop_all('read_restart_hdf5', '# Not compiled with HDF5 support.  Cannot read in restart file.')
+#endif
 
         end subroutine read_restart_hdf5
 
