@@ -776,7 +776,7 @@ contains
             if (doing_von_neumann_entropy) call calculate_vn_entropy(rdm_traces(1,1))
             if (doing_concurrence) call calculate_concurrence()
 
-            write (6,'(1x,a12,1X,f22.12)') "# RDM trace=", rdm_traces(1,1)
+            write (6,'(1x,"# RDM trace =",1X,es17.10)') rdm_traces(1,1)
 
             if (output_rdm) then
                 new_unit = get_free_unit()
@@ -818,6 +818,7 @@ contains
         real(p), allocatable :: dm_tmp(:,:)
         real(p) :: eigv(2**rdms(1)%A_nsites)
         real(p) :: vn_entropy
+        logical :: thrown_away
         
         rdm_size = 2**rdms(1)%A_nsites
         vn_entropy = 0.0_p
@@ -851,16 +852,22 @@ contains
 #else
         call dsyev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
 #endif
-        write(6,'(a24)',advance='no') "Eigenvalues thrown away:"
+        thrown_away = .false.
+        write(6,'(1X,"# Eigenvalues thrown away:",1X)',advance='no')
         do i = 1, ubound(eigv,1)
-            if (eigv(i) < 0.0_p) then
-                write(6,'(es15.8,2x)',advance='no') eigv(i)/trace_rdm
+            if (eigv(i) < depsilon) then
+                write(6,'(es15.8,2x)',advance='no') eigv(i)
+                thrown_away = .true.
                 cycle
             end if
             vn_entropy = vn_entropy - eigv(i)*(log(eigv(i))/log(2.0_p))
         end do
-        write(6,'()',advance='yes')
-        write (6,'(1x,a36,1X,f22.9)') "# Unnormalised von Neumann entropy= ", vn_entropy
+        if (thrown_away) then
+            write(6,'()',advance='yes')
+        else
+            write(6,'(1X,"none")',advance='yes')
+        end if
+        write (6,'(1x,"# Unnormalised von Neumann entropy =",1X,es17.10)') vn_entropy
 
         deallocate(dm_tmp)
         call check_deallocate('dm_tmp',ierr)
@@ -922,7 +929,7 @@ contains
         ! equivalant to sqauring and then square-rooting.
         concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv)) 
         concurrence = max(0.0_p, concurrence)
-        write (6,'(1x,a28,1X,f22.12)') "# Unnormalised concurrence= ", concurrence
+        write (6,'(1x,"# Unnormalised concurrence =",1X,es17.10)') concurrence
 
     end subroutine calculate_concurrence
     
