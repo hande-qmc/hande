@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import errno
 import os
 import sys
 import socket
@@ -88,8 +89,11 @@ if __name__ == '__main__':
         if port > 0:
             try:
                 output = use_server(filename, port, host)
-            except ConnectionRefusedError:
-                output = main(filename)
+            except socket.error as serr:
+                if serr.errno == errno.ECONNREFUSED:
+                    output = main(filename)
+                else:
+                    raise serr
         else:
             output = main(filename)
         print(output)
