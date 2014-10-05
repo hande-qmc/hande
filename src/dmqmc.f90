@@ -90,9 +90,7 @@ contains
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            do ireplica = 1, sampling_size
-                vary_shift(ireplica) = tot_nparticles(ireplica) >= target_particles
-            end do
+            vary_shift = tot_nparticles >= target_particles
 
             do ireport = 1, nreport
 
