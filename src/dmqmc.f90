@@ -88,6 +88,12 @@ contains
             ! matrix.
             call create_initial_density_matrix(rng, sys, init_tot_nparticles, tot_nparticles)
 
+            ! Allow the shift to vary from the very start of the beta loop, if
+            ! this condition is met.
+            do ireplica = 1, sampling_size
+                vary_shift(ireplica) = tot_nparticles(ireplica) >= target_particles
+            end do
+
             do ireport = 1, nreport
 
                 call init_report_loop(bloom_stats)
@@ -160,7 +166,7 @@ contains
                                                      walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
-                               spawning_end, ireplica, qmc_spawn)
+                                                                            spawning_end, ireplica, qmc_spawn)
 
                                         if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -288,7 +294,6 @@ contains
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
         if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
         if (dmqmc_find_weights) excit_distribution = 0.0_p
-        vary_shift = .false.
 
         new_seed = seed+iproc+(beta_cycle-1)*nprocs
 

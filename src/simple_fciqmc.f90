@@ -105,6 +105,10 @@ contains
         call check_allocate('shift', size(shift), ierr)
         shift = initial_shift
 
+        allocate(vary_shift(1), stat=ierr)
+        call check_allocate('vary_shift', size(vary_shift), ierr)
+        vary_shift = .false.
+
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then
