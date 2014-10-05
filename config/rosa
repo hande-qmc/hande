@@ -1,0 +1,20 @@
+# I used  PrgEnv-cray, with cce replaced by hdf5-cray/cce/833, and hdf5-cray/1813.
+[main]
+fc = ftn
+cc = cc
+cxx = CC
+ccd = gcc
+cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDISABLE_UUID -DPARALLEL -I$HDF5_INCLUDE_OPTS
+ld = ftn
+ldflags = -L$HDF5_ROOT/lib
+f90_module_flag = -J
+
+[opt]
+fflags =  -e fm -O3 -hnoomp
+cflags = -O3 -hgnu -hnoomp
+cxxflags = -O3
+
+[dbg]
+fflags = -e fm -g -hnoomp
+cflags = -g -hgnu -hnoomp
+cxxflags = -g -dynamic
