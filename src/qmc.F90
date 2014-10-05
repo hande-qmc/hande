@@ -427,9 +427,10 @@ contains
         tot_nparticles = nparticles
         nparticles_proc(:sampling_size,1) = nparticles(:sampling_size)
 #endif
-        do i = 1, sampling_size
-            vary_shift(i) = tot_nparticles(i) >= target_particles
-        end do
+
+        ! Decide whether the shift should be turned on from the start.
+        vary_shift = tot_nparticles >= target_particles
+
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
             tmp_lint = calculate_hf_signed_pop()

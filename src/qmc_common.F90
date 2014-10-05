@@ -784,7 +784,7 @@ contains
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
 
         ! Write restart file if required.
-        if (dump_restart_file_shift .and. vary_shift(1)) then
+        if (dump_restart_file_shift .and. any(vary_shift)) then
             dump_restart_file_shift = .false.
             call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+ncycles*ireport, ntot_particles)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
