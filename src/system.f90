@@ -48,6 +48,7 @@ enum, bind(c)
     enumerator :: heisenberg
     enumerator :: ueg
     enumerator :: chung_landau
+    enumerator :: ringium
 end enum
 
 ! --- System-specific data structures ---
@@ -289,6 +290,18 @@ type sys_read_in_t
 
 end type sys_read_in_t
 
+type sys_ringium_t
+
+    ! Ringium
+    ! ^^^^^^^
+
+    ! Radius of the ring the electrons are confined to
+    real(p) :: radius
+    ! Lz cutoff for basis
+    integer :: maxlz
+
+end type sys_ringium_t
+
 ! --- System data container structure ---
 
 type sys_t
@@ -369,6 +382,7 @@ type sys_t
     type(sys_heisenberg_t) :: heisenberg
     type(sys_ueg_t) :: ueg
     type(sys_read_in_t) :: read_in
+    type(sys_ringium_t) :: ringium
 
 end type sys_t
 
@@ -423,6 +437,7 @@ contains
                     sl%rlattice = 0.0_p
                     forall (ivec=1:sl%ndim) sl%rlattice(ivec,ivec) = 1.0_p/sl%box_length(ivec)
 
+                case(ringium)
                 case default
 
                     ! Lattice-model specific information.
@@ -462,9 +477,12 @@ contains
                     sys%Ms = sys%nel
                 case(ueg)
                     ! set nvirt in basis once the basis set has been generated.
+                case(ringium)
+                    ! Spin manifolds are degenerate in 1D
+                    sys%nvirt = 2*(sys%ringium%maxlz + 1) - sys%nel
                 end select
 
-                if (sys%system /= ueg) then
+                if (sys%system /= ueg .and. sys%system /= ringium) then
                     ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
                     ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
                     ! to be calculated.

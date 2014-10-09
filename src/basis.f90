@@ -57,7 +57,7 @@ contains
 
         if (present(l)) then
             b%l = l
-            if (sys%system == hub_k .or. sys%system == ueg) then
+            if (sys%system == hub_k .or. sys%system == ueg .or. sys%system == ringium) then
                 b%sp_eigv = calc_kinetic(sys, l)
             else
                 b%sp_eigv = 0.0_p
@@ -343,11 +343,14 @@ contains
             nmax = 0
             forall (i=1:sys%lattice%ndim) nmax(i) = ceiling(sqrt(2*sys%ueg%ecutoff))
             nspatial = (2*nmax(1)+1)**sys%lattice%ndim
+        case(ringium)
+            nspatial = sys%ringium%maxlz + 1
         end select
 
         allocate(tmp_basis_fns(nspatial), stat=ierr)
         call check_allocate('tmp_basis_fns',nspatial,ierr)
 
+        if (sys%system /= ringium) then
         ! Find all alpha spin orbitals.
         ibasis = 0
         do k = -nmax(3), nmax(3)
@@ -382,9 +385,16 @@ contains
                 end do
             end do
         end do
+        else
+            ibasis = 0
+            do k = -sys%ringium%maxlz, sys%ringium%maxlz, 2
+                ibasis = ibasis + 1
+                call init_basis_fn(sys, tmp_basis_fns(ibasis), l=(/k/), ms=1)
+            end do
+        end if
 
         select case(sys%system)
-        case(hub_k, hub_real, heisenberg, chung_landau)
+        case(hub_k, hub_real, heisenberg, chung_landau, ringium)
             if (ibasis /= nspatial) call stop_all('init_basis_fns','Not enough basis functions found.')
         case(ueg)
         end select
@@ -399,7 +409,7 @@ contains
             sys%basis%nbasis = 2*ibasis
             nspatial = ibasis
             sys%nvirt = sys%basis%nbasis - sys%nel
-        case(hub_k, hub_real)
+        case(hub_k, hub_real, ringium)
             ! sys%nvirt set in init_system
             sys%basis%nbasis = 2*nspatial
         case(heisenberg, chung_landau)
@@ -412,7 +422,7 @@ contains
 
         ! Rank by kinetic energy (applies to momentum space basis sets only).
         select case(sys%system)
-        case(hub_k, ueg)
+        case(hub_k, ueg, ringium)
             call insertion_rank(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking, tolerance=depsilon)
         case(hub_real, heisenberg, chung_landau)
             forall (i=1:sys%lattice%nsites) basis_fns_ranking(i) = i
