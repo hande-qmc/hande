@@ -1,0 +1,105 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Oct 12 2014 at 22:21:04
+ Compiled using gfortran.(optimised)
+ VCS BASE repository version:
+     6c9c111044b23c4596537d69878d2f2f36429b2e
+ Hostname:
+     macupgrade
+ Working directory: 
+     /home/james/projects/hande/test_suite/mc_hilbert_space/ueg_n7_rs1_e3_hilbert_space
+ Started running on 12/10/2014 at 22:36:18
+ Calculation UUID: e22bf834-dfe0-434f-96d6-9cc7398df89d.
+ ================================================================
+
+ Input options
+ -------------
+
+( Exercise the truncated generator, despite using setting the truncation level to the full space. )
+( Exact answer: 714. )
+ueg
+rs 1
+ecutoff 1
+3d
+
+nel 7
+ms 7
+sym 1
+
+truncation_level 7
+estimate_hilbert_space 10000000
+seed 12
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms     <i|h|i>
+     1   (  0,  0,  0)      1      0.00000000
+     2   (  0,  0,  0)     -1      0.00000000
+     3   (  0,  0, -1)      1      2.07589464
+     4   (  0,  0, -1)     -1      2.07589464
+     5   (  0, -1,  0)      1      2.07589464
+     6   (  0, -1,  0)     -1      2.07589464
+     7   ( -1,  0,  0)      1      2.07589464
+     8   ( -1,  0,  0)     -1      2.07589464
+     9   (  1,  0,  0)      1      2.07589464
+    10   (  1,  0,  0)     -1      2.07589464
+    11   (  0,  1,  0)      1      2.07589464
+    12   (  0,  1,  0)     -1      2.07589464
+    13   (  0,  0,  1)      1      2.07589464
+    14   (  0,  0,  1)     -1      2.07589464
+    15   (  0, -1, -1)      1      4.15178929
+    16   (  0, -1, -1)     -1      4.15178929
+    17   ( -1,  0, -1)      1      4.15178929
+    18   ( -1,  0, -1)     -1      4.15178929
+    19   (  1,  0, -1)      1      4.15178929
+    20   (  1,  0, -1)     -1      4.15178929
+    21   (  0,  1, -1)      1      4.15178929
+    22   (  0,  1, -1)     -1      4.15178929
+    23   ( -1, -1,  0)      1      4.15178929
+    24   ( -1, -1,  0)     -1      4.15178929
+    25   (  1, -1,  0)      1      4.15178929
+    26   (  1, -1,  0)     -1      4.15178929
+    27   ( -1,  1,  0)      1      4.15178929
+    28   ( -1,  1,  0)     -1      4.15178929
+    29   (  1,  1,  0)      1      4.15178929
+    30   (  1,  1,  0)     -1      4.15178929
+    31   (  0, -1,  1)      1      4.15178929
+    32   (  0, -1,  1)     -1      4.15178929
+    33   ( -1,  0,  1)      1      4.15178929
+    34   ( -1,  0,  1)     -1      4.15178929
+    35   (  1,  0,  1)      1      4.15178929
+    36   (  1,  0,  1)     -1      4.15178929
+    37   (  0,  1,  1)      1      4.15178929
+    38   (  0,  1,  1)     -1      4.15178929
+
+ Number of electrons: 7
+ Number of basis functions: 38
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 2
+
+ Hilbert space
+ -------------
+
+ RNG
+ ^^^
+
+ Initialised random number generator with a seed of: 12.
+
+ Symmetry of reference determinant: (  0,  0,  0)
+ Monte-Carlo estimate of size of space is: 7.1576E+02
+
+ ================================================================
+ Finished running on 12/10/2014 at 22:36:22
+ Wall time (seconds):                           3.79
+ CPU time (per processor, seconds):             3.79
+ ================================================================
+
