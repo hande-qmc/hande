@@ -227,6 +227,7 @@ contains
         if (non_blocking_comm) call end_non_blocking_comm(sys, rng, initiator_approximation, ireport, received_list, req_data_s,  &
                                                           par_info%report_comm%request, t1, nparticles_old, shift(1))
 
+        if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
         call load_balancing_report()
 
