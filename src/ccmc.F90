@@ -183,7 +183,7 @@ contains
         !    sys: system being studied.
 
         use bit_utils, only: bit_str_cmp
-        use calc, only: ccmc_full_nc
+        use calc, only: ccmc_full_nc, linked_cluster
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
@@ -365,6 +365,10 @@ contains
                     D0_pos = -1
 
                 end if
+
+                ! The BCH expansion of the Hamiltonian terminates at fourth
+                ! order in T so at most four excitors needed in the custer
+                if (linked_cluster .and. max_cluster_size > 4) max_cluster_size = 4
 
 #ifdef PARALLEL
                 call mpi_bcast(D0_normalisation, 1, mpi_integer, D0_proc, MPI_COMM_WORLD, ierr)
@@ -1031,6 +1035,7 @@ contains
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
         use parallel, only: iproc
+        use calc, only: linked_cluster
 
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
@@ -1056,6 +1061,12 @@ contains
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+
+        if (linked_cluster) then
+            ! For Linked Coupled Cluster we reject any spawning where the
+            ! Hamiltonian is not linked to every cluster operator
+            if (.not. linked_excitation(sys%basis, connection, cluster)) hmatel = 0.0_p
+        end if
 
         ! 2, Apply additional factors.
         hmatel = hmatel*cluster%amplitude*cluster%cluster_to_det_sign
@@ -1392,5 +1403,48 @@ contains
         end do
 
     end subroutine convert_excitor_to_determinant
+
+    pure function linked_excitation(basis, connection, cluster) result(linked)
+        ! For Linked Coupled Cluster, the only elements of He^T that need to
+        ! be sampled are those with a common index between the Hamiltonian and
+        ! each excitor in the cluster (by Wick's Theorem). This routine checks that 
+        ! the determinant selected to spawn on is linked to the cluster
+        ! In:
+        !    basis: information about the single-particle basis
+        !    connection: the excitation connecting the current excitor and the
+        !    child excitor
+        !    cluster: the cluster of excitation operators
+
+        use fciqmc_data, only: f0
+        use excitations, only: excit_t, create_excited_det
+        use basis_types, only: basis_t
+        use ccmc_data, only: cluster_t
+
+        type(basis_t), intent(in) :: basis
+        type(excit_t), intent(in) :: connection
+        type(cluster_t), intent(in) :: cluster
+        logical :: linked
+        integer :: i
+        integer(i0) :: excitor_excitation(basis%string_len)
+        integer(i0) :: h_excitation(basis%string_len)
+
+        linked = .true. 
+
+        ! Get bit string of orbitals in H excitation
+        call create_excited_det(basis, f0, connection, h_excitation)
+        h_excitation = ieor(f0, h_excitation)
+
+        do i = 1, cluster%nexcitors
+            ! check each cluster operator shares an index with connection
+            ! orbitals involved in cluster operator excitation (from reference)
+            excitor_excitation = ieor(cluster%excitors(i)%f, f0)
+            if (all(iand(h_excitation, excitor_excitation) == 0)) then
+                ! no orbitals in common between H and cluster
+                linked = .false.
+                exit
+            end if
+        end do
+
+    end function linked_excitation
 
 end module ccmc

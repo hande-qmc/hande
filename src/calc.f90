@@ -37,6 +37,9 @@ logical :: initiator_approximation = .false.
 ! Use the full non-composite algorithm in CCMC?
 logical :: ccmc_full_nc = .false.
 
+! Sample only linked clusters in CCMC?
+logical :: linked_cluster = .false.
+
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
 integer :: ms_in = huge(1)
