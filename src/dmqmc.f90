@@ -244,6 +244,7 @@ contains
 
         end do
 
+        if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
         call load_balancing_report()
 

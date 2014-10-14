@@ -245,6 +245,7 @@ contains
 
         end do
 
+        if (parent) write (6,'()')
         call load_balancing_report()
 
         if (soft_exit) then
