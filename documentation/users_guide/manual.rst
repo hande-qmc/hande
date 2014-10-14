@@ -1312,7 +1312,7 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     named 'Trace' and 'Trace 2'. The finite_temp_analysis.py script in the tools
     directory can then be used to obtain a final temperature-dependent estimate of
     the Renyi-2 entropy from these quantities.
-**truncate_space** *truncation_level*
+**truncation_level** *truncation_level*
     Integer.
 
     Consider only elements of the density matrix where the determinants differ
