@@ -1065,7 +1065,9 @@ contains
         if (linked_cluster) then
             ! For Linked Coupled Cluster we reject any spawning where the
             ! Hamiltonian is not linked to every cluster operator
-            if (.not. linked_excitation(sys%basis, connection, cluster)) hmatel = 0.0_p
+            if (cluster%nexcitors > 0) then
+                if (.not. linked_excitation(sys%basis, connection, cluster)) hmatel = 0.0_p
+            end if
         end if
 
         ! 2, Apply additional factors.
@@ -1424,15 +1426,28 @@ contains
         type(excit_t), intent(in) :: connection
         type(cluster_t), intent(in) :: cluster
         logical :: linked
-        integer :: i
+
+        integer :: i, orb, bit_pos, bit_element
         integer(i0) :: excitor_excitation(basis%string_len)
         integer(i0) :: h_excitation(basis%string_len)
 
         linked = .true. 
 
         ! Get bit string of orbitals in H excitation
-        call create_excited_det(basis, f0, connection, h_excitation)
-        h_excitation = ieor(f0, h_excitation)
+        ! (modified from create_excited_det)
+        h_excitation = 0
+        do i = 1, connection%nexcit
+            ! i/j orbital
+            orb = connection%from_orb(i)
+            bit_pos = basis%bit_lookup(1,orb)
+            bit_element = basis%bit_lookup(2,orb)
+            h_excitation(bit_element) = ibset(h_excitation(bit_element), bit_pos)
+            ! a/b orbital
+            orb = connection%to_orb(i)
+            bit_pos = basis%bit_lookup(1,orb)
+            bit_element = basis%bit_lookup(2,orb)
+            h_excitation(bit_element) = ibset(h_excitation(bit_element), bit_pos)
+        end do
 
         do i = 1, cluster%nexcitors
             ! check each cluster operator shares an index with connection
