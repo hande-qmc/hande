@@ -152,9 +152,10 @@ calc_data : list of `:class:`pandas.Series`
                 # Special cases for unusual formats...
                 if k == 'ref':
                     metadata[k] = v.split(line)[-1].strip()
-                elif k == 'calc_type' and unseen_calc:
-                    unseen_calc = False
-                    metadata[k] = line.split()[0]
+                elif k == 'calc_type':
+                    if unseen_calc:
+                        unseen_calc = False
+                        metadata[k] = line.split()[0]
                 elif k == 'seed':
                     metadata[k] = int(float(line.split()[-1]))
                 elif k == 'git_hash':
