@@ -1252,6 +1252,15 @@ Calculation options: CCMC options
     more excitors) are randomly selected to make spawning attempts.  This has been shown
     to give substantially more stable dynamics and reduce the plateau height in
     several systems.
+
+**ccmc_linked**
+    Default: off
+
+    The spawning dynamics sample the terms H*T^n. The linked cluster theorem means that the only
+    terms which contribute are those where the exitation sampled from the Hamiltonian has an orbital
+    in common with each excitor in the cluster operator (this also means that clusters with more than 
+    4 excitors in can be ignored). Rejecting spawning from unlinked clusters gives more stable
+    dynamics and a lower plateau height.
     
 Calculation options: DMQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
