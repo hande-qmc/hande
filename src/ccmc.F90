@@ -1121,6 +1121,7 @@ contains
         use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
+        use calc, only: linked_cluster
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
@@ -1135,14 +1136,27 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
-        select case (cluster%nexcitors)
-        case(0)
-            KiiAi = (-shift(1))*cluster%amplitude
-        case(1)
-            KiiAi = (cdet%data(1) - shift(1))*cluster%amplitude
-        case default
-            KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
-        end select
+        if (.not. linked_cluster) then
+            select case (cluster%nexcitors)
+            case(0)
+                KiiAi = (-shift(1))*cluster%amplitude
+            case(1)
+                KiiAi = (cdet%data(1) - shift(1))*cluster%amplitude
+            case default
+                KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
+            end select
+        else
+            ! For linked coupled cluster we only apply the shift to the
+            ! reference determinant 
+            select case (cluster%nexcitors)
+            case(0)
+                KiiAi = (-shift(1))*cluster%amplitude
+            case(1)
+                KiiAi = cdet%data(1)*cluster%amplitude
+            case default
+                KiiAi = (sc0_ptr(sys, cdet%f) - H00)*cluster%amplitude
+            end select
+        end if
 
         pdeath = tau*abs(KiiAi)/cluster%pselect
 
