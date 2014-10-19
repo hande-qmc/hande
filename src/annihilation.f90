@@ -423,7 +423,7 @@ contains
         !    determ_flags: A list of flags specifying whether determinants in
         !        walker_dets are deterministic or not.
 
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use dSFMT_interface, only: dSFMT_t
         use qmc_common, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
@@ -481,7 +481,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
 
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use dSFMT_interface, only: dSFMT_t
         use qmc_common, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
