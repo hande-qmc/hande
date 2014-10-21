@@ -13,8 +13,12 @@ except:
 class DataServer(socketserver.BaseRequestHandler):
     def handle(self):
         filename = self.request.recv(1024)
-        output = main(filename.decode('utf-8'))
-        self.request.sendall(output.encode('utf-8'))
+        try:
+            output = main(filename.decode('utf-8'))
+            self.request.sendall(output.encode('utf-8'))
+        except IOError:
+            # User running the server probably can't read our files.
+            pass
 
 def main(filename):
 
@@ -86,15 +90,17 @@ if __name__ == '__main__':
     (port, filename) = parse_args(sys.argv[1:])
     host = ''
     if filename:
+        output = ''
         if port > 0:
             try:
                 output = use_server(filename, port, host)
             except socket.error as serr:
                 if serr.errno == errno.ECONNREFUSED:
-                    output = main(filename)
+                    pass
                 else:
                     raise serr
-        else:
+        if not output:
+            # Do the data analysis ourselves.
             output = main(filename)
         print(output)
     elif port > 0:
