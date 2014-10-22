@@ -42,8 +42,7 @@ data : :class:`pandas.DataFrame`
     if geom_mean:
        to_prod = np.exp(-tstep*((3*mc_cycles + 1)/float(2)*(data[weight_key].values -  mean_shift)))
     elif arith_mean:
-       to_prod =  np.exp(-tstep*mc_cycles*(data[weight_key].values-mean_shift))*\
-                  (1/float(mc_cycles))*\
+       to_prod =  (1/float(mc_cycles))*\
                   (1 - np.exp((mc_cycles)*tstep*data[weight_key].values))/\
                   (1 - np.exp(tstep*data[weight_key].values))
        # if the shift is small we end up dividing by zero, we need to do
