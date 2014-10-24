@@ -5,7 +5,7 @@ dmqmc
 lattice
 6
 
-J -0.05
+J -0.2
 
 init_pop 100
 beta_loops 50
@@ -38,6 +38,6 @@ seed 23598
 
 use_all_sym_sectors
 
-tau 0.1
+tau 0.025
 varyshift_target 100
 shift_damping 0.5
