@@ -17,6 +17,9 @@ max_nprocs = 1
 [fciqmc/*/]
 [ifciqmc/*/]
 
+# DMQMC - integer weights, serial
+[dmqmc/*/]
+
 # FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - real weights, serial
 # _32 indicates POP_SIZE=32 preprocessor flag was used.
 # _64 indicates POP_SIZE=32 preprocessor flag was used.
@@ -30,15 +33,18 @@ max_nprocs = 1
 # CCMC - integer weights, parallel (2 and 4 cores)
 [ccmc_mpi/np?/*/]
 
-# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - integer weights, parallel (2 and 4 cores)
+# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC/DMQMC - integer weights, parallel (2 and 4 cores)
 [fciqmc_mpi/np?/*/]
 [ifciqmc_mpi/np?/*/]
+[dmqmc_mpi/np?/*/]
 
-# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - real weights, parallel (2 and 4 cores)
+# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC/DMQMC - real weights, parallel (2 and 4 cores)
 [fciqmc_real_32_mpi/np?/*/]
 [fciqmc_real_64_mpi/np?/*/]
 [ifciqmc_real_32_mpi/np?/*/]
 [ifciqmc_real_64_mpi/np?/*/]
+[dmqmc_real_32_mpi/np?/*/]
+[dmqmc_real_64_mpi/np?/*/]
 
 ## Processor options.
 # force serial jobs to always use 1 processor
